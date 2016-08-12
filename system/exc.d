@@ -38,3 +38,15 @@ public class BitmapFormatException : Exception{
 		super(msg, file, line, next);
 	}
 }
+
+public class ConfigFileException : Exception{
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+		super(msg, file, line, next);
+	}
+}
+
+public class MapFileException : Exception{
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+		super(msg, file, line, next);
+	}
+}

@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+
+<Audio sfxVol="255" musicVol="255" />
+<Video resolution="1280x960" screenMode="Windowed" antiAlias="0" />
+<Input devType="keyboard">
+	<KeyBinding ID="up" keyCode="82" keyMod="0" />
+	<KeyBinding ID="down" keyCode="81" keyMod="0" />
+	<KeyBinding ID="left" keyCode="80" keyMod="0" />
+	<KeyBinding ID="right" keyCode="79" keyMod="0" />
+	<KeyBinding ID="enter" keyCode="88" keyMod="0" />
+</Input>
