@@ -8,11 +8,12 @@ module collision;
 import std.conv;
 import std.stdio;
 import std.algorithm;
-import std.bitmanip;
+//import std.bitmanip;
 
 import graphics.sprite;
 import graphics.bitmap;
 import system.etc;
+import system.advBitArray;
 
 import graphics.layers;
 /*
@@ -42,21 +43,14 @@ public struct TileSource{
  * Uses Bitarrays for faster detection, custom shapes are possible via XMPs.
  */
 public class CollisionModel{
-	private BitArray ba;
-	private int iX, iY;
-	this(int x, int y){
+	protected AdvancedBitArray ba;
+	protected int iX, iY;
+
+	this(int x, int y, void[] b){
+
 		iX = x;
 		iY = y;
-		ba = BitArray();
-		ba.length(x * y);
-	}
-	this(int x, int y, bool[] b){
-		if(x * y != b.length){
-			throw new Exception("Incorrect size of bitarray.");
-		}
-		iX = x;
-		iY = y;
-		ba = BitArray(b);
+		ba = new AdvancedBitArray(b, x*y);
 
 	}
 	public bool getBit(int x, int y){
@@ -66,26 +60,21 @@ public class CollisionModel{
 	 * Gets a row from the CollisionModel of a specified size and position.
 	 * Extrabits: 0 = normal; 1 = extra startbit; 2 = extra endbit; 3 = both
 	 */
-	public BitArray getRowForDetection(int row, int from, int length, ubyte extraBits){
-		BitArray ba0 = BitArray();
-		if((extraBits == 1 || extraBits == 3) && ba[(iX*row)+from-1]){
-			ba0 ~= true;
-		}else{
-			ba0 ~= false;
+	/*public AdvancedBitArray getRowForDetection(int row, int from, int length, ubyte extraBits){
+		AdvancedBitArray ba0 = ba[(iX*row)+from-1..(iX*row)+from+length+1];
+		if(!(extraBits == 1 || extraBits == 3)){
+			ba0[0] = false;
 		}
 		//ba0 ~= ba[(iX*row)+from..(iX*row)+from+length];
 
 		if((extraBits == 2 || extraBits == 3) && ba[(iX*row)+from+length+1]){
-			ba0 ~= true;
-		}else{
-			ba0 ~= false;
+			ba0[ba0.getLenght-1] = false;
 		}
 		return ba0;
-	}
+	}*/
 }
-/*
- *Sprite to sprite collision detector. Collision detection is invoked when a sprite is moving, thus only testing sprites that are moving with all other sprites on the list.
- *Implements the SpriteMovementListener interface, be sure you have added you collision detector to all of the sprites that you want to test for collision.
+/**
+ *Sprite to sprite collision detector. Collision detection is invoked when a sprite is moving, thus only testing sprites that are moving with all other sprites on the list. It tests rows to each other istead of pixels to speed up the process.
  */
 public class CollisionDetector : SpriteMovementListener{
 	//private Collidable[string] cList;
@@ -208,7 +197,25 @@ public class CollisionDetector : SpriteMovementListener{
 		//writeln(testpoints[5]);
 		//writeln(testpoints[6]);
 		//writeln(testpoints[7]);
-		if(sourceFR[b] == FlipRegister.NORM){
+
+		if(cY > 1){	//test a whole row
+			AdvancedBitArray zero = new AdvancedBitArray(cX);
+			for(int j ; j < cY ; j++){
+				int afrom = ((testpoints[2] + j) * collisionModels[a].iX) + testpoints[0], bfrom= ((testpoints[4] + j) * collisionModels[b].iX) + testpoints[6];
+				if((collisionModels[a].ba[afrom..afrom + cY] & collisionModels[a].ba[bfrom..bfrom + cY]) != zero){
+					return true;
+				}
+			}
+		}else{	//test pixels only if needed
+			for(int j ; j < cY ; j++){
+				int afrom = ((testpoints[2] + j) * collisionModels[a].iX) + testpoints[0], bfrom= ((testpoints[4] + j) * collisionModels[b].iX) + testpoints[6];
+				if(collisionModels[a].ba[afrom] && collisionModels[a].ba[bfrom]){
+					return true;
+				}
+			}
+		}
+
+		/*if(sourceFR[b] == FlipRegister.NORM){
 			if(sourceFR[a] == FlipRegister.NORM){
 				for(int j ; j <= cY ; j++){
 					for(int i ; i <= cX ; i++){
@@ -344,7 +351,7 @@ public class CollisionDetector : SpriteMovementListener{
 					}
 				}
 			}
-		}
+		}*/
 		return false;
 	}
 	//Invokes the collision events on all added CollisionListener.

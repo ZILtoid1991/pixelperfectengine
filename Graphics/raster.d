@@ -168,28 +168,12 @@ public class Raster : IRaster{
 	}*/
     //Returns the workpad.
     public SDL_Texture* getOutput(){
-		if(fbData !is null)
+		if(fbData[0] !is null)
 			return frameBuffer[0];
 		return frameBuffer[1];
     }
     //Writes a pixel to the given place.
-    private void writeToWorkpad(Bitmap16Bit selFB){
-        //if(color != 0)        writeln(color);
-		/*for(int y ; y < rY ; y++){
-			ushort[] chunk = frameBuffer[1].readRow(y);
-			for(int x ; x < rX ; x++){
-        		ubyte *p = cast(ubyte*)this.workpad.pixels + y * workpad.pitch + x * 4;
-        		*p = palette[(chunk[x]*3)+2]; //colorB[color];
-			    p = p +1;
-				*p = palette[(chunk[x]*3)+1]; //colorG[color];
-    			p = p +1;
-				*p = palette[chunk[x]*3]; //colorR[color];
-        		p = p +1;
-        		*p = 255;
-			}
-		}*/
-
-    }
+    
     //Returns if the raster is refreshing.
     public bool isRefreshing(){
         return r;

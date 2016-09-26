@@ -173,6 +173,10 @@ public class Bitmap32Bit{
 		return pixels.ptr;
 	}
 
+	public ubyte[] getRawdata(){
+		return pixels;
+	}
+
 	public bool[] generateStandardCollisionModel(){
 		bool[] ba;
 		for(int i; i < pixels.length; i+=4){

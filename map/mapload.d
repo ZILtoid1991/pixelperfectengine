@@ -27,7 +27,7 @@ public class MapHandler{
 	public ObjectData[] objectdataList;
 	public ubyte[] palette;
 	private string filename, name, app, creator, paletteSource, paletteDatSource;
-	public string[] metadata;
+	public string[string] metadata;
 	private int nOfLayers;
 
 	//public double[] scrollRatio;
@@ -173,7 +173,7 @@ public class MapHandler{
 			foreach(FileCollector fc; mapdataList[i].fcList){
 				auto e11 = new Element("TileSource");
 				e11.tag.attr["source"] = fc.source;
-				e11.tag.attr["datSource"] = fc.datSource;
+				//e11.tag.attr["datSource"] = fc.datSource;
 				foreach(ushort u; fc.numcollection){
 					auto e111 = new Element("Tile");
 					e111.tag.attr["number"] = to!string(u);

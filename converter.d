@@ -64,6 +64,14 @@ Bitmap16Bit convertBitmapTo16Bit(Bitmap32Bit source, ubyte[] palette, LookupMeth
 	return null;
 }
 
+Bitmap32Bit convertBitmapTo32Bit(ushort[] source, ubyte[] palette, int x, int y){
+	return null;
+}
+
+Bitmap32Bit convertBitmapTo32Bit(ubyte[] source, ubyte[] palette, int x, int y){
+	return null;
+}
+
 enum LookupMethod : uint{
 	NearestValue	=	1,
 	AreaAverage		=	2,

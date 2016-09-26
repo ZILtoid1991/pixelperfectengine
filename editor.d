@@ -23,11 +23,13 @@ import std.conv;
 import derelict.sdl2.sdl;
 import windowing.window;
 import map.mapload;
+import converterdialog;
 
 public interface IEditor{
 	public void onExit();
 	public void newDocument();
 	public void newLayer();
+	public void xmpToolkit();
 	public void createNewDocument(wstring name, int rX, int rY, int pal);
 	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY);
 }
@@ -72,6 +74,7 @@ public class NewDocumentDialog : Window, ActionListener{
 
 	}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
+	public void actionEvent(Event event){}
 }
 
 public class NewLayerDialog : Window, ActionListener{
@@ -105,12 +108,14 @@ public class NewLayerDialog : Window, ActionListener{
 	}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
 	public void actionEvent(string source, int type, int value, wstring message){}
+	public void actionEvent(Event event){}
 }
 
 public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListener{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
 	private ListBox layerList, prop;
-	private ListBoxColumn[] layerListE, propTL, propSL, propSLE;
+	private ListBoxColumn[] propTL, propSL, propSLE;
+	private ListBoxColumn[] layerListE;
 	public Label[] labels;
 	private int[] propTLW, propSLW, propSLEW;
 	public IEditor ie;
@@ -218,10 +223,14 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 			case "newL":
 				ie.newLayer;
 				break;
+			case "xmp":
+				ie.xmpToolkit();
+				break;
 			default:
 				break;
 		}
 	}
+	public void actionEvent(Event event){}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
 	public Bitmap16Bit[wchar] getFontSet(int style){
 		switch(style){
@@ -266,7 +275,8 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 	public Raster[] rasters;
 	public InputHandler input;
 	public BackgroundLayer[] backgroundLayers;
-	public SpriteLayer objects, windowing;
+	public SpriteLayer windowing;
+	public SpriteLayer32Bit bitmapPreview;
 	public bool onexit, exitDialog, newLayerDialog;
 	public WindowElement[] elements;
 	public Window test;
@@ -306,12 +316,17 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 			default: break;
 		}
 	}
+	public void actionEvent(Event event){}
 	public void onQuit(){onexit = !onexit;}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
+	public void xmpToolkit(){
+		wh.addWindow(new ConverterDialog(input));
+	}
 	public this(string[] args){
 
 		windowing = new SpriteLayer();
+		bitmapPreview = new SpriteLayer32Bit();
 
 		wh = new EditorWindowHandler(1280,960,640,480,windowing);
 		wh.ie = this;
@@ -363,6 +378,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		rasters ~= new Raster(640, 480, ow[0].renderer);
 		ow[0].setMainRaster(rasters[0]);
 		rasters[0].addLayer(windowing);
+		rasters[0].addLayer(bitmapPreview);
 		rasters[0].setupPalette(512);
 		//loadPaletteFromFile("VDPeditUI0.pal", guiR);
 		load24bitPaletteFromFile("VDPeditUI0.pal", rasters[0]);
@@ -418,7 +434,9 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		document = new MapHandler();
 
 	}
-	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY){}
+	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY){
+
+	}
 	public void newLayer(){
 		if(document !is null){
 			NewLayerDialog ndd = new NewLayerDialog(input);

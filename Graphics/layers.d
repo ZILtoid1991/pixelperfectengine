@@ -395,6 +395,16 @@ public interface ISpriteLayer{
 public interface ISpriteLayer16Bit : ISpriteLayer{
 	public void addSprite(Bitmap16Bit s, int n, Coordinate c);
 	public void addSprite(Bitmap16Bit s, int n, int x, int y);
+	public void replaceSprite(Bitmap16Bit s, int n);
+	public void replaceSprite(Bitmap16Bit s, int n, int x, int y);
+	public void replaceSprite(Bitmap16Bit s, int n, Coordinate c);
+}
+public interface ISpriteLayer32Bit : ISpriteLayer{
+	public void addSprite(Bitmap32Bit s, int n, Coordinate c);
+	public void addSprite(Bitmap32Bit s, int n, int x, int y);
+	public void replaceSprite(Bitmap32Bit s, int n);
+	public void replaceSprite(Bitmap32Bit s, int n, int x, int y);
+	public void replaceSprite(Bitmap32Bit s, int n, Coordinate c);
 }
 /*
  *Use it to call the collision detector
@@ -402,8 +412,8 @@ public interface ISpriteLayer16Bit : ISpriteLayer{
 public interface SpriteMovementListener{
 	void spriteMoved(int ID);
 }
-/*
- *Sprite controller and renderer. 
+/**
+ *Sprite controller and renderer.
  */
 public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 	private Bitmap16Bit[int] spriteSet;
@@ -434,7 +444,7 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 	
 	public void addSprite(Bitmap16Bit s, int n, int x, int y){
 		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,s.getX(),s.getY());
+		coordinates[n] = Coordinate(x,y,x+s.getX(),y+s.getY());
 		flipRegisters[n] = FlipRegister.NORM;
 		//spriteSorter[n] = n;
 		spriteSorter ~= n;
@@ -442,6 +452,26 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 		
 		spriteSorter.sort();
 		
+	}
+	/**
+	 * 
+	 */
+	public void replaceSprite(Bitmap16Bit s, int n){
+
+		if(!(s.getX == spriteSet[n].getX && s.getY == spriteSet[n].getY)){
+			coordinates[n] = Coordinate(coordinates[n].xa,coordinates[n].ya,coordinates[n].xa + s.getX,coordinates[n].ya + s.getY);
+		}
+		spriteSet[n] = s;
+	}
+
+	public void replaceSprite(Bitmap16Bit s, int n, int x, int y){
+		spriteSet[n] = s;
+		coordinates[n] = Coordinate(x,y,x+s.getX(),y+s.getY());
+	}
+
+	public void replaceSprite(Bitmap16Bit s, int n, Coordinate c){
+		spriteSet[n] = s;
+		coordinates[n] = c;
 	}
 	
 	public ushort getTransparencyIndex(){
@@ -552,7 +582,7 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 								movaps	XMM7, XMM6;
 								movaps	XMM4, alphaSSEConst1;
 								movaps	XMM5, XMM4;
-								
+
 								
 								//punpcklbw	XMM1, XMM2;
 								
@@ -781,7 +811,7 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 	
 }
 
-public class SpriteLayer32Bit : Layer, ISpriteCollision{
+public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 	private Bitmap32Bit[int] spriteSet;
 	private Coordinate[int] coordinates;		//Use moveSprite() and relMoveSprite() instead to move sprites
 	private FlipRegister[int] flipRegisters;
@@ -814,6 +844,10 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision{
 		spriteSorter.sort();
 		
 	}
+
+	public void replaceSprite(Bitmap32Bit s, int n){}
+	public void replaceSprite(Bitmap32Bit s, int n, int x, int y){}
+	public void replaceSprite(Bitmap32Bit s, int n, Coordinate c){}
 	
 	public ushort getTransparencyIndex(){
 		return transparencyIndex;

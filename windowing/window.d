@@ -9,6 +9,7 @@ module windowing.window;
 import graphics.bitmap;
 import graphics.draw;
 import graphics.layers;
+
 public import windowing.elements;
 import system.etc;
 import system.inputHandler;
@@ -190,21 +191,20 @@ public class DefaultDialog : Window, ActionListener{
 		}
 	}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
+	public void actionEvent(Event event){}
 }
 
 public class FileDialog : Window, ActionListener{
 	private ActionListener al;
 	private string source;
 	private string[] filetypes, pathList, driveList;
-	private string directory;
+	private string directory, filename;
 	private ListBox lb;
 	private TextBox tb;
 	private ListBoxColumn[] columns;
 	private bool save;
 
-	public this(Coordinate size, wstring title){
-		super(size, title);
-	}
+
 
 	public this(wstring title, string source, ActionListener a, string[] filetypes, string startDir, TextInputHandler tih, bool save = false, string filename = ""){
 		this(Coordinate(20,20,240,198), title);
@@ -257,6 +257,10 @@ public class FileDialog : Window, ActionListener{
 		detectDrive();
 	}
 
+	public this(Coordinate size, wstring title){
+		super(size, title);
+	}
+
 	private void spanDir(){
 		pathList.length = 0;
 		columns[0].elements.length = 0;
@@ -270,16 +274,17 @@ public class FileDialog : Window, ActionListener{
 				columns[2].elements ~= formatDate(de.timeLastModified);
 			}
 		}
-		foreach(string ft; filetypes){
+		foreach(ft; filetypes){
 			foreach(DirEntry de; dirEntries(directory, ft, SpanMode.shallow)){
 				if(de.isFile){
 					pathList ~= de.name;
 					columns[0].elements ~= to!wstring(getFilenameFromPath(de.name, true));
 					columns[1].elements ~= to!wstring(ft);
 					columns[2].elements ~= formatDate(de.timeLastModified);
-				}
+			}
 			}
 		}
+
 
 	}
 
@@ -369,9 +374,10 @@ public class FileDialog : Window, ActionListener{
 	}
 
 	private void fileEvent(){
-		wstring s = to!wstring(directory);
-		s ~= tb.getText();
-		al.actionEvent("file", EventType.FILEDIALOGEVENT, 0, s);
+		//wstring s = to!wstring(directory);
+		filename = to!string(tb.getText);
+		//al.actionEvent("file", EventType.FILEDIALOGEVENT, 0, s);
+		al.actionEvent(new Event(source, "filedialog", directory, filename, null, 0, EventType.FILEDIALOGEVENT));
 		parent.closeWindow(this);
 	}
 
@@ -399,6 +405,7 @@ public class FileDialog : Window, ActionListener{
 		}
 	}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
+	public void actionEvent(Event event){}
 }
 
 public class WindowHandler : InputListener, MouseListener, IWindowHandler{
@@ -580,6 +587,7 @@ public interface IWindowHandler{
 	public void closeWindow(Window sender);
 	public void moveUpdate(Window sender);
 	public void setWindowToTop(Window sender);
+	public void addWindow(Window w);
 }
 
 public enum EventProperties : uint{

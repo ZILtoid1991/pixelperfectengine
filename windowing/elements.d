@@ -24,6 +24,7 @@ abstract class WindowElement{
 	public BitmapDrawer output;
 	public Bitmap16Bit[int] altStyleBrush;
 	public ElementContainer elementContainer;
+	public static InputHandler inputHandler;
 	
 	public void onClick(int offsetX, int offsetY, int type = 0){
 		
@@ -53,6 +54,7 @@ abstract class WindowElement{
 	private void invokeActionEvent(int type, int value, wstring message = ""){
 		foreach(ActionListener a; al){
 			a.actionEvent(source, type, value, message);
+			a.actionEvent(new Event(source, null, null, null, text, value, type));
 		}
 	}
 	private Bitmap16Bit getBrush(int style){
@@ -351,6 +353,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		draw();
 	}
 	public void actionEvent(string source, string subsource, int type, int value, wstring message){}
+	public void actionEvent(Event event){}
 	public void getFocus(WindowElement sender){}
 	public void dropFocus(WindowElement sender){}
 	public void drawUpdate(WindowElement sender){
@@ -405,6 +408,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 			for(int j; j < columns[i].elements.length; j++){
 				//writeln(foo + 1, bar);
 				textArea.drawText(foo + 1, bar, columns[i].elements[j], elementContainer.getFontSet(0), 1);
+
 				bar += rowHeight;
 			}
 			foo += columnWidth[i];
@@ -573,6 +577,9 @@ public class RadioButtonGroup : WindowElement{
 		draw();
 		invokeActionEvent(EventType.RADIOBUTTON, bposition);
 	}
+	public int getValue(){
+		return bposition;
+	}
 }
 
 abstract class Slider : WindowElement{
@@ -724,11 +731,53 @@ public class HSlider : Slider{
 	}
 }
 
+/**
+ * To create drop-down lists, menu bars, etc.
+ */
+public class PopUpMenu: PopUpElement{
+	private wstring[] texts;
+	private string[] sources;
+	private string subsource;
+	private uint[int] hotkeyCodes;
+	private Bitmap16Bit[int] icons;
+	private ElementContainer elementContainer;
+	public static InputHandler inputhandler;
+
+	public this(int columnheight, string subsource, string[] sources, wstring[] texts, uint[int] hotkeyCodes = null){
+
+	}
+
+	/**
+	 * Use this if you want icons in your list.
+	 * All the icons have to be the same exact size, otherwise it might cause exceptions.
+	 */
+	public this(int columnheight, string subsource, string[] sources, wstring[] texts, Bitmap16Bit[int] icons, uint[int] hotkeyCodes = null){
+		
+	}
+
+	public void onClick(int x, int y){
+		
+	}
+	public void onKey(uint keycode){
+		
+	}
+	public void onScroll(int x, int y, int wX, int wY){
+		
+	}
+}
+public interface PopUpElement{
+	public void onClick(int x, int y); 
+	public void addPopUpHandler(PopUpHandler p);
+}
+public interface PopUpHandler{
+	public void addPopUpElement(PopUpElement p);
+}
+
 /*public interface IElement{
- public void onClick();
- public Coordinate getPosition();
- }*/
-/*
+	public void onClick();
+	public Coordinate getPosition();
+}*/
+/**
  * For use with ListBoxes and similar types
  */
 public struct ListBoxColumn{
@@ -739,15 +788,40 @@ public struct ListBoxColumn{
 		this.header = header;
 		this.elements = elements;
 	}
+
+	/*this(string header, string[] elements){
+		this.header = to!wstring(header);
+		//this.elements = elements;
+	}*/
 	
 	public void removeByNumber(int i){
 		elements = remove(elements, i);
 	}
 }
 
+public class Event{
+	public string source, subsource, path, filename;
+	public wstring text;
+	public int value, type;
+	/**
+	 *If a field is unneeded, leave it blank by setting it to null.
+	 */
+	this(string source, string subsource, string path, string filename, wstring textinput, int value, int type){
+		this.source = source;
+		this.subsource = subsource;
+		this.path = path;
+		this.filename = filename;
+		this.text = textinput;
+		this.value = value;
+		this.type = type;
+	}
+}
+
 public interface ActionListener{
 	public void actionEvent(string source, int type, int value, wstring message);
 	public void actionEvent(string source, string subSource, int type, int value, wstring message);
+	/// During development, I decided to move to a more "Swing-like" event system, use this instead. Better for adding new features in the future.
+	public void actionEvent(Event event); 
 }
 
 public interface ElementContainer{
