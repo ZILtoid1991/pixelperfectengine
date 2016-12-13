@@ -385,7 +385,7 @@ public class QCollisionDetector : CollisionDetector{
  *IMPORTANT! Both layers have to have the same scroll values, or else odd things will happen.
  */
 public class BackgroundTester : SpriteMovementListener{
-	private IBackgroundLayer blSource;
+	private ITileLayer blSource;
 	private Bitmap16Bit[wchar] blBMP;
 	private wchar[] mapping;
 	public wchar[] ignoreList;
@@ -393,7 +393,7 @@ public class BackgroundTester : SpriteMovementListener{
 	private BLInfo blInfo;
 	private CollisionListener[] cl;
 	
-	public this(IBackgroundLayer bl, ISpriteCollision sl){
+	public this(ITileLayer bl, ISpriteCollision sl){
 		blSource = bl;
 		slSource = sl;
 		blInfo = blSource.getLayerInfo();

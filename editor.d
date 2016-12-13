@@ -11,6 +11,7 @@ import std.conv;
 import graphics.core;
 import graphics.raster;
 import graphics.layers;
+import extbmp.extbmp;
 
 import graphics.bitmap;
 import graphics.draw;
@@ -196,6 +197,10 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		}
 	}
 
+	public StyleSheet getStyleSheet(){
+		return defaultStyle;
+	}
+
 	public void addElement(WindowElement we, int eventProperties){
 		elements ~= we;
 		we.elementContainer = this;
@@ -232,7 +237,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	}
 	public void actionEvent(Event event){}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
-	public Bitmap16Bit[wchar] getFontSet(int style){
+	/*public Bitmap16Bit[wchar] getFontSet(int style){
 		switch(style){
 			case 0: return basicFont;
 			case 1: return altFont;
@@ -241,10 +246,10 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		}
 		return basicFont;
 		
-	}
-	public Bitmap16Bit getStyleBrush(int style){
+	}*/
+	/*public Bitmap16Bit getStyleBrush(int style){
 		return styleBrush[style];
-	}
+	}*/
 	public void drawUpdate(WindowElement sender){
 		output.insertBitmap(sender.getPosition().xa,sender.getPosition().ya,sender.output.output);
 	}
@@ -274,7 +279,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 	public OutputWindow[] ow;
 	public Raster[] rasters;
 	public InputHandler input;
-	public BackgroundLayer[] backgroundLayers;
+	public TileLayer[] backgroundLayers;
 	public SpriteLayer windowing;
 	public SpriteLayer32Bit bitmapPreview;
 	public bool onexit, exitDialog, newLayerDialog;
@@ -321,7 +326,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
 	public void xmpToolkit(){
-		wh.addWindow(new ConverterDialog(input));
+		wh.addWindow(new ConverterDialog(input,bitmapPreview));
 	}
 	public this(string[] args){
 
@@ -332,14 +337,15 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		wh.ie = this;
 
 		//load the fonts
-		Bitmap16Bit[] fontset = loadBitmapFromFile("UIfont.vmp");
+		/*Bitmap16Bit[] fontset = loadBitmapFromFile("UIfont.vmp");
 		for(int i; i < fontset.length; i++){
 			wh.basicFont[to!wchar(32+i)] = fontset[i];
 			//write(32+i, " ");
-		}
+		}*/
+		Fontset defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("sysfont.xmp"), "font");
 
 		//load the stylesheets
-		Bitmap16Bit[] styleSheet = loadBitmapFromFile("UIstyle.vmp");
+		/*Bitmap16Bit[] styleSheet = loadBitmapFromFile("UIstyle.vmp");
 		styleSheet ~= loadBitmapFromFile("UIbuttons0.vmp");
 		wh.styleBrush[0] = styleSheet[0];
 		wh.styleBrush[1] = styleSheet[1];
@@ -358,7 +364,30 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		wh.styleBrush[14] = styleSheet[14];
 		wh.styleBrush[15] = styleSheet[15];
 		wh.styleBrush[16] = styleSheet[16];
-		wh.styleBrush[17] = styleSheet[17];
+		wh.styleBrush[17] = styleSheet[17];*/
+
+		ExtendibleBitmap ssOrigin = new ExtendibleBitmap("sysdef.xmp");
+		StyleSheet ss = new StyleSheet();
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI0"),"closeButtonA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI1"),"closeButtonB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI0"),"checkBoxA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI1"),"checkBoxB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI2"),"radioButtonA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI3"),"radioButtonB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI4"),"upArrowA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI5"),"upArrowB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI6"),"downArrowA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI7"),"downArrowB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI8"),"plusButtonA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI9"),"plusButtonB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIA"),"minusButtonA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIB"),"minusButtonB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIC"),"leftArrowA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUID"),"leftArrowB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIE"),"rightArrowA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIF"),"rightArrowB");
+		ss.addFontset(defaultFont, "default");
+		wh.defaultStyle = ss;
 
 		wh.initGUI();
 
@@ -368,6 +397,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		input.il ~= this;
 		input.sel ~= this;
 		input.kb ~= KeyBinding(0, SDL_SCANCODE_ESCAPE, 0, "sysesc", Devicetype.KEYBOARD);
+		WindowElement.inputHandler = input;
 		//wh.ih = input;
 		//ffb = new ForceFeedbackHandler(input);
 
@@ -381,7 +411,8 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		rasters[0].addLayer(bitmapPreview);
 		rasters[0].setupPalette(512);
 		//loadPaletteFromFile("VDPeditUI0.pal", guiR);
-		load24bitPaletteFromFile("VDPeditUI0.pal", rasters[0]);
+		//load24bitPaletteFromFile("VDPeditUI0.pal", rasters[0]);
+		loadPaletteFromXMP(ssOrigin, "default", rasters[0]);
 
 		rasters[0].addRefreshListener(ow[0],0);
 

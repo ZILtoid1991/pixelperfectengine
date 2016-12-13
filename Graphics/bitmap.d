@@ -1,6 +1,6 @@
 module graphics.bitmap;
 //import std.bitmanip;
-
+import std.stdio;
 import system.exc;
 
 /*
@@ -20,6 +20,7 @@ public class Bitmap16Bit{
         iX=x;
         iY=y;
         pixels.length=x*y;
+
     }
     //Creates a bitmap from an array.
     this(ushort[] p, int x, int y){
@@ -142,7 +143,7 @@ public class Bitmap32Bit{
 			throw new BitmapFormatException("Incorrect Bitmap size exception!");
 		iX = x;
 		iY = y;
-		this.pixels = pixels;
+		this.pixels = p;
 	}
 
 	public ubyte[4] readPixel(int x, int y){
@@ -163,10 +164,12 @@ public class Bitmap32Bit{
 	}
 	//Writes the pixel at the given position.
 	public void writePixel(int x, int y, ubyte r, ubyte g, ubyte b, ubyte a){
-		pixels[x * (4 * y * iX)] = a;
-		pixels[x * (4 * y * iX) + 1] = r;
-		pixels[x * (4 * y * iX) + 2] = g;
-		pixels[x * (4 * y * iX) + 3] = b;
+		//writeln(x * (4 * y * iX));
+		pixels[4 * x + (4 * y * iX)] = a;
+		pixels[4 * x + (4 * y * iX) + 1] = r;
+		pixels[4 * x + (4 * y * iX) + 2] = g;
+		pixels[4 * x + (4 * y * iX) + 3] = b;
+
 	}
 
 	public ubyte* getPtr(){

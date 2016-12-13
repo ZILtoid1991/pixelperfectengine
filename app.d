@@ -13,6 +13,7 @@ import std.conv;
 import std.random;
 
 import derelict.sdl2.sdl;
+import derelict.freeimage.freeimage;
 
 //import system.config;
 
@@ -35,6 +36,7 @@ int main(string[] args)
 {
 
     DerelictSDL2.load();
+	DerelictFI.load();
 
 	Editor e = new Editor(args);
 	e.whereTheMagicHappens;

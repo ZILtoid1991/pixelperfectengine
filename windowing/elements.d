@@ -13,6 +13,7 @@ import system.inputHandler;
 import std.algorithm;
 import std.stdio;
 import std.conv;
+import windowing.stylesheet;
 
 abstract class WindowElement{
 	public ActionListener[] al;
@@ -20,11 +21,14 @@ abstract class WindowElement{
 	private string source;
 	private Coordinate position;
 	private int sizeX, sizeY;
-	public int font;
+	//public int font;
 	public BitmapDrawer output;
-	public Bitmap16Bit[int] altStyleBrush;
+	//public Bitmap16Bit[int] altStyleBrush;
 	public ElementContainer elementContainer;
+	public StyleSheet customStyle;
+
 	public static InputHandler inputHandler;
+	//public static StyleSheet defaultStyle;
 	
 	public void onClick(int offsetX, int offsetY, int type = 0){
 		
@@ -57,9 +61,9 @@ abstract class WindowElement{
 			a.actionEvent(new Event(source, null, null, null, text, value, type));
 		}
 	}
-	private Bitmap16Bit getBrush(int style){
+	/*private Bitmap16Bit getBrush(int style){
 		return altStyleBrush.get(style, elementContainer.getStyleBrush(style));
-	}
+	}*/
 	public wstring getText(){
 		return text;
 	}
@@ -67,6 +71,25 @@ abstract class WindowElement{
 		text = s;
 		draw;
 	}
+
+	public StyleSheet getAvailableStyleSheet(){
+		if(customStyle is null){
+			return elementContainer.getStyleSheet();
+		}
+		return customStyle;
+	}
+
+	public void setCustomStyle(StyleSheet s){
+		customStyle = s;
+	}
+
+	/*public static void initalizeDefaultStyle(){
+		defaultStyle = new StyleSheet();
+	}*/
+
+	/*public static void setDefaultStyle(StyleSheet s){
+		defaultStyle = s;
+	}*/
 }
 
 public class Button : WindowElement{
@@ -85,26 +108,26 @@ public class Button : WindowElement{
 		//draw();
 	}
 	public override void draw(){
-		output.drawFilledRectangle(0, position.getXSize()-1, 0,position.getYSize()-1, 154);
+		output.drawFilledRectangle(0, position.getXSize()-1, 0,position.getYSize()-1, getAvailableStyleSheet().getColor("window"));
 		if(isPressed){
 			/*output.drawRectangle(0, sizeX, 0, sizeY, getBrush(brushNormal));
 			 int x = getBrush(brushNormal).getX() / 2, y = getBrush(brushNormal).getY() / 2;
 			 output.drawFilledRectangle(x, sizeX - 1 - x, y, sizeY - 1 - y, getBrush(brushNormal).readPixel(x, y));*/
-			output.drawLine(0, position.getXSize()-1, 0, 0, 145);
-			output.drawLine(0, 0, 0, position.getYSize()-1, 145);
-			output.drawLine(0, position.getXSize()-1, position.getYSize()-1, position.getYSize()-1, 158);
-			output.drawLine(position.getXSize()-1, position.getXSize()-1, 0, position.getYSize()-1, 158);
+			output.drawLine(0, position.getXSize()-1, 0, 0, getAvailableStyleSheet().getColor("windowdescent"));
+			output.drawLine(0, 0, 0, position.getYSize()-1, getAvailableStyleSheet().getColor("windowdescent"));
+			output.drawLine(0, position.getXSize()-1, position.getYSize()-1, position.getYSize()-1, getAvailableStyleSheet().getColor("windowascent"));
+			output.drawLine(position.getXSize()-1, position.getXSize()-1, 0, position.getYSize()-1, getAvailableStyleSheet().getColor("windowascent"));
 		}else{
 			/*output.drawRectangle(0, sizeX, 0, sizeY, getBrush(brushPressed));
 			 int x = getBrush(brushNormal).getX() / 2, y = getBrush(brushNormal).getY() / 2;
 			 output.drawFilledRectangle(x, sizeX - 1 - x, y, sizeY - 1 - y, getBrush(brushNormal).readPixel(x, y));*/
-			output.drawLine(0, position.getXSize()-1, 0, 0, 158);
-			output.drawLine(0, 0, 0, position.getYSize()-1, 158);
-			output.drawLine(0, position.getXSize()-1, position.getYSize()-1, position.getYSize()-1, 145);
-			output.drawLine(position.getXSize()-1, position.getXSize()-1, 0, position.getYSize()-1, 145);
+			output.drawLine(0, position.getXSize()-1, 0, 0, getAvailableStyleSheet().getColor("windowascent"));
+			output.drawLine(0, 0, 0, position.getYSize()-1, getAvailableStyleSheet().getColor("windowascent"));
+			output.drawLine(0, position.getXSize()-1, position.getYSize()-1, position.getYSize()-1, getAvailableStyleSheet().getColor("windowdescent"));
+			output.drawLine(position.getXSize()-1, position.getXSize()-1, 0, position.getYSize()-1, getAvailableStyleSheet().getColor("windowdescent"));
 		}
 		
-		output.drawText(sizeX/2, sizeY/2, text, elementContainer.getFontSet(font));
+		output.drawText(sizeX/2, sizeY/2, text, getAvailableStyleSheet().getFontset("default"));
 		elementContainer.drawUpdate(this);
 	}
 	public void onClick(int offsetX, int offsetY, int type = 0){
@@ -130,7 +153,7 @@ public class Label : WindowElement{
 	}
 	public override void draw(){
 		//writeln(elementContainer);
-		output.drawText(0, 0, text, elementContainer.getFontSet(font), 1);
+		output.drawText(0, 0, text, getAvailableStyleSheet().getFontset("default"), 1);
 		elementContainer.drawUpdate(this);
 	}
 	public void onClick(int offsetX, int offsetY, int type = 0){
@@ -143,7 +166,7 @@ public class TextBox : WindowElement, TextInputListener{
 	private bool enableEdit, insert;
 	private uint pos;
 	public int brush, textpos;
-	public TextInputHandler tih;
+	//public TextInputHandler tih;
 	
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
@@ -152,13 +175,14 @@ public class TextBox : WindowElement, TextInputListener{
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(sizeX, sizeY);
+		inputHandler.addTextInputListener(source, this);
 		//insert = true;
 		//draw();
 	}
 
-	public void addTextInputHandler(TextInputHandler t){
-		tih = t;
-		t.addTextInputListener(source, this);
+	public deprecated void addTextInputHandler(TextInputHandler t){	/** DEPRECATED. Will be removed soon in favor of static input handlers. */
+		/*tih = t;*/
+		inputHandler.addTextInputListener(source, this);
 	}
 	
 	public void onClick(int offsetX, int offsetY, int type = 0){
@@ -166,24 +190,24 @@ public class TextBox : WindowElement, TextInputListener{
 		if(!enableEdit && type == 0){
 			invokeActionEvent(EventType.READYFORTEXTINPUT, 0);
 			enableEdit = true;
-			tih.startTextInput(source);
+			inputHandler.startTextInput(source);
 			draw();
 		}
 	}
 	public override void draw(){
-		output.drawFilledRectangle(0, sizeX - 1, 0, sizeY - 1, 154);
-		output.drawRectangle(0, sizeX - 1, 0, sizeY - 1, 158);
+		output.drawFilledRectangle(0, sizeX - 1, 0, sizeY - 1, getAvailableStyleSheet().getColor("window"));
+		output.drawRectangle(0, sizeX - 1, 0, sizeY - 1, getAvailableStyleSheet().getColor("windowascent"));
 		
 		//draw cursor
 		if(enableEdit){
-			int x = elementContainer.getFontSet(font)['A'].getX() , y = elementContainer.getFontSet(font)['A'].getY();
+			int x = getAvailableStyleSheet().getFontset("default").letters['A'].getX() , y = getAvailableStyleSheet().getFontset("default").letters['A'].getY();
 			if(!insert)
-				output.drawLine((x*pos) + 2, (x*pos) + 2, 2, 2 + y, 14);
+				output.drawLine((x*pos) + 2, (x*pos) + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
 			else
-				output.drawFilledRectangle((x*pos) + 2, (x*(pos + 1)) + 2, 2, 2 + y, 14);
+				output.drawFilledRectangle((x*pos) + 2, (x*(pos + 1)) + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
 		}
 		
-		output.drawText(2, 2, text, elementContainer.getFontSet(font), 1);
+		output.drawText(2, 2, text, getAvailableStyleSheet().getFontset("default"), 1);
 		elementContainer.drawUpdate(this);
 	}
 	
@@ -248,7 +272,7 @@ public class TextBox : WindowElement, TextInputListener{
 	
 	public void dropTextInput(){
 		enableEdit = false;
-		tih.stopTextInput(source);
+		inputHandler.stopTextInput(source);
 		draw();
 		invokeActionEvent(EventType.TEXTINPUT, 0, text);
 	}
@@ -257,7 +281,7 @@ public class TextBox : WindowElement, TextInputListener{
 	public void textInputKeyEvent(uint timestamp, uint windowID, InputKey key){
 		if(key == InputKey.ESCAPE || key == InputKey.ENTER){
 			enableEdit = false;
-			tih.stopTextInput(source);
+			inputHandler.stopTextInput(source);
 			draw();
 			invokeActionEvent(EventType.TEXTINPUT, 0, text);
 		}else if(key == InputKey.BACKSPACE){
@@ -365,12 +389,12 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 			elementContainer.drawUpdate(this);
 		}
 	}
-	public Bitmap16Bit getStyleBrush(int style){
+	/*public Bitmap16Bit getStyleBrush(int style){
 		return elementContainer.getStyleBrush(style);
-	}
-	public Bitmap16Bit[wchar] getFontSet(int style){
+	}*/
+	/*public Bitmap16Bit[wchar] getFontSet(int style){
 		return elementContainer.getFontSet(style);
-	}
+	}*/
 	public void updateColumns(ListBoxColumn[] lbc){
 		columns = lbc;
 		fullX = 0;
@@ -401,19 +425,23 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		bodyDrawn = false;
 	}
 
+	public StyleSheet getStyleSheet(){
+		return getAvailableStyleSheet;
+	}
+
 	private void drawBody(){
 		int foo;
 		for(int i; i < columns.length; i++){
 			int bar;
 			for(int j; j < columns[i].elements.length; j++){
 				//writeln(foo + 1, bar);
-				textArea.drawText(foo + 1, bar, columns[i].elements[j], elementContainer.getFontSet(0), 1);
+				textArea.drawText(foo + 1, bar, columns[i].elements[j], getStyleSheet().getFontset("default"), 1);
 
 				bar += rowHeight;
 			}
 			foo += columnWidth[i];
 			//writeln(foo, foo, 0, textArea.output.getX()-1);
-			textArea.drawLine(foo, foo, 0, textArea.output.getY()-2, 158);
+			textArea.drawLine(foo, foo, 0, textArea.output.getY()-2, getStyleSheet().getColor("windowascent"));
 		}
 	}
 
@@ -435,17 +463,17 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		//writeln(vposition, hposition);
 
 
-		output.drawFilledRectangle(0, position.getXSize(), 0, position.getYSize(),154);
-		output.drawRectangle(0, position.getXSize() - 1, 0, position.getYSize() - 1,158);
+		output.drawFilledRectangle(0, position.getXSize(), 0, position.getYSize(),getStyleSheet().getColor("window"));
+		output.drawRectangle(0, position.getXSize() - 1, 0, position.getYSize() - 1,getStyleSheet().getColor("windowascent"));
 
 
 		// draw the header
-		output.drawLine(0, position.getXSize() - 1, rowHeight, rowHeight, 158);
+		output.drawLine(0, position.getXSize() - 1, rowHeight, rowHeight, getStyleSheet().getColor("windowascent"));
 		int foo;
 		for(int i; i < columnWidth.length; i++){
-			headerArea.drawText(foo + 1, 0, columns[i].header, elementContainer.getFontSet(0), 1);
+			headerArea.drawText(foo + 1, 0, columns[i].header, getStyleSheet().getFontset("default"), 1);
 			foo += columnWidth[i];
-			headerArea.drawLine(foo, foo, 0, rowHeight - 2, 158);
+			headerArea.drawLine(foo, foo, 0, rowHeight - 2, getStyleSheet().getColor("windowascent"));
 			//writeln(foo);
 		}
 
@@ -453,7 +481,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 
 		//draw the selector
 		if(selection - vposition >= 0 && vposition + ((position.getYSize()-17-rowHeight) / rowHeight) >= selection && columns[0].elements.length != 0)
-			output.drawFilledRectangle(1, position.getXSize() - 2, rowHeight + (rowHeight * (selection - vposition)), (rowHeight * 2) + (rowHeight * (selection - vposition)), 14);
+			output.drawFilledRectangle(1, position.getXSize() - 2, rowHeight + (rowHeight * (selection - vposition)), (rowHeight * 2) + (rowHeight * (selection - vposition)), getStyleSheet().getColor("selection"));
 
 		// draw the body
 		if(!bodyDrawn){
@@ -469,6 +497,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 
 		elementContainer.drawUpdate(this);
 		fullRedraw = false;
+		//writeln(0);
 	}
 	public void onClick(int offsetX, int offsetY, int type = 0){
 		if(offsetX > (vSlider.getPosition().xa) && offsetY > (vSlider.getPosition().ya)){
@@ -519,11 +548,11 @@ public class CheckBox : WindowElement{
 	}
 	
 	public override void draw(){
-		output.drawText(0 ,0 , text, elementContainer.getFontSet(font), 1);
+		output.drawText(0 , getAvailableStyleSheet().getImage("checkBoxA").getY, text, getAvailableStyleSheet().getFontset("default"), 1);
 		if(checked){
-			output.insertBitmap(sizeX - getBrush(brush[0]).getX(), 0, getBrush(brush[0]));
+			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage("checkBoxB"));
 		}else{
-			output.insertBitmap(sizeX - getBrush(brush[1]).getX(), 0, getBrush(brush[1]));
+			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage("checkBoxA"));
 		}
 		elementContainer.drawUpdate(this);
 	}
@@ -557,15 +586,15 @@ public class RadioButtonGroup : WindowElement{
 	
 	public override void draw(){
 		//output.drawFilledRectangle(0, sizeX-1, 0, sizeY-1, background);
-		output.drawRectangle(0, sizeX-1, 0, sizeY-1, 156);
-		output.drawText(16,0,text,elementContainer.getFontSet(font),1);
+		output.drawRectangle(0, sizeX-1, 0, sizeY-1, getAvailableStyleSheet().getColor("windowascent"));
+		output.drawText(16,0,text, getAvailableStyleSheet().getFontset("default"),1);
 		for(int i; i < options.length; i++){
 
-			output.drawText(16, 16 * (i+1),options[i],elementContainer.getFontSet(font),1);
+			output.drawText(16, 16 * (i+1),options[i],getAvailableStyleSheet().getFontset("default"),1);
 			if(bposition == i){
-				output.insertBitmap(1, 16 * (i+1),getBrush(brush[1]));
+				output.insertBitmap(1, 16 * (i+1),getAvailableStyleSheet.getImage("radioButtonB"));
 			}else{
-				output.insertBitmap(1, 16 * (i+1),getBrush(brush[0]));
+				output.insertBitmap(1, 16 * (i+1),getAvailableStyleSheet.getImage("radioButtonA"));
 			}
 		}
 		elementContainer.drawUpdate(this);
@@ -618,33 +647,33 @@ public class VSlider : Slider{
 		//draw background
 		//Bitmap16Bit sliderStyle = elementContainer.getStyleBrush(brush[2]);
 		//ushort backgroundColor = sliderStyle.readPixel(0,0), sliderColor = sliderStyle.readPixel(1,0);
-		output.drawFilledRectangle(0, sizeX , 0, sizeY , 151);
+		output.drawFilledRectangle(0, sizeX , 0, sizeY , getAvailableStyleSheet.getColor("windowinactive"));
 		//draw upper arrow
-		output.insertBitmap(0,0,elementContainer.getStyleBrush(brush[0]));
+		output.insertBitmap(0,0,getAvailableStyleSheet.getImage("upArrowA"));
 		//draw lower arrow
-		output.insertBitmap(0,sizeY-elementContainer.getStyleBrush(brush[1]).getY(),elementContainer.getStyleBrush(brush[1]));
+		output.insertBitmap(0, sizeY - getAvailableStyleSheet.getImage("downArrowA").getY(),getAvailableStyleSheet.getImage("downArrowA"));
 		//draw slider
 		if(maxValue > barLength){
-			double sliderlength = position.getYSize() - (elementContainer.getStyleBrush(brush[1]).getY()*2), unitlength = sliderlength/maxValue;
+			double sliderlength = position.getYSize() - (getAvailableStyleSheet.getImage("upArrowA")).getY()*2, unitlength = sliderlength/maxValue;
 			double sliderpos = unitlength * value, bl = unitlength * barLength;
-			int posA = to!int(sliderpos) + elementContainer.getStyleBrush(brush[1]).getY(), posB = to!int(bl + sliderpos) + elementContainer.getStyleBrush(brush[1]).getY();
+			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("upArrowA").getY(), posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("upArrowA").getY();
 
-			output.drawFilledRectangle(0,sizeX,posA, posB,156);
+			output.drawFilledRectangle(0,sizeX,posA, posB, getAvailableStyleSheet.getColor("windowascent"));
 		}
 		elementContainer.drawUpdate(this);
 	}
 	
 	
 	public void onClick(int offsetX, int offsetY, int type = 0){
-		if(offsetY <= elementContainer.getStyleBrush(brush[1]).getY()){
+		if(offsetY <= getAvailableStyleSheet.getImage("upArrowA").getY()){
 			if(value != 0) value--;
 		}
-		else if(sizeY-elementContainer.getStyleBrush(brush[1]).getY() <= offsetY){
+		else if(sizeY-getAvailableStyleSheet.getImage("upArrowA").getY() <= offsetY){
 			if(value < maxValue - barLength) value++;
 		}
 		else{
-			offsetY -= elementContainer.getStyleBrush(brush[1]).getY();
-			double sliderlength = position.getYSize() - (elementContainer.getStyleBrush(brush[1]).getY()*2), unitlength = sliderlength/maxValue;
+			offsetY -= getAvailableStyleSheet.getImage("upArrowA").getY();
+			double sliderlength = position.getYSize() - (getAvailableStyleSheet.getImage("upArrowA").getY()*2), unitlength = sliderlength/maxValue;
 			int v = to!int(offsetY / unitlength);
 			//value = ((sizeY - (elementContainer.getStyleBrush(brush[1]).getY() * 2)) - offsetY) * (value / maxValue);
 			if(v < maxValue - barLength) value = v;
@@ -686,32 +715,32 @@ public class HSlider : Slider{
 		//draw background
 		//Bitmap16Bit sliderStyle = elementContainer.getStyleBrush(brush[2]);
 		//ushort backgroundColor = sliderStyle.readPixel(0,0), sliderColor = sliderStyle.readPixel(1,0);
-		output.drawFilledRectangle(0, sizeX , 0, sizeY , 151);
-		//draw upper arrow
-		output.insertBitmap(0,0,elementContainer.getStyleBrush(brush[0]));
-		//draw lower arrow
-		output.insertBitmap(sizeX-elementContainer.getStyleBrush(brush[1]).getX(),0,elementContainer.getStyleBrush(brush[1]));
+		output.drawFilledRectangle(0, sizeX , 0, sizeY , getAvailableStyleSheet().getColor("windowinactive"));
+		//draw left arrow
+		output.insertBitmap(0,0,getAvailableStyleSheet.getImage("leftArrowA"));
+		//draw right arrow
+		output.insertBitmap(sizeX - getAvailableStyleSheet.getImage("rightArrowA").getX(),0,getAvailableStyleSheet.getImage("rightArrowA"));
 		//draw slider
 		if(maxValue > barLength){
-			double sliderlength = position.getXSize() - (elementContainer.getStyleBrush(brush[1]).getX()*2), unitlength = sliderlength/maxValue;
+			double sliderlength = position.getXSize() - (getAvailableStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
 			double sliderpos = unitlength * value, bl = unitlength * barLength;
 
-			int posA = to!int(sliderpos) + elementContainer.getStyleBrush(brush[1]).getY(), posB = to!int(bl + sliderpos) + elementContainer.getStyleBrush(brush[1]).getY();
+			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").getY(), posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").getY();
 		
-			output.drawFilledRectangle(posA, posB, 0, position.getYSize(),156);
+			output.drawFilledRectangle(posA, posB, 0, position.getYSize(),getAvailableStyleSheet().getColor("windowascent"));
 		}
 		elementContainer.drawUpdate(this);
 	}
 	public void onClick(int offsetX, int offsetY, int type = 0){
-		if(offsetX <= elementContainer.getStyleBrush(brush[1]).getX()){
+		if(offsetX <= getAvailableStyleSheet.getImage("rightArrowA").getX()){
 			if(value != 0) value--;
 		}
-		else if(sizeX-elementContainer.getStyleBrush(brush[1]).getX() <= offsetX){
+		else if(sizeX-getAvailableStyleSheet.getImage("rightArrowA").getX() <= offsetX){
 			if(value < maxValue - barLength) value++;
 		}
 		else{
-			offsetX -= elementContainer.getStyleBrush(brush[1]).getX();
-			double sliderlength = position.getXSize() - (elementContainer.getStyleBrush(brush[1]).getX()*2), unitlength = sliderlength/maxValue;
+			offsetX -= getAvailableStyleSheet.getImage("rightArrowA").getX();
+			double sliderlength = position.getXSize() - (elementContainer.getStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
 			int v = to!int(offsetX / unitlength);
 			if(v < maxValue - barLength) value = v;
 			else value = maxValue - barLength;
@@ -764,6 +793,7 @@ public class PopUpMenu: PopUpElement{
 	public void onScroll(int x, int y, int wX, int wY){
 		
 	}
+	public void addPopUpHandler(PopUpHandler p){}
 }
 public interface PopUpElement{
 	public void onClick(int x, int y); 
@@ -825,8 +855,8 @@ public interface ActionListener{
 }
 
 public interface ElementContainer{
-	public Bitmap16Bit getStyleBrush(int style);
-	public Bitmap16Bit[wchar] getFontSet(int style);
+	public StyleSheet getStyleSheet();
+	//public Bitmap16Bit[wchar] getFontSet(int style);
 	public void drawUpdate(WindowElement sender);
 	public void getFocus(WindowElement sender);
 	public void dropFocus(WindowElement sender);

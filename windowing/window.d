@@ -11,6 +11,7 @@ import graphics.draw;
 import graphics.layers;
 
 public import windowing.elements;
+public import windowing.stylesheet;
 import system.etc;
 import system.inputHandler;
 
@@ -24,20 +25,21 @@ public class Window : ElementContainer{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
 	public wstring title;
 	public IWindowHandler parent;
-	public Bitmap16Bit[int] altStyleBrush;
+	//public Bitmap16Bit[int] altStyleBrush;
 	public BitmapDrawer output;
-	public int style, closeButton, header, font, sizeX, sizeY, brushNormal;
+	public int header, sizeX, sizeY;
 	private int moveX, moveY;
 	private bool move, fullUpdate;
+	private string[] extraButtons;
 	public Coordinate position;
-	/*
-	 * If the current window doesn't contain the special stylebrush, it gets from it's parent. 
+	public StyleSheet customStyle;
+	/**
+	 * If the current window doesn't contain a custom StyleSheet, it gets from it's parent. 
 	 */
-	public Bitmap16Bit getStyleBrush(int style){
-		//if(altStyleBrush.get(style, null) is null){
-			return parent.getStyleBrush(style);
-		//}
-		//return altStyleBrush[style];
+	public StyleSheet getStyleSheet(){
+		if(customStyle is null)
+			return parent.getStyleSheet();
+		return customStyle;
 	}
 
 	public void drawUpdate(WindowElement sender){
@@ -47,18 +49,22 @@ public class Window : ElementContainer{
 		output.insertBitmap(sender.getPosition().xa,sender.getPosition().ya,sender.output.output);
 	}
 
-	public Bitmap16Bit[wchar] getFontSet(int style){
+	/*public Bitmap16Bit[wchar] getFontSet(int style){
 		return parent.getFontSet(style);
-	}
-
-	public this(Coordinate size, wstring title){
+	}*/
+	/**
+	 * Standard constructor. "size" sets both the initial position and the size of the window. 
+	 * Extra buttons are handled from the StyleSheet, even numbers are unpressed, odd numbers are pressed.
+	 */
+	public this(Coordinate size, wstring title, string[] extraButtons = []){
 		position = size;
 		output = new BitmapDrawer(position.getXSize, position.getYSize);
 		this.title = title;
 		sizeX = position.getXSize;
 		sizeY = position.getYSize;
-		style = 0;
-		closeButton = 2;
+		//style = 0;
+		//closeButton = 2;
+		this.extraButtons = extraButtons;
 	}
 
 	public void addElement(WindowElement we, int eventProperties){
@@ -77,24 +83,27 @@ public class Window : ElementContainer{
 
 	public void draw(){
 
-		output.drawFilledRectangle(0, position.getXSize() - 1, 0, position.getYSize() - 1, 154);
-		output.insertBitmap(0,0,getStyleBrush(closeButton));
-		int x1 = getStyleBrush(closeButton).getX(), y1 = getStyleBrush(closeButton).getY();
+		output.drawFilledRectangle(0, position.getXSize() - 1, 0, position.getYSize() - 1, getStyleSheet().getColor("window"));
+		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
+		int x1 = getStyleSheet().getImage("closeButtonA").getX(), y1 = getStyleSheet().getImage("closeButtonA").getY();
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
 		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
+
+		int headerLength = extraButtons.length == 0 ? position.getXSize() - 1 : position.getXSize() - 1 - ((extraButtons.length/2) * x1) ;
 		//drawing the header
-		output.drawLine(x1, position.getXSize() - 1, 0, 0, 158);
-		output.drawLine(x1, x1, 0, y1 - 1, 158);
-		output.drawLine(x1, position.getXSize() - 1, y1 - 1, y1 - 1, 145);
-		output.drawLine(position.getXSize() - 1, position.getXSize() - 1, 0, y1 - 1, 145);
+		output.drawLine(x1, headerLength, 0, 0, getStyleSheet().getColor("windowascent"));
+		output.drawLine(x1, x1, 0, y1 - 1, getStyleSheet().getColor("windowascent"));
+		output.drawLine(x1, headerLength, y1 - 1, y1 - 1, getStyleSheet().getColor("windowdescent"));
+		output.drawLine(headerLength, headerLength, 0, y1 - 1, getStyleSheet().getColor("windowdescent"));
 
 		//drawing the border of the window
-		output.drawLine(0, position.getXSize() - 1, y1, y1, 158);
-		output.drawLine(0, 0, y1, position.getYSize() - 1, 158);
-		output.drawLine(0, position.getXSize() - 1, position.getYSize() - 1, position.getYSize() - 1,  145);
-		output.drawLine(position.getXSize() - 1, position.getXSize() - 1, y1, position.getYSize() - 1, 145);
+		output.drawLine(0, position.getXSize() - 1, y1, y1, getStyleSheet().getColor("windowascent"));
+		output.drawLine(0, 0, y1, position.getYSize() - 1, getStyleSheet().getColor("windowascent"));
+		output.drawLine(0, position.getXSize() - 1, position.getYSize() - 1, position.getYSize() - 1,  getStyleSheet().getColor("windowdescent"));
+		output.drawLine(position.getXSize() - 1, position.getXSize() - 1, y1, position.getYSize() - 1, getStyleSheet().getColor("windowdescent"));
 
-		output.drawText(x1+1, 1, title, getFontSet(0), 1);
+		//output.drawText(x1+1, 1, title, getFontSet(0), 1);
+		output.drawText(x1, (y1-getStyleSheet().getFontset("default").getSize())/2, title, getStyleSheet().getFontset("default"),1);
 		fullUpdate = true;
 		foreach(WindowElement we; elements){
 			we.draw();
@@ -105,10 +114,10 @@ public class Window : ElementContainer{
 
 	public void passMouseEvent(int x, int y, int state = 0){
 		//writeln(x, ",", y);
-		if(getStyleBrush(closeButton).getX() > x && getStyleBrush(closeButton).getY() > y && state == 0){
+		if(getStyleSheet.getImage("closeButtonA").getX() > x && getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
 			parent.closeWindow(this);
 			return;
-		}else if(getStyleBrush(closeButton).getY() > y && state == 0){
+		}else if(getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
 			/*if(state == 0 && !move){
 				move = true;
 				moveY = y;
@@ -139,6 +148,9 @@ public class Window : ElementContainer{
 			}
 		}
 	}
+	public void extraButtonEvent(int num){
+
+	}
 	public void passKeyboardEvent(wchar c, int type, int x, int y){
 
 	}
@@ -150,6 +162,41 @@ public class Window : ElementContainer{
 	}
 	public void dropFocus(WindowElement sender){
 
+	}
+}
+
+public class TextInputDialog : Window, ActionListener{
+	public ActionListener[] al;
+	private TextBox textInput;
+	private string source;
+
+	public this(Coordinate size, string source, wstring title, wstring message, wstring text = ""){
+		this(size, title);
+		Label msg = new Label(message, "null", Coordinate(8, 20, size.getXSize()-8, 39));
+		addElement(msg, EventProperties.MOUSE);
+
+		textInput = new TextBox(text, "textInput", Coordinate(8, 40, size.getXSize()-8, 59));
+		addElement(textInput, EventProperties.MOUSE);
+
+		Button ok = new Button("Ok","ok", Coordinate(size.getXSize()-48,65,size.getXSize()-8,84));
+		ok.al ~= this;
+		addElement(ok,EventProperties.MOUSE);
+		this.source = source;
+	}
+
+	public this(Coordinate size, wstring title){
+		super(size, title);
+	}
+
+	public void actionEvent(string source, int type, int value, wstring message){}
+	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
+	public void actionEvent(Event event){
+		if(event.source == "ok"){
+			foreach(a; al){
+				a.actionEvent(new Event(this.source, "TextInputDialog", null, null, textInput.getText(), 0, EventType.TEXTINPUT));
+			}
+			parent.closeWindow(this);
+		}
 	}
 }
 
@@ -187,7 +234,8 @@ public class DefaultDialog : Window, ActionListener{
 
 	public void actionEvent(string source, int type, int value, wstring message){
 		foreach(a; al){
-			a.actionEvent(source, this.source, type, value, message);
+			//a.actionEvent(source, this.source, type, value, message);
+			a.actionEvent(new Event(source, this.source, null, null, null, 0, EventType.CLICK));
 		}
 	}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
@@ -206,7 +254,7 @@ public class FileDialog : Window, ActionListener{
 
 
 
-	public this(wstring title, string source, ActionListener a, string[] filetypes, string startDir, TextInputHandler tih, bool save = false, string filename = ""){
+	public this(wstring title, string source, ActionListener a, string[] filetypes, string startDir, bool save = false, string filename = ""){
 		this(Coordinate(20,20,240,198), title);
 		this.source = source;
 		this.filetypes = filetypes;
@@ -228,7 +276,7 @@ public class FileDialog : Window, ActionListener{
 		}
 		//generate textbox
 		tb = new TextBox(to!wstring(filename), "filename", Coordinate(4, 130, 162, 150));
-		tb.addTextInputHandler(tih);
+		//tb.addTextInputHandler(tih);
 		tb.al ~= this;
 		addElement(tb, EventProperties.MOUSE);
 		//generate listbox
@@ -382,18 +430,9 @@ public class FileDialog : Window, ActionListener{
 	}
 
 	public void actionEvent(string source, int type, int value, wstring message){
-		if(source == "lb"){
+		/*if(source == "lb"){
 			//writeln(value);
-			try{
-				if(isDir(pathList[value])){
-					directory = pathList[value];
-					spanDir();
-					lb.updateColumns(columns);
-					lb.draw();
-				}
-			}catch(FileException e){
-				writeln(e.msg);
-			}
+
 		}else if(source == "up"){
 			up();
 		}else if(source == "drv"){
@@ -402,18 +441,44 @@ public class FileDialog : Window, ActionListener{
 			fileEvent();
 		}else if(source == "close"){
 			parent.closeWindow(this);
-		}
+		}*/
 	}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
-	public void actionEvent(Event event){}
+	public void actionEvent(Event event){
+		writeln(event.source);
+		switch(event.source){
+			case "lb":
+				try{
+					if(isDir(pathList[event.value])){
+						directory = pathList[event.value];
+						spanDir();
+						lb.updateColumns(columns);
+						lb.draw();
+						
+					}else{
+						filename = getFilenameFromPath(pathList[event.value]);
+						tb.setText(to!wstring(filename));
+					}
+				}catch(Exception e){
+					writeln(e.msg);
+				}
+				break;
+			case "up": up(); break;
+			case "drv": changeDrive(); break;
+			case "ok": fileEvent(); break;
+			case "close": parent.closeWindow(this); break;
+			default: break;
+		}
+	}
 }
 
 public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	private Window[] windows;
 	private int[] priorities;
 	public int screenX, screenY, rasterX, rasterY, moveX, moveY;
-	public Bitmap16Bit[wchar] basicFont, altFont, alarmFont;
-	public Bitmap16Bit[int] styleBrush;
+	//public Bitmap16Bit[wchar] basicFont, altFont, alarmFont;
+	public StyleSheet defaultStyle;
+	//public Bitmap16Bit[int] styleBrush;
 	private Bitmap16Bit background;
 	private ISpriteLayer16Bit spriteLayer;
 	private bool moveState, dragEventState;
@@ -477,7 +542,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		}
 	}
 
-	public Bitmap16Bit[wchar] getFontSet(int style){
+	/*public Bitmap16Bit[wchar] getFontSet(int style){
 		switch(style){
 			case 0: return basicFont;
 			case 1: return altFont;
@@ -486,9 +551,9 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		}
 		return basicFont;
 
-	}
-	public Bitmap16Bit getStyleBrush(int style){
-		return styleBrush[style];
+	}*/
+	public StyleSheet getStyleSheet(){
+		return defaultStyle;
 	}
 	public void closeWindow(Window sender){
 		int p = whichWindow(sender);
@@ -582,8 +647,8 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 }
 
 public interface IWindowHandler{
-	public Bitmap16Bit[wchar] getFontSet(int style);
-	public Bitmap16Bit getStyleBrush(int style);
+	//public Bitmap16Bit[wchar] getFontSet(int style);
+	public StyleSheet getStyleSheet();
 	public void closeWindow(Window sender);
 	public void moveUpdate(Window sender);
 	public void setWindowToTop(Window sender);

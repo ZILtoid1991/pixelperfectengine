@@ -174,7 +174,121 @@ public class InputHandler : TextInputHandler{
 					kb ~= kb0;
 				}
 			}
-			if(event.type == SDL_KEYDOWN){
+
+
+			switch(event.type){
+				case SDL_KEYDOWN:
+					if(!tiEnable){
+						foreach(k; kb){
+							if(event.key.keysym.scancode == k.keycode && event.key.keysym.mod == k.keymod && k.devicetype == Devicetype.KEYBOARD){
+								invokeKeyPressed(k.ID, event.key.timestamp, 0, Devicetype.KEYBOARD);
+							}
+						}
+					}
+					else{
+						switch(event.key.keysym.scancode){
+							case SDL_SCANCODE_RETURN: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.ENTER); break;
+							case SDL_SCANCODE_ESCAPE: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.ESCAPE); break;
+							case SDL_SCANCODE_BACKSPACE: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.BACKSPACE); break;
+							case SDL_SCANCODE_UP: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.CURSORUP); break;
+							case SDL_SCANCODE_DOWN: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.CURSORDOWN); break;
+							case SDL_SCANCODE_LEFT: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.CURSORLEFT); break;
+							case SDL_SCANCODE_RIGHT: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.CURSORRIGHT); break;
+							case SDL_SCANCODE_INSERT: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.INSERT); break;
+							case SDL_SCANCODE_DELETE: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.DELETE); break;
+							case SDL_SCANCODE_HOME: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.HOME); break;
+							case SDL_SCANCODE_END: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.END); break;
+							case SDL_SCANCODE_PAGEUP: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.PAGEUP); break;
+							case SDL_SCANCODE_PAGEDOWN: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, InputKey.PAGEDOWN); break;
+							default: break;
+						}
+					}
+					break;
+				case SDL_KEYUP:
+					if(!tiEnable){
+						foreach(k; kb ){
+							if(event.key.keysym.scancode == k.keycode && event.key.keysym.mod == k.keymod && k.devicetype == Devicetype.KEYBOARD){
+								invokeKeyReleased(k.ID, event.key.timestamp, 0, Devicetype.KEYBOARD);
+							}
+						}
+					}
+					break;
+				case SDL_TEXTINPUT:	 
+					if(tiEnable){
+						tl[tiSelect].textInputEvent(event.text.timestamp, event.text.windowID, event.text.text);
+					}
+					break;
+				case SDL_JOYBUTTONDOWN:
+					foreach(k; kb){
+						if(event.jbutton.button == k.keycode && 0 == k.keymod && k.devicetype == Devicetype.JOYSTICK && k.devicenumber == event.jbutton.which){
+							invokeKeyPressed(k.ID, event.jbutton.timestamp, event.jbutton.which, Devicetype.JOYSTICK);
+						}
+					}
+					break;
+				case SDL_JOYBUTTONUP:
+					foreach(k; kb){
+						if(event.jbutton.button == k.keycode && 0 == k.keymod && k.devicetype == Devicetype.JOYSTICK && k.devicenumber == event.jbutton.which){
+							invokeKeyReleased(k.ID, event.jbutton.timestamp, event.jbutton.which, Devicetype.JOYSTICK);
+						}
+					}
+					break;
+				case SDL_JOYHATMOTION:
+					foreach(k; kb){
+						if(event.jhat.alignof == k.keycode && 4 == k.keymod && k.devicetype == Devicetype.JOYSTICK && k.devicenumber == event.jhat.which){
+							invokeKeyReleased(hatpos, event.jhat.timestamp, event.jhat.which, Devicetype.JOYSTICK);
+							invokeKeyPressed(k.ID, event.jhat.timestamp, event.jhat.which, Devicetype.JOYSTICK);
+							hatpos = k.ID;
+						}
+					}
+					break;
+				case SDL_JOYAXISMOTION:
+					foreach(k; kb){
+						if(event.jaxis.axis == k.keycode && 8 == k.keymod && k.devicetype == Devicetype.JOYSTICK && k.devicenumber == event.jaxis.which){
+							invokeAxisEvent(k.ID, event.jaxis.timestamp, event.jaxis.value, event.jaxis.which, Devicetype.JOYSTICK);
+						}
+					}
+					break;
+				case SDL_MOUSEBUTTONDOWN: 
+					invokeMouseEvent(event.button.which, event.button.timestamp, event.button.windowID, event.button.button, event.button.state, event.button.clicks, event.button.x, event.button.y);
+					break;
+				case SDL_MOUSEBUTTONUP:
+					invokeMouseEvent(event.button.which, event.button.timestamp, event.button.windowID, event.button.button, event.button.state, event.button.clicks, event.button.x, event.button.y);
+					break;
+				case SDL_MOUSEMOTION:
+					invokeMouseMotionEvent(event.motion.timestamp, event.motion.windowID, event.motion.which, event.motion.state, event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
+					mouseX = event.motion.x;
+					mouseY = event.motion.y;
+					break;
+				case SDL_MOUSEWHEEL:
+					invokeMouseWheelEvent(event.wheel.type, event.wheel.timestamp, event.wheel.windowID, event.wheel.which, event.wheel.x, event.wheel.y);
+					break;
+				case SDL_QUIT:
+					invokeQuitEvent();
+					break;
+				case SDL_JOYDEVICEADDED:
+					int i = event.jdevice.which;
+					joysticks ~= SDL_JoystickOpen(i);
+					if(joysticks[i] !is null){
+						joyNames ~= to!string(SDL_JoystickName(joysticks[i]));
+						joyButtons ~= SDL_JoystickNumButtons(joysticks[i]);
+						joyAxes ~= SDL_JoystickNumAxes(joysticks[i]);
+						joyHats ~= SDL_JoystickNumHats(joysticks[i]);
+						/*writeln("Buttons: ", SDL_JoystickNumButtons(joysticks[i]));
+				 writeln("Axes: ", SDL_JoystickNumAxes(joysticks[i]));
+				 writeln("Hats: ", SDL_JoystickNumHats(joysticks[i]));*/
+					}
+					invokeControllerAddedEvent(i);
+					break;
+				case SDL_JOYDEVICEREMOVED:
+					SDL_JoystickClose(joysticks[event.jdevice.which]);
+					invokeControllerRemovedEvent(event.jdevice.which);
+					break;
+				default: break;
+
+			}
+
+
+			/*if(event.type == SDL_KEYDOWN){
 				if(!tiEnable){
 					foreach(k; kb){
 						if(event.key.keysym.scancode == k.keycode && event.key.keysym.mod == k.keymod && k.devicetype == Devicetype.KEYBOARD){
@@ -268,16 +382,14 @@ public class InputHandler : TextInputHandler{
 					joyButtons ~= SDL_JoystickNumButtons(joysticks[i]);
 					joyAxes ~= SDL_JoystickNumAxes(joysticks[i]);
 					joyHats ~= SDL_JoystickNumHats(joysticks[i]);
-					/*writeln("Buttons: ", SDL_JoystickNumButtons(joysticks[i]));
-				 writeln("Axes: ", SDL_JoystickNumAxes(joysticks[i]));
-				 writeln("Hats: ", SDL_JoystickNumHats(joysticks[i]));*/
+
 				}
 				invokeControllerAddedEvent(i);
 			}
 			else if(event.type == SDL_JOYDEVICEREMOVED){
 				SDL_JoystickClose(joysticks[event.jdevice.which]);
 				invokeControllerRemovedEvent(event.jdevice.which);
-			}
+			}*/
 		}
 
 	}

@@ -712,5 +712,7 @@ public class AdvancedBitArray{
 		return x;
 
 	}
-
+	public bool test(int from, int length, AdvancedBitArray target, int tfrom){
+		return false;
+	}
 }

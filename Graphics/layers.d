@@ -29,6 +29,8 @@ static immutable ushort[4] alphaMMXmul_const256 = [256,256,256,256];
 static immutable ushort[4] alphaMMXmul_const1 = [1,1,1,1];
 static immutable ushort[8] alphaSSEConst256 = [256,256,256,256,256,256,256,256];
 static immutable ushort[8] alphaSSEConst1 = [1,1,1,1,1,1,1,1];
+static immutable uint[4] SSEUQWmaxvalue = [0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF] ;
+
 //static immutable uint[2] alphaMMXmul_0 = [1,1];
 
 public enum FlipRegister : ubyte {
@@ -191,35 +193,55 @@ public struct BLInfo{
 		mY = y1;
 	}
 }
+/**
+ * Sets the rendering mode of the TileLayer.
+ * 
+ * COPY is the fastest, but overrides any kind of transparency keying. It directly writes into the framebuffer. Should only be used for certain applications, like bottom layers.
+ * BLITTER uses a custom BitBlT algorithm for the SSE2 instruction set. Automatically generates the copying mask depending on the alpha-value. Any alpha-value that's non-zero will cause a non-transparent pixel, and all zeros are completely transparent. Gradual transparency in not avaliable.
+ * ALPHA_BLENDING uses SSE2 for alpha blending. The slowest, but allows gradual transparencies.
+ */ 
+public enum TileLayerRenderingMode{
+	COPY,
+	BLITTER,
+	ALPHA_BLENDING
+}
 /*
  *Used by the background-sprite tester.
  */
-public interface IBackgroundLayer{
+public interface ITileLayer{
 	public BLInfo getLayerInfo();
 	public Bitmap16Bit getTile(wchar id);
 	public wchar[] getMapping();
 }
-/*
- *Use multiple of this class for paralax scrolling.
+/**
+ * General purpose TileLayer with palette support, mainly for backgrounds.
+ * Use multiple of this class for paralax scrolling.
  */
-public class BackgroundLayer : Layer, IBackgroundLayer{
+public class TileLayer : Layer, ITileLayer{
 	private int tileX, tileY, mX, mY;
-	private long totalX, totalY;
+	private int totalX, totalY;
 	private wchar[] mapping;
+	private TileLayerRenderingMode renderMode;
 	private Bitmap16Bit[wchar] tileSet;
-	//Constructor. tX , tY : Set the size of the tiles on the layer.
-	this(ushort tX, ushort tY){
+	private bool wrapMode; 
+	///Constructor. tX , tY : Set the size of the tiles on the layer.
+	this(ushort tX, ushort tY, TileLayerRenderingMode renderMode = TileLayerRenderingMode.ALPHA_BLENDING){
 		tileX=tX;
 		tileY=tY;
+		this.renderMode = renderMode;
 	}
-	//Gets the the ID of the given element from the mapping. x , y : Position.
+	/// Wrapmode: if enabled, the layer will be turned into an "infinite" mode.
+	public void setWrapMode(bool w){
+		wrapMode = w;
+	}
+	///Gets the the ID of the given element from the mapping. x , y : Position.
 	public wchar readMapping(int x, int y){
 		/*if(x<0 || x>totalX/tileX){
 		 return 0xFFFF;
 		 }*/
 		return mapping[x+(mX*y)];
 	}
-	//Writes to the map. x , y : Position. w : ID of the tile.
+	///Writes to the map. x , y : Position. w : ID of the tile.
 	public void writeMapping(int x, int y, wchar w){
 		mapping[x+(mX*y)]=w;
 	}
@@ -245,93 +267,319 @@ public class BackgroundLayer : Layer, IBackgroundLayer{
 	public void removeTile(wchar id){
 		tileSet.remove(id);
 	}
+
+	public wchar tileByPixel(int x, int y){
+		return mapping[x/tileX + (y/tileY)*mX];
+	}
 	
 	public void updateRaster(void* workpad, int pitch, ubyte[] palette){
 		
-		if(sX + rasterX <= 0 || sX > totalX) return;
-		for(int y ; y < rasterY ; y++){
-			if(sY + y >= totalY) break;
-			if(y + sY >= 0){
-				int bar = y*pitch;
-				//int outscrollX = sX<0 ? sX*-1 : 0;
-				int tnXreg = sX>0 ? (sX-(sX%tileX))/tileX : 0;
-				//int tnXC = tnXreg + (rasterX/tileX);
-				bool finish;
-				while(!finish){
-					//writeln(tnXreg+(mX*((y+sY-((y+sY)%tileY))/tileY)));
-					//ushort[] chunk = tileSet[mapping[tnXreg+(mX*((y+sY-((y+sY)%tileY))/tileY))]].readRow((y+sY)%tileY);
-					ushort *c = tileSet[mapping[tnXreg+(mX*((y+sY-((y+sY)%tileY))/tileY))]].getPtr();
-					int foo = (tnXreg*tileX), x;
-					for(; x < tileX-3; x+=4){
+		if((sX + rasterX <= 0 || sX > totalX) && !wrapMode) return;
+		switch(renderMode){
+			case TileLayerRenderingMode.ALPHA_BLENDING:
+				int y = sY < 0 ? sY * -1 : 0;
+				/*if(wrapMode){
+				 y = sX + 0x7FFFFFFF;
+				 }else{
+				 y = sX < 0 ? 0 : sX;
+				 }*/
+				for( ; y < rasterY ; y++){
+					//if((sY + y >= totalY) && !wrapMode) break;
+					//if(y + sY >= 0){
+					int offsetP = y*pitch*4;	// The offset of the line that is being written
+					int offsetY = tileY * (y - sY)%tileY;
+					//int outscrollX = sX<0 ? sX*-1 : 0;
+					//int tnXreg = (sX-(sX%tileX))/tileX;		
+					//int tnXC = tnXreg + (rasterX/tileX);
+					//bool finish;
+					
+					//while(!finish){
+					int x = sX < 0 ? sX * -1 : 0;
+					int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
+					void *p0 = (workpad + (x*4) + offsetP);
+					while(x < targetX){
+						//writeln(tnXreg+(mX*((y+sY-((y+sY)%tileY))/tileY)));
+						//ushort[] chunk = tileSet[mapping[tnXreg+(mX*((y+sY-((y+sY)%tileY))/tileY))]].readRow((y+sY)%tileY);
+						
+						//ushort *c = tileSet[mapping[tnXreg+(mX*((y+sY-((y+sY)%tileY))/tileY))]].getPtr();
 
-						if(foo+x-sX >= 0 && foo+x-sX < rasterX){
-							ubyte[16] *p = cast(ubyte[16]*)(workpad + (foo+x-sX)*4 + bar);
-							ubyte[16] src;
-							*cast(ubyte[4]*)(src.ptr) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
-							*cast(ubyte[4]*)(src.ptr + 4) = *cast(ubyte[4]*)(palette.ptr + 4 * *(c+1));
-							*cast(ubyte[4]*)(src.ptr + 8) = *cast(ubyte[4]*)(palette.ptr + 4 * *(c+2));
-							*cast(ubyte[4]*)(src.ptr + 12) = *cast(ubyte[4]*)(palette.ptr + 4 * *(c+3));
-							ubyte[16] alpha = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
-							//uint[4] alpha;
-
-							asm{
-								//calculating alpha
-								//pxor	XMM1, XMM1;
-								movups	XMM0, alpha;
+						wchar currentTile = tileByPixel(x+sX,y+sY);
+						if(currentTile != 0x0000){
+							int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX);	// 
+							//if(tileXtarget + x > ){}
+							int xp;	// 
+							ushort *c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
+							c += offsetY;
+							//int foo = (tnXreg*tileX);
+							for(; xp < tileXtarget-3; xp+=4){
+																
+								ubyte[16] *p = cast(ubyte[16]*)p0;
+								ubyte[16] src;
+								*cast(ubyte[4]*)(src.ptr) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 4) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 8) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 12) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								ubyte[16] alpha = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
+								//uint[4] alpha;
 								
-								movups	XMM1, XMM0;
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								movaps	XMM6, alphaSSEConst256;
-								movaps	XMM7, XMM6;
-								movaps	XMM4, alphaSSEConst1;
-								movaps	XMM5, XMM4;
-								
-								
-								//punpcklbw	XMM1, XMM2;
-								
-								paddusw	XMM4, XMM1;	//1 + alpha01
-								paddusw	XMM5, XMM0;
-								psubusw	XMM6, XMM1;	//256 - alpha01
-								psubusw	XMM7, XMM0;
-								
-								//moving the values to their destinations
-								mov		EBX, p[EBP];
-								movups	XMM0, src;	//src01
-								movups	XMM1, XMM0; //src23
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
-								pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
-								movups	XMM0, [EBX];	//dest01
-								movups	XMM1, XMM0;		//dest23
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								pmullw	XMM6, XMM0;	//dest01 * (256 - alpha)
-								pmullw	XMM7, XMM1; //dest23 * (256 - alpha)
-								
-								paddusw	XMM4, XMM6;	//(src01 * (1 + alpha01)) + (dest01 * (256 - alpha01))
-								paddusw	XMM5, XMM7; //(src * (1 + alpha)) + (dest * (256 - alpha))
-								psrlw	XMM4, 8;		//(src * (1 + alpha)) + (dest * (256 - alpha)) / 256
-								psrlw	XMM5, 8;
-								//moving the result to its place;
-								//pxor	MM2, MM2;
-								packuswb	XMM4, XMM5;
-								
-								movups	[EBX], XMM4;
-								
-								//emms;
+								asm{
+									//calculating alpha
+									//pxor	XMM1, XMM1;
+									movups	XMM0, alpha;
+									
+									movups	XMM1, XMM0;
+									punpcklbw	XMM0, XMM2;
+									punpckhbw	XMM1, XMM2;
+									movaps	XMM6, alphaSSEConst256;
+									movaps	XMM7, XMM6;
+									movaps	XMM4, alphaSSEConst1;
+									movaps	XMM5, XMM4;
+									
+									
+									//punpcklbw	XMM1, XMM2;
+									
+									paddusw	XMM4, XMM0;	//1 + alpha01
+									paddusw	XMM5, XMM1;
+									psubusw	XMM6, XMM0;	//256 - alpha01
+									psubusw	XMM7, XMM1;
+									
+									//moving the values to their destinations
+									mov		EBX, p[EBP];
+									movups	XMM0, src;	//src01
+									movups	XMM1, XMM0; //src23
+									punpcklbw	XMM0, XMM2;
+									punpckhbw	XMM1, XMM2;
+									pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
+									pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
+									movups	XMM0, [EBX];	//dest01
+									movups	XMM1, XMM0;		//dest23
+									punpcklbw	XMM0, XMM2;
+									punpckhbw	XMM1, XMM2;
+									pmullw	XMM6, XMM0;	//dest01 * (256 - alpha)
+									pmullw	XMM7, XMM1; //dest23 * (256 - alpha)
+									
+									paddusw	XMM4, XMM6;	//(src01 * (1 + alpha01)) + (dest01 * (256 - alpha01))
+									paddusw	XMM5, XMM7; //(src * (1 + alpha)) + (dest * (256 - alpha))
+									psrlw	XMM4, 8;		//(src * (1 + alpha)) + (dest * (256 - alpha)) / 256
+									psrlw	XMM5, 8;
+									//moving the result to its place;
+									//pxor	MM2, MM2;
+									packuswb	XMM4, XMM5;
+									
+									movups	[EBX], XMM4;
+									
+									//emms;
+								}
+								x+=4;
+								p0+=16;
+							}
+							for(; xp < tileXtarget; xp++){
+								ubyte[4] *p = cast(ubyte[4]*)p0;
+								ubyte[4] src = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								ushort[4] alpha = [src[0],src[0],src[0],src[0]];
+								asm{
+									pxor	XMM3, XMM3;
+									movq	XMM2, alpha;
+									mov		EBX, p[EBP];
+									movd	XMM0, [EBX];
+									movd	XMM1, src;
+									punpcklbw	XMM0, XMM3;//dest
+									punpcklbw	XMM1, XMM3;//src
+									//punpcklbw	XMM2, XMM3;//alpha
+									movaps	XMM4, alphaSSEConst256;
+									movaps	XMM5, alphaSSEConst1;
+									
+									paddusw XMM5, XMM2;//1+alpha
+									psubusw	XMM4, XMM2;//256-alpha
+									
+									pmullw	XMM0, XMM4;//dest*(256-alpha)
+									pmullw	XMM1, XMM5;//src*(1+alpha)
+									paddusw	XMM0, XMM1;//(src*(1+alpha))+(dest*(256-alpha))
+									psrlw	XMM0, 8;//(src*(1+alpha))+(dest*(256-alpha))/256
+									//pxor	XMM7, XMM7;
+									packuswb	XMM0, XMM3;
+									
+									movd	[EBX], XMM0;
+									
+									//pxor	XMM0, XMM0;
+									//pxor	XMM1, XMM1;
+									pxor	XMM2, XMM2;
+								}
+								x++;
+								p0+=4;
 							}
 							/*ushort c = chunk[x];
-							alphaBlend(palette[(c*4)+1],palette[(c*4)+2],palette[(c*4)+3],palette[(c*4)], workpad + ((tnXreg*tileX)+x-sX)*4 + y*pitch);*/
-						}else if(foo+x-sX >= rasterX){
-							finish = true;
+							 alphaBlend(palette[(c*4)+1],palette[(c*4)+2],palette[(c*4)+3],palette[(c*4)], workpad + ((tnXreg*tileX)+x-sX)*4 + y*pitch);*/
+							
+							
+						}else{
+							x+=tileX;
 						}
 					}
-					tnXreg++;
-					if(tnXreg == mX){ finish = true;}
+					
+				}break;
+			case TileLayerRenderingMode.BLITTER:
+				int y = sY < 0 ? sY * -1 : 0;
+
+				for( ; y < rasterY ; y++){
+
+					int offsetP = y*pitch*4;	// The offset of the line that is being written
+					int offsetY = tileY * (y - sY)%tileY;
+
+					int x = sX < 0 ? sX * -1 : 0;
+					int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
+					void *p0 = (workpad + (x*4) + offsetP);
+					while(x < targetX){
+
+						wchar currentTile = tileByPixel(x+sX,y+sY);
+						if(currentTile != 0x0000){
+							int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX);	// 
+
+							int xp;	// 
+							ushort *c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
+							c += offsetY;
+							//int foo = (tnXreg*tileX);
+							for(; xp < tileXtarget-3; xp+=4){
+								
+								ubyte[16] *p = cast(ubyte[16]*)p0;
+								ubyte[16] src;
+								*cast(ubyte[4]*)(src.ptr) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 4) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 8) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 12) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								ubyte[16] alpha = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
+																
+								asm{
+									//generating copying mask
+									pxor	XMM1, XMM1;
+									movups	XMM0, alpha;
+									pcmpgtd	XMM0, XMM1;
+
+									mov		EBX, p[EBP];
+									movups	XMM2, src;
+									movups	XMM3, [EBX];
+									//the blitter algorithm
+									pand	XMM3, XMM0;
+									por		XMM3, XMM2;
+									//writeback
+									movups	[EBX], XMM3;
+
+								}
+								x+=4;
+								p0+=16;
+							}
+							for(; xp < tileXtarget; xp++){
+								ubyte[4] *p = cast(ubyte[4]*)p0;
+								ubyte[4] src = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								ubyte[4] alpha = [src[0],src[0],src[0],src[0]];
+								asm{
+									//generating copying mask
+									pxor	XMM1, XMM1;
+									movd	XMM0, alpha;
+									pcmpgtd	XMM0, XMM1;
+									
+									mov		EBX, p[EBP];
+									movd	XMM2, src;
+									movd	XMM3, [EBX];
+									//the blitter algorithm
+									pand	XMM3, XMM0;
+									por		XMM3, XMM2;
+									//writeback
+									movd	[EBX], XMM3;
+
+								}
+								x++;
+								p0+=4;
+							}
+
+						}else{
+							x+=tileX;
+						}
+					}
+					
 				}
-			}
+				break;
+			default:
+				int y = sY < 0 ? sY * -1 : 0;
+				
+				for( ; y < rasterY ; y++){
+					
+					int offsetP = y*pitch*4;	// The offset of the line that is being written
+					int offsetY = tileY * (y - sY)%tileY;
+					
+					int x = sX < 0 ? sX * -1 : 0;
+					int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
+					void *p0 = (workpad + (x*4) + offsetP);
+					while(x < targetX){
+						
+						wchar currentTile = tileByPixel(x+sX,y+sY);
+						if(currentTile != 0x0000){
+							int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX);	// 
+							
+							int xp;	// 
+							ushort *c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
+							c += offsetY;
+							//int foo = (tnXreg*tileX);
+							for(; xp < tileXtarget-3; xp+=4){
+								
+								ubyte[16] *p = cast(ubyte[16]*)p0;
+								ubyte[16] src;
+								*cast(ubyte[4]*)(src.ptr) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 4) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 8) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								*cast(ubyte[4]*)(src.ptr + 12) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+								c++;
+								//ubyte[16] alpha = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
+								
+								asm{
+
+									mov		EBX, p[EBP];
+									movups	XMM2, src;
+									//writeback
+									movups	[EBX], XMM2;
+									
+								}
+								x+=4;
+								p0+=16;
+							}
+							for(; xp < tileXtarget; xp++){
+								ubyte[4] *p = cast(ubyte[4]*)p0;
+								ubyte[4] src = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
+
+								c++;
+								//ubyte[4] alpha = [src[0],src[0],src[0],src[0]];
+								asm{
+
+									mov		EBX, p[EBP];
+									movd	XMM2, src;
+									//writeback
+									movd	[EBX], XMM2;
+									
+								}
+								x++;
+								p0+=4;
+							}
+							
+						}else{
+							x+=tileX;
+						}
+					}
+					
+				}
+				break;
 		}
 	}
 	
@@ -671,20 +919,43 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 							c++;
 							*cast(ubyte[4]*)(src.ptr + 12) = *cast(ubyte[4]*)(palette.ptr + 4 * *c);
 							c++;
-							ubyte[16] alpha = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
+							ubyte[16] alpha = [src[12],src[12],src[12],src[12],src[8],src[8],src[8],src[8],src[4],src[4],src[4],src[4],src[0],src[0],src[0],src[0]];
 
 							//uint[4] src;
 							//uint[4] alpha;
 
 							asm{
-								//create the source
+								//do a test if alpha-blending and/or blitter can avoided
+								/*
+								movups	XMM0, alpha;
+								pxor 	XMM1, XMM1;
+								pcmpeqq	XMM1, XMM0; //use packed testing of SSE to figure out if any operation can be skipped
+								je 		endofalgorithm;
+								movaps	XMM3, SSEUQWmaxvalue; //use further tests if blitter can be used
+								pcmpeqq	XMM3, XMM0;
+								pand	XMM3, XMM1;
+								pcmpeqq XMM3, SSEUQWmaxvalue;
+								jne		alphablend;
 
+								//blitter routine
+								mov		EBX, p[EBP];
+								movups	XMM0, src;
+								movups	XMM1, [EBX];
+								pxor	XMM3, XMM3;
+								pcmpeqq	XMM3, XMM0;
+								pand	XMM1, XMM3;
+								por		XMM1, XMM0;
+								movups	[EBX], XMM1;
+								jmp 	endofalgorithm;
+
+							alphablend:*/
 								//calculating alpha
 								//pxor	XMM1, XMM1;
+							
 								movups	XMM0, alpha;
 								movups	XMM1, XMM0;
 								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
+								punpckhbw	XMM1, XMM2;
 								movaps	XMM6, alphaSSEConst256;
 								movaps	XMM7, XMM6;
 								movaps	XMM4, alphaSSEConst1;
@@ -693,23 +964,23 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 
 								//punpcklbw	XMM1, XMM2;
 								
-								paddusw	XMM4, XMM1;	//1 + alpha01
-								paddusw	XMM5, XMM0;
-								psubusw	XMM6, XMM1;	//256 - alpha01
-								psubusw	XMM7, XMM0;
+								paddusw	XMM4, XMM0;	//1 + alpha01
+								paddusw	XMM5, XMM1;
+								psubusw	XMM6, XMM0;	//256 - alpha01
+								psubusw	XMM7, XMM1;
 
 								//moving the values to their destinations
 								mov		EBX, p[EBP];
 								movups	XMM0, src;	//src01
 								movups	XMM1, XMM0; //src23
 								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
+								punpckhbw	XMM1, XMM2;
 								pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
 								pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
 								movups	XMM0, [EBX];	//dest01
 								movups	XMM1, XMM0;		//dest23
 								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
+								punpckhbw	XMM1, XMM2;
 								pmullw	XMM6, XMM0;	//dest01 * (256 - alpha)
 								pmullw	XMM7, XMM1; //dest23 * (256 - alpha)
 
@@ -722,8 +993,9 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 								packuswb	XMM4, XMM5;
 								
 								movups	[EBX], XMM4;
-								
-								//emms;
+
+							//endofalgorithm:
+
 							}
 							pl += 16;
 							//c += 4;
@@ -834,8 +1106,9 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 	}
 	
 	public void addSprite(Bitmap32Bit s, int n, int x, int y){
+		writeln(s);
 		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,s.getX(),s.getY());
+		coordinates[n] = Coordinate(x,y,x+spriteSet[n].getX,y+spriteSet[n].getY);
 		flipRegisters[n] = FlipRegister.NORM;
 		//spriteSorter[n] = n;
 		spriteSorter ~= n;
@@ -911,213 +1184,113 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 				if(sX + rasterX < coordinates[i].xb) {offsetXB = coordinates[i].xb - rasterX; }
 				if(sY + rasterY < coordinates[i].yb) {offsetYB = coordinates[i].yb - rasterY; }
 				ubyte* p0 = spriteSet[i].getPtr();
-				for(int y = offsetYA ; y < coordinates[i].getYSize() - offsetYB ; y++){
+				//writeln(p0);
+				for(int y = offsetYA ; y < coordinates[i].getYSize() - offsetYB ; y++){//for non flipped sprites
 					//ushort[] chunk = (flipRegisters[i] == FlipRegister.Y || flipRegisters[i] == FlipRegister.XY) ? spriteSet[i].readRowReverse(y) : spriteSet[i].readRow(y);
-					int offsetP = sizeX * y, offsetY = (coordinates[i].ya - sY + y)*pitch;
+					int offsetP = sizeX * y * 4, offsetY = (coordinates[i].ya - sY + y)*pitch;
 					int x = offsetXA;
-					
-					if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-						//ubyte* c = (p0 + (sizeX - x - 1) + offsetP);
-						//void* pl = (workpad + (offsetX + x * 4) + offsetY);
-						for(; x < sizeX - offsetXB ; x++){
-							ubyte* c = (p0 + (sizeX - x - 1) + offsetP);
+					ubyte* c = p0 + x + offsetP;
+					void* pl = (workpad + (offsetX + x * 4) + offsetY);
+					for(; x < sizeX - offsetXB - 3 ; x+=4){
+						//writeln(x);
+						ubyte[16] *p = cast(ubyte[16]*)pl;
+						ubyte[16] src = *cast(ubyte[16]*)c;
+						//src = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
+						//ubyte[16] alpha = [src[12],src[12],src[12],src[12],src[8],src[8],src[8],src[8],src[4],src[4],src[4],src[4],src[0],src[0],src[0],src[0]];
+						ubyte[16] alpha = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
+						//ubyte[16] alpha = [255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255];
+						//uint[4] src;
+						//uint[4] alpha;
+						
+						asm{
+							//create the source
 							
-
-							ubyte[16] *p = cast(ubyte[16]*)(workpad + (offsetX + x * 4) + offsetY);
-							ubyte[16] src; 
-							//uint[4] src;
-
-							ubyte[16] alpha = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
+							//calculating alpha
+							//pxor	XMM1, XMM1;
+							movups	XMM0, alpha;	//a01
+							movups	XMM1, XMM0;		//a23
+							punpcklbw	XMM0, XMM2;
+							punpckhbw	XMM1, XMM2;
+							movaps	XMM6, alphaSSEConst256;
+							movaps	XMM7, XMM6;
+							movaps	XMM4, alphaSSEConst1;
+							movaps	XMM5, XMM4;
 							
 							
-							asm{
-								//calculating alpha
-								//pxor	XMM1, XMM1;
-								movups	XMM0, alpha;
-								
-								movups	XMM1, XMM0;
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								movaps	XMM6, alphaSSEConst256;
-								movaps	XMM7, XMM6;
-								movaps	XMM4, alphaSSEConst1;
-								movaps	XMM5, XMM4;
-								
-								
-								//punpcklbw	XMM1, XMM2;
-								
-								paddusw	XMM4, XMM1;	//1 + alpha01
-								paddusw	XMM5, XMM0;
-								psubusw	XMM6, XMM1;	//256 - alpha01
-								psubusw	XMM7, XMM0;
-								
-								//moving the values to their destinations
-								mov		EBX, p[EBP];
-								movups	XMM0, src;	//src01
-								movups	XMM1, XMM0; //src23
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
-								pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
-								movups	XMM0, [EBX];	//dest01
-								movups	XMM1, XMM0;		//dest23
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								pmullw	XMM6, XMM0;	//dest01 * (256 - alpha)
-								pmullw	XMM7, XMM1; //dest23 * (256 - alpha)
-								
-								paddusw	XMM4, XMM6;	//(src01 * (1 + alpha01)) + (dest01 * (256 - alpha01))
-								paddusw	XMM5, XMM7; //(src * (1 + alpha)) + (dest * (256 - alpha))
-								psrlw	XMM4, 8;		//(src * (1 + alpha)) + (dest * (256 - alpha)) / 256
-								psrlw	XMM5, 8;
-								//moving the result to its place;
-								//pxor	MM2, MM2;
-								packuswb	XMM4, XMM5;
-								
-								movups	[EBX], XMM4;
-								
-								//emms;
-							}
+							//punpcklbw	XMM1, XMM2;
+							
+							paddusw	XMM4, XMM0;	//1 + alpha01
+							paddusw	XMM5, XMM1;
+							psubusw	XMM6, XMM0;	//256 - alpha01
+							psubusw	XMM7, XMM1;
+							
+							//moving the values to their destinations
+							mov		EBX, p[EBP];
+							movups	XMM0, src;	//src01
+							movups	XMM1, XMM0; //src23
+							punpcklbw	XMM0, XMM2;
+							punpckhbw	XMM1, XMM2;
+							pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
+							pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
+							movups	XMM0, [EBX];	//dest01
+							movups	XMM1, XMM0;		//dest23
+							punpcklbw	XMM0, XMM2;
+							punpckhbw	XMM1, XMM3;
+							pmullw	XMM6, XMM0;	//dest01 * (256 - alpha)
+							pmullw	XMM7, XMM1; //dest23 * (256 - alpha)
+							
+							paddusw	XMM4, XMM6;	//(src01 * (1 + alpha01)) + (dest01 * (256 - alpha01))
+							paddusw	XMM5, XMM7; //(src * (1 + alpha)) + (dest * (256 - alpha))
+							psrlw	XMM4, 8;		//(src * (1 + alpha)) + (dest * (256 - alpha)) / 256
+							psrlw	XMM5, 8;
+							//moving the result to its place;
+							//pxor	MM2, MM2;
+							packuswb	XMM4, XMM5;
+							
+							movups	[EBX], XMM4;
+							
+							//emms;
 						}
-						for(; x < sizeX - offsetXB ; x++){
-							ubyte* c = (p0 + (sizeX - x - 1) + offsetP);
-							
-							ubyte[4] *p = cast(ubyte[4]*)(workpad + (offsetX + x)*4 + offsetY);
-							ubyte[4] src = *cast(ubyte[4]*)(c);
-							ushort[4] alpha = [src[0],src[0],src[0],src[0]];
-							asm{
-								pxor	XMM3, XMM3;
-								movq	XMM2, alpha;
-								mov		EBX, p[EBP];
-								movd	XMM0, [EBX];
-								movd	XMM1, src;
-								punpcklbw	XMM0, XMM3;//dest
-								punpcklbw	XMM1, XMM3;//src
-								//punpcklbw	XMM2, XMM3;//alpha
-								movaps	XMM4, alphaSSEConst256;
-								movaps	XMM5, alphaSSEConst1;
-								
-								paddusw XMM5, XMM2;//1+alpha
-								psubusw	XMM4, XMM2;//256-alpha
-								
-								pmullw	XMM0, XMM4;//dest*(256-alpha)
-								pmullw	XMM1, XMM5;//src*(1+alpha)
-								paddusw	XMM0, XMM1;//(src*(1+alpha))+(dest*(256-alpha))
-								psrlw	XMM0, 8;//(src*(1+alpha))+(dest*(256-alpha))/256
-								//pxor	XMM7, XMM7;
-								packuswb	XMM0, XMM3;
-								
-								movd	[EBX], XMM0;
-								
-								//pxor	XMM0, XMM0;
-								//pxor	XMM1, XMM1;
-								pxor	XMM2, XMM2;
-							}
-							
-						}
+						//*p = [res[0],res[2],res[4],res[6]];
+						//ubyte[4] res = *p;
+						//writeln(res);
+						pl += 16;
+						c += 16;
+						//}
 					}
-					else{ //for non flipped sprites
-						ubyte* c = p0 + x + offsetP;
-						void* pl = (workpad + (offsetX + x * 4) + offsetY);
-						for(; x < sizeX - offsetXB - 12 ; x+=16){
-
-							ubyte[16] *p = cast(ubyte[16]*)pl;
-							ubyte[16] src = *cast(ubyte[16]*)(c);
-
-							ubyte[16] alpha = [src[0],src[0],src[0],src[0],src[4],src[4],src[4],src[4],src[8],src[8],src[8],src[8],src[12],src[12],src[12],src[12]];
+					for(; x < sizeX - offsetXB ; x++){
+						//ubyte* c = p0 + x + offsetP;
+						
+						ubyte[4] *p = cast(ubyte[4]*)pl;  //(workpad + (offsetX + x)*4 + offsetY);
+						ubyte[4] src = *cast(ubyte[4]*)c;   //(c);
+						ushort[4] alpha = [src[0],src[0],src[0],src[0]];
+						asm{
+							//pxor	XMM3, XMM3;
+							movq	XMM2, alpha;
+							mov		EBX, p[EBP];
+							movd	XMM0, [EBX];
+							movd	XMM1, src;
+							punpcklbw	XMM0, XMM3;//dest
+							punpcklbw	XMM1, XMM3;//src
 							
-							//uint[4] src;
-							//uint[4] alpha;
+							movaps	XMM4, alphaSSEConst256;
+							movaps	XMM5, alphaSSEConst1;
 							
-							asm{
-								//create the source
-								
-								//calculating alpha
-								//pxor	XMM1, XMM1;
-								movups	XMM0, alpha;
-								movups	XMM1, XMM0;
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								movaps	XMM6, alphaSSEConst256;
-								movaps	XMM7, XMM6;
-								movaps	XMM4, alphaSSEConst1;
-								movaps	XMM5, XMM4;
-								
-								
-								//punpcklbw	XMM1, XMM2;
-								
-								paddusw	XMM4, XMM1;	//1 + alpha01
-								paddusw	XMM5, XMM0;
-								psubusw	XMM6, XMM1;	//256 - alpha01
-								psubusw	XMM7, XMM0;
-								
-								//moving the values to their destinations
-								mov		EBX, p[EBP];
-								movups	XMM0, src;	//src01
-								movups	XMM1, XMM0; //src23
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
-								pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
-								movups	XMM0, [EBX];	//dest01
-								movups	XMM1, XMM0;		//dest23
-								punpcklbw	XMM0, XMM2;
-								punpckhbw	XMM1, XMM3;
-								pmullw	XMM6, XMM0;	//dest01 * (256 - alpha)
-								pmullw	XMM7, XMM1; //dest23 * (256 - alpha)
-								
-								paddusw	XMM4, XMM6;	//(src01 * (1 + alpha01)) + (dest01 * (256 - alpha01))
-								paddusw	XMM5, XMM7; //(src * (1 + alpha)) + (dest * (256 - alpha))
-								psrlw	XMM4, 8;		//(src * (1 + alpha)) + (dest * (256 - alpha)) / 256
-								psrlw	XMM5, 8;
-								//moving the result to its place;
-								//pxor	MM2, MM2;
-								packuswb	XMM4, XMM5;
-								
-								movups	[EBX], XMM4;
-								
-								//emms;
-							}
-							//*p = [res[0],res[2],res[4],res[6]];
-							//ubyte[4] res = *p;
-							//writeln(res);
-							pl += 16;
-							c += 16;
-							//}
+							paddusw XMM5, XMM2;//1+alpha
+							psubusw	XMM4, XMM2;//256-alpha
+							
+							pmullw	XMM0, XMM4;//dest*(256-alpha)
+							pmullw	XMM1, XMM5;//src*(1+alpha)
+							paddusw	XMM0, XMM1;//(src*(1+alpha))+(dest*(256-alpha))
+							psrlw	XMM0, 8;//(src*(1+alpha))+(dest*(256-alpha))/256
+							packuswb	XMM0, XMM3;
+							movd	[EBX], XMM0;
+							pxor	XMM2, XMM2;
 						}
-						for(; x < sizeX - offsetXB ; x+=4){
-							//ubyte* c = p0 + x + offsetP;
-							
-							ubyte[4] *p = cast(ubyte[4]*)pl;  //(workpad + (offsetX + x)*4 + offsetY);
-							ubyte[4] src = *cast(ubyte[4]*)c;   //(c);
-							ushort[4] alpha = [src[0],src[0],src[0],src[0]];
-							asm{
-								//pxor	XMM3, XMM3;
-								movq	XMM2, alpha;
-								mov		EBX, p[EBP];
-								movd	XMM0, [EBX];
-								movd	XMM1, src;
-								punpcklbw	XMM0, XMM3;//dest
-								punpcklbw	XMM1, XMM3;//src
-
-								movaps	XMM4, alphaSSEConst256;
-								movaps	XMM5, alphaSSEConst1;
-								
-								paddusw XMM5, XMM2;//1+alpha
-								psubusw	XMM4, XMM2;//256-alpha
-								
-								pmullw	XMM0, XMM4;//dest*(256-alpha)
-								pmullw	XMM1, XMM5;//src*(1+alpha)
-								paddusw	XMM0, XMM1;//(src*(1+alpha))+(dest*(256-alpha))
-								psrlw	XMM0, 8;//(src*(1+alpha))+(dest*(256-alpha))/256
-								packuswb	XMM0, XMM3;
-								movd	[EBX], XMM0;
-								pxor	XMM2, XMM2;
-							}
-							pl+=4;
-							c+=4;
-						}
+						pl+=4;
+						c+=4;
 					}
+
 				}
 			}
 		}

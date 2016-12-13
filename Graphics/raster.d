@@ -22,7 +22,7 @@ public interface IRaster{
     public SDL_Texture* getOutput();
 }
 
-//Reads the data from the layers, then writes it to an SDL_Surface.
+///Handles multiple layers onto one framebuffer.
 public class Raster : IRaster{
     private ushort rX, rY;
     //public SDL_Surface* workpad;
@@ -50,8 +50,8 @@ public class Raster : IRaster{
 		frameBuffer[1] = new Bitmap16Bit(x,y);*/
 		/*frameBuffer ~= SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
 		frameBuffer ~= SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);*/
-		frameBuffer ~= SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRA8888, SDL_TEXTUREACCESS_STREAMING, x, y);
-		frameBuffer ~= SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRA8888, SDL_TEXTUREACCESS_STREAMING, x, y);
+		frameBuffer ~= SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRX8888, SDL_TEXTUREACCESS_STREAMING, x, y);
+		frameBuffer ~= SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRX8888, SDL_TEXTUREACCESS_STREAMING, x, y);
 		fbData ~= null;
 		fbData ~= null;
 		fbPitch ~= 0;
