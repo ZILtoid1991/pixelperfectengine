@@ -7,9 +7,9 @@
 import std.stdio;
 import std.file;
 import std.conv;
-
-public struct MapData{
-	public string source, datSource, name;
+/*
+public struct TileLayerData{
+	public string source, name;
 	public wchar[] data;
 	public int mx, my, tileX, tileY, priority;
 	public double scrollRatioX, scrollRatioY;
@@ -56,18 +56,17 @@ public struct ObjectData{
 }
 
 public struct FileCollector{
-	public string source; // datSource;
-	public wchar[ushort] IDcollection;
-	public ushort[] numcollection;
-	public string[ushort] names;
+	public string source; /// Name of the XMP file
+	public string[wchar] IDcollection;	/// ID of bitmap in the XMP
+	public string[ushort] names;	/// Used for editors
 	
 	/*public this(){
 
-	}*/
+	}
 
 	public void add(wchar ID, ushort num, string name =""){
 		numcollection ~= num;
 		IDcollection[num] = ID;
 		names[num] = name;
 	}
-}
+}*/

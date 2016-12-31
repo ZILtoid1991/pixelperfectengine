@@ -178,9 +178,11 @@ public class InputHandler : TextInputHandler{
 
 			switch(event.type){
 				case SDL_KEYDOWN:
+
 					if(!tiEnable){
 						foreach(k; kb){
 							if(event.key.keysym.scancode == k.keycode && event.key.keysym.mod == k.keymod && k.devicetype == Devicetype.KEYBOARD){
+
 								invokeKeyPressed(k.ID, event.key.timestamp, 0, Devicetype.KEYBOARD);
 							}
 						}

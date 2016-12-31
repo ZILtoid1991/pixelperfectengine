@@ -33,14 +33,14 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 
 	private bool previewModeOn;
 	ExtendibleBitmap selection;
-	public this(InputHandler inputhandler, ISpriteLayer32Bit viewer, MapHandler mh = null, ExtendibleBitmap[] documentFiles = null){
+	public this(InputHandler inputhandler, ISpriteLayer32Bit viewer, ExtendibleMap mh = null, ExtendibleBitmap[] documentFiles = null){
 		this(Coordinate(0,0,640,480), "XMP Converter Toolkit");
 		this.inputHandler = inputhandler;
 		this.viewer = viewer;
 		files = documentFiles;
 		Button [] buttons;
 		if(mh !is null){
-			filenames = mh.getAllFilenames();
+			//filenames = mh.getAllFilenames();
 			//fileList = new ListBox("fileList",Coordinate(4,20,204,101), [ListBoxColumn("Filename",filenames)], [256], 15);
 		}else{
 			labels["0x00"] = new Label("Path:", "", Coordinate(4,20,204,40));

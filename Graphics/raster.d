@@ -5,6 +5,7 @@
  */
 module graphics.raster;
 
+import graphics.core;
 import graphics.layers;
 import graphics.bitmap;
 import derelict.sdl2.sdl;
@@ -35,15 +36,16 @@ public class Raster : IRaster{
 	//private ubyte[ushort] colorG;
 	//private ubyte[ushort] colorB;
 	public ubyte[] palette; //FORMAT ARGB
-    private ILayer[] layerList;
+    private Layer[] layerList;
     private bool r;
 	private int[2] doubleBufferRegisters;
-    private RefreshListener[int] rL;
+    private RefreshListener[] rL;
 	//public Bitmap16Bit[2] frameBuffer;
 
     //Default constructor. x and y : represent the resolution of the raster.
-    public this(ushort x, ushort y, SDL_Renderer* renderer){
+    public this(ushort x, ushort y, OutputWindow oW){
         //workpad = SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+		SDL_Renderer* renderer = oW.renderer;
         rX=x;
         rY=y;
 		/*frameBuffer[0] = new Bitmap16Bit(x,y);
@@ -58,6 +60,8 @@ public class Raster : IRaster{
 		fbPitch ~= 0;
 		doubleBufferRegisters[0] = 1;
 		doubleBufferRegisters[1] = 0;
+		oW.setMainRaster(this);
+		addRefreshListener(oW);
 	}
 
 	~this(){
@@ -66,8 +70,8 @@ public class Raster : IRaster{
 		}
 	}
     //Adds a RefreshListener to its list.
-    public void addRefreshListener(RefreshListener r, int i){
-        rL[i] = r;
+    public void addRefreshListener(RefreshListener r){
+        rL ~= r;
     }
 	//Writes a color at the last position
 	public void addColor(ubyte r, ubyte g, ubyte b, ubyte a = 255)	{
@@ -97,12 +101,12 @@ public class Raster : IRaster{
 		frameBuffer.destroy();
 	}*/
     //Replaces the layer at the given number.
-    public void replaceLayer(ILayer l, int i){
+    public void replaceLayer(Layer l, int i){
 		l.setRasterizer(rX, rY);
         layerList[i] = l;
     }
     //Adds a layer at the highest available priority. 0 is highest.
-    public void addLayer(ILayer l){
+    public void addLayer(Layer l){
 		l.setRasterizer(rX, rY);
         layerList ~= l;
     }
@@ -124,7 +128,7 @@ public class Raster : IRaster{
 		//SDL_SetSurfaceRLE(frameBuffer[doubleBufferRegisters[0]], 1);
 
 		for(int i ; i < layerList.length ; i++){
-			layerList[i].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette);
+			layerList[i].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette, null);
 		}
         
 		//writeToWorkpad(frameBuffer[doubleBufferRegisters[1]]);

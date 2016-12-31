@@ -8,217 +8,296 @@ module map.mapload;
 import std.xml;
 import std.stdio;
 import std.file;
-import std.algorithm.searching;
+import std.algorithm.mutation;
+//import std.array;
 import std.conv;
+import extbmp.extbmp;
 
-public import map.mapdata;
+//public import map.mapdata;
 import graphics.layers;
 import graphics.bitmap;
 import system.file;
 import system.exc;
+import system.etc;
 
-/*
+/**
  * Stores, loads, and saves a level data from an XML and multiple MAP files.
  */
 
-public class MapHandler{
-	//public BackgroundLayer[] background;
-	public MapData[] mapdataList;
-	public ObjectData[] objectdataList;
-	public ubyte[] palette;
-	private string filename, name, app, creator, paletteSource, paletteDatSource;
-	public string[string] metadata;
-	private int nOfLayers;
-
-	//public double[] scrollRatio;
-
-	public this(string file){
-		filename = file;
+public class ExtendibleMap{
+	private void[] rawData, rawData0;
+	private int headerLenght;
+	private uint flags;
+	private Element[] tileSource, objectSource;
+	private TileLayerData[] tld;
+	private SpriteLayerData[] sld;
+	public string[string] metaData;
+	public string filename;
+	/// Load from datastream
+	this(void[] data){
+		rawData = data;
+		headerLoad();
 	}
-	public this(){
+	/// Load from file
+	this(string filename){
+		this.filename = filename;
+		loadFile();
+	}
+	///Create new from scratch
+	this(){
 
 	}
+	/// Loads the bitmaps for the Tilelayer from the XMP files
+	Bitmap16Bit[wchar] loadTileSet(int num){
+		Bitmap16Bit[wchar] result;
 
-	public void loadMap(){
-		string s = cast(string)std.file.read(filename);
-		try{
-			check(s);
-		}
-		catch(CheckException e){
-			writeln(e.toString);
-		}
-		finally{
-			auto doc = new Document(s);
-			if(doc.tag.name != "Map")
-				throw new MapFileException("File is not VDP map file!");
-			/*name = doc.tag.attr.get("name", "");
-			app = doc.tag.attr.get("app", "");
-			creator = doc.tag.attr.get("creator", "");*/
-			nOfLayers = to!int(doc.tag.attr["nOfLayers"]);
-			//background = new BackgroundLayer[nOfLayers];
-			mapdataList = new MapData[nOfLayers];
+		foreach(Element e1; tileSource[num].elements){
+			if(e1.tag.name == "File"){
+				ExtendibleBitmap xmp = new ExtendibleBitmap(e1.tag.attr["source"]);
+				foreach(Element e2; e1.elements){
+					result[to!wchar(parseHex(e2.tag.attr["wcharID"]))] = loadBitmapFromXMP(xmp, e2.tag.attr["source"]);
 
-			bool palettePresent;
-			foreach(Element e1; doc.elements){
-				if(e1.tag.name == "TileLayer"){
-					bool mapSourcePresent;
-					//background[to!int(e1.tag.attr.get("priority", "1"))] = new BackgroundLayer(to!int(e1.tag.attr["tileX"]), to!int(e1.tag.attr["tileY"]));
-					//scrollRatio[to!int(e1.tag.attr.get("priority", "1"))] = to!double(e1.tag.attr["scrollRatio"]);
-					FileCollector[] fcList;
-					foreach(Element e2; e1.elements){
-
-						if(e2.tag.name == "TileSource"){
-							FileCollector fc = FileCollector(e2.tag.attr["source"]);
-							foreach(Element e3; e2.elements){
-								if(e3.tag.name == "Tile"){
-									fc.add(to!ushort(e3.tag.attr["ID"]), to!ushort(e3.tag.attr["num"]), e3.tag.attr["name"]);
-									/*fc.IDcollection[e3.tag.attr["num"]] ~= e3.tag.attr["ID"];
-									fc.numcollection ~= e3.tag.attr["num"];*/
-								}
-							}
-							/*if(fc.datSource == ""){
-								loadTilesFromFile(fc, to!int(e1.tag.attr.get("priority", "1")));
-							}
-							else{
-								loadTilesFromDat(fc, to!int(e1.tag.attr.get("priority", "1")));
-							}*/
-							fcList ~= fc;
-						}
-						else if(e2.tag.name == "MapSource" && !mapSourcePresent){
-							mapSourcePresent = true;
-
-								MapData md = MapData(e2.text);
-								md.source = e2.text;
-								md.tileX = to!int(e1.tag.attr["tileX"]);
-								md.tileY = to!int(e1.tag.attr["tileY"]);
-								md.priority = to!int(e1.tag.attr.get("priority", "1"));
-								md.scrollRatioX = to!double(e1.tag.attr["scrollRatioX"]);
-								md.scrollRatioY = to!double(e1.tag.attr["scrollRatioY"]);
-								md.fcList = fcList;
-								mapdataList ~= md;
-
-
-
-							//else{}							//place for loading map from DAT files
-						}
-												
-						//background[to!int(e1.tag.attr.get("priority", "1"))].loadMapping(mapdataList[to!int(e1.tag.attr.get("priority", "1"))].mx, mapdataList[to!int(e1.tag.attr.get("priority", "1"))].my, mapdataList[to!int(e1.tag.attr.get("priority", "1"))].data);
-					}
-					if(!mapSourcePresent)
-						throw new MapFileException("Map source not present exception!");
 				}
-				else if(e1.tag.name == "Playfield"){
-					foreach(Element e2; e1.elements){
-						if(e2.tag.name == "Object"){
-							objectdataList ~= ObjectData(e2.tag.attr["type"], to!int(e2.tag.attr["posX"]), to!int(e2.tag.attr["posY"]), e2.text);
-						}
-					}
-				}
-				else if(e1.tag.name == "Palette"){
-					palettePresent = true;
-					/*if(e1.tag.attr.get("datSource","") == "")
-						palette = cast(ubyte[])std.file.read(e1.text);*/
-					//place for loading palette from DAT files
-				}else if(e1.tag.name == "Meta"){
-					foreach(Element e2; e1.elements){
-						/*i/f(e2.tag.name == "Name"){
-							name = e2.text;
-						}else if(e2.tag.name == "App"){
-							app = e2.text;
-						}else if(e2.tag.name == "Creator"){
-							creator = e2.text;
-						}*/
-						metadata[e2.tag.name] = e2.text;
-					}
-				}
-
-			}
-			/*if(!palettePresent)
-				throw new MapFileException("Palette not present exception!");*/
-		}
-	}
-
-	public string[] getAllFilenames(){
-		string[] result;
-		foreach(a; mapdataList){
-			foreach(b; a.fcList){
-				result ~= b.source;
 			}
 		}
 		return result;
 	}
-
-	public void saveMap(){
-		auto doc = new Document(new Tag("Map"));
-		doc.tag.attr["nOfLayers"] = to!string(nOfLayers);
-
-		/*doc.tag.attr["name"] = name;
-		doc.tag.attr["app"] = app;
-		doc.tag.attr["creator"] = creator;*/
-		auto e0 = new Element("Meta");
-		foreach(string s; metadata.byKey()){
-			e0 ~= new Element(s, metadata[s]);
+	Bitmap32Bit[wchar] load32BitTileSet(int num){
+		Bitmap32Bit[wchar] result;
+		foreach(Element e1; tileSource[num].elements){
+			if(e1.tag.name == "File"){
+				ExtendibleBitmap xmp = new ExtendibleBitmap(e1.tag.attr["source"]);
+				foreach(Element e2; e1.elements){
+					result[to!wchar(parseHex(e2.tag.attr["wcharID"]))] = load32BitBitmapFromXMP(xmp, e2.tag.attr["source"]);
+				}
+			}
 		}
+		return result;
+	}
+	void addFileToTileSource(int num, string file){
+		Element e = new Element(new Tag("File"));
+		e.tag.attr["source"] = file;
+		tileSource[num] ~= e;
+	}
+	void addTileToTileSource(int num, wchar ID, string name, string source, string file){
+		foreach(Element e; tileSource[num].elements){
+			if(e.tag.attr["source"] == file){
+				Element e0 = new Element("TileSource",name);
+				e0.tag.attr["wcharID"] = intToHex(ID, 4);
+				e0.tag.attr["source"] = source;
+				e ~= e0;
+				return;
+			}
+		}
+	}
+	void addTileLayer(TileLayerData t){
+		tld ~= t;
+		//create placeholder element
+		Element e = new Element("TileLayer");
+		tileSource ~= e;
+	}
+	TileLayerData getTileLayer(int num){
+		return tld[num];
+	}
+	int getNumOfLayers(){
+		return tld.length + sld.length;
+	}
+	void removeTileLayer(int num){
+		tld = remove(tld, num);
+		tileSource = remove(tileSource, num);
+	}
 
+	void loadFile(){
+		//writeln(filename);
+		try{
+			rawData = std.file.read(filename);
+			flags = *cast(uint*)rawData.ptr;
+			headerLenght = *cast(int*)(rawData.ptr + 4);
+
+			headerLoad();
+
+			if(rawData.length > 8 + headerLenght){
+				rawData0 = rawData[8 + headerLenght..rawData.length];
+			}
+			rawData.length = 0;
+
+		}catch(Exception e){
+			writeln(e.toString);
+		}
+	}
+	//private void removeElement/(
+	private void headerLoad(){
+		string header = cast(string)rawData[8..8 + headerLenght];
+		Document d = new Document(header);
+		foreach(Element e1; d.elements){
+			switch(e1.tag.name){
+				case "MetaData":
+				//writeln("MetaData found");
+					foreach(Element e2; e1.elements){
+						metaData[e2.tag.name] = e2.text;
+					}
+					break;
+				case "TileLayer":
+					int from = 8 + headerLenght + to!int(e1.tag.attr["dataOffset"]), dataLength = to!int(e1.tag.attr["dataLength"]);
+					tld ~= new TileLayerData(to!int(e1.tag.attr["tX"]), to!int(e1.tag.attr["tY"]), 
+						to!int(e1.tag.attr["mX"]), to!int(e1.tag.attr["mY"]), to!double(e1.tag.attr["sX"]), to!double(e1.tag.attr["sY"]),
+						to!int(e1.tag.attr["priority"]), cast(wchar[])rawData[from..(from+dataLength)], e1.tag.attr["name"], e1.tag.attr.get("subType",""));
+					tileSource ~= e1;
+					break;
+				case "SpriteLayer":
+					auto ea = new Element("SpriteLayer");
+					SpriteLayerData s = new SpriteLayerData(e1.tag.attr["name"], to!double(e1.tag.attr["sX"]), to!double(e1.tag.attr["sY"]), 
+						to!int(e1.tag.attr["priority"]), e1.tag.attr.get("subType",""));
+					foreach(Element e2; e1.elements){
+						if(e2.tag.name == "Object"){
+							ObjectPlacement o = new ObjectPlacement(to!int(e2.tag.attr["x"]), to!int(e2.tag.attr["y"]), to!int(e2.tag.attr["num"]),e2.tag.attr["ID"]);
+							o.addAuxData(e2.elements);
+
+						}else{
+							ea ~= e2;
+						}
+					}
+					objectSource ~= ea;
+					sld ~= s;
+					break;
+				default: break;
+			}
+		}	
+	}
+	void saveFile(string filename){
+		this.filename = filename;
+	}
+	void saveFile(){
+		auto doc = new Document(new Tag("HEADER"));
+		auto e0 = new Element("MetaData");
+		foreach(string s; metaData.byKey()){
+			e0 ~= new Element(s, metaData[s]);
+		}
 		doc ~= e0;
 
-		for(int i; i < mapdataList.length; i++){
-			auto e1 = new Element("Layer");
-			e1.tag.attr["priority"] = to!string(mapdataList[i].priority);
-			e1.tag.attr["scrollRatioX"] = to!string(mapdataList[i].scrollRatioX);
-			e1.tag.attr["scrollRatioY"] = to!string(mapdataList[i].scrollRatioY);
-			e1.tag.attr["tileX"] = to!string(mapdataList[i].tileX);
-			e1.tag.attr["tileY"] = to!string(mapdataList[i].tileY);
-
-			foreach(FileCollector fc; mapdataList[i].fcList){
-				auto e11 = new Element("TileSource");
-				e11.tag.attr["source"] = fc.source;
-				//e11.tag.attr["datSource"] = fc.datSource;
-				foreach(ushort u; fc.numcollection){
-					auto e111 = new Element("Tile");
-					e111.tag.attr["number"] = to!string(u);
-					e111.tag.attr["ID"] = to!string(fc.IDcollection[u]);
-					e111.tag.attr["name"] = fc.names[u];
-					e11 ~= e111;
-				}
-				e1 ~= e11;
-			}
-
-			auto e12 = new Element("MapSource", mapdataList[i].source);
-			e12.tag.attr["datSource"] = to!string(mapdataList[i].datSource);
-			e1 ~= e12;
+		for(int i; i < tileSource.length; i++){
+			Element e1 = tileSource[i];
+			e1.tag.attr["name"] = tld[i].name;
+			e1.tag.attr["tX"] = to!string(tld[i].tX);
+			e1.tag.attr["tY"] = to!string(tld[i].tY);
+			e1.tag.attr["mX"] = to!string(tld[i].mX);
+			e1.tag.attr["mY"] = to!string(tld[i].mY);
+			e1.tag.attr["sX"] = to!string(tld[i].sX);
+			e1.tag.attr["sY"] = to!string(tld[i].sY);
+			e1.tag.attr["subtype"] = tld[i].subtype;
+			e1.tag.attr["priority"] = to!string(tld[i].priority);
+			e1.tag.attr["dataOffset"] = to!string(rawData0.length);
+			rawData0 ~= cast(void[])tld[i].mapping;
+			e1.tag.attr["dataLength"] = to!string(tld[i].mapping.length * wchar.sizeof);
 			doc ~= e1;
 		}
 
-		auto e2 = new Element("Playfield");
-
-		foreach(ObjectData od ; objectdataList){
-			auto e21 = new Element("Object", od.aux);
-			e21.tag.attr["posX"] = to!string(od.posX);
-			e21.tag.attr["posY"] = to!string(od.posY);
-			e21.tag.attr["type"] = od.type;
-
-			e2 ~= e21;
+		for(int i; i < objectSource.length; i++){
+			Element e1 = objectSource[i];
+			e1.tag.attr["name"] = sld[i].name;
+			e1.tag.attr["sX"] = to!string(sld[i].sX);
+			e1.tag.attr["sY"] = to!string(sld[i].sY);
+			e1.tag.attr["subtype"] = sld[i].subtype;
+			e1.tag.attr["priority"] = to!string(sld[i].priority);
+			/*foreach(ObjectPlacement o;sld[i].placement){
+				auto e2 = o.getAuxData();
+				e2.tag.attr["x"] = to!string(o.x);
+				e2.tag.attr["y"] = to!string(o.y);
+				e2.tag.attr["num"] = to!string(o.num);
+				e2.tag.attr["ID"] = o.ID;
+				e1 ~= e2;
+			}*/
+			doc ~= e1;
 		}
-
-		doc ~= e2;
-
-		auto e3 = new Element("Palette", paletteSource);
-		e3.tag.attr["datSource"] = paletteDatSource;
-
-		doc ~= e3;
-
-		std.file.write(filename, doc.toString());
-	}
-
-	private static void loadTilesFromFile(FileCollector fc, int num){
-		Bitmap16Bit[] tileList = loadBitmapFromFile(fc.source);
-		foreach(ushort i; fc.numcollection){
-			//background[num].addTile(tileList[i], fc.IDcollection[i]);
-		}
-	}
-	private static void loadTilesFromDat(FileCollector fc, int num){
-
+		string header = doc.toString();
+		rawData.length = 8;
+		*cast(uint*)rawData.ptr = flags;
+		*cast(int*)(rawData.ptr+4) = header.length;
+		rawData ~= cast(void[])header;
+		rawData ~= rawData0;
+		std.file.write(filename, rawData);
+		rawData0.length = 0;
 	}
 }
 
+/*public enum ExtMapFlags : uint{
+	CompressionMethodNull 	= 	1,
+	CompressionMethodZLIB 	= 	2,
+	LongHeader              =   16,
+	LongFile                =   32
+}*/
+
+public class TileLayerData{
+	wchar[] mapping;
+	string name, subtype;
+	int tX, tY, mX, mY, priority;
+	double sX, sY;
+	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, wchar[] mapping, string name, string subtype = ""){
+		this.tX = tX;
+		this.tY = tY;
+		this.mX = mX;
+		this.mY = mY;
+		this.sX = sX;
+		this.sY = sY;
+		this.priority = priority;
+		this.mapping = mapping;
+		this.name = name;
+		this.subtype = subtype;
+	}
+	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, string name, string subtype = ""){
+		this.tX = tX;
+		this.tY = tY;
+		this.mX = mX;
+		this.mY = mY;
+		this.sX = sX;
+		this.sY = sY;
+		this.priority = priority;
+		//this.mapping = mapping;
+		this.name = name;
+		this.subtype = subtype;
+
+		wchar[] initMapping;
+		initMapping.length = mX*mY;
+		this.mapping = initMapping;
+	}
+	public void writeMapping(int x, int y, wchar tile){
+		mapping[x + (mX * y)] = tile;
+	}
+	public wchar readMapping(int x, int y){
+		return mapping[x + (mX * y)];
+	}
+}
+
+public class SpriteLayerData{
+	string name, subtype;
+	double sX, sY;
+	int priority;
+	ObjectPlacement[] placement;
+	this(string name, double sX, double sY, int priority, string subtype = ""){
+		this.name = name;
+		this.subtype = subtype;
+		this.sX = sX;
+		this.sY = sY;
+		this.priority = priority;
+	}
+}
+
+public class ObjectPlacement{
+	protected Element[] auxObjectData;
+	int x, y, num;
+	string ID;
+	this(int x, int y, int num, string ID){
+		this.x = x;
+		this.y = y;
+		this.num = num;
+		this.ID = ID;
+	}
+
+	void addAuxData(Element[] auxData){
+		auxObjectData = auxData;
+	}
+
+	Element[] getAuxData(){
+		return auxObjectData;
+	}
+}

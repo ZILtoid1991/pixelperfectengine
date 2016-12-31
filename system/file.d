@@ -84,6 +84,7 @@ Bitmap32Bit load32BitBitmapFromXMP(ExtendibleBitmap xmp, string ID){
 
 public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target){
 	target.palette = cast(ubyte[])xmp.getPalette(ID);
+	//writeln(target.palette);
 	/*target.setupPalette(0);
 	int max = (palette.length / 3);
 	for(int i ; i < max ; i++){

@@ -12,7 +12,8 @@ import std.conv;
 
 import graphics.bitmap;
 public import graphics.fontsets;
-import system.etc;
+public import graphics.common;
+//import system.etc;
 
 public class BitmapDrawer
 {
@@ -302,10 +303,10 @@ public class BitmapDrawer
 				/*if(bitmap.readPixel(ix + slice.xa, iy + slice.ya) != brushTransparency)
 				 output.writePixel(x + ix, y + iy, bitmap.readPixel(ix + slice.xa, iy + slice.ya)); */
 				int ix = slice.getXSize / 8;
-				int offsetY = bitmap.getX * (iy + slice.ya);
+				int offsetY = bitmap.getX * (iy + slice.top);
 				int ix4 = slice.getXSize - ix * 8;
 				ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
-				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY + slice.xa), pdest2 = cast(ushort[8]*)(pdest + ((iy + y) * output.getX));
+				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY + slice.left), pdest2 = cast(ushort[8]*)(pdest + ((iy + y) * output.getX));
 				
 				asm{
 					mov		EDI, pdest2[EBP];

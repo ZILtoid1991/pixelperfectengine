@@ -46,7 +46,7 @@ public class Window : ElementContainer{
 		/*if(!fullUpdate){ 
 			this.draw();
 		}*/
-		output.insertBitmap(sender.getPosition().xa,sender.getPosition().ya,sender.output.output);
+		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
 	}
 
 	/*public Bitmap16Bit[wchar] getFontSet(int style){
@@ -132,8 +132,8 @@ public class Window : ElementContainer{
 		//x -= position.xa;
 		//y -= position.ya;
 		foreach(WindowElement e; mouseC){
-			if(e.getPosition().xa < x && e.getPosition().xb > x && e.getPosition().ya < y && e.getPosition().yb > y){
-				e.onClick(x - e.getPosition().xa, y - e.getPosition().ya, state);
+			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
+				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state);
 				return;
 			}
 		}
@@ -141,7 +141,7 @@ public class Window : ElementContainer{
 	}
 	public void passScrollEvent(int wX, int wY, int x, int y){
 		foreach(WindowElement e; scrollC){
-			if(e.getPosition().xa < wX && e.getPosition().xb > wX && e.getPosition().ya < wX && e.getPosition().yb > wY){
+			if(e.getPosition().left < wX && e.getPosition().right > wX && e.getPosition().top < wX && e.getPosition().bottom > wY){
 
 				e.onScroll(x, y, wX, wY);
 				return;
@@ -239,7 +239,12 @@ public class DefaultDialog : Window, ActionListener{
 		}
 	}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
-	public void actionEvent(Event event){}
+	public void actionEvent(Event event){
+		foreach(a; al){
+			//a.actionEvent(source, this.source, type, value, message);
+			a.actionEvent(new Event(event.source, this.source, null, null, null, 0, EventType.CLICK));
+		}
+	}
 }
 
 public class FileDialog : Window, ActionListener{
@@ -251,7 +256,7 @@ public class FileDialog : Window, ActionListener{
 	private TextBox tb;
 	private ListBoxColumn[] columns;
 	private bool save;
-
+	public static const string subsourceID = "filedialog";
 
 
 	public this(wstring title, string source, ActionListener a, string[] filetypes, string startDir, bool save = false, string filename = ""){
@@ -598,9 +603,9 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 
 			for(int i ; i < windows.length ; i++){
 				//writeln(i);
-				if(x >= windows[i].position.xa && x <= windows[i].position.xb && y >= windows[i].position.ya && y <= windows[i].position.yb){
+				if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
 					if(i == 0){
-						windows[0].passMouseEvent(x - windows[0].position.xa, y - windows[0].position.ya, 0);
+						windows[0].passMouseEvent(x - windows[0].position.left, y - windows[0].position.top, 0);
 						if(windows.length !=0){
 							dragEventState = true;
 							dragEventDest = windows[0];
@@ -625,7 +630,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		wX = to!int(wX * xR);
 		wY = to!int(wY * yR);
 		if(windows.length != 0)
-			windows[0].passScrollEvent(wX - windows[0].position.xa, wY - windows[0].position.ya, y, x);
+			windows[0].passScrollEvent(wX - windows[0].position.left, wY - windows[0].position.top, y, x);
 		passScrollEvent(wX,wY,x,y);
 	}
 	public void passScrollEvent(int wX, int wY, int x, int y){
@@ -641,7 +646,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 			windowToMove.position.relMove(relX, relY);
 			spriteLayer.relMoveSprite(whichWindow(windowToMove), relX, relY);
 		}else if(state == SDL_PRESSED && dragEventState){
-			dragEventDest.passMouseEvent(x - dragEventDest.position.xa,y - dragEventDest.position.ya,-1);
+			dragEventDest.passMouseEvent(x - dragEventDest.position.left,y - dragEventDest.position.top,-1);
 		}
 	}
 }

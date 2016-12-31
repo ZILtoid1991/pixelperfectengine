@@ -31,6 +31,7 @@ import system.config;
 import system.advBitArray;
 import sound.sound;
 import editor;
+import extbmp.extbmp;
 
 int main(string[] args)
 {
@@ -42,8 +43,7 @@ int main(string[] args)
 	e.whereTheMagicHappens;
     //MainProgram game = new MainProgram();
 	//testAdvBitArrays(128);
-
-
+	//TileLayerUnittest prg = new TileLayerUnittest();
 	return 0;
 }
 
@@ -76,4 +76,82 @@ void testAdvBitArrays(int l){
 		writeln(shr.toString());
 		writeln(sl.toString());
 	}
+}
+
+class TileLayerUnittest : SystemEventListener, InputListener{
+	bool isRunning, up, down, left, right;
+	OutputWindow output;
+	Raster r;
+	TileLayer t;
+	//Bitmap16Bit[wchar] tiles;
+	InputHandler ih;
+	this(){
+		isRunning = true;
+		ExtendibleBitmap tileSource = new ExtendibleBitmap("tiletest.xmp");
+		t = new TileLayer(32,32, TileLayerRenderingMode.BLITTER);
+		for(int i; i < tileSource.bitmapID.length; i++){
+			string hex = tileSource.bitmapID[i];
+			//writeln(hex[hex.length-4..hex.length]);
+			t.addTile(loadBitmapFromXMP(tileSource, hex), to!wchar(parseHex(hex[hex.length-4..hex.length])));
+		}
+		wchar[] mapping;
+		mapping.length = 256*256;
+		for(int i; i < mapping.length; i++){
+			mapping[i] = to!wchar(uniform(0x0000,0x00AA));
+		}
+		ih = new InputHandler();
+		ih.sel ~= this;
+		ih.il ~= this;
+		ih.kb ~= KeyBinding(4096, SDL_SCANCODE_UP,0, "up", Devicetype.KEYBOARD);
+		ih.kb ~= KeyBinding(4096, SDL_SCANCODE_DOWN,0, "down", Devicetype.KEYBOARD);
+		ih.kb ~= KeyBinding(4096, SDL_SCANCODE_LEFT,0, "left", Devicetype.KEYBOARD);
+		ih.kb ~= KeyBinding(4096, SDL_SCANCODE_RIGHT,0, "right", Devicetype.KEYBOARD);
+
+		t.loadMapping(256,256,mapping);
+
+		output = new OutputWindow("Tile Layer Unittest", 1280,960);
+		r = new Raster(320,240,output);
+		output.setMainRaster(r);
+		loadPaletteFromXMP(tileSource, "default", r);
+		r.addLayer(t);
+		//r.addRefreshListener(output, 0);
+		while(isRunning){
+			r.refresh();
+			ih.test();
+			if(up) t.relScroll(0, 1);
+			if(down) t.relScroll(0, -1);
+			if(left) t.relScroll(1, 0);
+			if(right) t.relScroll(-1, 0);
+			//t.relScroll(1,0);
+		}
+	}
+	override public void onQuit() {
+		isRunning = false;
+	}
+	override public void controllerAdded(uint ID) {
+		
+	}
+	override public void controllerRemoved(uint ID) {
+		
+	}
+	override public void keyPressed(string ID,uint timestamp,uint devicenumber,uint devicetype) {
+		//writeln(ID);
+		switch(ID){
+			case "up": up = true; break;
+			case "down": down = true; break;
+			case "left": left = true; break;
+			case "right": right = true; break;
+			default: break;
+		}
+	}
+	override public void keyReleased(string ID,uint timestamp,uint devicenumber,uint devicetype) {
+		switch(ID){
+			case "up": up = false; break;
+			case "down": down = false; break;
+			case "left": left = false; break;
+			case "right": right = false; break;
+			default: break;
+		}
+	}
+
 }
