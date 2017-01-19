@@ -1,9 +1,15 @@
-﻿module sound.sound;
+﻿/*
+ * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
+ *
+ * Pixel Perfect Engine, sound module
+ */
+
+module PixelPerfectEngine.sound.sound;
 
 import derelict.sdl2.mixer;
 import derelict.sdl2.sdl;
 import std.conv;
-public import system.exc;
+public import PixelPerfectEngine.system.exc;
 
 public class SoundStream{
 	public Mix_Chunk*[int] soundBank;

@@ -1,0 +1,19 @@
+﻿<Properties StartupItem="PixelPerfectEditor\PixelPerfectEditor.dproj">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="PixelPerfectEditor\app.d">
+    <Files>
+      <File FileName="PixelPerfectEditor\editor.d" Line="534" Column="25" />
+      <File FileName="PixelPerfectEditor\converter.d" Line="8" Column="27" />
+      <File FileName="PixelPerfectEditor\converterdialog.d" Line="17" Column="27" />
+      <File FileName="PixelPerfectEditor\app.d" Line="118" Column="28" />
+      <File FileName="PixelPerfectEngine\graphics\bitmap.d" Line="4" Column="27" />
+      <File FileName="PixelPerfectEngine\concrete\elements.d" Line="770" Column="29" />
+      <File FileName="PixelPerfectEngine\graphics\outputScreen.d" Line="11" Column="18" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <AuthorInfo Name="Laszlo Szeremi" Email="laszloszeremi@outlook.com" Copyright="laszl" Company="" Trademark="" />
+</Properties>
