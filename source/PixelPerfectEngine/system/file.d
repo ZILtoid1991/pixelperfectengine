@@ -18,7 +18,6 @@ import PixelPerfectEngine.extbmp.extbmp;
 
 import derelict.sdl2.mixer;
 
-
 /**
  * FILE FORMAT IS DEPRECATED! USE XMP INSTEAD!
  */

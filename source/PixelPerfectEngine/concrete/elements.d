@@ -56,6 +56,7 @@ abstract class WindowElement{
 	private void invokeActionEvent(int type, int value, wstring message = ""){
 		foreach(ActionListener a; al){
 			//a.actionEvent(source, type, value, message);
+			//writeln(a);
 			a.actionEvent(new Event(source, null, null, null, text, value, type));
 		}
 	}
@@ -183,7 +184,7 @@ public class TextBox : WindowElement, TextInputListener{
 		inputHandler.addTextInputListener(source, this);
 	}
 	
-	public void onClick(int offsetX, int offsetY, int type = 0){
+	public override void onClick(int offsetX, int offsetY, int type = 0){
 		//writeln(0);
 		if(!enableEdit && type == 0){
 			invokeActionEvent(EventType.READYFORTEXTINPUT, 0);
@@ -276,13 +277,13 @@ public class TextBox : WindowElement, TextInputListener{
 	}
 
 
-	public void textInputKeyEvent(uint timestamp, uint windowID, InputKey key){
-		if(key == InputKey.ESCAPE || key == InputKey.ENTER){
+	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
+		if(key == TextInputKey.ESCAPE || key == TextInputKey.ENTER){
 			enableEdit = false;
 			inputHandler.stopTextInput(source);
 			draw();
 			invokeActionEvent(EventType.TEXTINPUT, 0, text);
-		}else if(key == InputKey.BACKSPACE){
+		}else if(key == TextInputKey.BACKSPACE){
 			if(pos > 0){
 				deleteCharacter(pos);
 				pos--;
@@ -295,26 +296,26 @@ public class TextBox : WindowElement, TextInputListener{
 			 
 			 }
 			 }*/
-		}else if(key == InputKey.DELETE){
+		}else if(key == TextInputKey.DELETE){
 			deleteCharacter(pos + 1);
 			draw();
-		}else if(key == InputKey.CURSORLEFT){
+		}else if(key == TextInputKey.CURSORLEFT){
 			if(pos > 0){
 				--pos;
 				draw();
 			}
-		}else if(key == InputKey.CURSORRIGHT){
+		}else if(key == TextInputKey.CURSORRIGHT){
 			if(pos < text.length){
 				++pos;
 				draw();
 			}
-		}else if(key == InputKey.INSERT){
+		}else if(key == TextInputKey.INSERT){
 			insert = !insert;
 			draw();
-		}else if(key == InputKey.HOME){
+		}else if(key == TextInputKey.HOME){
 			pos = 0;
 			draw();
-		}else if(key == InputKey.END){
+		}else if(key == TextInputKey.END){
 			pos = text.length;
 			draw();
 		}
@@ -370,12 +371,10 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		this.hSlider.elementContainer = this;
 		sliderY = hSlider.getY();*/
 	}
-	
-	public void actionEvent(string source, int type, int value, wstring message){
+	public void actionEvent(Event event){
+
 		draw();
 	}
-	public void actionEvent(string source, string subsource, int type, int value, wstring message){}
-	public void actionEvent(Event event){}
 	public void getFocus(WindowElement sender){}
 	public void dropFocus(WindowElement sender){}
 	public void drawUpdate(WindowElement sender){
@@ -446,9 +445,6 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 	public override void draw(){
 		fullRedraw = true;
 
-
-
-
 		int areaX, areaY;
 
 		vposition = vSlider.getSliderPosition();
@@ -457,9 +453,6 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 
 		hposition = hSlider.getSliderPosition();
 		areaY = sizeY - hSlider.getPosition().getYSize;
-
-		//writeln(vposition, hposition);
-
 
 		output.drawFilledRectangle(0, position.getXSize(), 0, position.getYSize(),getStyleSheet().getColor("window"));
 		output.drawRectangle(0, position.getXSize() - 1, 0, position.getYSize() - 1,getStyleSheet().getColor("windowascent"));
@@ -521,7 +514,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 			}
 		}
 	}
-	public void onScroll(int x, int y, int wX, int wY){
+	public override void onScroll(int x, int y, int wX, int wY){
 
 		vSlider.onScroll(x,y,0,0);
 		hSlider.onScroll(x,y,0,0);
@@ -665,9 +658,11 @@ public class VSlider : Slider{
 	public override void onClick(int offsetX, int offsetY, int type = 0){
 		if(offsetY <= getAvailableStyleSheet.getImage("upArrowA").getY()){
 			if(value != 0) value--;
+
 		}
 		else if(sizeY-getAvailableStyleSheet.getImage("upArrowA").getY() <= offsetY){
 			if(value < maxValue - barLength) value++;
+
 		}
 		else{
 			offsetY -= getAvailableStyleSheet.getImage("upArrowA").getY();
@@ -676,7 +671,9 @@ public class VSlider : Slider{
 			//value = ((sizeY - (elementContainer.getStyleBrush(brush[1]).getY() * 2)) - offsetY) * (value / maxValue);
 			if(v < maxValue - barLength) value = v;
 			else value = maxValue - barLength;
+
 		}
+
 		invokeActionEvent(EventType.SLIDER, value);
 		draw();
 
@@ -690,6 +687,7 @@ public class VSlider : Slider{
 		}
 		invokeActionEvent(EventType.SLIDER, value);
 		draw();
+
 	}
 }
 
@@ -758,48 +756,153 @@ public class HSlider : Slider{
 	}
 }
 
-/**
- * To create drop-down lists, menu bars, etc.
- */
-public class PopUpMenu: PopUpElement{
-	private wstring[] texts;
-	private string[] sources;
-	private string subsource;
-	private uint[int] hotkeyCodes;
-	private Bitmap16Bit[int] icons;
+public class MenuBar: WindowElement{
+	public this(){
+
+	}
+	public override void draw() {
+
+	}
+
+}
+
+public abstract class PopUpElement{
+	public ActionListener[] al;
 	public BitmapDrawer output;
-	private ElementContainer elementContainer;
 	public static InputHandler inputhandler;
+	private Coordinate coordinates;
+	public StyleSheet customStyle;
+	private ElementContainer elementContainer;
+	private string source;
 
-	public this(int columnheight, string subsource, string[] sources, wstring[] texts, uint[int] hotkeyCodes = null){
+	public abstract void draw();
 
-	}
-
-	/**
-	 * Use this if you want icons in your list.
-	 * All the icons have to be the same exact size, otherwise it might cause exceptions.
-	 */
-	public this(int columnheight, string subsource, string[] sources, wstring[] texts, Bitmap16Bit[int] icons, uint[int] hotkeyCodes = null){
-		
-	}
-
-	public void onClick(int x, int y){
-		
-	}
-	public void onKey(uint keycode){
+	public void onClick(int offsetX, int offsetY, int type = 0){
 		
 	}
 	public void onScroll(int x, int y, int wX, int wY){
 		
 	}
-	public void addPopUpHandler(PopUpHandler p){}
+	public void onMouseMovement(int x, int y){
+		
+	}
+	public void addParent(PopUpHandler p){
+
+	}
+	public void addElementContainer(ElementContainer e){
+		elementContainer = e;
+	}
+	protected StyleSheet getStyleSheet(){
+		if(customStyle !is null){
+			return customStyle;
+		}
+		return elementContainer.getStyleSheet();
+	}
+	private void invokeActionEvent(Event e){
+		foreach(ActionListener a; al){
+			//a.actionEvent(source, type, value, message);
+			//writeln(a);
+			a.actionEvent(e);
+		}
+	}
 }
-public interface PopUpElement{
-	public void onClick(int x, int y); 
-	public void addPopUpHandler(PopUpHandler p);
+
+/**
+ * To create drop-down lists, menu bars, etc.
+ */
+public class PopUpMenu : PopUpElement{
+	//private wstring[] texts;
+	//private string[] sources;
+	
+	//private uint[int] hotkeyCodes;
+	//private Bitmap16Bit[int] icons;
+	private int minwidth, width, height;
+	PopUpMenuElement[] elements;
+
+	public this(PopUpMenuElement[] elements, string source){
+		this.elements = elements;
+		this.source = source;
+		
+	}
+	public override void draw(){
+		StyleSheet ss = getStyleSheet();
+		if(output is null){
+			
+			minwidth = (ss.drawParameters["PopUpMenuVertPadding"] * 2) + ss.drawParameters["PopUpMenuMinTextSpace"];
+			width = minwidth;
+			foreach(e; elements){
+				int newwidth = ss.getFontset("default").getTextLength(e.text~e.secondaryText);
+				if(newwidth > width){
+					width = newwidth;
+				}
+				height += ss.getFontset("default").getSize() + (ss.drawParameters["PopUpMenuHorizPadding"] * 2);
+			}
+			output = new BitmapDrawer(width, height + 2);
+			coordinates = Coordinate(0, 0, width, height);
+		}
+		output.drawFilledRectangle(0,0,width - 1,height - 1,ss.getColor("windowinactive"));
+		int y = 1;
+		foreach(e; elements){
+			if(e.secondaryText !is null){
+				output.drawColorText(width - ss.drawParameters["PopUpMenuHorizPadding"] - 1, y, e.secondaryText, ss.getFontset("default"), ss.getColor("PopUpMenuSecondaryTextColor"));
+			}
+			output.drawText(ss.drawParameters["PopUpMenuHorizPadding"], y, e.text, ss.getFontset("default"), 1);
+			y += ss.getFontset("default").getSize() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
+		}
+
+		output.drawRectangle(0,0,width - 1,height - 1,ss.getColor("windowascent"));
+		
+	}
+	public override void onClick(int offsetX, int offsetY, int type = 0){
+		offsetY /= height / elements.length;
+		if(elements[offsetY].source == "\\submenu\\"){
+		}else{
+			invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
+		}
+	}
 }
-public interface PopUpHandler{
+
+public class PopUpMenuElement{
+	public string source;
+	public wstring text, secondaryText;
+	private Bitmap16Bit icon;
+	private PopUpMenuElement[] subElements;
+	private ushort keymod;
+	private int keycode;
+
+	public this(string source, wstring text, wstring secondaryText = null, Bitmap16Bit icon = null){
+
+	}
+	public Bitmap16Bit getIcon(){
+		return icon;
+	}
+	public void setIcon(Bitmap16Bit icon){
+		this.icon = icon;
+	}
+	public PopUpMenuElement[] getSubElements(){
+		return subElements;
+	}
+	public PopUpMenuElement opIndex(size_t i){
+		return subElements[i];
+	}
+	public PopUpMenuElement opIndexAssign(PopUpMenuElement value, size_t i){
+		subElements[i] = value;
+		return value;
+	}
+	public size_t getLength(){
+		return subElements.length;
+	}
+	public void setLenth(int l){
+		subElements.length = l;
+	}
+
+}
+
+public interface PopUpHandler : ElementContainer{
 	public void addPopUpElement(PopUpElement p);
+	public void addPopUpElement(PopUpElement p, Coordinate c);
+	//public StyleSheet getDefaultStyleSheet();
+
 }
 
 /*public interface IElement{
@@ -857,8 +960,8 @@ public interface ElementContainer{
 	public StyleSheet getStyleSheet();
 	//public Bitmap16Bit[wchar] getFontSet(int style);
 	public void drawUpdate(WindowElement sender);
-	public void getFocus(WindowElement sender);
-	public void dropFocus(WindowElement sender);
+	//public void getFocus(WindowElement sender);
+	//public void dropFocus(WindowElement sender);
 }
 
 public interface Focusable{
@@ -874,5 +977,6 @@ public enum EventType{
 	TEXTBOXSELECT		= 3,
 	CHECKBOX			= 4,
 	RADIOBUTTON			= 5,
-	FILEDIALOGEVENT		= 6
+	FILEDIALOGEVENT		= 6,
+
 }

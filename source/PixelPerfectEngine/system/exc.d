@@ -19,6 +19,15 @@ public class GraphicsInitializationException : Exception{
 
 }
 
+public class VideoModeException : Exception{
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+		super(msg, file, line, next);
+	}
+
+}
+
+//public class VideoException
+
 public class FileAccessException : Exception{
 	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
 		super(msg, file, line, next);

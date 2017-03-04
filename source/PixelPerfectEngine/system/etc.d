@@ -102,3 +102,15 @@ int parseHex(string s){
 	}
 	return result;
 }
+string[] csvParser(string input, char separator = ','){
+	string[] result;
+	int j;
+	for(int i ; i < input.length ; i++){
+		if(input[i] == separator){
+			result ~= input[j..i];
+			j = i + 1;
+		}
+	}
+
+	return result;
+}

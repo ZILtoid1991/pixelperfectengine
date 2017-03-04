@@ -38,10 +38,16 @@ int main(string[] args)
 
     DerelictSDL2.load();
 	DerelictFI.load();
-
+	
 	Editor e = new Editor(args);
+	/*ConfigurationProfile cfg = new ConfigurationProfile();
+	cfg.autodetectVideoModes(0);
+	writeln (cfg.getNumOfVideoModes());
+	for(int i = cfg.getNumOfVideoModes() - 1 ; i >= 0 ; i--){
+		writeln(cfg.videoModeToString(i));
+	}*/
 	e.whereTheMagicHappens;
-    //MainProgram game = new MainProgram();
+    
 	//testAdvBitArrays(128);
 	//TileLayerUnittest prg = new TileLayerUnittest();
 	return 0;
@@ -94,7 +100,7 @@ class TileLayerUnittest : SystemEventListener, InputListener{
 	this(){
 		isRunning = true;
 		ExtendibleBitmap tileSource = new ExtendibleBitmap("tiletest.xmp");
-		t = new TileLayer(32,32, TileLayerRenderingMode.BLITTER);
+		t = new TileLayer(32,32, LayerRenderingMode.ALPHA_BLENDING);
 		for(int i; i < tileSource.bitmapID.length; i++){
 			string hex = tileSource.bitmapID[i];
 			//writeln(hex[hex.length-4..hex.length]);
@@ -119,7 +125,8 @@ class TileLayerUnittest : SystemEventListener, InputListener{
 		r = new Raster(320,240,output);
 		output.setMainRaster(r);
 		loadPaletteFromXMP(tileSource, "default", r);
-		r.addLayer(t);
+		r.addLayer(t, 0);
+		r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);
 		while(isRunning){
 			r.refresh();

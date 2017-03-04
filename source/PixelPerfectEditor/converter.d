@@ -122,6 +122,7 @@ class NamingConvention{
 }
 
 public void importDirectlyToXMP(string path, ExtendibleBitmap target, ImportData id){
+	import std.string;
 	FREE_IMAGE_FORMAT format;
 	switch(extension(path)){
 		case ".png": format = FIF_PNG; break;
@@ -230,6 +231,7 @@ public void importDirectlyToXMP(string path, ExtendibleBitmap target, ImportData
 }
 
 public void importPaletteDirectlyToXMP(string path, ExtendibleBitmap target, string paletteID, ushort offset = 0){
+	import std.string;
 	FREE_IMAGE_FORMAT format;
 	switch(extension(path)){
 		case ".png": format = FIF_PNG; break;

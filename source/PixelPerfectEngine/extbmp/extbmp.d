@@ -11,6 +11,7 @@ import std.bitmanip;
 import std.stdio;
 import std.zlib;
 import std.conv;
+import std.file;
 
 public import PixelPerfectEngine.extbmp.animation;
 

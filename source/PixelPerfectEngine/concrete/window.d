@@ -19,6 +19,7 @@ import std.algorithm.mutation;
 import std.stdio;
 import std.conv;
 import std.file;
+import std.path;
 import std.datetime;
 
 public class Window : ElementContainer{
@@ -115,7 +116,7 @@ public class Window : ElementContainer{
 	public void passMouseEvent(int x, int y, int state = 0){
 		//writeln(x, ",", y);
 		if(getStyleSheet.getImage("closeButtonA").getX() > x && getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
-			parent.closeWindow(this);
+			close();
 			return;
 		}else if(getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
 			/*if(state == 0 && !move){
@@ -138,6 +139,9 @@ public class Window : ElementContainer{
 			}
 		}
 
+	}
+	public void close(){
+		parent.closeWindow(this);
 	}
 	public void passScrollEvent(int wX, int wY, int x, int y){
 		foreach(WindowElement e; scrollC){
@@ -195,16 +199,18 @@ public class TextInputDialog : Window, ActionListener{
 			foreach(a; al){
 				a.actionEvent(new Event(this.source, "TextInputDialog", null, null, textInput.getText(), 0, EventType.TEXTINPUT));
 			}
-			parent.closeWindow(this);
+			close();
 		}
 	}
 }
-
+/**
+ * Default dialog for simple messageboxes.
+ */
 public class DefaultDialog : Window, ActionListener{
 	public ActionListener[] al;
 	private string source;
 
-	public this(Coordinate size, string source, wstring title, wstring message, wstring[] options = ["Ok"]){
+	public this(Coordinate size, string source, wstring title, wstring[] message, wstring[] options = ["Ok"], string[] values = ["close"]){
 		this(size, title);
 		//generate text
 		//NOTE: currently only works with one line texts, later on multi-line texts will be added
@@ -212,7 +218,7 @@ public class DefaultDialog : Window, ActionListener{
 		this.source = source;
 		int x1 , x2;
 		//writeln(x1,',',size.getXSize - x1);
-		Label msg = new Label(message, "null", Coordinate(8, 20, size.getXSize()-8, 40));
+		Label msg = new Label(message[0], "null", Coordinate(8, 20, size.getXSize()-8, 40));
 		addElement(msg, EventProperties.MOUSE);
 
 		//generate buttons
@@ -221,27 +227,26 @@ public class DefaultDialog : Window, ActionListener{
 		Button[] buttons;
 		for(int i; i < options.length; i++){
 			x2 = x1 - ((options[i].length + 2) * 8);
-			buttons ~= new Button(options[i], to!string(options[i]), Coordinate(x2, 40, x1, 60));
+			buttons ~= new Button(options[i], values[i], Coordinate(x2, 40, x1, 60));
 			buttons[i].al ~= this;
 			addElement(buttons[i], EventProperties.MOUSE);
 			x1 = x2;
 		}
 	}
 
+	/*public this(string source, wstring title, wstring[] message, wstring[] options = ["Ok"], string[] values = ["ok"]){
+		this(size, title);
+	}*/
+
 	public this(Coordinate size, wstring title){
 		super(size, title);
 	}
-
-	public void actionEvent(string source, int type, int value, wstring message){
-		foreach(a; al){
-			//a.actionEvent(source, this.source, type, value, message);
-			a.actionEvent(new Event(source, this.source, null, null, null, 0, EventType.CLICK));
-		}
-	}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
 	public void actionEvent(Event event){
 		foreach(a; al){
 			//a.actionEvent(source, this.source, type, value, message);
+			if(event.source == "close"){
+				close();
+			}
 			a.actionEvent(new Event(event.source, this.source, null, null, null, 0, EventType.CLICK));
 		}
 	}
@@ -334,7 +339,7 @@ public class FileDialog : Window, ActionListener{
 					columns[0].elements ~= to!wstring(getFilenameFromPath(de.name, true));
 					columns[1].elements ~= to!wstring(ft);
 					columns[2].elements ~= formatDate(de.timeLastModified);
-			}
+				}
 			}
 		}
 
@@ -359,14 +364,19 @@ public class FileDialog : Window, ActionListener{
 	}
 
 	private void detectDrive(){
-		driveList.length = 0;
-		for(char c = 'A'; c <='Z'; c++){
-			string s;
-			s ~= c;
-			s ~= ":\x5c";
-			if(exists(s)){
-				driveList ~= (s);
+		version(Windows){
+			driveList.length = 0;
+			for(char c = 'A'; c <='Z'; c++){
+				string s;
+				s ~= c;
+				s ~= ":\x5c";
+				if(exists(s)){
+					driveList ~= (s);
+				}
 			}
+		}
+		else{
+
 		}
 		//writeln(driveList);
 	}
@@ -375,7 +385,7 @@ public class FileDialog : Window, ActionListener{
 		int n, m = p.length;
 		string s;
 		for(int i ; i < p.length ; i++){
-			if(p[i] == '\x5c'){
+			if(std.path.isDirSeparator(p[i])){
 				n = i;
 			}
 		}
@@ -397,7 +407,7 @@ public class FileDialog : Window, ActionListener{
 	private void up(){
 		int n;
 		for(int i ; i < directory.length ; i++){
-			if(directory[i] == '\x5c'){
+			if(std.path.isDirSeparator(directory[i])){
 				n = i;
 			}
 		}
@@ -412,18 +422,23 @@ public class FileDialog : Window, ActionListener{
 	}
 
 	private void changeDrive(){
-		pathList.length = 0;
-		columns[0].elements.length = 0;
-		columns[1].elements.length = 0;
-		columns[2].elements.length = 0;
-		foreach(string drive; driveList){
-			pathList ~= drive;
-			columns[0].elements ~= to!wstring(drive);
-			columns[1].elements ~= "<DRV>";
-			columns[2].elements ~= "N/A";
+		version(Windows){
+			pathList.length = 0;
+			columns[0].elements.length = 0;
+			columns[1].elements.length = 0;
+			columns[2].elements.length = 0;
+			foreach(string drive; driveList){
+				pathList ~= drive;
+				columns[0].elements ~= to!wstring(drive);
+				columns[1].elements ~= "<DRV>";
+				columns[2].elements ~= "N/A";
+			}
+			lb.updateColumns(columns);
+			lb.draw();
+		}else version(Posix){
+			directory = "/dev/";
+			spanDir();
 		}
-		lb.updateColumns(columns);
-		lb.draw();
 	}
 
 	private void fileEvent(){
@@ -434,26 +449,12 @@ public class FileDialog : Window, ActionListener{
 		parent.closeWindow(this);
 	}
 
-	public void actionEvent(string source, int type, int value, wstring message){
-		/*if(source == "lb"){
-			//writeln(value);
-
-		}else if(source == "up"){
-			up();
-		}else if(source == "drv"){
-			changeDrive();
-		}else if(source == "ok"){
-			fileEvent();
-		}else if(source == "close"){
-			parent.closeWindow(this);
-		}*/
-	}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
 	public void actionEvent(Event event){
 		writeln(event.source);
 		switch(event.source){
 			case "lb":
 				try{
+					if(pathList.length == 0) return;
 					if(isDir(pathList[event.value])){
 						directory = pathList[event.value];
 						spanDir();
@@ -465,7 +466,8 @@ public class FileDialog : Window, ActionListener{
 						tb.setText(to!wstring(filename));
 					}
 				}catch(Exception e){
-					writeln(e.msg);
+					DefaultDialog d = new DefaultDialog(Coordinate(10,10,256,80),"null",to!wstring("Error!"), PixelPerfectEngine.system.etc.stringArrayConv([e.msg]));
+					parent.addWindow(d);
 				}
 				break;
 			case "up": up(); break;
@@ -477,8 +479,10 @@ public class FileDialog : Window, ActionListener{
 	}
 }
 
-public class WindowHandler : InputListener, MouseListener, IWindowHandler{
+public class WindowHandler : InputListener, MouseListener, IWindowHandler, PopUpHandler{
 	private Window[] windows;
+	private PopUpElement[] popUpElements;
+	private int numOfPopUpElements;
 	private int[] priorities;
 	public int screenX, screenY, rasterX, rasterY, moveX, moveY;
 	//public Bitmap16Bit[wchar] basicFont, altFont, alarmFont;
@@ -649,6 +653,21 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 			dragEventDest.passMouseEvent(x - dragEventDest.position.left,y - dragEventDest.position.top,-1);
 		}
 	}
+	public void addPopUpElement(PopUpElement p){
+		popUpElements ~= p;
+		p.addParent(this);
+		p.draw;
+		numOfPopUpElements--;
+		
+	}
+	public void addPopUpElement(PopUpElement p, Coordinate c){
+	}
+	public StyleSheet getDefaultStyleSheet(){
+		return defaultStyle;
+	}
+	public void drawUpdate(WindowElement sender){}
+	public void getFocus(WindowElement sender){}
+	public void dropFocus(WindowElement sender){}
 }
 
 public interface IWindowHandler{

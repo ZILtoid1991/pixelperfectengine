@@ -215,7 +215,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		}
 	}
 
-	public StyleSheet getStyleSheet(){
+	public override StyleSheet getStyleSheet(){
 		return defaultStyle;
 	}
 
@@ -287,11 +287,10 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	/*public Bitmap16Bit getStyleBrush(int style){
 		return styleBrush[style];
 	}*/
-	public void drawUpdate(WindowElement sender){
+	public override void drawUpdate(WindowElement sender){
 		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
 	}
-	public void getFocus(WindowElement sender){}
-	public void dropFocus(WindowElement sender){}
+	
 	public override void passMouseEvent(int x, int y, int state = 0){
 		foreach(WindowElement e; mouseC){
 			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
@@ -403,7 +402,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 	}
 	public this(string[] args){
 
-		windowing = new SpriteLayer();
+		windowing = new SpriteLayer(LayerRenderingMode.COPY);
 		bitmapPreview = new SpriteLayer32Bit();
 
 		wh = new EditorWindowHandler(1280,960,640,480,windowing);
@@ -480,8 +479,8 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 
 		rasters ~= new Raster(640, 480, ow[0]);
 		ow[0].setMainRaster(rasters[0]);
-		rasters[0].addLayer(windowing);
-		rasters[0].addLayer(bitmapPreview);
+		rasters[0].addLayer(windowing, 0);
+		rasters[0].addLayer(bitmapPreview, 1);
 		rasters[0].setupPalette(512);
 		//loadPaletteFromFile("VDPeditUI0.pal", guiR);
 		//load24bitPaletteFromFile("VDPeditUI0.pal", rasters[0]);
@@ -497,7 +496,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		framecounter[2]++;
 		framecounter[3] += framecounter[1] - framecounter[0];
 		if(framecounter[3] >= 1000){
-			//writeln(framecounter[2]);
+			writeln(framecounter[2]);
 			framecounter[4] = framecounter[2];
 			framecounter[2] = 0;
 			framecounter[3] = 0;
@@ -513,16 +512,17 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 			if(rasters.length == 2){
 				rasters[1].refresh();
 			}
-			rudamentaryFrameCounter();
+			//rudamentaryFrameCounter();
 			//onexit = true;
 		}
 	}
 	public void onExit(){
 
-			exitDialog=true;
-			DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","U WOT M8?", "Are you fucking serious?",["Yes","No","Pls save"]);
-			dd.al ~= this;
-			wh.addWindow(dd);
+		exitDialog=true;
+		DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","U WOT M8?", ["Are you fucking serious?"],["Yes","No","Pls save"],["ok","no","save"]);
+
+		dd.al ~= this;
+		wh.addWindow(dd);
 
 	}
 	public void newDocument(){
@@ -555,7 +555,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 				TileLayer t = new TileLayer(tX, tY);
 				t.loadMapping(mX,mY,md.mapping);
 				backgroundLayers ~= t;
-				rasters[1].addLayer(t);
+				rasters[1].addLayer(t, 0);
 				break;
 			default: break;
 		}

@@ -111,14 +111,14 @@ public class ExtendibleMap{
 		//writeln(filename);
 		try{
 			rawData = std.file.read(filename);
-			flags = *cast(uint*)rawData.ptr;
-			headerLenght = *cast(int*)(rawData.ptr + 4);
+			//flags = *cast(uint*)rawData.ptr;
+			//headerLenght = *cast(int*)(rawData.ptr + 4);
 
 			headerLoad();
 
-			if(rawData.length > 8 + headerLenght){
+			/*if(rawData.length > 8 + headerLenght){
 				rawData0 = rawData[8 + headerLenght..rawData.length];
-			}
+			}*/
 			rawData.length = 0;
 
 		}catch(Exception e){
@@ -127,7 +127,7 @@ public class ExtendibleMap{
 	}
 	//private void removeElement/(
 	private void headerLoad(){
-		string header = cast(string)rawData[8..8 + headerLenght];
+		string header = cast(string)rawData;
 		Document d = new Document(header);
 		foreach(Element e1; d.elements){
 			switch(e1.tag.name){
@@ -138,11 +138,21 @@ public class ExtendibleMap{
 					}
 					break;
 				case "TileLayer":
+					string s;
+					foreach(Item pi ; e1.items){
+						s = pi.toString();
+						if(s.length > 4){
+							if(s[0..6] == "<?map "){
+								s = s[6..(s.length-2)];
+							}
+						}
+					}
 					int from = 8 + headerLenght + to!int(e1.tag.attr["dataOffset"]), dataLength = to!int(e1.tag.attr["dataLength"]);
 					tld ~= new TileLayerData(to!int(e1.tag.attr["tX"]), to!int(e1.tag.attr["tY"]), 
 						to!int(e1.tag.attr["mX"]), to!int(e1.tag.attr["mY"]), to!double(e1.tag.attr["sX"]), to!double(e1.tag.attr["sY"]),
-						to!int(e1.tag.attr["priority"]), cast(wchar[])rawData[from..(from+dataLength)], e1.tag.attr["name"], e1.tag.attr.get("subType",""));
+						to!int(e1.tag.attr["priority"]), TileLayerData.getMapdataFromString(s), e1.tag.attr["name"], e1.tag.attr.get("subType",""));
 					tileSource ~= e1;
+					
 					break;
 				case "SpriteLayer":
 					auto ea = new Element("SpriteLayer");
@@ -186,10 +196,12 @@ public class ExtendibleMap{
 			e1.tag.attr["sY"] = to!string(tld[i].sY);
 			e1.tag.attr["subtype"] = tld[i].subtype;
 			e1.tag.attr["priority"] = to!string(tld[i].priority);
-			e1.tag.attr["dataOffset"] = to!string(rawData0.length);
-			rawData0 ~= cast(void[])tld[i].mapping;
-			e1.tag.attr["dataLength"] = to!string(tld[i].mapping.length * wchar.sizeof);
+			//e1.tag.attr["dataOffset"] = to!string(rawData0.length);
+			//rawData0 ~= cast(void[])tld[i].mapping;
+			//e1.tag.attr["dataLength"] = to!string(tld[i].mapping.length * wchar.sizeof);
 			doc ~= e1;
+			e1.items ~= new ProcessingInstruction("map " ~ tld[i].getMapdataForSaving());
+
 		}
 
 		for(int i; i < objectSource.length; i++){
@@ -210,13 +222,13 @@ public class ExtendibleMap{
 			doc ~= e1;
 		}
 		string header = doc.toString();
-		rawData.length = 8;
-		*cast(uint*)rawData.ptr = flags;
-		*cast(int*)(rawData.ptr+4) = header.length;
+		//rawData.length = 8;
+		//*cast(uint*)rawData.ptr = flags;
+		//*cast(int*)(rawData.ptr+4) = header.length;
 		rawData ~= cast(void[])header;
-		rawData ~= rawData0;
+		//rawData ~= rawData0;
 		std.file.write(filename, rawData);
-		rawData0.length = 0;
+		//rawData0.length = 0;
 	}
 }
 
@@ -232,6 +244,12 @@ public class TileLayerData{
 	string name, subtype;
 	int tX, tY, mX, mY, priority;
 	double sX, sY;
+	static const string[dchar] translateTable;
+	static const char[string] detranslateTable;
+	static this(){
+		translateTable = ['?' : "?_"];
+		detranslateTable = ["?_" : '?'];
+	}
 	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, wchar[] mapping, string name, string subtype = ""){
 		this.tX = tX;
 		this.tY = tY;
@@ -265,6 +283,15 @@ public class TileLayerData{
 	}
 	public wchar readMapping(int x, int y){
 		return mapping[x + (mX * y)];
+	}
+	public string getMapdataForSaving(){
+		import std.string;
+		string result = cast(string)(cast(void[])(mapping));
+		return translate(result, translateTable);
+	}
+	public static wchar[] getMapdataFromString(string input){
+		import std.array;
+		return cast(wchar[])(cast(void[])(replace(input, "?_", "?")));
 	}
 }
 

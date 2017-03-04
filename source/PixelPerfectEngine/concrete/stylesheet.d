@@ -18,6 +18,7 @@ public class StyleSheet{
 	private Fontset[string] font;
 	private ushort[string] color;
 	private Bitmap16Bit[string] images;		///For icons, pattern fills, etc...
+	public int[string] drawParameters;
 
 	/**
 	 * Creates a default stylesheet. Only uses the first 7 colors (0-6 or 0x0000-0x0006).
@@ -30,7 +31,7 @@ public class StyleSheet{
 		color["windowdescent"] = 0x0004;
 		color["windowinactive"] = 0x0005;
 		color["selection"] = 0x0006;
-		/*color["red"] = 0x0006;
+		color["red"] = 0x0006;
 		color["darkred"] = 0x0007;
 		color["green"] = 0x0008;
 		color["darkgreen"] = 0x0009;
@@ -40,7 +41,12 @@ public class StyleSheet{
 		color["orange"] = 0x000D;
 		color["grey"] = 0x000E;
 		color["black"] = 0x000F;
-		color["white"] = 0x0000;*/
+		color["white"] = 0x0001;
+		color["PopUpMenuSecondaryTextColor"] = 0x000D;
+
+		drawParameters["PopUpMenuHorizPadding"] = 4;
+		drawParameters["PopUpMenuVertPadding"] = 1;
+		drawParameters["PopUpMenuMinTextSpace"] = 8;
 	}
 	public void addFontset(Fontset f, string style){
 		font[style] = f;

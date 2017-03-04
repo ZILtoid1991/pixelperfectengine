@@ -12,6 +12,8 @@ import derelict.sdl2.sdl;
 //public import graphics.color;
 import std.conv;
 import std.stdio;
+import std.algorithm.sorting;
+import std.algorithm.mutation;
 
 //Used to invoke the blitting when the raster finished its work.
 public interface RefreshListener{
@@ -30,13 +32,9 @@ public class Raster : IRaster{
 	public SDL_Texture*[] frameBuffer;
 	public void*[] fbData;
 	public int[] fbPitch;
-    //IMPORTANT: Color 0 is used as a default and writes it to the raster if it can't find a layer with non-transparent pixel at a given position
-    //public Color[ushort] palette;
-	//private ubyte[ushort] colorR;
-	//private ubyte[ushort] colorG;
-	//private ubyte[ushort] colorB;
-	public ubyte[] palette; //FORMAT ARGB
-    private Layer[] layerList;
+    public ubyte[] palette; //FORMAT ARGB
+    private Layer[int] layerList;
+	private int[] layerPriorityHandler;
     private bool r;
 	private int[2] doubleBufferRegisters;
     private RefreshListener[] rL;
@@ -87,30 +85,39 @@ public class Raster : IRaster{
 	}
 
 	public void editColor(ushort c, ubyte r, ubyte g, ubyte b, ubyte a = 255){
-		palette[c*3] = a;
-		palette[(c*3)+1] = r;
-		palette[(c*3)+2] = g;
-		palette[(c*3)+3] = b;
+		palette[c*4] = a;
+		palette[(c*4)+1] = r;
+		palette[(c*4)+2] = g;
+		palette[(c*4)+3] = b;
 	}
 	//Sets the number of colors.
 	public void setupPalette(int i){
-		palette.length = i * 3;
+		palette.length = i * 4;
 	}
-
-	/*public void clearFramebuffer(){
-		frameBuffer.destroy();
-	}*/
-    //Replaces the layer at the given number.
+    ///Replaces the layer at the given number.
     public void replaceLayer(Layer l, int i){
 		l.setRasterizer(rX, rY);
         layerList[i] = l;
     }
-    //Adds a layer at the highest available priority. 0 is highest.
-    public void addLayer(Layer l){
+    ///Adds a layer at the given priority.
+    public void addLayer(Layer l, int i){
 		l.setRasterizer(rX, rY);
-        layerList ~= l;
+        layerList[i] = l;
+		layerPriorityHandler ~= i;
+		layerPriorityHandler.sort();
     }
-    
+	public void removeLayer(int n){
+		layerList.remove(n);
+		int[] newlayerPriorityHandler;
+		for(int i; i < layerPriorityHandler.length; i++){
+			//writeln(0);
+			if(layerPriorityHandler[i] != n){
+				newlayerPriorityHandler ~= layerPriorityHandler[i];
+
+			}
+		}
+		layerPriorityHandler = newlayerPriorityHandler;
+	}
     public void refresh(){
 
         r = true;
@@ -122,22 +129,13 @@ public class Raster : IRaster{
 			doubleBufferRegisters[0] = 0;
 			doubleBufferRegisters[1] = 1;
 		}
-		//SDL_LockSurface(frameBuffer[doubleBufferRegisters[0]]);
 
 		SDL_LockTexture(frameBuffer[doubleBufferRegisters[0]], null, &fbData[doubleBufferRegisters[0]], &fbPitch[doubleBufferRegisters[0]]);
-		//SDL_SetSurfaceRLE(frameBuffer[doubleBufferRegisters[0]], 1);
 
-		for(int i ; i < layerList.length ; i++){
-			layerList[i].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette, null);
+		for(int i ; i < layerPriorityHandler.length ; i++){
+			layerList[layerPriorityHandler[i]].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette.ptr, null);
 		}
         
-		//writeToWorkpad(frameBuffer[doubleBufferRegisters[1]]);
-
-
-		//frameBuffer[doubleBufferRegisters[1]] = frameBuffer[doubleBufferRegisters[0]];
-		
-		//SDL_SetSurfaceRLE(frameBuffer[doubleBufferRegisters[0]], 0);
-		//SDL_UnlockSurface(frameBuffer[doubleBufferRegisters[0]]);
 		SDL_UnlockTexture(frameBuffer[doubleBufferRegisters[0]]);
         r = false;
 

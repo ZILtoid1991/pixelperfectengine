@@ -111,7 +111,7 @@ public class AdvancedBitArray{
 		}else static assert(0, "Operator "~op~" not implemented");
 	}
 
-	public string toString(){
+	public override string toString(){
 		string result = "[";
 		for(int i ; i < length ; i++){
 			if(this[i]){
