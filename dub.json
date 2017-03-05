@@ -21,8 +21,7 @@
 		"dependencies": 
 			{
 	
-			"derelict-util": "==2.1.0"
-,	
+			
 			"derelict-sdl2": "==2.1.0"
 
 			},
@@ -38,9 +37,8 @@
 			"pixelperfectengine:pixelperfectengine": "*",
 			"derelict-sdl2": "==2.1.0",
 
-			"derelict-util": "==2.1.0"
-,
-			"derelict-fi": "==3.0.0-alpha.1"
+			
+			"derelict-fi": "==2.0.3"
 			},
 	}
 	],
