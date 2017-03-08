@@ -22,6 +22,9 @@ import std.file;
 import std.path;
 import std.datetime;
 
+/**
+ * Basic window. All other windows are inherited from this class.
+ */
 public class Window : ElementContainer{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
 	public wstring title;
@@ -34,15 +37,22 @@ public class Window : ElementContainer{
 	private string[] extraButtons;
 	public Coordinate position;
 	public StyleSheet customStyle;
+	public static StyleSheet defaultStyle;
 	/**
 	 * If the current window doesn't contain a custom StyleSheet, it gets from it's parent. 
 	 */
 	public StyleSheet getStyleSheet(){
-		if(customStyle is null)
+		if(customStyle is null){
+			if(parent is null){
+				return defaultStyle;
+			}
 			return parent.getStyleSheet();
+		}
 		return customStyle;
 	}
-
+	/**
+	 * Updates the output of the elements.
+	 */
 	public void drawUpdate(WindowElement sender){
 		/*if(!fullUpdate){ 
 			this.draw();
@@ -50,24 +60,24 @@ public class Window : ElementContainer{
 		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
 	}
 
-	/*public Bitmap16Bit[wchar] getFontSet(int style){
-		return parent.getFontSet(style);
-	}*/
+	
 	/**
 	 * Standard constructor. "size" sets both the initial position and the size of the window. 
-	 * Extra buttons are handled from the StyleSheet, even numbers are unpressed, odd numbers are pressed.
+	 * Extra buttons are handled from the StyleSheet, currently unimplemented.
 	 */
 	public this(Coordinate size, wstring title, string[] extraButtons = []){
 		position = size;
-		output = new BitmapDrawer(position.getXSize, position.getYSize);
+		output = new BitmapDrawer(position.width(), position.height());
 		this.title = title;
-		sizeX = position.getXSize;
-		sizeY = position.getYSize;
+		sizeX = position.width();
+		sizeY = position.height();
 		//style = 0;
 		//closeButton = 2;
 		this.extraButtons = extraButtons;
 	}
-
+	/**
+	 * Adds a new WindowElement with the given event properties.
+	 */
 	public void addElement(WindowElement we, int eventProperties){
 		elements ~= we;
 		we.elementContainer = this;
@@ -81,16 +91,18 @@ public class Window : ElementContainer{
 			scrollC ~= we;
 		}
 	}
-
+	/**
+	 * Draws the window. Intended to be used by the WindowHandler.
+	 */
 	public void draw(){
 
-		output.drawFilledRectangle(0, position.getXSize() - 1, 0, position.getYSize() - 1, getStyleSheet().getColor("window"));
+		output.drawFilledRectangle(0, position.width() - 1, 0, position.height() - 1, getStyleSheet().getColor("window"));
 		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
 		int x1 = getStyleSheet().getImage("closeButtonA").getX(), y1 = getStyleSheet().getImage("closeButtonA").getY();
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
 		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
 
-		int headerLength = extraButtons.length == 0 ? position.getXSize() - 1 : position.getXSize() - 1 - ((extraButtons.length/2) * x1) ;
+		int headerLength = extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 - ((extraButtons.length/2) * x1) ;
 		//drawing the header
 		output.drawLine(x1, headerLength, 0, 0, getStyleSheet().getColor("windowascent"));
 		output.drawLine(x1, x1, 0, y1 - 1, getStyleSheet().getColor("windowascent"));
@@ -98,10 +110,10 @@ public class Window : ElementContainer{
 		output.drawLine(headerLength, headerLength, 0, y1 - 1, getStyleSheet().getColor("windowdescent"));
 
 		//drawing the border of the window
-		output.drawLine(0, position.getXSize() - 1, y1, y1, getStyleSheet().getColor("windowascent"));
-		output.drawLine(0, 0, y1, position.getYSize() - 1, getStyleSheet().getColor("windowascent"));
-		output.drawLine(0, position.getXSize() - 1, position.getYSize() - 1, position.getYSize() - 1,  getStyleSheet().getColor("windowdescent"));
-		output.drawLine(position.getXSize() - 1, position.getXSize() - 1, y1, position.getYSize() - 1, getStyleSheet().getColor("windowdescent"));
+		output.drawLine(0, position.width() - 1, y1, y1, getStyleSheet().getColor("windowascent"));
+		output.drawLine(0, 0, y1, position.height() - 1, getStyleSheet().getColor("windowascent"));
+		output.drawLine(0, position.width() - 1, position.height() - 1, position.height() - 1,  getStyleSheet().getColor("windowdescent"));
+		output.drawLine(position.width() - 1, position.width() - 1, y1, position.height() - 1, getStyleSheet().getColor("windowdescent"));
 
 		//output.drawText(x1+1, 1, title, getFontSet(0), 1);
 		output.drawText(x1, (y1-getStyleSheet().getFontset("default").getSize())/2, title, getStyleSheet().getFontset("default"),1);
@@ -112,7 +124,10 @@ public class Window : ElementContainer{
 		}
 		fullUpdate = false;
 	}
-
+	/**
+	 * Detects where the mouse is clicked, then it either passes to an element, or tests whether the close button, 
+	 * an extra button was clicked, also tests for the header, which creates a drag event for moving the window.
+	 */
 	public void passMouseEvent(int x, int y, int state = 0){
 		//writeln(x, ",", y);
 		if(getStyleSheet.getImage("closeButtonA").getX() > x && getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
@@ -140,9 +155,15 @@ public class Window : ElementContainer{
 		}
 
 	}
+	/**
+	 * Closes the window by calling the WindowHandler's closeWindow function.
+	 */
 	public void close(){
 		parent.closeWindow(this);
 	}
+	/**
+	 * Passes the scroll event to the element where the mouse pointer currently stands.
+	 */
 	public void passScrollEvent(int wX, int wY, int x, int y){
 		foreach(WindowElement e; scrollC){
 			if(e.getPosition().left < wX && e.getPosition().right > wX && e.getPosition().top < wX && e.getPosition().bottom > wY){
@@ -152,12 +173,21 @@ public class Window : ElementContainer{
 			}
 		}
 	}
+	/**
+	 * Called if an extra button was pressed.
+	 */
 	public void extraButtonEvent(int num){
 
 	}
+	/**
+	 * Passes a keyboard event.
+	 */
 	public void passKeyboardEvent(wchar c, int type, int x, int y){
 
 	}
+	/**
+	 * Adds a WindowHandler to the window.
+	 */
 	public void addParent(IWindowHandler wh){
 		parent = wh;
 	}
@@ -167,22 +197,30 @@ public class Window : ElementContainer{
 	public void dropFocus(WindowElement sender){
 
 	}
+	public Coordinate getAbsolutePosition(WindowElement sender){
+		return Coordinate(sender.position.left + position.left, sender.position.top + position.top, sender.position.right + position.right, sender.position.bottom + position.bottom);
+	}
 }
 
+/**
+ * Standard text input form for various applications.
+ */
 public class TextInputDialog : Window, ActionListener{
 	public ActionListener[] al;
 	private TextBox textInput;
 	private string source;
-
+	/**
+	 * Creates a TextInputDialog. Auto-sizing version is not implemented yet.
+	 */
 	public this(Coordinate size, string source, wstring title, wstring message, wstring text = ""){
 		this(size, title);
-		Label msg = new Label(message, "null", Coordinate(8, 20, size.getXSize()-8, 39));
+		Label msg = new Label(message, "null", Coordinate(8, 20, size.width()-8, 39));
 		addElement(msg, EventProperties.MOUSE);
 
-		textInput = new TextBox(text, "textInput", Coordinate(8, 40, size.getXSize()-8, 59));
+		textInput = new TextBox(text, "textInput", Coordinate(8, 40, size.width()-8, 59));
 		addElement(textInput, EventProperties.MOUSE);
 
-		Button ok = new Button("Ok","ok", Coordinate(size.getXSize()-48,65,size.getXSize()-8,84));
+		Button ok = new Button("Ok","ok", Coordinate(size.width()-48,65,size.width()-8,84));
 		ok.al ~= this;
 		addElement(ok,EventProperties.MOUSE);
 		this.source = source;
@@ -192,8 +230,6 @@ public class TextInputDialog : Window, ActionListener{
 		super(size, title);
 	}
 
-	public void actionEvent(string source, int type, int value, wstring message){}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
 	public void actionEvent(Event event){
 		if(event.source == "ok"){
 			foreach(a; al){
@@ -218,15 +254,15 @@ public class DefaultDialog : Window, ActionListener{
 		this.source = source;
 		int x1 , x2;
 		//writeln(x1,',',size.getXSize - x1);
-		Label msg = new Label(message[0], "null", Coordinate(8, 20, size.getXSize()-8, 40));
+		Label msg = new Label(message[0], "null", Coordinate(8, 20, size.width()-8, 40));
 		addElement(msg, EventProperties.MOUSE);
 
 		//generate buttons
 
-		x1 = size.getXSize - 10;
+		x1 = size.width() - 10;
 		Button[] buttons;
 		for(int i; i < options.length; i++){
-			x2 = x1 - ((options[i].length + 2) * 8);
+			x2 = x1 - ((getStyleSheet().getFontset("default").getTextLength(options[i]) + 16));
 			buttons ~= new Button(options[i], values[i], Coordinate(x2, 40, x1, 60));
 			buttons[i].al ~= this;
 			addElement(buttons[i], EventProperties.MOUSE);
@@ -242,29 +278,65 @@ public class DefaultDialog : Window, ActionListener{
 		super(size, title);
 	}
 	public void actionEvent(Event event){
-		foreach(a; al){
-			//a.actionEvent(source, this.source, type, value, message);
-			if(event.source == "close"){
+		//writeln(event.source);
+		if(event.source == "close"){
 				close();
+		}else{
+			foreach(a; al){
+				//writeln(event.source);
+				a.actionEvent(new Event(event.source, this.source, null, null, null, 0, EventType.CLICK));
 			}
-			a.actionEvent(new Event(event.source, this.source, null, null, null, 0, EventType.CLICK));
 		}
 	}
 }
-
+/**
+ * File dialog window for opening files.
+ */
 public class FileDialog : Window, ActionListener{
+	/**
+	 * Defines file association descriptions
+	 */
+	public struct FileAssociationDescriptor{
+		public wstring description;		/// Describes the file type. Eg. "PPE map files"
+		public string[] types;			/// The extensions associated with a given file format. Eg. ["*.htm","*.html"]. First is preferred one at saving.
+		/**
+		 * Creates a single FileAssociationDescriptor
+		 */
+		public this(wstring description, string[] types){
+			this.description = description;
+			this.types = types;
+		}
+		/**
+		 * Returns the types as a single string.
+		 */
+		public wstring getTypesForSelector(){
+			wstring result;
+			foreach(string s ; types){
+				result ~= to!wstring(s);
+				result ~= ";";
+			}
+			result.length--;
+			return result;
+		}
+	}
+
 	private ActionListener al;
 	private string source;
-	private string[] filetypes, pathList, driveList;
+	private string[] pathList, driveList;
 	private string directory, filename;
 	private ListBox lb;
 	private TextBox tb;
 	private ListBoxColumn[] columns;
 	private bool save;
+	private FileAssociationDescriptor[] filetypes;
 	public static const string subsourceID = "filedialog";
+	private int selectedType;
 
-
-	public this(wstring title, string source, ActionListener a, string[] filetypes, string startDir, bool save = false, string filename = ""){
+	/**
+	 * Creates a file dialog with the given parameters. 
+	 * File types are given in the format '*.format', later implementations will enable file type descriptions.
+	 */
+	public this(wstring title, string source, ActionListener a, FileAssociationDescriptor[] filetypes, string startDir, bool save = false, string filename = ""){
 		this(Coordinate(20,20,240,198), title);
 		this.source = source;
 		this.filetypes = filetypes;
@@ -280,6 +352,7 @@ public class FileDialog : Window, ActionListener{
 		else
 			buttons ~= new Button("Load","ok",Coordinate(112, 154, 162, 174));
 		buttons ~= new Button("Close","close",Coordinate(166, 154, 216, 174));
+		buttons ~= new Button("Type","type",Coordinate(166, 130, 216, 150));
 		for(int i; i < buttons.length; i++){
 			buttons[i].al ~= this;
 			addElement(buttons[i], EventProperties.MOUSE);
@@ -318,7 +391,9 @@ public class FileDialog : Window, ActionListener{
 	public this(Coordinate size, wstring title){
 		super(size, title);
 	}
-
+	/**
+	 * Iterates throught a directory for listing.
+	 */
 	private void spanDir(){
 		pathList.length = 0;
 		columns[0].elements.length = 0;
@@ -332,7 +407,8 @@ public class FileDialog : Window, ActionListener{
 				columns[2].elements ~= formatDate(de.timeLastModified);
 			}
 		}
-		foreach(ft; filetypes){
+		//foreach(f; filetypes){
+		foreach(ft; filetypes[selectedType].types){
 			foreach(DirEntry de; dirEntries(directory, ft, SpanMode.shallow)){
 				if(de.isFile){
 					pathList ~= de.name;
@@ -342,10 +418,13 @@ public class FileDialog : Window, ActionListener{
 				}
 			}
 		}
+		//}
 
 
 	}
-
+	/**
+	 * Standard date formatting tool.
+	 */
 	private wstring formatDate(SysTime time){
 		wstring s;
 		s ~= to!wstring(time.year());
@@ -362,7 +441,9 @@ public class FileDialog : Window, ActionListener{
 		//writeln(s);
 		return s;
 	}
-
+	/**
+	 * Detects the available drives, currently only used under windows.
+	 */
 	private void detectDrive(){
 		version(Windows){
 			driveList.length = 0;
@@ -380,7 +461,9 @@ public class FileDialog : Window, ActionListener{
 		}
 		//writeln(driveList);
 	}
-
+	/**
+	 * Returns the filename from the path.
+	 */
 	private string getFilenameFromPath(string p, bool b = false){
 		int n, m = p.length;
 		string s;
@@ -403,7 +486,9 @@ public class FileDialog : Window, ActionListener{
 		}
 		return s;
 	}
-
+	/**
+	 * Called when the up button is pressed. Goes up in the folder hiearchy.
+	 */
 	private void up(){
 		int n;
 		for(int i ; i < directory.length ; i++){
@@ -420,7 +505,9 @@ public class FileDialog : Window, ActionListener{
 		lb.updateColumns(columns);
 		lb.draw();
 	}
-
+	/**
+	 * Displays the drives. Under Linux, it goes into the /dev/ folder.
+	 */
 	private void changeDrive(){
 		version(Windows){
 			pathList.length = 0;
@@ -440,7 +527,9 @@ public class FileDialog : Window, ActionListener{
 			spanDir();
 		}
 	}
-
+	/**
+	 * Creates an action event, then closes the window.
+	 */
 	private void fileEvent(){
 		//wstring s = to!wstring(directory);
 		filename = to!string(tb.getText);
@@ -450,7 +539,11 @@ public class FileDialog : Window, ActionListener{
 	}
 
 	public void actionEvent(Event event){
-		writeln(event.source);
+		
+		if(event.subsource == "fileSelector"){
+			selectedType = event.value;
+			spanDir();
+		}
 		switch(event.source){
 			case "lb":
 				try{
@@ -474,17 +567,28 @@ public class FileDialog : Window, ActionListener{
 			case "drv": changeDrive(); break;
 			case "ok": fileEvent(); break;
 			case "close": parent.closeWindow(this); break;
+			case "type": 
+				PopUpMenuElement[] e;
+				for(int i ; i < filetypes.length ; i++){
+					e ~= new PopUpMenuElement(to!string(i),filetypes[i].description, filetypes[i].getTypesForSelector());
+				}
+				PopUpMenu p = new PopUpMenu(e,"fileSelector");
+				p.al ~= this;
+				parent.addPopUpElement(p);
+				break;
 			default: break;
 		}
 	}
 }
-
-public class WindowHandler : InputListener, MouseListener, IWindowHandler, PopUpHandler{
+/**
+ * Handles windows as well as PopUpElements.
+ */
+public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	private Window[] windows;
 	private PopUpElement[] popUpElements;
 	private int numOfPopUpElements;
 	private int[] priorities;
-	public int screenX, screenY, rasterX, rasterY, moveX, moveY;
+	public int screenX, screenY, rasterX, rasterY, moveX, moveY, mouseX, mouseY;
 	//public Bitmap16Bit[wchar] basicFont, altFont, alarmFont;
 	public StyleSheet defaultStyle;
 	//public Bitmap16Bit[int] styleBrush;
@@ -591,38 +695,52 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler, PopUp
 		double xR = to!double(rasterX) / to!double(screenX) , yR = to!double(rasterY) / to!double(screenY);
 		x = to!int(x * xR);
 		y = to!int(y * yR);
+		mouseX = x;
+		mouseY = y;
 
-
-		if(state == SDL_RELEASED && moveState){
+		if(numOfPopUpElements <0 && state == SDL_PRESSED){
+			
+			foreach(p ; popUpElements){
+				
+				if(y >= p.coordinates.top && y <= p.coordinates.bottom && x >= p.coordinates.left && x <= p.coordinates.right){
+					
+					p.onClick(x - p.coordinates.left, y - p.coordinates.top);
+					return;
+				}
+			}
+			removeAllPopUps();
+		}else{
+			if(state == SDL_RELEASED && moveState){
 			/*windowToMove.position.relMove(x - moveX, y - moveY);
 			spriteLayer.relMoveSprite(whichWindow(windowToMove), x - moveX, y - moveY);*/
 			//writeln(x - moveX, y - moveY);
-			moveState = false;
-		}else if(state == SDL_RELEASED && moveState){
-			dragEventState = false;
-		}
-		else if(state == SDL_PRESSED){
-			moveX = x; 
-			moveY = y;
+				moveState = false;
+			}else if(state == SDL_RELEASED && dragEventState){
+				dragEventState = false;
+			}
+			else if(state == SDL_PRESSED){
+				moveX = x; 
+				moveY = y;
 
-			for(int i ; i < windows.length ; i++){
-				//writeln(i);
-				if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
-					if(i == 0){
-						windows[0].passMouseEvent(x - windows[0].position.left, y - windows[0].position.top, 0);
-						if(windows.length !=0){
-							dragEventState = true;
-							dragEventDest = windows[0];
+				for(int i ; i < windows.length ; i++){
+					//writeln(i);
+					if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
+						if(i == 0){
+							windows[0].passMouseEvent(x - windows[0].position.left, y - windows[0].position.top, 0);
+							if(windows.length !=0){
+								dragEventState = true;
+								dragEventDest = windows[0];
+							}
+							return;
 						}
-						return;
-					}
-					else{
-						setWindowToTop(windows[i]);
-						return;
+						else{
+							setWindowToTop(windows[i]);
+							return;
+						}
 					}
 				}
+				passMouseEvent(x,y);
 			}
-			passMouseEvent(x,y);
 		}
 
 	}
@@ -646,6 +764,16 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler, PopUp
 		y = to!int(y * yR);
 		relX = to!int(relX * xR);
 		relY = to!int(relY * yR);
+		if(numOfPopUpElements < 0){
+			foreach(p ; popUpElements){
+				if(p.coordinates.top < y && p.coordinates.bottom > y && p.coordinates.left < x && p.coordinates.right > x){
+					p.onMouseMovement(x - p.coordinates.left, y - p.coordinates.top);
+					return;
+				}else{
+					p.onMouseMovement(-1,-1);
+				}
+			}
+		}
 		if(state == SDL_PRESSED && moveState){
 			windowToMove.position.relMove(relX, relY);
 			spriteLayer.relMoveSprite(whichWindow(windowToMove), relX, relY);
@@ -657,20 +785,40 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler, PopUp
 		popUpElements ~= p;
 		p.addParent(this);
 		p.draw;
+		p.coordinates.move(mouseX, mouseY);
 		numOfPopUpElements--;
+		spriteLayer.addSprite(p.output.output,numOfPopUpElements,mouseX,mouseY);
 		
 	}
-	public void addPopUpElement(PopUpElement p, Coordinate c){
+	public void addPopUpElement(PopUpElement p, int x, int y){
+		popUpElements ~= p;
+		p.addParent(this);
+		p.draw;
+		p.coordinates.move(x, y);
+		numOfPopUpElements--;
+		spriteLayer.addSprite(p.output.output,numOfPopUpElements, x, y);
+	}
+	private void removeAllPopUps(){
+		for( ; numOfPopUpElements < 0 ; numOfPopUpElements++){
+			spriteLayer.removeSprite(numOfPopUpElements);
+		}
+		popUpElements.length = 0;
 	}
 	public StyleSheet getDefaultStyleSheet(){
 		return defaultStyle;
+	}
+	public void endPopUpSession(){
+		removeAllPopUps();
+	}
+	public void closePopUp(PopUpElement p){
+
 	}
 	public void drawUpdate(WindowElement sender){}
 	public void getFocus(WindowElement sender){}
 	public void dropFocus(WindowElement sender){}
 }
 
-public interface IWindowHandler{
+public interface IWindowHandler : PopUpHandler{
 	//public Bitmap16Bit[wchar] getFontSet(int style);
 	public StyleSheet getStyleSheet();
 	public void closeWindow(Window sender);

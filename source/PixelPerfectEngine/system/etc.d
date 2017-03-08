@@ -114,3 +114,10 @@ string[] csvParser(string input, char separator = ','){
 
 	return result;
 }
+string stringArrayJoin(string[] input){
+	string result;
+	foreach(string s ; input){
+		result ~= s ~ "\n";
+	}
+	return result;
+}

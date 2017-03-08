@@ -2,6 +2,7 @@ module PixelPerfectEngine.graphics.bitmap;
 //import std.bitmanip;
 import std.stdio;
 import PixelPerfectEngine.system.exc;
+public import PixelPerfectEngine.system.advBitArray;
 
 /*
  * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
@@ -20,7 +21,7 @@ public class Bitmap16Bit{
         iX=x;
         iY=y;
         pixels.length=x*y;
-
+		//writeln(x,',',y);
     }
     //Creates a bitmap from an array.
     this(ushort[] p, int x, int y){
@@ -53,10 +54,18 @@ public class Bitmap16Bit{
 	}
     //Writes the pixel at the given position.
     public void writePixel(int x, int y, ushort color){
-        pixels[x+(iX*y)]=color;
+		if(x+(iX*y) >= pixels.length || x+(iX*y) < 0){
+			writeln(x,',',y);
+			writeln(pixels.length);
+		}else{
+			pixels[x+(iX*y)]=color;
+		}
+		
 	}
-    //Resizes the bitmap.
-    //Might result in corrupting the data. Intended for use with effects.
+    /**
+	* Resizes the bitmap.
+    * NOTE: It's not for scaling.
+	*/
     public void resize(int x, int y){
         pixels.length=x*y;
     }
@@ -65,10 +74,15 @@ public class Bitmap16Bit{
 		for(int i ; i < pixels.length ; i++)
 			pixels[0] = 0;
 	}
-	//Getters for each sizes.
+	/** 
+	* Returns the width of the bitmap
+	*/
     public int getX(){
         return iX;
     }
+	/** 
+	* Returns the height of the bitmap
+	*/
     public int getY(){
         return iY;
     }
@@ -109,7 +123,7 @@ public class Bitmap16Bit{
 		}
 		return ba;
 	}*/
-	public bool[] generateStandardCollisionModel(){
+	/*public bool[] generateStandardCollisionModel(){
 		bool[] ba;
 		foreach(ushort c; pixels){
 			if(c == 0){
@@ -119,13 +133,26 @@ public class Bitmap16Bit{
 			}
 		}
 		return ba;
-	}
-	/*public void useExternalCollisionModel(BitArray ba){
-		if(ba.length() != iX * iY){
-			throw new BitmapFormatException("Collision model has a different size.");
-		}
-		collisionModel = ba;
 	}*/
+	public AdvancedBitArray generateStandardCollisionModel(){
+		AdvancedBitArray result = new AdvancedBitArray(iX * iY);
+		for(int i ; i < iX * iY ; i++){
+			if(pixels[i] != 0){
+				result[i] = true;
+			}
+		}
+		return result;
+	}
+	/**
+	* Offsets all indexes in the bitmap by a certain value. Keeps zeroth index (usually for transparency) if needed. Useful when converting bitmaps.
+	*/
+	public void offsetIndexes(ushort offset, bool keepZerothIndex = true){
+		for(int i ; i < pixels.length ; i++){
+			if(!(pixels[i] == 0 && keepZerothIndex)){
+				pixels[i] += offset;
+			}
+		}
+	}
 }
 public class Bitmap32Bit{
 	//private BitArray collisionModel;

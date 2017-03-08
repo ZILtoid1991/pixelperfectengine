@@ -209,7 +209,7 @@ public class InputHandler : TextInputHandler{
 				case SDL_KEYUP:
 					if(!tiEnable){
 						foreach(k; kb ){
-							if(event.key.keysym.scancode == k.scancode && event.key.keysym.mod == k.keymod && k.devicetype == Devicetype.KEYBOARD){
+							if(event.key.keysym.scancode == k.scancode && ((event.key.keysym.mod | k.keymodIgnore) == (k.keymod | k.keymodIgnore)) && k.devicetype == Devicetype.KEYBOARD){
 								invokeKeyReleased(k.ID, event.key.timestamp, 0, Devicetype.KEYBOARD);
 							}
 						}

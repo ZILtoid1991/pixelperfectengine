@@ -176,7 +176,7 @@ public class ConfigurationProfile{
 		}
 		doc ~= e4;
 		
-		std.file.write(configFile, doc.toString());
+		std.file.write(configFile, stringArrayJoin(doc.pretty()));
 	}
 
 	public ushort stringToKeymod(string s){

@@ -33,11 +33,21 @@ import PixelPerfectEngine.system.advBitArray;
 import editor;
 import PixelPerfectEngine.extbmp.extbmp;
 
+version(Windows){
+	static const string sdlSource = "system\\SDL2.dll";
+	static const string fiSource = "system\\FreeImage.dll";
+}else{
+	static const string sdlSource = "/system/SDL2.so";
+	static const string fiSource = "/system/FreeImage.so";
+}
+
 int main(string[] args)
 {
 
-    DerelictSDL2.load();
-	DerelictFI.load();
+    DerelictSDL2.load(sdlSource);
+	DerelictFI.load(fiSource);
+
+	SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
 	
 	Editor e = new Editor(args);
 	/*ConfigurationProfile cfg = new ConfigurationProfile();
@@ -49,7 +59,7 @@ int main(string[] args)
 	e.whereTheMagicHappens;
     
 	//testAdvBitArrays(128);
-	//TileLayerUnittest prg = new TileLayerUnittest();
+	//TileLayerTest prg = new TileLayerTest();
 	return 0;
 }
 
@@ -90,17 +100,32 @@ void testAdvBitArrays(int l){
 	}
 }
 
-class TileLayerUnittest : SystemEventListener, InputListener{
+class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 	bool isRunning, up, down, left, right;
 	OutputScreen output;
 	Raster r;
 	TileLayer t;
+	SpriteLayer s;
 	//Bitmap16Bit[wchar] tiles;
 	InputHandler ih;
+	CollisionDetector c;
 	this(){
 		isRunning = true;
 		ExtendibleBitmap tileSource = new ExtendibleBitmap("tiletest.xmp");
+		ExtendibleBitmap spriteSource = new ExtendibleBitmap("collisionTest.xmp");
 		t = new TileLayer(32,32, LayerRenderingMode.ALPHA_BLENDING);
+		s = new SpriteLayer();
+		c = new CollisionDetector();
+		Bitmap16Bit dlangMan = loadBitmapFromXMP(spriteSource,"DLangMan");
+		CollisionModel cm = new CollisionModel(dlangMan.getX(), dlangMan.getY(), dlangMan.generateStandardCollisionModel());
+		dlangMan.offsetIndexes(256);
+		s.addSprite(dlangMan,0,0,0);
+		s.addSprite(dlangMan,1,64,64);
+		s.collisionDetector[1] = c;
+		c.source = s;
+		c.addCollisionModel(cm,0);
+		c.addCollisionModel(cm,1);
+		c.addCollisionListener(this);
 		for(int i; i < tileSource.bitmapID.length; i++){
 			string hex = tileSource.bitmapID[i];
 			//writeln(hex[hex.length-4..hex.length]);
@@ -114,10 +139,10 @@ class TileLayerUnittest : SystemEventListener, InputListener{
 		ih = new InputHandler();
 		ih.sel ~= this;
 		ih.il ~= this;
-		ih.kb ~= KeyBinding(4096, SDL_SCANCODE_UP,0, "up", Devicetype.KEYBOARD);
-		ih.kb ~= KeyBinding(4096, SDL_SCANCODE_DOWN,0, "down", Devicetype.KEYBOARD);
-		ih.kb ~= KeyBinding(4096, SDL_SCANCODE_LEFT,0, "left", Devicetype.KEYBOARD);
-		ih.kb ~= KeyBinding(4096, SDL_SCANCODE_RIGHT,0, "right", Devicetype.KEYBOARD);
+		ih.kb ~= KeyBinding(0, SDL_SCANCODE_UP,0, "up", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, SDL_SCANCODE_DOWN,0, "down", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, SDL_SCANCODE_LEFT,0, "left", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, SDL_SCANCODE_RIGHT,0, "right", Devicetype.KEYBOARD, KeyModifier.ANY);
 
 		t.loadMapping(256,256,mapping);
 
@@ -126,15 +151,17 @@ class TileLayerUnittest : SystemEventListener, InputListener{
 		output.setMainRaster(r);
 		loadPaletteFromXMP(tileSource, "default", r);
 		r.addLayer(t, 0);
-		r.palette[0] = 255;
+		r.addLayer(s, 1);
+		r.palette ~= cast(ubyte[])spriteSource.getPalette("default");
+		//r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);
 		while(isRunning){
 			r.refresh();
 			ih.test();
-			if(up) t.relScroll(0, 1);
-			if(down) t.relScroll(0, -1);
-			if(left) t.relScroll(1, 0);
-			if(right) t.relScroll(-1, 0);
+			if(up) s.relMoveSprite(0,0,-1);
+			if(down) s.relMoveSprite(0,0,1);
+			if(left) s.relMoveSprite(0,-1,0);
+			if(right) s.relMoveSprite(0,1,0);
 			//t.relScroll(1,0);
 		}
 	}
@@ -166,5 +193,9 @@ class TileLayerUnittest : SystemEventListener, InputListener{
 			default: break;
 		}
 	}
-
+	public override void spriteCollision(CollisionEvent ce){
+		writeln("COLLISION!!!!11!1111!!!ONEONEONE!!!");
+	}
+	
+	public override void backgroundCollision(CollisionEvent ce){}
 }

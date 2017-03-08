@@ -47,11 +47,10 @@ public class CollisionModel{
 	protected int iX, iY;
 
 	this(int x, int y, AdvancedBitArray b){
-
 		iX = x;
 		iY = y;
 		ba = b;
-
+		//writeln(b);
 	}
 	public bool getBit(int x, int y){
 		return ba[x+(iX*y)];
@@ -65,7 +64,7 @@ public class CollisionModel{
  */
 public class CollisionDetector : SpriteMovementListener{
 	//private Collidable[string] cList;
-	private CollisionListener[] cl;
+	public CollisionListener[] cl;
 	public ISpriteCollision source;
 	//private Bitmap16Bit[int] sourceS;
 	private CollisionModel[int] collisionModels;
@@ -88,16 +87,17 @@ public class CollisionDetector : SpriteMovementListener{
 
 	//Adds a CollisionListener to its list. c: the CollisionListener you want to add. s: an ID.
 	public void addCollisionListener(CollisionListener c){
-		cl[] = c;
+		cl ~= c;
 	}
 	//Removes a CollisionListener based on the ID
-	public void removeCollisionListener(string s){
+	/*public void removeCollisionListener(string s){
 		cl.remove(s);
-	}
+	}*/
 	
 	/// Implemented from the SpriteMovementListener interface, invoked when a sprite moves.
 	/// Tests the sprite that invoked it with all other in its list.
 	public void spriteMoved(int ID){
+		
 		//sourceS = source.getSpriteSet();
 		sourceC = source.getCoordinates();
 		sourceFR = source.getFlipRegisters();
@@ -105,6 +105,7 @@ public class CollisionDetector : SpriteMovementListener{
 		//sourceTI = source.getTransparencyIndex();
 		
 		foreach(int i ; collisionModels.byKey()){
+			
 			if(ID == i){
 				continue;
 			}
@@ -117,6 +118,7 @@ public class CollisionDetector : SpriteMovementListener{
 	}
 	/// Tests if the two objects have collided. Returns true if they had. Pixel precise.
 	public bool testCollision(int a, int b){
+		
 		Coordinate ca = sourceC[a]; // source
 		Coordinate cb = sourceC[b]; // destiny
 
@@ -126,17 +128,17 @@ public class CollisionDetector : SpriteMovementListener{
 		
 		if (ca.right <= cb.left) return false;
 		if (ca.left >= cb.right) return false;
-
+		
 		Coordinate cc; // test area coordinates
 		int cTPA, cTPB; // testpoints 
 
 		// process the test area and calculate the test points
 		if(ca.top >= cb.top){
-			cc.top = cb.top;
-			cTPA = ca.getXSize() * (ca.top - cb.top);
-		}else{
 			cc.top = ca.top;
-			cTPB = cb.getXSize() * (cb.top - ca.top);
+			cTPA = ca.width() * (ca.top - cb.top);
+		}else{
+			cc.top = cb.top;
+			cTPB = cb.width() * (cb.top - ca.top);
 		}
 		if(ca.bottom >= cb.bottom){
 			cc.bottom = cb.bottom;
@@ -144,10 +146,10 @@ public class CollisionDetector : SpriteMovementListener{
 			cc.bottom = ca.bottom;
 		}
 		if(ca.left >= cb.left){
-			cc.left = cb.left;
+			cc.left = ca.left;
 			cTPA += ca.left - cb.left;
 		}else{
-			cc.left = ca.left;
+			cc.left = cb.left;
 			cTPB += cb.left - ca.left;
 		}
 		if(ca.right >= cb.right){
@@ -155,13 +157,13 @@ public class CollisionDetector : SpriteMovementListener{
 		}else{
 			cc.right = ca.right;
 		}
-
-		for(int y ; y < cc.getYSize ; y++){
-			if(collisionModels[a].ba.test(cTPA, cc.getXSize, collisionModels[b].ba, cTPB)){
+		//writeln("A: x: ", ca.left," y: ", ca.top, "B: x: ", cb.left," y: ", cb.top, "C: x: ", cc.left," y: ", cc.top);
+		for(int y ; y < cc.height() ; y++){
+			if(collisionModels[a].ba.test(cTPA, cc.width(), collisionModels[b].ba, cTPB)){
 				return true;
 			}
-			cTPA += ca.getXSize();
-			cTPB += cb.getXSize();
+			cTPA += ca.width();
+			cTPB += cb.width();
 		}
 
 		return false;

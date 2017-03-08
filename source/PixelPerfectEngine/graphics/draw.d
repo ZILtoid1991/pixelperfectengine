@@ -41,7 +41,7 @@ public class BitmapDrawer{
 						output.writePixel(xa, ya + j, color);
 					}
 				}else{
-					for(int j ; j >= (yb - ya) ; j--){
+					for(int j ; j > (yb - ya) ; j--){
 						output.writePixel(xa, ya + j, color);
 					}
 				}
@@ -55,7 +55,7 @@ public class BitmapDrawer{
 						output.writePixel(xa + j, ya, color);
 					}
 				}else{
-					for(int j ; j >= (xb - xa) ; j--){
+					for(int j ; j > (xb - xa) ; j--){
 						output.writePixel(xa + j, ya, color);
 					}
 				}
@@ -248,14 +248,14 @@ public class BitmapDrawer{
 	
 	public void insertBitmapSlice(int x, int y, Bitmap16Bit bitmap, Coordinate slice){
 		//writeln(x,',',y,',',slice.xa,',',slice.ya,',',slice.xb,',',slice.yb);
-		for(int iy ; iy < slice.getYSize ; iy++){
+		for(int iy ; iy < slice.height() ; iy++){
 			//for(int ix ; ix < slice.getXSize ; ix++){
 			//writeln(x + ix,',',y + iy);
 			/*if(bitmap.readPixel(ix + slice.xa, iy + slice.ya) != brushTransparency)
 			 output.writePixel(x + ix, y + iy, bitmap.readPixel(ix + slice.xa, iy + slice.ya)); */
-			int ix = slice.getXSize / 8;
+			int ix = slice.width() / 8;
 			int offsetY = bitmap.getX * (iy + slice.top);
-			int ix4 = slice.getXSize - ix * 8;
+			int ix4 = slice.width() - ix * 8;
 			ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
 			ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY + slice.left), pdest2 = cast(ushort[8]*)(pdest + ((iy + y) * output.getX));
 			
@@ -320,49 +320,7 @@ public class BitmapDrawer{
 			end:;
 			}
 			
-			//ASM code for 8 pixel blitter
-			/*for(; ix < slice.getXSize - 7 ; ix+=8){
-			 
-			 ushort[8]* psrc2 = cast(ushort[8]*)(psrc + ix + offsetY + slice.xa), pdest2 = cast(ushort[8]*)(pdest + ix +((iy + y) * output.getX));
-			 asm{
-			 mov		EBX, pdest2[EBP];
-			 mov		EDX, psrc2[EBP];
-			 movups	XMM0, [EDX];
-			 movups	XMM1, [EBX];
-			 movups	XMM4, transparencytester8;
-			 pcmpeqw	XMM4, XMM0;
-			 pand	XMM1, XMM4;
-			 por		XMM1, XMM0;
-			 movups	[EBX], XMM1;
-			 }
-			 }
-			 
-			 //ASM code for 4 pixel blitter
-			 
-			 if(ix - slice.getXSize > 3){
-			 
-			 ushort[4]* psrc2 = cast(ushort[4]*)(psrc + ix + offsetY + slice.xa), pdest2 = cast(ushort[4]*)(pdest + ix +((iy + y) * output.getX));
-			 asm{
-			 mov		EBX, pdest2[EBP];
-			 mov		EDX, psrc2[EBP];
-			 movq	XMM0, [EDX];
-			 movq	XMM1, [EBX];
-			 movq	XMM4, transparencytester4;
-			 pcmpeqw	XMM4, XMM0;
-			 pand	XMM1, XMM4;
-			 por		XMM1, XMM0;
-			 movq	[EBX], XMM1;
-			 }
-			 ix+=4;
-			 }
-			 
-			 //code for single pixel blitter
-			 for(; ix < slice.getXSize; ix++){
-			 ushort* psrc2 = (psrc + ix + offsetY + slice.xa), pdest2 = (pdest + ix + ((iy + y) * output.getX));
-			 if( *psrc2 != 0)
-			 *pdest2 = *psrc2;
-			 }*/
-			//}
+			
 		}
 	}
 	
@@ -436,13 +394,8 @@ public class BitmapDrawer{
 		}
 	}
 	
-	public void drawFilledRectangle(int xa, int xb, int ya, int yb, Bitmap16Bit brush){
-		xa = xa + brush.getX;
-		ya = ya + brush.getY;
-		xb = xb - brush.getX;
-		yb = yb - brush.getY;
-		for(int i ; i < (yb - ya); i++)
-			drawLine(xa, xb, ya + i, ya + i, brush);
+	public void patternFill(int xa, int xb, int ya, int yb, Bitmap16Bit pattern){
+		
 	}
 	
 	public void drawText(int x, int y, wstring text, Bitmap16Bit[wchar] fontSet, int style = 0){
@@ -477,6 +430,7 @@ public class BitmapDrawer{
 		}
 	}
 	public void drawColorText(int x, int y, wstring text, Fontset fontset, ushort color, int style = 0){
+		//color = 1;
 		ushort[8] colorvect = [color, color, color, color, color, color, color, color];
 		int length = fontset.getTextLength(text);
 		//writeln(text);
@@ -484,15 +438,16 @@ public class BitmapDrawer{
 			x = x - (length / 2);
 			y -= fontset.getSize() / 2;
 		}else if(style == 2){
-			y -= fontset.getSize();
+			x -= length;
 		}
 		foreach(wchar c ; text){
+			
 			insertColorLetter(x, y, fontset.letters[c], colorvect);
 			x = x + fontset.letters[c].getX();
 		}
 	}
 	public void insertColorLetter(int x, int y, Bitmap16Bit bitmap, ushort[8] colorvect){
-		//ushort[8] colortester = [1,1,1,1,1,1,1,1];
+		ushort[8] colortester = [1,1,1,1,1,1,1,1];
 		ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
 		int pitch = output.getX;
 		for(int iy ; iy < bitmap.getY ; iy++){
@@ -504,7 +459,7 @@ public class BitmapDrawer{
 				mov		EDI, pdest2[EBP];
 				mov		ESI, psrc2[EBP];
 				movups	XMM5, colorvect;
-				pxor	XMM6, XMM6;
+				movups	XMM6, colortester;
 				mov		ECX, ix;
 				//cmp		ECX, 0;
 				jecxz	blt4px;
@@ -513,9 +468,10 @@ public class BitmapDrawer{
 				movups	XMM0, [ESI];
 				movups	XMM1, [EDI];
 				movups	XMM4, transparencytester8;
-				pcmpgtw	XMM0, XMM6;
-				pand	XMM0, XMM5;
 				pcmpeqw	XMM4, XMM0;
+				pcmpeqw	XMM0, XMM6;
+				pand	XMM0, XMM5;
+				
 				pand	XMM1, XMM4;
 				por		XMM1, XMM0;
 				movups	[EDI], XMM1;
@@ -533,9 +489,10 @@ public class BitmapDrawer{
 				movq	XMM0, [ESI];
 				movq	XMM1, [EDI];
 				movups	XMM4, transparencytester8;
-				pcmpgtw	XMM0, XMM6;
-				pand	XMM0, XMM5;
 				pcmpeqw	XMM4, XMM0;
+				pcmpeqw	XMM0, XMM6;
+				pand	XMM0, XMM5;
+				
 				pand	XMM1, XMM4;
 				por		XMM1, XMM0;
 				movq	[EDI], XMM1;
@@ -550,9 +507,10 @@ public class BitmapDrawer{
 				movd	XMM0, [ESI];
 				movd	XMM1, [EDI];
 				movups	XMM4, transparencytester8;
-				pcmpgtw	XMM0, XMM6;
-				pand	XMM0, XMM5;
 				pcmpeqw	XMM4, XMM0;
+				pcmpeqw	XMM0, XMM6;
+				pand	XMM0, XMM5;
+				
 				pand	XMM1, XMM4;
 				por		XMM1, XMM0;
 				movd	[EDI], XMM1;
@@ -565,6 +523,7 @@ public class BitmapDrawer{
 				mov		AX, [ESI];
 				cmp		AX, 0;
 				cmovnz	AX, colorvect[0];
+				cmovz	AX, [EDI];
 				mov		[EDI], AX;
 			end:;
 			}

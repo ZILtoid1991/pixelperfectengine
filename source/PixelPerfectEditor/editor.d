@@ -152,8 +152,8 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	}
 
 	public void initGUI(){
-		output.drawFilledRectangle(0, rasterX, 0, rasterY, 154);
-		layerListE ~= ListBoxColumn("Num", [""]);
+		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
+		/*layerListE ~= ListBoxColumn("Num", [""]);
 		layerListE ~= ListBoxColumn("Name", [""]);
 		layerListE ~= ListBoxColumn("Type", [""]);
 		layerList = new ListBox("layerList", Coordinate(5,7,205,98), layerListE, [30,160,64],15);
@@ -170,7 +170,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		prop = new ListBox("prop", Coordinate(5,105,460,391), propSL, propSLW,15);
 		addElement(layerList, EventProperties.MOUSE | EventProperties.SCROLL);
 		addElement(prop, EventProperties.MOUSE | EventProperties.SCROLL);
-		addElement(new Button("New","new",Coordinate(210,5,290,25)), EventProperties.MOUSE);
+		/*addElement(new Button("New","new",Coordinate(210,5,290,25)), EventProperties.MOUSE);
 		addElement(new Button("Load","load",Coordinate(295,5,375,25)), EventProperties.MOUSE);
 		addElement(new Button("Save","save",Coordinate(380,5,460,25)), EventProperties.MOUSE);
 		addElement(new Button("Save As","saveas",Coordinate(465,5,545,25)), EventProperties.MOUSE);
@@ -186,11 +186,62 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		addElement(new Button("Palette","pal",Coordinate(465,55,545,75)), EventProperties.MOUSE);
 		addElement(new Button("Settings","setup",Coordinate(550,55,630,75)), EventProperties.MOUSE);
 		addElement(new Button("Doc Prop","docP",Coordinate(210,80,290,100)), EventProperties.MOUSE);
-		addElement(new Button("Export","exp",Coordinate(295,80,375,100)), EventProperties.MOUSE);
+		addElement(new Button("Export","exp",Coordinate(295,80,375,100)), EventProperties.MOUSE);*/
 		//addElement(new Button("Save","save",Coordinate(380,80,460,100)), EventProperties.MOUSE);
 		//addElement(new Button("Save As","saveas",Coordinate(465,80,545,100)), EventProperties.MOUSE);
-		addElement(new Button("Exit","exit",Coordinate(550,80,630,100)), EventProperties.MOUSE);
-		labels ~= new Label("Layer info:","null",Coordinate(5,395,101,415));
+		//wstring[] menuNames = ["FILE", "EDIT", "VIEW", "LAYERS", "TOOLS", "HELP"];
+		PopUpMenuElement[] menuElements;
+		menuElements ~= new PopUpMenuElement("file", "FILE");
+
+		menuElements[0].setLength(7);
+		menuElements[0][0] = new PopUpMenuElement("new", "New PPE map", "Ctrl + N");
+		menuElements[0][1] = new PopUpMenuElement("newTemp", "New PPE map from template", "Ctrl + Shift + N");
+		menuElements[0][2] = new PopUpMenuElement("load", "Load PPE map", "Ctrl + L");
+		menuElements[0][3] = new PopUpMenuElement("save", "Save PPE map", "Ctrl + S");
+		menuElements[0][4] = new PopUpMenuElement("saveAs", "Save PPE map as", "Ctrl + Shift + S");
+		menuElements[0][5] = new PopUpMenuElement("saveTemp", "Save PPE map as template", "Ctrl + Shift + T");
+		menuElements[0][6] = new PopUpMenuElement("exit", "Exit application", "Alt + F4");
+
+		menuElements ~= new PopUpMenuElement("edit", "EDIT");
+		
+		menuElements[1].setLength(7);
+		menuElements[1][0] = new PopUpMenuElement("undo", "Undo", "Ctrl + Z");
+		menuElements[1][1] = new PopUpMenuElement("redo", "Redo", "Ctrl + Shift + Z");
+		menuElements[1][2] = new PopUpMenuElement("copy", "Copy", "Ctrl + C");
+		menuElements[1][3] = new PopUpMenuElement("cut", "Cut", "Ctrl + X");
+		menuElements[1][4] = new PopUpMenuElement("paste", "Paste", "Ctrl + V");
+		menuElements[1][5] = new PopUpMenuElement("editorSetup", "Editor Settings");
+		menuElements[1][6] = new PopUpMenuElement("docSetup", "Document Settings");
+
+		menuElements ~= new PopUpMenuElement("view", "VIEW");
+
+		menuElements[2].setLength(2);
+		menuElements[2][0] = new PopUpMenuElement("layerList", "Layer list", "Alt + L");
+		menuElements[2][1] = new PopUpMenuElement("layerTools", "Layer tools", "Alt + T");
+
+		menuElements ~= new PopUpMenuElement("layers", "LAYERS");
+
+		menuElements[3].setLength(4);
+		menuElements[3][0] = new PopUpMenuElement("newLayer", "New layer", "Alt + N");
+		menuElements[3][1] = new PopUpMenuElement("delLayer", "Delete layer", "Alt + Del");
+		menuElements[3][2] = new PopUpMenuElement("impLayer", "Import layer", "Alt + Shift + I");
+		menuElements[3][3] = new PopUpMenuElement("layerSrc", "Layer resources", "Alt + R");
+
+		menuElements ~= new PopUpMenuElement("tools", "TOOLS");
+
+		menuElements[4].setLength(2);
+		menuElements[4][0] = new PopUpMenuElement("xmpTool", "XMP Toolkit", "Alt + X");
+		menuElements[4][1] = new PopUpMenuElement("mapXMLEdit", "Edit map as XML", "Ctrl + Alt + X");
+		//menuElements[4][0] = new PopUpMenuElement("", "", "");
+
+		menuElements ~= new PopUpMenuElement("help", "HELP");
+
+		menuElements[5].setLength(2);
+		menuElements[5][0] = new PopUpMenuElement("helpFile", "Content", "F1");
+		menuElements[5][1] = new PopUpMenuElement("about", "About");
+		
+		//addElement(new Button("Exit","exit",Coordinate(550,80,630,100)), EventProperties.MOUSE);
+		/*labels ~= new Label("Layer info:","null",Coordinate(5,395,101,415));
 		labels ~= new Label("ScrollX:","null",Coordinate(5,415,70,435));
 		labels ~= new Label("0","sx",Coordinate(71,415,140,435));
 		labels ~= new Label("ScrollY:","null",Coordinate(145,415,210,435));
@@ -206,7 +257,8 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		labels ~= new Label("TileX:","null",Coordinate(205,435,255,455));
 		labels ~= new Label("0","tx",Coordinate(256,435,310,455));
 		labels ~= new Label("TileY:","null",Coordinate(315,435,365,455));
-		labels ~= new Label("0","ty",Coordinate(366,435,420,455));
+		labels ~= new Label("0","ty",Coordinate(366,435,420,455));*/
+		addElement(new MenuBar("menubar",Coordinate(0,0,640,16),menuElements,this), EventProperties.MOUSE);
 		foreach(WindowElement we; labels){
 			addElement(we, 0);
 		}
@@ -234,26 +286,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		}
 	}
 
-	public void actionEvent(string source, int type, int value, wstring message){
-		writeln(source);
-		switch(source){
-			case "exit":
-				ie.onExit;
-				break;
-			case "new":
-				ie.newDocument;
-				break;
-			case "newL":
-				ie.newLayer;
-				break;
-			case "xmp":
-				ie.xmpToolkit();
-				break;
-			default:
-
-				break;
-		}
-	}
+	
 	public void actionEvent(Event event){
 		switch(event.source){
 			case "exit":
@@ -265,7 +298,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 			case "newL":
 				ie.newLayer;
 				break;
-			case "xmp":
+			case "xmpTool":
 				ie.xmpToolkit();
 				break;
 			default:
@@ -309,6 +342,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 			}
 		}
 	}
+	public Coordinate getAbsolutePosition(WindowElement sender){
+		return sender.position;
+	}
 }
 
 public class Editor : InputListener, MouseListener, ActionListener, IEditor, SystemEventListener{
@@ -343,11 +379,11 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 	public void passActionEvent(Event e){
 		switch(e.source){
 			case "saveas": 
-				FileDialog fd = new FileDialog("Save document as","docSave",this,["*.map"],".\\",true);
+				FileDialog fd = new FileDialog("Save document as","docSave",this,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.map"])],".\\",true);
 				wh.addWindow(fd);
 				break;
 			case "load":
-				FileDialog fd = new FileDialog("Load document","docLoad",this,["*.map"],".\\",false);
+				FileDialog fd = new FileDialog("Load document","docLoad",this,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.map"])],".\\",false);
 				wh.addWindow(fd);
 				break;
 			default: break;
@@ -374,7 +410,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		//writeln(event.subsource);
 		switch(event.subsource){
 			case "exitdialog":
-				if(event.source == "Yes"){
+				if(event.source == "ok"){
 					onexit = true;
 				}
 				break;
@@ -414,31 +450,11 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 			wh.basicFont[to!wchar(32+i)] = fontset[i];
 			//write(32+i, " ");
 		}*/
-		Fontset defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("sysfont.xmp"), "font");
+		Fontset defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("system/sysfont.xmp"), "font");
 
-		//load the stylesheets
-		/*Bitmap16Bit[] styleSheet = loadBitmapFromFile("UIstyle.vmp");
-		styleSheet ~= loadBitmapFromFile("UIbuttons0.vmp");
-		wh.styleBrush[0] = styleSheet[0];
-		wh.styleBrush[1] = styleSheet[1];
-		wh.styleBrush[2] = styleSheet[2];
-		wh.styleBrush[3] = styleSheet[3];
-		wh.styleBrush[4] = styleSheet[4];
-		wh.styleBrush[5] = styleSheet[5];
-		wh.styleBrush[6] = styleSheet[6];
-		wh.styleBrush[7] = styleSheet[7];
-		wh.styleBrush[8] = styleSheet[8];
-		wh.styleBrush[9] = styleSheet[9];
-		wh.styleBrush[10] = styleSheet[10];
-		wh.styleBrush[11] = styleSheet[11];
-		wh.styleBrush[12] = styleSheet[12];
-		wh.styleBrush[13] = styleSheet[13];
-		wh.styleBrush[14] = styleSheet[14];
-		wh.styleBrush[15] = styleSheet[15];
-		wh.styleBrush[16] = styleSheet[16];
-		wh.styleBrush[17] = styleSheet[17];*/
+		
 
-		ExtendibleBitmap ssOrigin = new ExtendibleBitmap("sysdef.xmp");
+		ExtendibleBitmap ssOrigin = new ExtendibleBitmap("system/sysdef.xmp");
 		StyleSheet ss = new StyleSheet();
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI0"),"closeButtonA");
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI1"),"closeButtonB");
@@ -460,6 +476,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIF"),"rightArrowB");
 		ss.addFontset(defaultFont, "default");
 		wh.defaultStyle = ss;
+		Window.defaultStyle = ss;
 
 		wh.initGUI();
 
@@ -481,10 +498,12 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		ow[0].setMainRaster(rasters[0]);
 		rasters[0].addLayer(windowing, 0);
 		rasters[0].addLayer(bitmapPreview, 1);
-		rasters[0].setupPalette(512);
+		//rasters[0].setupPalette(512);
 		//loadPaletteFromFile("VDPeditUI0.pal", guiR);
 		//load24bitPaletteFromFile("VDPeditUI0.pal", rasters[0]);
-		loadPaletteFromXMP(ssOrigin, "default", rasters[0]);
+		//loadPaletteFromXMP(ssOrigin, "default", rasters[0]);
+		foreach(c ; StyleSheet.defaultpaletteforGUI)
+			rasters[0].palette ~= c;
 
 		//rasters[0].addRefreshListener(ow[0],0);
 
@@ -519,7 +538,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 	public void onExit(){
 
 		exitDialog=true;
-		DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","U WOT M8?", ["Are you fucking serious?"],["Yes","No","Pls save"],["ok","no","save"]);
+		DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","Exit application", ["Are you sure?"],["Yes","No","Pls save"],["ok","close","save"]);
 
 		dd.al ~= this;
 		wh.addWindow(dd);

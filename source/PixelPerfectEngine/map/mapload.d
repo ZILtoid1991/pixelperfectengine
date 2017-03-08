@@ -221,13 +221,13 @@ public class ExtendibleMap{
 			}*/
 			doc ~= e1;
 		}
-		string header = doc.toString();
+		string header = stringArrayJoin(doc.pretty());
 		//rawData.length = 8;
 		//*cast(uint*)rawData.ptr = flags;
 		//*cast(int*)(rawData.ptr+4) = header.length;
-		rawData ~= cast(void[])header;
+		//rawData ~= cast(void[])header;
 		//rawData ~= rawData0;
-		std.file.write(filename, rawData);
+		std.file.write(filename, header);
 		//rawData0.length = 0;
 	}
 }

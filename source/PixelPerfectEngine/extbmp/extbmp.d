@@ -57,7 +57,7 @@ public class ExtendibleBitmap{
 		filename = s;
 	}
 	public void loadFile(){
-		writeln(filename);
+		//writeln(filename);
 		try{
 			rawData = std.file.read(filename);
 			flags = *cast(uint*)rawData.ptr;

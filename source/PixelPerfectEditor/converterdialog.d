@@ -34,7 +34,7 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 	private bool previewModeOn;
 	ExtendibleBitmap selection;
 	public this(InputHandler inputhandler, ISpriteLayer32Bit viewer, ExtendibleMap mh = null, ExtendibleBitmap[] documentFiles = null){
-		this(Coordinate(0,0,640,480), "XMP Converter Toolkit");
+		this(Coordinate(0,16,640,480), "XMP Converter Toolkit");
 		this.inputHandler = inputhandler;
 		this.viewer = viewer;
 		files = documentFiles;
@@ -83,8 +83,7 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 	public this(Coordinate size, wstring title){
 		super(size, title);
 	}
-	public void actionEvent(string source, int type, int value, wstring message){}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
+	
 	public void actionEvent(Event event){
 		//writeln(event.subsource);
 		//writeln(event.source);
@@ -109,11 +108,11 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 						break;
 					case "xmpload":
 						string fileName = event.path ;
-						writeln(fileName);
+						//writeln(fileName);
 						fileName ~= '\\';
-						writeln(fileName);
+						//writeln(fileName);
 						fileName ~= event.filename;
-						writeln(fileName);
+						//writeln(fileName);
 						ExtendibleBitmap newFile = new ExtendibleBitmap(fileName);
 						if(files is null){
 							selection = newFile;
@@ -190,11 +189,11 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 				switch(event.source){
 					case "newfile":
 						// create new filedialog to save the new file to the given location
-						FileDialog fileDialog = new FileDialog("Create new XMP file", "xmpfiledialog", this, ["*.xmp"], ".\\", true);
+						FileDialog fileDialog = new FileDialog("Create new XMP file", "xmpfiledialog", this, [FileDialog.FileAssociationDescriptor("Extendible bitmap file", ["*.xmp"])], ".\\", true);
 						parent.addWindow(fileDialog);
 						break;
 					case "loadfile":
-						FileDialog fileDialog = new FileDialog("Load XMP file", "xmpload", this, ["*.xmp"], ".\\", false);
+						FileDialog fileDialog = new FileDialog("Load XMP file", "xmpload", this, [FileDialog.FileAssociationDescriptor("Extendible bitmap file", ["*.xmp"])], ".\\", false);
 						parent.addWindow(fileDialog);
 						break;
 					case "savefile":
@@ -212,12 +211,16 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 						}
 						break;
 					case "inportnew":
-						FileDialog fileDialog = new FileDialog("Import PNG/TGA/BMP", "importfile", this, ["*.png","*.tga","*.bmp"], ".\\");
+						FileDialog fileDialog = new FileDialog("Import PNG/TGA/BMP", "importfile", this, [FileDialog.FileAssociationDescriptor("All supported files", ["*.png","*.tga","*.bmp"]),
+							FileDialog.FileAssociationDescriptor("Portable network graphics", ["*.png"]), FileDialog.FileAssociationDescriptor("Targa graphics file", ["*.tga"]),
+							FileDialog.FileAssociationDescriptor("Windows bitmap", ["*.bmp"])], ".\\");
 						parent.addWindow(fileDialog);
 						break;
 					case "inportmultiple":
 						//parent.addWindow(new SpriteSheetDialog());
-						FileDialog fileDialog = new FileDialog("Import PNG/TGA/BMP", "importmulti", this, ["*.png","*.tga","*.bmp"], ".\\");
+						FileDialog fileDialog = new FileDialog("Import PNG/TGA/BMP", "importmulti", this, [FileDialog.FileAssociationDescriptor("All supported files", ["*.png","*.tga","*.bmp"]),
+							FileDialog.FileAssociationDescriptor("Portable network graphics", ["*.png"]), FileDialog.FileAssociationDescriptor("Targa graphics file", ["*.tga"]),
+							FileDialog.FileAssociationDescriptor("Windows bitmap", ["*.bmp"])], ".\\");
 						parent.addWindow(fileDialog);
 						break;
 					case "imageList":
@@ -227,11 +230,13 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 							//preview = new Bitmap32Bit(selection.getBitmap(imageSelection),selection.getXsize(imageSelection),selection.getYsize(imageSelection));
 							//writeln(preview);
 						preview = getBitmapPreview(selection,selection.bitmapID[imageSelection]);
-						writeln(preview);
+						//writeln(preview);
 						//}
 						break;
 					case "paletteImport":
-						FileDialog fileDialog = new FileDialog("Import Palette", "palettefile", this, ["*.png","*.tga","*.bmp"], ".\\");
+						FileDialog fileDialog = new FileDialog("Import Palette", "palettefile", this, [FileDialog.FileAssociationDescriptor("All supported files", ["*.png","*.tga","*.bmp"]),
+							FileDialog.FileAssociationDescriptor("Portable network graphics", ["*.png"]), FileDialog.FileAssociationDescriptor("Targa graphics file", ["*.tga"]),
+							FileDialog.FileAssociationDescriptor("Windows bitmap", ["*.bmp"])], ".\\");
 						parent.addWindow(fileDialog);
 						break;
 					default: break;

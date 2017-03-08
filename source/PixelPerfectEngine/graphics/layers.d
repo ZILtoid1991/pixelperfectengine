@@ -513,7 +513,7 @@ public class TileLayer : Layer, ITileLayer{
 				break;
 			default:
 				int y = sY < 0 ? sY * -1 : 0;
-				
+
 				for( ; y < rasterY ; y++){
 					
 					int offsetP = y*pitch;	// The offset of the line that is being written
@@ -533,7 +533,8 @@ public class TileLayer : Layer, ITileLayer{
 							c += offsetY;
 							c += xp;
 							colorLookup(c, src.ptr, palette, tileXtarget);
-							//alphaBlend(src.ptr, p0, alpha.ptr, tileXtarget);
+							//createAlphaMask(src.ptr, alpha.ptr, tileXtarget);
+							copyRegion(src.ptr, p0, tileXtarget);
 							p0 += (tileX - xp) * 4;
 							x+=tileX - xp;
 						}else{
@@ -713,10 +714,8 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 		switch(renderMode){
 			case LayerRenderingMode.ALPHA_BLENDING:
 				foreach_reverse(int i ; spriteSorter){
-					/*foreach(int i ; spriteSet.byKey){*/
 					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						//writeln(i);
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].getXSize(), offsetX = coordinates[i].left - sX;
+						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
 						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
 						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
 						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
@@ -726,12 +725,9 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
 						src.length = l4;
 						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].getYSize() - offsetYB ; y++){
-							//ushort[] chunk = (flipRegisters[i] == FlipRegister.Y || flipRegisters[i] == FlipRegister.XY) ? spriteSet[i].readRowReverse(y) : spriteSet[i].readRow(y);
+						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
 							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							//int x = offsetXA;
 							
-							//if(x < 0) writeln(x); 
 							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
 								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
 								flipHorizontal(src.ptr, length);
@@ -751,10 +747,8 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 				break;
 			case LayerRenderingMode.BLITTER:
 				foreach_reverse(int i ; spriteSorter){
-					/*foreach(int i ; spriteSet.byKey){*/
 					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						//writeln(i);
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].getXSize(), offsetX = coordinates[i].left - sX;
+						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
 						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
 						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
 						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
@@ -764,12 +758,9 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
 						src.length = l4;
 						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].getYSize() - offsetYB ; y++){
-							//ushort[] chunk = (flipRegisters[i] == FlipRegister.Y || flipRegisters[i] == FlipRegister.XY) ? spriteSet[i].readRowReverse(y) : spriteSet[i].readRow(y);
+						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
 							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							//int x = offsetXA;
 							
-							//if(x < 0) writeln(x); 
 							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
 								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
 								flipHorizontal(src.ptr, length);
@@ -789,35 +780,27 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 				break;
 			default:
 				foreach_reverse(int i ; spriteSorter){
-					/*foreach(int i ; spriteSet.byKey){*/
 					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						//writeln(i);
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].getXSize(), offsetX = coordinates[i].left - sX;
+						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
 						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
 						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
 						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
 						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
 						ushort* p0 = spriteSet[i].getPtr();
-						ubyte[] src, alpha;
+						ubyte[] src;
 						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
 						src.length = l4;
-						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].getYSize() - offsetYB ; y++){
-							//ushort[] chunk = (flipRegisters[i] == FlipRegister.Y || flipRegisters[i] == FlipRegister.XY) ? spriteSet[i].readRowReverse(y) : spriteSet[i].readRow(y);
+						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
 							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							//int x = offsetXA;
 							
-							//if(x < 0) writeln(x); 
 							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
 								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
 								flipHorizontal(src.ptr, length);
-								//createAlphaMask(src.ptr, alpha.ptr, length);
 
 								copyRegion(src.ptr, workpad + (offsetX + offsetXA)*4 + offsetY, length);
 							}
 							else{ //for non flipped sprites
 								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
-								//createAlphaMask(src.ptr, alpha.ptr, length);
 
 								copyRegion(src.ptr, workpad + (offsetX + offsetXA)*4 + offsetY, length);/* */
 							}
@@ -937,27 +920,27 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 				foreach_reverse(int i ; spriteSorter){
 			
 					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-					//writeln(i);
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].getXSize(), offsetX = coordinates[i].left - sX;
+						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
 						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
 						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
 						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
 						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
 						ubyte* src = spriteSet[i].getPtr();
-						//writeln(p0);
+						src += offsetXA;
 						ubyte[] alpha;
 						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
 						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].getYSize() - offsetYB ; y++){
+						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
 							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
 							//src + offsetXA + offsetP;
 							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
 						
 							}
 							else{ //for non flipped sprites
-								createAlphaMask(src + offsetXA + offsetP, alpha.ptr, length);
-								alphaBlend(src + offsetXA + offsetP, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);/* */
+								createAlphaMask(src, alpha.ptr, length);
+								alphaBlend(src, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);
 							}
+							src += l4;
 						}
 					}
 				}
@@ -966,27 +949,27 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 				foreach_reverse(int i ; spriteSorter){
 			
 					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-					//writeln(i);
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].getXSize(), offsetX = coordinates[i].left - sX;
+						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
 						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
 						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
 						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
 						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
 						ubyte* src = spriteSet[i].getPtr();
-						//writeln(p0);
+						src += offsetXA;
 						ubyte[] alpha;
 						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
 						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].getYSize() - offsetYB ; y++){
+						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
 							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
 							//src + offsetXA + offsetP;
 							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
 						
 							}
 							else{ //for non flipped sprites
-								createAlphaMask(src + offsetXA + offsetP, alpha.ptr, length);
-								blitter(src + offsetXA + offsetP, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);/* */
+								createAlphaMask(src, alpha.ptr, length);
+								blitter(src, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);
 							}
+							src += l4;
 						}
 					}
 				}
@@ -995,32 +978,32 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 				foreach_reverse(int i ; spriteSorter){
 			
 					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-					//writeln(i);
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].getXSize(), offsetX = coordinates[i].left - sX;
+						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
 						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
 						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
 						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
 						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
 						ubyte* src = spriteSet[i].getPtr();
-						//writeln(p0);
-						ubyte[] alpha;
+						src += offsetXA;
+						//ubyte[] alpha;
 						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
-						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].getYSize() - offsetYB ; y++){
+						//alpha.length = l4;
+						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
 							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
 							//src + offsetXA + offsetP;
 							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-								
-								/*copyRegion(src + offsetXA + offsetP, workpad + (offsetX + offsetXA)*4 + offsetY, length);/* */
+						
 							}
 							else{ //for non flipped sprites
-								//createAlphaMask(src + offsetXA + offsetP, alpha.ptr, length);
-								copyRegion(src + offsetXA + offsetP, workpad + (offsetX + offsetXA)*4 + offsetY, length);/* */
+								//createAlphaMask(src, alpha.ptr, length);
+								copyRegion(src, workpad + (offsetX + offsetXA)*4 + offsetY, length);
 							}
+							src += l4;
 						}
 					}
 				}
 				break;
 		}
+
 	}
 }

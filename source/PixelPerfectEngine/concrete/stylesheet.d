@@ -10,7 +10,7 @@ import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.fontsets;
 
 public class StyleSheet{
-	public static const ubyte[64] defaultpaletteforGUI = 
+	public static const ubyte[] defaultpaletteforGUI = 
 	[0x00,0x00,0x00,0x00,	0xFF,0xFF,0xFF,0xFF,	0xFF,0x34,0x9e,0xff,	0xff,0xa2,0xd7,0xff,	
 		0xff,0x00,0x2c,0x59,	0xff,0x00,0x75,0xe7,	0xff,0xff,0x00,0x00,	0xFF,0x7F,0x00,0x00,
 		0xFF,0x00,0xFF,0x00,	0xFF,0x00,0x7F,0x00,	0xFF,0x00,0x00,0xFF,	0xFF,0x00,0x00,0x7F,
@@ -21,7 +21,7 @@ public class StyleSheet{
 	public int[string] drawParameters;
 
 	/**
-	 * Creates a default stylesheet. Only uses the first 7 colors (0-6 or 0x0000-0x0006).
+	 * Creates a default stylesheet.
 	 */
 	public this(){
 		color["transparent"] = 0x0000;
@@ -43,10 +43,14 @@ public class StyleSheet{
 		color["black"] = 0x000F;
 		color["white"] = 0x0001;
 		color["PopUpMenuSecondaryTextColor"] = 0x000D;
+		color["MenuBarSeparatorColor"] = 0x000D;
 
 		drawParameters["PopUpMenuHorizPadding"] = 4;
 		drawParameters["PopUpMenuVertPadding"] = 1;
 		drawParameters["PopUpMenuMinTextSpace"] = 8;
+
+		drawParameters["MenuBarHorizPadding"] = 4;
+		drawParameters["MenuBarVertPadding"] = 2;
 	}
 	public void addFontset(Fontset f, string style){
 		font[style] = f;

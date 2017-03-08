@@ -17,15 +17,16 @@ import PixelPerfectEngine.concrete.stylesheet;
 
 abstract class WindowElement{
 	public ActionListener[] al;
-	private wstring text;
-	private string source;
-	private Coordinate position;
+	protected wstring text;
+	protected string source;
+	public Coordinate position;
 	private int sizeX, sizeY;
 	//public int font;
 	public BitmapDrawer output;
 	//public Bitmap16Bit[int] altStyleBrush;
 	public ElementContainer elementContainer;
 	public StyleSheet customStyle;
+	protected bool state;
 
 	public static InputHandler inputHandler;
 	//public static StyleSheet defaultStyle;
@@ -81,14 +82,18 @@ abstract class WindowElement{
 	public void setCustomStyle(StyleSheet s){
 		customStyle = s;
 	}
-
-	/*public static void initalizeDefaultStyle(){
-		defaultStyle = new StyleSheet();
-	}*/
-
-	/*public static void setDefaultStyle(StyleSheet s){
-		defaultStyle = s;
-	}*/
+	/**
+	 * Enables (b = true) or disables (b = false) the element. All element is enabled by default.
+	 */
+	public void setState(bool b){
+		state = !b;
+	}
+	/**
+	 * Gets the state of the element.
+	 */
+	public bool getState(){
+		return !state;
+	}
 }
 
 public class Button : WindowElement{
@@ -98,8 +103,8 @@ public class Button : WindowElement{
 	
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.getXSize();
-		sizeY = coordinates.getYSize();
+		sizeX = coordinates.width();
+		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(sizeX, sizeY);
@@ -107,23 +112,23 @@ public class Button : WindowElement{
 		//draw();
 	}
 	public override void draw(){
-		output.drawFilledRectangle(0, position.getXSize()-1, 0,position.getYSize()-1, getAvailableStyleSheet().getColor("window"));
+		output.drawFilledRectangle(0, position.width()-1, 0,position.height()-1, getAvailableStyleSheet().getColor("window"));
 		if(isPressed){
 			/*output.drawRectangle(0, sizeX, 0, sizeY, getBrush(brushNormal));
 			 int x = getBrush(brushNormal).getX() / 2, y = getBrush(brushNormal).getY() / 2;
 			 output.drawFilledRectangle(x, sizeX - 1 - x, y, sizeY - 1 - y, getBrush(brushNormal).readPixel(x, y));*/
-			output.drawLine(0, position.getXSize()-1, 0, 0, getAvailableStyleSheet().getColor("windowdescent"));
-			output.drawLine(0, 0, 0, position.getYSize()-1, getAvailableStyleSheet().getColor("windowdescent"));
-			output.drawLine(0, position.getXSize()-1, position.getYSize()-1, position.getYSize()-1, getAvailableStyleSheet().getColor("windowascent"));
-			output.drawLine(position.getXSize()-1, position.getXSize()-1, 0, position.getYSize()-1, getAvailableStyleSheet().getColor("windowascent"));
+			output.drawLine(0, position.width()-1, 0, 0, getAvailableStyleSheet().getColor("windowdescent"));
+			output.drawLine(0, 0, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
+			output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));
+			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));
 		}else{
 			/*output.drawRectangle(0, sizeX, 0, sizeY, getBrush(brushPressed));
 			 int x = getBrush(brushNormal).getX() / 2, y = getBrush(brushNormal).getY() / 2;
 			 output.drawFilledRectangle(x, sizeX - 1 - x, y, sizeY - 1 - y, getBrush(brushNormal).readPixel(x, y));*/
-			output.drawLine(0, position.getXSize()-1, 0, 0, getAvailableStyleSheet().getColor("windowascent"));
-			output.drawLine(0, 0, 0, position.getYSize()-1, getAvailableStyleSheet().getColor("windowascent"));
-			output.drawLine(0, position.getXSize()-1, position.getYSize()-1, position.getYSize()-1, getAvailableStyleSheet().getColor("windowdescent"));
-			output.drawLine(position.getXSize()-1, position.getXSize()-1, 0, position.getYSize()-1, getAvailableStyleSheet().getColor("windowdescent"));
+			output.drawLine(0, position.width()-1, 0, 0, getAvailableStyleSheet().getColor("windowascent"));
+			output.drawLine(0, 0, 0, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));
+			output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
+			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
 		}
 		
 		output.drawText(sizeX/2, sizeY/2, text, getAvailableStyleSheet().getFontset("default"));
@@ -143,8 +148,8 @@ public class Button : WindowElement{
 public class Label : WindowElement{
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.getXSize();
-		sizeY = coordinates.getYSize();
+		sizeX = coordinates.width();
+		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(sizeX, sizeY);
@@ -169,8 +174,8 @@ public class TextBox : WindowElement, TextInputListener{
 	
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.getXSize();
-		sizeY = coordinates.getYSize();
+		sizeX = coordinates.width();
+		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(sizeX, sizeY);
@@ -336,8 +341,8 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 	
 	public this(string source, Coordinate coordinates, ListBoxColumn[] columns, int[] columnWidth, int rowHeight, /*VSlider vSlider = null, HSlider = null*/){
 		position = coordinates;
-		sizeX = coordinates.getXSize();
-		sizeY = coordinates.getYSize();
+		sizeX = coordinates.width();
+		sizeY = coordinates.height();
 		//this.text = text;
 		this.source = source;
 		this.rowHeight = rowHeight;
@@ -347,15 +352,15 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		foreach(int i; columnWidth){
 			fullX += i;
 		}
-		if(fullX < position.getXSize()){
-			fullX = position.getXSize();
+		if(fullX < position.width()){
+			fullX = position.width();
 		}
 		
 		output = new BitmapDrawer(sizeX, sizeY);
 
 		int foo = rowHeight * this.columns[0].elements.length;
-		if(foo < position.getYSize())
-			foo = position.getXSize;
+		if(foo < position.height())
+			foo = position.width();
 
 		/*textArea = new BitmapDrawer(fullX, foo);
 		headerArea = new BitmapDrawer(fullX, rowHeight);*/
@@ -386,6 +391,9 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 			elementContainer.drawUpdate(this);
 		}
 	}
+	public Coordinate getAbsolutePosition(WindowElement sender){
+		return sender.position;
+	}
 	/*public Bitmap16Bit getStyleBrush(int style){
 		return elementContainer.getStyleBrush(style);
 	}*/
@@ -399,18 +407,18 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		foreach(int i; columnWidth){
 			fullX += i;
 		}
-		if(fullX < position.getXSize()){
-			fullX = position.getXSize();
+		if(fullX < position.width()){
+			fullX = position.width();
 		}
 		int foo2 = rowHeight * this.columns[0].elements.length;
-		if(foo2 < position.getYSize())
-			foo2 = position.getXSize;
+		if(foo2 < position.height())
+			foo2 = position.width();
 		
 		textArea = new BitmapDrawer(fullX, foo2);
 		headerArea = new BitmapDrawer(fullX, rowHeight);
 
-		this.vSlider = new VSlider(columns[0].elements.length - 1, ((position.getYSize()-17-rowHeight) / rowHeight), "vslider", Coordinate(position.getXSize - 16, 0, position.getXSize, position.getYSize() - 16));
-		this.hSlider = new HSlider(fullX - 16, position.getXSize() - 16, "hslider", Coordinate(0, position.getYSize() - 16, position.getXSize() - 16, position.getYSize() ));
+		this.vSlider = new VSlider(columns[0].elements.length - 1, ((position.height()-17-rowHeight) / rowHeight), "vslider", Coordinate(position.width() - 16, 0, position.width(), position.height() - 16));
+		this.hSlider = new HSlider(fullX - 16, position.width() - 16, "hslider", Coordinate(0, position.height() - 16, position.width() - 16, position.height()));
 		this.vSlider.al ~= this;
 		this.vSlider.elementContainer = this;
 		sliderX = vSlider.getX();
@@ -448,18 +456,18 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		int areaX, areaY;
 
 		vposition = vSlider.getSliderPosition();
-		areaX = sizeX - vSlider.getPosition().getXSize;
+		areaX = sizeX - vSlider.getPosition().width();
 
 
 		hposition = hSlider.getSliderPosition();
-		areaY = sizeY - hSlider.getPosition().getYSize;
+		areaY = sizeY - hSlider.getPosition().height();
 
-		output.drawFilledRectangle(0, position.getXSize(), 0, position.getYSize(),getStyleSheet().getColor("window"));
-		output.drawRectangle(0, position.getXSize() - 1, 0, position.getYSize() - 1,getStyleSheet().getColor("windowascent"));
+		output.drawFilledRectangle(0, position.width(), 0, position.height(),getStyleSheet().getColor("window"));
+		output.drawRectangle(0, position.width() - 1, 0, position.height() - 1,getStyleSheet().getColor("windowascent"));
 
 
 		// draw the header
-		output.drawLine(0, position.getXSize() - 1, rowHeight, rowHeight, getStyleSheet().getColor("windowascent"));
+		output.drawLine(0, position.width() - 1, rowHeight, rowHeight, getStyleSheet().getColor("windowascent"));
 		int foo;
 		for(int i; i < columnWidth.length; i++){
 			headerArea.drawText(foo + 1, 0, columns[i].header, getStyleSheet().getFontset("default"), 1);
@@ -468,11 +476,11 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 			//writeln(foo);
 		}
 
-		output.insertBitmapSlice(0,0,headerArea.output,Coordinate(hposition,0,hposition + position.getXSize() - 17, rowHeight - 1));
+		output.insertBitmapSlice(0,0,headerArea.output,Coordinate(hposition,0,hposition + position.width() - 17, rowHeight - 1));
 
 		//draw the selector
-		if(selection - vposition >= 0 && vposition + ((position.getYSize()-17-rowHeight) / rowHeight) >= selection && columns[0].elements.length != 0)
-			output.drawFilledRectangle(1, position.getXSize() - 2, rowHeight + (rowHeight * (selection - vposition)), (rowHeight * 2) + (rowHeight * (selection - vposition)), getStyleSheet().getColor("selection"));
+		if(selection - vposition >= 0 && vposition + ((position.height()-17-rowHeight) / rowHeight) >= selection && columns[0].elements.length != 0)
+			output.drawFilledRectangle(1, position.width() - 2, rowHeight + (rowHeight * (selection - vposition)), (rowHeight * 2) + (rowHeight * (selection - vposition)), getStyleSheet().getColor("selection"));
 
 		// draw the body
 		if(!bodyDrawn){
@@ -481,7 +489,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		}
 
 		//writeln(textArea.output.getX(),textArea.output.getY());
-		output.insertBitmapSlice(0, rowHeight, textArea.output, Coordinate(hposition,vposition * rowHeight,hposition + position.getXSize() - 17 , vposition * rowHeight + areaY - rowHeight));
+		output.insertBitmapSlice(0, rowHeight, textArea.output, Coordinate(hposition,vposition * rowHeight,hposition + position.width() - 17 , vposition * rowHeight + areaY - rowHeight));
 
 		vSlider.draw();
 		hSlider.draw();
@@ -528,8 +536,8 @@ public class CheckBox : WindowElement{
 	
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.getXSize();
-		sizeY = coordinates.getYSize();
+		sizeX = coordinates.width();
+		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		brush ~= 2;
@@ -564,8 +572,8 @@ public class RadioButtonGroup : WindowElement{
 	
 	public this(wstring text, string source, Coordinate coordinates, wstring[] options, int rowSpace, int buttonpos){
 		this.position = coordinates;
-		sizeX = coordinates.getXSize();
-		sizeY = coordinates.getYSize();
+		sizeX = coordinates.width();
+		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		this.options = options;
@@ -622,8 +630,8 @@ public class VSlider : Slider{
 	
 	public this(int maxValue, int barLenght, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.getXSize();
-		sizeY = coordinates.getYSize();
+		sizeX = coordinates.width();
+		sizeY = coordinates.height();
 		//this.text = text;
 		this.source = source;
 		this.maxValue = maxValue;
@@ -645,7 +653,7 @@ public class VSlider : Slider{
 		output.insertBitmap(0, sizeY - getAvailableStyleSheet.getImage("downArrowA").getY(),getAvailableStyleSheet.getImage("downArrowA"));
 		//draw slider
 		if(maxValue > barLength){
-			double sliderlength = position.getYSize() - (getAvailableStyleSheet.getImage("upArrowA")).getY()*2, unitlength = sliderlength/maxValue;
+			double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA")).getY()*2, unitlength = sliderlength/maxValue;
 			double sliderpos = unitlength * value, bl = unitlength * barLength;
 			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("upArrowA").getY(), posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("upArrowA").getY();
 
@@ -666,7 +674,7 @@ public class VSlider : Slider{
 		}
 		else{
 			offsetY -= getAvailableStyleSheet.getImage("upArrowA").getY();
-			double sliderlength = position.getYSize() - (getAvailableStyleSheet.getImage("upArrowA").getY()*2), unitlength = sliderlength/maxValue;
+			double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA").getY()*2), unitlength = sliderlength/maxValue;
 			int v = to!int(offsetY / unitlength);
 			//value = ((sizeY - (elementContainer.getStyleBrush(brush[1]).getY() * 2)) - offsetY) * (value / maxValue);
 			if(v < maxValue - barLength) value = v;
@@ -694,8 +702,8 @@ public class VSlider : Slider{
 public class HSlider : Slider{
 	public this(int maxValue, int barLenght, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.getXSize();
-		sizeY = coordinates.getYSize();
+		sizeX = coordinates.width();
+		sizeY = coordinates.height();
 		//this.text = text;
 		this.source = source;
 		this.maxValue = maxValue;
@@ -718,12 +726,12 @@ public class HSlider : Slider{
 		output.insertBitmap(sizeX - getAvailableStyleSheet.getImage("rightArrowA").getX(),0,getAvailableStyleSheet.getImage("rightArrowA"));
 		//draw slider
 		if(maxValue > barLength){
-			double sliderlength = position.getXSize() - (getAvailableStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
+			double sliderlength = position.width() - (getAvailableStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
 			double sliderpos = unitlength * value, bl = unitlength * barLength;
 
 			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").getY(), posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").getY();
 		
-			output.drawFilledRectangle(posA, posB, 0, position.getYSize(),getAvailableStyleSheet().getColor("windowascent"));
+			output.drawFilledRectangle(posA, posB, 0, position.height(),getAvailableStyleSheet().getColor("windowascent"));
 		}
 		elementContainer.drawUpdate(this);
 	}
@@ -736,7 +744,7 @@ public class HSlider : Slider{
 		}
 		else{
 			offsetX -= getAvailableStyleSheet.getImage("rightArrowA").getX();
-			double sliderlength = position.getXSize() - (elementContainer.getStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
+			double sliderlength = position.width() - (elementContainer.getStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
 			int v = to!int(offsetX / unitlength);
 			if(v < maxValue - barLength) value = v;
 			else value = maxValue - barLength;
@@ -757,23 +765,74 @@ public class HSlider : Slider{
 }
 
 public class MenuBar: WindowElement{
-	public this(){
-
+	private PopUpMenuElement[] menus;
+	//private wstring[] menuNames;
+	private int[] menuWidths;
+	private PopUpHandler popUpHandler;
+	private int select, usedWidth;
+	public this(string source, Coordinate position, PopUpMenuElement[] menus, PopUpHandler popUpHandler){
+		this.source = source;
+		this.position = position;
+		this.popUpHandler = popUpHandler;
+		this.menus = menus;
+		select = -1;
 	}
 	public override void draw() {
-
+		StyleSheet ss = getAvailableStyleSheet();
+		Fontset f = ss.getFontset("default");
+		if (output is null){
+			usedWidth = 1;
+			output = new BitmapDrawer(position.width(),position.height());
+			foreach(m ; menus){
+				menuWidths ~= usedWidth;
+				usedWidth += f.getTextLength(m.text) + (ss.drawParameters["MenuBarHorizPadding"] * 2);
+				
+			}
+			output.drawFilledRectangle(0, position.width(), 0, position.height(), ss.getColor("window"));
+		}else{
+			output.drawFilledRectangle(0, usedWidth, 0, position.height(), ss.getColor("window"));
+		}
+		if(select != -1){
+		
+		}
+		int x = ss.drawParameters["MenuBarHorizPadding"] + 1;
+		foreach(m ; menus){
+			output.drawText(x, ss.drawParameters["MenuBarVertPadding"],m.text,f,1);
+			x += f.getTextLength(m.text) + ss.drawParameters["MenuBarHorizPadding"];
+			output.drawLine(x, x, 0, position.height() - 1, ss.getColor("MenuBarSeparatorColor"));
+			x += ss.drawParameters["MenuBarHorizPadding"];
+		}
+		output.drawLine(0, 0, 0, position.height()-1, ss.getColor("windowascent"));
+		output.drawLine(0, position.width()-1, 0, 0, ss.getColor("windowascent"));
+		output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, ss.getColor("windowdescent"));
+		output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, ss.getColor("windowdescent"));
+		elementContainer.drawUpdate(this);
 	}
-
+	public override void onClick(int offsetX, int offsetY, int type = 0){
+		
+		if(offsetX < usedWidth){
+			for(int i = menuWidths.length - 1 ; i >= 0 ; i--){
+				if(menuWidths[i] < offsetX){
+					PopUpMenu p = new PopUpMenu(menus[i].getSubElements(), menus[i].source);
+					p.al = al;
+					Coordinate c = elementContainer.getAbsolutePosition(this);
+					popUpHandler.addPopUpElement(p, c.left + menuWidths[i], position.height());
+					return;
+				}
+			}
+		}
+	}
+	
 }
 
 public abstract class PopUpElement{
 	public ActionListener[] al;
 	public BitmapDrawer output;
 	public static InputHandler inputhandler;
-	private Coordinate coordinates;
+	public Coordinate coordinates;
 	public StyleSheet customStyle;
-	private ElementContainer elementContainer;
-	private string source;
+	protected PopUpHandler parent;
+	protected string source;
 
 	public abstract void draw();
 
@@ -787,18 +846,16 @@ public abstract class PopUpElement{
 		
 	}
 	public void addParent(PopUpHandler p){
-
+		parent = p;
 	}
-	public void addElementContainer(ElementContainer e){
-		elementContainer = e;
-	}
+	
 	protected StyleSheet getStyleSheet(){
 		if(customStyle !is null){
 			return customStyle;
 		}
-		return elementContainer.getStyleSheet();
+		return parent.getStyleSheet();
 	}
-	private void invokeActionEvent(Event e){
+	protected void invokeActionEvent(Event e){
 		foreach(ActionListener a; al){
 			//a.actionEvent(source, type, value, message);
 			//writeln(a);
@@ -816,62 +873,101 @@ public class PopUpMenu : PopUpElement{
 	
 	//private uint[int] hotkeyCodes;
 	//private Bitmap16Bit[int] icons;
-	private int minwidth, width, height;
+	private int minwidth, width, height, iconWidth, select;
 	PopUpMenuElement[] elements;
 
-	public this(PopUpMenuElement[] elements, string source){
+	public this(PopUpMenuElement[] elements, string source, int iconWidth = 0){
 		this.elements = elements;
 		this.source = source;
-		
+		this. iconWidth = iconWidth;
+		select = -1;
 	}
 	public override void draw(){
 		StyleSheet ss = getStyleSheet();
 		if(output is null){
 			
-			minwidth = (ss.drawParameters["PopUpMenuVertPadding"] * 2) + ss.drawParameters["PopUpMenuMinTextSpace"];
+			minwidth = (ss.drawParameters["PopUpMenuVertPadding"] * 2) + ss.drawParameters["PopUpMenuMinTextSpace"] + iconWidth;
 			width = minwidth;
 			foreach(e; elements){
-				int newwidth = ss.getFontset("default").getTextLength(e.text~e.secondaryText);
+				int newwidth = ss.getFontset("default").getTextLength(e.text~e.secondaryText) + iconWidth;
 				if(newwidth > width){
 					width = newwidth;
 				}
-				height += ss.getFontset("default").getSize() + (ss.drawParameters["PopUpMenuHorizPadding"] * 2);
+				height += ss.getFontset("default").getSize() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 			}
-			output = new BitmapDrawer(width, height + 2);
+			width += (ss.drawParameters["PopUpMenuHorizPadding"] * 2) + ss.drawParameters["PopUpMenuMinTextSpace"];
+			height += ss.drawParameters["PopUpMenuVertPadding"] * 2;
+			output = new BitmapDrawer(width, height);
 			coordinates = Coordinate(0, 0, width, height);
 		}
-		output.drawFilledRectangle(0,0,width - 1,height - 1,ss.getColor("windowinactive"));
-		int y = 1;
+		output.drawFilledRectangle(0,width - 1,0,height - 1,ss.getColor("window"));
+		
+		if(select > -1){
+			int y0 = (height / elements.length) * select;
+			int y1 = (height / elements.length) + y0;
+			output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
+		}
+
+		
+		int y = 1 + ss.drawParameters["PopUpMenuVertPadding"];
 		foreach(e; elements){
 			if(e.secondaryText !is null){
-				output.drawColorText(width - ss.drawParameters["PopUpMenuHorizPadding"] - 1, y, e.secondaryText, ss.getFontset("default"), ss.getColor("PopUpMenuSecondaryTextColor"));
+				output.drawColorText(width - ss.drawParameters["PopUpMenuHorizPadding"] - 1, y, e.secondaryText, ss.getFontset("default"), ss.getColor("PopUpMenuSecondaryTextColor"), 2);
 			}
-			output.drawText(ss.drawParameters["PopUpMenuHorizPadding"], y, e.text, ss.getFontset("default"), 1);
+			output.drawText(ss.drawParameters["PopUpMenuHorizPadding"] + iconWidth, y, e.text, ss.getFontset("default"), 1);
+			if(e.getIcon() !is null){
+				output.insertBitmap(ss.drawParameters["PopUpMenuHorizPadding"], y, e.getIcon());
+			}
 			y += ss.getFontset("default").getSize() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 		}
 
-		output.drawRectangle(0,0,width - 1,height - 1,ss.getColor("windowascent"));
+		//output.drawRectangle(1,1,height-1,width-1,ss.getColor("windowascent"));
+		output.drawLine(0,0,0,height-1,ss.getColor("windowascent"));
+		output.drawLine(0,width-1,0,0,ss.getColor("windowascent"));
+		output.drawLine(0,width-1,height-1,height-1,ss.getColor("windowdescent"));
+		output.drawLine(width-1,width-1,0,height-1,ss.getColor("windowdescent"));
 		
 	}
 	public override void onClick(int offsetX, int offsetY, int type = 0){
 		offsetY /= height / elements.length;
 		if(elements[offsetY].source == "\\submenu\\"){
 		}else{
+			
 			invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
+			parent.endPopUpSession();
+		}
+		
+	}
+	public override void onMouseMovement(int x , int y) {
+		if(x == -1){
+			if(select != -1){
+				select = -1;
+				draw;
+			}
+		}else{
+			y /= height / elements.length;
+			if(y < elements.length){
+				select = y;
+			}
+			draw();
 		}
 	}
+	
 }
 
 public class PopUpMenuElement{
 	public string source;
 	public wstring text, secondaryText;
-	private Bitmap16Bit icon;
+	protected Bitmap16Bit icon;
 	private PopUpMenuElement[] subElements;
 	private ushort keymod;
 	private int keycode;
 
 	public this(string source, wstring text, wstring secondaryText = null, Bitmap16Bit icon = null){
-
+		this.source = source;
+		this.text = text;
+		this.secondaryText = secondaryText;
+		this.icon = icon; 
 	}
 	public Bitmap16Bit getIcon(){
 		return icon;
@@ -892,15 +988,17 @@ public class PopUpMenuElement{
 	public size_t getLength(){
 		return subElements.length;
 	}
-	public void setLenth(int l){
+	public void setLength(int l){
 		subElements.length = l;
 	}
 
 }
 
-public interface PopUpHandler : ElementContainer{
+public interface PopUpHandler : StyleSheetContainer{
 	public void addPopUpElement(PopUpElement p);
-	public void addPopUpElement(PopUpElement p, Coordinate c);
+	public void addPopUpElement(PopUpElement p, int x, int y);
+	public void endPopUpSession();
+	public void closePopUp(PopUpElement p);
 	//public StyleSheet getDefaultStyleSheet();
 
 }
@@ -950,18 +1048,21 @@ public class Event{
 }
 
 public interface ActionListener{
-	//public void actionEvent(string source, int type, int value, wstring message);
-	//public void actionEvent(string source, string subSource, int type, int value, wstring message);
-	/// During development, I decided to move to a more "Swing-like" event system, use this instead. Better for adding new features in the future.
+	/**
+	 * Invoked mostly by WindowElements, Dialogs, and PopUpElements. Used to run the code and pass the eventdata.
+	 */
 	public void actionEvent(Event event); 
 }
 
-public interface ElementContainer{
+public interface ElementContainer : StyleSheetContainer{
+	public Coordinate getAbsolutePosition(WindowElement sender);
+}
+
+public interface StyleSheetContainer{
 	public StyleSheet getStyleSheet();
-	//public Bitmap16Bit[wchar] getFontSet(int style);
+	
 	public void drawUpdate(WindowElement sender);
-	//public void getFocus(WindowElement sender);
-	//public void dropFocus(WindowElement sender);
+	
 }
 
 public interface Focusable{

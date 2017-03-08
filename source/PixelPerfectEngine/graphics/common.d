@@ -17,18 +17,42 @@ public struct Coordinate{
 		this.right=right;
 		this.bottom=bottom;
 	}
-	public int getXSize(){
+	/**
+	* Use width() instead for better readability!
+	*/
+	public deprecated int getXSize(){
 		return right-left;
 	}
-	public int getYSize(){
+	/**
+	* Use height() instead for better readability!
+	*/
+	public deprecated int getYSize(){
 		return bottom-top;
 	}
+	/** 
+	* Returns the width of the represented box.
+	*/
+	public int width(){
+		return right-left;
+	}
+	/** 
+	* Returns the height of the represented box.
+	*/
+	public int height(){
+		return bottom-top;
+	}
+	/** 
+	* Moves the box to the given position.
+	*/
 	public void move(int x, int y){
-		right = x + getXSize();
-		bottom = y + getYSize();
+		right = x + width();
+		bottom = y + height();
 		left = x;
 		top = y;
 	}
+	/** 
+	* Moves the box by the given values.
+	*/
 	public void relMove(int x, int y){
 		left = left + x;
 		right = right + x;

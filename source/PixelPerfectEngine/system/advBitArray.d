@@ -6,7 +6,9 @@
 
 module PixelPerfectEngine.system.advBitArray;
 import std.stdio;
-
+/**
+* Mainly intended for collision detection, can be used for other purposes too.
+*/
 public class AdvancedBitArray{
 	private static const ubyte[8] maskData = [0b11111110,0b11111101,0b11111011,0b11110111,0b11101111,0b11011111,0b10111111,0b01111111];
 	protected void[] rawData;
@@ -191,22 +193,103 @@ public class AdvancedBitArray{
 		}
 		return result;
 	}
+	/**
+	* Tests multiple values at once. The intended algorithm didn't work as intended, replacement is coming in 0.9.2, in the meanwhile I'm using a slower but safer one.
+	*/
 	public bool test(int from, int length, AdvancedBitArray target, int tfrom){
-		int bitShiftA = from%8, bitShiftB = tfrom%8, bitlength = length%8, bitlength2 = length%32, byteShiftA = from/8, byteShiftB = tfrom/8, wordlength = length / 8;
+		for(int i ; i < length ; i++){
+			if(opIndex(from + i) && target[tfrom + i]){
+				return true;
+			}
+		}
+		/*int bitShiftA = from%8, bitShiftB = tfrom%8, bitlength = length%8, bitlength2 = length%32, byteShiftA = from/8, byteShiftB = tfrom/8, wordlength = length / 8;
 		int i = -3;
+		/*
 		if(bitShiftA && bitShiftB){
+			for(; i < wordlength; i++){
+				int a = (*cast(ubyte*)(rawData.ptr + byteShiftA))<<bitShiftA | (*cast(ubyte*)(rawData.ptr + byteShiftA + 1))>>(8 - bitShiftA) & 0xff,
+					b = (*cast(ubyte*)(target.rawData.ptr + byteShiftB))<<bitShiftB | (*cast(ubyte*)(target.rawData.ptr + byteShiftB + 1))>>(8 - bitShiftB) & 0xff;
+				if(a & b){
+					return true;
+				}
+			}
+			if(bitlength){
+				int a = (*cast(ubyte*)(rawData.ptr + byteShiftA))<<bitShiftA | (*cast(ubyte*)(rawData.ptr + byteShiftA + 1))>>(8 - bitShiftA) & 0xff,
+					b = (*cast(ubyte*)(target.rawData.ptr + byteShiftB))<<bitShiftB | (*cast(ubyte*)(target.rawData.ptr + byteShiftB + 1))>>(8 - bitShiftB) & 0xff;
+				a >>= bitlength;
+				b >>= bitlength;
+				if(a & b  & 0xff){
+					return true;
+				}
+			}
+		}else if(bitShiftB){
+			for(; i < wordlength; i++){
+				int a = (*cast(ubyte*)(rawData.ptr + byteShiftA)),
+					b = (*cast(ubyte*)(target.rawData.ptr + byteShiftB))<<bitShiftB | (*cast(ubyte*)(target.rawData.ptr + byteShiftB + 1))>>(8 - bitShiftB) & 0xff;
+				if(a & b){
+					return true;
+				}
+			}
+			if(bitlength){
+				int a = (*cast(ubyte*)(rawData.ptr + byteShiftA)),
+					b = (*cast(ubyte*)(target.rawData.ptr + byteShiftB))<<bitShiftB | (*cast(ubyte*)(target.rawData.ptr + byteShiftB + 1))>>(8 - bitShiftB) & 0xff;
+				a >>= bitlength;
+				b >>= bitlength;
+				if(a & b  & 0xff){
+					return true;
+				}
+			}
+		}else if(bitShiftA){
+			for(; i < wordlength; i++){
+				int a = (*cast(ubyte*)(rawData.ptr + byteShiftA))<<bitShiftA | (*cast(ubyte*)(rawData.ptr + byteShiftA + 1))>>(8 - bitShiftA) & 0xff,
+					b = (*cast(ubyte*)(target.rawData.ptr + byteShiftB));
+				if(a & b){
+					return true;
+				}
+			}
+			if(bitlength){
+				int a = (*cast(ubyte*)(rawData.ptr + byteShiftA))<<bitShiftA | (*cast(ubyte*)(rawData.ptr + byteShiftA + 1))>>(8 - bitShiftA) & 0xff,
+					b = (*cast(ubyte*)(target.rawData.ptr + byteShiftB));
+				a >>= bitlength;
+				b >>= bitlength;
+				if(a & b & 0xff){
+					return true;
+				}
+			}
+		}else{
+			for(; i < wordlength; i++){
+				int a = (*cast(ubyte*)(rawData.ptr + byteShiftA)),
+					b = (*cast(ubyte*)(target.rawData.ptr + byteShiftB));
+				if(a & b){
+					return true;
+				}
+			}
+			if(bitlength){
+				int a = (*cast(ubyte*)(rawData.ptr + byteShiftA)),
+					b = (*cast(ubyte*)(target.rawData.ptr + byteShiftB));
+				a >>= bitlength;
+				b >>= bitlength;
+				if(a & b & 0xff){
+					return true;
+				}
+			}
+		}*/
+
+		/*if(bitShiftA && bitShiftB){
 			for( ; i < wordlength - 7 ; i+=4){
 				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+1+i))>>(32-bitShiftA), 
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+1+i))>>(32-bitShiftB);
+				//writeln(a,',',b);
 				if((a & b)){
 					return true;
 				}
 			}
 			if(i < wordlength - 3 || bitlength){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+1+i))>>(32-bitShiftA), 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+3+i))>>(32-bitShiftA), 
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+1+i))>>(32-bitShiftB);
 				a >>= 32 - bitlength2;
 				b >>= 32 - bitlength2;
+				//writeln(a,',',b);
 			if((a & b)){
 				return true;
 			}
@@ -214,33 +297,37 @@ public class AdvancedBitArray{
 		}else if(bitShiftB){
 			for( ; i < wordlength - 7 ; i+=4){
 				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)<<bitShiftA) , 
-					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+1+i))>>(32-bitShiftB);
+					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+3+i))>>(32-bitShiftB);
+				//writeln(a,',',b);
 				if(!(a & b)){
 					return true;
 				}
 			}
 			if(i < wordlength - 3 || bitlength){
 				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)<<bitShiftA) , 
-					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+1+i))>>(32-bitShiftB);
+					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+3+i))>>(32-bitShiftB);
 				a >>= 32 - bitlength2;
 				b >>= 32 - bitlength2;
+				//writeln(a,',',b);
 				if((a & b)){
 					return true;
 				}
 			}
 		}else if(bitShiftA){
 			for( ; i < wordlength - 7 ; i+=4){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+1+i))>>(32-bitShiftA), 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+4+i))>>(32-bitShiftA), 
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i)<<bitShiftB) ;
+				//writeln(a,',',b);
 				if((a & b)){
 					return true;
 				}
 			}
-			if(i < wordlength -3 || bitlength){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+1+i))>>(32-bitShiftA), 
+			if(i < wordlength - 3 || bitlength){
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+4+i))>>(32-bitShiftA), 
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i)) ;
 				a >>= 32 - bitlength2;
 				b >>= 32 - bitlength2;
+				//writeln(a,',',b);
 				if((a & b)){
 					return true;
 				}
@@ -249,20 +336,38 @@ public class AdvancedBitArray{
 			for( ; i < wordlength - 7 ; i+=4){
 				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)) , 
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i)) ;
+				//writeln(a,',',b);
 				if((a & b)){
 					return true;
 				}
 			}
-			if(i < wordlength -3 || bitlength){
+			if(i < wordlength - 3 || bitlength){
 				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)) , 
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i)) ;
+				//writeln(a,',',b);
 				a >>= 32 - bitlength2;
 				b >>= 32 - bitlength2;
 				if((a & b)){
 					return true;
 				}
 			}
-		}
+		}/**/
 		return false;
 	}
+	/*unittest{
+		AdvancedBitArray a = new AdvancedBitArray([0b0,0b0,0b11111111,0b11111111,0b11111111,0b11111111,0b0,0b0],64);
+		AdvancedBitArray b = new AdvancedBitArray([0b0,0b0,0b11111111,0b11111111,0b11111111,0b11111111,0b0,0b0],64);
+
+		assert(a.test(0,8,b,0) == false);
+		assert(a.test(8,8,b,0) == false);
+		assert(a.test(0,8,b,8) == false);
+		assert(a.test(8,8,b,8) == false);
+
+		assert(a.test(0,16,b,0) == false);
+
+		assert(a.test(0,8,b,48) == false);
+		assert(a.test(0,8,b,56) == false);
+		assert(a.test(8,8,b,48) == false);
+		assert(a.test(8,8,b,56) == false);
+	}*/
 }
