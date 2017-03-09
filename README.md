@@ -1,4 +1,4 @@
-# Pixel Perfect Engine ver 0.9.1-rc2
+# Pixel Perfect Engine ver 0.9.1
 2D graphics engine written in D by László Szerémi (laszloszeremi@outlook.com)
 
 Required libaries:
