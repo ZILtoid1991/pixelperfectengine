@@ -1,15 +1,8 @@
 {
-	
 	"name": "pixelperfectengine",
-	
-	"authors": [
-		"Laszlo Szeremi"
-	],
-	
+	"authors": ["Laszlo Szeremi"],
 	"description": "A 2D game engine for retro styled games",
-
 	"copyright": "BSL-1.0",
-
 	"license": "Boost",
 	"subPackages": [
 	{
@@ -20,12 +13,8 @@
 		"targetType": "library",
 		"dependencies": 
 			{
-	
-			
-			"derelict-sdl2": "==2.1.0"
-
+			"derelict-sdl2": ">=2.1.0"
 			},
-
 	},
 	{
 		"name": "pixelperfecteditor",
@@ -35,10 +24,8 @@
 		"dependencies":
 			{
 			"pixelperfectengine:pixelperfectengine": "*",
-			"derelict-sdl2": "==2.1.0",
-
-			
-			"derelict-fi": "==2.0.3"
+			"derelict-sdl2": ">=2.1.0",
+			"derelict-fi": ">=2.0.3"
 			},
 	}
 	],

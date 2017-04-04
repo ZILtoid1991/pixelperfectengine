@@ -25,14 +25,14 @@ import PixelPerfectEngine.system.etc;
  */
 
 public class ExtendibleMap{
-	private void[] rawData, rawData0;
-	private int headerLenght;
-	private uint flags;
-	private Element[] tileSource, objectSource;
-	private TileLayerData[] tld;
-	private SpriteLayerData[] sld;
-	public string[string] metaData;
-	public string filename;
+	private void[] rawData, rawData0;		///DEPRECATED. Binary data field buffer, no longer used.
+	private int headerLenght;				///DEPRECATED.
+	private uint flags;						///DEPRECATED.
+	private Element[] tileSource, objectSource;		///Stores XMP sources for the Layers
+	private TileLayerData[] tld;		///Stores the data regarding the tile layers.
+	private SpriteLayerData[] sld;		///Stores the data regarding the sprite layers.
+	public string[string] metaData;		///Stores metadata. Serialized as: [index] = value &lt = &gt &lt index &gt value &lt / index &gt
+	public string filename;			///Name of the file alongside with the path.
 	/// Load from datastream
 	this(void[] data){
 		rawData = data;
@@ -62,6 +62,7 @@ public class ExtendibleMap{
 		}
 		return result;
 	}
+	/// Loads the 32bit bitmaps for the Tilelayer from the XMP files
 	Bitmap32Bit[wchar] load32BitTileSet(int num){
 		Bitmap32Bit[wchar] result;
 		foreach(Element e1; tileSource[num].elements){
@@ -74,11 +75,13 @@ public class ExtendibleMap{
 		}
 		return result;
 	}
+	/// Adds a new file for the tilesource.
 	void addFileToTileSource(int num, string file){
 		Element e = new Element(new Tag("File"));
 		e.tag.attr["source"] = file;
 		tileSource[num] ~= e;
 	}
+	/// Adds a new tile for the tilesource. Source: the ID in the file.
 	void addTileToTileSource(int num, wchar ID, string name, string source, string file){
 		foreach(Element e; tileSource[num].elements){
 			if(e.tag.attr["source"] == file){
@@ -90,23 +93,27 @@ public class ExtendibleMap{
 			}
 		}
 	}
+	/// Adds a new TileLayer to the file.
 	void addTileLayer(TileLayerData t){
 		tld ~= t;
 		//create placeholder element
 		Element e = new Element("TileLayer");
 		tileSource ~= e;
 	}
+	/// Gets the TileLayer from the file.
 	TileLayerData getTileLayer(int num){
 		return tld[num];
 	}
+	/// Gets the number of layers.
 	int getNumOfLayers(){
 		return tld.length + sld.length;
 	}
+	/// Removes a tilelayer.
 	void removeTileLayer(int num){
 		tld = remove(tld, num);
 		tileSource = remove(tileSource, num);
 	}
-
+	/// Loads a file
 	void loadFile(){
 		//writeln(filename);
 		try{
@@ -125,7 +132,7 @@ public class ExtendibleMap{
 			writeln(e.toString);
 		}
 	}
-	//private void removeElement/(
+	/// Deserializes the header.
 	private void headerLoad(){
 		string header = cast(string)rawData;
 		Document d = new Document(header);
@@ -174,9 +181,12 @@ public class ExtendibleMap{
 			}
 		}	
 	}
+	/// Saves the file to the given location
 	void saveFile(string filename){
 		this.filename = filename;
+		saveFile();
 	}
+	/// Saves the file to the last location
 	void saveFile(){
 		auto doc = new Document(new Tag("HEADER"));
 		auto e0 = new Element("MetaData");
@@ -232,24 +242,26 @@ public class ExtendibleMap{
 	}
 }
 
-/*public enum ExtMapFlags : uint{
-	CompressionMethodNull 	= 	1,
-	CompressionMethodZLIB 	= 	2,
-	LongHeader              =   16,
-	LongFile                =   32
-}*/
 
+/**
+ * Stores Data regarding to the TileLayer. 
+ */
 public class TileLayerData{
-	wchar[] mapping;
-	string name, subtype;
-	int tX, tY, mX, mY, priority;
-	double sX, sY;
+	public wchar[] mapping;		///Mapping data.
+	public string name;			///Name of the layer, primarily used by the editors.
+	public string subtype;		///Subtype of the layer, eg. 32bit, transformable.
+	public int tX, tY;			///Sizes of the tile for the layer.
+	public int mX, mY;			///Sizes of the mapping.
+	public int priority;		///Layerpriority.
+	public double sX, sY;		///Used by the autoscroll for paralax scrolling.
 	static const string[dchar] translateTable;
 	static const char[string] detranslateTable;
+	/// Static constructor
 	static this(){
 		translateTable = ['?' : "?_"];
 		detranslateTable = ["?_" : '?'];
 	}
+	/// Constructor for TileLayers with preexisting mapping.
 	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, wchar[] mapping, string name, string subtype = ""){
 		this.tX = tX;
 		this.tY = tY;
@@ -262,6 +274,7 @@ public class TileLayerData{
 		this.name = name;
 		this.subtype = subtype;
 	}
+	/// Constructor for TileLayers without preexisting mapping.
 	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, string name, string subtype = ""){
 		this.tX = tX;
 		this.tY = tY;
@@ -278,28 +291,36 @@ public class TileLayerData{
 		initMapping.length = mX*mY;
 		this.mapping = initMapping;
 	}
+	/// Writes to the mapping.
 	public void writeMapping(int x, int y, wchar tile){
 		mapping[x + (mX * y)] = tile;
 	}
+	/// Reads from the mapping.
 	public wchar readMapping(int x, int y){
 		return mapping[x + (mX * y)];
 	}
+	/// Returns the data with escape characters for serialization.
 	public string getMapdataForSaving(){
 		import std.string;
 		string result = cast(string)(cast(void[])(mapping));
 		return translate(result, translateTable);
 	}
+	/// Deconverts the data for deserialization.
 	public static wchar[] getMapdataFromString(string input){
 		import std.array;
 		return cast(wchar[])(cast(void[])(replace(input, "?_", "?")));
 	}
 }
-
+/**
+ * Stores data regarding to the SpriteLayer.
+ */
 public class SpriteLayerData{
-	string name, subtype;
-	double sX, sY;
-	int priority;
-	ObjectPlacement[] placement;
+	public string name;			///Name of the layer, primarily used by the editors.
+	public string subtype;		///Subtype of the layer, eg. 32bit, transformable.
+	public double sX, sY;		///Used by the autoscroll for paralax scrolling.
+	public int priority;		///Layerpriority.
+	public ObjectPlacement[] placement;		///Objectdata
+	/// Creates a new spritelayer in the file
 	this(string name, double sX, double sY, int priority, string subtype = ""){
 		this.name = name;
 		this.subtype = subtype;
@@ -308,23 +329,30 @@ public class SpriteLayerData{
 		this.priority = priority;
 	}
 }
-
+/**
+ * Stores object placement data
+ */
 public class ObjectPlacement{
-	protected Element[] auxObjectData;
-	int x, y, num;
-	string ID;
+	protected Element[] auxObjectData;		///XML data regarding of this object.
+	public int x, y;		///Position of the object.
+	public int num;			///Identification number and rendering priority.
+	public string ID;		///Type of the object
+	/// Creates a new data.
 	this(int x, int y, int num, string ID){
 		this.x = x;
 		this.y = y;
 		this.num = num;
 		this.ID = ID;
 	}
-
-	void addAuxData(Element[] auxData){
+	/// Sets XML data.
+	public void setAuxData(Element[] auxData){
 		auxObjectData = auxData;
 	}
-
-	Element[] getAuxData(){
+	/// Gets the XML data
+	public Element[] getAuxData(){
 		return auxObjectData;
+	}
+	public void addAuxData(Element[] e){
+		auxObjectData ~= e;
 	}
 }

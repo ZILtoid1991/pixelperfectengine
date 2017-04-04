@@ -19,13 +19,12 @@ import std.conv;
 public class OutputScreen : RefreshListener{
     private SDL_Window* window;
     private IRaster mainRaster;
-    //private SDL_Texture* sdlTexture;
     public SDL_Renderer* renderer;
 	private SDL_Rect* outputArea;
     private void* mPixels;
     private int mPitch;
 
-    //Constructor. x , y : resolution of the window
+    ///Constructor. x , y : resolution of the window
     this(const char* title, ushort x, ushort y, uint flags = SDL_WINDOW_OPENGL, SDL_Rect* outputArea = null){
         SDL_Init(SDL_INIT_VIDEO);
 		this.outputArea = outputArea;
@@ -40,11 +39,12 @@ public class OutputScreen : RefreshListener{
         SDL_DestroyWindow(window);
         SDL_Quit();
     }
-    //Sets main raster.
+    ///Sets the main raster. Useful for changing rendering resolutions.
     public void setMainRaster(IRaster r){
         mainRaster = r;
         //sdlTexture = SDL_CreateTextureFromSurface(renderer, mainRaster.getOutput());
     }
+	///Enters into fullscreen mode.
 	public void setToFullscreen(const SDL_DisplayMode* videoMode){
 		if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN)){
 			throw new VideoModeException("Error while changing to fullscreen mode!" ~ to!string(SDL_GetError()));
@@ -53,6 +53,7 @@ public class OutputScreen : RefreshListener{
 			throw new VideoModeException("Error while changing to fullscreen mode!" ~ to!string(SDL_GetError()));
 		}
 	}
+	///Changes video mode.
 	public void setVideoMode(const SDL_DisplayMode* videoMode){
 		/*if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN)){
 			throw new VideoModeException("Error while changing video mode!" ~ to!string(SDL_GetError()));
@@ -61,11 +62,13 @@ public class OutputScreen : RefreshListener{
 			throw new VideoModeException("Error while changing video mode!" ~ to!string(SDL_GetError()));
 		}
 	}
+	///Exits fullscreen mode.
 	public void setToWindowed(){
 		if(SDL_SetWindowFullscreen(window, 0)){
 			throw new VideoModeException("Error while changing to windowed mode!" ~ to!string(SDL_GetError()));
 		}
 	}
+	///Sets the scaling quality of the program, affects all output screens.
 	public static void setScalingQuality(string q){
 		switch(q){
 			case "0": SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0"); break;
@@ -75,6 +78,7 @@ public class OutputScreen : RefreshListener{
 		}
 
 	}
+	///Sets the used video driver.
 	public static void setDriver(string drv){
 		switch(drv){
 			case "direct3d": SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d"); break;
@@ -86,7 +90,7 @@ public class OutputScreen : RefreshListener{
 		}
 	}
     
-    //Displays the output from the raster when invoked.
+    ///Displays the output from the raster when invoked.
     public void refreshFinished(){
 		//SDL_Rect r = SDL_Rect(0,0,640,480); 
 		SDL_RenderClear(renderer);

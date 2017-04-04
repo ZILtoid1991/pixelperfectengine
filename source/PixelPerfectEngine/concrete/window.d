@@ -33,7 +33,7 @@ public class Window : ElementContainer{
 	public BitmapDrawer output;
 	public int header, sizeX, sizeY;
 	private int moveX, moveY;
-	private bool move, fullUpdate;
+	private bool fullUpdate;
 	private string[] extraButtons;
 	public Coordinate position;
 	public StyleSheet customStyle;
@@ -98,7 +98,11 @@ public class Window : ElementContainer{
 
 		output.drawFilledRectangle(0, position.width() - 1, 0, position.height() - 1, getStyleSheet().getColor("window"));
 		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
-		int x1 = getStyleSheet().getImage("closeButtonA").getX(), y1 = getStyleSheet().getImage("closeButtonA").getY();
+		int x1 = getStyleSheet().getImage("closeButtonA").getX(), y1 = getStyleSheet().getImage("closeButtonA").getY(), x2 = position.width();
+		foreach(s ; extraButtons){
+			x2 -= x1;
+			output.insertBitmap(x2,0,getStyleSheet().getImage(s));
+		}
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
 		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
 
@@ -129,20 +133,16 @@ public class Window : ElementContainer{
 	 * an extra button was clicked, also tests for the header, which creates a drag event for moving the window.
 	 */
 	public void passMouseEvent(int x, int y, int state = 0){
-		//writeln(x, ",", y);
+		
 		if(getStyleSheet.getImage("closeButtonA").getX() > x && getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
 			close();
 			return;
 		}else if(getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
-			/*if(state == 0 && !move){
-				move = true;
-				moveY = y;
+			if(y > position.width() - (getStyleSheet.getImage("closeButtonA").getX() * extraButtons.length)){
+				y -= position.width() - (getStyleSheet.getImage("closeButtonA").getX() * extraButtons.length);
+				extraButtonEvent(y / getStyleSheet.getImage("closeButtonA").getX());
+				return;
 			}
-			if(state == 1 && move){
-				move = false;
-				position.move(x - moveX, y - moveY);
-				parent.moveUpdate(this);
-			}*/
 			parent.moveUpdate(this);
 		}
 		//x -= position.xa;
@@ -199,6 +199,20 @@ public class Window : ElementContainer{
 	}
 	public Coordinate getAbsolutePosition(WindowElement sender){
 		return Coordinate(sender.position.left + position.left, sender.position.top + position.top, sender.position.right + position.right, sender.position.bottom + position.bottom);
+	}
+	/**
+	* Moves the window to the exact location.
+	*/
+	public void move(int x, int y){
+		parent.moveWindow(x, y, this);
+		position.move(x,y);
+	}
+	/**
+	* Moves the window by the given values.
+	*/
+	public void relMove(int x, int y){
+		parent.relMoveWindow(x, y, this);
+		position.relMove(x,y);
 	}
 }
 
@@ -670,6 +684,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	}
 	public void closeWindow(Window sender){
 		int p = whichWindow(sender);
+		writeln(windows.length,',',p);
 		for(int i ; i < windows.length ; i++)
 			spriteLayer.removeSprite(i);
 		//spriteLayer.removeSprite(p);
@@ -697,52 +712,45 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		y = to!int(y * yR);
 		mouseX = x;
 		mouseY = y;
-
-		if(numOfPopUpElements <0 && state == SDL_PRESSED){
-			
-			foreach(p ; popUpElements){
-				
+		if(button == MouseButton.LEFT){
+			if(numOfPopUpElements <0 && state == SDL_PRESSED){
+				foreach(p ; popUpElements){
 				if(y >= p.coordinates.top && y <= p.coordinates.bottom && x >= p.coordinates.left && x <= p.coordinates.right){
-					
 					p.onClick(x - p.coordinates.left, y - p.coordinates.top);
 					return;
 				}
 			}
 			removeAllPopUps();
-		}else{
-			if(state == SDL_RELEASED && moveState){
-			/*windowToMove.position.relMove(x - moveX, y - moveY);
-			spriteLayer.relMoveSprite(whichWindow(windowToMove), x - moveX, y - moveY);*/
-			//writeln(x - moveX, y - moveY);
-				moveState = false;
-			}else if(state == SDL_RELEASED && dragEventState){
-				dragEventState = false;
-			}
-			else if(state == SDL_PRESSED){
-				moveX = x; 
-				moveY = y;
-
-				for(int i ; i < windows.length ; i++){
-					//writeln(i);
-					if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
-						if(i == 0){
-							windows[0].passMouseEvent(x - windows[0].position.left, y - windows[0].position.top, 0);
-							if(windows.length !=0){
-								dragEventState = true;
-								dragEventDest = windows[0];
+			}else{
+				if(state == ButtonState.RELEASED && moveState){
+					moveState = false;
+				}else if(state == ButtonState.RELEASED && dragEventState){
+					dragEventState = false;
+				}
+				else if(state == ButtonState.PRESSED){
+					moveX = x; 
+					moveY = y;
+					for(int i ; i < windows.length ; i++){
+						//writeln(i);
+						if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
+							if(i == 0){
+								windows[0].passMouseEvent(x - windows[0].position.left, y - windows[0].position.top, 0);
+								if(windows.length !=0){
+									dragEventState = true;
+									dragEventDest = windows[0];
+								}
+								return;
 							}
-							return;
-						}
-						else{
-							setWindowToTop(windows[i]);
-							return;
+							else{
+								setWindowToTop(windows[i]);
+								return;
+							}
 						}
 					}
+					passMouseEvent(x,y);
 				}
-				passMouseEvent(x,y);
 			}
 		}
-
 	}
 	public void passMouseEvent(int x, int y, int state = 0){
 
@@ -775,11 +783,17 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 			}
 		}
 		if(state == SDL_PRESSED && moveState){
-			windowToMove.position.relMove(relX, relY);
-			spriteLayer.relMoveSprite(whichWindow(windowToMove), relX, relY);
+			windowToMove.relMove(relX, relY);
 		}else if(state == SDL_PRESSED && dragEventState){
 			dragEventDest.passMouseEvent(x - dragEventDest.position.left,y - dragEventDest.position.top,-1);
 		}
+	}
+	public void moveWindow(int x, int y, Window w){
+		spriteLayer.relMoveSprite(whichWindow(w), x, y);
+
+	}
+	public void relMoveWindow(int x, int y, Window w){
+		spriteLayer.relMoveSprite(whichWindow(w), x, y);
 	}
 	public void addPopUpElement(PopUpElement p){
 		popUpElements ~= p;
@@ -825,6 +839,8 @@ public interface IWindowHandler : PopUpHandler{
 	public void moveUpdate(Window sender);
 	public void setWindowToTop(Window sender);
 	public void addWindow(Window w);
+	public void moveWindow(int x, int y, Window w);
+	public void relMoveWindow(int x, int y, Window w);
 }
 
 public enum EventProperties : uint{

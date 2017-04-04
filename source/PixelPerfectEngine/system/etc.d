@@ -9,7 +9,7 @@ import std.algorithm.mutation;
  */
 
 
-
+///Converts string[] to wstring[]
 public wstring[] stringArrayConv(string[] s){
 	wstring[] result;
 	foreach(ss; s){
@@ -21,6 +21,7 @@ public wstring[] stringArrayConv(string[] s){
 	}
 	return result;
 }
+///Returns a hexadecimal string representation of the integer.
 string intToHex(int i, int format = 0){
 	string result;
 	do{
@@ -52,6 +53,7 @@ string intToHex(int i, int format = 0){
 	reverse(cast(char[])result);
 	return result;
 }
+///Returns a octal string representation of the integer.
 string intToOct(int i, int format){
 	string result;
 	do{
@@ -75,6 +77,7 @@ string intToOct(int i, int format){
 	reverse(cast(char[])result);
 	return result;
 }
+///Parses a hexadecimal int represented as a string.
 int parseHex(string s){
 	//std.stdio.writeln(s);
 	int result;
@@ -102,6 +105,7 @@ int parseHex(string s){
 	}
 	return result;
 }
+///Parses a comma separated string into a single array.
 string[] csvParser(string input, char separator = ','){
 	string[] result;
 	int j;
@@ -114,6 +118,7 @@ string[] csvParser(string input, char separator = ','){
 
 	return result;
 }
+///Joins prettyprint strings to a single string for file storage.
 string stringArrayJoin(string[] input){
 	string result;
 	foreach(string s ; input){

@@ -145,6 +145,42 @@ public class Button : WindowElement{
 	}
 }
 
+public class SmallButton : WindowElement{
+	private string pressed, unpressed;
+	private bool isPressed;
+	public int brushPressed, brushNormal;
+	
+	public this(string pressed, string unpressed, string source, Coordinate coordinates){
+		position = coordinates;
+		
+		//this.text = text;
+		this.source = source;
+		this.pressed = pressed;
+		this.unpressed = unpressed;
+		output = new BitmapDrawer(sizeX, sizeY);
+		brushPressed = 1;
+		//draw();
+	}
+	public override void draw(){
+		output.drawFilledRectangle(0, position.width()-1, 0,position.height()-1, 0);
+		if(isPressed){
+			output.insertBitmap(0,0,getAvailableStyleSheet().getImage(pressed));
+		}else{
+			output.insertBitmap(0,0,getAvailableStyleSheet().getImage(unpressed));
+		}
+		elementContainer.drawUpdate(this);
+	}
+	public override void onClick(int offsetX, int offsetY, int type = 0){
+		if(type == 0){
+			isPressed = !isPressed;
+			draw();
+			invokeActionEvent(EventType.CLICK, isPressed);
+			isPressed = !isPressed;
+			draw();
+		}
+	}
+}
+
 public class Label : WindowElement{
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
@@ -954,7 +990,9 @@ public class PopUpMenu : PopUpElement{
 	}
 	
 }
-
+/**
+* Defines a single MenuElement, also can contain multiple subelements.
+*/
 public class PopUpMenuElement{
 	public string source;
 	public wstring text, secondaryText;
@@ -1003,12 +1041,60 @@ public interface PopUpHandler : StyleSheetContainer{
 
 }
 
-/*public interface IElement{
-	public void onClick();
-	public Coordinate getPosition();
-}*/
 /**
- * For use with ListBoxes and similar types
+ * Defines the header of a ListBox.
+ */
+public class ListBoxHeader{
+	private wstring[] text;
+	private int[] width;
+	private int iconColumn;
+	public this(wstring[] text, int[] width, int iconColumn = 0){
+		this.width = width;
+		this.text = text;
+		this.iconColumn = iconColumn; 
+	}
+	/// Returns the number of columns before drawing
+	public int getNumberOfColumns(){
+		return this.text.length;
+	}
+	/// Returns the text at the given point
+	public wstring getText(int i){
+		return text[i];
+	}
+	/// Returns the width of the column
+	public int getRowWidth(int i){
+		return width[i];
+	}
+	/// Sets the width of the column
+	public void setRowWidth(int i, int x){
+		width[i] = x;
+	}
+	/// Returns the number of column that contains the icon
+	public int getIconColumn(){
+		return iconColumn;
+	}
+}
+/**
+ * Defines an item in the row of a ListBox. Passed through the Event class
+ */
+ public class ListBoxItem{
+	private wstring[] text;
+	private Bitmap16Bit icon;	/// If used, replaces the texts in the column defined by the ListBoxHeader, otherwise defaults to the text.
+	public this(wstring[] text, Bitmap16Bit icon = null){
+		this.text = text;
+		this.icon = icon;
+	}
+	/// Returns the text at the given point
+	public wstring getText(int i){
+		return text[i];
+	}
+	/// Returns the icon
+	public Bitmap16Bit getIcon(){
+		return icon;
+	}
+ }
+/**
+ * For use with ListBoxes and similar types. Currently left here for legacy purposes, being replaced with the classes ListBoxHeader and ListBoxElement
  */
 public struct ListBoxColumn{
 	public wstring header;

@@ -42,38 +42,41 @@ public enum FlipRegister : ubyte {
 	XY		=	0x03
 }
 
-/*public interface ILayer{
-	// Returns color.
-	//public ushort getPixel(ushort x, ushort y);
-	// Returns if the said pixel's color is equals with the transparent color index.
-	//public bool isTransparent(ushort x, ushort y);
-	// Returns the PixelData.
-	//public PixelData getPixelData(ushort x, ushort y);
-	
-	public void setRasterizer(int rX, int rY);
-	public void updateRaster(Bitmap16Bit frameBuffer);
-	public void updateRaster(void* workpad, int pitch, ubyte[] palette);
-}*/
-
+/**
+ * The basis of all layer classes, containing functions for rendering.
+ */
 abstract class Layer {
+	protected void delegate(void* src, void* dest, void* alpha, int length) mainRenderingFunction;		///Used to get around some readability issues. (void* src, void* dest, void* alpha, int length)
+	protected void delegate(ushort* src, void* dest, ubyte* palette, int length) mainColorLookupFunction;
+	protected void delegate(void* src, int length) mainHorizontalMirroringFunction;
 	protected LayerRenderingMode renderMode;
 	
 	// scrolling position
 	protected int sX, sY, rasterX, rasterY;
-	//Deprecated
-	//private ushort transparencyIndex;
-	//Deprecated. Set color 0 as transparent instead
-	/*public void setTransparencyIndex(ushort color){
-		transparencyIndex = color;
-	}*/
 	
+	/// Sets the main rasterizer
 	public void setRasterizer(int rX, int rY){
 		//frameBuffer = frameBufferP;
 		rasterX=rX;
 		rasterY=rY;
 		
 	}
-	
+	///Sets the rendering mode
+	public void setRenderingMode(LayerRenderingMode mode){
+		renderMode = mode;
+		switch(mode){
+			case LayerRenderingMode.ALPHA_BLENDING:
+				mainRenderingFunction = &alphaBlend;
+				break;
+			case LayerRenderingMode.BLITTER:
+				mainRenderingFunction = &blitter;
+				break;
+			default:
+				mainRenderingFunction = &copyRegion;
+		}
+		mainColorLookupFunction = &colorLookup;
+		mainHorizontalMirroringFunction = &flipHorizontal;
+	}
 	///Absolute scrolling.
 	public void scroll(int x, int y){
 		sX=x;
@@ -100,241 +103,309 @@ abstract class Layer {
 			dest += 4;
 		}
 	}
+	///Creates an alpha mask if the certain version of the algorithm needs it.
 	protected void createAlphaMask(void* src, void* alpha, int length){
-		asm{
-			//setting up the pointer registers and the counter registers
-			mov		ESI, src[EBP];
-			mov		EDI, alpha[EBP];
-			mov		ECX, length;
-			//iteration cycle entry point
-		alphamaskcreation:
-			xor		EAX, EAX;
-			mov		BL, [ESI];
-			add		AL,	BL;
-			rol		EAX, 8;
-			add		AL,	BL;
-			rol		EAX, 8;
-			add		AL,	BL;
-			rol		EAX, 8;
-			add		AL,	BL;
-			mov		[EDI], EAX;
-			add		ESI, 4;
-			add		EDI, 4;
-			dec		ECX;
-			cmp		ECX, 0;
-			jnz		alphamaskcreation;
+		version(X86){
+			asm{
+				//setting up the pointer registers and the counter registers
+				mov		ESI, src[EBP];
+				mov		EDI, alpha[EBP];
+				mov		ECX, length;
+				//iteration cycle entry point
+			alphamaskcreation:
+				xor		EAX, EAX;
+				mov		BL, [ESI];
+				add		AL,	BL;
+				rol		EAX, 8;
+				add		AL,	BL;
+				rol		EAX, 8;
+				add		AL,	BL;
+				rol		EAX, 8;
+				add		AL,	BL;
+				mov		[EDI], EAX;
+				add		ESI, 4;
+				add		EDI, 4;
+				dec		ECX;
+				cmp		ECX, 0;
+				jnz		alphamaskcreation;
+			}
+		}else{
+			for(int i ; i < length ; i++){
+				ubyte a = *cast(ubyte*)src;
+				*cast(uint)alpha = a * 0x01010101;
+				src += 4;
+				alpha += 4;
+			}
 		}
 	}
+	///Standard algorithm for alpha-blending.
 	protected void alphaBlend(void* src, void* dest, void* alpha, int length){
-		int target16 = length/4, target4 = length%4;
+		
 		//if(target4) writeln(length);
-		asm{
-			//setting up the pointer registers and the counter register
-			mov		EBX, alpha[EBP];
-			mov		ESI, src[EBP];
-			mov		EDI, dest[EBP];
-			mov		ECX, target16;
-			cmp		ECX, 0;
-			jz		fourpixelblend; //skip 16 byte operations if not needed
-			//iteration cycle entry point
-		sixteenpixelblend:
-			movups	XMM0, [EBX];
-			movups	XMM1, XMM0;
-			punpcklbw	XMM0, XMM2;
-			punpckhbw	XMM1, XMM2;
-			movups	XMM6, alphaSSEConst256;
-			movups	XMM7, XMM6;
-			movups	XMM4, alphaSSEConst1;
-			movups	XMM5, XMM4;
+		version(X86){
+			createAlphaMask(src, alpha, length);
+			int target16 = length/4, target4 = length%4;
+			asm{
+				//setting up the pointer registers and the counter register
+				mov		EBX, alpha[EBP];
+				mov		ESI, src[EBP];
+				mov		EDI, dest[EBP];
+				mov		ECX, target16;
+				cmp		ECX, 0;
+				jz		fourpixelblend; //skip 16 byte operations if not needed
+				//iteration cycle entry point
+			sixteenpixelblend:
+				movups	XMM0, [EBX];
+				movups	XMM1, XMM0;
+				punpcklbw	XMM0, XMM2;
+				punpckhbw	XMM1, XMM2;
+				movups	XMM6, alphaSSEConst256;
+				movups	XMM7, XMM6;
+				movups	XMM4, alphaSSEConst1;
+				movups	XMM5, XMM4;
 			
-			paddusw	XMM4, XMM0;	//1 + alpha01
-			paddusw	XMM5, XMM1;
-			psubusw	XMM6, XMM0;	//256 - alpha01
-			psubusw	XMM7, XMM1;
+				paddusw	XMM4, XMM0;	//1 + alpha01
+				paddusw	XMM5, XMM1; //1 + alpha23 
+				psubusw	XMM6, XMM0;	//256 - alpha01
+				psubusw	XMM7, XMM1; //256 - alpha23
+				
+				//moving the values to their destinations
+
+				movups	XMM0, [ESI];	//src01
+				movups	XMM1, XMM0; //src23
+				punpcklbw	XMM0, XMM2;
+				punpckhbw	XMM1, XMM2;
+				pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
+				pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
+				movups	XMM0, [EDI];	//dest01
+				movups	XMM1, XMM0;		//dest23
+				punpcklbw	XMM0, XMM2;
+				punpckhbw	XMM1, XMM2;
+				pmullw	XMM6, XMM0;	//dest01 * (256 - alpha)
+				pmullw	XMM7, XMM1; //dest23 * (256 - alpha)
 			
-			//moving the values to their destinations
-
-			movups	XMM0, [ESI];	//src01
-			movups	XMM1, XMM0; //src23
-			punpcklbw	XMM0, XMM2;
-			punpckhbw	XMM1, XMM2;
-			pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
-			pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
-			movups	XMM0, [EDI];	//dest01
-			movups	XMM1, XMM0;		//dest23
-			punpcklbw	XMM0, XMM2;
-			punpckhbw	XMM1, XMM2;
-			pmullw	XMM6, XMM0;	//dest01 * (256 - alpha)
-			pmullw	XMM7, XMM1; //dest23 * (256 - alpha)
+				paddusw	XMM4, XMM6;	//(src01 * (1 + alpha01)) + (dest01 * (256 - alpha01))
+				paddusw	XMM5, XMM7; //(src * (1 + alpha)) + (dest * (256 - alpha))
+				psrlw	XMM4, 8;		//(src * (1 + alpha)) + (dest * (256 - alpha)) / 256
+				psrlw	XMM5, 8;
+				//moving the result to its place;
+				//pxor	MM2, MM2;
+				packuswb	XMM4, XMM5;
 			
-			paddusw	XMM4, XMM6;	//(src01 * (1 + alpha01)) + (dest01 * (256 - alpha01))
-			paddusw	XMM5, XMM7; //(src * (1 + alpha)) + (dest * (256 - alpha))
-			psrlw	XMM4, 8;		//(src * (1 + alpha)) + (dest * (256 - alpha)) / 256
-			psrlw	XMM5, 8;
-			//moving the result to its place;
-			//pxor	MM2, MM2;
-			packuswb	XMM4, XMM5;
-			
-			movups	[EDI], XMM4;
-			add		EBX, 16;
-			add		ESI, 16;
-			add		EDI, 16;
-			dec		ECX;
-			cmp		ECX, 0;
-			jnz		sixteenpixelblend;
+				movups	[EDI], XMM4;
+				add		EBX, 16;
+				add		ESI, 16;
+				add		EDI, 16;
+				dec		ECX;
+				cmp		ECX, 0;
+				jnz		sixteenpixelblend;
 
-		fourpixelblend:
+			fourpixelblend:
 
-			mov		ECX, target4;
-			cmp		ECX, 0;
-			jz		endofalgorithm;
+				mov		ECX, target4;
+				cmp		ECX, 0;
+				jz		endofalgorithm;
 
-		fourpixelblendloop:
+			fourpixelblendloop:
 
-			movd	XMM6, [EBX];//alpha
-			punpcklbw	XMM6, XMM2;
+				movd	XMM6, [EBX];//alpha
+				punpcklbw	XMM6, XMM2;
 
-			movd	XMM0, [EDI];
-			movd	XMM1, [ESI];
-			punpcklbw	XMM0, XMM2;//dest
-			punpcklbw	XMM1, XMM2;//src
+				movd	XMM0, [EDI];
+				movd	XMM1, [ESI];
+				punpcklbw	XMM0, XMM2;//dest
+				punpcklbw	XMM1, XMM2;//src
 
-			movaps	XMM4, alphaSSEConst256;
-			movaps	XMM5, alphaSSEConst1;
+				movaps	XMM4, alphaSSEConst256;
+				movaps	XMM5, alphaSSEConst1;
 				
-			paddusw XMM5, XMM6;//1+alpha
-			psubusw	XMM4, XMM6;//256-alpha
+				paddusw XMM5, XMM6;//1+alpha
+				psubusw	XMM4, XMM6;//256-alpha
 				
-			pmullw	XMM0, XMM4;//dest*(256-alpha)
-			pmullw	XMM1, XMM5;//src*(1+alpha)
-			paddusw	XMM0, XMM1;//(src*(1+alpha))+(dest*(256-alpha))
-			psrlw	XMM0, 8;//(src*(1+alpha))+(dest*(256-alpha))/256
+				pmullw	XMM0, XMM4;//dest*(256-alpha)
+				pmullw	XMM1, XMM5;//src*(1+alpha)
+				paddusw	XMM0, XMM1;//(src*(1+alpha))+(dest*(256-alpha))
+				psrlw	XMM0, 8;//(src*(1+alpha))+(dest*(256-alpha))/256
 				
-			packuswb	XMM0, XMM3;
+				packuswb	XMM0, XMM3;
 				
-			movd	[EDI], XMM0;
-			add		EBX, 4;
-			add		ESI, 4;
-			add		EDI, 4;
-			dec		ECX;
-			cmp		ECX, 0;
-			jnz		fourpixelblendloop;
+				movd	[EDI], XMM0;
+				add		EBX, 4;
+				add		ESI, 4;
+				add		EDI, 4;
+				dec		ECX;
+				cmp		ECX, 0;
+				jnz		fourpixelblendloop;
 
-		endofalgorithm:
-			;
+			endofalgorithm:
+				;
+			}
+		}else{
+			for(int i ; i < length ; i++){
+				ubyte[4] srcP = *cast(ubyte[4]*)src;
+				switch(srcP[0]){
+					case 0: 
+						break;
+					case 255: 
+						*cast(ubyte[4]*)dest = srcP;
+						break;
+					default:
+						ubyte[4] destP = *cast(ubyte[4]*)dest;
+						destP[1] = to!ubyte((srcP[1] * (1 + srcP[0]) + destP[1] * (256 - srcP[0]) / 256));
+						destP[1] = to!ubyte((srcP[2] * (1 + srcP[0]) + destP[2] * (256 - srcP[0]) / 256));
+						destP[1] = to!ubyte((srcP[3] * (1 + srcP[0]) + destP[3] * (256 - srcP[0]) / 256));
+						*cast(ubyte[4]*)dest = destP;
+						break;
+				}
+				src += 4;
+				dest += 4;
+			}
 		}
 	}
+	///Standard algorithm for blitter.
 	protected void blitter(void* src, void* dest, void* alpha, int length){
-		int target16 = length/4, target4 = length%4;
-		asm{
-			//setting up the pointer registers and the counter register
-			mov		EBX, alpha[EBP];
-			mov		ESI, src[EBP];
-			mov		EDI, dest[EBP];
-			mov		ECX, target16;
-			cmp		ECX, 0;
-			jz		fourpixelblend; //skip 16 byte operations if not needed
-			//iteration cycle entry point
-		sixteenpixelblend:
-			movups	XMM2, [EBX];
-			movups	XMM0, [ESI];	//src01
-			movups	XMM1, [EDI];	//dest01
-			pcmpeqd	XMM2, XMM3;
-			pand	XMM1, XMM2;
-			por		XMM1, XMM0;
-			movups	[EDI], XMM1;
-			add		EBX, 16;
-			add		ESI, 16;
-			add		EDI, 16;
-			dec		ECX;
-			cmp		ECX, 0;
-			jnz		sixteenpixelblend;
+		version(X86){
+			createAlphaMask(src, alpha, length);
+			int target16 = length/4, target4 = length%4;
+			asm{
+				//setting up the pointer registers and the counter register
+				mov		EBX, alpha[EBP];
+				mov		ESI, src[EBP];
+				mov		EDI, dest[EBP];
+				mov		ECX, target16;
+				cmp		ECX, 0;
+				jz		fourpixelblend; //skip 16 byte operations if not needed
+				//iteration cycle entry point
+			sixteenpixelblend:
+				movups	XMM2, [EBX];
+				movups	XMM0, [ESI];	//src01
+				movups	XMM1, [EDI];	//dest01
+				pcmpeqd	XMM2, XMM3;
+				pand	XMM1, XMM2;
+				por		XMM1, XMM0;
+				movups	[EDI], XMM1;
+				add		EBX, 16;
+				add		ESI, 16;
+				add		EDI, 16;
+				dec		ECX;
+				cmp		ECX, 0;
+				jnz		sixteenpixelblend;
 
-		fourpixelblend:
+			fourpixelblend:
 			
-			mov		ECX, target4;
-			cmp		ECX, 0;
-			jz		endofalgorithm;
+				mov		ECX, target4;
+				cmp		ECX, 0;
+				jz		endofalgorithm;
 
-		fourpixelblendloop:
+			fourpixelblendloop:
 			
-			movd	XMM2, [EBX];
-			movd	XMM0, [ESI];
-			movd	XMM1, [EDI];
-			pcmpeqd	XMM2, XMM3;
-			pand	XMM1, XMM2;
-			por		XMM1, XMM0;
-			movd	[EDI], XMM1;
-			add		EBX, 4;
-			add		ESI, 4;
-			add		EDI, 4;
-			dec		ECX;
-			cmp		ECX, 0;
-			jnz		fourpixelblendloop;
+				movd	XMM2, [EBX];
+				movd	XMM0, [ESI];
+				movd	XMM1, [EDI];
+				pcmpeqd	XMM2, XMM3;
+				pand	XMM1, XMM2;
+				por		XMM1, XMM0;
+				movd	[EDI], XMM1;
+				add		EBX, 4;
+				add		ESI, 4;
+				add		EDI, 4;
+				dec		ECX;
+				cmp		ECX, 0;
+				jnz		fourpixelblendloop;
 			
-		endofalgorithm:
-			;
+			endofalgorithm:
+				;
+			}
+		}else{
+			for(int i ; i < length ; i++){
+				ubyte[4] srcP = *cast(ubyte[4]*)src;
+				if(srcP[0]){			//This is not a true blitter algorithm, however mask creation would have taken more CPU time. Inteded as a placeholder, so the engine is usable on non-x86 systems and processors lacking any vector instructions.
+					*cast(ubyte[4]*)dest = srcP;
+				}
+				src += 4;
+				dest += 4;
+			}
 		}
 	}
-	protected void copyRegion(void* src, void* dest, int length){
-		int target16 = length/4, target4 = length%4;
-		asm{
-			//setting up the pointer registers and the counter register
-			//mov		EBX, alpha[EBP];
-			mov		ESI, src[EBP];
-			mov		EDI, dest[EBP];
-			mov		ECX, target16;
-			cmp		ECX, 0;
-			jz		fourpixelblend; //skip 16 byte operations if not needed
-			//iteration cycle entry point
-		sixteenpixelblend:
-			movups	XMM0, [ESI];	
-			movups	[EDI], XMM0;
-			add		ESI, 16;
-			add		EDI, 16;
-			dec		ECX;
-			cmp		ECX, 0;
-			jnz		sixteenpixelblend;
+	///Standard algorithm for region copying. Alpha is placeholder for delegate usage.
+	protected void copyRegion(void* src, void* dest, void* alpha, int length){
+		version(X86){
+			int target16 = length/4, target4 = length%4;
+			asm{
+				//setting up the pointer registers and the counter register
+				//mov		EBX, alpha[EBP];
+				mov		ESI, src[EBP];
+				mov		EDI, dest[EBP];
+				mov		ECX, target16;
+				cmp		ECX, 0;
+				jz		fourpixelblend; //skip 16 byte operations if not needed
+				//iteration cycle entry point
+			sixteenpixelblend:
+				movups	XMM0, [ESI];	
+				movups	[EDI], XMM0;
+				add		ESI, 16;
+				add		EDI, 16;
+				dec		ECX;
+				cmp		ECX, 0;
+				jnz		sixteenpixelblend;
 			
-		fourpixelblend:
+			fourpixelblend:
 			
-			mov		ECX, target4;
-			cmp		ECX, 0;
-			jz		endofalgorithm;
+				mov		ECX, target4;
+				cmp		ECX, 0;
+				jz		endofalgorithm;
 			
-		fourpixelblendloop:
+			fourpixelblendloop:
 
-			movd	XMM0, [ESI];
-			movd	[EDI], XMM0;
-			add		ESI, 4;
-			add		EDI, 4;
-			dec		ECX;
-			cmp		ECX, 0;
-			jnz		fourpixelblendloop;
+				movd	XMM0, [ESI];
+				movd	[EDI], XMM0;
+				add		ESI, 4;
+				add		EDI, 4;
+				dec		ECX;
+				cmp		ECX, 0;
+				jnz		fourpixelblendloop;
 			
-		endofalgorithm:
-			;
+			endofalgorithm:
+				;
+			}
+		}else{
+			for(int i ; i < length ; i++){
+				*cast(ubyte[4]*)dest = *cast(ubyte[4]*)src;
+				
+				src += 4;
+				dest += 4;
+			}
 		}
 	}
+	///Standard algorithm for horizontal mirroring
 	protected void flipHorizontal(void* src, int length){
-		int c = length / 2, dest = c * 4;
-		asm{
-			mov		ESI, src[EBP];
-			mov		EDI, ESI;
-			add		EDI, dest;
-			mov		ECX, c;
+		version(X86){
+			int c = length / 2, dest = length * 4;
+			asm{
+				mov		ESI, src[EBP];
+				mov		EDI, ESI;
+				add		EDI, dest;
+				mov		ECX, c;
 
-		loopentry:
+			loopentry:
 
-			movd	XMM0, [ESI];
-			movd	XMM1, [EDI];
-			movd	[ESI], XMM1;
-			movd	[EDI], XMM0;
-			add		ESI, 4;
-			sub		EDI, 4;
-			dec		ECX;
-			cmp		ECX, 0;
-			jnz		loopentry;
+				movd	XMM0, [ESI];
+				movd	XMM1, [EDI];
+				movd	[ESI], XMM1;
+				movd	[EDI], XMM0;
+				add		ESI, 4;
+				sub		EDI, 4;
+				dec		ECX;
+				cmp		ECX, 0;
+				jnz		loopentry;
+			}
+		}else{
+			void* dest = src + (4 * length);
+			for(int i ; i < length / 2 ; i++){
+				*cast(ubyte[4]*)dest = *cast(ubyte[4]*)src;
+				src += 4;
+				dest -= 4;
+			}
 		}
 	}
 }
@@ -360,7 +431,7 @@ public enum LayerRenderingMode{
 	BLITTER,
 	ALPHA_BLENDING
 }
-/*
+/**
  *Used by the background-sprite tester.
  */
 public interface ITileLayer{
@@ -383,7 +454,7 @@ public class TileLayer : Layer, ITileLayer{
 	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
 		tileX=tX;
 		tileY=tY;
-		this.renderMode = renderMode;
+		setRenderingMode(renderMode);
 	}
 	/// Wrapmode: if enabled, the layer will be turned into an "infinite" mode.
 	public void setWrapMode(bool w){
@@ -400,8 +471,8 @@ public class TileLayer : Layer, ITileLayer{
 	public void writeMapping(int x, int y, wchar w){
 		mapping[x+(mX*y)]=w;
 	}
-	//Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
-	//x*y=map.length
+	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
+	///x*y=map.length
 	public void loadMapping(int x, int y, wchar[] map){
 		mX=x;
 		mY=y;
@@ -409,7 +480,7 @@ public class TileLayer : Layer, ITileLayer{
 		totalX=mX*tileX;
 		totalY=mY*tileY;
 	}
-	//Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
+	///Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
 	public void addTile(Bitmap16Bit t, wchar id){
 		if(t.getX()==tileX && t.getY()==tileY){
 			tileSet[id]=t;
@@ -418,11 +489,11 @@ public class TileLayer : Layer, ITileLayer{
 			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
 		}
 	}
-	//Removes the tile with the ID from the set.
+	///Removes the tile with the ID from the set.
 	public void removeTile(wchar id){
 		tileSet.remove(id);
 	}
-
+	///Returns which tile is at the given pixel
 	public wchar tileByPixel(int x, int y){
 		if(x/tileX + (y/tileY)*mX < 0 || x/tileX + (y/tileY)*mX >= mapping.length) return 0xFFFF;
 		return mapping[x/tileX + (y/tileY)*mX];
@@ -434,119 +505,48 @@ public class TileLayer : Layer, ITileLayer{
 		src.length = tileX * 4;
 		alpha.length = tileX * 4;
 		if((sX + rasterX <= 0 || sX > totalX) && !wrapMode) return;
-		switch(renderMode){
-			case LayerRenderingMode.ALPHA_BLENDING:
-				int y = sY < 0 ? sY * -1 : 0;
-				//int yBegin = sY < 0 ? sY * -1 : 0;
-				/*if(wrapMode){
-				 y = sX + 0x7FFFFFFF;
-				 }else{
-				 y = sX < 0 ? 0 : sX;
-				 }*/
-				for( ; y < rasterY ; y++){
+		
+		int y = sY < 0 ? sY * -1 : 0;
+		//int yBegin = sY < 0 ? sY * -1 : 0;
+		/*if(wrapMode){
+		y = sX + 0x7FFFFFFF;
+		}else{
+		y = sX < 0 ? 0 : sX;
+		}*/
+		for( ; y < rasterY ; y++){
 
-					int offsetP = y*pitch;	// The offset of the line that is being written
-					int offsetY = tileY * ((y + sY)%tileY);
-					int offsetX = sX%tileX;	// tile offset of the last column
-					int x = sX < 0 ? sX * -1 : 0;
-					int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
-					void *p0 = (workpad + (x*4) + offsetP);
-					while(x < targetX){
-						wchar currentTile = tileByPixel(x+sX,y+sY);
-						if(currentTile != 0xFFFF){ // skip if tile is null
-							//writeln(x);
-							int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
-							//if(tileXtarget + x > ){}
-							int xp = (offsetX != 0 && x == 0) ? offsetX : 0;	// offset of the first tile
-							tileXtarget -= xp > 0 ? tileX - offsetX : 0;	// length of the first tile
-							ushort *c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
-							c += offsetY;
-							c += xp;
-							colorLookup(c, src.ptr, palette, tileXtarget);
-							createAlphaMask(src.ptr, alpha.ptr, tileXtarget);
-							alphaBlend(src.ptr, p0, alpha.ptr, tileXtarget);
-							p0 += (tileX - xp) * 4;
-							x+=tileX - xp;
-						}else{
-							x+=tileX;
-						}
-
-
-					}
-					
+			int offsetP = y*pitch;	// The offset of the line that is being written
+			int offsetY = tileY * ((y + sY)%tileY);
+			int offsetX = sX%tileX;	// tile offset of the last column
+			int x = sX < 0 ? sX * -1 : 0;
+			int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
+			void *p0 = (workpad + (x*4) + offsetP);
+			while(x < targetX){
+				wchar currentTile = tileByPixel(x+sX,y+sY);
+				if(currentTile != 0xFFFF){ // skip if tile is null
+					//writeln(x);
+					int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
+					//if(tileXtarget + x > ){}
+					int xp = (offsetX != 0 && x == 0) ? offsetX : 0;	// offset of the first tile
+					tileXtarget -= xp > 0 ? tileX - offsetX : 0;	// length of the first tile
+					ushort *c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
+					c += offsetY;
+					c += xp;
+					mainColorLookupFunction(c, src.ptr, palette, tileXtarget);
+					//createAlphaMask(src.ptr, alpha.ptr, tileXtarget);
+					mainRenderingFunction(src.ptr, p0, alpha.ptr, tileXtarget);
+					p0 += (tileX - xp) * 4;
+					x+=tileX - xp;
+				}else{
+					x+=tileX;
 				}
-				break;
-			case LayerRenderingMode.BLITTER:
-				int y = sY < 0 ? sY * -1 : 0;
 
-				for( ; y < rasterY ; y++){
-					
-					int offsetP = y*pitch;	// The offset of the line that is being written
-					int offsetY = tileY * ((y + sY)%tileY);
-					int offsetX = sX%tileX;	// tile offset of the last column
-					int x = sX < 0 ? sX * -1 : 0;
-					int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
-					void *p0 = (workpad + (x*4) + offsetP);
-					while(x < targetX){
-						wchar currentTile = tileByPixel(x+sX,y+sY);
-						if(currentTile != 0xFFFF){ // skip if tile is null
-							//writeln(x);
-							int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
-							//if(tileXtarget + x > ){}
-							int xp = (offsetX != 0 && x == 0) ? offsetX : 0;	// offset of the first tile
-							ushort *c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
-							c += offsetY;
-							c += xp;
-							colorLookup(c, src.ptr, palette, tileXtarget);
-							createAlphaMask(src.ptr, alpha.ptr, tileXtarget);
-							blitter(src.ptr, p0, alpha.ptr, tileXtarget);
-							p0 += (tileX - xp) * 4;
-							x+=tileX - xp;
-						}else{
-							x+=tileX;
-						}
-						
-						
-					}
-					
-				}
-				break;
-			default:
-				int y = sY < 0 ? sY * -1 : 0;
 
-				for( ; y < rasterY ; y++){
+			}
 					
-					int offsetP = y*pitch;	// The offset of the line that is being written
-					int offsetY = tileY * ((y + sY)%tileY);
-					int offsetX = sX%tileX;	// tile offset of the last column
-					int x = sX < 0 ? sX * -1 : 0;
-					int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
-					void *p0 = (workpad + (x*4) + offsetP);
-					while(x < targetX){
-						wchar currentTile = tileByPixel(x+sX,y+sY);
-						if(currentTile != 0xFFFF){ // skip if tile is null
-							//writeln(x);
-							int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
-							//if(tileXtarget + x > ){}
-							int xp = (offsetX != 0 && x == 0) ? offsetX : 0;	// offset of the first tile
-							ushort *c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
-							c += offsetY;
-							c += xp;
-							colorLookup(c, src.ptr, palette, tileXtarget);
-							//createAlphaMask(src.ptr, alpha.ptr, tileXtarget);
-							copyRegion(src.ptr, p0, tileXtarget);
-							p0 += (tileX - xp) * 4;
-							x+=tileX - xp;
-						}else{
-							x+=tileX;
-						}
-						
-						
-					}
-					
-				}
-				break;
 		}
+				
+		
 	}
 	
 	public BLInfo getLayerInfo(){
@@ -559,52 +559,75 @@ public class TileLayer : Layer, ITileLayer{
 		return mapping;
 	}
 }
-/*
+/**
  *Used by the collision detectors
  */
 public interface ISpriteCollision{
-	//public Bitmap16Bit[int] getSpriteSet();
+	///Returns all sprite coordinates.
 	public Coordinate[int] getCoordinates();
+	///Returns all flipregisters.
 	public FlipRegister[int] getFlipRegisters();
 	public int[int] getSpriteSorter();
-	//public ushort getTransparencyIndex();
+	
 }
-
+/**
+ *General SpriteLayer interface.
+ */
 public interface ISpriteLayer{
-	//public void addSprite(Bitmap16Bit s, int n, Coordinate c);
-	//public void addSprite(Bitmap16Bit s, int n, int x, int y);
+	///Removes the sprite with the given ID.
 	public void removeSprite(int n);
+	///Moves the sprite to the given location.
 	public void moveSprite(int n, int x, int y);
+	///Relatively moves the sprite by the given values.
 	public void relMoveSprite(int n, int x, int y);
+	///Gets the coordinate of the sprite.
+	public Coordinate getSpriteCoordinate(int n);
 }
+/**
+ *General SpriteLayer interface with 16bit related sprite operations.
+ */
 public interface ISpriteLayer16Bit : ISpriteLayer{
+	///Adds a sprite to the layer.
 	public void addSprite(Bitmap16Bit s, int n, Coordinate c);
+	///Adds a sprite to the layer.
 	public void addSprite(Bitmap16Bit s, int n, int x, int y);
+	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
 	public void replaceSprite(Bitmap16Bit s, int n);
+	///Replaces the sprite and moves to the given position.
 	public void replaceSprite(Bitmap16Bit s, int n, int x, int y);
+	///Replaces the sprite and moves to the given position.
 	public void replaceSprite(Bitmap16Bit s, int n, Coordinate c);
 }
+/**
+ *General SpriteLayer interface with 32bit related sprite operations.
+ */
 public interface ISpriteLayer32Bit : ISpriteLayer{
+	///Adds a sprite to the layer.
 	public void addSprite(Bitmap32Bit s, int n, Coordinate c);
+	///Adds a sprite to the layer.
 	public void addSprite(Bitmap32Bit s, int n, int x, int y);
+	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
 	public void replaceSprite(Bitmap32Bit s, int n);
+	///Replaces the sprite and moves to the given position.
 	public void replaceSprite(Bitmap32Bit s, int n, int x, int y);
+	///Replaces the sprite and moves to the given position.
 	public void replaceSprite(Bitmap32Bit s, int n, Coordinate c);
 }
-/*
+/**
  *Use it to call the collision detector
  */
 public interface SpriteMovementListener{
+	///Called when a sprite is moved.
 	void spriteMoved(int ID);
 }
 /**
  *Sprite controller and renderer.
  */
 public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
-	private Bitmap16Bit[int] spriteSet;
-	private Coordinate[int] coordinates;		//Use moveSprite() and relMoveSprite() instead to move sprites
-	private FlipRegister[int] flipRegisters;
-	private int[] spriteSorter;
+	private Bitmap16Bit[int] spriteSet;			///Stores the sprites.
+	private Coordinate[int] coordinates;		///Stores the coordinates.
+	private FlipRegister[int] flipRegisters;	///Stores the flip registers.
+	private int[] spriteSorter;					///Stores the priorities.
 	public SpriteMovementListener[int] collisionDetector;
 	//Constructors. 
 	/*public this(int n){
@@ -614,7 +637,7 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 	 }*/
 	
 	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
-		this.renderMode = renderMode;
+		setRenderingMode(renderMode);
 	}
 	
 	public void addSprite(Bitmap16Bit s, int n, Coordinate c){
@@ -710,109 +733,47 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 		}
 	}
 	
+	public Coordinate getSpriteCoordinate(int n){
+		return coordinates[n];
+	}
+
 	public override void updateRaster(void* workpad, int pitch, ubyte* palette, int[] threads){
-		switch(renderMode){
-			case LayerRenderingMode.ALPHA_BLENDING:
-				foreach_reverse(int i ; spriteSorter){
-					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
-						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
-						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
-						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
-						ushort* p0 = spriteSet[i].getPtr();
-						ubyte[] src, alpha;
-						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
-						src.length = l4;
-						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
-							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							
-							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
-								flipHorizontal(src.ptr, length);
-								createAlphaMask(src.ptr, alpha.ptr, length);
-
-								alphaBlend(src.ptr, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);
-							}
-							else{ //for non flipped sprites
-								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
-								createAlphaMask(src.ptr, alpha.ptr, length);
-
-								alphaBlend(src.ptr, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);/* */
-							}
-						}
+		foreach_reverse(int i ; spriteSorter){
+			if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
+				int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
+				int offsetXB = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
+				int offsetYA = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
+				int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
+				int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
+				ushort* p0 = spriteSet[i].getPtr();
+				p0 += offsetXA + (sizeX * offsetYA);
+				ubyte[] src, alpha;
+				int length = sizeX - offsetXA - offsetXB, lfour = length * 4;
+				src.length = lfour;
+				alpha.length = lfour;
+				int offsetY = (coordinates[i].top - sY)*pitch;
+				void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
+				for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){		
+					if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
+						mainColorLookupFunction(p0, src.ptr, palette, length);
+						mainHorizontalMirroringFunction(src.ptr, length);
+						mainRenderingFunction(src.ptr, dest, alpha.ptr, length);
+					}else{ //for non flipped sprites
+						mainColorLookupFunction(p0, src.ptr, palette, length);
+						mainRenderingFunction(src.ptr, dest, alpha.ptr, length);
 					}
+					dest += pitch;
+					p0 += sizeX;
 				}
-				break;
-			case LayerRenderingMode.BLITTER:
-				foreach_reverse(int i ; spriteSorter){
-					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
-						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
-						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
-						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
-						ushort* p0 = spriteSet[i].getPtr();
-						ubyte[] src, alpha;
-						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
-						src.length = l4;
-						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
-							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							
-							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
-								flipHorizontal(src.ptr, length);
-								createAlphaMask(src.ptr, alpha.ptr, length);
-
-								blitter(src.ptr, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);
-							}
-							else{ //for non flipped sprites
-								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
-								createAlphaMask(src.ptr, alpha.ptr, length);
-
-								blitter(src.ptr, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);/* */
-							}
-						}
-					}
-				}
-				break;
-			default:
-				foreach_reverse(int i ; spriteSorter){
-					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
-						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
-						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
-						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
-						ushort* p0 = spriteSet[i].getPtr();
-						ubyte[] src;
-						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
-						src.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
-							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							
-							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
-								flipHorizontal(src.ptr, length);
-
-								copyRegion(src.ptr, workpad + (offsetX + offsetXA)*4 + offsetY, length);
-							}
-							else{ //for non flipped sprites
-								colorLookup(p0 + offsetXA + offsetP, src.ptr, palette, length);
-
-								copyRegion(src.ptr, workpad + (offsetX + offsetXA)*4 + offsetY, length);/* */
-							}
-						}
-					}
-				}
-				break;
+			}
 		}
+		
 	}
 
 }
-
+/**
+ *Sprite controller and renderer for 32 bit sprites.
+ */
 public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 	private Bitmap32Bit[int] spriteSet;
 	private Coordinate[int] coordinates;		//Use moveSprite() and relMoveSprite() instead to move sprites
@@ -822,7 +783,7 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 
 	
 	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
-		this.renderMode = renderMode;
+		setRenderingMode(renderMode);
 	}
 	
 	public void addSprite(Bitmap32Bit s, int n, Coordinate c){
@@ -914,96 +875,41 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 		}
 	}
 	
+	public Coordinate getSpriteCoordinate(int n){
+		return coordinates[n];
+	}
+
 	public override void updateRaster(void* workpad, int pitch, ubyte* palette, int[] threads){
-		switch(renderMode){
-			case LayerRenderingMode.ALPHA_BLENDING:
-				foreach_reverse(int i ; spriteSorter){
-			
-					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
-						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
-						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
-						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
-						ubyte* src = spriteSet[i].getPtr();
-						src += offsetXA;
-						ubyte[] alpha;
-						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
-						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
-							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							//src + offsetXA + offsetP;
-							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
+		foreach_reverse(int i ; spriteSorter){
+			if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
+				int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
+				int offsetXB = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
+				int offsetYA = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
+				int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
+				int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
+				ubyte* src = spriteSet[i].getPtr();
+				src += offsetXA;
+				ubyte[] alpha, src2;
+				int length = sizeX - offsetXA - offsetXB, lfour = length * 4;
+				alpha.length = lfour;
+				src2.length = lfour;
+				int offsetY = (coordinates[i].top - sY)*pitch;
+				void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
+				for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
+					//src + offsetXA + offsetP;
+					if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
 						
-							}
-							else{ //for non flipped sprites
-								createAlphaMask(src, alpha.ptr, length);
-								alphaBlend(src, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);
-							}
-							src += l4;
-						}
 					}
-				}
-				break;
-			case LayerRenderingMode.BLITTER:
-				foreach_reverse(int i ; spriteSorter){
-			
-					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
-						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
-						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
-						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
-						ubyte* src = spriteSet[i].getPtr();
-						src += offsetXA;
-						ubyte[] alpha;
-						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
-						alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
-							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							//src + offsetXA + offsetP;
-							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
+					else{ //for non flipped sprites
 						
-							}
-							else{ //for non flipped sprites
-								createAlphaMask(src, alpha.ptr, length);
-								blitter(src, workpad + (offsetX + offsetXA)*4 + offsetY, alpha.ptr, length);
-							}
-							src += l4;
-						}
+						mainRenderingFunction(src, dest, alpha.ptr, length);
 					}
+					dest += pitch;
+					src += lfour;
 				}
-				break;
-			default:
-				foreach_reverse(int i ; spriteSorter){
-			
-					if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-						int offsetXA, offsetXB, offsetYA, offsetYB, sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-						if(sX > coordinates[i].left) {offsetXA = sX - coordinates[i].left; }
-						if(sY > coordinates[i].top) {offsetYA = sY - coordinates[i].top; }
-						if(sX + rasterX < coordinates[i].right) {offsetXB = coordinates[i].right - rasterX; }
-						if(sY + rasterY < coordinates[i].bottom) {offsetYB = coordinates[i].bottom - rasterY; }
-						ubyte* src = spriteSet[i].getPtr();
-						src += offsetXA;
-						//ubyte[] alpha;
-						int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
-						//alpha.length = l4;
-						for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){
-							int offsetP = sizeX * y, offsetY = (coordinates[i].top - sY + y)*pitch;
-							//src + offsetXA + offsetP;
-							if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-						
-							}
-							else{ //for non flipped sprites
-								//createAlphaMask(src, alpha.ptr, length);
-								copyRegion(src, workpad + (offsetX + offsetXA)*4 + offsetY, length);
-							}
-							src += l4;
-						}
-					}
-				}
-				break;
+			}
 		}
+				
 
 	}
 }

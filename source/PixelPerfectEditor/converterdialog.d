@@ -29,9 +29,10 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 	public ExtendibleBitmap[] files;
 	private ISpriteLayer32Bit viewer;
 	private Bitmap32Bit preview;
+	private PreviewWindow previewWindow;
 	private int imageSelection, frameSelection;
 
-	private bool previewModeOn;
+	public bool previewModeOn;
 	ExtendibleBitmap selection;
 	public this(InputHandler inputhandler, ISpriteLayer32Bit viewer, ExtendibleMap mh = null, ExtendibleBitmap[] documentFiles = null){
 		this(Coordinate(0,16,640,480), "XMP Converter Toolkit");
@@ -200,14 +201,16 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 						selection.saveFile();
 						break;
 					case "preview":
-						if(previewModeOn){
-							previewModeOn = false;
-							viewer.removeSprite(0);
-						}else{
-							previewModeOn = true;
-							//set sprite for preview mode
-							//writeln(preview);
-							viewer.addSprite(preview, 0, 0, 0);
+						if(preview !is null){
+							if(previewModeOn){
+								previewModeOn = false;
+								previewWindow.close();
+							}else{
+								previewModeOn = true;
+								
+								previewWindow = new PreviewWindow(preview, viewer, this);
+								parent.addWindow(previewWindow);
+							}
 						}
 						break;
 					case "inportnew":
@@ -388,5 +391,37 @@ public class ImportDialog : Window, ActionListener{
 			default: break;
 		}
 	}
+}
+
+public class PreviewWindow : Window, ActionListener{
+	Bitmap32Bit previewImage;
+	ISpriteLayer32Bit spriteLayer;
+	ConverterDialog cd;
+	public this(Bitmap32Bit previewImage, ISpriteLayer32Bit spriteLayer, ConverterDialog cd){
+		Coordinate size = Coordinate(0,0,previewImage.getX() > 78 ? previewImage.getX() + 2 : 80, previewImage.getY() + 18);
+		super(size, "Preview");
+		spriteLayer.addSprite(previewImage, -1, 2, 18);
+		this.spriteLayer = spriteLayer;
+		this.cd = cd;
+	}
+	
+	public override void actionEvent(Event event) {
+	
+	}
+	
+	override public void move(int x,int y) {
+		spriteLayer.moveSprite(-1,x+2,y+18);
+		super.move(x,y);
+	}
+	override public void relMove(int x,int y) {
+		spriteLayer.relMoveSprite(-1,x,y);
+		super.relMove(x,y);
+	}
+	override public void close() {
+		spriteLayer.removeSprite(-1);
+		cd.previewModeOn = false;
+		super.close;
+	}
+	
 }
 

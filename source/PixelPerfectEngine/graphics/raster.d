@@ -15,32 +15,32 @@ import std.stdio;
 import std.algorithm.sorting;
 import std.algorithm.mutation;
 
-//Used to invoke the blitting when the raster finished its work.
+///The raster calls it every time it finishes the drawing to the framebuffers.
 public interface RefreshListener{
     public void refreshFinished();
 }
 
-//Used to read the output from the raster and show it on the screen.
+///Used to read the output from the raster and show it on the screen.
 public interface IRaster{
     public SDL_Texture* getOutput();
 }
 
 ///Handles multiple layers onto one framebuffer.
 public class Raster : IRaster{
-    private ushort rX, rY;
+    private ushort rX, rY;		///Stores screen resolution
     //public SDL_Surface* workpad;
 	public SDL_Texture*[] frameBuffer;
 	public void*[] fbData;
 	public int[] fbPitch;
-    public ubyte[] palette; //FORMAT ARGB
-    private Layer[int] layerList;
+    public ubyte[] palette; ///FORMAT IS ARGB. Master palette, layers or bitmaps can define their own palettes if needed.
+    private Layer[int] layerList;	///Stores the layers by their priorities.
 	private int[] layerPriorityHandler;
     private bool r;
 	private int[2] doubleBufferRegisters;
     private RefreshListener[] rL;
 	//public Bitmap16Bit[2] frameBuffer;
 
-    //Default constructor. x and y : represent the resolution of the raster.
+    ///Default constructor. x and y : represent the resolution of the raster.
     public this(ushort x, ushort y, OutputScreen oW){
         //workpad = SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
 		SDL_Renderer* renderer = oW.renderer;
@@ -62,11 +62,11 @@ public class Raster : IRaster{
 		addRefreshListener(oW);
 	}
 
-	~this(){
+	/*~this(){
 		foreach(SDL_Texture* t ; frameBuffer){
 			SDL_DestroyTexture(t);
 		}
-	}
+	}*/
     //Adds a RefreshListener to its list.
     public void addRefreshListener(RefreshListener r){
         rL ~= r;

@@ -466,10 +466,10 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI5"),"upArrowB");
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI6"),"downArrowA");
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI7"),"downArrowB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI8"),"plusButtonA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI9"),"plusButtonB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIA"),"minusButtonA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIB"),"minusButtonB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI8"),"plusA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI9"),"plusB");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIA"),"minusA");
+		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIB"),"minusB");
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIC"),"leftArrowA");
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUID"),"leftArrowB");
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIE"),"rightArrowA");

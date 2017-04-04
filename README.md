@@ -1,4 +1,4 @@
-# Pixel Perfect Engine ver 0.9.1-rc2
+﻿# Pixel Perfect Engine ver 0.9.2-rc1
 2D graphics engine written in D by László Szerémi (laszloszeremi@outlook.com)
 
 Required libaries:
@@ -26,3 +26,9 @@ Sample dependencies section:
 3: Add the compiled library file in the /lib/ folder to your project.
 
 4: Do not try to sell a subpar game written with this or any other engine on any storefront, especially if that barely has any original assets. :) 
+
+
+# Known issues:
+* If you add the dependency as "pixelperfectengine" or build using the command "dub build pixelperfectengine" it will fail. Probably dub related issue.
+* The engine doesn't clear the framebuffer to spare some CPU time, this results some trippy effects if a part of the screen is not being overwritten.
+* There's also some speed issues from it, as SDL2 writes the framebuffer back to the main memory. This will probably end up in the slow replacement of SDL2's graphical side with something faster.
