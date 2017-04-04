@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-﻿# Pixel Perfect Engine ver 0.9.2-rc1
-=======
-# Pixel Perfect Engine ver 0.9.1
->>>>>>> origin/master
+# Pixel Perfect Engine ver 0.9.2-rc1
+
 2D graphics engine written in D by László Szerémi (laszloszeremi@outlook.com)
 
 Required libaries:
