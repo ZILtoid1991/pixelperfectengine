@@ -31,6 +31,7 @@ static immutable ushort[4] alphaMMXmul_const256 = [256,256,256,256];
 static immutable ushort[4] alphaMMXmul_const1 = [1,1,1,1];
 static immutable ushort[8] alphaSSEConst256 = [256,256,256,256,256,256,256,256];
 static immutable ushort[8] alphaSSEConst1 = [1,1,1,1,1,1,1,1];
+static immutable ubyte[16] alphaSSEMask = [255,0,0,0,255,0,0,0,255,0,0,0,255,0,0,0];
 static immutable uint[4] SSEUQWmaxvalue = [0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF] ;
 
 //static immutable uint[2] alphaMMXmul_0 = [1,1];
@@ -143,11 +144,11 @@ abstract class Layer {
 		
 		//if(target4) writeln(length);
 		version(X86){
-			createAlphaMask(src, alpha, length);
+			//createAlphaMask(src, alpha, length);
 			int target16 = length/4, target4 = length%4;
 			asm{
 				//setting up the pointer registers and the counter register
-				mov		EBX, alpha[EBP];
+				//mov		EBX, alpha[EBP];
 				mov		ESI, src[EBP];
 				mov		EDI, dest[EBP];
 				mov		ECX, target16;
@@ -155,8 +156,19 @@ abstract class Layer {
 				jz		fourpixelblend; //skip 16 byte operations if not needed
 				//iteration cycle entry point
 			sixteenpixelblend:
-				movups	XMM0, [EBX];
-				movups	XMM1, XMM0;
+				//create alpha mask on the fly
+				movups	XMM3, [ESI];
+				movups	XMM1, XMM3;
+				pand	XMM1, alphaSSEMask;	//pixel & 0x000000FF,0x000000FF,0x000000FF,0x000000FF
+				movups	XMM0, XMM1;
+				pslld	XMM0, 8;
+				por		XMM1, XMM0;	//mask is ready for RA
+				pslld	XMM1, 8;
+				por		XMM0, XMM1; //mask is ready for GRA
+				pslld	XMM0, 8;
+				por		XMM1, XMM0; //mask is ready for BGRA/**/
+				movups	XMM0, XMM1;
+
 				punpcklbw	XMM0, XMM2;
 				punpckhbw	XMM1, XMM2;
 				movups	XMM6, alphaSSEConst256;
@@ -171,13 +183,13 @@ abstract class Layer {
 				
 				//moving the values to their destinations
 
-				movups	XMM0, [ESI];	//src01
+				movups	XMM0, XMM3;	//src01
 				movups	XMM1, XMM0; //src23
 				punpcklbw	XMM0, XMM2;
 				punpckhbw	XMM1, XMM2;
 				pmullw	XMM4, XMM0;	//src01 * (1 + alpha01)
 				pmullw	XMM5, XMM1;	//src23 * (1 + alpha23)
-				movups	XMM0, [EDI];	//dest01
+				movups	XMM0, SSEUQWmaxvalue;	//dest01
 				movups	XMM1, XMM0;		//dest23
 				punpcklbw	XMM0, XMM2;
 				punpckhbw	XMM1, XMM2;
@@ -193,7 +205,7 @@ abstract class Layer {
 				packuswb	XMM4, XMM5;
 			
 				movups	[EDI], XMM4;
-				add		EBX, 16;
+				//add		EBX, 16;
 				add		ESI, 16;
 				add		EDI, 16;
 				dec		ECX;
@@ -208,13 +220,23 @@ abstract class Layer {
 
 			fourpixelblendloop:
 
-				movd	XMM6, [EBX];//alpha
-				punpcklbw	XMM6, XMM2;
+				//movd	XMM6, [EBX];//alpha
+				
 
 				movd	XMM0, [EDI];
 				movd	XMM1, [ESI];
 				punpcklbw	XMM0, XMM2;//dest
 				punpcklbw	XMM1, XMM2;//src
+				movups	XMM6, XMM1;
+				pand	XMM6, alphaSSEMask;	//pixel & 0x000000FF,0x000000FF,0x000000FF,0x000000FF
+				movups	XMM7, XMM6;
+				pslld	XMM6, 8;
+				por		XMM7, XMM6;	//mask is ready for RA
+				pslld	XMM7, 8;
+				por		XMM6, XMM7; //mask is ready for GRA
+				pslld	XMM6, 8;
+				por		XMM7, XMM6; //mask is ready for BGRA/**/
+				punpcklbw	XMM6, XMM2;
 
 				movaps	XMM4, alphaSSEConst256;
 				movaps	XMM5, alphaSSEConst1;
@@ -227,12 +249,12 @@ abstract class Layer {
 				paddusw	XMM0, XMM1;//(src*(1+alpha))+(dest*(256-alpha))
 				psrlw	XMM0, 8;//(src*(1+alpha))+(dest*(256-alpha))/256
 				
-				packuswb	XMM0, XMM3;
+				packuswb	XMM0, XMM2;
 				
 				movd	[EDI], XMM0;
-				add		EBX, 4;
+				
 				add		ESI, 4;
-				add		EDI, 4;
+				add		EDI, 4;/**/
 				dec		ECX;
 				cmp		ECX, 0;
 				jnz		fourpixelblendloop;
@@ -265,11 +287,11 @@ abstract class Layer {
 	///Standard algorithm for blitter.
 	protected void blitter(void* src, void* dest, void* alpha, int length){
 		version(X86){
-			createAlphaMask(src, alpha, length);
+			//createAlphaMask(src, alpha, length);
 			int target16 = length/4, target4 = length%4;
 			asm{
 				//setting up the pointer registers and the counter register
-				mov		EBX, alpha[EBP];
+				//mov		EBX, alpha[EBP];
 				mov		ESI, src[EBP];
 				mov		EDI, dest[EBP];
 				mov		ECX, target16;
@@ -277,14 +299,25 @@ abstract class Layer {
 				jz		fourpixelblend; //skip 16 byte operations if not needed
 				//iteration cycle entry point
 			sixteenpixelblend:
-				movups	XMM2, [EBX];
-				movups	XMM0, [ESI];	//src01
+				//create alpha mask on the fly
+				movups	XMM0, [ESI];
+				movups	XMM2, XMM0;
+				pand	XMM2, alphaSSEMask;	//pixel & 0x000000FF,0x000000FF,0x000000FF,0x000000FF
+				movups	XMM1, XMM2;
+				pslld	XMM1, 8;
+				por		XMM2, XMM1;	//mask is ready for RA
+				pslld	XMM2, 8;
+				por		XMM1, XMM2; //mask is ready for GRA
+				pslld	XMM1, 8;
+				por		XMM2, XMM1; //mask is ready for BGRA/**/
+				//movups	XMM2, XMM1;
 				movups	XMM1, [EDI];	//dest01
 				pcmpeqd	XMM2, XMM3;
 				pand	XMM1, XMM2;
 				por		XMM1, XMM0;
 				movups	[EDI], XMM1;
-				add		EBX, 16;
+				
+				//add		EBX, 16;
 				add		ESI, 16;
 				add		EDI, 16;
 				dec		ECX;
@@ -292,30 +325,40 @@ abstract class Layer {
 				jnz		sixteenpixelblend;
 
 			fourpixelblend:
-			
+
 				mov		ECX, target4;
 				cmp		ECX, 0;
 				jz		endofalgorithm;
 
 			fourpixelblendloop:
-			
-				movd	XMM2, [EBX];
+
 				movd	XMM0, [ESI];
-				movd	XMM1, [EDI];
+				movups	XMM2, XMM0;
+				pand	XMM2, alphaSSEMask;	//pixel & 0x000000FF,0x000000FF,0x000000FF,0x000000FF
+				movups	XMM1, XMM2;
+				pslld	XMM1, 8;
+				por		XMM2, XMM1;	//mask is ready for RA
+				pslld	XMM2, 8;
+				por		XMM1, XMM2; //mask is ready for GRA
+				pslld	XMM1, 8;
+				por		XMM2, XMM1; //mask is ready for BGRA/**/
+				//movups	XMM2, XMM1;
+				movd	XMM1, [EDI];	//dest01
 				pcmpeqd	XMM2, XMM3;
 				pand	XMM1, XMM2;
 				por		XMM1, XMM0;
 				movd	[EDI], XMM1;
-				add		EBX, 4;
+				
 				add		ESI, 4;
-				add		EDI, 4;
+				add		EDI, 4;/**/
 				dec		ECX;
 				cmp		ECX, 0;
 				jnz		fourpixelblendloop;
-			
+
 			endofalgorithm:
 				;
 			}
+			
 		}else{
 			for(int i ; i < length ; i++){
 				ubyte[4] srcP = *cast(ubyte[4]*)src;
@@ -741,26 +784,26 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 		foreach_reverse(int i ; spriteSorter){
 			if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
 				int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
-				int offsetXB = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
-				int offsetYA = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
+				int offsetXB = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
+				int offsetYA = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
 				int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
 				int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
 				ushort* p0 = spriteSet[i].getPtr();
 				p0 += offsetXA + (sizeX * offsetYA);
-				ubyte[] src, alpha;
+				ubyte[] src;//, alpha;
 				int length = sizeX - offsetXA - offsetXB, lfour = length * 4;
 				src.length = lfour;
-				alpha.length = lfour;
-				int offsetY = (coordinates[i].top - sY)*pitch;
+				//alpha.length = lfour;
+				int offsetY = sY < coordinates[i].top ? (coordinates[i].top-sY)*pitch : 0;
 				void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
 				for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){		
 					if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
 						mainColorLookupFunction(p0, src.ptr, palette, length);
 						mainHorizontalMirroringFunction(src.ptr, length);
-						mainRenderingFunction(src.ptr, dest, alpha.ptr, length);
+						mainRenderingFunction(src.ptr, dest, null, length);
 					}else{ //for non flipped sprites
 						mainColorLookupFunction(p0, src.ptr, palette, length);
-						mainRenderingFunction(src.ptr, dest, alpha.ptr, length);
+						mainRenderingFunction(src.ptr, dest, null, length);
 					}
 					dest += pitch;
 					p0 += sizeX;
@@ -880,7 +923,7 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 	}
 
 	public override void updateRaster(void* workpad, int pitch, ubyte* palette, int[] threads){
-		foreach_reverse(int i ; spriteSorter){
+		/*foreach_reverse(int i ; spriteSorter){
 			if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
 				int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
 				int offsetXB = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
@@ -908,8 +951,37 @@ public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
 					src += lfour;
 				}
 			}
-		}
-				
+		}*/
+		foreach_reverse(int i ; spriteSorter){
+			if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
+				int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
+				int offsetXB = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
+				int offsetYA = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
+				int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
+				int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
+				ubyte* p0 = spriteSet[i].getPtr();
+				p0 += (offsetXA + (sizeX * offsetYA)) * 4;
+				ubyte[] src2;//, alpha;
+				int length = sizeX - offsetXA - offsetXB, lfour = sizeX * 4;
+				if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
+					src2.length = lfour;
+				}
+				//alpha.length = lfour;
+				int offsetY = sY < coordinates[i].top ? (coordinates[i].top-sY)*pitch : 0;
+				void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
+				for(int y = offsetYA ; y < coordinates[i].height() - offsetYB ; y++){		
+					if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
+						copyRegion(p0, src2.ptr, null, length);
+						mainHorizontalMirroringFunction(src2.ptr, length);
+						mainRenderingFunction(src2.ptr, dest, null, length);
+					}else{ //for non flipped sprites
+						mainRenderingFunction(p0, dest, null, length);
+					}
+					dest += pitch;
+					p0 += lfour;
+				}
+			}
+		}		
 
 	}
 }

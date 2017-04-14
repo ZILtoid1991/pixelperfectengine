@@ -6,188 +6,234 @@
 
 module PixelPerfectEngine.system.config;
 
-import std.xml;
+//import std.xml;
 import std.file;
 import std.stdio;
 import std.string;
 import std.conv;
-import std.csv;
+//import std.csv;
 
 import PixelPerfectEngine.system.inputHandler;
 import PixelPerfectEngine.system.exc;
 import PixelPerfectEngine.system.etc;
+import PixelPerfectEngine.system.dictionary;
 import PixelPerfectEngine.graphics.outputScreen;
 
 import derelict.sdl2.sdl;
 
+import sdlang;
+
 public class ConfigurationProfile{
 	public static const ushort[string] keymodifierStrings; 
-	
-	public static const ushort[string] joymodifierStrings; //["BUTTONS": 0x0000, "DPAD": 0x0004, "AXIS": 0x0008];
+	public static const string[ushort] joymodifierStrings; 
+	public static const string[Devicetype] devicetypeStrings;
+	private static Dictionary keyNameDict, joyButtonNameDict, joyAxisNameDict;
 	public int sfxVol, musicVol;
-	//public string screenMode, resolution, scalingQuality, driver;
-	public string[string] videoSettings;
-	public KeyBinding[] keyBindingList, inputDevList;
+	public int threads;
+	public string screenMode, resolution, scalingQuality, driver;
+	//public string[string] videoSettings;
+	public KeyBinding[] keyBindingList;
+	public InputDeviceData[] inputDevices;
 	private string path;
 	public AuxillaryElements[] auxillaryParameters;
 	private static string vaultPath;
 	private SDL_DisplayMode[] videoModes;
 	//public AuxillaryElements auxillaryElements[];
-
-	public this(string configFile){
-		path = configFile;
-		//restore(lastFile);
-	}
-
+	public string appName;
+	public string appVers;
+	/// Initializes a basic configuration profile. If [vaultPath] doesn't have any configfiles, restores it from defaults.
 	public this(){
-		path = "config.cfg";
+		path = vaultPath ~ "config.sdl";
+		if(exists(path)){
+			restore();
+		}else{
+			std.file.copy("system/defaultConfig.sdl",path);
+			restore();
+		}
 	}
 
 	static this(){
 		keymodifierStrings = 
-				["NONE"	: 0x0000, "LSHIFT": 0x0001, "RSHIFT": 0x0002, "LCTRL": 0x0040, "RCTRL": 0x0080, "LALT": 0x0100, "RALT": 0x0200, "LGUI": 0x0400,	"RGUI": 0x0800,	"NUM": 0x1000, "CAPS": 0x2000,
-				"MODE": 0x4000,	"RESERVED": 0x8000,	"ANY": 0xFFFF];
-		joymodifierStrings = ["BUTTONS": 0x0000, "DPAD": 0x0004, "AXIS": 0x0008];
+				["NONE"	: 0x0000, "LSHIFT": 0x0001, "RSHIFT": 0x0002, "LCTRL": 0x0040, "RCTRL": 0x0080, "CTRL": 0x0020, "LALT": 0x0100, "RALT": 0x0200 , "LGUI": 0x0400,
+					"RGUI": 0x0800, "NUM": 0x1000, "CAPS": 0x2000, "MODE": 0x4000, "RESERVED": 0x8000, "ANY": 0xFFFF];
+		joymodifierStrings = [0x0000: "buttons",0x0004: "dpad",0x0008: "axis"];
+		devicetypeStrings = [Devicetype.JOYSTICK: "joystick", Devicetype.KEYBOARD: "keyboard", Devicetype.MOUSE: "mouse", Devicetype.TOUCHSCREEN: "touchscreen" ];
+		keyNameDict = new Dictionary("system/keycodeNamings.sdl");
+		joyButtonNameDict = new Dictionary("system/joyButtonNamings.sdl");
+		joyAxisNameDict = new Dictionary("system/joyAxisNamings.sdl");
 	}
-
-	public void restore(string configFile){
-		path = configFile;
-		string s = cast(string)std.file.read(configFile);
+	///Restores configuration profile
+	public void restore(){
 		
-		check(s);
+		//string s = cast(string)std.file.read(configFile);
 		
-		auto doc = new Document(s);
+		Tag root;
 
-		foreach(Element e1; doc.elements){
-
-			if(e1.tag.name == "Audio"){
-				foreach(Element e2; e1.elements){
-					if(e2.tag.name == "sfxVol")
-						sfxVol = to!int(e2.text());
-					else if(e2.tag.name == "musicvol")
-						musicVol = to!int(e2.text());
+		try{
+			root = parseFile(path);
+			foreach(Tag t0; root.tags){
+				if(t0.name == "audio"){		//get values for the audio subsystem
+					sfxVol = t0.getTagValue!int("soundVol", 100);
+					musicVol = t0.getTagValue!int("musicVol", 100);
+				}else if(t0.name == "video"){	//get values for the video subsystem
+					foreach(Tag t1; t0.tags){
+						switch(t1.name){
+							case "driver": driver = t1.getValue!string("software"); break;
+							case "scaling": scalingQuality = t1.getValue!string("nearest"); break;
+							case "screenMode": driver = t1.getValue!string("windowed"); break;
+							case "resolution": driver = t1.getValue!string("0"); break;
+							case "threads": threads = t1.getValue!int(-1); break;
+							default: break;
+						}
+					}
+				}else if(t0.name == "input"){
+					foreach(Tag t1; t0.tags){
+						switch(t1.name){
+							case "device": 
+								InputDeviceData device;
+								string name = t1.getValue!string("");
+								int devicenumber = t1.getAttribute!int("devNum");
+								switch(t1.expectAttribute!string("type")){
+									case "keyboard": 
+										device = InputDeviceData(devicenumber, Devicetype.KEYBOARD, name);
+										foreach(Tag t2; t1.tags){
+											if(t2.name is null){
+												uint scanCode = t2.getAttribute!int("keyCode", keyNameDict.decode(t2.getAttribute!string("keyName")));
+												keyBindingList ~= KeyBinding(stringToKeymod(t2.getAttribute!string("keyMod","NONE;")), scanCode, devicenumber, t2.expectValue!string(), Devicetype.KEYBOARD, stringToKeymod(t2.getAttribute!string("keyMod","ALL;")));
+											}
+										}
+										break;
+									case "joystick":
+										device = InputDeviceData(devicenumber, Devicetype.JOYSTICK, name);
+										foreach(Tag t2; t1.tags){
+											if(t2.name is null){
+												switch(t2.getAttribute!string("keymodifier")){
+													case "buttons":
+														uint scanCode = t2.getAttribute!int("keyCode", joyButtonNameDict.decode(t2.getAttribute!string("keyName")));
+														keyBindingList ~= KeyBinding(0, scanCode, devicenumber, t2.expectValue!string(), Devicetype.JOYSTICK);
+														break;
+													case "dpad": 
+														uint scanCode = t2.getAttribute!int("keyCode");
+														keyBindingList ~= KeyBinding(4, scanCode, devicenumber, t2.expectValue!string(), Devicetype.JOYSTICK);
+														break;
+													case "axis":
+														uint scanCode = t2.getAttribute!int("keyCode", joyAxisNameDict.decode(t2.getAttribute!string("keyName")));
+														keyBindingList ~= KeyBinding(8, scanCode, devicenumber, t2.expectValue!string(), Devicetype.JOYSTICK);
+														break;
+													default:
+														uint scanCode = t2.getAttribute!int("keyCode");
+														keyBindingList ~= KeyBinding(0, scanCode, devicenumber, t2.expectValue!string(), Devicetype.JOYSTICK);
+														break;
+												}
+											}else if(t2.name == "enableForceFeedback"){
+												device.enableForceFeedback = t2.getValue!bool(true);
+											}else if(t2.name == "axisDeadzone"){
+												device.axisDeadZonePlus[t2.getAttribute!int("axisNumber", joyAxisNameDict.decode(t2.getAttribute!string("axisName")))] = t2.expectAttribute!int("plus");
+												device.axisDeadZoneMinus[t2.getAttribute!int("axisNumber", joyAxisNameDict.decode(t2.getAttribute!string("axisName")))] = t2.expectAttribute!int("minus");
+											}
+										}
+										break;
+									case "mouse":
+										device = InputDeviceData(devicenumber, Devicetype.MOUSE, name);
+										foreach(Tag t2; t1.tags){
+											if(t2.name is null){
+												uint scanCode = t2.getAttribute!int("keyCode");
+												keyBindingList ~= KeyBinding(0, scanCode, devicenumber, t2.expectValue!string(), Devicetype.MOUSE);
+											}
+										}
+										break;
+									default: 
+										device = InputDeviceData(devicenumber, Devicetype.KEYBOARD, name);
+										break;
+								}
+								inputDevices ~= device;
+								break;
+							default: break;
+						}
+					}
+				}else if(t0.name == "etc"){
+					foreach(Tag t1; t0.tags){
+						auxillaryParameters ~= AuxillaryElements(t1.name(), t1.getValue!string());
+					}
 				}
 			}
-			else if(e1.tag.name == "Video"){
-				foreach(Element e2; e1.elements){
-					/*if(e2.tag.name == "screenMode")
-						screenMode = e2.text();
-					else if(e2.tag.name == "resolution")
-						resolution = e2.text();
-					else if(e2.tag.name == "scalingQuality")
-						scalingQuality = e2.text();
-					else if(e2.tag.name == "driver")
-						driver = e2.text();*/
-					videoSettings[e2.tag.name] = e2.text();
+		}
+		catch(ParseException e){
+			writeln(e.msg);
+		}
+		
+		
+		
+	}
+	public void store(){
+		
+		
+		Tag root = new Tag(null, null);		//, [Value(appName), Value(appVers)]
+		
+		Tag t0 = new Tag(root, null, "audio");
+		Tag t0_0 = new Tag(t0, null, "soundVol", [Value(sfxVol)]);
+		Tag t0_1 = new Tag(t0, null, "musicVolt", [Value(musicVol)]);
+
+		Tag t1 = new Tag(root, null, "video");
+		Tag t1_0 = new Tag(t1, null, "driver", [Value(driver)]);
+		Tag t1_1 = new Tag(t1, null, "scaling", [Value(scalingQuality)]);
+		Tag t1_2 = new Tag(t1, null, "screenMode", [Value(screenMode)]);
+		Tag t1_3 = new Tag(t1, null, "resolution", [Value(resolution)]);
+		Tag t1_4 = new Tag(t1, null, "threads", [Value(threads)]);
+
+		Tag t2 = new Tag(root, null, "input");
+		foreach(InputDeviceData idd; inputDevices){
+			string devType = devicetypeStrings[idd.type];
+			Tag t2_0 = new Tag(t2, null, "device", null, [new Attribute(null, "name",Value(idd.name)), new Attribute(null, "type", Value(devType)), new Attribute(null, "devNum", Value(idd.deviceNumber))]);
+			if(idd.type == Devicetype.KEYBOARD){
+				foreach(KeyBinding k; keyBindingList){
+					if(k.devicetype == idd.type && k.devicenumber == idd.deviceNumber){
+						Attribute key;
+						string s = keyNameDict.encode(k.scancode);
+						if(s is null){
+							key = new Attribute(null, "keyCode", Value(to!int(k.scancode)));
+						}else{
+							key = new Attribute(null, "keyName", Value(s));
+						}
+						new Tag(t2_0, null, null, [Value(k.ID)], [key, new Attribute(null, "keyMod", Value(keymodToString(k.keymod))), new Attribute(null, "keyModIgnore", Value(keymodToString(k.keymodIgnore)))]);
+					}
 				}
-			}
-			else if(e1.tag.name == "Input"){
-				int dn = to!uint(e1.tag.attr["devNum"]);
-				int dt;
-				switch(e1.tag.attr["devType"]){
-					case "Joystick":
-						dt = Devicetype.JOYSTICK;
-						foreach(Element e2; e1.elements){
-							keyBindingList ~= KeyBinding(joymodifierStrings[e2.tag.attr["keyMod"]], to!uint(e2.tag.attr["keyCode"]), dn, e2.tag.attr["ID"], dt);
-						}
-						break;
-					case "Mouse":
-						dt = Devicetype.MOUSE;
-						foreach(Element e2; e1.elements){
-							keyBindingList ~= KeyBinding(0, to!uint(e2.tag.attr["keyCode"]), dn, e2.tag.attr["ID"], dt);
-						}
-						break;
-					case "Touchscreen":
-						break;
-					default:
-						dt = Devicetype.KEYBOARD;
-						foreach(Element e2; e1.elements){
-							keyBindingList ~= KeyBinding(stringToKeymod(e2.tag.attr["keyMod"]), to!uint(e2.tag.attr["keyCode"]), dn, e2.tag.attr["ID"], dt, stringToKeymod(e2.tag.attr["keyModIgnore"]));
-						}
-						break;
-				}
-				
-				inputDevList ~= KeyBinding(0, 0, dn, "", dt);
-					
+			}else if(idd.type == Devicetype.JOYSTICK){
+				foreach(KeyBinding k; keyBindingList){
+					if(k.devicetype == idd.type && k.devicenumber == idd.deviceNumber){
+						new Tag(t2_0, null, null, [Value(k.ID)], [new Attribute(null, "keyCode", Value(to!int(k.scancode))), new Attribute(null, "keyMod", Value(joymodifierStrings[k.keymod]))]);
 						
-
-			}
-			else if(e1.tag.name == "Aux"){
-				foreach(Element e2; e1.elements){
-					auxillaryParameters ~= AuxillaryElements(e2.tag.name, e2.text());
-				}
-			}
-		}
-		
-	}
-	public void store(string configFile){
-
-		auto doc = new Document(new Tag("Configuration"));
-
-		auto e1 = new Element("Audio");
-		e1 ~= new Element("sfxVol", to!string(sfxVol));
-		e1 ~= new Element("musicVol", to!string(musicVol));
-		doc ~= e1;
-
-		auto e2 = new Element("Video");
-		/*e2 ~= new Element("screenMode", screenMode);
-		e2 ~= new Element("resolution", resolution);
-		e2 ~= new Element("scalingQuality", scalingQuality);
-		e2 ~= new Element("driver", driver);*/
-		foreach(s; videoSettings.byKey()){
-			e2 ~= new Element(s, videoSettings[s]);
-		}
-		doc ~= e2;
-
-
-		foreach(KeyBinding id; inputDevList){
-			auto e3 = new Element("Input");
-			e3.tag.attr["devType"] = to!string(id.devicetype);
-			e3.tag.attr["devNum"] = to!string(id.devicenumber);
-			if(id.devicetype == Devicetype.JOYSTICK){
-				for(int k; k < keyBindingList.length; k++){
-					if(keyBindingList[k].devicetype == id.devicetype && keyBindingList[k].devicenumber == id.devicenumber){
-						auto e4 = new Element("KeyBinding");
-						e4.tag.attr["keyMod"] = joymodToString(keyBindingList[k].keymod);
-						e4.tag.attr["keyCode"] = to!string(keyBindingList[k].keymod);
-						e4.tag.attr["ID"] = keyBindingList[k].ID;
-						//e4.tag.attr["keyModIgnore"] = keymodToString(keyBindingList[k].keymodIgnore);
-						e3 ~= e4;
 					}
 				}
-			}else{
-				for(int k; k < keyBindingList.length; k++){
-					if(keyBindingList[k].devicetype == id.devicetype && keyBindingList[k].devicenumber == id.devicenumber){
-						auto e4 = new Element("KeyBinding");
-						e4.tag.attr["keyMod"] = keymodToString(keyBindingList[k].keymod);
-						e4.tag.attr["keyCode"] = to!string(keyBindingList[k].keymod);
-						e4.tag.attr["ID"] = keyBindingList[k].ID;
-						e4.tag.attr["keyModIgnore"] = keymodToString(keyBindingList[k].keymodIgnore);
-						e3 ~= e4;
+				new Tag(t2_0, null, "enableForceFeedback", [Value(idd.enableForceFeedback)]);
+				foreach(int i; idd.axisDeadZonePlus.byKey){
+					new Tag(t2_0, null, "axisDeadzone", null, [new Attribute(null, "axisNumber", Value(i) ), new Attribute(null, "plus", Value(idd.axisDeadZonePlus[i]) ), new Attribute(null, "minus", Value(idd.axisDeadZoneMinus[i]) )]);
+				}
+			}else if(idd.type == Devicetype.MOUSE){
+				foreach(KeyBinding k; keyBindingList){
+					if(k.devicetype == idd.type && k.devicenumber == idd.deviceNumber){
+						new Tag(t2_0, null, null, [Value(k.ID)], [new Attribute(null, "keyCode", Value(to!int(k.scancode)))]);
 					}
 				}
 			}
-			doc ~= e3;
 		}
-
-		auto e4 = new Element("Aux");
-		foreach(AuxillaryElements aux; auxillaryParameters){
-			e4 ~= new Element(aux.name, aux.value);
+		Tag t3 = new Tag(root, null, "etc");
+		foreach(AuxillaryElements ae; auxillaryParameters){
+			new Tag(t3, null, ae.name, [Value(ae.value)]);
 		}
-		doc ~= e4;
-		
-		std.file.write(configFile, stringArrayJoin(doc.pretty()));
+		string data = root.toSDLDocument();
+		std.file.write(path, data);
 	}
-
+	
 	public ushort stringToKeymod(string s){
 		if(s == "NONE;")	return KeyModifier.NONE;
 		if(s == "ANY;")		return KeyModifier.ANY;
 		string[] values = csvParser(s, ';');
-		ushort result;
-		/*foreach(t ; values){
+		int result;
+		foreach(t ; values){
 			result += keymodifierStrings[t];
-		}*/
-		return result;
+		}
+		return to!ushort(result);
 	}
 
 	public string keymodToString(ushort keymod){
@@ -272,12 +318,30 @@ public class ConfigurationProfile{
 	}
 
 }
-
+/**
+ * Deprecated, not up to current standards, will be upgraded to take advantage of the SDLang format.
+ */
 public struct AuxillaryElements{
 	public string value, name;
 	public this(string name, string value){
 		this.name = name;
 		this.value = value;
+	}
+}
+
+/**
+ * Stores basic InputDevice info alongside with some additional settings
+ */
+public struct InputDeviceData{
+	public int deviceNumber;
+	public Devicetype type;
+	public string name;
+	public bool enableForceFeedback;
+	public int[int] axisDeadZonePlus, axisDeadZoneMinus;
+	public this(int deviceNumber, Devicetype type, string name){
+		this.deviceNumber = deviceNumber;
+		this.type = type;
+		this.name = name;
 	}
 }
 
@@ -295,9 +359,9 @@ public struct AuxillaryElements{
  * Default keywords to look up for common video settings
  */
 public enum VideoConfigDefaults : string{
-	SCREENMODE		=	"ScreenMode",
-	RESOLUTION		=	"Resolution",
-	SCALINGQUALITY	=	"ScalingQuality",
-	DRIVER			=	"Driver",
-	THREADS			=	"Threads",
+	SCREENMODE		=	"screenMode",
+	RESOLUTION		=	"resolution",
+	SCALINGQUALITY	=	"scalingQuality",
+	DRIVER			=	"driver",
+	THREADS			=	"threads",
 }

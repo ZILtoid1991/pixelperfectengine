@@ -1,0 +1,23 @@
+/*
+ * PixelPerfectEngine
+ *
+ * Default XInput button namings by Laszlo Szeremi
+ * (c) 2017 under Boost license
+ */
+
+
+
+buttonA 1
+buttonB 2
+buttonX 3
+buttonY 4
+leftBumper 5
+rightBumper 6
+start 7
+back 8
+leftStickClick 9
+rightStickClick 10
+dPadUp 11
+dPadDown 12
+dPadLeft 13
+dPadRight 14

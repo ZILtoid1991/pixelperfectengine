@@ -262,7 +262,7 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 
 	}
 	private void updateImageList(){
-		wstring[] IDs = stringArrayConv(selection.getIDs());
+		wstring[] IDs = stringArrayConv(selection.bitmapID);
 		wstring[] bt = stringArrayConv(selection.bitdepth), form = stringArrayConv(selection.format), pm = stringArrayConv(selection.paletteMode);
 
 		imageList.updateColumns([ListBoxColumn("BitmapID",IDs),ListBoxColumn("Bitdepth",bt),ListBoxColumn("Format",form),ListBoxColumn("PalMode",pm)]);

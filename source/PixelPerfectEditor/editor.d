@@ -19,6 +19,7 @@ import PixelPerfectEngine.graphics.draw;
 import PixelPerfectEngine.system.inputHandler;
 import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.etc;
+import PixelPerfectEngine.system.config;
 import std.stdio;
 import std.conv;
 import derelict.sdl2.sdl;
@@ -362,6 +363,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 	//public ForceFeedbackHandler ffb;
 	private uint[5] framecounter;
 	public char[40] windowTitle;
+	public ConfigurationProfile configFile;
 
 	public void mouseButtonEvent(Uint32 which, Uint32 timestamp, Uint32 windowID, Uint8 button, Uint8 state, Uint8 clicks, Sint32 x, Sint32 y){
 		//writeln(windowID);
@@ -437,6 +439,8 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		wh.addWindow(new ConverterDialog(input,bitmapPreview));
 	}
 	public this(string[] args){
+		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
+		configFile = new ConfigurationProfile();
 
 		windowing = new SpriteLayer(LayerRenderingMode.COPY);
 		bitmapPreview = new SpriteLayer32Bit();
@@ -534,6 +538,7 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 			//rudamentaryFrameCounter();
 			//onexit = true;
 		}
+		configFile.store();
 	}
 	public void onExit(){
 
