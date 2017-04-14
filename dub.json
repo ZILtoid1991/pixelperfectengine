@@ -13,7 +13,8 @@
 		"targetType": "library",
 		"dependencies": 
 			{
-			"derelict-sdl2": ">=2.1.0"
+			"derelict-sdl2": ">=2.1.0",
+			"sdlang-d": ">=0.10.1"
 			},
 	},
 	{
