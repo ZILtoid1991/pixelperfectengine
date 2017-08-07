@@ -40,13 +40,13 @@ abstract class WindowElement{
 	public void onScroll(int x, int y, int wX, int wY){
 		
 	}
-	public int getX(){
+	@nogc public int getX(){
 		return sizeX;
 	}
-	public int getY(){
+	@nogc public int getY(){
 		return sizeY;
 	}
-	public Coordinate getPosition(){
+	@nogc public Coordinate getPosition(){
 		return position;
 	}
 	/*
@@ -64,7 +64,7 @@ abstract class WindowElement{
 	/*private Bitmap16Bit getBrush(int style){
 		return altStyleBrush.get(style, elementContainer.getStyleBrush(style));
 	}*/
-	public wstring getText(){
+	@nogc public wstring getText(){
 		return text;
 	}
 	public void setText(wstring s){
@@ -85,13 +85,13 @@ abstract class WindowElement{
 	/**
 	 * Enables (b = true) or disables (b = false) the element. All element is enabled by default.
 	 */
-	public void setState(bool b){
+	@nogc public void setState(bool b){
 		state = !b;
 	}
 	/**
 	 * Gets the state of the element.
 	 */
-	public bool getState(){
+	@nogc public bool getState(){
 		return !state;
 	}
 }
@@ -146,17 +146,17 @@ public class Button : WindowElement{
 }
 
 public class SmallButton : WindowElement{
-	private string pressed, unpressed;
+	private string iconPressed, iconUnpressed;
 	private bool isPressed;
 	public int brushPressed, brushNormal;
 	
-	public this(string pressed, string unpressed, string source, Coordinate coordinates){
+	public this(string iconPressed, string iconUnpressed, string source, Coordinate coordinates){
 		position = coordinates;
 		
 		//this.text = text;
 		this.source = source;
-		this.pressed = pressed;
-		this.unpressed = unpressed;
+		this.iconPressed = iconPressed;
+		this.iconUnpressed = iconUnpressed;
 		output = new BitmapDrawer(sizeX, sizeY);
 		brushPressed = 1;
 		//draw();
@@ -164,9 +164,9 @@ public class SmallButton : WindowElement{
 	public override void draw(){
 		output.drawFilledRectangle(0, position.width()-1, 0,position.height()-1, 0);
 		if(isPressed){
-			output.insertBitmap(0,0,getAvailableStyleSheet().getImage(pressed));
+			output.insertBitmap(0,0,getAvailableStyleSheet().getImage("pressed"));
 		}else{
-			output.insertBitmap(0,0,getAvailableStyleSheet().getImage(unpressed));
+			output.insertBitmap(0,0,getAvailableStyleSheet().getImage("unpressed"));
 		}
 		elementContainer.drawUpdate(this);
 	}
@@ -220,6 +220,9 @@ public class TextBox : WindowElement, TextInputListener{
 		//draw();
 	}
 
+	~this(){
+		inputHandler.removeTextInputListener(source);
+	}
 	public deprecated void addTextInputHandler(TextInputHandler t){	/** DEPRECATED. Will be removed soon in favor of static input handlers. */
 		/*tih = t;*/
 		inputHandler.addTextInputListener(source, this);
@@ -364,26 +367,30 @@ public class TextBox : WindowElement, TextInputListener{
 }
 
 
-public class ListBox : WindowElement, ActionListener, ElementContainer{
-	public ListBoxColumn[] columns;
+public class ListBox : WindowElement, ActionListener, ElementContainer, TextInputListener{
+	//public ListBoxColumn[] columns;
+	public ListBoxHeader header;
+	public ListBoxItem[] items;
 	public int[] columnWidth;
-	public int brushHeader, brush, fontHeader, rowHeight;
+	public int selection, brushHeader, brush, fontHeader, rowHeight;
 	public ushort selectionColor;
-	private bool fullRedraw, bodyDrawn;
+	private bool fullRedraw, bodyDrawn, enableTextInput, textInputMode, insert;
 	private VSlider vSlider;
 	private HSlider hSlider;
-	private int fullX, hposition, vposition, selection, sliderX, sliderY, startY, endY;
+	private int fullX, hposition, vposition, sliderX, sliderY, startY, endY, selectedColumn, textPos;
 	private BitmapDrawer textArea, headerArea;
+	//private string editedText;
 	
-	public this(string source, Coordinate coordinates, ListBoxColumn[] columns, int[] columnWidth, int rowHeight, /*VSlider vSlider = null, HSlider = null*/){
+	public this(string source, Coordinate coordinates, ListBoxItem[] items, ListBoxHeader header, int rowHeight, bool enableTextInput = false){
 		position = coordinates;
 		sizeX = coordinates.width();
 		sizeY = coordinates.height();
 		//this.text = text;
 		this.source = source;
 		this.rowHeight = rowHeight;
-		this.columnWidth = columnWidth;
-		updateColumns(columns);
+		this.items = items;
+		this.header = header;
+		updateColumns();
 
 		foreach(int i; columnWidth){
 			fullX += i;
@@ -394,24 +401,17 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		
 		output = new BitmapDrawer(sizeX, sizeY);
 
-		int foo = rowHeight * this.columns[0].elements.length;
+		int foo = rowHeight * this.items.length;
 		if(foo < position.height())
 			foo = position.width();
-
-		/*textArea = new BitmapDrawer(fullX, foo);
-		headerArea = new BitmapDrawer(fullX, rowHeight);*/
-		//writeln(columns[0].elements.length,',', ((position.getYSize()-16-rowHeight) / rowHeight));
-		/*this.vSlider = new VSlider(columns[0].elements.length - 1, ((position.getYSize()-17-rowHeight) / rowHeight), "vslider", Coordinate(position.getXSize - 16, 0, position.getXSize, position.getYSize() - 16));
-		this.hSlider = new HSlider(fullX - 16, position.getXSize() - 16, "hslider", Coordinate(0, position.getYSize() - 16, position.getXSize() - 16, position.getYSize() ));
-		this.vSlider.al ~= this;
-		this.vSlider.elementContainer = this;
-		sliderX = vSlider.getX();
-
-
-		this.hSlider.al ~= this;
-		this.hSlider.elementContainer = this;
-		sliderY = hSlider.getY();*/
+		this.enableTextInput = enableTextInput;
+		inputHandler.addTextInputListener(source, this);
+		
 	}
+	/*~this(){
+		if(!(inputHandler is null))
+			inputHandler.removeTextInputListener(source);
+	}*/
 	public void actionEvent(Event event){
 
 		draw();
@@ -436,24 +436,37 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 	/*public Bitmap16Bit[wchar] getFontSet(int style){
 		return elementContainer.getFontSet(style);
 	}*/
-	public void updateColumns(ListBoxColumn[] lbc){
-		columns = lbc;
-		fullX = 0;
+	public void updateColumns(ListBoxItem[] items){
+		this.items = items;
+		updateColumns();
+	}
+	public void updateColumns(ListBoxItem[] items, ListBoxHeader header){
+		this.items = items;
+		this.header = header;
+		updateColumns();
+	}
+	/**
+	 * Clears the content of the ListBox.
+	 */
+	public void clearData(){
+		
+	}
+	public void updateColumns(){
+		
+		fullX = header.getFullWidth();
 		selection = 0;
-		foreach(int i; columnWidth){
-			fullX += i;
-		}
+		
 		if(fullX < position.width()){
 			fullX = position.width();
 		}
-		int foo2 = rowHeight * this.columns[0].elements.length;
+		int foo2 = rowHeight * this.items.length;
 		if(foo2 < position.height())
 			foo2 = position.width();
 		
 		textArea = new BitmapDrawer(fullX, foo2);
 		headerArea = new BitmapDrawer(fullX, rowHeight);
 
-		this.vSlider = new VSlider(columns[0].elements.length - 1, ((position.height()-17-rowHeight) / rowHeight), "vslider", Coordinate(position.width() - 16, 0, position.width(), position.height() - 16));
+		this.vSlider = new VSlider(items.length - 1, ((position.height()-17-rowHeight) / rowHeight), "vslider", Coordinate(position.width() - 16, 0, position.width(), position.height() - 16));
 		this.hSlider = new HSlider(fullX - 16, position.width() - 16, "hslider", Coordinate(0, position.height() - 16, position.width() - 16, position.height()));
 		this.vSlider.al ~= this;
 		this.vSlider.elementContainer = this;
@@ -472,69 +485,99 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 
 	private void drawBody(){
 		int foo;
-		for(int i; i < columns.length; i++){
+		for(int i; i < header.getNumberOfColumns(); i++){
 			int bar;
-			for(int j; j < columns[i].elements.length; j++){
+			for(int j; j < items.length; j++){
 				//writeln(foo + 1, bar);
-				textArea.drawText(foo + 1, bar, columns[i].elements[j], getStyleSheet().getFontset("default"), 1);
+				textArea.drawText(foo + 1, bar, items[j].getText(i), getStyleSheet().getFontset("default"), 1);
 
 				bar += rowHeight;
 			}
-			foo += columnWidth[i];
-			//writeln(foo, foo, 0, textArea.output.getX()-1);
+			foo += header.getColumnWidth(i);
+			
 			textArea.drawLine(foo, foo, 0, textArea.output.getY()-2, getStyleSheet().getColor("windowascent"));
 		}
 	}
-
+	private void deleteCharacter(int n){
+		//text = remove(text, i);
+		wstring newtext;
+		for(int i; i < text.length; i++){
+			if(i != n - 1){
+				newtext ~= text[i];
+			}
+		}
+		text = newtext;
+	}
 	public override void draw(){
 		fullRedraw = true;
+		if(textInputMode){
+			Coordinate textArea = Coordinate((selection) * getStyleSheet().drawParameters["ListBoxRowHeight"] - hposition, header.getRangeWidth(0, selectedColumn + 1),
+					(selection + 1) * getStyleSheet().drawParameters["ListBoxRowHeight"] - hposition, header.getRangeWidth(0, selectedColumn + 2));
+			// clear the area
+			output.drawFilledRectangle(textArea.left, textArea.top, textArea.right, textArea.bottom,getStyleSheet().getColor("window"));
+			// draw the cursor
+			int x = getAvailableStyleSheet().getFontset("default").getTextLength(text[0..textPos]);
+			if(!insert){
+				output.drawLine(textArea.left + x, textArea.left + x, textArea.top, textArea.bottom, getAvailableStyleSheet().getColor("selection"));
+			}else{
+				int spaceWidth = getAvailableStyleSheet().getFontset("default").letters[' '].getX();
+				output.drawFilledRectangle(textArea.left + x, textArea.left + x + spaceWidth, textArea.top, textArea.bottom, getAvailableStyleSheet().getColor("selection"));
+			}
+			// redraw the new text
+			output.drawText(textArea.left + 1, textArea.top, text, getAvailableStyleSheet().getFontset("default"), 1);
+			elementContainer.drawUpdate(this);
+		}else{
+			int areaX, areaY;
 
-		int areaX, areaY;
-
-		vposition = vSlider.getSliderPosition();
-		areaX = sizeX - vSlider.getPosition().width();
+			vposition = vSlider.getSliderPosition();
+			areaX = sizeX - vSlider.getPosition().width();
 
 
-		hposition = hSlider.getSliderPosition();
-		areaY = sizeY - hSlider.getPosition().height();
+			hposition = hSlider.getSliderPosition();
+			areaY = sizeY - hSlider.getPosition().height();
+			
+			output.drawFilledRectangle(0, position.width(), 0, position.height(),getStyleSheet().getColor("window"));
+			output.drawRectangle(0, position.width() - 1, 0, position.height() - 1,getStyleSheet().getColor("windowascent"));
 
-		output.drawFilledRectangle(0, position.width(), 0, position.height(),getStyleSheet().getColor("window"));
-		output.drawRectangle(0, position.width() - 1, 0, position.height() - 1,getStyleSheet().getColor("windowascent"));
 
+			// draw the header
+			output.drawLine(0, position.width() - 1, rowHeight, rowHeight, getStyleSheet().getColor("windowascent"));
+			int foo;
+			for(int i; i < header.getNumberOfColumns(); i++){
+				headerArea.drawText(foo + 1, 0, header.getText(i), getStyleSheet().getFontset("default"), 1);
+				foo += header.getColumnWidth(i);
+				headerArea.drawLine(foo, foo, 0, rowHeight - 2, getStyleSheet().getColor("windowascent"));
+			}
 
-		// draw the header
-		output.drawLine(0, position.width() - 1, rowHeight, rowHeight, getStyleSheet().getColor("windowascent"));
-		int foo;
-		for(int i; i < columnWidth.length; i++){
-			headerArea.drawText(foo + 1, 0, columns[i].header, getStyleSheet().getFontset("default"), 1);
-			foo += columnWidth[i];
-			headerArea.drawLine(foo, foo, 0, rowHeight - 2, getStyleSheet().getColor("windowascent"));
-			//writeln(foo);
+			output.insertBitmapSlice(0,0,headerArea.output,Coordinate(hposition,0,hposition + position.width() - 17, rowHeight - 1));
+
+			//draw the selector
+			if(selection - vposition >= 0 && vposition + ((position.height()-17-rowHeight) / rowHeight) >= selection && items.length != 0)
+				output.drawFilledRectangle(1, position.width() - 2, rowHeight + (rowHeight * (selection - vposition)), (rowHeight * 2) + (rowHeight * (selection - vposition)), getStyleSheet().getColor("selection"));
+
+			// draw the body
+			if(!bodyDrawn){
+				bodyDrawn = true;
+				drawBody();
+			}
+
+			//writeln(textArea.output.getX(),textArea.output.getY());
+			output.insertBitmapSlice(0, rowHeight, textArea.output, Coordinate(hposition,vposition * rowHeight,hposition + position.width() - 17 , vposition * rowHeight + areaY - rowHeight));
+
+			vSlider.draw();
+			hSlider.draw();
+
+			elementContainer.drawUpdate(this);
 		}
-
-		output.insertBitmapSlice(0,0,headerArea.output,Coordinate(hposition,0,hposition + position.width() - 17, rowHeight - 1));
-
-		//draw the selector
-		if(selection - vposition >= 0 && vposition + ((position.height()-17-rowHeight) / rowHeight) >= selection && columns[0].elements.length != 0)
-			output.drawFilledRectangle(1, position.width() - 2, rowHeight + (rowHeight * (selection - vposition)), (rowHeight * 2) + (rowHeight * (selection - vposition)), getStyleSheet().getColor("selection"));
-
-		// draw the body
-		if(!bodyDrawn){
-			bodyDrawn = true;
-			drawBody();
-		}
-
-		//writeln(textArea.output.getX(),textArea.output.getY());
-		output.insertBitmapSlice(0, rowHeight, textArea.output, Coordinate(hposition,vposition * rowHeight,hposition + position.width() - 17 , vposition * rowHeight + areaY - rowHeight));
-
-		vSlider.draw();
-		hSlider.draw();
-
-		elementContainer.drawUpdate(this);
 		fullRedraw = false;
 		//writeln(0);
 	}
 	public override void onClick(int offsetX, int offsetY, int type = 0){
+		if(textInputMode){
+			textInputMode = false;
+			inputHandler.stopTextInput(source);
+			return;
+		}
 		if(offsetX > (vSlider.getPosition().left) && offsetY > (vSlider.getPosition().top)){
 			vSlider.onClick(offsetX - vSlider.getPosition().left, offsetY - vSlider.getPosition().top, type);
 			return;
@@ -549,9 +592,20 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 			//writeln(selection);
 			if(selection == (offsetY / rowHeight) + vposition){
 				invokeActionEvent(EventType.TEXTBOXSELECT, (offsetY / rowHeight) + vposition);
+				if(enableTextInput && !textInputMode){
+					offsetX += vposition;
+					selectedColumn = header.getColumnNumFromX(offsetX);
+					if(selectedColumn != -1){
+						if(items[selection].getTextInputType(selectedColumn) != TextInputType.DISABLE){
+							textInputMode = true;
+							inputHandler.startTextInput(source);
+							text = items[selection].getText(selectedColumn);
+						}
+					}
+				}
 			}
 			else{
-				if((offsetY / rowHeight) + vposition < columns[0].elements.length){
+				if((offsetY / rowHeight) + vposition < items.length){
 					selection = (offsetY / rowHeight) + vposition;
 					draw();
 				}
@@ -559,9 +613,82 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		}
 	}
 	public override void onScroll(int x, int y, int wX, int wY){
-
+		if(textInputMode) return;
 		vSlider.onScroll(x,y,0,0);
 		hSlider.onScroll(x,y,0,0);
+	}
+	public void textInputEvent(uint timestamp, uint windowID, char[32] text){
+		int j = textPos;
+		wstring newtext;
+		for(int i ; i < textPos ; i++){
+			newtext ~= this.text[i];
+		}
+		for(int i ; i < 32 ; i++){
+			if(text[i] == 0){
+				break;
+			}
+			else{
+				newtext ~= text[i];
+				textPos++;
+				if(insert){
+					j++;
+				}
+			}
+		}
+		for( ; j < this.text.length ; j++){
+			newtext ~= this.text[j];
+		}
+		this.text = newtext;
+		draw();
+	}
+	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
+		if(key == TextInputKey.ESCAPE || key == TextInputKey.ENTER){
+			enableTextInput = false;
+			inputHandler.stopTextInput(source);
+			draw();
+			invokeActionEvent(EventType.TEXTINPUT, 0, text);
+		}else if(key == TextInputKey.BACKSPACE){
+			if(textPos > 0){
+				deleteCharacter(textPos);
+				textPos--;
+				draw();
+			}
+			/*if(pos > 0){
+			 if(pos == text.length){
+			 text.length--;
+			 pos--;
+			 
+			 }
+			 }*/
+		}else if(key == TextInputKey.DELETE){
+			deleteCharacter(textPos + 1);
+			draw();
+		}else if(key == TextInputKey.CURSORLEFT){
+			if(textPos > 0){
+				--textPos;
+				draw();
+			}
+		}else if(key == TextInputKey.CURSORRIGHT){
+			if(textPos < text.length){
+				++textPos;
+				draw();
+			}
+		}else if(key == TextInputKey.INSERT){
+			insert = !insert;
+			draw();
+		}else if(key == TextInputKey.HOME){
+			textPos = 0;
+			draw();
+		}else if(key == TextInputKey.END){
+			textPos = text.length;
+			draw();
+		}
+	}
+	public void dropTextInput(){
+		textInputMode = false;
+		inputHandler.stopTextInput(source);
+		draw();
+		invokeActionEvent(EventType.TEXTINPUT, 0, text);
 	}
 }
 
@@ -601,18 +728,19 @@ public class CheckBox : WindowElement{
 
 public class RadioButtonGroup : WindowElement{
 	public int iconChecked, iconUnchecked;
-	private int bposition, rowSpace, buttonpos;
+	private int bposition, rowHeight, buttonpos;
 	public wstring[] options;
 	public int[] brush;
 	public ushort border, background;
 	
-	public this(wstring text, string source, Coordinate coordinates, wstring[] options, int rowSpace, int buttonpos){
+	public this(wstring text, string source, Coordinate coordinates, wstring[] options, int rowHeight, int buttonpos){
 		this.position = coordinates;
 		sizeX = coordinates.width();
 		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		this.options = options;
+		this.rowHeight = rowHeight;
 		brush ~= 4;
 		brush ~= 5;
 		output = new BitmapDrawer(sizeX, sizeY);
@@ -625,11 +753,11 @@ public class RadioButtonGroup : WindowElement{
 		output.drawText(16,0,text, getAvailableStyleSheet().getFontset("default"),1);
 		for(int i; i < options.length; i++){
 
-			output.drawText(16, 16 * (i+1),options[i],getAvailableStyleSheet().getFontset("default"),1);
+			output.drawText(16, rowHeight * (i+1),options[i],getAvailableStyleSheet().getFontset("default"),1);
 			if(bposition == i){
-				output.insertBitmap(1, 16 * (i+1),getAvailableStyleSheet.getImage("radioButtonB"));
+				output.insertBitmap(1, rowHeight * (i+1),getAvailableStyleSheet.getImage("radioButtonB"));
 			}else{
-				output.insertBitmap(1, 16 * (i+1),getAvailableStyleSheet.getImage("radioButtonA"));
+				output.insertBitmap(1, rowHeight * (i+1),getAvailableStyleSheet.getImage("radioButtonA"));
 			}
 		}
 		elementContainer.drawUpdate(this);
@@ -1047,6 +1175,7 @@ public interface PopUpHandler : StyleSheetContainer{
 public class ListBoxHeader{
 	private wstring[] text;
 	private int[] width;
+	private uint[] textInputType;
 	private int iconColumn;
 	public this(wstring[] text, int[] width, int iconColumn = 0){
 		this.width = width;
@@ -1054,24 +1183,55 @@ public class ListBoxHeader{
 		this.iconColumn = iconColumn; 
 	}
 	/// Returns the number of columns before drawing
-	public int getNumberOfColumns(){
+	@nogc public int getNumberOfColumns(){
 		return this.text.length;
 	}
 	/// Returns the text at the given point
-	public wstring getText(int i){
+	@nogc public wstring getText(int i){
 		return text[i];
 	}
 	/// Returns the width of the column
-	public int getRowWidth(int i){
+	@nogc public int getColumnWidth(int i){
 		return width[i];
 	}
 	/// Sets the width of the column
-	public void setRowWidth(int i, int x){
+	@nogc public void setRowWidth(int i, int x){
 		width[i] = x;
 	}
 	/// Returns the number of column that contains the icon
-	public int getIconColumn(){
+	@nogc public int getIconColumn(){
 		return iconColumn;
+	}
+	/// Returns the whole width of the header
+	@nogc public int getFullWidth(){
+		int result;
+		foreach(int i; width){
+			result += i;
+		}
+		return result;
+	}
+	/// Returns the column number from width, or -1 if x can't fit into any range
+	@nogc public int getColumnNumFromX(int x){
+		int result = -1;
+		if(width[0] > x) return 0;
+		for(int i = 1; i < width.length; i++){
+			if(width[i - 1] <= x || width[i] > x){
+				result = i;
+			}
+		}
+		return result;
+	}
+	/// Returns the width of the columns in a given range
+	@nogc public int getRangeWidth(int begin, int end){
+		int result;
+		for(; begin < end ; begin++){
+			result += width[begin];
+		}
+		return result;
+	}
+	/// Returns the TextInputType for the column
+	@nogc public uint getTextInputType(int column){
+		return textInputType[column];
 	}
 }
 /**
@@ -1079,23 +1239,38 @@ public class ListBoxHeader{
  */
  public class ListBoxItem{
 	private wstring[] text;
+	private uint[] textInputType;	///If value or array is null, the ListBoxHeader's textInputType is referred
 	private Bitmap16Bit icon;	/// If used, replaces the texts in the column defined by the ListBoxHeader, otherwise defaults to the text.
-	public this(wstring[] text, Bitmap16Bit icon = null){
+	public this(wstring[] text, Bitmap16Bit icon = null, uint[] textInputType = null){
 		this.text = text;
 		this.icon = icon;
+		this.textInputType = textInputType;
 	}
-	/// Returns the text at the given point
-	public wstring getText(int i){
-		return text[i];
+	public this(wstring[] text, uint[] textInputType){
+		this.text = text;
+		this.icon = null;
+		this.textInputType = textInputType;
+	}
+	/// Returns the text at the given column
+	@nogc public wstring getText(int column){
+		return text[column];
+	}
+	/// Sets the text in the given column
+	@nogc public void setText(int column, wstring text){
+		this.text[column] = text;
 	}
 	/// Returns the icon
 	public Bitmap16Bit getIcon(){
 		return icon;
 	}
+	/// Returns the input type of the given column. Refer to ListBoxHeader if return value = TextInputType.NULL
+	@nogc public uint getTextInputType(int column){
+		return textInputType[column];
+	}
  }
-/**
+/*
  * For use with ListBoxes and similar types. Currently left here for legacy purposes, being replaced with the classes ListBoxHeader and ListBoxElement
- */
+ *
 public struct ListBoxColumn{
 	public wstring header;
 	public wstring[] elements;
@@ -1105,16 +1280,15 @@ public struct ListBoxColumn{
 		this.elements = elements;
 	}
 
-	/*this(string header, string[] elements){
-		this.header = to!wstring(header);
-		//this.elements = elements;
-	}*/
-	
+	/
 	public void removeByNumber(int i){
 		elements = remove(elements, i);
 	}
-}
+}*/
 
+/**
+ * Defines an action event in the concrete GUI.
+ */
 public class Event{
 	public string source, subsource, path, filename;
 	public wstring text;

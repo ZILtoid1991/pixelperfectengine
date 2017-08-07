@@ -43,7 +43,7 @@ string intToHex(int i, int format = 0){
 			case 15: result ~='F'; break;
 			default: result ~='0'; break;
 		}
-		i = i / 16;
+		i = i >>> 4;
 	}while(i > 0);
 	if(result.length < format){
 		for(int j = result.length ; j < format ; j++){

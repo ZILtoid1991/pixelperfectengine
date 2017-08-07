@@ -367,10 +367,23 @@ public class ExtendibleBitmap{
 		}
 		return d;
 	}
-	/// Removes the bitmap from the file.
+	/// Removes the bitmap from the file by ID.
 	public void removeBitmap(string ID){
 		import std.algorithm.mutation;
 		int i = searchForID(ID);
+		removeRangeFromBinary(offset[i],length[i]);
+		offset = remove(offset, i);
+		length = remove(length, i);
+		paletteMode = remove(paletteMode, i);
+		bitdepth = remove(bitdepth, i);
+		format = remove(format, i);
+		bitmapID = remove(bitmapID, i);
+		iX = remove(iX, i);
+		iY = remove(iY, i);
+	}
+	/// Removes the bitmap from the file by index.
+	public void removeBitmap(int i){
+		import std.algorithm.mutation;
 		removeRangeFromBinary(offset[i],length[i]);
 		offset = remove(offset, i);
 		length = remove(length, i);

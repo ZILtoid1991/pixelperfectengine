@@ -378,6 +378,28 @@ public class InputHandler : TextInputHandler{
 	public void addTextInputListener(string ID, TextInputListener til){
 		tl[ID] = til;
 	}
+	public void removeTextInputListener(string ID){
+		tl.remove(ID);
+	}
+	/*
+	 * Converts between SDL and PPE key modificators.
+	 * PPE native key modificator layout:
+	 * bit 0: Left Shift
+	 * bit 1: Right Shift
+	 * bit 2: Any Shift
+	 * bit 3: Left Control
+	 * bit 4: Right Control
+	 * bit 5: Any Control
+	 * bit 6: Left Alt
+	 * bit 7: Right Alt
+	 * bit 8: Any Alt
+	 * bit 9: Left OSKey
+	 * bit 10: Right OSKey
+	 * bit 11: Any OSKey
+	 * bit 12: NumLock 
+	 * bit 13: CapsLock
+	 * bit 14: 
+	 */
 }
 
 
@@ -390,7 +412,7 @@ public struct KeyBinding{
 	public uint devicetype;		///The type of the device.
 	public ushort keymod, keymodIgnore;		///Keymod sets the modifierkeys required to activate the event, keymodIgnore sets the keys that are ignored during event polling.
 	public string ID;		///ID of the event
-	this(ushort keymod, uint scancode, uint devicenumber, string ID, uint devicetype, ushort keymodIgnore = 0){
+	this(ushort keymod, uint scancode, uint devicenumber, string ID, uint devicetype, ushort keymodIgnore = KeyModifier.ANY){
 		this.keymod = keymod;
 		this.scancode = scancode;
 		this.devicenumber = devicenumber;
@@ -467,6 +489,7 @@ public interface TextInputHandler{
 	public void startTextInput(string ID);
 	public void stopTextInput(string ID);
 	public void addTextInputListener(string ID, TextInputListener til);
+	public void removeTextInputListener(string ID);
 }
 
 public interface SystemEventListener{
@@ -496,6 +519,13 @@ public enum TextInputKey{
 	END			= 11,
 	PAGEUP		= 12,
 	PAGEDOWN	= 13
+}
+
+public enum TextInputType : uint{
+	NULL		= 0,
+	TEXT		= 1,
+	DECIMAL		= 2,
+	DISABLE		= 65536, ///For use in listboxes
 }
 
 /// Standard key modifiers to avoid public SDL imports and to allow alternative library backends.

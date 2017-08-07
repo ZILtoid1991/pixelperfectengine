@@ -242,40 +242,40 @@ public class ConfigurationProfile{
 		if(keymod == KeyModifier.ANY)
 			return "ANY;";
 		string result;
-		if(keymod && KeyModifier.LSHIFT == KeyModifier.LSHIFT){
+		if(keymod & KeyModifier.LSHIFT){
 			result ~= "LSHIFT;";
 		}
-		if(keymod && KeyModifier.RSHIFT == KeyModifier.RSHIFT){
+		if(keymod & KeyModifier.RSHIFT){
 			result ~= "RSHIFT;";
 		}
-		if(keymod && KeyModifier.LCTRL == KeyModifier.LCTRL){
+		if(keymod & KeyModifier.LCTRL){
 			result ~= "LCTRL;";
 		}
-		if(keymod && KeyModifier.RCTRL == KeyModifier.RCTRL){
+		if(keymod & KeyModifier.RCTRL){
 			result ~= "RCTRL;";
 		}
-		if(keymod && KeyModifier.LALT == KeyModifier.LALT){
+		if(keymod & KeyModifier.LALT){
 			result ~= "LALT;";
 		}
-		if(keymod && KeyModifier.RALT == KeyModifier.RALT){
+		if(keymod & KeyModifier.RALT){
 			result ~= "RALT;";
 		}
-		if(keymod && KeyModifier.LGUI == KeyModifier.LGUI){
+		if(keymod & KeyModifier.LGUI){
 			result ~= "LGUI;";
 		}
-		if(keymod && KeyModifier.RGUI == KeyModifier.RGUI){
+		if(keymod & KeyModifier.RGUI){
 			result ~= "RGUI;";
 		}
-		if(keymod && KeyModifier.NUM == KeyModifier.NUM){
+		if(keymod & KeyModifier.NUM){
 			result ~= "NUM;";
 		}
-		if(keymod && KeyModifier.CAPS == KeyModifier.CAPS){
+		if(keymod & KeyModifier.CAPS){
 			result ~= "CAPS;";
 		}
-		if(keymod && KeyModifier.MODE == KeyModifier.MODE){
+		if(keymod & KeyModifier.MODE){
 			result ~= "MODE;";
 		}
-		if(keymod && KeyModifier.RESERVED == KeyModifier.RESERVED){
+		if(keymod & KeyModifier.RESERVED){
 			result ~= "RESERVED;";
 		}
 		return result;

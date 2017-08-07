@@ -31,7 +31,7 @@ public class Window : ElementContainer{
 	public IWindowHandler parent;
 	//public Bitmap16Bit[int] altStyleBrush;
 	public BitmapDrawer output;
-	public int header, sizeX, sizeY;
+	public int header;//, sizeX, sizeY;
 	private int moveX, moveY;
 	private bool fullUpdate;
 	private string[] extraButtons;
@@ -69,14 +69,14 @@ public class Window : ElementContainer{
 		position = size;
 		output = new BitmapDrawer(position.width(), position.height());
 		this.title = title;
-		sizeX = position.width();
-		sizeY = position.height();
+		//sizeX = position.width();
+		//sizeY = position.height();
 		//style = 0;
 		//closeButton = 2;
 		this.extraButtons = extraButtons;
 	}
 	/**
-	 * Adds a new WindowElement with the given event properties.
+	 * Adds a new WindowElement with the given event properties. Does not automatically redraws things, call the draw() function for this
 	 */
 	public void addElement(WindowElement we, int eventProperties){
 		elements ~= we;
@@ -214,6 +214,28 @@ public class Window : ElementContainer{
 		parent.relMoveWindow(x, y, this);
 		position.relMove(x,y);
 	}
+	/**
+	 * Sets the height of the window, also issues a redraw.
+	 */
+	public void setHeight(int y){
+		position.bottom = position.top + y;
+		draw();
+	}
+	/**
+	 * Sets the width of the window, also issues a redraw.
+	 */
+	public void setWidth(int x){
+		position.right = position.left + x;
+		draw();
+	}
+	/**
+	 * Sets the size of the window, also issues a redraw.
+	 */
+	public void setSize(int x, int y){
+		position.right = position.left + x;
+		position.bottom = position.top + y;
+		draw();
+	}
 }
 
 /**
@@ -340,7 +362,7 @@ public class FileDialog : Window, ActionListener{
 	private string directory, filename;
 	private ListBox lb;
 	private TextBox tb;
-	private ListBoxColumn[] columns;
+	
 	private bool save;
 	private FileAssociationDescriptor[] filetypes;
 	public static const string subsourceID = "filedialog";
@@ -381,22 +403,12 @@ public class FileDialog : Window, ActionListener{
 		//test parameters
 
 		//writeln(dirEntries(startDir, SpanMode.shallow));
-
-
-		columns ~= ListBoxColumn("Name", ["aaa","aaa","aaa","aaa","aaa","aaa","aaa"]);
-		columns ~= ListBoxColumn("Type", ["bbb","bbb","bbb","bbb","aaa","aaa","aaa"]);
+		
 		//Date format: yyyy-mm-dd hh:mm:ss
-		columns ~= ListBoxColumn("Date", ["yyyy-mm-dd hh:mm:ss","yyyy-mm-dd hh:mm:ss","yyyy-mm-dd hh:mm:ss","yyyy-mm-dd hh:mm:ss","yyyy-mm-dd hh:mm:ss","yyyy-mm-dd hh:mm:ss","yyyy-mm-dd hh:mm:ss"]);
-		spanDir();
-
-		//writeln(pathList);
-
-		//VSlider vsl = new VSlider(20,5,"sld",Coordinate(200,20,216,124));
-		//addElement(vsl, EventProperties.MOUSE);
-		//HSlider hsl = new HSlider(200,48,"vsld",Coordinate(4, 108, 200, 124));
-		//addElement(hsl, EventProperties.MOUSE);
-		lb = new ListBox("lb", Coordinate(4, 20, 216, 126),columns ,[160, 40, 176] ,15);
+		lb = new ListBox("lb", Coordinate(4, 20, 216, 126),null, new ListBoxHeader(["Name", "Type", "Date"], [160, 40, 176]) ,15);
+				
 		addElement(lb, EventProperties.MOUSE | EventProperties.SCROLL);
+		spanDir();
 		//scrollC ~= lb;
 		lb.al ~= this;
 		detectDrive();
@@ -410,15 +422,14 @@ public class FileDialog : Window, ActionListener{
 	 */
 	private void spanDir(){
 		pathList.length = 0;
-		columns[0].elements.length = 0;
-		columns[1].elements.length = 0;
-		columns[2].elements.length = 0;
+		ListBoxItem[] items;
 		foreach(DirEntry de; dirEntries(directory, SpanMode.shallow)){
 			if(de.isDir){
 				pathList ~= de.name;
-				columns[0].elements ~= to!wstring(getFilenameFromPath(de.name));
+				/*columns[0].elements ~= to!wstring(getFilenameFromPath(de.name));
 				columns[1].elements ~= "<DIR>";
-				columns[2].elements ~= formatDate(de.timeLastModified);
+				columns[2].elements ~= formatDate(de.timeLastModified);*/
+				items ~= new ListBoxItem([to!wstring(getFilenameFromPath(de.name)),"<DIR>",formatDate(de.timeLastModified)]);
 			}
 		}
 		//foreach(f; filetypes){
@@ -426,14 +437,15 @@ public class FileDialog : Window, ActionListener{
 			foreach(DirEntry de; dirEntries(directory, ft, SpanMode.shallow)){
 				if(de.isFile){
 					pathList ~= de.name;
-					columns[0].elements ~= to!wstring(getFilenameFromPath(de.name, true));
+					/*columns[0].elements ~= to!wstring(getFilenameFromPath(de.name, true));
 					columns[1].elements ~= to!wstring(ft);
-					columns[2].elements ~= formatDate(de.timeLastModified);
+					columns[2].elements ~= formatDate(de.timeLastModified);*/
+					items ~= new ListBoxItem([to!wstring(getFilenameFromPath(de.name)),to!wstring(ft),formatDate(de.timeLastModified)]);
 				}
 			}
 		}
-		//}
-
+		lb.updateColumns(items);
+		lb.draw();
 
 	}
 	/**
@@ -516,8 +528,7 @@ public class FileDialog : Window, ActionListener{
 		}
 		directory = newdir;
 		spanDir();
-		lb.updateColumns(columns);
-		lb.draw();
+		
 	}
 	/**
 	 * Displays the drives. Under Linux, it goes into the /dev/ folder.
@@ -525,16 +536,12 @@ public class FileDialog : Window, ActionListener{
 	private void changeDrive(){
 		version(Windows){
 			pathList.length = 0;
-			columns[0].elements.length = 0;
-			columns[1].elements.length = 0;
-			columns[2].elements.length = 0;
+			ListBoxItem[] items;
 			foreach(string drive; driveList){
 				pathList ~= drive;
-				columns[0].elements ~= to!wstring(drive);
-				columns[1].elements ~= "<DRV>";
-				columns[2].elements ~= "N/A";
+				items ~= new ListBoxItem([to!wstring(drive),"<DIR>","N/A"]);
 			}
-			lb.updateColumns(columns);
+			lb.updateColumns(items);
 			lb.draw();
 		}else version(Posix){
 			directory = "/dev/";
@@ -565,8 +572,7 @@ public class FileDialog : Window, ActionListener{
 					if(isDir(pathList[event.value])){
 						directory = pathList[event.value];
 						spanDir();
-						lb.updateColumns(columns);
-						lb.draw();
+						
 						
 					}else{
 						filename = getFilenameFromPath(pathList[event.value]);

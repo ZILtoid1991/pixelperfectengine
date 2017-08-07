@@ -25,7 +25,9 @@ import std.conv;
 import derelict.sdl2.sdl;
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.map.mapload;
+
 import converterdialog;
+import tileLayerTools;
 
 public interface IEditor{
 	public void onExit();
@@ -34,7 +36,7 @@ public interface IEditor{
 	public void xmpToolkit();
 	public void passActionEvent(Event e);
 	public void createNewDocument(wstring name, int rX, int rY, int pal);
-	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY);
+	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority);
 }
 
 public class NewDocumentDialog : Window, ActionListener{
@@ -86,7 +88,7 @@ public class NewLayerDialog : Window, ActionListener{
 		super(size, title);
 	}
 	public this(IEditor ie){
-		this(Coordinate(10,10,220,290),"New Layer");
+		this(Coordinate(10,10,220,310),"New Layer");
 		this.ie = ie;
 		Label[] labels;
 		labels ~= new Label("Name:","",Coordinate(5,20,80,39));
@@ -94,13 +96,15 @@ public class NewLayerDialog : Window, ActionListener{
 		labels ~= new Label("TileY:","",Coordinate(5,60,80,79));
 		labels ~= new Label("MapX:","",Coordinate(5,80,80,99));
 		labels ~= new Label("MapY:","",Coordinate(5,100,80,119));
+		labels ~= new Label("Priority:","",Coordinate(5,120,80,139));
 		textBoxes ~= new TextBox("","name",Coordinate(81,20,200,39));
 		textBoxes ~= new TextBox("","tX",Coordinate(81,40,200,59));
 		textBoxes ~= new TextBox("","tY",Coordinate(81,60,200,79));
 		textBoxes ~= new TextBox("","mX",Coordinate(81,80,200,99));
 		textBoxes ~= new TextBox("","mY",Coordinate(81,100,200,119));
-		layerType = new RadioButtonGroup("Layertype:","layertype",Coordinate(5,120,200,240),["Dummy","Tile","Tile(32Bit)","Sprite","Sprite(32Bit)"],16,1);
-		Button b = new Button("Ok","ok",Coordinate(150,245,200,265));
+		textBoxes ~= new TextBox("","pri",Coordinate(81,120,200,139));
+		layerType = new RadioButtonGroup("Layertype:","layertype",Coordinate(5,150,200,270),["Dummy","Tile(8Bit)","Tile(16Bit)","Tile(32Bit)","Sprite(8Bit)","Sprite(16Bit)","Sprite(32Bit)"],16,1);
+		Button b = new Button("Ok","ok",Coordinate(150,275,215,295));
 		b.al ~= this;
 		addElement(b, EventProperties.MOUSE);
 		foreach(WindowElement we; labels){
@@ -118,11 +122,12 @@ public class NewLayerDialog : Window, ActionListener{
 		if(event.source == "ok"){
 
 			switch(layerType.getValue){
-				case 1, 2:
-					ie.createNewLayer(to!string(textBoxes[0].getText), layerType.getValue, to!int(textBoxes[1].getText), to!int(textBoxes[2].getText), to!int(textBoxes[3].getText), to!int(textBoxes[4].getText));
+				case 1, 2, 3:
+					ie.createNewLayer(to!string(textBoxes[0].getText), layerType.getValue, to!int(textBoxes[1].getText), to!int(textBoxes[2].getText), to!int(textBoxes[3].getText),
+							to!int(textBoxes[4].getText), to!int(textBoxes[5].getText));
 					break;
-				case 3, 4:
-					ie.createNewLayer(to!string(textBoxes[0].getText), layerType.getValue, 0, 0, 0, 0);
+				case 4, 5, 6:
+					ie.createNewLayer(to!string(textBoxes[0].getText), layerType.getValue, 0, 0, 0, 0, to!int(textBoxes[5].getText));
 					break;
 				default: break;
 			}
@@ -134,8 +139,8 @@ public class NewLayerDialog : Window, ActionListener{
 public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListener{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
 	private ListBox layerList, prop;
-	private ListBoxColumn[] propTL, propSL, propSLE;
-	private ListBoxColumn[] layerListE;
+	//private ListBoxColumn[] propTL, propSL, propSLE;
+	//private ListBoxColumn[] layerListE;
 	public Label[] labels;
 	private int[] propTLW, propSLW, propSLEW;
 	public IEditor ie;
@@ -348,33 +353,79 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	}
 }
 
-public class Editor : InputListener, MouseListener, ActionListener, IEditor, SystemEventListener{
+public class Editor : InputListener, MouseListener, IEditor, ActionListener, SystemEventListener{
 	public OutputScreen[] ow;
 	public Raster[] rasters;
 	public InputHandler input;
-	public TileLayer[] backgroundLayers;
+	public TileLayer[int] backgroundLayers16;
+	public TileLayer8Bit[int] backgroundLayers8;
+	public TileLayer32Bit[int] backgroundLayers32;
+	public Layer[int] layers;
+	public wchar selectedTile;
+	public int selectedLayer;
 	public SpriteLayer windowing;
 	public SpriteLayer32Bit bitmapPreview;
-	public bool onexit, exitDialog, newLayerDialog;
+	public bool onexit, exitDialog, newLayerDialog, mouseState;
 	public WindowElement[] elements;
 	public Window test;
 	public EditorWindowHandler wh;
 	public ExtendibleMap document;
+	public EffectLayer selectionLayer;
 	//public ForceFeedbackHandler ffb;
 	private uint[5] framecounter;
 	public char[40] windowTitle;
 	public ConfigurationProfile configFile;
+	private int mouseX, mouseY, activeLayer;
+	private Coordinate selection, selectedTiles;
 
 	public void mouseButtonEvent(Uint32 which, Uint32 timestamp, Uint32 windowID, Uint8 button, Uint8 state, Uint8 clicks, Sint32 x, Sint32 y){
 		//writeln(windowID);
+		x /= 2;
+		y /= 2;
+		if(windowID == 2){
+			if(button == MouseButton.LEFT){
+				if(state == ButtonState.PRESSED && !mouseState){
+					mouseX = x;
+					mouseY = y;
+					mouseState = true;
+				}else if(mouseState){
+					if(mouseX == x && mouseY == y){//placement
+					
+					}else{		//select
+					
+					}
+				}
+			}
+		}
 	}
 	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){}
 	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){}
 	public void keyPressed(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){
-		if(ID == "sysesc"){
-			onexit = !onexit;
-		}else if(ID == "AAAAA"){
-			//ffb.runRumbleEffect(0, 1, 100);
+		switch(ID){
+			case "nextLayer":
+				break;
+			case "prevLayer":
+				break;
+			case "scrollUp":
+				break;
+			case "scrollDown":
+				break;
+			case "scrollLeft":
+				break;
+			case "scrollRight":
+				break;
+			case "quit":
+				break;
+			case "xmpTool":
+				break;
+			case "load":
+				break;
+			case "save":
+				break;
+			case "saveAs":
+				break;
+			default:
+				break;
 		}
 	}
 	public void keyReleased(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){}
@@ -438,11 +489,27 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 	public void xmpToolkit(){
 		wh.addWindow(new ConverterDialog(input,bitmapPreview));
 	}
+	public void placeObject(int x, int y){
+		if(backgroundLayers8.get(selectedLayer, null) !is null){
+			int sX = layers[selectedLayer].getSX(), sY = layers[selectedLayer].getSY();
+			sX += x;
+			sY += y;
+			sX /= backgroundLayers8[selectedLayer].getTileWidth();
+			sY /= backgroundLayers8[selectedLayer].getTileHeight();
+			if(sX >= 0 && sY >= 0){
+				backgroundLayers8[selectedLayer].writeMapping(sX, sY, selectedTile);
+			}
+		}else if(backgroundLayers16.get(selectedLayer, null) !is null){
+			
+		}else if(backgroundLayers32.get(selectedLayer, null) !is null){
+			
+		}
+	}
 	public this(string[] args){
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
 		configFile = new ConfigurationProfile();
 
-		windowing = new SpriteLayer(LayerRenderingMode.COPY);
+		windowing = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
 		bitmapPreview = new SpriteLayer32Bit();
 
 		wh = new EditorWindowHandler(1280,960,640,480,windowing);
@@ -559,27 +626,42 @@ public class Editor : InputListener, MouseListener, ActionListener, IEditor, Sys
 		rasters ~= new Raster(to!ushort(rX), to!ushort(rY), ow[1]);
 		rasters[1].setupPalette(pal);
 		ow[1].setMainRaster(rasters[1]);
-		//document = new MapHandler();
+		selectionLayer = new EffectLayer();
+		rasters[1].addLayer(selectionLayer, 65536);
 		document = new ExtendibleMap();
 		document.metaData["name"] = to!string(name);
 		document.metaData["rX"] = to!string(rX);
 		document.metaData["rY"] = to!string(rY);
 		document.metaData["pal"] = to!string(pal);
 	}
-	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY){
+	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority){
 		switch(type){
 			case 1:
-				/*wchar[] initMap;
-				initMap.length = mX * mY;*/
+				
 				TileLayerData md = new TileLayerData(tX,tY,mX,mY,1,1,document.getNumOfLayers(), name);
-				/*md.name = name;
-				md.tileX = tX;
-				md.tileY = tY;
-				document.mapdataList ~= md;*/
+				document.addTileLayer(md);
+				TileLayer8Bit t = new TileLayer8Bit(tX, tY);
+				t.loadMapping(mX,mY,md.mapping);
+				backgroundLayers8[priority] = t;
+				rasters[1].addLayer(t, priority);
+				break;
+			case 2:
+				
+				TileLayerData md = new TileLayerData(tX,tY,mX,mY,1,1,document.getNumOfLayers(), name);
+				document.addTileLayer(md);
 				TileLayer t = new TileLayer(tX, tY);
 				t.loadMapping(mX,mY,md.mapping);
-				backgroundLayers ~= t;
-				rasters[1].addLayer(t, 0);
+				backgroundLayers16[priority] = t;
+				rasters[1].addLayer(t, priority);
+				break;
+			case 3:
+				
+				TileLayerData md = new TileLayerData(tX,tY,mX,mY,1,1,document.getNumOfLayers(), name);
+				document.addTileLayer(md);
+				TileLayer32Bit t = new TileLayer32Bit(tX, tY);
+				t.loadMapping(mX,mY,md.mapping);
+				backgroundLayers32[priority] = t;
+				rasters[1].addLayer(t, priority);
 				break;
 			default: break;
 		}

@@ -50,20 +50,20 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 		buttons ~= new Button("New File","newfile", Coordinate(210,20,294,39));
 		buttons ~= new Button("Load File","loadfile", Coordinate(210,40,294,59));
 		buttons ~= new Button("Save File","savefile", Coordinate(210,60,294,79));
-		//buttons ~= new Button("Rem File","removefile", Coordinate(210,60,294,79));
-		imageList = new ListBox("imageList",Coordinate(4,104,204,304),[ListBoxColumn("BitmapID",[""]),ListBoxColumn("Bitdepth",[""]),ListBoxColumn("Format",[""]),ListBoxColumn("PalMode",[""])], [128,64,64,80], 15);
+		//buttons ~= new Button("Rem File","removefile", Coordinate(210,60,294,79)); //[ListBoxColumn("BitmapID",[""]),ListBoxColumn("Bitdepth",[""]),ListBoxColumn("Format",[""]),ListBoxColumn("PalMode",[""])] //[128,64,64,80]
+		imageList = new ListBox("imageList",Coordinate(4,104,204,304),null,new ListBoxHeader(["BitmapID","Bitdepth","Format","PalMode","sizeX","sizeY"], [128,64,64,80,42,42]), 15);
 		buttons ~= new Button("Import New","inportnew", Coordinate(210,110,294,129));
 		buttons ~= new Button("Imp Multi","inportmultiple", Coordinate(210,130,294,149));
 		buttons ~= new Button("Export As","exportas", Coordinate(210,150,294,169));
 		buttons ~= new Button("Remove","remove", Coordinate(210,170,294,189));
 		buttons ~= new Button("Preview","preview", Coordinate(210,190,294,209));
 		buttons ~= new Button("Imp Pal","paletteImport", Coordinate(210,210,294,229));
-		animationList = new ListBox("animationList", Coordinate(300,20,500,120),[ListBoxColumn("AnimID",[""]),ListBoxColumn("Frames",[""])], [128,80], 15);
+		animationList = new ListBox("animationList", Coordinate(300,20,500,120), null, new ListBoxHeader(["AnimID","Frames"], [128,80]), 15);
 		buttons ~= new Button("New Anim","newAnim", Coordinate(506,20,590,39));
 		buttons ~= new Button("Edit","animProp", Coordinate(506,40,590,59));
 		//buttons ~= new Button("Save File","savefile", Coordinate(506,60,590,79));
 		buttons ~= new Button("Rem Anim","removeAnim", Coordinate(506,60,590,79));
-		frameList = new ListBox("frameList", Coordinate(300,122,500,304),[ListBoxColumn("Num",[""]),ListBoxColumn("ImageID",[""]),ListBoxColumn("Dur",[""])],[40,128,64], 15);
+		frameList = new ListBox("frameList", Coordinate(300,122,500,304), null, new ListBoxHeader(["Num","ImageID","Dur"],[40,128,64]), 15);
 		buttons ~= new Button("Add Frame","addFrame", Coordinate(506,130,590,149));
 		buttons ~= new Button("Edit","editFr", Coordinate(506,150,590,169));
 		buttons ~= new Button("Remove","removeFr", Coordinate(506,170,590,189));
@@ -124,6 +124,7 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 							selection = newFile;
 						}
 						updateImageList();
+						updateAnimationList();
 						break;
 					case "importfile":
 						string fileName = event.path ;
@@ -215,20 +216,20 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 						break;
 					case "inportnew":
 						FileDialog fileDialog = new FileDialog("Import PNG/TGA/BMP", "importfile", this, [FileDialog.FileAssociationDescriptor("All supported files", ["*.png","*.tga","*.bmp"]),
-							FileDialog.FileAssociationDescriptor("Portable network graphics", ["*.png"]), FileDialog.FileAssociationDescriptor("Targa graphics file", ["*.tga"]),
-							FileDialog.FileAssociationDescriptor("Windows bitmap", ["*.bmp"])], ".\\");
+								FileDialog.FileAssociationDescriptor("Portable network graphics", ["*.png"]), FileDialog.FileAssociationDescriptor("Targa graphics file", ["*.tga"]),
+								FileDialog.FileAssociationDescriptor("Windows bitmap", ["*.bmp"])], ".\\");
 						parent.addWindow(fileDialog);
 						break;
 					case "inportmultiple":
 						//parent.addWindow(new SpriteSheetDialog());
 						FileDialog fileDialog = new FileDialog("Import PNG/TGA/BMP", "importmulti", this, [FileDialog.FileAssociationDescriptor("All supported files", ["*.png","*.tga","*.bmp"]),
-							FileDialog.FileAssociationDescriptor("Portable network graphics", ["*.png"]), FileDialog.FileAssociationDescriptor("Targa graphics file", ["*.tga"]),
-							FileDialog.FileAssociationDescriptor("Windows bitmap", ["*.bmp"])], ".\\");
+								FileDialog.FileAssociationDescriptor("Portable network graphics", ["*.png"]), FileDialog.FileAssociationDescriptor("Targa graphics file", ["*.tga"]),
+								FileDialog.FileAssociationDescriptor("Windows bitmap", ["*.bmp"])], ".\\");
 						parent.addWindow(fileDialog);
 						break;
 					case "imageList":
 						//if(!selection.isEmpty){
-							imageSelection = event.value;
+						imageSelection = event.value;
 							//update image information
 							//preview = new Bitmap32Bit(selection.getBitmap(imageSelection),selection.getXsize(imageSelection),selection.getYsize(imageSelection));
 							//writeln(preview);
@@ -241,6 +242,10 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 							FileDialog.FileAssociationDescriptor("Portable network graphics", ["*.png"]), FileDialog.FileAssociationDescriptor("Targa graphics file", ["*.tga"]),
 							FileDialog.FileAssociationDescriptor("Windows bitmap", ["*.bmp"])], ".\\");
 						parent.addWindow(fileDialog);
+						break;
+					case "remove":
+						selection.removeBitmap(imageList.selection);
+						updateImageList();
 						break;
 					default: break;
 				}
@@ -262,27 +267,34 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 
 	}
 	private void updateImageList(){
-		wstring[] IDs = stringArrayConv(selection.bitmapID);
-		wstring[] bt = stringArrayConv(selection.bitdepth), form = stringArrayConv(selection.format), pm = stringArrayConv(selection.paletteMode);
-
-		imageList.updateColumns([ListBoxColumn("BitmapID",IDs),ListBoxColumn("Bitdepth",bt),ListBoxColumn("Format",form),ListBoxColumn("PalMode",pm)]);
+		//wstring[] IDs = stringArrayConv(selection.bitmapID);
+		//wstring[] bt = stringArrayConv(selection.bitdepth), form = stringArrayConv(selection.format), pm = stringArrayConv(selection.paletteMode);
+		ListBoxItem[] items;
+		for(int i; i < selection.bitmapID.length; i++){
+			items ~= new ListBoxItem([to!wstring(selection.bitmapID[i]),to!wstring(selection.bitdepth[i]),to!wstring(selection.format[i]),to!wstring(selection.paletteMode[i]),
+					to!wstring(selection.getXsize(i)),to!wstring(selection.getYsize(i))]);
+		}
+		//imageList.updateColumns([ListBoxColumn("BitmapID",IDs),ListBoxColumn("Bitdepth",bt),ListBoxColumn("Format",form),ListBoxColumn("PalMode",pm)]);
+		imageList.updateColumns(items);
+		imageList.draw();
 	}
 	private void updateAnimationList(){
-		wstring[] IDs, frames;
+		//wstring[] IDs, frames;
+		ListBoxItem[] items;
 		foreach(s; selection.animData.byKey){
-			IDs ~= to!wstring(s);
-			frames ~= to!wstring(selection.animData[s].ID.length);
+			items ~=  new ListBoxItem([to!wstring(s), to!wstring(selection.animData[s].ID.length)]);
 		}
-		animationList.updateColumns([ListBoxColumn("AnimID",IDs),ListBoxColumn("Frames",frames)]);
+		animationList.updateColumns(items);
+		animationList.draw();
 	}
 	private void updateFrameList(){
-		/*wstring[] num, IDs, dur;
-		for(int i ; i < selection.animData[selection].bitmapID.length ; i++){
-			num ~= to!wstring(i);
-			ID ~= to!wstring(selection.animData[selection].bitmapID[i]);
-			dur ~= to!wstring(selection.animData[selection].duration[i]);
+		//wstring[] num, IDs, dur;
+		ListBoxItem[] items;
+		for(int i ; i < selection.animData[animationSelection].ID.length ; i++){
+			items ~=  new ListBoxItem([to!wstring(i), to!wstring(selection.animData[animationSelection].ID[i]), to!wstring(selection.animData[animationSelection].duration[i])]);
 		}
-		[ListBoxColumn("Num",[""]),ListBoxColumn("ImageID",[""]),ListBoxColumn("Dur",[""])];*/
+		frameList.updateColumns(items);
+		frameList.draw();
 	}
 
 }

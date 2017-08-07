@@ -53,6 +53,8 @@ public class StyleSheet{
 
 		drawParameters["MenuBarHorizPadding"] = 4;
 		drawParameters["MenuBarVertPadding"] = 2;
+
+		drawParameters["ListBoxRowHeight"] = 16;
 	}
 	public void addFontset(Fontset f, string style){
 		font[style] = f;

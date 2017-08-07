@@ -18,32 +18,32 @@ public struct Coordinate{
 		this.bottom=bottom;
 	}
 	/**
-	* Use width() instead for better readability!
-	*/
+	 * Use width() instead for better readability!
+	 */
 	public deprecated int getXSize(){
 		return right-left;
 	}
 	/**
-	* Use height() instead for better readability!
-	*/
+	 * Use height() instead for better readability!
+	 */
 	public deprecated int getYSize(){
 		return bottom-top;
 	}
 	/** 
-	* Returns the width of the represented box.
-	*/
+	 * Returns the width of the represented box.
+	 */
 	public int width(){
 		return right-left;
 	}
 	/** 
-	* Returns the height of the represented box.
-	*/
+	 * Returns the height of the represented box.
+	 */
 	public int height(){
 		return bottom-top;
 	}
 	/** 
-	* Moves the box to the given position.
-	*/
+	 * Moves the box to the given position.
+	 */
 	public void move(int x, int y){
 		right = x + width();
 		bottom = y + height();
@@ -51,12 +51,23 @@ public struct Coordinate{
 		top = y;
 	}
 	/** 
-	* Moves the box by the given values.
-	*/
+	 * Moves the box by the given values.
+	 */
 	public void relMove(int x, int y){
 		left = left + x;
 		right = right + x;
 		top = top + y;
 		bottom = bottom + y;
+	}
+	/**
+	 * Returns a string with the coordinates that is useful for debugging
+	 */
+	public string toString(){
+		import PixelPerfectEngine.system.etc;
+		import std.conv;
+		/*return "Coordinate: Left: 0x" ~ intToHex(left, 8) ~ " Top: 0x" ~ intToHex(top, 8) ~ " Right: 0x" ~ intToHex(right, 8) ~ " Bottom: 0x" ~ intToHex(bottom, 8) ~
+				" Width: 0x" ~ intToHex(width(), 8) ~ " Height: 0x" ~ intToHex(height(), 8);*/
+		return "Coordinate: Left: 0x" ~ to!string(left) ~ " Top: 0x" ~ to!string(top) ~ " Right: 0x" ~ to!string(right) ~ " Bottom: 0x" ~ to!string(bottom) ~
+				" Width: 0x" ~ to!string(width()) ~ " Height: 0x" ~ to!string(height());
 	}
 }

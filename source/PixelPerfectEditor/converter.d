@@ -6,6 +6,7 @@ import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.extbmp.extbmp;
 import PixelPerfectEngine.system.exc;
 import PixelPerfectEngine.system.etc;
+import PixelPerfectEngine.map.mapload;
 
 import derelict.freeimage.freeimage;
 //import derelict.freeimage.functions;
@@ -297,6 +298,23 @@ public Bitmap32Bit getBitmapPreview(ExtendibleBitmap xmp, string ID){
 		default: break;
 	}
 	return result;
+}
+
+public void autoloadFromXMP(string filename, ExtendibleMap map, int layerNum){
+	ExtendibleBitmap xmpFile = new ExtendibleBitmap(filename);
+	map.addFileToTileSource(layerNum, filename);
+	for(int i ; i < xmpFile.bitmapID.length ; i++){
+		try{
+			if(xmpFile.bitmapID[i].length <= 4){
+				throw new Exception("");
+			}
+			wchar ID = to!wchar(parseHex(xmpFile.bitmapID[i][0..4]));
+			string descr = xmpFile.bitmapID[i].length > 5 ? xmpFile.bitmapID[i][5..xmpFile.bitmapID[i].length] : "";
+			map.addTileToTileSource(layerNum, ID, descr, xmpFile.bitmapID[i], filename);
+		}catch(Exception e){
+			writeln("Bitmap \'"~xmpFile.bitmapID[i]~"\' does not follow the format xxxx\\{description} and will be skipped.");
+		}
+	}
 }
 
 enum LookupMethod : uint{
