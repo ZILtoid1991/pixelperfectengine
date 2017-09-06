@@ -14,6 +14,7 @@ import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.common;
 
 import windowDataLoader;
+import editEvents;
 
 public class Main {
 	private SpriteLayer sl;
@@ -23,7 +24,7 @@ public class Main {
 
 public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListener{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
-	private ListBox componentList, prop;
+	public ListBox componentList, prop;
 	//private ListBoxColumn[] propTL, propSL, propSLE;
 	//private ListBoxColumn[] layerListE;
 	public Label[] labels;
@@ -90,7 +91,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		
 		addElement(new MenuBar("menubar",Coordinate(0,0,800,16),menuElements,this), EventProperties.MOUSE);
 		
-		ListBoxHeader componentListHeader = new ListBoxHeader(["Type","Name"],[100,160]);
+		ListBoxHeader componentListHeader = new ListBoxHeader(["Name","Type"],[100,160]);
 		componentList = new ListBox("componentList", Coordinate(648,32,792,208),[],componentListHeader,16);
 		addElement(componentList, EventProperties.MOUSE);
 
@@ -204,13 +205,15 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 	public InputHandler input;
 	public EditorWindowHandler ewh;
 	public WindowElement[string] windowElements;
-	private WindowData windowData;
+	public WindowData windowData;
 	public bool onExit;
 	private PlacementMode placementMode;
 	private int placementX, placementY;
+	public EventChainSystem ecs;
 	public this(){
 		sl = new SpriteLayer();
 		ewh = new EditorWindowHandler(1600,960,800,480,sl);
+		ecs = new EventChainSystem(20);
 
 		Fontset defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("system/sysfont.xmp"), "font");
 		ExtendibleBitmap ssOrigin = new ExtendibleBitmap("system/sysdef.xmp");
@@ -221,7 +224,18 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		input.il ~= this;
 		input.sel ~= this;
 		input.kb ~= KeyBinding(0, ScanCode.ESCAPE, 0, "sysesc", Devicetype.KEYBOARD);
-		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F2, 0, "Button", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LOCKKEYIGNORE);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL + KeyModifier.LSHIFT, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, KeyModifier.LOCKKEYIGNORE);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F1, 0, "Button", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F2, 0, "Label", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F3, 0, "TextBox", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F4, 0, "ListBox", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F5, 0, "HSlider", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F6, 0, "VSlider", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F7, 0, "RadioButtonGroup", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F8, 0, "CheckBox", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F9, 0, "MenuBar", Devicetype.KEYBOARD);
+		
 		//input.kb ~= KeyBinding(KeyModifier.RCTRL, ScanCode.F2, 0, "Button", Devicetype.KEYBOARD);
 		WindowElement.inputHandler = input;
 
@@ -284,6 +298,30 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 			case "Button":
 				placementMode = PlacementMode.Button;
 				break;
+			case "Label":
+				placementMode = PlacementMode.Label;
+				break;
+			case "TextBox":
+				placementMode = PlacementMode.TextBox;
+				break;
+			case "ListBox":
+				placementMode = PlacementMode.ListBox;
+				break;
+			case "HSlider":
+				placementMode = PlacementMode.HSlider;
+				break;
+			case "VSlider":
+				placementMode = PlacementMode.VSlider;
+				break;
+			case "RadioButtonGroup":
+				placementMode = PlacementMode.RadioButtonGroup;
+				break;
+			case "CheckBox":
+				placementMode = PlacementMode.CheckBox;
+				break;
+			case "MenuBar":
+				placementMode = PlacementMode.MenuBar;
+				break;
 			default:
 				break;
 		}
@@ -305,32 +343,70 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 					case PlacementMode.Button:
 						string id = getNextAvailableElementID("button");
 						WindowElement e = new Button(to!wstring(id), id, c);
-						ewh.dw.addElement(e, 0);
-						writeln(c);
-						ewh.dw.draw();
-						//e.draw();
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
+						windowElements[id] = e;
 						break;
 					case PlacementMode.SmallButton: 
+						/*string id = getNextAvailableElementID("smallButton");
+						WindowElement e = new SmallButton(to!wstring(id), id, c);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e;*/
 						break;
 					case PlacementMode.CheckBox: 
+						string id = getNextAvailableElementID("checkBox");
+						WindowElement e = new CheckBox(to!wstring(id), id, c);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e;
 						break;
 					case PlacementMode.HSlider: 
+						string id = getNextAvailableElementID("hSlider");
+						WindowElement e = new HSlider(10, 1, id, c);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e;
 						break;
-					case PlacementMode.VSlider: 
+					case PlacementMode.VSlider:
+						string id = getNextAvailableElementID("vSlider");
+						WindowElement e = new VSlider(10, 1, id, c);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e; 
 						break;
-					case PlacementMode.ListBox: 
+					case PlacementMode.ListBox:
+						string id = getNextAvailableElementID("listBox");
+						WindowElement e = new ListBox(id, c, [], new ListBoxHeader(["col0", "col1"], [40,40]), 16);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e; 
 						break;
-					case PlacementMode.MenuBar: 
+					case PlacementMode.MenuBar:
+						string id = getNextAvailableElementID("menuBar");
+						WindowElement e = new MenuBar(id, c, [new PopUpMenuElement(id ~ ".0","menu0"),new PopUpMenuElement(id ~ ".1","menu1")],ewh);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e; 
 						break;
 					case PlacementMode.RadioButtonGroup: 
+						string id = getNextAvailableElementID("radioButtonGroup");
+						WindowElement e = new RadioButtonGroup(to!wstring(id), id, c, ["option0", "option1"], 16, 0);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e;
 						break;
-					case PlacementMode.TextBox: 
+					case PlacementMode.TextBox:
+						string id = getNextAvailableElementID("textBox");
+						WindowElement e = new TextBox(to!wstring(id), id, c);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e; 
 						break;
 
 					default: break;
 				}
-
+				updateElementList();
 				placementX = 0;
 				placementY = 0;
 			}else{
@@ -338,6 +414,15 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 				placementY = y;
 			}
 		}
+	}
+	public void updateElementList(){
+		import PixelPerfectEngine.system.etc;
+		ewh.componentList.clearData();
+		ListBoxItem[] newItems;
+		foreach(string s; windowElements.byKey){
+			newItems ~= new ListBoxItem(stringArrayConv([s,windowElements[s].classinfo.name]));
+		}
+		ewh.componentList.updateColumns(newItems);
 	}
 	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){}
 	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
@@ -375,10 +460,12 @@ int main(string[] argv){
 	initialzeSDL();
 	SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
 	
-	MainApplication m = new MainApplication();
+	mainApp = new MainApplication();
     if(argv.length > 1){
 		
 	}
-	m.whereTheMagicHappens();
+	mainApp.whereTheMagicHappens();
     return 0;
 }
+
+static MainApplication mainApp;

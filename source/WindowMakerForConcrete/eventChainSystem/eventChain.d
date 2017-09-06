@@ -7,7 +7,10 @@ import eventChainSystem.undoable;
 public class EventChainSystem{
 	protected UndoableEvent[] eventList;
 	protected int topEvent, maxEventNumber;
-
+	public this(int maxEventNumber){
+		this.maxEventNumber = maxEventNumber;
+		topEvent = -1;
+	}
 	/**
 	 * Undos the top event in the list indicated by the internal variable, topEvent. If topEvent equals -1, it does nothing.
 	 */
@@ -45,10 +48,14 @@ public class EventChainSystem{
 	 */
 	public void appendEvent(UndoableEvent e){
 		if(eventList.length < maxEventNumber){
-			eventList ~ e;
+			eventList ~= e;
+			topEvent++;
 		}else{
 			eventList = eventList[1..eventList.length] ~ e;
 		}
+		/*if(position < eventList.length){
+			swapAt(eventList, eventList.length-1, position);
+		}*/
 	}
 	/**
 	 * Sets the maximum number of events that can be stored.

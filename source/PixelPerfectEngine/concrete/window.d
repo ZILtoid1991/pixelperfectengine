@@ -76,7 +76,7 @@ public class Window : ElementContainer{
 		this.extraButtons = extraButtons;
 	}
 	/**
-	 * Adds a new WindowElement with the given event properties. Does not automatically redraws things, call the draw() function for this
+	 * Adds a new WindowElement with the given event properties.
 	 */
 	public void addElement(WindowElement we, int eventProperties){
 		elements ~= we;
@@ -90,6 +90,45 @@ public class Window : ElementContainer{
 		if((eventProperties & EventProperties.SCROLL) == EventProperties.SCROLL){
 			scrollC ~= we;
 		}
+		we.draw();
+	}
+	/**
+	 * Removes the WindowElement if 'we' is found within its ranges, does nothing otherwise.
+	 */
+	public void removeElement(WindowElement we){
+		int i;
+		while(elements.length > i){
+			if(elements[i] == we){
+				elements = remove(elements, i);
+			}else{
+				i++;
+			}
+		}
+		i = 0;
+		while(mouseC.length > i){
+			if(mouseC[i] == we){
+				mouseC = remove(mouseC, i);
+			}else{
+				i++;
+			}
+		}
+		i = 0;
+		while(scrollC.length > i){
+			if(scrollC[i] == we){
+				scrollC = remove(scrollC, i);
+			}else{
+				i++;
+			}
+		}
+		i = 0;
+		while(keyboardC.length > i){
+			if(keyboardC[i] == we){
+				keyboardC = remove(keyboardC, i);
+			}else{
+				i++;
+			}
+		}
+		draw();
 	}
 	/**
 	 * Draws the window. Intended to be used by the WindowHandler.

@@ -545,6 +545,7 @@ public enum KeyModifier : ushort{
 	GUI 		= 0x0C00,
 	NUM 		= 0x1000,
 	CAPS 		= 0x2000,
+	LOCKKEYIGNORE	= NUM + CAPS,		///Use this if only Caps lock and Num lock needs to be ignored
 	MODE 		= 0x4000,
 	RESERVED 	= 0x8000,
 	ANY			= 0xFFFF

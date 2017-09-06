@@ -366,7 +366,9 @@ public class TextBox : WindowElement, TextInputListener{
 	}
 }
 
-
+/**
+ * Displays multiple columns of data, also provides general text input.
+ */
 public class ListBox : WindowElement, ActionListener, ElementContainer, TextInputListener{
 	//public ListBoxColumn[] columns;
 	public ListBoxHeader header;
@@ -439,17 +441,21 @@ public class ListBox : WindowElement, ActionListener, ElementContainer, TextInpu
 	public void updateColumns(ListBoxItem[] items){
 		this.items = items;
 		updateColumns();
+		draw();
 	}
 	public void updateColumns(ListBoxItem[] items, ListBoxHeader header){
 		this.items = items;
 		this.header = header;
 		updateColumns();
+		draw();
 	}
 	/**
 	 * Clears the content of the ListBox.
 	 */
 	public void clearData(){
-		
+		items.length = 0;
+		updateColumns();
+		draw();
 	}
 	public void updateColumns(){
 		
@@ -710,7 +716,7 @@ public class CheckBox : WindowElement{
 	}
 	
 	public override void draw(){
-		output.drawText(0 , getAvailableStyleSheet().getImage("checkBoxA").getY, text, getAvailableStyleSheet().getFontset("default"), 1);
+		output.drawText(getAvailableStyleSheet().getImage("checkBoxA").getX, 0, text, getAvailableStyleSheet().getFontset("default"), 1);
 		if(checked){
 			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage("checkBoxB"));
 		}else{
