@@ -1,7 +1,7 @@
 module windowDataLoader;
 
 import sdlang;
-import main;
+import app;
 import PixelPerfectEngine.graphics.common;
 
 import std.conv;

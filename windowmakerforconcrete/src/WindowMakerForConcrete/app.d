@@ -290,7 +290,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 				return base ~ to!string(i);
 			}
 		}
-		return null;
+		//return null;
 	}
 	public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
 		writeln(ID);

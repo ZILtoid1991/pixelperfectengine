@@ -1,0 +1,36 @@
+name "pixelperfectengine"
+authors "Laszlo Szeremi"
+description "A 2D game engine for retro styled games"
+copyright "2015-2017"
+license "BSL-1.0"
+targetType "none"
+subPackage{
+  name "pixelperfectengine"
+  sourcePaths "./pixelperfectengine/src/"
+  importPaths "./pixelperfectengine/src/"
+  targetPath "./pixelperfectengine/lib/"
+  targetType "library"
+  dependency "sdlang-d" version="~>0.10.1"
+  dependency "derelict-sdl2" version="~>2.1.0"
+}
+subPackage{
+  name "pixelperfecteditor"
+  targetType "executable"
+  sourcePaths "./pixelperfecteditor/src/PixelPerfectEditor/"
+  importPaths "./pixelperfecteditor/src/PixelPerfectEditor/"
+  targetPath "./pixelperfecteditor/bin/pixelperfecteditor/"
+  dependency "pixelperfectengine:pixelperfectengine" version="*"
+  dependency "derelict-fi" version="==2.0.3"
+  dependency "sdlang-d" version="~>0.10.1"
+  dependency "derelict-sdl2" version="~>2.1.0"
+}
+subPackage{
+  name "windowmakerforconcrete"
+  targetType "executable"
+  sourcePaths "./windowmakerforconcrete/src/WindowMakerForConcrete/"
+  importPaths "./windowmakerforconcrete/src/WindowMakerForConcrete/"
+  targetPath "./windowmakerforconcrete/bin/WindowMakerForConcrete/"
+  dependency "pixelperfectengine:pixelperfectengine" version="*"
+  dependency "sdlang-d" version="~>0.10.1"
+  dependency "derelict-sdl2" version="~>2.1.0"
+}

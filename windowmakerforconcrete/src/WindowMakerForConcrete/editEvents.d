@@ -7,7 +7,7 @@ import PixelPerfectEngine.concrete.elements;
 
 import std.variant;
 
-import main;
+import app;
 
 public class ParameterChangeEvent : UndoableEvent{
 	private bool undoneStatus;
