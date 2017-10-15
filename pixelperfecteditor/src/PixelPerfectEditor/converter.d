@@ -271,27 +271,23 @@ public Bitmap32Bit getBitmapPreview(ExtendibleBitmap xmp, string ID){
 	Bitmap32Bit result;
 	switch(xmp.getBitDepth(ID)){
 		case "32bit":
-			result = new Bitmap32Bit(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+			result = new Bitmap32Bit(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
 			break;
 		case "16bit":
 			ushort[] raw = xmp.get16bitBitmap(ID);
-			ubyte[] clut = cast(ubyte[])xmp.getPalette(xmp.getPaletteMode(ID));
-			ubyte[] res2;
+			Color[] clut = cast(Color[])xmp.getPalette(xmp.getPaletteMode(ID));
+			Color[] res2;
 			foreach(c; raw){
-				ubyte[4] foo = *cast(ubyte[4]*)(clut.ptr + (c*4));
-				res2 ~= foo;
+				res2 ~= clut[c];
 			}
 			result = new Bitmap32Bit(res2,xmp.getXsize(ID),xmp.getYsize(ID));
 			break;
 		case "8bit":
 			ubyte[] raw = xmp.get8bitBitmap(ID);
-			ubyte[] clut = cast(ubyte[])xmp.getPalette(xmp.getPaletteMode(ID));
-			//writeln(clut);
-			ubyte[] res2;
+			Color[] clut = cast(Color[])xmp.getPalette(xmp.getPaletteMode(ID));
+			Color[] res2;
 			foreach(c; raw){
-				ubyte[4] foo = *cast(ubyte[4]*)(clut.ptr + (c*4));
-				writeln(foo);
-				res2 ~= foo;
+				res2 ~= clut[c];
 			}
 			result = new Bitmap32Bit(res2,xmp.getXsize(ID),xmp.getYsize(ID));
 			break;

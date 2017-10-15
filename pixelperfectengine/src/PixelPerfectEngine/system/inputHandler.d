@@ -72,9 +72,9 @@ public class InputHandler : TextInputHandler{
 	public AxisListener[] al;
 	public InputListener[] il;
 	public MouseListener[] ml;
-	public TextInputListener[string] tl;
+	public TextInputListener[] tl;
 	public SystemEventListener[] sel;
-	private string tiSelect;
+	private TextInputListener tiSelect;
 	private bool tiEnable, enableBindingCapture, delOldOnEvent, delConflKeys, exitOnSysKeys;
 	//private string name;
 	public KeyBinding[] kb;
@@ -195,19 +195,19 @@ public class InputHandler : TextInputHandler{
 					}
 					else{
 						switch(event.key.keysym.scancode){
-							case SDL_SCANCODE_RETURN: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ENTER); break;
-							case SDL_SCANCODE_ESCAPE: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ESCAPE); break;
-							case SDL_SCANCODE_BACKSPACE: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.BACKSPACE); break;
-							case SDL_SCANCODE_UP: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORUP); break;
-							case SDL_SCANCODE_DOWN: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORDOWN); break;
-							case SDL_SCANCODE_LEFT: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORLEFT); break;
-							case SDL_SCANCODE_RIGHT: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORRIGHT); break;
-							case SDL_SCANCODE_INSERT: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.INSERT); break;
-							case SDL_SCANCODE_DELETE: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.DELETE); break;
-							case SDL_SCANCODE_HOME: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.HOME); break;
-							case SDL_SCANCODE_END: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.END); break;
-							case SDL_SCANCODE_PAGEUP: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PAGEUP); break;
-							case SDL_SCANCODE_PAGEDOWN: tl[tiSelect].textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PAGEDOWN); break;
+							case SDL_SCANCODE_RETURN: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ENTER); break;
+							case SDL_SCANCODE_ESCAPE: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ESCAPE); break;
+							case SDL_SCANCODE_BACKSPACE: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.BACKSPACE); break;
+							case SDL_SCANCODE_UP: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORUP); break;
+							case SDL_SCANCODE_DOWN: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORDOWN); break;
+							case SDL_SCANCODE_LEFT: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORLEFT); break;
+							case SDL_SCANCODE_RIGHT: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORRIGHT); break;
+							case SDL_SCANCODE_INSERT: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.INSERT); break;
+							case SDL_SCANCODE_DELETE: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.DELETE); break;
+							case SDL_SCANCODE_HOME: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.HOME); break;
+							case SDL_SCANCODE_END: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.END); break;
+							case SDL_SCANCODE_PAGEUP: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PAGEUP); break;
+							case SDL_SCANCODE_PAGEDOWN: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PAGEDOWN); break;
 							default: break;
 						}
 					}
@@ -223,7 +223,7 @@ public class InputHandler : TextInputHandler{
 					break;
 				case SDL_TEXTINPUT:	 
 					if(tiEnable){
-						tl[tiSelect].textInputEvent(event.text.timestamp, event.text.windowID, event.text.text);
+						tiSelect.textInputEvent(event.text.timestamp, event.text.windowID, event.text.text);
 					}
 					break;
 				case SDL_JOYBUTTONDOWN:
@@ -356,31 +356,29 @@ public class InputHandler : TextInputHandler{
 		}
 	}
 	///Starts the TextInputEvent and disables the polling of normal input events.
-	public void startTextInput(string ID){
+	public void startTextInput(TextInputListener tl){
 		if(tiSelect !is null){
-			if(tl.get(tiSelect, null) !is null)
-				tl[tiSelect].dropTextInput();
-			else
-				tl.remove(tiSelect);
-
+			tiSelect.dropTextInput();
 		}
 		SDL_StartTextInput();
 		tiEnable = true;
 
-		tiSelect = ID;
+		tiSelect = tl;
 	}
 	///Stops the TextInputEvent and enables the polling of normal input events.
-	public void stopTextInput(string ID){
+	public void stopTextInput(TextInputListener tl){
 		SDL_StopTextInput();
+		tl.dropTextInput();
 		tiEnable = false;
 		tiSelect = null;
 	}
-	public void addTextInputListener(string ID, TextInputListener til){
-		tl[ID] = til;
+	/*public void addTextInputListener(TextInputListener til){
+		//tl[] ~= til;
 	}
-	public void removeTextInputListener(string ID){
-		tl.remove(ID);
-	}
+	public void removeTextInputListener(TextInputListener tl){
+		//tl.remove(ID);
+		
+	}*/
 	/*
 	 * Converts between SDL and PPE key modificators.
 	 * PPE native key modificator layout:
@@ -486,10 +484,10 @@ public interface TextInputListener{
 }
 
 public interface TextInputHandler{
-	public void startTextInput(string ID);
-	public void stopTextInput(string ID);
-	public void addTextInputListener(string ID, TextInputListener til);
-	public void removeTextInputListener(string ID);
+	public void startTextInput(TextInputListener tl);
+	public void stopTextInput(TextInputListener tl);
+	//public void addTextInputListener(TextInputListener tl); DEPRECATED!
+	//public void removeTextInputListener(TextInputListener tl); DEPRECATED!
 }
 
 public interface SystemEventListener{

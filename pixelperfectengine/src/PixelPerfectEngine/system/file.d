@@ -41,7 +41,7 @@ public Bitmap16Bit[] loadBitmapFromFile(string filename){
 /**
  * FILE FORMAT IS DEPRECATED! USE XMP INSTEAD!
  */
-public void loadPaletteFromFile(string filename, Raster target){
+/*public void loadPaletteFromFile(string filename, Raster target){
 	auto palette = cast(ubyte[])std.file.read(filename);
 	//writeln(palette.length);
 	target.setupPalette(0);
@@ -50,12 +50,12 @@ public void loadPaletteFromFile(string filename, Raster target){
 		target.addColor(palette[(i * 3)], palette[(i * 3) + 1], palette[(i * 3) + 2]);
 		//writeln(i);
 	}
-}
+}*/
 
 /**
  * FILE FORMAT IS DEPRECATED! USE XMP INSTEAD!
  */
-public void load24bitPaletteFromFile(string filename, Raster target){
+/*public void load24bitPaletteFromFile(string filename, Raster target){
 	auto palette = cast(ubyte[])std.file.read(filename);
 	//writeln(palette.length);
 	target.setupPalette(0);
@@ -65,7 +65,7 @@ public void load24bitPaletteFromFile(string filename, Raster target){
 		target.addColor(palette[(i * 3)], palette[(i * 3) + 1], palette[(i * 3) + 2]);
 		//writeln(i);
 	}
-}
+}*/
 
 /**
  * Gets the bitmap from the XMP file.
@@ -77,12 +77,12 @@ Bitmap16Bit loadBitmapFromXMP(ExtendibleBitmap xmp, string ID){
 }
 
 Bitmap32Bit load32BitBitmapFromXMP(ExtendibleBitmap xmp, string ID){
-	Bitmap32Bit result = new Bitmap32Bit(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+	Bitmap32Bit result = new Bitmap32Bit(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
 	return result;
 }
 
 public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target){
-	target.palette = cast(ubyte[])xmp.getPalette(ID);
+	target.palette = cast(Color[])xmp.getPalette(ID);
 	//writeln(target.palette);
 	/*target.setupPalette(0);
 	int max = (palette.length / 3);

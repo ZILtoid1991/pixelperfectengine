@@ -9,7 +9,7 @@ import PixelPerfectEngine.graphics.outputScreen;
 import PixelPerfectEngine.graphics.layers;
 import PixelPerfectEngine.graphics.bitmap;
 import derelict.sdl2.sdl;
-//public import graphics.color;
+public import PixelPerfectEngine.graphics.common;
 import std.conv;
 import std.stdio;
 import std.algorithm.sorting;
@@ -32,7 +32,7 @@ public class Raster : IRaster{
 	public SDL_Texture*[] frameBuffer;
 	public void*[] fbData;
 	public int[] fbPitch;
-    public ubyte[] palette; ///FORMAT IS ARGB. Master palette, layers or bitmaps can define their own palettes if needed.
+    public Color[] palette; ///FORMAT IS ARGB. Master palette, layers or bitmaps can define their own palettes if needed.
     private Layer[int] layerList;	///Stores the layers by their priorities.
 	private int[] layerPriorityHandler;
     private bool r;
@@ -71,28 +71,17 @@ public class Raster : IRaster{
     public void addRefreshListener(RefreshListener r){
         rL ~= r;
     }
-	//Writes a color at the last position
-	public void addColor(ubyte r, ubyte g, ubyte b, ubyte a = 255)	{
-		/*colorR[c] = r;
-		colorG[c] = g;
-		colorB[c] = b;*/
-
-		palette ~= a;
-		palette ~= r;
-		palette ~= g;
-		palette ~= b;
-		//palette[c][3] = [r,g,b];
+	///Writes a color at the last position
+	public void addColor(Color val){
+		palette ~= val;
 	}
 
-	public void editColor(ushort c, ubyte r, ubyte g, ubyte b, ubyte a = 255){
-		palette[c*4] = a;
-		palette[(c*4)+1] = r;
-		palette[(c*4)+2] = g;
-		palette[(c*4)+3] = b;
+	public void editColor(ushort c, Color val){
+		palette[c] = val;
 	}
 	//Sets the number of colors.
 	public void setupPalette(int i){
-		palette.length = i * 4;
+		palette.length = i;
 	}
     ///Replaces the layer at the given number.
     public void replaceLayer(Layer l, int i){
@@ -133,7 +122,7 @@ public class Raster : IRaster{
 		SDL_LockTexture(frameBuffer[doubleBufferRegisters[0]], null, &fbData[doubleBufferRegisters[0]], &fbPitch[doubleBufferRegisters[0]]);
 
 		for(int i ; i < layerPriorityHandler.length ; i++){
-			layerList[layerPriorityHandler[i]].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette.ptr, null);
+			layerList[layerPriorityHandler[i]].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette.ptr, [0]);
 		}
         
 		SDL_UnlockTexture(frameBuffer[doubleBufferRegisters[0]]);

@@ -47,7 +47,7 @@ public class NewDocumentDialog : Window, ActionListener{
 	}
 	public this(InputHandler inputhandler){
 		this(Coordinate(10,10,220,150),"New Document");
-
+		
 		Button[] buttons;
 		Label[] labels;
 		buttons ~= new Button("Ok", "ok", Coordinate(150,110,200,130));
@@ -155,6 +155,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		propTLW = [40, 320];
 		propSLW = [160, 320, 48, 64];
 		propSLEW = [160, 320, 40, 56];
+		WindowElement.popUpHandler = this;
 	}
 
 	public void initGUI(){
@@ -264,7 +265,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		labels ~= new Label("0","tx",Coordinate(256,435,310,455));
 		labels ~= new Label("TileY:","null",Coordinate(315,435,365,455));
 		labels ~= new Label("0","ty",Coordinate(366,435,420,455));*/
-		addElement(new MenuBar("menubar",Coordinate(0,0,640,16),menuElements,this), EventProperties.MOUSE);
+		addElement(new MenuBar("menubar",Coordinate(0,0,640,16),menuElements), EventProperties.MOUSE);
 		foreach(WindowElement we; labels){
 			addElement(we, 0);
 		}
@@ -573,9 +574,12 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		//loadPaletteFromFile("VDPeditUI0.pal", guiR);
 		//load24bitPaletteFromFile("VDPeditUI0.pal", rasters[0]);
 		//loadPaletteFromXMP(ssOrigin, "default", rasters[0]);
-		foreach(c ; StyleSheet.defaultpaletteforGUI)
-			rasters[0].palette ~= c;
-
+		//foreach(c ; StyleSheet.defaultpaletteforGUI)
+		rasters[0].palette ~= [Color(0x00,0x00,0x00,0x00),Color(0xFF,0xFF,0xFF,0xFF),Color(0xFF,0x34,0x9e,0xff),Color(0xff,0xa2,0xd7,0xff),	
+		Color(0xff,0x00,0x2c,0x59),Color(0xff,0x00,0x75,0xe7),Color(0xff,0xff,0x00,0x00),Color(0xFF,0x7F,0x00,0x00),
+		Color(0xFF,0x00,0xFF,0x00),Color(0xFF,0x00,0x7F,0x00),Color(0xFF,0x00,0x00,0xFF),Color(0xFF,0x00,0x00,0x7F),
+		Color(0xFF,0xFF,0xFF,0x00),Color(0xFF,0xFF,0x7F,0x00),Color(0xFF,0x7F,0x7F,0x7F),Color(0xFF,0x00,0x00,0x00)];// StyleSheet.defaultpaletteforGUI;
+		//writeln(rasters[0].palette);
 		//rasters[0].addRefreshListener(ow[0],0);
 
 	}

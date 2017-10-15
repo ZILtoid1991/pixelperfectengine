@@ -50,12 +50,7 @@ int main(string[] args)
 	SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
 	
 	Editor e = new Editor(args);
-	/*ConfigurationProfile cfg = new ConfigurationProfile();
-	cfg.autodetectVideoModes(0);
-	writeln (cfg.getNumOfVideoModes());
-	for(int i = cfg.getNumOfVideoModes() - 1 ; i >= 0 ; i--){
-		writeln(cfg.videoModeToString(i));
-	}*/
+	
 	e.whereTheMagicHappens;
     
 	//testAdvBitArrays(128);
@@ -152,7 +147,7 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 		loadPaletteFromXMP(tileSource, "default", r);
 		r.addLayer(t, 0);
 		r.addLayer(s, 1);
-		r.palette ~= cast(ubyte[])spriteSource.getPalette("default");
+		r.palette ~= cast(Color[])spriteSource.getPalette("default");
 		//r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);
 		while(isRunning){

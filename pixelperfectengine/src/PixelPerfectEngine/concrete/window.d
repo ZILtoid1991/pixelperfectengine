@@ -765,7 +765,8 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 					return;
 				}
 			}
-			removeAllPopUps();
+			//removeAllPopUps();
+			removeTopPopUp();
 			}else{
 				if(state == ButtonState.RELEASED && moveState){
 					moveState = false;
@@ -818,14 +819,14 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		relX = to!int(relX * xR);
 		relY = to!int(relY * yR);
 		if(numOfPopUpElements < 0){
-			foreach(p ; popUpElements){
-				if(p.coordinates.top < y && p.coordinates.bottom > y && p.coordinates.left < x && p.coordinates.right > x){
-					p.onMouseMovement(x - p.coordinates.left, y - p.coordinates.top);
-					return;
-				}else{
-					p.onMouseMovement(-1,-1);
-				}
+			PopUpElement p = popUpElements[popUpElements.length - 1];
+			if(p.coordinates.top < y && p.coordinates.bottom > y && p.coordinates.left < x && p.coordinates.right > x){
+				p.onMouseMovement(x - p.coordinates.left, y - p.coordinates.top);
+				return;
+			}else{
+				p.onMouseMovement(-1,-1);
 			}
+		
 		}
 		if(state == SDL_PRESSED && moveState){
 			windowToMove.relMove(relX, relY);
@@ -862,6 +863,12 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 			spriteLayer.removeSprite(numOfPopUpElements);
 		}
 		popUpElements.length = 0;
+	}
+	private void removeTopPopUp(){
+		
+		spriteLayer.removeSprite(numOfPopUpElements++);
+		
+		popUpElements.length--;
 	}
 	public StyleSheet getDefaultStyleSheet(){
 		return defaultStyle;
