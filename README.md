@@ -1,4 +1,4 @@
-# Pixel Perfect Engine ver 0.9.2-rc2
+# Pixel Perfect Engine ver 0.9.2-rc4
 
 2D retro graphics engine written in D by László Szerémi (laszloszeremi@outlook.com, https://twitter.com/EvilReptoid, https://www.patreon.com/ShapeshiftingLizard).
 
@@ -38,3 +38,10 @@ Sample dependencies section:
 * If you add the dependency as "pixelperfectengine" or build using the command "dub build pixelperfectengine" it will fail. Probably dub related issue.
 * The engine doesn't clear the framebuffer to spare some CPU time, this results some trippy effects if a part of the screen is not being overwritten.
 * There's also some speed issues from it, as SDL2 writes the framebuffer back to the main memory. This will probably end up in the slow replacement of SDL2's graphical side with something faster.
+* WindowMakerForConcrete and PixelPerfectEditor are currently unfinished. The former will be soon working fully with extra features (such as undo/redo, snapping to grid and components), then the latter can be developed without an issue.
+
+# Future plans:
+
+* More use of language features, such as templates for bitmaps.
+* Making able for the basic layer types to be used on a single layer with mixing various types.
+* Adding support for scripting languages (QScript, Lua, Python).
