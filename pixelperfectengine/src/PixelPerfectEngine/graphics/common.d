@@ -32,13 +32,13 @@ public struct Coordinate{
 	/** 
 	 * Returns the width of the represented box.
 	 */
-	public @property int width(){
+	public @property @nogc int width(){
 		return right-left;
 	}
 	/** 
 	 * Returns the height of the represented box.
 	 */
-	public @property int height(){
+	public @property @nogc int height(){
 		return bottom-top;
 	}
 	/** 

@@ -26,15 +26,15 @@ import std.datetime;
  * Basic window. All other windows are inherited from this class.
  */
 public class Window : ElementContainer{
-	private WindowElement[] elements, mouseC, keyboardC, scrollC;
-	public wstring title;
+	protected WindowElement[] elements, mouseC, keyboardC, scrollC;
+	protected wstring title;
 	public IWindowHandler parent;
 	//public Bitmap16Bit[int] altStyleBrush;
 	public BitmapDrawer output;
 	public int header;//, sizeX, sizeY;
-	private int moveX, moveY;
-	private bool fullUpdate;
-	private string[] extraButtons;
+	protected int moveX, moveY;
+	protected bool fullUpdate;
+	protected string[] extraButtons;
 	public Coordinate position;
 	public StyleSheet customStyle;
 	public static StyleSheet defaultStyle;
@@ -134,23 +134,16 @@ public class Window : ElementContainer{
 	 * Draws the window. Intended to be used by the WindowHandler.
 	 */
 	public void draw(){
-
-		output.drawFilledRectangle(0, position.width() - 1, 0, position.height() - 1, getStyleSheet().getColor("window"));
-		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width(), position.height());
+		output.drawFilledRectangle(0, position.width() - 1, getStyleSheet().getImage("closeButtonA").height, position.height() - 1, getStyleSheet().getColor("window"));
 		int x1 = getStyleSheet().getImage("closeButtonA").getX(), y1 = getStyleSheet().getImage("closeButtonA").getY(), x2 = position.width();
-		foreach(s ; extraButtons){
-			x2 -= x1;
-			output.insertBitmap(x2,0,getStyleSheet().getImage(s));
-		}
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
 		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
 
 		int headerLength = extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 - ((extraButtons.length/2) * x1) ;
 		//drawing the header
-		output.drawLine(x1, headerLength, 0, 0, getStyleSheet().getColor("windowascent"));
-		output.drawLine(x1, x1, 0, y1 - 1, getStyleSheet().getColor("windowascent"));
-		output.drawLine(x1, headerLength, y1 - 1, y1 - 1, getStyleSheet().getColor("windowdescent"));
-		output.drawLine(headerLength, headerLength, 0, y1 - 1, getStyleSheet().getColor("windowdescent"));
+		drawHeader();
 
 		//drawing the border of the window
 		output.drawLine(0, position.width() - 1, y1, y1, getStyleSheet().getColor("windowascent"));
@@ -159,13 +152,39 @@ public class Window : ElementContainer{
 		output.drawLine(position.width() - 1, position.width() - 1, y1, position.height() - 1, getStyleSheet().getColor("windowdescent"));
 
 		//output.drawText(x1+1, 1, title, getFontSet(0), 1);
-		output.drawText(x1, (y1-getStyleSheet().getFontset("default").getSize())/2, title, getStyleSheet().getFontset("default"),1);
+		
 		fullUpdate = true;
 		foreach(WindowElement we; elements){
 			we.draw();
 			//output.insertBitmap(we.getPosition().xa,we.getPosition().ya,we.output.output);
 		}
 		fullUpdate = false;
+		parent.drawUpdate(this);
+	}
+	/**
+	 *
+	 */
+	protected void drawHeader(){
+		output.drawFilledRectangle(0, position.width() - 1, 0, getStyleSheet().getImage("closeButtonA").height - 1, getStyleSheet().getColor("window"));
+		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
+		int x1 = getStyleSheet().getImage("closeButtonA").getX(), y1 = getStyleSheet().getImage("closeButtonA").getY(), x2 = position.width();
+		int headerLength = extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 - ((extraButtons.length/2) * x1) ;
+		foreach(s ; extraButtons){
+			x2 -= x1;
+			output.insertBitmap(x2,0,getStyleSheet().getImage(s));
+		}
+		output.drawLine(x1, headerLength, 0, 0, getStyleSheet().getColor("windowascent"));
+		output.drawLine(x1, x1, 0, y1 - 1, getStyleSheet().getColor("windowascent"));
+		output.drawLine(x1, headerLength, y1 - 1, y1 - 1, getStyleSheet().getColor("windowdescent"));
+		output.drawLine(headerLength, headerLength, 0, y1 - 1, getStyleSheet().getColor("windowdescent"));
+		output.drawText(x1, (y1-getStyleSheet().getFontset("default").getSize())/2, title, getStyleSheet().getFontset("default"),1);
+	}
+	public void setTitle(wstring s){
+		title = s;
+		drawHeader;
+	}
+	public wstring getTitle(){
+		return title;
 	}
 	/**
 	 * Detects where the mouse is clicked, then it either passes to an element, or tests whether the close button, 
@@ -882,6 +901,11 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	public void drawUpdate(WindowElement sender){}
 	public void getFocus(WindowElement sender){}
 	public void dropFocus(WindowElement sender){}
+	public void drawUpdate(Window sender){
+		int p = whichWindow(sender);
+		spriteLayer.removeSprite(p);
+		spriteLayer.addSprite(sender.output.output,p,sender.position);
+	}
 }
 
 public interface IWindowHandler : PopUpHandler{
@@ -893,6 +917,7 @@ public interface IWindowHandler : PopUpHandler{
 	public void addWindow(Window w);
 	public void moveWindow(int x, int y, Window w);
 	public void relMoveWindow(int x, int y, Window w);
+	public void drawUpdate(Window sender);
 }
 
 public enum EventProperties : uint{

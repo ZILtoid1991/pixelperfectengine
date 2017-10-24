@@ -92,6 +92,18 @@ public class Bitmap4Bit{
     @nogc public int getY(){
         return iY;
     }   
+	/**
+	 * Returns the width of the bitmap.
+	 */
+	@property public int width(){
+		return iX;
+	}
+	/**
+	 * Returns the height of the bitmap.
+	 */
+	@property public int height(){
+		return iY;
+	}
 	///Generates a standard CollisionModel depending on the pixel transparency.
 	public AdvancedBitArray generateStandardCollisionModel(){
 		AdvancedBitArray result = new AdvancedBitArray(iX * iY);
@@ -181,6 +193,18 @@ public class Bitmap8Bit{
     @nogc public int getY(){
         return iY;
     }   
+	/**
+	 * Returns the width of the bitmap.
+	 */
+	@property public int width(){
+		return iX;
+	}
+	/**
+	 * Returns the height of the bitmap.
+	 */
+	@property public int height(){
+		return iY;
+	}
 	///Generates a standard CollisionModel depending on the pixel transparency.
 	public AdvancedBitArray generateStandardCollisionModel(){
 		AdvancedBitArray result = new AdvancedBitArray(iX * iY);
@@ -316,6 +340,18 @@ public class Bitmap16Bit{
 			}
 		}
 	}
+	/**
+	 * Returns the width of the bitmap.
+	 */
+	@property public int width(){
+		return iX;
+	}
+	/**
+	 * Returns the height of the bitmap.
+	 */
+	@property public int height(){
+		return iY;
+	}
 }
 /**
  * Directly defines the colors of each pixels as well as their alpha values.
@@ -404,7 +440,18 @@ public class Bitmap32Bit{
 	@nogc public int getY(){
 		return iY;
 	}
-
+	/**
+	 * Returns the width of the bitmap.
+	 */
+	@property public int width(){
+		return iX;
+	}
+	/**
+	 * Returns the height of the bitmap.
+	 */
+	@property public int height(){
+		return iY;
+	}
 }
 /*public interface Collidable{
 	public bool isTransparent(int x, int y);

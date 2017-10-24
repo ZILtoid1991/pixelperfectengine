@@ -20,7 +20,7 @@ abstract class WindowElement{
 	protected wstring text;
 	protected string source;
 	public Coordinate position;
-	private int sizeX, sizeY;
+	//private int sizeX, sizeY;
 	//public int font;
 	public BitmapDrawer output;
 	//public Bitmap16Bit[int] altStyleBrush;
@@ -42,10 +42,10 @@ abstract class WindowElement{
 		
 	}
 	@nogc public int getX(){
-		return sizeX;
+		return position.width;
 	}
 	@nogc public int getY(){
-		return sizeY;
+		return position.height;
 	}
 	@nogc public Coordinate getPosition(){
 		return position;
@@ -71,12 +71,12 @@ abstract class WindowElement{
 	/*private Bitmap16Bit getBrush(int style){
 		return altStyleBrush.get(style, elementContainer.getStyleBrush(style));
 	}*/
-	@nogc public wstring getText(){
+	public wstring getText(){
 		return text;
 	}
 	public void setText(wstring s){
 		text = s;
-		draw;
+		draw();
 	}
 
 	public StyleSheet getAvailableStyleSheet(){
@@ -110,15 +110,17 @@ public class Button : WindowElement{
 	
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.width();
-		sizeY = coordinates.height();
+		//sizeX = coordinates.width();
+		//sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(coordinates.width, coordinates.height);
 		brushPressed = 1;
 		//draw();
 	}
 	public override void draw(){
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width(), position.height());
 		output.drawFilledRectangle(0, position.width()-1, 0,position.height()-1, getAvailableStyleSheet().getColor("window"));
 		if(isPressed){
 			/*output.drawRectangle(0, sizeX, 0, sizeY, getBrush(brushNormal));
@@ -138,7 +140,7 @@ public class Button : WindowElement{
 			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
 		}
 		
-		output.drawText(sizeX/2, sizeY/2, text, getAvailableStyleSheet().getFontset("default"));
+		output.drawText(position.width/2, position.height/2, text, getAvailableStyleSheet().getFontset("default"));
 		elementContainer.drawUpdate(this);
 	}
 	public override void onClick(int offsetX, int offsetY, int type = 0){
@@ -164,7 +166,7 @@ public class SmallButton : WindowElement{
 		this.source = source;
 		this.iconPressed = iconPressed;
 		this.iconUnpressed = iconUnpressed;
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(coordinates.width, coordinates.height);
 		brushPressed = 1;
 		//draw();
 	}
@@ -191,15 +193,15 @@ public class SmallButton : WindowElement{
 public class Label : WindowElement{
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.width();
-		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(coordinates.width, coordinates.height);
 		//draw();
 	}
 	public override void draw(){
 		//writeln(elementContainer);
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width, position.height);
 		output.drawText(0, 0, text, getAvailableStyleSheet().getFontset("default"), 1);
 		elementContainer.drawUpdate(this);
 	}
@@ -207,6 +209,12 @@ public class Label : WindowElement{
 		if(type == 0)
 			invokeActionEvent(EventType.CLICK, 0);
 	}
+	public override void setText(wstring s) {
+		output.destroy();
+		output = new BitmapDrawer(position.width, position.height);
+		super.setText(s);
+	}
+	
 }
 
 public class TextBox : WindowElement, TextInputListener{
@@ -217,11 +225,9 @@ public class TextBox : WindowElement, TextInputListener{
 	
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.width();
-		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(coordinates.width, coordinates.height);
 		//inputHandler.addTextInputListener(source, this);
 		//insert = true;
 		//draw();
@@ -245,8 +251,10 @@ public class TextBox : WindowElement, TextInputListener{
 		}
 	}
 	public override void draw(){
-		output.drawFilledRectangle(0, sizeX - 1, 0, sizeY - 1, getAvailableStyleSheet().getColor("window"));
-		output.drawRectangle(0, sizeX - 1, 0, sizeY - 1, getAvailableStyleSheet().getColor("windowascent"));
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width, position.height);
+		output.drawFilledRectangle(0, position.width - 1, 0, position.height - 1, getAvailableStyleSheet().getColor("window"));
+		output.drawRectangle(0, position.width - 1, 0, position.height - 1, getAvailableStyleSheet().getColor("windowascent"));
 		
 		//draw cursor
 		if(enableEdit){
@@ -393,9 +401,6 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 	
 	public this(string source, Coordinate coordinates, ListBoxItem[] items, ListBoxHeader header, int rowHeight, bool enableTextInput = false){
 		position = coordinates;
-		sizeX = coordinates.width();
-		sizeY = coordinates.height();
-		//this.text = text;
 		this.source = source;
 		this.rowHeight = rowHeight;
 		this.items = items;
@@ -409,7 +414,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 			fullX = position.width();
 		}
 		
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(position.width, position.height);
 
 		int foo = rowHeight * this.items.length;
 		if(foo < position.height())
@@ -541,11 +546,11 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		int areaX, areaY;
 
 		vposition = vSlider.getSliderPosition();
-		areaX = sizeX - vSlider.getPosition().width();
+		areaX = position.width - vSlider.getPosition().width();
 
 
 		hposition = hSlider.getSliderPosition();
-		areaY = sizeY - hSlider.getPosition().height();
+		areaY = position.height - hSlider.getPosition().height();
 			
 		output.drawFilledRectangle(0, position.width(), 0, position.height(),getStyleSheet().getColor("window"));
 		output.drawRectangle(0, position.width() - 1, 0, position.height() - 1,getStyleSheet().getColor("windowascent"));
@@ -642,17 +647,17 @@ public class CheckBox : WindowElement{
 	
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.width();
-		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		brush ~= 2;
 		brush ~= 3;
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(position.width, position.height);
 		//draw();
 	}
 	
 	public override void draw(){
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width, position.height);
 		output.drawText(getAvailableStyleSheet().getImage("checkBoxA").getX, 0, text, getAvailableStyleSheet().getFontset("default"), 1);
 		if(checked){
 			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage("checkBoxB"));
@@ -678,21 +683,21 @@ public class RadioButtonGroup : WindowElement{
 	
 	public this(wstring text, string source, Coordinate coordinates, wstring[] options, int rowHeight, int buttonpos){
 		this.position = coordinates;
-		sizeX = coordinates.width();
-		sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		this.options = options;
 		this.rowHeight = rowHeight;
 		brush ~= 4;
 		brush ~= 5;
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(position.width, position.height);
 		//draw();
 	}
 	
 	public override void draw(){
 		//output.drawFilledRectangle(0, sizeX-1, 0, sizeY-1, background);
-		output.drawRectangle(0, sizeX-1, 0, sizeY-1, getAvailableStyleSheet().getColor("windowascent"));
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width, position.height);
+		output.drawRectangle(0, position.width-1, 0, position.height-1, getAvailableStyleSheet().getColor("windowascent"));
 		output.drawText(16,0,text, getAvailableStyleSheet().getFontset("default"),1);
 		for(int i; i < options.length; i++){
 
@@ -737,13 +742,11 @@ public class VSlider : Slider{
 	
 	public this(int maxValue, int barLenght, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.width();
-		sizeY = coordinates.height();
 		//this.text = text;
 		this.source = source;
 		this.maxValue = maxValue;
 		this.barLength = barLenght;
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(position.width, position.height);
 		brush ~= 6;
 		brush ~= 8;
 		//brush ~= 10;
@@ -753,18 +756,20 @@ public class VSlider : Slider{
 		//draw background
 		//Bitmap16Bit sliderStyle = elementContainer.getStyleBrush(brush[2]);
 		//ushort backgroundColor = sliderStyle.readPixel(0,0), sliderColor = sliderStyle.readPixel(1,0);
-		output.drawFilledRectangle(0, sizeX , 0, sizeY , getAvailableStyleSheet.getColor("windowinactive"));
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width, position.height);
+		output.drawFilledRectangle(0, position.width , 0, position.height , getAvailableStyleSheet.getColor("windowinactive"));
 		//draw upper arrow
 		output.insertBitmap(0,0,getAvailableStyleSheet.getImage("upArrowA"));
 		//draw lower arrow
-		output.insertBitmap(0, sizeY - getAvailableStyleSheet.getImage("downArrowA").getY(),getAvailableStyleSheet.getImage("downArrowA"));
+		output.insertBitmap(0, position.height - getAvailableStyleSheet.getImage("downArrowA").getY(),getAvailableStyleSheet.getImage("downArrowA"));
 		//draw slider
 		if(maxValue > barLength){
 			double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA")).getY()*2, unitlength = sliderlength/maxValue;
 			double sliderpos = unitlength * value, bl = unitlength * barLength;
 			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("upArrowA").getY(), posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("upArrowA").getY();
 
-			output.drawFilledRectangle(0,sizeX,posA, posB, getAvailableStyleSheet.getColor("windowascent"));
+			output.drawFilledRectangle(0,position.width,posA, posB, getAvailableStyleSheet.getColor("windowascent"));
 		}
 		elementContainer.drawUpdate(this);
 	}
@@ -775,7 +780,7 @@ public class VSlider : Slider{
 			if(value != 0) value--;
 
 		}
-		else if(sizeY-getAvailableStyleSheet.getImage("upArrowA").getY() <= offsetY){
+		else if(position.height-getAvailableStyleSheet.getImage("upArrowA").getY() <= offsetY){
 			if(value < maxValue - barLength) value++;
 
 		}
@@ -809,14 +814,12 @@ public class VSlider : Slider{
 public class HSlider : Slider{
 	public this(int maxValue, int barLenght, string source, Coordinate coordinates){
 		position = coordinates;
-		sizeX = coordinates.width();
-		sizeY = coordinates.height();
 		//this.text = text;
 		this.source = source;
 		this.maxValue = maxValue;
 		this.barLength = barLenght;
 		//writeln(barLenght,',',maxValue);
-		output = new BitmapDrawer(sizeX, sizeY);
+		output = new BitmapDrawer(position.width, position.height);
 		brush ~= 14;
 		brush ~= 16;
 		//brush ~= 10;
@@ -826,11 +829,13 @@ public class HSlider : Slider{
 		//draw background
 		//Bitmap16Bit sliderStyle = elementContainer.getStyleBrush(brush[2]);
 		//ushort backgroundColor = sliderStyle.readPixel(0,0), sliderColor = sliderStyle.readPixel(1,0);
-		output.drawFilledRectangle(0, sizeX , 0, sizeY , getAvailableStyleSheet().getColor("windowinactive"));
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width, position.height);
+		output.drawFilledRectangle(0, position.width , 0, position.height , getAvailableStyleSheet().getColor("windowinactive"));
 		//draw left arrow
 		output.insertBitmap(0,0,getAvailableStyleSheet.getImage("leftArrowA"));
 		//draw right arrow
-		output.insertBitmap(sizeX - getAvailableStyleSheet.getImage("rightArrowA").getX(),0,getAvailableStyleSheet.getImage("rightArrowA"));
+		output.insertBitmap(position.width - getAvailableStyleSheet.getImage("rightArrowA").getX(),0,getAvailableStyleSheet.getImage("rightArrowA"));
 		//draw slider
 		if(maxValue > barLength){
 			double sliderlength = position.width() - (getAvailableStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
@@ -846,7 +851,7 @@ public class HSlider : Slider{
 		if(offsetX <= getAvailableStyleSheet.getImage("rightArrowA").getX()){
 			if(value != 0) value--;
 		}
-		else if(sizeX-getAvailableStyleSheet.getImage("rightArrowA").getX() <= offsetX){
+		else if(position.width-getAvailableStyleSheet.getImage("rightArrowA").getX() <= offsetX){
 			if(value < maxValue - barLength) value++;
 		}
 		else{
@@ -1085,6 +1090,22 @@ public class PopUpMenuElement{
 		this.icon = icon; 
 		this.iconWidth = iconWidth;
 	}
+	public this(string source, wstring text, wstring secondaryText, PopUpMenuElement[] subElements){
+		this.source = source;
+		this.text = text;
+		this.secondaryText = secondaryText;
+		this.subElements = subElements;
+		/+this.icon = icon; 
+		this.iconWidth = iconWidth;+/
+	}
+	public this(string source, wstring text, wstring secondaryText, PopUpMenuElement[] subElements, Bitmap16Bit icon = null, int iconWidth = 0){
+		this.source = source;
+		this.text = text;
+		this.secondaryText = secondaryText;
+		this.subElements = subElements;
+		/+this.icon = icon; 
+		this.iconWidth = iconWidth;+/
+	}
 	public Bitmap16Bit getIcon(){
 		return icon;
 	}
@@ -1093,6 +1114,9 @@ public class PopUpMenuElement{
 	}
 	public PopUpMenuElement[] getSubElements(){
 		return subElements;
+	}
+	public void loadSubElements(PopUpMenuElement[] e){
+		subElements = e;
 	}
 	public PopUpMenuElement opIndex(size_t i){
 		return subElements[i];

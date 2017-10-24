@@ -15,6 +15,7 @@ import PixelPerfectEngine.system.common;
 
 import windowDataLoader;
 import editEvents;
+import elementTypes;
 
 public class Main {
 	private SpriteLayer sl;
@@ -46,6 +47,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	public void initGUI(){
 		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
 		
+		WindowElement.popUpHandler = this;
 		PopUpMenuElement[] menuElements;
 		menuElements ~= new PopUpMenuElement("file", "FILE");
 
@@ -54,7 +56,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		menuElements[0][1] = new PopUpMenuElement("load", "Load Window", "Ctrl + L");
 		menuElements[0][2] = new PopUpMenuElement("save", "Save Window", "Ctrl + S");
 		menuElements[0][3] = new PopUpMenuElement("saveAs", "Save Window As", "Ctrl + Shift + S");
-		menuElements[0][4] = new PopUpMenuElement("saveTemp", "Export Dlang code", "Ctrl + Shift + X");
+		menuElements[0][4] = new PopUpMenuElement("export", "Export Dlang code", "Ctrl + Shift + X");
 		menuElements[0][5] = new PopUpMenuElement("exit", "Exit application", "Alt + F4");
 
 		menuElements ~= new PopUpMenuElement("edit", "EDIT");
@@ -71,7 +73,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 
 		menuElements[2].setLength(9);
 		menuElements[2][0] = new PopUpMenuElement("Label", "Label", "Ctrl + F1");
-		menuElements[2][1] = new PopUpMenuElement("btn", "Button");
+		menuElements[2][1] = new PopUpMenuElement("\\submenu\\", "Button", ">>>");
 		menuElements[2][1].setLength(2);
 		menuElements[2][1][0] = new PopUpMenuElement("Button", "Button", "Ctrl + F2");
 		menuElements[2][1][1] = new PopUpMenuElement("SmallButton", "SmallButton", "Alt + F2");
@@ -89,19 +91,20 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		menuElements[3][0] = new PopUpMenuElement("helpFile", "Content", "F1");
 		menuElements[3][1] = new PopUpMenuElement("about", "About");
 		
-		addElement(new MenuBar("menubar",Coordinate(0,0,800,16),menuElements,this), EventProperties.MOUSE);
+		addElement(new MenuBar("menubar",Coordinate(0,0,800,16),menuElements), EventProperties.MOUSE);
 		
 		ListBoxHeader componentListHeader = new ListBoxHeader(["Name","Type"],[100,160]);
 		componentList = new ListBox("componentList", Coordinate(648,32,792,208),[],componentListHeader,16);
 		addElement(componentList, EventProperties.MOUSE);
 
-		ListBoxHeader propHeader = new ListBoxHeader(["Type","Name"],[100,160]);
-		prop = new ListBox("prop", Coordinate(648,240,792,472),[],componentListHeader,16);
+		ListBoxHeader propHeader = new ListBoxHeader(["Name","Value"],[160,160]);
+		prop = new ListBox("prop", Coordinate(648,240,792,472),[],propHeader,16,true);
 		addElement(prop, EventProperties.MOUSE);
 
 		foreach(WindowElement we; elements){
 			we.draw();
-			we.al ~= this;
+			//we.al ~= this;
+			//we.al ~= mainApp;
 		}
 
 		dw = new DummyWindow(Coordinate(0,16,640,480),"New project");
@@ -133,8 +136,16 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 			case "exit":
 				ma.onExit=true;
 				break;
+			case "componentList":
+				if(event.aux){
+					ListBoxItem lbi = cast(ListBoxItem)event.aux;
+					loadParametersIntoListbox(prop, ma.windowData.getElementAttributes(to!string(lbi.getText(0))));
+					ma.selectedElement = to!string(lbi.getText(0));
+				}
+				break;
+
 			default:
-				
+				ma.actionEvent(event);
 				break;
 		}
 	}
@@ -183,21 +194,16 @@ public class DummyWindow : Window {
 	public this(Coordinate size, wstring title, string[] extraButtons = []){
 		super(size, title, extraButtons);
 	}
-	public override void close(){
-		
+	override public void passMouseEvent(int x,int y,int state = 0) {
+		//super.passMouseEvent(x,y,state);
 	}
-	public override void move(int x, int y){
 	
-	}
-	public override void relMove(int x, int y){
-	
-	}
 }
 /**
  * It's recommended that the main meat of your application is in a separate class, with optional classes for different modules.
  * Use inheritance to monitor events.
  */
-public class MainApplication : InputListener, MouseListener, SystemEventListener{
+public class MainApplication : InputListener, MouseListener, SystemEventListener, ActionListener{
 	public OutputScreen outScrn;
 	public SpriteLayer sl;
 	public EffectLayer el;
@@ -205,6 +211,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 	public InputHandler input;
 	public EditorWindowHandler ewh;
 	public WindowElement[string] windowElements;
+	public string selectedElement, windowName;
 	public WindowData windowData;
 	public bool onExit;
 	private PlacementMode placementMode;
@@ -224,19 +231,20 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		input.il ~= this;
 		input.sel ~= this;
 		input.kb ~= KeyBinding(0, ScanCode.ESCAPE, 0, "sysesc", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(0, ScanCode.DELETE, 0, "deletthis", Devicetype.KEYBOARD);
 		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LOCKKEYIGNORE);
 		input.kb ~= KeyBinding(KeyModifier.LCTRL + KeyModifier.LSHIFT, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, KeyModifier.LOCKKEYIGNORE);
-		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F1, 0, "Button", Devicetype.KEYBOARD);
-		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F2, 0, "Label", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F2, 0, "Button", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F1, 0, "Label", Devicetype.KEYBOARD);
 		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F3, 0, "TextBox", Devicetype.KEYBOARD);
 		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F4, 0, "ListBox", Devicetype.KEYBOARD);
-		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F5, 0, "HSlider", Devicetype.KEYBOARD);
-		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F6, 0, "VSlider", Devicetype.KEYBOARD);
-		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F7, 0, "RadioButtonGroup", Devicetype.KEYBOARD);
-		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F8, 0, "CheckBox", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F8, 0, "HSlider", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F7, 0, "VSlider", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F6, 0, "RadioButtonGroup", Devicetype.KEYBOARD);
+		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F5, 0, "CheckBox", Devicetype.KEYBOARD);
 		input.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.F9, 0, "MenuBar", Devicetype.KEYBOARD);
 		
-		//input.kb ~= KeyBinding(KeyModifier.RCTRL, ScanCode.F2, 0, "Button", Devicetype.KEYBOARD);
+		PopUpElement.inputhandler = input;
 		WindowElement.inputHandler = input;
 
 		StyleSheet ss = new StyleSheet();
@@ -265,16 +273,21 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		ewh.initGUI();
 		ewh.ma = this;
 
-		
-
+		windowData = new WindowData();
+		windowName = "NewWindow";
 
 		outScrn = new OutputScreen("Windowmaker for PPE/Concrete", 1600, 960);
 		rstr = new Raster(800,480,outScrn);
 		//rstr.setupPalette(256);
 		rstr.addLayer(sl, 0);
 		rstr.palette.reserve(1024);
-		foreach(c ; StyleSheet.defaultpaletteforGUI)
-			rstr.palette ~= c;
+		/*foreach(c ; StyleSheet.defaultpaletteforGUI)
+			rstr.palette ~= c;*/
+		rstr.palette ~= [Color(0x00,0x00,0x00,0x00),Color(0xFF,0xFF,0xFF,0xFF),Color(0xFF,0x34,0x9e,0xff),Color(0xff,0xa2,0xd7,0xff),	
+					Color(0xff,0x00,0x2c,0x59),Color(0xff,0x00,0x75,0xe7),Color(0xff,0xff,0x00,0x00),Color(0xFF,0x7F,0x00,0x00),
+					Color(0xFF,0x00,0xFF,0x00),Color(0xFF,0x00,0x7F,0x00),Color(0xFF,0x00,0x00,0xFF),Color(0xFF,0x00,0x00,0x7F),
+					Color(0xFF,0xFF,0xFF,0x00),Color(0xFF,0xFF,0x7F,0x00),Color(0xFF,0x7F,0x7F,0x7F),Color(0xFF,0x00,0x00,0x00)];
+		updateElementList();
 	}
 	public void whereTheMagicHappens(){
 		while(!onExit){
@@ -295,6 +308,17 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 	public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
 		writeln(ID);
 		switch(ID){
+			case "sysesc":
+				placementMode = PlacementMode.NULL;
+				placementX = 0;
+				placementY = 0;
+				break;
+			case "deletthis":
+				ewh.dw.removeElement(windowElements[selectedElement]);
+				windowElements.remove(selectedElement);
+				windowData.removeElement(selectedElement);
+				updateElementList();
+				break;
 			case "Button":
 				placementMode = PlacementMode.Button;
 				break;
@@ -346,6 +370,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e;
+						windowData.addWindowElement("Button",id,to!wstring(id),c);
 						break;
 					case PlacementMode.SmallButton: 
 						/*string id = getNextAvailableElementID("smallButton");
@@ -354,12 +379,21 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e;*/
 						break;
+					case PlacementMode.Label: 
+						string id = getNextAvailableElementID("label");
+						WindowElement e = new Label(to!wstring(id), id, c);
+						ecs.appendEvent(new ObjectPlacementEvent(id, e));
+						placementMode = PlacementMode.NULL;
+						windowElements[id] = e;
+						windowData.addWindowElement("Label",id,to!wstring(id),c);
+						break;
 					case PlacementMode.CheckBox: 
 						string id = getNextAvailableElementID("checkBox");
 						WindowElement e = new CheckBox(to!wstring(id), id, c);
 						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e;
+						windowData.addWindowElement("CheckBox",id,to!wstring(id),c);
 						break;
 					case PlacementMode.HSlider: 
 						string id = getNextAvailableElementID("hSlider");
@@ -367,6 +401,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e;
+						windowData.addWindowElement("HSlider",id,to!wstring(id),c);
 						break;
 					case PlacementMode.VSlider:
 						string id = getNextAvailableElementID("vSlider");
@@ -374,6 +409,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e; 
+						windowData.addWindowElement("VSlider",id,to!wstring(id),c);
 						break;
 					case PlacementMode.ListBox:
 						string id = getNextAvailableElementID("listBox");
@@ -381,13 +417,15 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e; 
+						windowData.addWindowElement("ListBox",id,to!wstring(id),c);
 						break;
 					case PlacementMode.MenuBar:
 						string id = getNextAvailableElementID("menuBar");
-						WindowElement e = new MenuBar(id, c, [new PopUpMenuElement(id ~ ".0","menu0"),new PopUpMenuElement(id ~ ".1","menu1")],ewh);
+						WindowElement e = new MenuBar(id, c, [new PopUpMenuElement(id ~ ".0","menu0"),new PopUpMenuElement(id ~ ".1","menu1")]);
 						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e; 
+						windowData.addWindowElement("MenuBar",id,to!wstring(id),c);
 						break;
 					case PlacementMode.RadioButtonGroup: 
 						string id = getNextAvailableElementID("radioButtonGroup");
@@ -395,6 +433,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e;
+						windowData.addWindowElement("RadioButtonGroup",id,to!wstring(id),c);
 						break;
 					case PlacementMode.TextBox:
 						string id = getNextAvailableElementID("textBox");
@@ -402,6 +441,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 						ecs.appendEvent(new ObjectPlacementEvent(id, e));
 						placementMode = PlacementMode.NULL;
 						windowElements[id] = e; 
+						windowData.addWindowElement("TextBox",id,to!wstring(id),c);
 						break;
 
 					default: break;
@@ -417,11 +457,14 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 	}
 	public void updateElementList(){
 		import PixelPerfectEngine.system.etc;
+		wstring[2][] e = windowData.getElements();
 		ewh.componentList.clearData();
 		ListBoxItem[] newItems;
-		foreach(string s; windowElements.byKey){
-			newItems ~= new ListBoxItem(stringArrayConv([s,windowElements[s].classinfo.name]));
+		newItems.length = e.length;
+		for(int i ; i < e.length ; i++){
+			newItems[i] = new ListBoxItem(e[i]);
 		}
+		//writeln(newItems);
 		ewh.componentList.updateColumns(newItems);
 	}
 	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){}
@@ -435,7 +478,142 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 	}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
-
+	public void actionEvent(Event event){
+		writeln(event.source,", ", event.subsource);
+		switch(event.source){
+			case "exit":
+				onExit=true;
+				break;
+			case "prop":
+				if(event.type == EventType.TEXTINPUT){
+					try{
+						ListBoxItem lbi = cast(ListBoxItem)event.aux;
+						windowData.editElementAttribute(selectedElement, to!string(lbi.getText(0)), event.text);
+						if(windowElements.get(selectedElement, null)){
+							switch(lbi.getText(0)){
+								case "Coordinate:top":
+									windowElements[selectedElement].position.top = to!int(event.text);
+									break;
+								case "Coordinate:left":
+									windowElements[selectedElement].position.left = to!int(event.text);
+									break;
+								case "Coordinate:bottom":
+									windowElements[selectedElement].position.bottom = to!int(event.text);
+									break;
+								case "Coordinate:right":
+									windowElements[selectedElement].position.right = to!int(event.text);
+									break;
+								case "name":
+									windowElements[to!string(event.text)] = windowElements[selectedElement];
+									windowElements.remove(selectedElement);
+									selectedElement = to!string(event.text);
+									updateElementList();
+									break;
+								case "text":
+									windowElements[selectedElement].setText(event.text);
+									break;
+								default:
+									break;
+							}
+							windowElements[selectedElement].draw();
+							ewh.dw.draw();
+						}else{
+							switch(lbi.getText(0)){
+								case "width":
+									ewh.dw.setWidth(to!int(event.text));
+									break;
+								case "height":
+									ewh.dw.setHeight(to!int(event.text));
+									break;
+								case "title":
+									ewh.dw.setTitle(event.text);
+									break;
+								default:
+									break;
+							}
+							
+						}
+					}catch(Exception e){
+						writeln(e);
+					}
+				}
+				break;
+			case "load":
+				ewh.addWindow(new FileDialog("Load Window"w, "loadDialog", this, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", false));
+				break;
+			case "loadDialog":
+				try{
+					windowData = new WindowData(event.path);
+					ewh.closeWindow(ewh.dw);
+					windowElements = windowData.deserialize(event.path ~ event.filename);
+					updateElementList();
+					ewh.addWindow(ewh.dw);
+					ewh.dw.relMove(0,16);
+				}catch(Exception e){
+					writeln(e);
+				}
+				break;
+			case "save":
+				if(windowData.filename.length){
+					windowData.serialize(windowData.filename);
+				}else{
+					ewh.addWindow(new FileDialog("Save Window"w, "saveDialog", this, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", true));
+				}
+				break;
+			case "saveAs":
+				ewh.addWindow(new FileDialog("Save Window"w, "saveDialog", this, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", true));
+				break;
+			case "saveDialog":
+				try{
+					windowData.serialize(event.path ~ event.filename);
+				}catch(Exception e){
+					writeln(e);
+				}
+				break;
+			case "export":
+				ewh.addWindow(new FileDialog("Export to D file"w, "exportDialog", this, [FileDialog.FileAssociationDescriptor("D file"w, ["*.d"])], "./", true));
+				break;
+			case "exportDialog":
+				try{
+					windowData.exportToDLangFile(event.path ~ event.filename);
+				}catch(Exception e){
+					writeln(e);
+				}
+				break;
+			case "new":
+				break;
+			case "Button":
+				placementMode = PlacementMode.Button;
+				break;
+			case "Label":
+				placementMode = PlacementMode.Label;
+				break;
+			case "TextBox":
+				placementMode = PlacementMode.TextBox;
+				break;
+			case "ListBox":
+				placementMode = PlacementMode.ListBox;
+				break;
+			case "HSlider":
+				placementMode = PlacementMode.HSlider;
+				break;
+			case "VSlider":
+				placementMode = PlacementMode.VSlider;
+				break;
+			case "RadioButtonGroup":
+				placementMode = PlacementMode.RadioButtonGroup;
+				break;
+			case "CheckBox":
+				placementMode = PlacementMode.CheckBox;
+				break;
+			case "MenuBar":
+				placementMode = PlacementMode.MenuBar;
+				break;
+			default:
+				
+				break;
+		}
+	}
 }
 
 public enum PlacementMode : ubyte{

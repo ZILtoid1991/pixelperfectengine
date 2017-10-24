@@ -28,6 +28,7 @@ import PixelPerfectEngine.map.mapload;
 
 import converterdialog;
 import tileLayerTools;
+import about;
 
 public interface IEditor{
 	public void onExit();
@@ -307,6 +308,11 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 				break;
 			case "xmpTool":
 				ie.xmpToolkit();
+				break;
+			case "about":
+				Window w = new AboutWindow();
+				addWindow(w);
+				w.relMove(30,30);
 				break;
 			default:
 				ie.passActionEvent(event);
