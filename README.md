@@ -1,4 +1,4 @@
-# Pixel Perfect Engine ver 0.9.2
+# Pixel Perfect Engine ver 0.9.3
 
 2D retro graphics engine written in D by László Szerémi (laszloszeremi@outlook.com, https://twitter.com/EvilReptoid, https://www.patreon.com/ShapeshiftingLizard).
 
