@@ -17,7 +17,7 @@ public class StyleSheet{
 		Color(0xff,0x00,0x2c,0x59),Color(0xff,0x00,0x75,0xe7),Color(0xff,0xff,0x00,0x00),Color(0xFF,0x7F,0x00,0x00),
 		Color(0xFF,0x00,0xFF,0x00),Color(0xFF,0x00,0x7F,0x00),Color(0xFF,0x00,0x00,0xFF),Color(0xFF,0x00,0x00,0x7F),
 		Color(0xFF,0xFF,0xFF,0x00),Color(0xFF,0xFF,0x7F,0x00),Color(0xFF,0x7F,0x7F,0x7F),Color(0xFF,0x00,0x00,0x00)];	///Default 16 color palette
-	private Fontset[string] font;		///Fonts stored here.
+	private Fontset!Bitmap16Bit[string] font;		///Fonts stored here.
 	private ushort[string] color;		///Colors are identificated by strings.
 	private Bitmap16Bit[string] images;		///For icons, pattern fills, etc...
 	public int[string] drawParameters;		///Draw parameters are used for border thickness, padding, etc...
@@ -56,10 +56,10 @@ public class StyleSheet{
 
 		drawParameters["ListBoxRowHeight"] = 16;
 	}
-	public void addFontset(Fontset f, string style){
+	public void addFontset(Fontset!Bitmap16Bit f, string style){
 		font[style] = f;
 	}
-	public Fontset getFontset(string style){
+	public Fontset!Bitmap16Bit getFontset(string style){
 		return font.get(style, font["default"]);
 	}
 	public void setColor(ushort c, string colorName){

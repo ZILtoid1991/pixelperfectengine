@@ -39,7 +39,7 @@ public enum FlipRegister : ubyte {
  * The basis of all layer classes, containing functions for rendering.
  */
 abstract class Layer {
-	protected void delegate(void* src, void* dest, int length) mainRenderingFunction;		///Used to get around some readability issues. (void* src, void* dest, void* alpha, int length)
+	protected void delegate(void* src, void* dest, int length) mainRenderingFunction;		///Used to get around some readability issues. (void* src, void* dest, int length)
 	protected void delegate(ushort* src, Color* dest, Color* palette, int length) mainColorLookupFunction;
 	protected void delegate(void* src, int length) mainHorizontalMirroringFunction;
 	protected void delegate(ubyte* src, Color* dest, Color* palette, int length) main8BitColorLookupFunction;
@@ -111,6 +111,7 @@ abstract class Layer {
 	}
 	///Converts 4 bit indexed bitmap data into 32 bit.
 	@nogc protected void colorLookup4bit(ubyte* src, Color* dest, Color* palette, int length, int offset){
+		offset &= 1;
 		length += offset;
 		for(int i = offset; i < length; i++){
 			ubyte temp;
@@ -1183,11 +1184,13 @@ abstract class Layer {
 				jnz		loopentry;
 			}
 		}else version(X86){
-			int c = length / 2, dest = length * 4;
+			//src -= 4;
+			int c = length / 2;
+			void* dest = src + length * 4;
 			asm @nogc{
 				mov		ESI, src[EBP];
-				mov		EDI, ESI;
-				add		EDI, dest;
+				//mov		EDI, ESI;
+				mov		EDI, dest;
 				mov		ECX, c;
 
 			loopentry:
@@ -1223,9 +1226,13 @@ abstract class Layer {
 				jnz		loopentry;
 			}
 		}else{
-			void* dest = src + (4 * length);
-			for(int i ; i < length / 2 ; i++){
-				*cast(ubyte[4]*)dest = *cast(ubyte[4]*)src;
+			src -= 4;
+			Color keeper;
+			void* dest = src + (Color.sizeof * length);
+			for(int i ; i < length ; i++){
+				keeper = *cast(Color*)src;
+				*cast(Color*)src = *cast(Color*)dest;
+				*cast(Color*)dest = keeper;
 				src += 4;
 				dest -= 4;
 			}
@@ -1266,7 +1273,7 @@ public interface ITileLayer{
 	/// Writes the given element into the mapping at the given location.
 	@nogc public void writeMapping(int x, int y, wchar w);
 	/// Loads the mapping, primarily used for deserialization.
-	public void loadMapping(int x, int y, wchar[] map);
+	public void loadMapping(int x, int y, wchar[] map, BitmapAttrib[] tileAttributes);
 	/// Removes the tile from the display list with the given ID.
 	public void removeTile(wchar id);
 	/// Returns the tile ID from the location by pixel.
@@ -1283,9 +1290,13 @@ public interface ITileLayer{
 	@nogc public int getTX();
 	/// Returns the total height of the tile layer.
 	@nogc public int getTY();
+	/// Adds a tile.
+	public void addTile(ABitmap tile, wchar id);
+	/// Returns a tile by ID if exists, returns null otherwise
+	public ABitmap getTile(wchar id);
 }
 
-public interface ITileLayer8Bit : ITileLayer{
+/*public interface ITileLayer8Bit : ITileLayer{
 	public void addTile(Bitmap8Bit t, wchar id);
 	public Bitmap8Bit getTile(wchar id);
 }
@@ -1298,25 +1309,36 @@ public interface ITileLayer16Bit : ITileLayer{
 public interface ITileLayer32Bit : ITileLayer{
 	public void addTile(Bitmap32Bit t, wchar id);
 	public Bitmap32Bit getTile(wchar id);
-}
+}*/
 /**
  * General purpose TileLayer with palette support, mainly for backgrounds.
  * Use multiple of this class for paralax scrolling.
- * Uses 16 bit bitmaps.
+ * Can use any kind of bitmaps thanks to code restructuring.
  */
-public class TileLayer : Layer, ITileLayer16Bit{
+public class TileLayer : Layer, ITileLayer{
 	private int tileX, tileY, mX, mY;
 	private int totalX, totalY;
 	private wchar[] mapping;
-	
-	private Bitmap16Bit[wchar] tileSet;
+	private BitmapAttrib[] tileAttributes;
+	Color[][8] src;
+	private ABitmap[wchar] tileSet;
 	private bool wrapMode; 
 	///Constructor. tX , tY : Set the size of the tiles on the layer.
 	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
 		tileX=tX;
 		tileY=tY;
 		setRenderingMode(renderMode);
+		for(int i; i < 8; i++){
+			src[i].length = tileX;
+		}
 	}
+	/*~this(){
+		foreach(p; src){
+			if(p){
+				free(p);
+			}
+		}
+	}*/
 	/// Wrapmode: if enabled, the layer will be turned into an "infinite" mode.
 	public void setWrapMode(bool w){
 		wrapMode = w;
@@ -1328,25 +1350,33 @@ public class TileLayer : Layer, ITileLayer16Bit{
 		 }*/
 		return mapping[x+(mX*y)];
 	}
+	///
+	@nogc public BitmapAttrib readTileAttribute(int x, int y){
+		return tileAttributes[x+(mX*y)];
+	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
 	@nogc public void writeMapping(int x, int y, wchar w){
 		mapping[x+(mX*y)]=w;
 	}
+	///Writes to the map. x , y : Position. w : ID of the tile.
+	@nogc public void writeTileAttribute(int x, int y, BitmapAttrib ba){
+		tileAttributes[x+(mX*y)]=ba;
+	}
 	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
 	///x*y=map.length
-	public void loadMapping(int x, int y, wchar[] map){
+	public void loadMapping(int x, int y, wchar[] map, BitmapAttrib[] tileAttributes){
 		mX=x;
 		mY=y;
 		mapping = map;
+		this.tileAttributes = tileAttributes;
 		totalX=mX*tileX;
 		totalY=mY*tileY;
 	}
 	///Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
-	public void addTile(Bitmap16Bit t, wchar id){
-		if(t.getX()==tileX && t.getY()==tileY){
-			tileSet[id]=t;
-		}
-		else{
+	public void addTile(ABitmap tile, wchar id){
+		if(tile.width==tileX && tile.height==tileY){
+			tileSet[id]=tile;
+		}else{
 			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
 		}
 	}
@@ -1356,55 +1386,156 @@ public class TileLayer : Layer, ITileLayer16Bit{
 	}
 	///Returns which tile is at the given pixel
 	@nogc public wchar tileByPixel(int x, int y){
-		if(x/tileX + (y/tileY)*mX < 0 || x/tileX + (y/tileY)*mX >= mapping.length) return 0xFFFF;
-		return mapping[x/tileX + (y/tileY)*mX];
+		x /= tileX;
+		y /= tileY;
+		if(wrapMode){
+			x %= mX;
+			y %= mY;
+		}
+		if(x >= mX || y >= mY || x < 0 || y < 0) return 0xFFFF;
+		return mapping[x + y*mX];
+	}
+	///Returns the tile's attribute at the given pixel
+	@nogc public BitmapAttrib tileAttributeByPixel(int x, int y){
+		x /= tileX;
+		y /= tileY;
+		if(wrapMode){
+			x %= mX;
+			y %= mY;
+		}
+		if(x >= mX || y >= mY || x < 0 || y < 0) return BitmapAttrib(false,false);
+		return tileAttributes[x + y*mX];
 	}
 	
 	public override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
-		Color* src;
-		src = cast(Color*)alloca(tileX * 4);
+		//Color* src;
+		//src = cast(Color*)alloca(tileX * 4);
 		//int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
 		//src.length = tileX * 4;
 		if((sX + rasterX <= 0 || sX > totalX) && !wrapMode) return;
 		
-		int y = sY < 0 ? sY * -1 : 0;
-		//int yBegin = sY < 0 ? sY * -1 : 0;
-		/*if(wrapMode){
-		y = sX + 0x7FFFFFFF;
-		}else{
-		y = sX < 0 ? 0 : sX;
-		}*/
-		for( ; y < rasterY ; y++){
-
-			int offsetP = y*pitch;	// The offset of the line that is being written
-			int offsetY = tileY * ((y + sY)%tileY);
-			int offsetX = sX%tileX;	// tile offset of the last column
-			int x = sX < 0 ? sX * -1 : 0;
-			int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
-			void *p0 = (workpad + (x*4) + offsetP);
+		int y = sY < 0 && !wrapMode ? sY * -1 : 0;
+		int sY0 = cast(int)(cast(uint)(sY) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
+		//int sX0 = cast(int)(cast(uint)(sX) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
+		int offsetP = y*pitch;	// The offset of the line that is being written
+		int offsetY = sY0 % tileY;		//Scroll offset upwards
+		int offsetY0 = (sY + rasterY) % tileY;
+		int offsetXA = sX%tileX;	// tile offset of the first column
+		//for( ; y < rasterY ; y+=tileY){
+		while(y < rasterY){
+			//int offsetY = tileX * ((y + sY)%tileY);		
+			int offsetYA = !y ? offsetY : 0;	//top offset for first tile, 0 otherwise
+			int offsetYB = y + tileY > rasterY ? offsetY0 : tileY;	//bottom offset of last tile, equals tileY otherwise
+			int x = sX < 0 && !wrapMode ? sX * -1 : 0;
+			int targetX = totalX - sX > rasterX && !wrapMode ? rasterX : rasterX - (totalX - sX);
+			void *p0 = (workpad + (x*Color.sizeof) + offsetP);
 			while(x < targetX){
 				wchar currentTile = tileByPixel(x+sX,y+sY);
+				int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
+				int xp = (offsetXA != 0 && x == 0) ? offsetXA : 0;	// offset of the first column
+				tileXtarget -= xp;	// length of the first tile
 				if(currentTile != 0xFFFF){ // skip if tile is null
-					//writeln(x);
-					int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
+					BitmapAttrib tileAttrib = tileAttributeByPixel(x+sX,y+sY);
+					
 					//if(tileXtarget + x > ){}
-					int xp = (offsetX != 0 && x == 0) ? offsetX : 0;	// offset of the first tile
-					tileXtarget -= xp > 0 ? tileX - offsetX : 0;	// length of the first tile
-					ushort *c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
-					c += offsetY;
-					c += xp;
-					mainColorLookupFunction(c, src, palette, tileXtarget);
-					//createAlphaMask(src.ptr, alpha.ptr, tileXtarget);
-					mainRenderingFunction(src, p0, tileXtarget);
-					p0 += (tileX - xp) * 4;
-					x+=tileX - xp;
-				}else{
-					x+=tileX;
+					
+					ABitmap ab = tileSet[currentTile];	// pointer to the current tile's pixeldata
+					int tileYOffset = tileY * threads.length;
+					tileYOffset *= tileAttrib.vertMirror ? -1 : 1;
+					int pitchOffset = pitch * threads.length;
+					/+switch(ab.classinfo){
+						case typeid(Bitmap4Bit):+/
+					if(ab.classinfo == typeid(Bitmap4Bit)){
+						//tileYOffset >>=1;
+						foreach(int threadOffset; threads.parallel){
+							void* p1 = p0;
+							Bitmap4Bit bmp = cast(Bitmap4Bit)(ab);
+							ubyte* c = bmp.getPtr();
+							c += tileAttrib.vertMirror ? (tileY - offsetYA - 1 + threadOffset) * tileX : (offsetYA + threadOffset) * tileX;
+							for(int y0 = offsetYA + threadOffset ; y0 < offsetYB ; y0+=threads.length){
+								main4BitColorLookupFunction(c, src[threadOffset].ptr, ab.getPalettePtr, tileX, 0);
+								if(tileAttrib.horizMirror){//Horizontal mirroring
+									mainHorizontalMirroringFunction(src[threadOffset].ptr, tileX);
+								}
+								mainRenderingFunction(src[threadOffset].ptr + xp, p1, tileXtarget);
+								c += tileYOffset>>1;
+								p1 += pitchOffset;
+							}
+							/+}+/
+						}
+					}else if(ab.classinfo == typeid(Bitmap8Bit)){
+						/+	break;
+						case typeid(Bitmap8Bit):+/
+						foreach(int threadOffset; threads.parallel){
+							void* p1 = p0;
+							Bitmap8Bit bmp = cast(Bitmap8Bit)(ab);
+							ubyte* c = bmp.getPtr();
+							c += tileAttrib.vertMirror ? (tileY - offsetYA - 1 + threadOffset) * tileX : (offsetYA + threadOffset) * tileX;
+							for(int y0 = offsetYA + threadOffset ; y0 < offsetYB ; y0+=threads.length){
+								main8BitColorLookupFunction(c, src[threadOffset].ptr, ab.getPalettePtr, tileX);
+								if(tileAttrib.horizMirror){//Horizontal mirroring
+									mainHorizontalMirroringFunction(src[threadOffset].ptr, tileX);
+								}
+								mainRenderingFunction(src[threadOffset].ptr + xp, p1, tileXtarget);
+								c += tileYOffset;
+								p1 += pitchOffset;
+							}
+							/+}+/
+						}
+					}else if(ab.classinfo == typeid(Bitmap16Bit)){
+							/+break;
+						case typeid(Bitmap16Bit):+/
+						foreach(int threadOffset; threads.parallel){
+							void* p1 = p0;
+							Bitmap16Bit bmp = cast(Bitmap16Bit)(ab);
+							ushort* c = bmp.getPtr();
+							c += tileAttrib.vertMirror ? (tileY - offsetYA - 1 + threadOffset) * tileX : (offsetYA + threadOffset) * tileX;
+							for(int y0 = offsetYA + threadOffset ; y0 < offsetYB ; y0+=threads.length){
+								mainColorLookupFunction(c, src[threadOffset].ptr, palette, tileX);
+								if(tileAttrib.horizMirror){//Horizontal mirroring
+									mainHorizontalMirroringFunction(src[threadOffset].ptr, tileX);
+								}
+								mainRenderingFunction(src[threadOffset].ptr + xp, p1, tileXtarget);
+								c += tileYOffset;
+								p1 += pitchOffset;
+							}
+							
+						}
+					}else if(ab.classinfo == typeid(Bitmap32Bit)){
+							/+break;
+						case typeid(Bitmap32Bit):+/
+						foreach(int threadOffset; threads.parallel){
+							void* p1 = p0;
+							Bitmap32Bit bmp = cast(Bitmap32Bit)(ab);
+							Color* c = bmp.getPtr();								
+							c += tileAttrib.vertMirror ? (tileY - offsetYA - 1 + threadOffset) * tileX : (offsetYA + threadOffset) * tileX;
+							for(int y0 = offsetYA + threadOffset ; y0 < offsetYB ; y0+=threads.length){
+								if(tileAttrib.horizMirror){//Horizontal mirroring
+									copyRegion(c, src[threadOffset].ptr, tileX);
+									mainHorizontalMirroringFunction(src[threadOffset].ptr, tileX);
+									mainRenderingFunction(src[threadOffset].ptr + xp, p1, tileXtarget);
+								}else{
+									mainRenderingFunction(c + xp, p1, tileXtarget);
+								}
+								c += tileYOffset;
+								p1 += pitchOffset;
+							}
+							
+						}
+							/+break;
+						default:
+							break;+/
+					}
+					p0 += tileXtarget * Color.sizeof;
 				}
-
+				x+=tileXtarget;
 
 			}
-					
+			offsetP	+= !y ? pitch * (tileY - offsetY) : pitch * tileY;
+			/*if(y + tileY > y) y += tileY - offsetY0;
+			else if(y) y += tileY;
+			else y += (tileY - offsetY);*/
+			y += !y ? (tileY - offsetY) : tileY;
 		}
 				
 		
@@ -1413,284 +1544,7 @@ public class TileLayer : Layer, ITileLayer16Bit{
 	public BLInfo getLayerInfo(){
 		return BLInfo(tileX,tileY,mX,mY);
 	}
-	public Bitmap16Bit getTile(wchar id){
-		return tileSet[id];
-	}
-	public wchar[] getMapping(){
-		return mapping;
-	}
-	@nogc public int getTileWidth(){
-		return tileX;
-	}
-	@nogc public int getTileHeight(){
-		return tileY;
-	}
-	@nogc public int getMX(){
-		return mX;
-	}
-	@nogc public int getMY(){
-		return mY;
-	}
-	@nogc public int getTX(){
-		return totalX;
-	}
-	@nogc public int getTY(){
-		return totalY;
-	}
-}
-/**
- * General purpose TileLayer with palette support, mainly for backgrounds.
- * Use multiple of this class for paralax scrolling.
- * Uses 32 bit bitmaps.
- */
-public class TileLayer32Bit : Layer, ITileLayer32Bit{
-	private int tileX, tileY, mX, mY;
-	private int totalX, totalY;
-	private wchar[] mapping;
-	
-	private Bitmap32Bit[wchar] tileSet;
-	private bool wrapMode; 
-	///Constructor. tX , tY : Set the size of the tiles on the layer.
-	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
-		tileX=tX;
-		tileY=tY;
-		setRenderingMode(renderMode);
-	}
-	/// Wrapmode: if enabled, the layer will be turned into an "infinite" mode.
-	public void setWrapMode(bool w){
-		wrapMode = w;
-	}
-	///Gets the the ID of the given element from the mapping. x , y : Position.
-	public wchar readMapping(int x, int y){
-		/*if(x<0 || x>totalX/tileX){
-		 return 0xFFFF;
-		 }*/
-		return mapping[x+(mX*y)];
-	}
-	///Writes to the map. x , y : Position. w : ID of the tile.
-	public void writeMapping(int x, int y, wchar w){
-		mapping[x+(mX*y)]=w;
-	}
-	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
-	///x*y=map.length
-	public void loadMapping(int x, int y, wchar[] map){
-		mX=x;
-		mY=y;
-		mapping = map;
-		totalX=mX*tileX;
-		totalY=mY*tileY;
-	}
-	///Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
-	public void addTile(Bitmap32Bit t, wchar id){
-		if(t.getX()==tileX && t.getY()==tileY){
-			tileSet[id]=t;
-		}
-		else{
-			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
-		}
-	}
-	///Removes the tile with the ID from the set.
-	public void removeTile(wchar id){
-		tileSet.remove(id);
-	}
-	///Returns which tile is at the given pixel
-	public wchar tileByPixel(int x, int y){
-		if(x/tileX + (y/tileY)*mX < 0 || x/tileX + (y/tileY)*mX >= mapping.length) return 0xFFFF;
-		return mapping[x/tileX + (y/tileY)*mX];
-	}
-	
-	public override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
-		//ubyte[] src, alpha;
-		//int length = sizeX - offsetXA - offsetXB, l4 = length * 4;
-		//src.length = tileX * 4;
-		//alpha.length = tileX * 4;
-		if((sX + rasterX <= 0 || sX > totalX) && !wrapMode) return;
-		
-		int y = sY < 0 ? sY * -1 : 0;
-		//int yBegin = sY < 0 ? sY * -1 : 0;
-		/*if(wrapMode){
-		y = sX + 0x7FFFFFFF;
-		}else{
-		y = sX < 0 ? 0 : sX;
-		}*/
-		for( ; y < rasterY ; y++){
-
-			int offsetP = y*pitch;	// The offset of the line that is being written
-			int offsetY = tileY * ((y + sY)%tileY);
-			int offsetX = sX%tileX;	// tile offset of the last column
-			int x = sX < 0 ? sX * -1 : 0;
-			int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
-			void *p0 = (workpad + (x*4) + offsetP);
-			while(x < targetX){
-				wchar currentTile = tileByPixel(x+sX,y+sY);
-				if(currentTile != 0xFFFF){ // skip if tile is null
-					//writeln(x);
-					int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
-					//if(tileXtarget + x > ){}
-					int xp = (offsetX != 0 && x == 0) ? offsetX : 0;	// offset of the first tile
-					tileXtarget -= xp > 0 ? tileX - offsetX : 0;	// length of the first tile
-					Color* c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
-					c += offsetY;
-					c += xp;
-					//mainColorLookupFunction(c, src.ptr, palette, tileXtarget);
-					//createAlphaMask(src.ptr, alpha.ptr, tileXtarget);
-					mainRenderingFunction(c, p0, tileXtarget);
-					p0 += (tileX - xp) * 4;
-					x+=tileX - xp;
-				}else{
-					x+=tileX;
-				}
-
-
-			}
-					
-		}
-				
-		
-	}
-	
-	public BLInfo getLayerInfo(){
-		return BLInfo(tileX,tileY,mX,mY);
-	}
-	public Bitmap32Bit getTile(wchar id){
-		return tileSet[id];
-	}
-	public wchar[] getMapping(){
-		return mapping;
-	}
-	@nogc public int getTileWidth(){
-		return tileX;
-	}
-	@nogc public int getTileHeight(){
-		return tileY;
-	}
-	@nogc public int getMX(){
-		return mX;
-	}
-	@nogc public int getMY(){
-		return mY;
-	}
-	@nogc public int getTX(){
-		return totalX;
-	}
-	@nogc public int getTY(){
-		return totalY;
-	}
-}
-/**
- * General purpose TileLayer with palette support, mainly for backgrounds.
- * Use multiple of this class for paralax scrolling.
- * Uses 8 bit bitmaps.
- */
-public class TileLayer8Bit : Layer, ITileLayer8Bit{
-	private int tileX, tileY, mX, mY;
-	private int totalX, totalY;
-	private wchar[] mapping;
-	
-	private Bitmap8Bit[wchar] tileSet;
-	private bool wrapMode; 
-	///Constructor. tX , tY : Set the size of the tiles on the layer.
-	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
-		tileX=tX;
-		tileY=tY;
-		setRenderingMode(renderMode);
-	}
-	/// Wrapmode: if enabled, the layer will be turned into an "infinite" mode.
-	public void setWrapMode(bool w){
-		wrapMode = w;
-	}
-	///Gets the the ID of the given element from the mapping. x , y : Position.
-	@nogc public wchar readMapping(int x, int y){
-		/*if(x<0 || x>totalX/tileX){
-		 return 0xFFFF;
-		 }*/
-		return mapping[x+(mX*y)];
-	}
-	///Writes to the map. x , y : Position. w : ID of the tile.
-	@nogc public void writeMapping(int x, int y, wchar w){
-		mapping[x+(mX*y)]=w;
-	}
-	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
-	///x*y=map.length
-	public void loadMapping(int x, int y, wchar[] map){
-		mX=x;
-		mY=y;
-		mapping = map;
-		totalX=mX*tileX;
-		totalY=mY*tileY;
-	}
-	///Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
-	public void addTile(Bitmap8Bit t, wchar id){
-		if(t.getX()==tileX && t.getY()==tileY){
-			tileSet[id]=t;
-		}
-		else{
-			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
-		}
-	}
-	///Removes the tile with the ID from the set.
-	public void removeTile(wchar id){
-		tileSet.remove(id);
-	}
-	///Returns which tile is at the given pixel
-	@nogc public wchar tileByPixel(int x, int y){
-		if(x/tileX + (y/tileY)*mX < 0 || x/tileX + (y/tileY)*mX >= mapping.length) return 0xFFFF;
-		return mapping[x/tileX + (y/tileY)*mX];
-	}
-	
-	public override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
-		Color* src;
-		src = cast(Color*)alloca(tileX * 4);
-		//alpha.length = tileX * 4;
-		if((sX + rasterX <= 0 || sX > totalX) && !wrapMode) return;
-		
-		int y = sY < 0 ? sY * -1 : 0;
-		//int yBegin = sY < 0 ? sY * -1 : 0;
-		/*if(wrapMode){
-		y = sX + 0x7FFFFFFF;
-		}else{
-		y = sX < 0 ? 0 : sX;
-		}*/
-		for( ; y < rasterY ; y++){
-
-			int offsetP = y*pitch;	// The offset of the line that is being written
-			int offsetY = tileY * ((y + sY)%tileY);
-			int offsetX = sX%tileX;	// tile offset of the last column
-			int x = sX < 0 ? sX * -1 : 0;
-			int targetX = totalX - sX > rasterX ? rasterX : rasterX - (totalX - sX);
-			void *p0 = (workpad + (x*4) + offsetP);
-			while(x < targetX){
-				wchar currentTile = tileByPixel(x+sX,y+sY);
-				if(currentTile != 0xFFFF){ // skip if tile is null
-					//writeln(x);
-					int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
-					//if(tileXtarget + x > ){}
-					int xp = (offsetX != 0 && x == 0) ? offsetX : 0;	// offset of the first tile
-					tileXtarget -= xp > 0 ? tileX - offsetX : 0;	// length of the first tile
-					ubyte* c = tileSet[currentTile].getPtr();	// pointer to the current tile's pixeldata
-					c += offsetY;
-					c += xp;
-					main8BitColorLookupFunction(c, src, tileSet[currentTile].getPalettePtr(), tileXtarget);
-					//createAlphaMask(src.ptr, alpha.ptr, tileXtarget);
-					mainRenderingFunction(src, p0, tileXtarget);
-					p0 += (tileX - xp) * 4;
-					x+=tileX - xp;
-				}else{
-					x+=tileX;
-				}
-
-
-			}
-					
-		}
-				
-		
-	}
-	
-	public BLInfo getLayerInfo(){
-		return BLInfo(tileX,tileY,mX,mY);
-	}
-	public Bitmap8Bit getTile(wchar id){
+	public ABitmap getTile(wchar id){
 		return tileSet[id];
 	}
 	public wchar[] getMapping(){
@@ -1720,10 +1574,10 @@ public class TileLayer8Bit : Layer, ITileLayer8Bit{
  */
 public interface ISpriteCollision{
 	///Returns all sprite coordinates.
-	public Coordinate[int] getCoordinates();
-	///Returns all flipregisters.
-	public FlipRegister[int] getFlipRegisters();
-	public int[int] getSpriteSorter();
+	public ref Coordinate[int] getCoordinates();
+	///Returns all sprite attributes.
+	public ref BitmapAttrib[int] getSpriteAttributes();
+	public ref int[] getSpriteSorter();
 	
 }
 /**
@@ -1738,51 +1592,20 @@ public interface ISpriteLayer{
 	public void relMoveSprite(int n, int x, int y);
 	///Gets the coordinate of the sprite.
 	public Coordinate getSpriteCoordinate(int n);
-}
-/**
- *General SpriteLayer interface with 16bit related sprite operations.
- */
-public interface ISpriteLayer16Bit : ISpriteLayer{
 	///Adds a sprite to the layer.
-	public void addSprite(Bitmap16Bit s, int n, Coordinate c);
+	public void addSprite(ABitmap s, int n, Coordinate c, BitmapAttrib attr);
 	///Adds a sprite to the layer.
-	public void addSprite(Bitmap16Bit s, int n, int x, int y);
+	public void addSprite(ABitmap s, int n, int x, int y, BitmapAttrib attr);
 	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
-	public void replaceSprite(Bitmap16Bit s, int n);
+	public void replaceSprite(ABitmap s, int n);
 	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(Bitmap16Bit s, int n, int x, int y);
+	public void replaceSprite(ABitmap s, int n, int x, int y);
 	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(Bitmap16Bit s, int n, Coordinate c);
-}
-/**
- *General SpriteLayer interface with 32bit related sprite operations.
- */
-public interface ISpriteLayer32Bit : ISpriteLayer{
-	///Adds a sprite to the layer.
-	public void addSprite(Bitmap32Bit s, int n, Coordinate c);
-	///Adds a sprite to the layer.
-	public void addSprite(Bitmap32Bit s, int n, int x, int y);
-	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
-	public void replaceSprite(Bitmap32Bit s, int n);
-	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(Bitmap32Bit s, int n, int x, int y);
-	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(Bitmap32Bit s, int n, Coordinate c);
-}
-/**
- *General SpriteLayer interface with 8bit related sprite operations.
- */
-public interface ISpriteLayer8Bit : ISpriteLayer{
-	///Adds a sprite to the layer.
-	public void addSprite(Bitmap8Bit s, int n, Coordinate c);
-	///Adds a sprite to the layer.
-	public void addSprite(Bitmap8Bit s, int n, int x, int y);
-	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
-	public void replaceSprite(Bitmap8Bit s, int n);
-	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(Bitmap8Bit s, int n, int x, int y);
-	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(Bitmap8Bit s, int n, Coordinate c);
+	public void replaceSprite(ABitmap s, int n, Coordinate c);
+	///Edits a sprite attribute.
+	public void editSpriteAttribute(S, T)(int n, T value);
+	///Replaces a sprite attribute.
+	public void replaceSpriteAttribute(int n, BitmapAttrib attr);
 }
 /**
  *Use it to call the collision detector
@@ -1792,38 +1615,46 @@ public interface SpriteMovementListener{
 	void spriteMoved(int ID);
 }
 /**
- *Sprite controller and renderer.
+ * General-purpose sprite controller and renderer.
  */
-public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
-	private Bitmap16Bit[int] spriteSet;			///Stores the sprites.
+public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer{
+	private ABitmap[int] spriteSet;			///Stores the sprites.
 	private Coordinate[int] coordinates;		///Stores the coordinates.
-	private FlipRegister[int] flipRegisters;	///Stores the flip registers.
+	private BitmapAttrib[int] spriteAttributes;	///Stores spriteattributes. (layer priority, mirroring, etc.)
 	private int[] spriteSorter;					///Stores the priorities.
 	public SpriteMovementListener[int] collisionDetector;
-	//Color[][8] src;
+	Color*[8] src;
+	size_t[8] prevSize;
 	
 	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
 		setRenderingMode(renderMode);
 		//src[0].length = 1024;
+		for(int i; i < src.length; i++){
+			src[i] = cast(Color*)malloc(256);
+			prevSize[i]	= 256;
+		}
 	}
-	/*~this(){
-		free(src);
-	}*/
+	~this(){
+		foreach(p; src){
+			if(p)
+				free(p);
+		}
+	}
 	
-	public void addSprite(Bitmap16Bit s, int n, Coordinate c){
+	public void addSprite(ABitmap s, int n, Coordinate c, BitmapAttrib attr){
 		spriteSet[n] = s;
 		coordinates[n] = c;
-		flipRegisters[n] = FlipRegister.NORM;
+		spriteAttributes[n] = attr;
 		spriteSorter ~= n;
 		//sortSprites();
 		spriteSorter.sort();
 		
 	}
 	
-	public void addSprite(Bitmap16Bit s, int n, int x, int y){
+	public void addSprite(ABitmap s, int n, int x, int y, BitmapAttrib attr){
 		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,x+s.getX(),y+s.getY());
-		flipRegisters[n] = FlipRegister.NORM;
+		coordinates[n] = Coordinate(x,y,x+s.width,y+s.height);
+		spriteAttributes[n] = attr;
 		//spriteSorter[n] = n;
 		spriteSorter ~= n;
 		//sortSprites();
@@ -1831,23 +1662,26 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 		spriteSorter.sort();
 		
 	}
-	/**
-	 * 
-	 */
-	public void replaceSprite(Bitmap16Bit s, int n){
+	public void editSpriteAttribute(S, T)(int n, T value){
+		spriteAttributes[n].S = value;
+	}
+	public void replaceSpriteAttribute(int n, BitmapAttrib attr){
+		spriteAttributes[n] = attr;
+	}
+	public void replaceSprite(ABitmap s, int n){
 
-		if(!(s.getX == spriteSet[n].getX && s.getY == spriteSet[n].getY)){
-			coordinates[n] = Coordinate(coordinates[n].left,coordinates[n].top,coordinates[n].left + s.getX,coordinates[n].top + s.getY);
+		if(!(s.width == spriteSet[n].width && s.height == spriteSet[n].height)){
+			coordinates[n] = Coordinate(coordinates[n].left,coordinates[n].top,coordinates[n].left + s.width,coordinates[n].top + s.height);
 		}
 		spriteSet[n] = s;
 	}
 
-	public void replaceSprite(Bitmap16Bit s, int n, int x, int y){
+	public void replaceSprite(ABitmap s, int n, int x, int y){
 		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,x+s.getX(),y+s.getY());
+		coordinates[n] = Coordinate(x,y,x+s.width,y+s.height);
 	}
 
-	public void replaceSprite(Bitmap16Bit s, int n, Coordinate c){
+	public void replaceSprite(ABitmap s, int n, Coordinate c){
 		spriteSet[n] = s;
 		coordinates[n] = c;
 	}
@@ -1859,7 +1693,7 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 	public void removeSprite(int n){
 		//spriteSorter.remove(n);
 		coordinates.remove(n);
-		flipRegisters.remove(n);
+		spriteAttributes.remove(n);
 		spriteSet.remove(n);
 		int[] newSpriteSorter;
 		for(int i; i < spriteSorter.length; i++){
@@ -1882,19 +1716,16 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 		callCollisionDetector(n);
 	}
 	
-	public Bitmap16Bit[int] getSpriteSet(){
-		return spriteSet;
-	}
-	
-	public Coordinate[int] getCoordinates(){
+	///Returns all sprite coordinates.
+	public ref Coordinate[int] getCoordinates(){
 		return coordinates;
 	}
-	
-	public FlipRegister[int] getFlipRegisters(){
-		return flipRegisters;
+	///Returns all sprite attributes.
+	public ref BitmapAttrib[int] getSpriteAttributes(){
+		return spriteAttributes;
 	}
-	public int[int] getSpriteSorter(){
-		return null;
+	public ref int[] getSpriteSorter(){
+		return spriteSorter;
 	}
 	
 	private void callCollisionDetector(int n){
@@ -1908,393 +1739,143 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer16Bit{
 	}
 
 	public override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
-		foreach(int threadOffset; threads.parallel){
-			Color* src;
-			//pitch *= threads.length;
-			foreach_reverse(int i ; spriteSorter){
-				if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-					int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
-					int offsetXB = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
-					int offsetYA = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
-					int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
-					int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-					ushort* p0 = spriteSet[i].getPtr();
-					p0 += offsetXA + (sizeX * (offsetYA + threadOffset));
-					int length = sizeX - offsetXA - offsetXB, lfour = length * 4;
-					src = cast(Color*)realloc(src, lfour);
-					//writeln(src);
-					//alpha.length = lfour;
-					int offsetY = sY < coordinates[i].top ? (coordinates[i].top-sY)*pitch : 0;
-					offsetY += threadOffset * pitch;
-					void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-					for(int y = offsetYA + threadOffset ; y < coordinates[i].height() - offsetYB ; y+=threads.length){		
-						if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-							mainColorLookupFunction(p0, src, palette, length);
-							mainHorizontalMirroringFunction(src, length);
-							mainRenderingFunction(src, dest, length);
-						}else{ //for non flipped sprites
-							mainColorLookupFunction(p0, src, palette, length);
-							mainRenderingFunction(src, dest, length);
-						}
-						dest += pitch * threads.length;
-						p0 += sizeX * threads.length;
-					}
-				}
-			}
-			free(src);
-		}
-		//foreach(int threadOffset; threads.parallel){
-		//Color* src;
-		//src = cast(Color**)realloc(cast(void*)src, size_t.sizeof * threads.length);
-		//pitch *= threads.length;
-		/*Color[] src;
 		foreach_reverse(int i ; spriteSorter){
 			if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-				int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
-				int offsetXB = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
+				int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;//Left hand side offset
+				int offsetXB = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; //Right hand side offset
 				int offsetYA = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
 				int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
 				int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-				ushort* p0 = spriteSet[i].getPtr();
-				p0 += offsetXA + (sizeX * offsetYA);
 				int length = sizeX - offsetXA - offsetXB, lfour = length * 4;
-				
-					
-				//writeln(src);
-				//alpha.length = lfour;
 				int offsetY = sY < coordinates[i].top ? (coordinates[i].top-sY)*pitch : 0;
 				int pitchOffset = pitch * threads.length;
 				int sizeXOffset = sizeX * threads.length;
-				//foreach(int threadOffset; threads.parallel){
-					//src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
-					
-					int threadOffset;
-					src.length = length;
-					ushort* p1 = p0 + threadOffset * sizeX;
-					void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
-					for(int y = offsetYA + threadOffset ; y < coordinates[i].height() - offsetYB ; y+=threads.length){		
-						if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-							mainColorLookupFunction(p1, src.ptr, palette, length);
-							mainHorizontalMirroringFunction(src.ptr, length);
-							mainRenderingFunction(src.ptr, dest, length);
-						}else{ //for non flipped sprites
-							mainColorLookupFunction(p1, src.ptr, palette, length);
-							mainRenderingFunction(src.ptr, dest, length);
+				sizeXOffset *= spriteAttributes[i].vertMirror ? -1 : 1;
+				ABitmap ab = spriteSet[i];
+				/+switch(ab.classinfo){
+					case typeid(Bitmap4Bit):+/
+				if(ab.classinfo == typeid(Bitmap4Bit)){
+					Bitmap4Bit bmp = cast(Bitmap4Bit)ab;
+					ubyte* p0 = bmp.getPtr();
+					if(spriteAttributes[i].vertMirror)
+						p0 += (sizeX * (coordinates[i].height - offsetYB))>>1;
+					else
+						p0 += (sizeX * offsetYA)>>1;
+					if(!spriteAttributes[i].horizMirror)
+						p0 += offsetXA>>1;
+					else
+						p0 += offsetXB>>1;
+					foreach(int threadOffset; threads.parallel){
+						src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
+						ubyte* p1 = p0 + threadOffset * sizeX;
+						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						for(int y = offsetYA + threadOffset ; y < coordinates[i].height - offsetYB ; y+=threads.length){		
+							main4BitColorLookupFunction(p1, src[threadOffset], ab.getPalettePtr(), length, offsetXA);
+							if(spriteAttributes[i].horizMirror){//Flips lines if needed
+								mainHorizontalMirroringFunction(src[threadOffset], length);
+							}
+							mainRenderingFunction(src[threadOffset], dest, length);
+							dest += pitchOffset;
+							p1 += sizeXOffset;
 						}
-						dest += pitchOffset;
-						p0 += sizeXOffset;
 					}
-				//}
+				}else if(ab.classinfo == typeid(Bitmap8Bit)){
+						/+break;
+					case typeid(Bitmap8Bit):+/
+					Bitmap8Bit bmp = cast(Bitmap8Bit)ab;
+					ubyte* p0 = bmp.getPtr();
+					if(spriteAttributes[i].vertMirror)
+						p0 += sizeX * (coordinates[i].height - offsetYB);
+					else
+						p0 += sizeX * offsetYA;
+					if(!spriteAttributes[i].horizMirror)
+						p0 += offsetXA;
+					else
+						p0 += offsetXB;
+					foreach(int threadOffset; threads.parallel){
+						src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
+						ubyte* p1 = p0 + threadOffset * sizeX;
+						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						for(int y = offsetYA + threadOffset ; y < coordinates[i].height - offsetYB ; y+=threads.length){		
+							main8BitColorLookupFunction(p1, src[threadOffset], ab.getPalettePtr(), length);
+							if(spriteAttributes[i].horizMirror){//Flips lines if needed
+								mainHorizontalMirroringFunction(src[threadOffset], length);
+							}
+							mainRenderingFunction(src[threadOffset], dest, length);
+							dest += pitchOffset;
+							p1 += sizeXOffset;
+						}
+					}
+				}else if(ab.classinfo == typeid(Bitmap16Bit)){
+						/+break;
+					case typeid(Bitmap16Bit):+/
+					Bitmap16Bit bmp = cast(Bitmap16Bit)ab;
+					ushort* p0 = bmp.getPtr();
+					if(spriteAttributes[i].vertMirror)
+						p0 += sizeX * (coordinates[i].height - offsetYB);
+					else
+						p0 += sizeX * offsetYA;
+					if(!spriteAttributes[i].horizMirror)
+						p0 += offsetXA;
+					else
+						p0 += offsetXB;
+					foreach(int threadOffset; threads.parallel){
+						if(prevSize[threadOffset] < lfour)
+							src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
+						ushort* p1 = p0 + threadOffset * sizeX;
+						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						for(int y = offsetYA + threadOffset ; y < coordinates[i].height - offsetYB ; y+=threads.length){		
+							mainColorLookupFunction(p1, src[threadOffset], palette, length);
+							if(spriteAttributes[i].horizMirror){//Flips lines if needed
+								mainHorizontalMirroringFunction(src[threadOffset], length);
+							}
+							mainRenderingFunction(src[threadOffset], dest, length);
+							dest += pitchOffset;
+							p1 += sizeXOffset;
+						}
+					}
+				}else if(ab.classinfo == typeid(Bitmap32Bit)){
+						/+break;
+					case typeid(Bitmap32Bit):+/
+					Bitmap32Bit bmp = cast(Bitmap32Bit)ab;
+					Color* p0 = bmp.getPtr();
+					if(spriteAttributes[i].vertMirror)
+						p0 += sizeX * (coordinates[i].height - offsetYB);
+					else
+						p0 += sizeX * offsetYA;
+					if(!spriteAttributes[i].horizMirror)
+						p0 += offsetXA;
+					else
+						p0 += offsetXB;
+					foreach(int threadOffset; threads.parallel){
+						if(spriteAttributes[i].horizMirror)
+							src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
+						Color* p1 = p0 + threadOffset * sizeX;
+						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						for(int y = offsetYA + threadOffset ; y < coordinates[i].height - offsetYB ; y+=threads.length){		
+							if(spriteAttributes[i].horizMirror){//Flips lines if needed
+								copyRegion(p1, src[threadOffset], length);
+								mainHorizontalMirroringFunction(src[threadOffset], length);
+								mainRenderingFunction(src[threadOffset], dest, length);
+							}else{
+								mainRenderingFunction(p1, dest, length);
+							}
+							dest += pitchOffset;
+							p1 += sizeXOffset;
+						}
+					}
+					/+	break;
+					default:
+						break;+/
+				}
+				
 			}
-		}*/
+		}
 		//foreach(int threadOffset; threads.parallel)
 			//free(src[threadOffset]);
 	}
 
 }
-/**
- *Sprite controller and renderer for 8 bit sprites.
- */
-public class SpriteLayer8Bit : Layer, ISpriteCollision, ISpriteLayer8Bit{
-	private Bitmap8Bit[int] spriteSet;			///Stores the sprites.
-	private Coordinate[int] coordinates;		///Stores the coordinates.
-	private FlipRegister[int] flipRegisters;	///Stores the flip registers.
-	private int[] spriteSorter;					///Stores the priorities.
-	public SpriteMovementListener[int] collisionDetector;
-	//Constructors. 
-	/*public this(int n){
-	 spriteSet.length = n;
-	 coordinates.length = n;
-	 flipRegisters.length = n;
-	 }*/
-	
-	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
-		setRenderingMode(renderMode);
-	}
-	
-	public void addSprite(Bitmap8Bit s, int n, Coordinate c){
-		spriteSet[n] = s;
-		coordinates[n] = c;
-		flipRegisters[n] = FlipRegister.NORM;
-		spriteSorter ~= n;
-		//sortSprites();
-		spriteSorter.sort();
-		
-	}
-	
-	public void addSprite(Bitmap8Bit s, int n, int x, int y){
-		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,x+s.getX(),y+s.getY());
-		flipRegisters[n] = FlipRegister.NORM;
-		//spriteSorter[n] = n;
-		spriteSorter ~= n;
-		//sortSprites();
-		
-		spriteSorter.sort();
-		
-	}
-	/**
-	 * 
-	 */
-	public void replaceSprite(Bitmap8Bit s, int n){
-
-		if(!(s.getX == spriteSet[n].getX && s.getY == spriteSet[n].getY)){
-			coordinates[n] = Coordinate(coordinates[n].left,coordinates[n].top,coordinates[n].left + s.getX,coordinates[n].top + s.getY);
-		}
-		spriteSet[n] = s;
-	}
-
-	public void replaceSprite(Bitmap8Bit s, int n, int x, int y){
-		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,x+s.getX(),y+s.getY());
-	}
-
-	public void replaceSprite(Bitmap8Bit s, int n, Coordinate c){
-		spriteSet[n] = s;
-		coordinates[n] = c;
-	}
-	
-	/*public ushort getTransparencyIndex(){
-		return transparencyIndex;
-	}*/
-	
-	public void removeSprite(int n){
-		//spriteSorter.remove(n);
-		coordinates.remove(n);
-		flipRegisters.remove(n);
-		spriteSet.remove(n);
-		int[] newSpriteSorter;
-		for(int i; i < spriteSorter.length; i++){
-			//writeln(0);
-			if(spriteSorter[i] != n){
-				newSpriteSorter ~= spriteSorter[i];
-				
-			}
-		}
-		spriteSorter = newSpriteSorter;
-		//writeln(spriteSorter);
-		//sortSprites();
-	}
-	public void moveSprite(int n, int x, int y){
-		coordinates[n].move(x,y);
-		callCollisionDetector(n);
-	}
-	public void relMoveSprite(int n, int x, int y){
-		coordinates[n].relMove(x,y);
-		callCollisionDetector(n);
-	}
-	
-	public Bitmap8Bit[int] getSpriteSet(){
-		return spriteSet;
-	}
-	
-	public Coordinate[int] getCoordinates(){
-		return coordinates;
-	}
-	
-	public FlipRegister[int] getFlipRegisters(){
-		return flipRegisters;
-	}
-	public int[int] getSpriteSorter(){
-		return null;
-	}
-	
-	private void callCollisionDetector(int n){
-		foreach(c; collisionDetector){
-			c.spriteMoved(n);
-		}
-	}
-	
-	public Coordinate getSpriteCoordinate(int n){
-		return coordinates[n];
-	}
-
-	public override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
-		foreach(int threadOffset; threads.parallel){
-			Color* src;
-			foreach_reverse(int i ; spriteSorter){
-				if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-					int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
-					int offsetXB = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
-					int offsetYA = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
-					int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
-					int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-					ubyte* p0 = spriteSet[i].getPtr();
-					p0 += offsetXA + (sizeX * (offsetYA + threadOffset));
-					
-					int length = sizeX - offsetXA - offsetXB, lfour = length * 4;
-					src = cast(Color*)realloc(src, lfour);
-					//alpha.length = lfour;
-					int offsetY = sY < coordinates[i].top ? (coordinates[i].top-sY)*pitch : 0;
-					offsetY += threadOffset * pitch;
-					void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-					for(int y = offsetYA + threadOffset ; y < coordinates[i].height() - offsetYB ; y+= threads.length){		
-						if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-							main8BitColorLookupFunction(p0, src, palette, length);
-							mainHorizontalMirroringFunction(src, length);
-							mainRenderingFunction(src, dest, length);
-						}else{ //for non flipped sprites
-							main8BitColorLookupFunction(p0, src, palette, length);
-							mainRenderingFunction(src, dest, length);
-						}
-						dest += pitch * threads.length;
-						p0 += sizeX * threads.length;
-					}
-				}
-			}
-			free(src);
-		}
-		
-	}
-
-}
-/**
- *Sprite controller and renderer for 32 bit sprites.
- */
-public class SpriteLayer32Bit : Layer, ISpriteCollision, ISpriteLayer32Bit{
-	private Bitmap32Bit[int] spriteSet;
-	private Coordinate[int] coordinates;		//Use moveSprite() and relMoveSprite() instead to move sprites
-	private FlipRegister[int] flipRegisters;
-	private int[] spriteSorter;
-	public SpriteMovementListener[int] collisionDetector;
-
-	
-	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
-		setRenderingMode(renderMode);
-	}
-	
-	public void addSprite(Bitmap32Bit s, int n, Coordinate c){
-		spriteSet[n] = s;
-		coordinates[n] = c;
-		flipRegisters[n] = FlipRegister.NORM;
-		spriteSorter ~= n;
-		//sortSprites();
-		spriteSorter.sort();
-		
-	}
-	
-	public void addSprite(Bitmap32Bit s, int n, int x, int y){
-		writeln(s);
-		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,x+spriteSet[n].getX,y+spriteSet[n].getY);
-		flipRegisters[n] = FlipRegister.NORM;
-		//spriteSorter[n] = n;
-		spriteSorter ~= n;
-		//sortSprites();
-		
-		spriteSorter.sort();
-		
-	}
-
-	public void replaceSprite(Bitmap32Bit s, int n){
-		if(!(s.getX == spriteSet[n].getX && s.getY == spriteSet[n].getY)){
-			coordinates[n] = Coordinate(coordinates[n].left,coordinates[n].top,coordinates[n].left + s.getX,coordinates[n].top + s.getY);
-		}
-		spriteSet[n] = s;
-	}
-	public void replaceSprite(Bitmap32Bit s, int n, int x, int y){
-		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,x+s.getX(),y+s.getY());
-	}
-	public void replaceSprite(Bitmap32Bit s, int n, Coordinate c){
-		spriteSet[n] = s;
-		coordinates[n] = c;
-	}
-	
-	/*public ushort getTransparencyIndex(){
-		return transparencyIndex;
-	}*/
-	
-	public void removeSprite(int n){
-		//spriteSorter.remove(n);
-		coordinates.remove(n);
-		flipRegisters.remove(n);
-		spriteSet.remove(n);
-		int[] newSpriteSorter;
-		for(int i; i < spriteSorter.length; i++){
-			//writeln(0);
-			if(spriteSorter[i] != n){
-				newSpriteSorter ~= spriteSorter[i];
-				
-			}
-		}
-		spriteSorter = newSpriteSorter;
-		//writeln(spriteSorter);
-		//sortSprites();
-	}
-	public void moveSprite(int n, int x, int y){
-		coordinates[n].move(x,y);
-		callCollisionDetector(n);
-	}
-	public void relMoveSprite(int n, int x, int y){
-		coordinates[n].relMove(x,y);
-		callCollisionDetector(n);
-	}
-	
-	public Bitmap32Bit[int] getSpriteSet(){
-		return spriteSet;
-	}
-	
-	public Coordinate[int] getCoordinates(){
-		return coordinates;
-	}
-	
-	public FlipRegister[int] getFlipRegisters(){
-		return flipRegisters;
-	}
-	public int[int] getSpriteSorter(){
-		return null;
-	}
-	
-	private void callCollisionDetector(int n){
-		foreach(c; collisionDetector){
-			c.spriteMoved(n);
-		}
-	}
-	
-	public Coordinate getSpriteCoordinate(int n){
-		return coordinates[n];
-	}
-
-	public override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
-		foreach(int threadOffset; threads.parallel){
-			Color* src;
-			foreach_reverse(int i ; spriteSorter){
-				if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-					int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;
-					int offsetXB = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; 
-					int offsetYA = sY > coordinates[i].top ? sY - coordinates[i].top : 0; 
-					int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
-					int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
-					Color* p0 = spriteSet[i].getPtr();
-					p0 += offsetXA + (sizeX * (offsetYA + threadOffset));
-					
-					int length = sizeX - offsetXA - offsetXB, lfour = sizeX * 4;
-					if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-						src = cast(Color*)realloc(src, lfour);
-					}
-					//alpha.length = lfour;
-					int offsetY = sY < coordinates[i].top ? (coordinates[i].top-sY)*pitch : 0;
-					offsetY += threadOffset * pitch;
-					void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-					for(int y = offsetYA + threadOffset ; y < coordinates[i].height() - offsetYB ; y+=threads.length){		
-						if(flipRegisters[i] == FlipRegister.X || flipRegisters[i] == FlipRegister.XY){
-							copyRegion(p0, src, length);
-							mainHorizontalMirroringFunction(src, length);
-							mainRenderingFunction(src, dest, length);
-						}else{ //for non flipped sprites
-							mainRenderingFunction(p0, dest, length);
-						}
-						dest += pitch * threads.length;
-						p0 += sizeX * threads.length;
-					}
-				}
-			}
-			free(src);
-		}
-	}
-}
-
 /**
  * Puts various effects on the framebuffer (XOR blitter, etc). 
  */

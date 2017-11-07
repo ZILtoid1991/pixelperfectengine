@@ -9,6 +9,7 @@ import std.file;
 import std.stdio;
 import std.conv;
 import PixelPerfectEngine.system.etc;
+import PixelPerfectEngine.system.exc;
 
 import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.raster;
@@ -37,51 +38,55 @@ public Bitmap16Bit[] loadBitmapFromFile(string filename){
 
 	return bar;
 }
-
 /**
- * FILE FORMAT IS DEPRECATED! USE XMP INSTEAD!
+ * Gets a bitmap from the XMP file. 
  */
-/*public void loadPaletteFromFile(string filename, Raster target){
-	auto palette = cast(ubyte[])std.file.read(filename);
-	//writeln(palette.length);
-	target.setupPalette(0);
-	int max = (palette.length / 3);
-	for(int i ; i < max ; i++){
-		target.addColor(palette[(i * 3)], palette[(i * 3) + 1], palette[(i * 3) + 2]);
-		//writeln(i);
-	}
-}*/
-
-/**
- * FILE FORMAT IS DEPRECATED! USE XMP INSTEAD!
- */
-/*public void load24bitPaletteFromFile(string filename, Raster target){
-	auto palette = cast(ubyte[])std.file.read(filename);
-	//writeln(palette.length);
-	target.setupPalette(0);
-	int max = (palette.length / 3);
-	target.addColor(palette[0], palette[1], palette[2], 0);
-	for(int i = 1; i < max ; i++){
-		target.addColor(palette[(i * 3)], palette[(i * 3) + 1], palette[(i * 3) + 2]);
-		//writeln(i);
-	}
-}*/
-
-/**
- * Gets the bitmap from the XMP file.
- */
-Bitmap16Bit loadBitmapFromXMP(ExtendibleBitmap xmp, string ID){
-
-	Bitmap16Bit result = new Bitmap16Bit(xmp.get16bitBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-	return result;
+T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
+	static if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof){
+		T result = new T(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID),null);
+		return result;
+	}else static if(T.stringof == Bitmap16Bit.stringof){
+		T result;// = new T(cast(ushort[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+		switch(xmp.bitdepth[xmp.searchForID(ID)]){
+			case "16bit":
+				result = new T(cast(ushort[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+				break;
+			case "8bit":
+				ushort[] subresult;
+				ubyte[] input = cast(ubyte[])xmp.getBitmap(ID);
+				subresult.length = input.length;
+				for(int i ; i < subresult.length ; i++){
+					subresult[i] = input[i];
+				}
+				result = new T(subresult,xmp.getXsize(ID),xmp.getYsize(ID));
+				break;
+			case "4bit":
+				ushort[] subresult;
+				ubyte[] input = cast(ubyte[])xmp.getBitmap(ID);
+				subresult.length = input.length;
+				for(int i ; i < subresult.length ; i++){
+					if(i & 1)
+						subresult[i] = input[i>>1]>>4;
+					else
+						subresult[i] = input[i>>1]&0b0000_1111;
+				}
+				result = new T(subresult,xmp.getXsize(ID),xmp.getYsize(ID));
+				break;
+			default:
+				throw new FileAccessException("Bitdepth error!");
+				break;
+		}
+		
+		return result;
+	}else static if(T.stringof == Bitmap32Bit.stringof){
+		T result = new T(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+		return result;
+	}else static assert("Template argument \'" ~ T.stringof ~ "\' not supported in function \'T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID)\'");
 }
-
-Bitmap32Bit load32BitBitmapFromXMP(ExtendibleBitmap xmp, string ID){
-	Bitmap32Bit result = new Bitmap32Bit(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-	return result;
-}
-
-public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target){
+/**
+ * Loads a palette from an XMP file.
+ */
+public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target, int offset = 0){
 	target.palette = cast(Color[])xmp.getPalette(ID);
 	//writeln(target.palette);
 	/*target.setupPalette(0);
@@ -92,28 +97,18 @@ public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target){
 	}*/
 
 }
-
-Fontset loadFontsetFromXMP(ExtendibleBitmap xmp, string fontName){
+/**
+ * Loads a fontset from an XMP file.
+ */
+Fontset!Bitmap16Bit loadFontsetFromXMP(ExtendibleBitmap xmp, string fontName){
 	Bitmap16Bit[wchar] characters;
 	foreach(s;xmp.bitmapID){
 		//writeln(parseHex(s[fontName.length..(s.length-1)]));
 		//if(fontName == s[0..(fontName.length-1)]){
-			characters[to!wchar(parseHex(s[fontName.length..s.length]))] = loadBitmapFromXMP(xmp,s);
+		characters[to!wchar(parseHex(s[fontName.length..s.length]))] = loadBitmapFromXMP!Bitmap16Bit(xmp,s);
 		//}
 	}
-	return new Fontset(fontName, characters['0'].getY, characters);
-}
-
-public deprecated void saveBitmapToFile(Bitmap16Bit[] bitmap, string filename){
-	ushort[] rawData;
-	rawData ~= to!ushort(bitmap.length);
-	rawData ~= to!ushort(bitmap[0].getX());
-	rawData ~= to!ushort(bitmap[0].getY());
-	for(int i; i < bitmap.length; i++){
-		for(int j; j < bitmap[0].getY(); j++)
-			rawData ~= bitmap[i].readRow(j);
-	}
-	std.file.write(filename, rawData);
+	return new Fontset!Bitmap16Bit(fontName, characters['0'].height, characters);
 }
 
 public Mix_Chunk* loadSoundFromFile(const char* filename){

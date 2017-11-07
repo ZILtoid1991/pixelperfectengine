@@ -12,6 +12,7 @@ import PixelPerfectEngine.extbmp.extbmp;
 import PixelPerfectEngine.system.inputHandler;
 import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.common;
+import PixelPerfectEngine.system.systemUtility;
 
 import windowDataLoader;
 import editEvents;
@@ -35,7 +36,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	public MainApplication ma;
 
 	private BitmapDrawer output;
-	public this(int sx, int sy, int rx, int ry,ISpriteLayer16Bit sl){
+	public this(int sx, int sy, int rx, int ry,ISpriteLayer sl){
 		super(sx,sy,rx,ry,sl);
 		output = new BitmapDrawer(rx, ry);
 		addBackground(output.output);
@@ -222,7 +223,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		ewh = new EditorWindowHandler(1600,960,800,480,sl);
 		ecs = new EventChainSystem(20);
 
-		Fontset defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("system/sysfont.xmp"), "font");
+		//Fontset defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("system/sysfont.xmp"), "font");
 		ExtendibleBitmap ssOrigin = new ExtendibleBitmap("system/sysdef.xmp");
 
 		input = new InputHandler();
@@ -247,7 +248,8 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		PopUpElement.inputhandler = input;
 		WindowElement.inputHandler = input;
 
-		StyleSheet ss = new StyleSheet();
+		INIT_CONCRETE(ewh);
+		/*StyleSheet ss = new StyleSheet();
 
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI0"),"closeButtonA");
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI1"),"closeButtonB");
@@ -269,7 +271,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIF"),"rightArrowB");
 		ss.addFontset(defaultFont, "default");
 		ewh.defaultStyle = ss;
-		Window.defaultStyle = ss;
+		Window.defaultStyle = ss;*/
 		ewh.initGUI();
 		ewh.ma = this;
 

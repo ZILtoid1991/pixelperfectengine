@@ -27,14 +27,14 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 	private Label[string] labels;
 	private InputHandler inputHandler;
 	public ExtendibleBitmap[] files;
-	private ISpriteLayer32Bit viewer;
+	private ISpriteLayer viewer;
 	private Bitmap32Bit preview;
 	private PreviewWindow previewWindow;
 	private int imageSelection, frameSelection;
 
 	public bool previewModeOn;
 	ExtendibleBitmap selection;
-	public this(InputHandler inputhandler, ISpriteLayer32Bit viewer, ExtendibleMap mh = null, ExtendibleBitmap[] documentFiles = null){
+	public this(InputHandler inputhandler, ISpriteLayer viewer, ExtendibleMap mh = null, ExtendibleBitmap[] documentFiles = null){
 		this(Coordinate(0,16,640,480), "XMP Converter Toolkit");
 		this.inputHandler = inputhandler;
 		this.viewer = viewer;
@@ -407,12 +407,12 @@ public class ImportDialog : Window, ActionListener{
 
 public class PreviewWindow : Window, ActionListener{
 	Bitmap32Bit previewImage;
-	ISpriteLayer32Bit spriteLayer;
+	ISpriteLayer spriteLayer;
 	ConverterDialog cd;
-	public this(Bitmap32Bit previewImage, ISpriteLayer32Bit spriteLayer, ConverterDialog cd){
-		Coordinate size = Coordinate(0,0,previewImage.getX() > 78 ? previewImage.getX() + 2 : 80, previewImage.getY() + 18);
+	public this(Bitmap32Bit previewImage, ISpriteLayer spriteLayer, ConverterDialog cd){
+		Coordinate size = Coordinate(0,0,previewImage.width > 78 ? previewImage.width + 2 : 80, previewImage.height + 18);
 		super(size, "Preview");
-		spriteLayer.addSprite(previewImage, -1, 2, 18);
+		spriteLayer.addSprite(previewImage, -1, 2, 18, BitmapAttrib(false,false));
 		this.spriteLayer = spriteLayer;
 		this.cd = cd;
 	}

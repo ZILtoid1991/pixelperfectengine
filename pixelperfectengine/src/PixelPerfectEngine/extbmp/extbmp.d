@@ -293,16 +293,22 @@ public class ExtendibleBitmap{
 		int n = searchForID(ID);
 		switch(bitdepth[n]){
 			case "1bit": pitch = 1; break;
+			case "4bit": pitch = 4; break;
 			case "8bit": pitch = 8; break;
 			case "16bit": pitch = 16; break;
 			case "32bit": pitch = 32; break;
 			default: break;
 		}
 
-		int l = iX[n]*iY[n]*(pitch/8);
+		int l = iX[n]*iY[n];
+
 		if(pitch == 1){
-			BitArray ba = BitArray(rawData0[offset[n]..offset[n]+l], l);
+			BitArray ba = BitArray(rawData0[offset[n]..offset[n]+l], l/8);
 			return cast(void[])ba;
+		}else if(pitch == 4){
+			l/=2;
+		}else{
+			l/=pitch/8;
 		}
 		return rawData0[offset[n]..offset[n]+l];
 	}
@@ -311,6 +317,7 @@ public class ExtendibleBitmap{
 		//int n = searchForID(ID);
 		switch(bitdepth[n]){
 			case "1bit": pitch = 1; break;
+			case "4bit": pitch = 4; break;
 			case "8bit": pitch = 8; break;
 			case "16bit": pitch = 16; break;
 			case "32bit": pitch = 32; break;
@@ -515,6 +522,7 @@ public enum ExtBMPFlags : uint{
 	CompressionMethodNull	=	1,		///No compression.
 	CompressionMethodZLIB	=	2,		///Compression using DEFLATE.
 	CompressionMethodLZMA	=	3,		///Compression using Lempel-Zif-Markov algorithm.
+	CompressionMethodLZHAM	=	4,
 	LongHeader              =   16,		///For headers over 2 gigabyte.
 	LongFile                =   32		///For files over 2 gigabyte.
 	/*ZLIBCompressionLevel0 = 16,

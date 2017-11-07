@@ -258,7 +258,7 @@ public class TextBox : WindowElement, TextInputListener{
 		
 		//draw cursor
 		if(enableEdit){
-			int x = getAvailableStyleSheet().getFontset("default").letters['A'].getX() , y = getAvailableStyleSheet().getFontset("default").letters['A'].getY();
+			int x = getAvailableStyleSheet().getFontset("default").letters['A'].width , y = getAvailableStyleSheet().getFontset("default").letters['A'].height;
 			if(!insert)
 				output.drawLine((x*pos) + 2, (x*pos) + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
 			else
@@ -520,7 +520,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 			}
 			foo += header.getColumnWidth(i);
 			
-			textArea.drawLine(foo, foo, 0, textArea.output.getY()-2, getStyleSheet().getColor("windowascent"));
+			textArea.drawLine(foo, foo, 0, textArea.output.height-2, getStyleSheet().getColor("windowascent"));
 		}
 	}
 	
@@ -658,7 +658,7 @@ public class CheckBox : WindowElement{
 	public override void draw(){
 		if(output.output.width != position.width || output.output.height != position.height)
 			output = new BitmapDrawer(position.width, position.height);
-		output.drawText(getAvailableStyleSheet().getImage("checkBoxA").getX, 0, text, getAvailableStyleSheet().getFontset("default"), 1);
+		output.drawText(getAvailableStyleSheet().getImage("checkBoxA").width, 0, text, getAvailableStyleSheet().getFontset("default"), 1);
 		if(checked){
 			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage("checkBoxB"));
 		}else{
@@ -762,12 +762,12 @@ public class VSlider : Slider{
 		//draw upper arrow
 		output.insertBitmap(0,0,getAvailableStyleSheet.getImage("upArrowA"));
 		//draw lower arrow
-		output.insertBitmap(0, position.height - getAvailableStyleSheet.getImage("downArrowA").getY(),getAvailableStyleSheet.getImage("downArrowA"));
+		output.insertBitmap(0, position.height - getAvailableStyleSheet.getImage("downArrowA").height,getAvailableStyleSheet.getImage("downArrowA"));
 		//draw slider
 		if(maxValue > barLength){
-			double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA")).getY()*2, unitlength = sliderlength/maxValue;
+			double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA")).height*2, unitlength = sliderlength/maxValue;
 			double sliderpos = unitlength * value, bl = unitlength * barLength;
-			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("upArrowA").getY(), posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("upArrowA").getY();
+			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("upArrowA").height, posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("upArrowA").height;
 
 			output.drawFilledRectangle(0,position.width,posA, posB, getAvailableStyleSheet.getColor("windowascent"));
 		}
@@ -776,17 +776,17 @@ public class VSlider : Slider{
 	
 	
 	public override void onClick(int offsetX, int offsetY, int type = 0){
-		if(offsetY <= getAvailableStyleSheet.getImage("upArrowA").getY()){
+		if(offsetY <= getAvailableStyleSheet.getImage("upArrowA").height){
 			if(value != 0) value--;
 
 		}
-		else if(position.height-getAvailableStyleSheet.getImage("upArrowA").getY() <= offsetY){
+		else if(position.height-getAvailableStyleSheet.getImage("upArrowA").height <= offsetY){
 			if(value < maxValue - barLength) value++;
 
 		}
 		else{
-			offsetY -= getAvailableStyleSheet.getImage("upArrowA").getY();
-			double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA").getY()*2), unitlength = sliderlength/maxValue;
+			offsetY -= getAvailableStyleSheet.getImage("upArrowA").height;
+			double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA").height*2), unitlength = sliderlength/maxValue;
 			int v = to!int(offsetY / unitlength);
 			//value = ((sizeY - (elementContainer.getStyleBrush(brush[1]).getY() * 2)) - offsetY) * (value / maxValue);
 			if(v < maxValue - barLength) value = v;
@@ -835,28 +835,28 @@ public class HSlider : Slider{
 		//draw left arrow
 		output.insertBitmap(0,0,getAvailableStyleSheet.getImage("leftArrowA"));
 		//draw right arrow
-		output.insertBitmap(position.width - getAvailableStyleSheet.getImage("rightArrowA").getX(),0,getAvailableStyleSheet.getImage("rightArrowA"));
+		output.insertBitmap(position.width - getAvailableStyleSheet.getImage("rightArrowA").width,0,getAvailableStyleSheet.getImage("rightArrowA"));
 		//draw slider
 		if(maxValue > barLength){
-			double sliderlength = position.width() - (getAvailableStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
+			double sliderlength = position.width() - (getAvailableStyleSheet.getImage("rightArrowA").width*2), unitlength = sliderlength/maxValue;
 			double sliderpos = unitlength * value, bl = unitlength * barLength;
 
-			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").getY(), posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").getY();
+			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").height, posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").height;
 		
 			output.drawFilledRectangle(posA, posB, 0, position.height(),getAvailableStyleSheet().getColor("windowascent"));
 		}
 		elementContainer.drawUpdate(this);
 	}
 	public override void onClick(int offsetX, int offsetY, int type = 0){
-		if(offsetX <= getAvailableStyleSheet.getImage("rightArrowA").getX()){
+		if(offsetX <= getAvailableStyleSheet.getImage("rightArrowA").width){
 			if(value != 0) value--;
 		}
-		else if(position.width-getAvailableStyleSheet.getImage("rightArrowA").getX() <= offsetX){
+		else if(position.width-getAvailableStyleSheet.getImage("rightArrowA").width <= offsetX){
 			if(value < maxValue - barLength) value++;
 		}
 		else{
-			offsetX -= getAvailableStyleSheet.getImage("rightArrowA").getX();
-			double sliderlength = position.width() - (elementContainer.getStyleSheet.getImage("rightArrowA").getX()*2), unitlength = sliderlength/maxValue;
+			offsetX -= getAvailableStyleSheet.getImage("rightArrowA").width;
+			double sliderlength = position.width() - (elementContainer.getStyleSheet.getImage("rightArrowA").width*2), unitlength = sliderlength/maxValue;
 			int v = to!int(offsetX / unitlength);
 			if(v < maxValue - barLength) value = v;
 			else value = maxValue - barLength;
@@ -891,7 +891,7 @@ public class MenuBar: WindowElement{
 	}
 	public override void draw() {
 		StyleSheet ss = getAvailableStyleSheet();
-		Fontset f = ss.getFontset("default");
+		Fontset!Bitmap16Bit f = ss.getFontset("default");
 		if (output is null){
 			usedWidth = 1;
 			output = new BitmapDrawer(position.width(),position.height());
@@ -1153,7 +1153,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 		
 		//draw cursor
 		if(enableEdit){
-			int x = getStyleSheet().getFontset("default").letters['A'].getX() , y = getStyleSheet().getFontset("default").letters['A'].getY();
+			int x = getStyleSheet().getFontset("default").letters['A'].width , y = getStyleSheet().getFontset("default").letters['A'].height;
 			if(!insert)
 				output.drawLine((x*textPos) + 2, (x*textPos) + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
 			else

@@ -20,6 +20,7 @@ import PixelPerfectEngine.system.inputHandler;
 import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.config;
+import PixelPerfectEngine.system.systemUtility;
 import std.stdio;
 import std.conv;
 import derelict.sdl2.sdl;
@@ -149,7 +150,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	//public InputHandler ih;
 
 	private BitmapDrawer output;
-	public this(int sx, int sy, int rx, int ry,ISpriteLayer16Bit sl){
+	public this(int sx, int sy, int rx, int ry,ISpriteLayer sl){
 		super(sx,sy,rx,ry,sl);
 		output = new BitmapDrawer(rx, ry);
 		addBackground(output.output);
@@ -364,14 +365,14 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 	public OutputScreen[] ow;
 	public Raster[] rasters;
 	public InputHandler input;
-	public TileLayer[int] backgroundLayers16;
-	public TileLayer8Bit[int] backgroundLayers8;
-	public TileLayer32Bit[int] backgroundLayers32;
+	public TileLayer[int] backgroundLayers;
+	//public TileLayer8Bit[int] backgroundLayers8;
+	//public TileLayer32Bit[int] backgroundLayers32;
 	public Layer[int] layers;
 	public wchar selectedTile;
 	public int selectedLayer;
 	public SpriteLayer windowing;
-	public SpriteLayer32Bit bitmapPreview;
+	public SpriteLayer bitmapPreview;
 	public bool onexit, exitDialog, newLayerDialog, mouseState;
 	public WindowElement[] elements;
 	public Window test;
@@ -497,19 +498,15 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		wh.addWindow(new ConverterDialog(input,bitmapPreview));
 	}
 	public void placeObject(int x, int y){
-		if(backgroundLayers8.get(selectedLayer, null) !is null){
-			int sX = layers[selectedLayer].getSX(), sY = layers[selectedLayer].getSY();
+		if(backgroundLayers.get(selectedLayer, null) !is null){
+			int sX = backgroundLayers[selectedLayer].getSX(), sY = backgroundLayers[selectedLayer].getSY();
 			sX += x;
 			sY += y;
-			sX /= backgroundLayers8[selectedLayer].getTileWidth();
-			sY /= backgroundLayers8[selectedLayer].getTileHeight();
+			sX /= backgroundLayers[selectedLayer].getTileWidth();
+			sY /= backgroundLayers[selectedLayer].getTileHeight();
 			if(sX >= 0 && sY >= 0){
-				backgroundLayers8[selectedLayer].writeMapping(sX, sY, selectedTile);
+				backgroundLayers[selectedLayer].writeMapping(sX, sY, selectedTile);
 			}
-		}else if(backgroundLayers16.get(selectedLayer, null) !is null){
-			
-		}else if(backgroundLayers32.get(selectedLayer, null) !is null){
-			
 		}
 	}
 	public this(string[] args){
@@ -517,44 +514,40 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		configFile = new ConfigurationProfile();
 
 		windowing = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
-		bitmapPreview = new SpriteLayer32Bit();
+		bitmapPreview = new SpriteLayer();
 
 		wh = new EditorWindowHandler(1280,960,640,480,windowing);
 		wh.ie = this;
 
 		//load the fonts
-		/*Bitmap16Bit[] fontset = loadBitmapFromFile("UIfont.vmp");
-		for(int i; i < fontset.length; i++){
-			wh.basicFont[to!wchar(32+i)] = fontset[i];
-			//write(32+i, " ");
-		}*/
-		Fontset defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("system/sysfont.xmp"), "font");
+		INIT_CONCRETE(wh);
+		/*Fontset!Bitmap16Bit defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("system/sysfont.xmp"), "font");
 
 		
 
 		ExtendibleBitmap ssOrigin = new ExtendibleBitmap("system/sysdef.xmp");
 		StyleSheet ss = new StyleSheet();
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI0"),"closeButtonA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI1"),"closeButtonB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI0"),"checkBoxA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI1"),"checkBoxB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI2"),"radioButtonA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI3"),"radioButtonB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI4"),"upArrowA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI5"),"upArrowB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI6"),"downArrowA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI7"),"downArrowB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI8"),"plusA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI9"),"plusB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIA"),"minusA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIB"),"minusB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIC"),"leftArrowA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUID"),"leftArrowB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIE"),"rightArrowA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIF"),"rightArrowB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI0"),"closeButtonA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI1"),"closeButtonB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI0"),"checkBoxA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI1"),"checkBoxB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI2"),"radioButtonA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI3"),"radioButtonB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI4"),"upArrowA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI5"),"upArrowB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI6"),"downArrowA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI7"),"downArrowB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI8"),"plusA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI9"),"plusB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIA"),"minusA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIB"),"minusB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIC"),"leftArrowA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUID"),"leftArrowB");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIE"),"rightArrowA");
+		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIF"),"rightArrowB");
 		ss.addFontset(defaultFont, "default");
 		wh.defaultStyle = ss;
-		Window.defaultStyle = ss;
+		Window.defaultStyle = ss;*/
 
 		wh.initGUI();
 
@@ -589,6 +582,7 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		//rasters[0].addRefreshListener(ow[0],0);
 
 	}
+	
 
 	public void rudamentaryFrameCounter(){
 		framecounter[0] = framecounter[1];
@@ -647,32 +641,14 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority){
 		switch(type){
 			case 1:
-				
-				TileLayerData md = new TileLayerData(tX,tY,mX,mY,1,1,document.getNumOfLayers(), name);
-				document.addTileLayer(md);
-				TileLayer8Bit t = new TileLayer8Bit(tX, tY);
-				t.loadMapping(mX,mY,md.mapping);
-				backgroundLayers8[priority] = t;
-				rasters[1].addLayer(t, priority);
-				break;
-			case 2:
-				
 				TileLayerData md = new TileLayerData(tX,tY,mX,mY,1,1,document.getNumOfLayers(), name);
 				document.addTileLayer(md);
 				TileLayer t = new TileLayer(tX, tY);
-				t.loadMapping(mX,mY,md.mapping);
-				backgroundLayers16[priority] = t;
+				t.loadMapping(mX,mY,md.mapping.getCharMapping(),md.mapping.getAttribMapping());
+				backgroundLayers[priority] = t;
 				rasters[1].addLayer(t, priority);
 				break;
-			case 3:
-				
-				TileLayerData md = new TileLayerData(tX,tY,mX,mY,1,1,document.getNumOfLayers(), name);
-				document.addTileLayer(md);
-				TileLayer32Bit t = new TileLayer32Bit(tX, tY);
-				t.loadMapping(mX,mY,md.mapping);
-				backgroundLayers32[priority] = t;
-				rasters[1].addLayer(t, priority);
-				break;
+			
 			default: break;
 		}
 	}

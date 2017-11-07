@@ -137,11 +137,11 @@ public class Window : ElementContainer{
 		if(output.output.width != position.width || output.output.height != position.height)
 			output = new BitmapDrawer(position.width(), position.height());
 		output.drawFilledRectangle(0, position.width() - 1, getStyleSheet().getImage("closeButtonA").height, position.height() - 1, getStyleSheet().getColor("window"));
-		int x1 = getStyleSheet().getImage("closeButtonA").getX(), y1 = getStyleSheet().getImage("closeButtonA").getY(), x2 = position.width();
+		int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().getImage("closeButtonA").height, x2 = position.width;
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
 		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
 
-		int headerLength = extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 - ((extraButtons.length/2) * x1) ;
+		int headerLength = extraButtons.length == 0 ? position.width - 1 : position.width() - 1 - ((extraButtons.length/2) * x1) ;
 		//drawing the header
 		drawHeader();
 
@@ -167,7 +167,7 @@ public class Window : ElementContainer{
 	protected void drawHeader(){
 		output.drawFilledRectangle(0, position.width() - 1, 0, getStyleSheet().getImage("closeButtonA").height - 1, getStyleSheet().getColor("window"));
 		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
-		int x1 = getStyleSheet().getImage("closeButtonA").getX(), y1 = getStyleSheet().getImage("closeButtonA").getY(), x2 = position.width();
+		int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().getImage("closeButtonA").height, x2 = position.width;
 		int headerLength = extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 - ((extraButtons.length/2) * x1) ;
 		foreach(s ; extraButtons){
 			x2 -= x1;
@@ -192,13 +192,13 @@ public class Window : ElementContainer{
 	 */
 	public void passMouseEvent(int x, int y, int state = 0){
 		
-		if(getStyleSheet.getImage("closeButtonA").getX() > x && getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
+		if(getStyleSheet.getImage("closeButtonA").width > x && getStyleSheet.getImage("closeButtonA").height > y && state == 0){
 			close();
 			return;
-		}else if(getStyleSheet.getImage("closeButtonA").getY() > y && state == 0){
-			if(y > position.width() - (getStyleSheet.getImage("closeButtonA").getX() * extraButtons.length)){
-				y -= position.width() - (getStyleSheet.getImage("closeButtonA").getX() * extraButtons.length);
-				extraButtonEvent(y / getStyleSheet.getImage("closeButtonA").getX());
+		}else if(getStyleSheet.getImage("closeButtonA").height > y && state == 0){
+			if(y > position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length)){
+				y -= position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length);
+				extraButtonEvent(y / getStyleSheet.getImage("closeButtonA").width);
 				return;
 			}
 			parent.moveUpdate(this);
@@ -670,12 +670,12 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	//public Bitmap16Bit[wchar] basicFont, altFont, alarmFont;
 	public StyleSheet defaultStyle;
 	//public Bitmap16Bit[int] styleBrush;
-	private Bitmap16Bit background;
-	private ISpriteLayer16Bit spriteLayer;
+	private ABitmap background;
+	private ISpriteLayer spriteLayer;
 	private bool moveState, dragEventState;
 	private Window windowToMove, dragEventDest;
 
-	public this(int sx, int sy, int rx, int ry,ISpriteLayer16Bit sl){
+	public this(int sx, int sy, int rx, int ry,ISpriteLayer sl){
 		screenX = sx;
 		screenY = sy;
 		rasterX = rx;
@@ -695,9 +695,9 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		}*/
 	}
 
-	public void addBackground(Bitmap16Bit b){
+	public void addBackground(ABitmap b){
 		background = b;
-		spriteLayer.addSprite(background, 65536, 0, 0);
+		spriteLayer.addSprite(background, 65536, 0, 0, BitmapAttrib(false,false,0));
 	}
 
 	private int whichWindow(Window w){
@@ -728,7 +728,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	private void updateSpriteOrder(){
 		for(int i ; i < windows.length ; i++){
 			spriteLayer.removeSprite(i);
-			spriteLayer.addSprite(windows[i].output.output, i, windows[i].position);
+			spriteLayer.addSprite(windows[i].output.output, i, windows[i].position, BitmapAttrib(false,false,0));
 
 		}
 	}
@@ -866,7 +866,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		p.draw;
 		p.coordinates.move(mouseX, mouseY);
 		numOfPopUpElements--;
-		spriteLayer.addSprite(p.output.output,numOfPopUpElements,mouseX,mouseY);
+		spriteLayer.addSprite(p.output.output,numOfPopUpElements,mouseX,mouseY,BitmapAttrib(false,false,0));
 		
 	}
 	public void addPopUpElement(PopUpElement p, int x, int y){
@@ -875,7 +875,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		p.draw;
 		p.coordinates.move(x, y);
 		numOfPopUpElements--;
-		spriteLayer.addSprite(p.output.output,numOfPopUpElements, x, y);
+		spriteLayer.addSprite(p.output.output,numOfPopUpElements, x, y,BitmapAttrib(false,false,0));
 	}
 	private void removeAllPopUps(){
 		for( ; numOfPopUpElements < 0 ; numOfPopUpElements++){
@@ -904,7 +904,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	public void drawUpdate(Window sender){
 		int p = whichWindow(sender);
 		spriteLayer.removeSprite(p);
-		spriteLayer.addSprite(sender.output.output,p,sender.position);
+		spriteLayer.addSprite(sender.output.output,p,sender.position,BitmapAttrib(false,false,0));
 	}
 }
 

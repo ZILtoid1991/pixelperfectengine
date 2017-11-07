@@ -69,7 +69,7 @@ public class CollisionDetector : SpriteMovementListener{
 	//private Bitmap16Bit[int] sourceS;
 	private CollisionModel[int] collisionModels;
 	private Coordinate[int] sourceC;
-	private FlipRegister[int] sourceFR;
+	private BitmapAttrib[int] sourceSA;
 	//private int[int] sourceSC;
 	private ushort sourceTI;
 	public this(){
@@ -100,7 +100,7 @@ public class CollisionDetector : SpriteMovementListener{
 		
 		//sourceS = source.getSpriteSet();
 		sourceC = source.getCoordinates();
-		sourceFR = source.getFlipRegisters();
+		sourceSA = source.getSpriteAttributes();
 		//sourceSC = source.getSpriteSorter;
 		//sourceTI = source.getTransparencyIndex();
 		

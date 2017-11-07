@@ -34,15 +34,16 @@ public class Raster : IRaster{
 	public int[] fbPitch;
     public Color[] palette; ///FORMAT IS ARGB. Master palette, layers or bitmaps can define their own palettes if needed.
     private Layer[int] layerList;	///Stores the layers by their priorities.
-	private int[] layerPriorityHandler;
+	private int[] layerPriorityHandler, threads;
     private bool r;
 	private int[2] doubleBufferRegisters;
     private RefreshListener[] rL;
 	//public Bitmap16Bit[2] frameBuffer;
 
     ///Default constructor. x and y : represent the resolution of the raster.
-    public this(ushort x, ushort y, OutputScreen oW){
+    public this(ushort x, ushort y, OutputScreen oW, int[] threads = [0]){
         //workpad = SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+		this.threads = threads;
 		SDL_Renderer* renderer = oW.renderer;
         rX=x;
         rY=y;
@@ -122,7 +123,7 @@ public class Raster : IRaster{
 		SDL_LockTexture(frameBuffer[doubleBufferRegisters[0]], null, &fbData[doubleBufferRegisters[0]], &fbPitch[doubleBufferRegisters[0]]);
 
 		for(int i ; i < layerPriorityHandler.length ; i++){
-			layerList[layerPriorityHandler[i]].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette.ptr, [0]);
+			layerList[layerPriorityHandler[i]].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette.ptr, threads);
 		}
         
 		SDL_UnlockTexture(frameBuffer[doubleBufferRegisters[0]]);

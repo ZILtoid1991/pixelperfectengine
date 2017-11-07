@@ -178,11 +178,11 @@ public class BitmapDrawer{
 	public void insertBitmap(int x, int y, Bitmap16Bit bitmap){
 		version(X86){
 		ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
-			int pitch = output.getX;
-			for(int iy ; iy < bitmap.getY ; iy++){
-				int ix = bitmap.getX / 8; 
-				int ix4 = bitmap.getX - ix * 8;
-				int offsetY = bitmap.getX * iy;
+			int pitch = output.width;
+			for(int iy ; iy < bitmap.height ; iy++){
+				int ix = bitmap.width / 8; 
+				int ix4 = bitmap.width - ix * 8;
+				int offsetY = bitmap.width * iy;
 				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY), pdest2 = cast(ushort[8]*)(pdest + x + ((iy + y) * pitch));
 				asm{
 					mov		EDI, pdest2[EBP];
@@ -253,10 +253,10 @@ public class BitmapDrawer{
 		version(X86){
 			for(int iy ; iy < slice.height() ; iy++){
 				int ix = slice.width() / 8;
-				int offsetY = bitmap.getX * (iy + slice.top);
+				int offsetY = bitmap.width * (iy + slice.top);
 				int ix4 = slice.width() - ix * 8;
 				ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
-				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY + slice.left), pdest2 = cast(ushort[8]*)(pdest + ((iy + y) * output.getX));
+				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY + slice.left), pdest2 = cast(ushort[8]*)(pdest + ((iy + y) * output.width));
 			
 				asm{
 					mov		EDI, pdest2[EBP];
@@ -332,10 +332,10 @@ public class BitmapDrawer{
 	}
 	
 	public void drawRectangle(int xa, int xb, int ya, int yb, Bitmap16Bit brush){
-		xa = xa + brush.getX;
-		ya = ya + brush.getY;
-		xb = xb - brush.getX;
-		yb = yb - brush.getY;
+		xa = xa + brush.width;
+		ya = ya + brush.height;
+		xb = xb - brush.width;
+		yb = yb - brush.height;
 		drawLine(xa, xa, ya, yb, brush);
 		drawLine(xb, xb, ya, yb, brush);
 		drawLine(xa, xb, ya, ya, brush);
@@ -347,7 +347,7 @@ public class BitmapDrawer{
 		
 		ushort[8] colorvect = [color, color, color, color, color, color, color, color];
 		ushort* p = output.getPtr;
-		int pitch = output.getX;
+		int pitch = output.width;
 		for(int y = ya ; y < yb ; y++){
 			ushort* p0 = p + xa + y * pitch;
 			
@@ -401,21 +401,21 @@ public class BitmapDrawer{
 	public deprecated void drawText(int x, int y, wstring text, Bitmap16Bit[wchar] fontSet, int style = 0){
 		int length;
 		for(int i ; i < text.length ; i++){
-			length += fontSet[text[i]].getX;
+			length += fontSet[text[i]].width;
 		}
 		//writeln(text);
 		if(style == 0){
 			x = x - (length / 2);
-			y -= fontSet['a'].getY() / 2;
+			y -= fontSet['a'].height / 2;
 		}
 		foreach(wchar c ; text){
 			
 			insertBitmap(x, y, fontSet[c]);
-			x = x + fontSet[c].getX();
+			x = x + fontSet[c].width;
 		}
 	}
 	///Draws text to the given point. Styles: 0 = centered, 1 = left, 2 = right
-	public void drawText(int x, int y, wstring text, Fontset fontset, int style = 0){
+	public void drawText(int x, int y, wstring text, Fontset!(Bitmap16Bit) fontset, int style = 0){
 		int length = fontset.getTextLength(text);
 		//writeln(text);
 		if(style == 0){
@@ -426,11 +426,11 @@ public class BitmapDrawer{
 		}
 		foreach(wchar c ; text){
 			insertBitmap(x, y, fontset.letters[c]);
-			x = x + fontset.letters[c].getX();
+			x = x + fontset.letters[c].width;
 		}
 	}
 	///Draws colored text from monocromatic font.
-	public void drawColorText(int x, int y, wstring text, Fontset fontset, ushort color, int style = 0){
+	public void drawColorText(int x, int y, wstring text, Fontset!(Bitmap16Bit) fontset, ushort color, int style = 0){
 		//color = 1;
 		ushort[8] colorvect = [color, color, color, color, color, color, color, color];
 		int length = fontset.getTextLength(text);
@@ -444,17 +444,17 @@ public class BitmapDrawer{
 		foreach(wchar c ; text){
 			
 			insertColorLetter(x, y, fontset.letters[c], colorvect);
-			x = x + fontset.letters[c].getX();
+			x = x + fontset.letters[c].width;
 		}
 	}
 	public void insertColorLetter(int x, int y, Bitmap16Bit bitmap, ushort[8] colorvect){
 		ushort[8] colortester = [1,1,1,1,1,1,1,1];
 		ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
-		int pitch = output.getX;
-		for(int iy ; iy < bitmap.getY ; iy++){
-			int ix = bitmap.getX / 8; 
-			int ix4 = bitmap.getX - ix * 8;
-			int offsetY = bitmap.getX * iy;
+		int pitch = output.width;
+		for(int iy ; iy < bitmap.height ; iy++){
+			int ix = bitmap.width / 8; 
+			int ix4 = bitmap.width - ix * 8;
+			int offsetY = bitmap.width * iy;
 			ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY), pdest2 = cast(ushort[8]*)(pdest + x + ((iy + y) * pitch));
 			asm{
 				mov		EDI, pdest2[EBP];

@@ -96,7 +96,7 @@ void testAdvBitArrays(int l){
 }
 
 class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
-	bool isRunning, up, down, left, right;
+	bool isRunning, up, down, left, right, scrup, scrdown, scrleft, scrright;
 	OutputScreen output;
 	Raster r;
 	TileLayer t;
@@ -108,14 +108,14 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 		isRunning = true;
 		ExtendibleBitmap tileSource = new ExtendibleBitmap("tiletest.xmp");
 		ExtendibleBitmap spriteSource = new ExtendibleBitmap("collisionTest.xmp");
-		t = new TileLayer(32,32, LayerRenderingMode.ALPHA_BLENDING);
+		t = new TileLayer(32,32, LayerRenderingMode.COPY);
 		s = new SpriteLayer();
 		c = new CollisionDetector();
-		Bitmap16Bit dlangMan = loadBitmapFromXMP(spriteSource,"DLangMan");
-		CollisionModel cm = new CollisionModel(dlangMan.getX(), dlangMan.getY(), dlangMan.generateStandardCollisionModel());
+		Bitmap16Bit dlangMan = loadBitmapFromXMP!Bitmap16Bit(spriteSource,"DLangMan");
+		CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
 		dlangMan.offsetIndexes(256);
-		s.addSprite(dlangMan,0,0,0);
-		s.addSprite(dlangMan,1,64,64);
+		s.addSprite(dlangMan,0,0,0,BitmapAttrib(true,false));
+		s.addSprite(dlangMan,1,64,64,BitmapAttrib(false,false));
 		s.collisionDetector[1] = c;
 		c.source = s;
 		c.addCollisionModel(cm,0);
@@ -124,12 +124,17 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 		for(int i; i < tileSource.bitmapID.length; i++){
 			string hex = tileSource.bitmapID[i];
 			//writeln(hex[hex.length-4..hex.length]);
-			t.addTile(loadBitmapFromXMP(tileSource, hex), to!wchar(parseHex(hex[hex.length-4..hex.length])));
+			t.addTile(loadBitmapFromXMP!Bitmap16Bit(tileSource, hex), to!wchar(parseHex(hex[hex.length-4..hex.length])));
 		}
 		wchar[] mapping;
+		BitmapAttrib[] attrMapping;
 		mapping.length = 256*256;
+		attrMapping.length = 256*256;
 		for(int i; i < mapping.length; i++){
 			mapping[i] = to!wchar(uniform(0x0000,0x00AA));
+			int rnd = uniform(0,1024);
+			attrMapping[i] = BitmapAttrib(rnd & 1 ? true : false, rnd & 2 ? true : false);
+			//attrMapping[i] = BitmapAttrib( true , false);
 		}
 		ih = new InputHandler();
 		ih.sel ~= this;
@@ -138,16 +143,22 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 		ih.kb ~= KeyBinding(0, SDL_SCANCODE_DOWN,0, "down", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, SDL_SCANCODE_LEFT,0, "left", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, SDL_SCANCODE_RIGHT,0, "right", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.np8,0, "scrup", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.np2,0, "scrdown", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.np4,0, "scrleft", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.np6,0, "scrright", Devicetype.KEYBOARD, KeyModifier.ANY);
 
-		t.loadMapping(256,256,mapping);
+		t.loadMapping(256,256,mapping, attrMapping);
+		//t.setWrapMode(true);
 
-		output = new OutputScreen("Tile Layer Unittest", 1280,960);
+		output = new OutputScreen("TileLayer test", 1280,960);
 		r = new Raster(320,240,output);
 		output.setMainRaster(r);
 		loadPaletteFromXMP(tileSource, "default", r);
 		r.addLayer(t, 0);
 		r.addLayer(s, 1);
 		r.palette ~= cast(Color[])spriteSource.getPalette("default");
+		//writeln(r.palette);
 		//r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);
 		while(isRunning){
@@ -157,6 +168,10 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 			if(down) s.relMoveSprite(0,0,1);
 			if(left) s.relMoveSprite(0,-1,0);
 			if(right) s.relMoveSprite(0,1,0);
+			if(scrup) t.relScroll(0,-1);
+			if(scrdown) t.relScroll(0,1);
+			if(scrleft) t.relScroll(-1,0);
+			if(scrright) t.relScroll(1,0);
 			//t.relScroll(1,0);
 		}
 	}
@@ -176,6 +191,10 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 			case "down": down = true; break;
 			case "left": left = true; break;
 			case "right": right = true; break;
+			case "scrup": scrup = true; break;
+			case "scrdown": scrdown = true; break;
+			case "scrleft": scrleft = true; break;
+			case "scrright": scrright = true; break;
 			default: break;
 		}
 	}
@@ -185,6 +204,10 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 			case "down": down = false; break;
 			case "left": left = false; break;
 			case "right": right = false; break;
+			case "scrup": scrup = false; break;
+			case "scrdown": scrdown = false; break;
+			case "scrleft": scrleft = false; break;
+			case "scrright": scrright = false; break;
 			default: break;
 		}
 	}
