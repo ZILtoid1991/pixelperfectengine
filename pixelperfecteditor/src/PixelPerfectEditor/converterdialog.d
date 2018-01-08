@@ -1,4 +1,11 @@
-﻿module converterdialog;
+﻿/*
+ * PixelPerfectEditor, converterdialog module 
+ *
+ * Copyright 2017, under Boost License
+ *
+ * by Laszlo Szeremi
+ */
+module converterdialog;
 
 import std.conv;
 import std.stdio;
@@ -17,10 +24,12 @@ import PixelPerfectEngine.graphics.layers;
 import PixelPerfectEngine.extbmp.extbmp;
 
 import converter;
+import importDialog;
+import multiImportDialog;
 /**
  *Creates a window for converting external bitmaps for the engine's native format 
  */
-public class ConverterDialog : Window, ActionListener, SheetDialogListener{
+public class ConverterDialog : Window, ActionListener /+, SheetDialogListener +/{
 	private ListBox imageList, fileList, animationList, frameList;
 	private string[] filenames;
 	private string importFileName,animationSelection;
@@ -85,6 +94,29 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 		super(size, title);
 	}
 	
+	public void singleImport(string bitmapID, string paletteID, bool importPal, string bitDepth){
+		try{
+			importDirectlyToXMP(importFileName,paletteID,selection,new ImportData([bitmapID],bitDepth,0,0,0));
+			if(importPal){//
+				importPaletteDirectlyToXMP(importFileName,selection,paletteID);
+			}
+		}catch(Exception e){
+			writeln(e);
+		}
+	}
+
+	public void multiImport(string foretag, string aftertag, int digits, string paletteID, bool importPal, string bitDepth, int numFrom, int sX, int sY, bool useHex){
+		try{
+			NamingConvention nc = new NamingConvention(foretag, aftertag, useHex ? NumberingStyle.HEXADECIMAL : NumberingStyle.DECIMAL, numFrom, digits);
+			importDirectlyToXMP(importFileName, paletteID, selection, new ImportData(nc, bitDepth, sX, sY, 0));
+			if(importPal){//
+				importPaletteDirectlyToXMP(importFileName,selection,paletteID);
+			}
+		}catch(Exception e){
+			parent.messageWindow(to!wstring(e.classinfo.toString()), to!wstring(e.msg));
+		}
+	}
+
 	public void actionEvent(Event event){
 		//writeln(event.subsource);
 		//writeln(event.source);
@@ -132,31 +164,32 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 						fileName ~= event.filename;
 						importFileName = fileName;
 						//Bitmap32Bit bmp = importBitmapFromFile(fileName);
-						ImportDialog id = new ImportDialog(inputHandler);
-						id.al ~= this;
-						parent.addWindow(id);
+						//ImportDialog id = new ImportDialog(this);
+						//id.al ~= this;
+						parent.addWindow(new ImportDialog(this));
 						break;
 					case "importmulti": 
-						string fileName = event.path ;
+						string fileName = event.path;
 						fileName ~= '\\';
 						fileName ~= event.filename;
 						importFileName = fileName;
-						SpriteSheetDialog sd = new SpriteSheetDialog(this);
-						parent.addWindow(sd);
+						BitmapInfo bi = getBitmapInfo(importFileName);
+						 
+						parent.addWindow(new MultiImportDialog(bi.width, bi.height, this));
 						break;
 					case "palettefile":
-						string fileName = event.path ;
+						string fileName = event.path;
 						fileName ~= '\\';
 						fileName ~= event.filename;
 						importFileName = fileName;
 						TextInputDialog tid = new TextInputDialog(Coordinate(0,0,200,90),"palName","Import Palette","Palette ID:");
-						tid.al ~= this;
+						
 						parent.addWindow(tid);
 						break;
 					default: break;
 				}
 				break;
-			case "impDial":
+			/+case "impDial":
 				
 				try{
 					/*Bitmap32Bit bmp = import32BitBitmapFromFile(importFileName);
@@ -178,7 +211,7 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 					}catch(Exception e){
 						writeln(e);
 					}
-				break;
+				break;+/
 			case "TextInputDialog":
 				switch(event.source){
 					case "palName": 
@@ -252,7 +285,7 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 				break;
 		}
 	}
-	public void SheetDialogEvent(string a, string b, int numFrom, int numOfDigits, int x, int y, int bitdepth, NumberingStyle ns){
+	/+public void sheetDialogEvent(string a, string b, int numFrom, int numOfDigits, int x, int y, int bitdepth, NumberingStyle ns){
 		string bd;
 		switch(bitdepth){
 			case 0: bd="8bit"; break;
@@ -261,7 +294,7 @@ public class ConverterDialog : Window, ActionListener, SheetDialogListener{
 			default: bd="1bit"; break;
 		}
 		importDirectlyToXMP(importFileName,selection,new ImportData(new NamingConvention(a,b,ns,numFrom,numOfDigits),bd,x,y,0));
-	}
+	}+/
 
 	private void updateFileList(){
 
@@ -303,7 +336,7 @@ interface SheetDialogListener{
 	public void SheetDialogEvent(string a, string b, int numFrom, int numOfDigits, int x, int y, int bitdepth, NumberingStyle ns);
 }
 
-public class SpriteSheetDialog : Window, ActionListener{
+/+public class SpriteSheetDialog : Window, ActionListener{
 	private TextBox nameA, nameB, numFrom, gridX, gridY, nOfZeros;
 	private RadioButtonGroup numberingConvention, bitDepthSetter;
 	//private InputHandler inputHandler;
@@ -362,9 +395,9 @@ public class SpriteSheetDialog : Window, ActionListener{
 			parent.closeWindow(this);
 		}
 	}
-}
+}+/
 
-public class ImportDialog : Window, ActionListener{
+/+public class ImportDialog : Window, ActionListener{
 	private TextBox name;
 	private RadioButtonGroup bitdepthSetter;
 	public ActionListener[] al;
@@ -403,7 +436,7 @@ public class ImportDialog : Window, ActionListener{
 			default: break;
 		}
 	}
-}
+}+/
 
 public class PreviewWindow : Window, ActionListener{
 	Bitmap32Bit previewImage;

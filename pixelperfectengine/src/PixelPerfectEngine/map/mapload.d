@@ -25,17 +25,15 @@ import PixelPerfectEngine.system.etc;
  */
 
 public class ExtendibleMap{
-	private void[] rawData;		///DEPRECATED. Binary data field buffer, no longer used.
-	private Element[] tileSource, objectSource;		///Stores XMP sources for the Layers
-	private TileLayerData[] tld;		///Stores the data regarding the tile layers.
-	private SpriteLayerData[] sld;		///Stores the data regarding the sprite layers.
+	//private void[] rawData;		///DEPRECATED. Binary data field buffer, no longer used.
+	private Element[int] tileSource, objectSource;		///Stores XMP sources for the Layers
+	public TileLayerData[int] tld;		///Stores the data regarding the tile layers.
+	public SpriteLayerData[int] sld;		///Stores the data regarding the sprite layers.
+	private string[int] mapDataFileSource;
 	public string[string] metaData;		///Stores metadata. Serialized as: [index] = value &lt = &gt &lt index &gt value &lt / index &gt
 	public string filename;			///Name of the file alongside with the path.
 	/// Load from datastream
-	this(void[] data){
-		rawData = data;
-		headerLoad();
-	}
+	
 	/// Load from file
 	this(string filename){
 		this.filename = filename;
@@ -112,10 +110,10 @@ public class ExtendibleMap{
 	}
 	/// Adds a new TileLayer to the file.
 	void addTileLayer(TileLayerData t){
-		tld ~= t;
+		tld[t.priority] = t;
 		//create placeholder element
-		Element e = new Element("TileLayer");
-		tileSource ~= e;
+		Element e = new Element("tileSource");
+		tileSource[t.priority] = e;
 	}
 	/// Gets the TileLayer from the file.
 	TileLayerData getTileLayer(int num){
@@ -127,31 +125,12 @@ public class ExtendibleMap{
 	}
 	/// Removes a tilelayer.
 	void removeTileLayer(int num){
-		tld = remove(tld, num);
-		tileSource = remove(tileSource, num);
+		tld.remove(num);
+		tileSource.remove(num);
 	}
 	/// Loads a file
 	void loadFile(){
-		//writeln(filename);
-		try{
-			rawData = std.file.read(filename);
-			//flags = *cast(uint*)rawData.ptr;
-			//headerLenght = *cast(int*)(rawData.ptr + 4);
-
-			headerLoad();
-
-			/*if(rawData.length > 8 + headerLenght){
-				rawData0 = rawData[8 + headerLenght..rawData.length];
-			}*/
-			rawData.length = 0;
-
-		}catch(Exception e){
-			writeln(e.toString);
-		}
-	}
-	/// Deserializes the header.
-	private void headerLoad(){
-		string header = cast(string)rawData;
+		string header = cast(string)std.file.read(filename);
 		Document d = new Document(header);
 		foreach(Element e1; d.elements){
 			switch(e1.tag.name){
@@ -162,31 +141,29 @@ public class ExtendibleMap{
 					}
 					break;
 				case "TileLayer":
-					/*string s;
-					foreach(Item pi ; e1.items){
-						s = pi.toString();
-						if(s.length > 4){
-							if(s[0..6] == "<?map "){
-								s = s[6..(s.length-2)];
-							}
-						}
-					}*/
-					//int from = 8 + headerLenght + to!int(e1.tag.attr["dataOffset"]), dataLength = to!int(e1.tag.attr["dataLength"]);
-					
-					tileSource ~= e1;
+					//tileSource ~= e1;
+					int priority = to!int(e1.tag.attr["priority"]);
+					MapData md;
 					foreach(Element e2; e1.elements){
 						switch(e2.tag.name){
 							case "file":
+								md = MapData.load(e2.tag.text);
+								mapDataFileSource[priority] = e2.tag.text;
 								break;
 							case "base64":
+								md = new MapData(to!int(e1.tag.attr["mX"]), to!int(e1.tag.attr["mY"]), e2.tag.text);
+								break;
+							case "tileSource":
+								tileSource[priority] = e2;
 								break;
 							default:
 								break;
 						}
 					}
-					/*tld ~= new TileLayerData(to!int(e1.tag.attr["tX"]), to!int(e1.tag.attr["tY"]), 
+					tld[priority] = new TileLayerData(to!int(e1.tag.attr["tX"]), to!int(e1.tag.attr["tY"]), 
 						to!int(e1.tag.attr["mX"]), to!int(e1.tag.attr["mY"]), to!double(e1.tag.attr["sX"]), to!double(e1.tag.attr["sY"]),
-						to!int(e1.tag.attr["priority"]), TileLayerData.getMapdataFromString(s), e1.tag.attr["name"], e1.tag.attr.get("subType",""));*/
+						to!int(e1.tag.attr["priority"]), md, e1.tag.attr["name"], e1.tag.attr.get("subType",""));
+					
 					break;
 				case "SpriteLayer":
 					auto ea = new Element("SpriteLayer");
@@ -201,8 +178,8 @@ public class ExtendibleMap{
 							ea ~= e2;
 						}
 					}
-					objectSource ~= ea;
-					sld ~= s;
+					objectSource[to!int(e1.tag.attr["priority"])] = ea;
+					sld[to!int(e1.tag.attr["priority"])] = s;
 					break;
 				default: break;
 			}
@@ -222,8 +199,8 @@ public class ExtendibleMap{
 		}
 		doc ~= e0;
 
-		for(int i; i < tileSource.length; i++){
-			Element e1 = tileSource[i];
+		foreach(int i; tld.byKey){
+			Element e1 = new Element("TileLayer");
 			e1.tag.attr["name"] = tld[i].name;
 			e1.tag.attr["tX"] = to!string(tld[i].tX);
 			e1.tag.attr["tY"] = to!string(tld[i].tY);
@@ -231,11 +208,16 @@ public class ExtendibleMap{
 			e1.tag.attr["mY"] = to!string(tld[i].mY);
 			e1.tag.attr["sX"] = to!string(tld[i].sX);
 			e1.tag.attr["sY"] = to!string(tld[i].sY);
-			e1.tag.attr["subtype"] = tld[i].subtype;
+			e1 ~= tileSource[i];
+			if(tld[i].subtype)
+				e1.tag.attr["subtype"] = tld[i].subtype;
 			e1.tag.attr["priority"] = to!string(tld[i].priority);
-			//e1.tag.attr["dataOffset"] = to!string(rawData0.length);
-			//rawData0 ~= cast(void[])tld[i].mapping;
-			//e1.tag.attr["dataLength"] = to!string(tld[i].mapping.length * wchar.sizeof);
+			if(tld[i].isEmbedded){
+				Element e2 = new Element("base64",tld[i].mapping.getBase64String());
+			}else{
+				Element e2 = new Element("file",mapDataFileSource[i]);
+				tld[i].mapping.save(mapDataFileSource[i]);
+			}
 			doc ~= e1;
 			//e1.items ~= new ProcessingInstruction("map " ~ tld[i].getMapdataForSaving());
 
@@ -308,7 +290,7 @@ public class TileLayerData{
 		//this.mapping = mapping;
 		this.name = name;
 		this.subtype = subtype;
-
+		isEmbedded = true;
 		/*wchar[] initMapping;
 		initMapping.length = mX*mY;
 		this.mapping = initMapping;*/
@@ -353,7 +335,8 @@ public class ObjectPlacement{
 	public void setAuxData(Element[] auxData){
 		auxObjectData = auxData;
 	}
-	/// Gets the XML data
+	/// Gets the XML data.
+	/// It's recommended to inherit from the class instead and write custom functions instead.
 	public Element[] getAuxData(){
 		return auxObjectData;
 	}

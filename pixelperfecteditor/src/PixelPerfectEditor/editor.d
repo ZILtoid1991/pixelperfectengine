@@ -28,7 +28,8 @@ import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.map.mapload;
 
 import converterdialog;
-import tileLayerTools;
+import tileLayer;
+import newLayerDialog;
 import about;
 
 public interface IEditor{
@@ -82,7 +83,7 @@ public class NewDocumentDialog : Window, ActionListener{
 	}
 }
 
-public class NewLayerDialog : Window, ActionListener{
+/+public class NewLayerDialog : Window, ActionListener{
 	public IEditor ie;
 	private TextBox[] textBoxes;
 	private RadioButtonGroup layerType;
@@ -136,7 +137,7 @@ public class NewLayerDialog : Window, ActionListener{
 			parent.closeWindow(this);
 		}
 	}
-}
+}+/
 
 public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListener{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
@@ -338,10 +339,10 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
 	}
 	
-	public override void passMouseEvent(int x, int y, int state = 0){
+	override public void passMouseEvent(int x,int y,int state,ubyte button) {
 		foreach(WindowElement e; mouseC){
 			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
-				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state);
+				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state, button);
 				return;
 			}
 		}
@@ -361,7 +362,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	}
 }
 
-public class Editor : InputListener, MouseListener, IEditor, ActionListener, SystemEventListener{
+public class Editor : InputListener, MouseListener, IEditor, ActionListener, SystemEventListener, NewLayerDialogListener{
 	public OutputScreen[] ow;
 	public Raster[] rasters;
 	public InputHandler input;
@@ -479,7 +480,7 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 				switch(event.source){
 					case "docSave":
 						break;
-					case "docload":
+					case "docLoad":
 						string path = event.path;
 						path ~= event.filename;
 						document = new ExtendibleMap(path);
@@ -519,35 +520,9 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		wh = new EditorWindowHandler(1280,960,640,480,windowing);
 		wh.ie = this;
 
-		//load the fonts
+		//Initialize the Concrete framework
 		INIT_CONCRETE(wh);
-		/*Fontset!Bitmap16Bit defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("system/sysfont.xmp"), "font");
-
 		
-
-		ExtendibleBitmap ssOrigin = new ExtendibleBitmap("system/sysdef.xmp");
-		StyleSheet ss = new StyleSheet();
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI0"),"closeButtonA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI1"),"closeButtonB");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI0"),"checkBoxA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI1"),"checkBoxB");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI2"),"radioButtonA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI3"),"radioButtonB");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI4"),"upArrowA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI5"),"upArrowB");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI6"),"downArrowA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI7"),"downArrowB");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI8"),"plusA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUI9"),"plusB");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIA"),"minusA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIB"),"minusB");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIC"),"leftArrowA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUID"),"leftArrowB");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIE"),"rightArrowA");
-		ss.setImage(loadBitmapFromXMP!Bitmap16Bit(ssOrigin,"GUIF"),"rightArrowB");
-		ss.addFontset(defaultFont, "default");
-		wh.defaultStyle = ss;
-		Window.defaultStyle = ss;*/
 
 		wh.initGUI();
 
@@ -584,19 +559,7 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 	}
 	
 
-	public void rudamentaryFrameCounter(){
-		framecounter[0] = framecounter[1];
-		framecounter[1] = SDL_GetTicks();
-		framecounter[2]++;
-		framecounter[3] += framecounter[1] - framecounter[0];
-		if(framecounter[3] >= 1000){
-			writeln(framecounter[2]);
-			framecounter[4] = framecounter[2];
-			framecounter[2] = 0;
-			framecounter[3] = 0;
-		}
-
-	}
+	
 
 	public void whereTheMagicHappens(){
 		while(!onexit){
@@ -660,5 +623,27 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 	}
 	private void updateLayerList(){
 
+	}
+	public void newTileLayerEvent(string name, string file, bool embed, bool preexisting, int tX, int tY, int mX, int mY){
+		TileLayer tl = new TileLayer(tX, tY, LayerRenderingMode.ALPHA_BLENDING);
+		int pri = activeLayer;
+		TileLayerData tld;
+		if(layers.get(activeLayer, null)){
+			pri++;
+		}
+		if(preexisting){
+			
+		}else{
+			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, pri, name);
+		}
+		tld.isEmbedded = embed;
+		tl.loadMapping(mX,mY,tld.mapping.getCharMapping(),tld.mapping.getAttribMapping());
+		layers[pri] = tl;
+	}
+	public void newSpriteLayerEvent(string name){
+	
+	}
+	public void importTileLayerSymbolData(string file){
+	
 	}
 }

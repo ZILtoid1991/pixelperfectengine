@@ -72,6 +72,9 @@ T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
 				}
 				result = new T(subresult,xmp.getXsize(ID),xmp.getYsize(ID));
 				break;
+			/*case "1bit":
+				
+				break;*/
 			default:
 				throw new FileAccessException("Bitdepth error!");
 				break;

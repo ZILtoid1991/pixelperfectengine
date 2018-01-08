@@ -41,20 +41,33 @@ version(Windows){
 	static const string fiSource = "/system/FreeImage.so";
 }
 
+static this(){
+	DerelictSDL2.load(sdlSource);
+	DerelictFI.load(fiSource);
+}
+
+static ~this(){
+	
+	//DerelictSDL2.unload();
+	//DerelictFI.unload();
+}
+
 int main(string[] args)
 {
 
-    DerelictSDL2.load(sdlSource);
-	DerelictFI.load(fiSource);
+    /*DerelictSDL2.load(sdlSource);
+	DerelictFI.load(fiSource);*/
 
 	SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
 	
 	Editor e = new Editor(args);
 	
 	e.whereTheMagicHappens;
-    
+    e.destroy();
+	//SDL_Quit();
 	//testAdvBitArrays(128);
 	//TileLayerTest prg = new TileLayerTest();
+	
 	return 0;
 }
 

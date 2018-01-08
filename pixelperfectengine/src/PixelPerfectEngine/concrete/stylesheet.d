@@ -21,6 +21,7 @@ public class StyleSheet{
 	private ushort[string] color;		///Colors are identificated by strings.
 	private Bitmap16Bit[string] images;		///For icons, pattern fills, etc...
 	public int[string] drawParameters;		///Draw parameters are used for border thickness, padding, etc...
+	public string[string] fontTypes;		///Font type descriptions for various kind of components
 
 	/**
 	 * Creates a default stylesheet.
@@ -55,6 +56,15 @@ public class StyleSheet{
 		drawParameters["MenuBarVertPadding"] = 2;
 
 		drawParameters["ListBoxRowHeight"] = 16;
+		drawParameters["TextSpacingTop"] = 1;
+		drawParameters["TextSpacingBottom"] = 1;
+		drawParameters["WindowLeftPadding"] = 5;
+		drawParameters["WindowRightPadding"] = 5;
+		drawParameters["WindowTopPadding"] = 20;
+		drawParameters["WindowBottomPadding"] = 5;
+		drawParameters["ComponentHeight"] = 20;
+
+		fontTypes["Label"] = "default";
 	}
 	public void addFontset(Fontset!Bitmap16Bit f, string style){
 		font[style] = f;

@@ -1164,11 +1164,11 @@ abstract class Layer {
 	///Standard algorithm for horizontal mirroring
 	@nogc protected void flipHorizontal(void* src, int length){
 		version(NO_SSE2){
-			int c = length / 2, dest = length * 4;
+			int c = length / 2;
+			void* dest = src + length * 4 - 4;
 			asm @nogc{
 				mov		ESI, src[EBP];
-				mov		EDI, ESI;
-				add		EDI, dest;
+				mov		EDI, dest[EBP];
 				mov		ECX, c;
 
 			loopentry:
@@ -1186,11 +1186,10 @@ abstract class Layer {
 		}else version(X86){
 			//src -= 4;
 			int c = length / 2;
-			void* dest = src + length * 4;
+			void* dest = src + length * 4 - 4;
 			asm @nogc{
 				mov		ESI, src[EBP];
-				//mov		EDI, ESI;
-				mov		EDI, dest;
+				mov		EDI, dest[EBP];
 				mov		ECX, c;
 
 			loopentry:
@@ -1207,10 +1206,11 @@ abstract class Layer {
 			}
 		}else version(X86_64){
 			int c = length / 2, dest = length * 4;
+			int c = length / 2;
+			void* dest = src + length * 4 - 4;
 			asm @nogc{
 				mov		RSI, src[RBP];
-				mov		RDI, RSI;
-				add		RDI, dest;
+				mov		RDI, dest[RBP];
 				mov		RCX, c;
 
 			loopentry:
@@ -1227,12 +1227,13 @@ abstract class Layer {
 			}
 		}else{
 			src -= 4;
-			Color keeper;
+			Color s, d;
 			void* dest = src + (Color.sizeof * length);
 			for(int i ; i < length ; i++){
-				keeper = *cast(Color*)src;
-				*cast(Color*)src = *cast(Color*)dest;
-				*cast(Color*)dest = keeper;
+				s = *cast(Color*)src;
+				d = *cast(Color*)dest;
+				*cast(Color*)dest = s;
+				*cast(Color*)src = d;
 				src += 4;
 				dest -= 4;
 			}

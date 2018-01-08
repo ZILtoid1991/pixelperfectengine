@@ -122,7 +122,33 @@ class NamingConvention{
 	}
 }
 
-public void importDirectlyToXMP(string path, ExtendibleBitmap target, ImportData id){
+public class BitmapInfo{
+	int width, height;
+	public this(){
+		
+	}
+}
+
+public BitmapInfo getBitmapInfo(string path){
+	import std.string;
+	FREE_IMAGE_FORMAT format;
+	switch(extension(path)){
+		case ".png": format = FIF_PNG; break;
+		case ".tga": format = FIF_TARGA; break;
+		case ".bmp": format = FIF_BMP; break;
+		default: break;
+	}
+	const char* fn = std.string.toStringz(path);
+	FIBITMAP* source = FreeImage_Load(format, fn);
+	BitmapInfo bi = new BitmapInfo;
+	bi.width = FreeImage_GetWidth(source);
+	bi.height = FreeImage_GetHeight(source);
+	if(source)
+		FreeImage_Unload(source);
+	return bi;
+}
+
+public void importDirectlyToXMP(string path, string palette, ExtendibleBitmap target, ImportData id){
 	import std.string;
 	FREE_IMAGE_FORMAT format;
 	switch(extension(path)){
@@ -202,7 +228,7 @@ public void importDirectlyToXMP(string path, ExtendibleBitmap target, ImportData
 						int from = ((jY * id.y * iX) + (y * iX) + (jX * id.x)), t = from + id.x;
 						raw2 ~= raw16[from..t];
 					}
-					target.addBitmap(raw2,id.x,id.y,id.bitdepth,id.getNextID(),id.format);
+					target.addBitmap(raw2,id.x,id.y,id.bitdepth,id.getNextID(),id.format,palette);
 					//si++;
 				}
 			}
@@ -216,7 +242,7 @@ public void importDirectlyToXMP(string path, ExtendibleBitmap target, ImportData
 						int from = pitch * ((jY * id.y * iX) + (y * iX) + (jX * id.x)), t = from + (id.x * pitch);
 						raw2~= raw[from..t];
 					}
-					target.addBitmap(raw2,id.x,id.y,id.bitdepth,id.getNextID(),id.format);
+					target.addBitmap(raw2,id.x,id.y,id.bitdepth,id.getNextID(),id.format,palette);
 					//si++;
 				}
 			}
@@ -229,6 +255,8 @@ public void importDirectlyToXMP(string path, ExtendibleBitmap target, ImportData
 			target.addBitmap(raw,iX,iY,id.bitdepth,id.ID[0],id.format);
 		}
 	}
+	if(source)
+		FreeImage_Unload(source);
 }
 
 public void importPaletteDirectlyToXMP(string path, ExtendibleBitmap target, string paletteID, ushort offset = 0){
@@ -265,6 +293,8 @@ public void importPaletteDirectlyToXMP(string path, ExtendibleBitmap target, str
 
 	}
 	target.addPalette(cast(void[])palette, paletteID);
+	if(source)
+		FreeImage_Unload(source);
 }
 
 public Bitmap32Bit getBitmapPreview(ExtendibleBitmap xmp, string ID){

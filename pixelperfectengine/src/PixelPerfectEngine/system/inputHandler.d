@@ -301,35 +301,38 @@ public class InputHandler : TextInputHandler{
 	
 	private void invokeKeyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
 		foreach(i; il){
-			i.keyPressed(ID, timestamp, devicenumber, devicetype);
+			if(i)
+				i.keyPressed(ID, timestamp, devicenumber, devicetype);
 		}
 	}
 	private void invokeKeyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype){
 		foreach(i; il){
-			i.keyReleased(ID, timestamp, devicenumber, devicetype);
+			if(i)
+				i.keyReleased(ID, timestamp, devicenumber, devicetype);
 		}
 	}
 	private void invokeMouseEvent(uint which, uint timestamp, uint windowID, ubyte button, ubyte state, ubyte clicks, int x, int y){
 		foreach(MouseListener m; ml){
-			
-			m.mouseButtonEvent(which, timestamp, windowID, button, state, clicks, x, y);
+			if(m)
+				m.mouseButtonEvent(which, timestamp, windowID, button, state, clicks, x, y);
 		}
 	}
 	private void invokeMouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y){
 		foreach(MouseListener m; ml){
-
-			m.mouseWheelEvent(type, timestamp, windowID, which, x, y, mouseX, mouseY);
+			if(m)
+				m.mouseWheelEvent(type, timestamp, windowID, which, x, y, mouseX, mouseY);
 		}
 	}
 	private void invokeMouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
 		foreach(MouseListener m; ml){
-			
-			m.mouseMotionEvent(timestamp, windowID, which, state, x, y, relX, relY);
+			if(m)
+				m.mouseMotionEvent(timestamp, windowID, which, state, x, y, relX, relY);
 		}
 	}
 	private void invokeAxisEvent(string ID, uint timestamp, short val, uint devicenumber, uint devicetype){
 		foreach(a; al){
-			a.axisEvent(ID, timestamp, val, devicenumber, devicetype);
+			if(a)
+				a.axisEvent(ID, timestamp, val, devicenumber, devicetype);
 		}
 	}
 	private void invokeQuitEvent(){

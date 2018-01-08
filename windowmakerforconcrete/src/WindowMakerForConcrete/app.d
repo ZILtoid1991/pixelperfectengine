@@ -96,11 +96,11 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		
 		ListBoxHeader componentListHeader = new ListBoxHeader(["Name","Type"],[100,160]);
 		componentList = new ListBox("componentList", Coordinate(648,32,792,208),[],componentListHeader,16);
-		addElement(componentList, EventProperties.MOUSE);
+		addElement(componentList, EventProperties.MOUSE | EventProperties.SCROLL);
 
 		ListBoxHeader propHeader = new ListBoxHeader(["Name","Value"],[160,160]);
 		prop = new ListBox("prop", Coordinate(648,240,792,472),[],propHeader,16,true);
-		addElement(prop, EventProperties.MOUSE);
+		addElement(prop, EventProperties.MOUSE | EventProperties.SCROLL);
 
 		foreach(WindowElement we; elements){
 			we.draw();
@@ -168,10 +168,10 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
 	}
 	
-	public override void passMouseEvent(int x, int y, int state = 0){
+	override public void passMouseEvent(int x,int y,int state,ubyte button) {
 		foreach(WindowElement e; mouseC){
 			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
-				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state);
+				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state, button);
 				return;
 			}
 		}
@@ -195,8 +195,9 @@ public class DummyWindow : Window {
 	public this(Coordinate size, wstring title, string[] extraButtons = []){
 		super(size, title, extraButtons);
 	}
-	override public void passMouseEvent(int x,int y,int state = 0) {
-		//super.passMouseEvent(x,y,state);
+	//override public void passMouseEvent(int x,int y,int state = 0) {
+	override public void passMouseEvent(int x,int y,int state,ubyte button){
+		mainApp.windowClick(x, y, state);
 	}
 	
 }
@@ -354,8 +355,11 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 	}
 	public void keyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype){}
 	public void mouseButtonEvent(uint which, uint timestamp, uint windowID, ubyte button, ubyte state, ubyte clicks, int x, int y){
-		x/=2;
-		y/=2;
+		
+	}
+	public void windowClick(int x, int y, int state){
+		/*x/=2;
+		y/=2;*/
 		if(placementMode != PlacementMode.NULL){
 			writeln(x,",",y);
 			if(state == ButtonState.RELEASED){
@@ -364,7 +368,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 					c = Coordinate(x, y, placementX, placementY);
 				else
 					c = Coordinate(placementX, placementY, x, y);
-				c.relMove(ewh.dw.position.left, ewh.dw.position.top * -1);
+				//c.relMove(ewh.dw.position.left, ewh.dw.position.top * -1);
 				switch(placementMode){
 					case PlacementMode.Button:
 						string id = getNextAvailableElementID("button");
@@ -481,7 +485,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
 	public void actionEvent(Event event){
-		writeln(event.source,", ", event.subsource);
+		//writeln(event.source,", ", event.subsource);
 		switch(event.source){
 			case "exit":
 				onExit=true;
@@ -548,6 +552,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 					windowData = new WindowData(event.path);
 					ewh.closeWindow(ewh.dw);
 					windowElements = windowData.deserialize(event.path ~ event.filename);
+					//writeln(windowElements);
 					updateElementList();
 					ewh.addWindow(ewh.dw);
 					ewh.dw.relMove(0,16);

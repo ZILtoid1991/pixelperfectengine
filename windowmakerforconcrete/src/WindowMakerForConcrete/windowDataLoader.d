@@ -94,7 +94,7 @@ public class WindowData {
 				default:
 					break;
 			}
-			result[t0.getValue!string()] = we;
+			result[t0.expectTagValue!string("name")] = we;
 			mainApp.ewh.dw.addElement(we, 0);
 		}
 
@@ -421,7 +421,7 @@ public class WindowData {
 						if(e.name == "text"){
 							e.type = ElementValueParameter.Text;
 							e.text = toUTF16(t3.getValue!string());
-						}else if(t3.values.length == 1 || t3.getFullName().toString() != "options" || t3.getFullName().toString() != "elements"){
+						}else if(t3.values.length == 1 && (t3.getFullName().name != "options" || t3.getFullName().name != "elements" || t3.getFullName().name != "header")){
 							if(t3.values[0].convertsTo!string()){
 								e.type = ElementValueParameter.Description;
 								e.text = to!wstring(t3.getValue!string());

@@ -37,7 +37,6 @@ public class OutputScreen : RefreshListener{
     }
     ~this(){
         SDL_DestroyWindow(window);
-        SDL_Quit();
     }
     ///Sets the main raster. Useful for changing rendering resolutions.
     public void setMainRaster(IRaster r){

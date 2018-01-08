@@ -100,13 +100,15 @@ public class Bitmap(string S,T) : ABitmap{
 			return pixels[x+(iX*y)];
 		}
 		///Writes the pixel at the given position.
-		public void writePixel(int x, int y, T color){
+		@nogc public void writePixel(int x, int y, T color){
 			pixels[x+(iX*y)]=color;
 		}
 	}
 	static if(S == "HB"){
 		///Creates an empty bitmap.
 		this(int x, int y, Color* palettePtr){
+			if(x & 1)
+				x++;
 			iX=x;
 			iY=y;
 			pixels.length=(x*y)/2;
@@ -145,6 +147,8 @@ public class Bitmap(string S,T) : ABitmap{
 	}else static if(S == "B"){
 		///Creates an empty bitmap.
 		this(int x, int y, Color* palettePtr){
+			if(x < 0 || y < 0)
+				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX=x;
 			iY=y;
 			pixels.length=x*y;
@@ -162,6 +166,8 @@ public class Bitmap(string S,T) : ABitmap{
 	}else static if(S == "HW"){
 		///Creates an empty bitmap.
 		this(int x, int y){
+			if(x < 0 || y < 0)
+				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX=x;
 			iY=y;
 			pixels.length=x*y;
@@ -177,13 +183,15 @@ public class Bitmap(string S,T) : ABitmap{
 	}else static if(S == "W"){
 		///Creates an empty bitmap.
 		public this(int x, int y){
+			if(x < 0 || y < 0)
+				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX = x;
 			iY = y;
 			pixels.length = x * y;
 		}
 		///Creates a bitmap from an array.
 		public this(Color[] p, int x, int y){
-			if (p.length < x * y * 4)
+			if (p.length < x * y)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX = x;
 			iY = y;

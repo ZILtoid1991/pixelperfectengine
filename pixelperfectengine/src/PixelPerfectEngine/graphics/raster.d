@@ -11,9 +11,9 @@ import PixelPerfectEngine.graphics.bitmap;
 import derelict.sdl2.sdl;
 public import PixelPerfectEngine.graphics.common;
 import std.conv;
-import std.stdio;
 import std.algorithm.sorting;
 import std.algorithm.mutation;
+import core.time;
 
 ///The raster calls it every time it finishes the drawing to the framebuffers.
 public interface RefreshListener{
@@ -38,6 +38,9 @@ public class Raster : IRaster{
     private bool r;
 	private int[2] doubleBufferRegisters;
     private RefreshListener[] rL;
+	private MonoTime frameTime, frameTime_1;
+	private Duration delta_frameTime;
+	private real framesPerSecond, avgFPS;
 	//public Bitmap16Bit[2] frameBuffer;
 
     ///Default constructor. x and y : represent the resolution of the raster.
@@ -62,12 +65,21 @@ public class Raster : IRaster{
 		oW.setMainRaster(this);
 		addRefreshListener(oW);
 	}
-
-	/*~this(){
+	public @nogc @property real fps(){
+		return framesPerSecond;
+	}
+	public @nogc @property real avgfps(){
+		return avgFPS;
+	}
+	public @nogc void resetAvgfps(){
+		avgFPS = 0;
+	}
+	~this(){
 		foreach(SDL_Texture* t ; frameBuffer){
-			SDL_DestroyTexture(t);
+			if(t)
+				SDL_DestroyTexture(t);
 		}
-	}*/
+	}
     //Adds a RefreshListener to its list.
     public void addRefreshListener(RefreshListener r){
         rL ~= r;
@@ -108,6 +120,9 @@ public class Raster : IRaster{
 		}
 		layerPriorityHandler = newlayerPriorityHandler;
 	}
+	/**
+	 * Refreshes the whole framebuffer. 
+	 */
     public void refresh(){
 
         r = true;
@@ -132,41 +147,28 @@ public class Raster : IRaster{
         foreach(r; rL){
             r.refreshFinished;
         }
-		//frameBuffer.clear();
+		//get frame duration
+		frameTime_1 = frameTime;
+		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
+		delta_frameTime = frameTime_1 - frameTime;
+		real delta_frameTime0 = to!real(delta_frameTime.total!"hnsecs"());
+		framesPerSecond = framesPerSecond + 1 / (delta_frameTime0 / 10000);
+		if(avgFPS)
+			avgFPS = (avgFPS + framesPerSecond) / 2;
+		else
+			avgFPS = framesPerSecond;
     }
 
-	/*public void getPixel(ushort i, ushort j){
-		int layerNum = 0;
-		bool next;
-		do{
-			
-			if(layerNum == layerList.length){
-				writeToWorkpad(i,j,0);
-				next = true;
-			}
-			else{
-				PixelData pd = layerList[layerNum].getPixelData(i,j);
-				
-				if(!pd.alpha){
-					//writeln(0);
-					writeToWorkpad(i,j,pd.color);
-					next = true;
-				}
-				else{
-					layerNum++;
-				}
-			}
-		}while(!next);
-	}*/
-    //Returns the workpad.
+	
+    ///Returns the workpad.
     public SDL_Texture* getOutput(){
 		if(fbData[0] !is null)
 			return frameBuffer[0];
 		return frameBuffer[1];
     }
-    //Writes a pixel to the given place.
     
-    //Returns if the raster is refreshing.
+    
+    ///Returns if the raster is refreshing.
     public bool isRefreshing(){
         return r;
     }

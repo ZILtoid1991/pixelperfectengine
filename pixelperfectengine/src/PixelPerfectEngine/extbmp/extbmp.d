@@ -234,7 +234,7 @@ public class ExtendibleBitmap{
 		return bitmapID;
 	}
 	/// Adds a bitmap to the file (any supported formats).
-	public void addBitmap(void[] data, int x, int y, string bitDepth, string ID, string format = ""){
+	public void addBitmap(void[] data, int x, int y, string bitDepth, string ID, string format = null, string palette = null){
 		int o = rawData0.length;
 		rawData0 ~= data;
 		offset ~= o;
@@ -244,9 +244,10 @@ public class ExtendibleBitmap{
 		bitdepth ~= bitDepth;
 		length ~= data.length;
 		this.format ~= format;
+		paletteMode ~= palette;
 	}
 	/// Adds a bitmap to the file (16bit).
-	public void addBitmap(ushort[] data, int x, int y, string bitDepth, string ID, string format = ""){
+	public void addBitmap(ushort[] data, int x, int y, string bitDepth, string ID, string format = null, string palette = null){
 		int o = rawData0.length;
 		rawData0 ~= cast(void[])data;
 		offset ~= o;
@@ -257,8 +258,8 @@ public class ExtendibleBitmap{
 		length ~= data.length * 2;
 		this.format ~= format;
 	}
-	/// Adds a bitmap to the file (8bit or 32bit).
-	public void addBitmap(ubyte[] data, int x, int y, string bitDepth, string ID, string format = "", ReplaceData rd = null){
+	/// Adds a bitmap to the file (4bit, 8bit or 32bit).
+	public void addBitmap(ubyte[] data, int x, int y, string bitDepth, string ID, string format = null, string palette = null, ReplaceData rd = null){
 		int o = rawData0.length;
 		rawData0 ~= cast(void[])data;
 		offset ~= o;

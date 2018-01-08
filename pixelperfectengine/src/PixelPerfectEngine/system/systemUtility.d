@@ -1,5 +1,9 @@
 module PixelPerfectEngine.system.systemUtility;
-
+/*
+ * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
+ *
+ * Pixel Perfect Engine, system.systemUtility module
+ */
 
 public immutable wstring engineVer = "0.9.2";	///Defines engine version
 public immutable wstring sdlVer = "2.0.5";		///Defines SDL version

@@ -27,80 +27,51 @@ public class BitmapDrawer{
 		output = new Bitmap16Bit(x, y);
 		
 	}
-	///Draws a single line. Slanted lines are currently unimplemented.
-	public void drawLine(int xa, int xb, int ya, int yb, ushort color, int brushsize = 1){
-		if(brushsize > 1){
-			xa = xa - brushsize / 2;
-			xb = xb - brushsize / 2;
-			ya = ya - brushsize / 2;
-			yb = yb - brushsize / 2;
+	///Draws a single line. 
+	public void drawLine(int xa, int xb, int ya, int yb, ushort color){
+		if(xb < xa){
+			int k = xa;
+			xa = xb;
+			xb = k;
 		}
-		if(xa == xb){
-			for(int i ; i < brushsize ; i++){
-				if(ya < yb){
-					for(int j ; j <= (yb - ya) ; j++){
-						
-						output.writePixel(xa, ya + j, color);
-					}
-				}else{
-					for(int j ; j > (yb - ya) ; j--){
-						output.writePixel(xa, ya + j, color);
-					}
-				}
-				xa++;
-				xb++;
-			}
-		}else if(ya == yb){
-			for(int i ; i < brushsize ; i++){
-				if(xa < xb){
-					for(int j ; j <= (xb - xa) ; j++){
-						output.writePixel(xa + j, ya, color);
-					}
-				}else{
-					for(int j ; j > (xb - xa) ; j--){
-						output.writePixel(xa + j, ya, color);
-					}
-				}
-				ya++;
-				yb++;
-			}
-		}else{
-			if(xa < xb){
-				if(ya < yb){
-					int xy = to!int(sqrt(to!double((xb - xa) * (xb - xa)) + ((yb - ya) * (yb - ya))));
-					for(int i ; i < brushsize ; i++){
-						for(int j ; j <= xb - xa ; j++){
-							int y = to!int(sqrt(to!double(xy * xy) - ((xa + j)*(xa + j))));
-							output.writePixel(xa + j, ya + y, color);
-						}
-					}
-				}else{
-					int xy = to!int(sqrt(to!double((xb - xa) * (xb - xa)) + ((ya - yb) * (ya - yb))));
-					for(int i ; i < brushsize ; i++){
-						for(int j ; j <= xb - xa ; j++){
-							int y = to!int(sqrt(to!double(xy * xy) - ((xa + j)*(xa + j))));
-							output.writePixel(xa + j, ya - y, color);
-						}
-					}
+		if(yb < ya){
+			int k = ya;
+			ya = yb;
+			yb = k;
+		}
+		int dx = xb - xa;
+		int dy = yb - ya;
+		if(!dx || !dy){
+			if(!dy){
+				for(int x = xa; x <= xb; x++){
+					output.writePixel(x,ya,color);
 				}
 			}else{
-				if(ya < yb){
-					int xy = to!int(sqrt(to!double((xa - xb) * (xa - xb)) + ((yb - ya) * (yb - ya))));
-					for(int i ; i < brushsize ; i++){
-						for(int j ; j >= xb - xa ; j--){
-							int y = to!int(sqrt(to!double(xy * xy) - ((xa + j)*(xa + j))));
-							output.writePixel(xa + j, ya + y, color);
-						}
-					}
-				}else{
-					int xy = to!int(sqrt(to!double((xa - xb) * (xa - xb)) + ((ya - yb) * (ya - yb))));
-					for(int i ; i < brushsize ; i++){
-						for(int j ; j >= xb - xa ; j--){
-							int y = to!int(sqrt(to!double(xy * xy) - ((xa + j)*(xa + j))));
-							output.writePixel(xa + j, ya - y, color);
-						}
-					}
+				for(int y = ya; y <= yb; y++){
+					output.writePixel(xa,y,color);
 				}
+			}
+		}else if(dx>=dy){
+			int D = 2*dy - dx;
+			int y = ya;
+			for(int x = xa; x <= xb; x++){
+				output.writePixel(x,y,color);
+				if(D > 0){
+					y += 1;
+					D -= 2*dx;
+				}
+				D += 2*dx;
+			}
+		}else{
+			int D = 2*dx - dy;
+			int x = xa;
+			for(int y = ya; y <= yb; y++){
+				output.writePixel(x,y,color);
+				if(D > 0){
+					x += 1;
+					D -= 2*dy;
+				}
+				D += 2*dy;
 			}
 		}
 	}
@@ -176,8 +147,63 @@ public class BitmapDrawer{
 	}
 	///Inserts a bitmap using blitter.
 	public void insertBitmap(int x, int y, Bitmap16Bit bitmap){
-		version(X86){
-		ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
+		version(NO_SSE2){
+			ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
+			int pitch = output.width;
+			for(int iy ; iy < bitmap.height ; iy++){
+				int ix = bitmap.width / 4; 
+				int ix2 = bitmap.width - ix * 4;
+				int offsetY = bitmap.width * iy;
+				ushort[4]* psrc2 = cast(ushort[4]*)(psrc + offsetY), pdest2 = cast(ushort[4]*)(pdest + x + ((iy + y) * pitch));
+				asm{mov		EDI, pdest2[EBP];
+					mov		ESI, psrc2[EBP];
+					mov		ECX, ix;
+					//cmp		ECX, 0;
+					jecxz	blt4px;
+				loopstart:		//using 4 pixel blitter for the most part
+				
+					movq	MM0, [ESI];
+					movq	MM1, [EDI];
+					movq	MM4, transparencytester4;
+					pcmpeqw	MM4, MM0;
+					pand	MM1, MM4;
+					por		MM1, MM0;
+					movq	[EDI], MM1;
+				
+					add		ESI, 8;
+					add		EDI, 8;
+					loop	loopstart;
+					
+					//2 pixel blitter if needed
+				blt2px:
+					mov		ECX, ix4;
+					cmp		ECX, 2;
+					jb		blt1px;
+					sub		ECX, 2;
+					movd	XMM0, [ESI];
+					movd	XMM1, [EDI];
+					movd	XMM4, transparencytester4;
+					pcmpeqw	XMM4, XMM0;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movd	[EDI], XMM1;
+				
+					add		ESI, 4;
+					add		EDI, 4;
+					//1 pixel "blitter" if needed
+				blt1px:
+					jecxz	end;
+					mov		AX, [ESI];
+					cmp		AX, 0;
+					cmovz	AX, [EDI];
+					mov		[EDI], AX;
+				end:;
+				end:;
+				}
+			
+			}
+		}else version(X86){
+			ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
 			int pitch = output.width;
 			for(int iy ; iy < bitmap.height ; iy++){
 				int ix = bitmap.width / 8; 
@@ -246,11 +272,145 @@ public class BitmapDrawer{
 				}
 			
 			}
+		}else version(X86_64){
+			ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
+			int pitch = output.width;
+			for(int iy ; iy < bitmap.height ; iy++){
+				int ix = bitmap.width / 8; 
+				int ix4 = bitmap.width - ix * 8;
+				int offsetY = bitmap.width * iy;
+				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY), pdest2 = cast(ushort[8]*)(pdest + x + ((iy + y) * pitch));
+				asm{
+					mov		RDI, pdest2[RBP];
+					mov		RSI, psrc2[RBP];
+					mov		ECX, ix;
+					//cmp		ECX, 0;
+					jecxz	blt4px;
+				loopstart:		//using 8 pixel blitter for the most part
+				
+					movups	XMM0, [RSI];
+					movups	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movups	[RDI], XMM1;
+				
+					add		RSI, 16;
+					add		RDI, 16;
+					loop	loopstart;
+				
+					//4 pixel blitter if needed
+				blt4px:
+					mov		ECX, ix4;
+					cmp		ECX, 4;
+					jb		blt2px;
+					sub		ECX, 4;
+					movq	XMM0, [RSI];
+					movq	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movq	[RDI], XMM1;
+				
+					add		RSI, 8;
+					add		RDI, 8;
+					//2 pixel blitter if needed
+				blt2px:
+					cmp		ECX, 2;
+					jb		blt1px;
+					sub		ECX, 2;
+					movd	XMM0, [RSI];
+					movd	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movd	[RDI], XMM1;
+				
+					add		RSI, 4;
+					add		RDI, 4;
+					//1 pixel "blitter" if needed
+				blt1px:
+					jecxz	end;
+					mov		AX, [RSI];
+					cmp		AX, 0;
+					cmovz	AX, [RDI];
+					mov		[RDI], AX;
+				end:;
+				}
+			
+			}
+		}else{
+			for(int iy ; iy < bitmap.height() ; iy++){
+				for (int ix; i < bitmap.width; ix++){
+					ushort c = bitmap.readPixel(ix,iy);
+					if(c)
+						output.writePixel(iX + x, iY + y, c);
+				}
+			}
 		}
 	}
 	///Inserts a midsection of the bitmap defined by slice
 	public void insertBitmapSlice(int x, int y, Bitmap16Bit bitmap, Coordinate slice){
-		version(X86){
+		version(NO_SSE2){
+			for(int iy ; iy < slice.height() ; iy++){
+				int ix = slice.width() / 4;
+				int offsetY = bitmap.width * (iy + slice.top);
+				int ix4 = slice.width() - ix * 8;
+				ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
+				ushort[4]* psrc2 = cast(ushort[4]*)(psrc + offsetY + slice.left), pdest2 = cast(ushort[4]*)(pdest + ((iy + y) * output.width));
+			
+				asm{
+					mov		EDI, pdest2[EBP];
+					mov		ESI, psrc2[EBP];
+					mov		ECX, ix;
+					//cmp		ECX, 0;
+					jecxz	blt4px;
+				loopstart:		//using 4 pixel blitter for the most part
+				
+					movq	MM0, [ESI];
+					movq	MM1, [EDI];
+					movq	MM4, transparencytester4;
+					pcmpeqw	MM4, MM0;
+					pand	MM1, MM4;
+					por		MM1, MM0;
+					movq	[EDI], MM1;
+				
+					add		ESI, 8;
+					add		EDI, 8;
+					loop	loopstart;
+					
+					//2 pixel blitter if needed
+				blt2px:
+					mov		ECX, ix4;
+					cmp		ECX, 2;
+					jb		blt1px;
+					sub		ECX, 2;
+					movd	XMM0, [ESI];
+					movd	XMM1, [EDI];
+					movq	XMM4, transparencytester4;
+					pcmpeqw	XMM4, XMM0;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movd	[EDI], XMM1;
+				
+					add		ESI, 4;
+					add		EDI, 4;
+					//1 pixel "blitter" if needed
+				blt1px:
+					jecxz	end;
+					mov		AX, [ESI];
+					cmp		AX, 0;
+					cmovz	AX, [EDI];
+					mov		[EDI], AX;
+				end:;
+				}
+			
+			
+			}
+		}else version(X86){
 			for(int iy ; iy < slice.height() ; iy++){
 				int ix = slice.width() / 8;
 				int offsetY = bitmap.width * (iy + slice.top);
@@ -318,17 +478,94 @@ public class BitmapDrawer{
 					mov		[EDI], AX;
 				end:;
 				}
+			}
+		}else version(X86_64){
+			for(int iy ; iy < slice.height() ; iy++){
+				int ix = slice.width() / 8;
+				int offsetY = bitmap.width * (iy + slice.top);
+				int ix4 = slice.width() - ix * 8;
+				ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
+				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY + slice.left), pdest2 = cast(ushort[8]*)(pdest + ((iy + y) * output.width));
+			
+				asm{
+					mov		RDI, pdest2[RBP];
+					mov		RSI, psrc2[RBP];
+					mov		ECX, ix;
+					//cmp		ECX, 0;
+					jecxz	blt4px;
+				loopstart:		//using 8 pixel blitter for the most part
+				
+					movups	XMM0, [RSI];
+					movups	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movups	[RDI], XMM1;
+				
+					add		RSI, 16;
+					add		RDI, 16;
+					loop	loopstart;
+					
+					//4 pixel blitter if needed
+				blt4px:
+					mov		ECX, ix4;
+					cmp		ECX, 4;
+					jb		blt2px;
+					sub		ECX, 4;
+					movq	XMM0, [RSI];
+					movq	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movq	[RDI], XMM1;
+				
+					add		RSI, 8;
+					add		RDI, 8;
+					//2 pixel blitter if needed
+				blt2px:
+					cmp		ECX, 2;
+					jb		blt1px;
+					sub		ECX, 2;
+					movd	XMM0, [RSI];
+					movd	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movd	[RDI], XMM1;
+				
+					add		ESI, 4;
+					add		EDI, 4;
+					//1 pixel "blitter" if needed
+				blt1px:
+					jecxz	end;
+					mov		AX, [RSI];
+					cmp		AX, 0;
+					cmovz	AX, [RDI];
+					mov		[RDI], AX;
+				end:;
+				}
 			
 			
+			}
+		}else{
+			for(int iy ; iy < slice.height() ; iy++){
+				for (int ix; i < slice.width; ix++){
+					ushort c = bitmap.readPixel(ix + slice.left,iy + slice.top);
+					if(c)
+						output.writePixel(iX + x, iY + y, c);
+				}
 			}
 		}
 	}
 	///Draws a rectangle.
-	public void drawRectangle(int xa, int xb, int ya, int yb, ushort color, int brushsize = 1){
-		drawLine(xa, xa, ya, yb, color, brushsize);
-		drawLine(xb, xb, ya, yb, color, brushsize);
-		drawLine(xa, xb, ya, ya, color, brushsize);
-		drawLine(xa, xb, yb, yb, color, brushsize);
+	public void drawRectangle(int xa, int xb, int ya, int yb, ushort color){
+		drawLine(xa, xa, ya, yb, color);
+		drawLine(xb, xb, ya, yb, color);
+		drawLine(xa, xb, ya, ya, color);
+		drawLine(xa, xb, yb, yb, color);
 	}
 	
 	public void drawRectangle(int xa, int xb, int ya, int yb, Bitmap16Bit brush){
@@ -448,87 +685,245 @@ public class BitmapDrawer{
 		}
 	}
 	public void insertColorLetter(int x, int y, Bitmap16Bit bitmap, ushort[8] colorvect){
-		ushort[8] colortester = [1,1,1,1,1,1,1,1];
-		ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
-		int pitch = output.width;
-		for(int iy ; iy < bitmap.height ; iy++){
-			int ix = bitmap.width / 8; 
-			int ix4 = bitmap.width - ix * 8;
-			int offsetY = bitmap.width * iy;
-			ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY), pdest2 = cast(ushort[8]*)(pdest + x + ((iy + y) * pitch));
-			asm{
-				mov		EDI, pdest2[EBP];
-				mov		ESI, psrc2[EBP];
-				movups	XMM5, colorvect;
-				movups	XMM6, colortester;
-				mov		ECX, ix;
-				//cmp		ECX, 0;
-				jecxz	blt4px;
-			loopstart:		//using 8 pixel blitter for the most part
+		version(NO_SSE2){
+			ushort[4] colortester = [1,1,1,1], colorvect4 = [colorvect[0],colorvect[0],colorvect[0],colorvect[0]];
+			ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
+			int pitch = output.width;
+			for(int iy ; iy < bitmap.height ; iy++){
+				int ix = bitmap.width / 4; 
+				int ix2 = bitmap.width - ix * 2;
+				int offsetY = bitmap.width * iy;
+				ushort[4]* psrc2 = cast(ushort[4]*)(psrc + offsetY), pdest2 = cast(ushort[4]*)(pdest + x + ((iy + y) * pitch));
+				asm{
+					mov		EDI, pdest2[EBP];
+					mov		ESI, psrc2[EBP];
+					movq	MM5, colorvect4;
+					movq	MM6, colortester;
+					mov		ECX, ix;
+					//cmp		ECX, 0;
+					jecxz	blt4px;
+				loopstart:		//using 8 pixel blitter for the most part
 				
-				movups	XMM0, [ESI];
-				movups	XMM1, [EDI];
-				movups	XMM4, transparencytester8;
-				pcmpeqw	XMM4, XMM0;
-				pcmpeqw	XMM0, XMM6;
-				pand	XMM0, XMM5;
+					movq	MM0, [ESI];
+					movq	MM1, [EDI];
+					movq	MM4, transparencytester4;
+					pcmpeqw	MM4, MM0;
+					pcmpeqw	MM0, MM6;
+					pand	MM0, MM5;
+					
+					pand	MM1, XMM4;
+					por		MM1, XMM0;
+					movq	[EDI], XMM1;
 				
-				pand	XMM1, XMM4;
-				por		XMM1, XMM0;
-				movups	[EDI], XMM1;
+					add		ESI, 8;
+					add		EDI, 8;
+					loop	loopstart;
 				
-				add		ESI, 16;
-				add		EDI, 16;
-				loop	loopstart;
+					//4 pixel blitter if needed
+				blt2px:
+					mov		ECX, ix2;
+					cmp		ECX, 2;
+					jb		blt1px;
+					sub		ECX, 2;
+					movd	XMM0, [ESI];
+					movd	XMM1, [EDI];
+					movq	XMM4, transparencytester4;
+					pcmpeqw	XMM4, XMM0;
+					pcmpeqw	XMM0, XMM6;
+					pand	XMM0, XMM5;
 				
-				//4 pixel blitter if needed
-			blt4px:
-				mov		ECX, ix4;
-				cmp		ECX, 4;
-				jb		blt2px;
-				sub		ECX, 4;
-				movq	XMM0, [ESI];
-				movq	XMM1, [EDI];
-				movups	XMM4, transparencytester8;
-				pcmpeqw	XMM4, XMM0;
-				pcmpeqw	XMM0, XMM6;
-				pand	XMM0, XMM5;
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movd	[EDI], XMM1;
 				
-				pand	XMM1, XMM4;
-				por		XMM1, XMM0;
-				movq	[EDI], XMM1;
+					add		ESI, 4;
+					add		EDI, 4;
+					//1 pixel "blitter" if needed
+				blt1px:
+					jecxz	end;
+					mov		AX, [ESI];
+					cmp		AX, 0;
+					cmovnz	AX, colorvect[0];
+					cmovz	AX, [EDI];
+					mov		[EDI], AX;
+				end:;
+				}
 				
-				add		ESI, 8;
-				add		EDI, 8;
-				//2 pixel blitter if needed
-			blt2px:
-				cmp		ECX, 2;
-				jb		blt1px;
-				sub		ECX, 2;
-				movd	XMM0, [ESI];
-				movd	XMM1, [EDI];
-				movups	XMM4, transparencytester8;
-				pcmpeqw	XMM4, XMM0;
-				pcmpeqw	XMM0, XMM6;
-				pand	XMM0, XMM5;
-				
-				pand	XMM1, XMM4;
-				por		XMM1, XMM0;
-				movd	[EDI], XMM1;
-				
-				add		ESI, 4;
-				add		EDI, 4;
-				//1 pixel "blitter" if needed
-			blt1px:
-				jecxz	end;
-				mov		AX, [ESI];
-				cmp		AX, 0;
-				cmovnz	AX, colorvect[0];
-				cmovz	AX, [EDI];
-				mov		[EDI], AX;
-			end:;
 			}
-			
+		}else version(X86){
+			ushort[8] colortester = [1,1,1,1,1,1,1,1];
+			ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
+			int pitch = output.width;
+			for(int iy ; iy < bitmap.height ; iy++){
+				int ix = bitmap.width / 8; 
+				int ix4 = bitmap.width - ix * 8;
+				int offsetY = bitmap.width * iy;
+				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY), pdest2 = cast(ushort[8]*)(pdest + x + ((iy + y) * pitch));
+				asm{
+					mov		EDI, pdest2[EBP];
+					mov		ESI, psrc2[EBP];
+					movups	XMM5, colorvect;
+					movups	XMM6, colortester;
+					mov		ECX, ix;
+					//cmp		ECX, 0;
+					jecxz	blt4px;
+				loopstart:		//using 8 pixel blitter for the most part
+				
+					movups	XMM0, [ESI];
+					movups	XMM1, [EDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pcmpeqw	XMM0, XMM6;
+					pand	XMM0, XMM5;
+					
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movups	[EDI], XMM1;
+				
+					add		ESI, 16;
+					add		EDI, 16;
+					loop	loopstart;
+				
+					//4 pixel blitter if needed
+				blt4px:
+					mov		ECX, ix4;
+					cmp		ECX, 4;
+					jb		blt2px;
+					sub		ECX, 4;
+					movq	XMM0, [ESI];
+					movq	XMM1, [EDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pcmpeqw	XMM0, XMM6;
+					pand	XMM0, XMM5;
+				
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movq	[EDI], XMM1;
+				
+					add		ESI, 8;
+					add		EDI, 8;
+					//2 pixel blitter if needed
+				blt2px:
+					cmp		ECX, 2;
+					jb		blt1px;
+					sub		ECX, 2;
+					movd	XMM0, [ESI];
+					movd	XMM1, [EDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pcmpeqw	XMM0, XMM6;
+					pand	XMM0, XMM5;
+				
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movd	[EDI], XMM1;
+				
+					add		ESI, 4;
+					add		EDI, 4;
+					//1 pixel "blitter" if needed
+				blt1px:
+					jecxz	end;
+					mov		AX, [ESI];
+					cmp		AX, 0;
+					cmovnz	AX, colorvect[0];
+					cmovz	AX, [EDI];
+					mov		[EDI], AX;
+				end:;
+				}
+				
+			}
+		}else version(X86_64){
+			ushort[8] colortester = [1,1,1,1,1,1,1,1];
+			ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
+			int pitch = output.width;
+			for(int iy ; iy < bitmap.height ; iy++){
+				int ix = bitmap.width / 8; 
+				int ix4 = bitmap.width - ix * 8;
+				int offsetY = bitmap.width * iy;
+				ushort[8]* psrc2 = cast(ushort[8]*)(psrc + offsetY), pdest2 = cast(ushort[8]*)(pdest + x + ((iy + y) * pitch));
+				asm{
+					mov		RDI, pdest2[RBP];
+					mov		RSI, psrc2[RBP];
+					movups	XMM5, colorvect;
+					movups	XMM6, colortester;
+					mov		ECX, ix;
+					//cmp		ECX, 0;
+					jecxz	blt4px;
+				loopstart:		//using 8 pixel blitter for the most part
+				
+					movups	XMM0, [RSI];
+					movups	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pcmpeqw	XMM0, XMM6;
+					pand	XMM0, XMM5;
+					
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movups	[RDI], XMM1;
+				
+					add		RSI, 16;
+					add		RDI, 16;
+					loop	loopstart;
+				
+					//4 pixel blitter if needed
+				blt4px:
+					mov		ECX, ix4;
+					cmp		ECX, 4;
+					jb		blt2px;
+					sub		ECX, 4;
+					movq	XMM0, [RSI];
+					movq	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pcmpeqw	XMM0, XMM6;
+					pand	XMM0, XMM5;
+				
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movq	[RDI], XMM1;
+				
+					add		RSI, 8;
+					add		RDI, 8;
+					//2 pixel blitter if needed
+				blt2px:
+					cmp		ECX, 2;
+					jb		blt1px;
+					sub		ECX, 2;
+					movd	XMM0, [RSI];
+					movd	XMM1, [RDI];
+					movups	XMM4, transparencytester8;
+					pcmpeqw	XMM4, XMM0;
+					pcmpeqw	XMM0, XMM6;
+					pand	XMM0, XMM5;
+				
+					pand	XMM1, XMM4;
+					por		XMM1, XMM0;
+					movd	[RDI], XMM1;
+				
+					add		RSI, 4;
+					add		RDI, 4;
+					//1 pixel "blitter" if needed
+				blt1px:
+					jecxz	end;
+					mov		AX, [RSI];
+					cmp		AX, 0;
+					cmovnz	AX, colorvect[0];
+					cmovz	AX, [RDI];
+					mov		[RDI], AX;
+				end:;
+				}
+				
+			}
+		}else{
+			for(int iy; iy < bitmap.height; iy++){
+				for(int ix; ix < bitmap.width; ix++){
+					ushort c = bitmap.readPixel(ix, iy);
+					if(c)
+						output.writePixel(x + ix, y + iy, colorvect[0]);
+				}
+			}
 		}
 	}
 }

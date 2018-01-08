@@ -126,3 +126,13 @@ string stringArrayJoin(string[] input){
 	}
 	return result;
 }
+///
+bool isInteger(S)(S s){
+	static if(S.mangleof == string.mangleof || S.mangleof == wstring.mangleof || S.mangleof == dstring.mangleof){
+		foreach(c; s){
+			if(c > '9' || c < '0')
+				return false;
+		}
+		return true;
+	}else static assert("Template patameter " ~ S.stringof ~ " not supported in function 'bool isInteger(S)(S s)' of module 'PixelPerfectEngine.system.etc'");
+}

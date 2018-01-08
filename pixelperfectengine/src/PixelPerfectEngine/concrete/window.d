@@ -28,6 +28,7 @@ import std.datetime;
 public class Window : ElementContainer{
 	protected WindowElement[] elements, mouseC, keyboardC, scrollC;
 	protected wstring title;
+	protected WindowElement draggedElement;
 	public IWindowHandler parent;
 	//public Bitmap16Bit[int] altStyleBrush;
 	public BitmapDrawer output;
@@ -190,28 +191,51 @@ public class Window : ElementContainer{
 	 * Detects where the mouse is clicked, then it either passes to an element, or tests whether the close button, 
 	 * an extra button was clicked, also tests for the header, which creates a drag event for moving the window.
 	 */
-	public void passMouseEvent(int x, int y, int state = 0){
+	public void passMouseEvent(int x, int y, int state, ubyte button){
+		if(state == ButtonState.PRESSED){
+			if(getStyleSheet.getImage("closeButtonA").width > x && getStyleSheet.getImage("closeButtonA").height > y && button == MouseButton.LEFT){
+				close();
+				return;
+			}else if(getStyleSheet.getImage("closeButtonA").height > y){
+				if(y > position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length)){
+					y -= position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length);
+					extraButtonEvent(y / getStyleSheet.getImage("closeButtonA").width, button, state);
+					return;
+				}
+				parent.moveUpdate(this);
+				return;
+			}
+			//x -= position.xa;
+			//y -= position.ya;
 		
-		if(getStyleSheet.getImage("closeButtonA").width > x && getStyleSheet.getImage("closeButtonA").height > y && state == 0){
-			close();
-			return;
-		}else if(getStyleSheet.getImage("closeButtonA").height > y && state == 0){
-			if(y > position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length)){
-				y -= position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length);
-				extraButtonEvent(y / getStyleSheet.getImage("closeButtonA").width);
-				return;
+			foreach(WindowElement e; mouseC){
+				if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
+					e.onClick(x - e.getPosition().left, y - e.getPosition().top, state, button);
+					draggedElement = e;
+					
+					return;
+				}
 			}
-			parent.moveUpdate(this);
-		}
-		//x -= position.xa;
-		//y -= position.ya;
-		foreach(WindowElement e; mouseC){
-			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
-				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state);
-				return;
+		}else{
+			if(draggedElement){
+				draggedElement.onClick(x - draggedElement.getPosition().left, y - draggedElement.getPosition().top, state, button);
+				draggedElement = null;
 			}
 		}
-
+	}
+	/**
+	 * Passes a mouseDragEvent if the user clicked on an element, held down the button, and moved the mouse.
+	 */
+	public void passMouseDragEvent(int x, int y, int relX, int relY, ubyte button){
+		if(draggedElement){
+			draggedElement.onDrag(x, y, relX, relY, button);
+		}
+	}
+	/**
+	 * Passes a mouseMotionEvent if the user moved the mouse.
+	 */
+	public void passMouseMotionEvent(int x, int y, int relX, int relY, ubyte button){
+		
 	}
 	/**
 	 * Closes the window by calling the WindowHandler's closeWindow function.
@@ -234,7 +258,7 @@ public class Window : ElementContainer{
 	/**
 	 * Called if an extra button was pressed.
 	 */
-	public void extraButtonEvent(int num){
+	public void extraButtonEvent(int num, ubyte button, int state){
 
 	}
 	/**
@@ -249,10 +273,10 @@ public class Window : ElementContainer{
 	public void addParent(IWindowHandler wh){
 		parent = wh;
 	}
-	public void getFocus(WindowElement sender){
+	public void getFocus(){
 
 	}
-	public void dropFocus(WindowElement sender){
+	public void dropFocus(){
 
 	}
 	public Coordinate getAbsolutePosition(WindowElement sender){
@@ -343,24 +367,31 @@ public class DefaultDialog : Window, ActionListener{
 	public this(Coordinate size, string source, wstring title, wstring[] message, wstring[] options = ["Ok"], string[] values = ["close"]){
 		this(size, title);
 		//generate text
-		//NOTE: currently only works with one line texts, later on multi-line texts will be added
-		//NOTE: currently only optimized for 8 pixel wide fonts
 		this.source = source;
-		int x1 , x2;
-		//writeln(x1,',',size.getXSize - x1);
-		Label msg = new Label(message[0], "null", Coordinate(8, 20, size.width()-8, 40));
-		addElement(msg, EventProperties.MOUSE);
+		int x1, x2, y1 = 20, y2 = getStyleSheet.drawParameters["TextSpacingTop"] + getStyleSheet.drawParameters["TextSpacingBottom"] 
+								+ getStyleSheet.getFontset(getStyleSheet.fontTypes["Label"]).letters[' '].height;
+		//Label msg = new Label(message[0], "null", Coordinate(5, 20, size.width()-5, 40));
+		//addElement(msg, EventProperties.MOUSE);
 
 		//generate buttons
 
 		x1 = size.width() - 10;
 		Button[] buttons;
+		int button1 = size.height - getStyleSheet.drawParameters["WindowBottomPadding"];
+		int button2 = button1 - getStyleSheet.drawParameters["ComponentHeight"];
 		for(int i; i < options.length; i++){
 			x2 = x1 - ((getStyleSheet().getFontset("default").getTextLength(options[i]) + 16));
-			buttons ~= new Button(options[i], values[i], Coordinate(x2, 40, x1, 60));
+			buttons ~= new Button(options[i], values[i], Coordinate(x2, button2, x1, button1));
 			buttons[i].al ~= this;
 			addElement(buttons[i], EventProperties.MOUSE);
 			x1 = x2;
+		}
+		//add labels
+		for(int i; i < message.length; i++){
+			Label msg = new Label(message[i], "null", Coordinate(getStyleSheet.drawParameters["WindowLeftPadding"], 
+								y1, size.width()-getStyleSheet.drawParameters["WindowRightPadding"], y1 + y2));
+			addElement(msg, EventProperties.MOUSE);
+			y1 += y2;
 		}
 	}
 
@@ -372,12 +403,10 @@ public class DefaultDialog : Window, ActionListener{
 		super(size, title);
 	}
 	public void actionEvent(Event event){
-		//writeln(event.source);
 		if(event.source == "close"){
 				close();
 		}else{
 			foreach(a; al){
-				//writeln(event.source);
 				a.actionEvent(new Event(event.source, this.source, null, null, null, 0, EventType.CLICK));
 			}
 		}
@@ -459,8 +488,6 @@ public class FileDialog : Window, ActionListener{
 		//generate listbox
 
 		//test parameters
-
-		//writeln(dirEntries(startDir, SpanMode.shallow));
 		
 		//Date format: yyyy-mm-dd hh:mm:ss
 		lb = new ListBox("lb", Coordinate(4, 20, 216, 126),null, new ListBoxHeader(["Name", "Type", "Date"], [160, 40, 176]) ,15);
@@ -522,7 +549,6 @@ public class FileDialog : Window, ActionListener{
 		s ~= to!wstring(time.minute());
 		s ~= ":";
 		s ~= to!wstring(time.second());
-		//writeln(s);
 		return s;
 	}
 	/**
@@ -543,7 +569,6 @@ public class FileDialog : Window, ActionListener{
 		else{
 
 		}
-		//writeln(driveList);
 	}
 	/**
 	 * Returns the filename from the path.
@@ -674,6 +699,8 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	private ISpriteLayer spriteLayer;
 	private bool moveState, dragEventState;
 	private Window windowToMove, dragEventDest;
+	private PopUpElement dragEventDestPopUp;
+	private ubyte lastMouseButton;
 
 	public this(int sx, int sy, int rx, int ry,ISpriteLayer sl){
 		screenX = sx;
@@ -695,6 +722,17 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		}*/
 	}
 
+	/**
+	 * Adds a DefaultDialog as a message box
+	 */
+	public void messageWindow(wstring title, wstring message, int width = 256){
+		StyleSheet ss = getDefaultStyleSheet();
+		wstring[] formattedMessage = ss.getFontset(ss.fontTypes["Label"]).breakTextIntoMultipleLines(message, width - ss.drawParameters["WindowLeftPadding"] - ss.drawParameters["WindowRightPadding"]);
+		int height = formattedMessage.length * (ss.getFontset(ss.fontTypes["Label"]).getSize() + ss.drawParameters["TextSpacingTop"] + ss.drawParameters["TextSpacingBottom"]);
+		height += ss.drawParameters["WindowTopPadding"] + ss.drawParameters["WindowBottomPadding"] + ss.drawParameters["ComponentHeight"];
+		Coordinate c = Coordinate(mouseX - width / 2, mouseY - height / 2, mouseX + width / 2, mouseY + height / 2);
+		addWindow(new DefaultDialog(c, null, title, formattedMessage));
+	}
 	public void addBackground(ABitmap b){
 		background = b;
 		spriteLayer.addSprite(background, 65536, 0, 0, BitmapAttrib(false,false,0));
@@ -748,7 +786,6 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	}
 	public void closeWindow(Window sender){
 		int p = whichWindow(sender);
-		writeln(windows.length,',',p);
 		for(int i ; i < windows.length ; i++)
 			spriteLayer.removeSprite(i);
 		//spriteLayer.removeSprite(p);
@@ -760,7 +797,6 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	public void moveUpdate(Window sender){
 		moveState = true;
 		windowToMove = sender;
-		//writeln(moveState);
 	}
 	public void keyPressed(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){
 
@@ -768,7 +804,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	public void keyReleased(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){
 
 	}
-	public void mouseButtonEvent(Uint32 which, Uint32 timestamp, Uint32 windowID, Uint8 button, Uint8 state, Uint8 clicks, Sint32 x, Sint32 y){
+	public void mouseButtonEvent(uint which, uint timestamp, uint windowID, ubyte button, ubyte state, ubyte clicks, int x, int y){
 
 		//converting the dimensions
 		double xR = to!double(rasterX) / to!double(screenX) , yR = to!double(rasterY) / to!double(screenY);
@@ -776,8 +812,9 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		y = to!int(y * yR);
 		mouseX = x;
 		mouseY = y;
-		if(button == MouseButton.LEFT){
-			if(numOfPopUpElements <0 && state == SDL_PRESSED){
+		//if(button == MouseButton.LEFT){
+		if(state == ButtonState.PRESSED){
+			if(numOfPopUpElements < 0){
 				foreach(p ; popUpElements){
 				if(y >= p.coordinates.top && y <= p.coordinates.bottom && x >= p.coordinates.left && x <= p.coordinates.right){
 					p.onClick(x - p.coordinates.left, y - p.coordinates.top);
@@ -787,38 +824,47 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 			//removeAllPopUps();
 			removeTopPopUp();
 			}else{
-				if(state == ButtonState.RELEASED && moveState){
-					moveState = false;
-				}else if(state == ButtonState.RELEASED && dragEventState){
-					dragEventState = false;
-				}
-				else if(state == ButtonState.PRESSED){
-					moveX = x; 
-					moveY = y;
-					for(int i ; i < windows.length ; i++){
-						//writeln(i);
-						if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
-							if(i == 0){
-								windows[0].passMouseEvent(x - windows[0].position.left, y - windows[0].position.top, 0);
-								if(windows.length !=0){
-									dragEventState = true;
-									dragEventDest = windows[0];
-								}
-								return;
-							}
-							else{
-								setWindowToTop(windows[i]);
-								return;
-							}
+				moveX = x; 
+				moveY = y;
+				for(int i ; i < windows.length ; i++){
+					if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
+						//if(i == 0){
+						windows[i].passMouseEvent(x - windows[i].position.left, y - windows[i].position.top, state, button);
+						dragEventDest = windows[i];
+					/*if(windows.length !=0){
+						dragEventState = true;
+						dragEventDest = windows[0];
+					}*/
+				//return;
+					//}else{
+						if(i != 0){
+							setWindowToTop(windows[i]);
+						
 						}
+						lastMouseButton = button;
+						return;
 					}
-					passMouseEvent(x,y);
 				}
+				passMouseEvent(x,y,state,button);
+				
+			}
+		}else{
+			if(moveState){
+				moveState = false;
+			}else if(dragEventDest){
+				dragEventDest.passMouseEvent(x - dragEventDest.position.left, y - dragEventDest.position.top, state, button);
+				dragEventDest = null;
+			}else{
+				passMouseEvent(x,y,state,button);
 			}
 		}
 	}
-	public void passMouseEvent(int x, int y, int state = 0){
+	public void passMouseEvent(int x, int y, int state, ubyte button){
 
+	}
+	public void passMouseDragEvent(int x, int y, int relX, int relY, ubyte button){
+	}
+	public void passMouseMotionEvent(int x, int y, int relX, int relY, ubyte button){
 	}
 	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){
 		double xR = to!double(rasterX) / to!double(screenX) , yR = to!double(rasterY) / to!double(screenY);
@@ -832,11 +878,13 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 
 	}
 	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
+		//coordinate conversion
 		double xR = to!double(rasterX) / to!double(screenX) , yR = to!double(rasterY) / to!double(screenY);
 		x = to!int(x * xR);
 		y = to!int(y * yR);
 		relX = to!int(relX * xR);
 		relY = to!int(relY * yR);
+		//passing mouseMovementEvent onto PopUps
 		if(numOfPopUpElements < 0){
 			PopUpElement p = popUpElements[popUpElements.length - 1];
 			if(p.coordinates.top < y && p.coordinates.bottom > y && p.coordinates.left < x && p.coordinates.right > x){
@@ -847,10 +895,14 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 			}
 		
 		}
-		if(state == SDL_PRESSED && moveState){
+		if(state == ButtonState.PRESSED && moveState){
 			windowToMove.relMove(relX, relY);
-		}else if(state == SDL_PRESSED && dragEventState){
-			dragEventDest.passMouseEvent(x - dragEventDest.position.left,y - dragEventDest.position.top,-1);
+		}else if(state == ButtonState.PRESSED && dragEventDest){
+			dragEventDest.passMouseDragEvent(x, y, relX, relY, lastMouseButton);
+		}else{
+			if(windows.length){
+				windows[0].passMouseMotionEvent(x, y, relX, relY, lastMouseButton);
+			}
 		}
 	}
 	public void moveWindow(int x, int y, Window w){
@@ -918,6 +970,7 @@ public interface IWindowHandler : PopUpHandler{
 	public void moveWindow(int x, int y, Window w);
 	public void relMoveWindow(int x, int y, Window w);
 	public void drawUpdate(Window sender);
+	public void messageWindow(wstring title, wstring message, int width = 256);
 }
 
 public enum EventProperties : uint{

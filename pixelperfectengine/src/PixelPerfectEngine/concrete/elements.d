@@ -32,7 +32,10 @@ abstract class WindowElement{
 	public static PopUpHandler popUpHandler;
 	//public static StyleSheet defaultStyle;
 	
-	public void onClick(int offsetX, int offsetY, int type = 0){
+	public void onClick(int offsetX, int offsetY, int state, ubyte button){
+		
+	}
+	public void onDrag(int x, int y, int relX, int relY, ubyte button){
 		
 	}
 	public void onKey(char c, int type){
@@ -71,12 +74,13 @@ abstract class WindowElement{
 	/*private Bitmap16Bit getBrush(int style){
 		return altStyleBrush.get(style, elementContainer.getStyleBrush(style));
 	}*/
-	public wstring getText(){
+	public @nogc wstring getText(){
 		return text;
 	}
 	public void setText(wstring s){
 		text = s;
 		draw();
+		
 	}
 
 	public StyleSheet getAvailableStyleSheet(){
@@ -104,10 +108,7 @@ abstract class WindowElement{
 }
 
 public class Button : WindowElement{
-	
 	private bool isPressed;
-	public int brushPressed, brushNormal;
-	
 	public this(wstring text, string source, Coordinate coordinates){
 		position = coordinates;
 		//sizeX = coordinates.width();
@@ -115,41 +116,40 @@ public class Button : WindowElement{
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(coordinates.width, coordinates.height);
-		brushPressed = 1;
+		//brushPressed = 1;
 		//draw();
 	}
 	public override void draw(){
 		if(output.output.width != position.width || output.output.height != position.height)
 			output = new BitmapDrawer(position.width(), position.height());
-		output.drawFilledRectangle(0, position.width()-1, 0,position.height()-1, getAvailableStyleSheet().getColor("window"));
 		if(isPressed){
-			/*output.drawRectangle(0, sizeX, 0, sizeY, getBrush(brushNormal));
-			 int x = getBrush(brushNormal).getX() / 2, y = getBrush(brushNormal).getY() / 2;
-			 output.drawFilledRectangle(x, sizeX - 1 - x, y, sizeY - 1 - y, getBrush(brushNormal).readPixel(x, y));*/
 			output.drawLine(0, position.width()-1, 0, 0, getAvailableStyleSheet().getColor("windowdescent"));
 			output.drawLine(0, 0, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
 			output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));
 			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));
+			output.drawFilledRectangle(1, position.width()-1, 1,position.height()-1, getAvailableStyleSheet().getColor("windowinactive"));
 		}else{
-			/*output.drawRectangle(0, sizeX, 0, sizeY, getBrush(brushPressed));
-			 int x = getBrush(brushNormal).getX() / 2, y = getBrush(brushNormal).getY() / 2;
-			 output.drawFilledRectangle(x, sizeX - 1 - x, y, sizeY - 1 - y, getBrush(brushNormal).readPixel(x, y));*/
 			output.drawLine(0, position.width()-1, 0, 0, getAvailableStyleSheet().getColor("windowascent"));
 			output.drawLine(0, 0, 0, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));
 			output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
 			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
+			output.drawFilledRectangle(1, position.width()-1, 1,position.height()-1, getAvailableStyleSheet().getColor("window"));
 		}
 		
 		output.drawText(position.width/2, position.height/2, text, getAvailableStyleSheet().getFontset("default"));
 		elementContainer.drawUpdate(this);
 	}
-	public override void onClick(int offsetX, int offsetY, int type = 0){
-		if(type == 0){
-			isPressed = !isPressed;
-			draw();
-			invokeActionEvent(EventType.CLICK, isPressed);
-			isPressed = !isPressed;
-			draw();
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
+		if(button == MouseButton.LEFT){
+			if(state == ButtonState.PRESSED){
+				isPressed = true;
+				draw();
+				//invokeActionEvent(EventType.CLICK, -1);
+			}else{
+				isPressed = false;
+				draw();
+				invokeActionEvent(EventType.CLICK, 0);
+			}
 		}
 	}
 }
@@ -179,13 +179,17 @@ public class SmallButton : WindowElement{
 		}
 		elementContainer.drawUpdate(this);
 	}
-	public override void onClick(int offsetX, int offsetY, int type = 0){
-		if(type == 0){
-			isPressed = !isPressed;
-			draw();
-			invokeActionEvent(EventType.CLICK, isPressed);
-			isPressed = !isPressed;
-			draw();
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
+		if(button == MouseButton.LEFT){
+			if(state == ButtonState.PRESSED){
+				isPressed = true;
+				draw();
+				//invokeActionEvent(EventType.CLICK, -1);
+			}else{
+				isPressed = false;
+				draw();
+				invokeActionEvent(EventType.CLICK, 0);
+			}
 		}
 	}
 }
@@ -205,8 +209,8 @@ public class Label : WindowElement{
 		output.drawText(0, 0, text, getAvailableStyleSheet().getFontset("default"), 1);
 		elementContainer.drawUpdate(this);
 	}
-	public override void onClick(int offsetX, int offsetY, int type = 0){
-		if(type == 0)
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
+		if(state == ButtonState.PRESSED)
 			invokeActionEvent(EventType.CLICK, 0);
 	}
 	public override void setText(wstring s) {
@@ -241,9 +245,9 @@ public class TextBox : WindowElement, TextInputListener{
 		//inputHandler.addTextInputListener(source, this);
 	}
 	
-	public override void onClick(int offsetX, int offsetY, int type = 0){
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		//writeln(0);
-		if(!enableEdit && type == 0){
+		if(!enableEdit && state == ButtonState.PRESSED && button == MouseButton.LEFT){
 			invokeActionEvent(EventType.READYFORTEXTINPUT, 0);
 			enableEdit = true;
 			inputHandler.startTextInput(this);
@@ -300,8 +304,6 @@ public class TextBox : WindowElement, TextInputListener{
 		}
 		text = newtext;
 	}
-	public void focusGiven(){}
-	public void focusLost(){}
 	public void textInputEvent(uint timestamp, uint windowID, char[32] text){
 		//writeln(0);
 		int j = pos;
@@ -391,9 +393,10 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 	public int[] columnWidth;
 	public int selection, brushHeader, brush, fontHeader, rowHeight;
 	public ushort selectionColor;
-	private bool fullRedraw, bodyDrawn, enableTextInput, textInputMode, insert;
+	private bool fullRedraw, bodyDrawn, enableTextInput, textInputMode, insert, dragMid;
 	private VSlider vSlider;
 	private HSlider hSlider;
+	private Slider dragSld;
 	private int fullX, hposition, vposition, sliderX, sliderY, startY, endY, selectedColumn, textPos, previousEvent;
 	private BitmapDrawer textArea, headerArea;
 	private Coordinate textInputArea;
@@ -454,14 +457,17 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 	/*public Bitmap16Bit getStyleBrush(int style){
 		return elementContainer.getStyleBrush(style);
 	}*/
-	/*public Bitmap16Bit[wchar] getFontSet(int style){
-		return elementContainer.getFontSet(style);
-	}*/
+	/**
+	 * Updates the columns with the given data.
+	 */
 	public void updateColumns(ListBoxItem[] items){
 		this.items = items;
 		updateColumns();
 		draw();
 	}
+	/**
+	 * Updates the columns with the given data and header.
+	 */
 	public void updateColumns(ListBoxItem[] items, ListBoxHeader header){
 		this.items = items;
 		this.header = header;
@@ -525,31 +531,19 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 	}
 	
 	public override void draw(){
+		if(output.output.width != position.width || output.output.height != position.height){
+			output = new BitmapDrawer(position.width(), position.height());
+			bodyDrawn = false;
+			updateColumns();
+		}
 		fullRedraw = true;
-		/+if(textInputMode){
-			/*Coordinate textArea = Coordinate((selection) * getStyleSheet().drawParameters["ListBoxRowHeight"] - hposition, header.getRangeWidth(0, selectedColumn + 1),
-					(selection + 1) * getStyleSheet().drawParameters["ListBoxRowHeight"] - hposition, header.getRangeWidth(0, selectedColumn + 2));*/
-			// clear the area
-			output.drawFilledRectangle(textInputArea.left, textInputArea.right, textInputArea.top, textInputArea.bottom,getStyleSheet().getColor("window"));
-			// draw the cursor
-			int x = getAvailableStyleSheet().getFontset("default").getTextLength(text[0..textPos]);
-			if(!insert){
-				output.drawLine(textInputArea.left + x, textInputArea.left + x, textInputArea.top, textInputArea.bottom, getAvailableStyleSheet().getColor("selection"));
-			}else{
-				int spaceWidth = getAvailableStyleSheet().getFontset("default").letters[' '].getX();
-				output.drawFilledRectangle(textInputArea.left + x, textInputArea.left + x + spaceWidth, textInputArea.top, textInputArea.bottom, getAvailableStyleSheet().getColor("selection"));
-			}
-			// redraw the new text
-			output.drawText(textInputArea.left + 1, textInputArea.top, text, getAvailableStyleSheet().getFontset("default"), 1);
-			elementContainer.drawUpdate(this);
-		}else{+/
 		int areaX, areaY;
 
-		vposition = vSlider.getSliderPosition();
+		vposition = vSlider.value;
 		areaX = position.width - vSlider.getPosition().width();
 
 
-		hposition = hSlider.getSliderPosition();
+		hposition = hSlider.value;
 		areaY = position.height - hSlider.getPosition().height();
 			
 		output.drawFilledRectangle(0, position.width(), 0, position.height(),getStyleSheet().getColor("window"));
@@ -557,6 +551,7 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 
 
 		// draw the header
+		// TODO: Draw the header only once!!!
 		output.drawLine(0, position.width() - 1, rowHeight, rowHeight, getStyleSheet().getColor("windowascent"));
 		int foo;
 		for(int i; i < header.getNumberOfColumns(); i++){
@@ -586,50 +581,68 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 		fullRedraw = false;
 		//writeln(0);
 	}
-	public override void onClick(int offsetX, int offsetY, int type = 0){
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		//writeln(textInputMode);
-		if(offsetX > (vSlider.getPosition().left) && offsetY > (vSlider.getPosition().top)){
-			vSlider.onClick(offsetX - vSlider.getPosition().left, offsetY - vSlider.getPosition().top, type);
-			return;
+		if(state == ButtonState.PRESSED){
+			if(button == MouseButton.LEFT){
+				if(offsetX > (vSlider.getPosition().left) && offsetY > (vSlider.getPosition().top)){
+					vSlider.onClick(offsetX - vSlider.getPosition().left, offsetY - vSlider.getPosition().top, state, button);
+					dragSld = vSlider;
+					return;
 
-		}else if(offsetX > (hSlider.getPosition().left) && offsetY > (hSlider.getPosition().top)){
-			//writeln(offsetX,',',offsetY);
-			hSlider.onClick(offsetX - hSlider.getPosition().left, offsetY - hSlider.getPosition().top, type);
-			return;
+				}else if(offsetX > (hSlider.getPosition().left) && offsetY > (hSlider.getPosition().top)){
+					hSlider.onClick(offsetX - hSlider.getPosition().left, offsetY - hSlider.getPosition().top, state, button);
+					dragSld = hSlider;
+					return;
 			
-		}else if(offsetY > rowHeight && type == 0){
-			offsetY -= rowHeight;
-			//writeln(selection);
-			if(selection == (offsetY / rowHeight) + vposition){
-				//invokeActionEvent(EventType.TEXTBOXSELECT, (offsetY / rowHeight) + vposition);
-				if(!enableTextInput){
-					invokeActionEvent(new Event(source, null, null, null, null, (offsetY / rowHeight) + vposition,EventType.TEXTBOXSELECT, items[selection]));
-				}else{
-					offsetX += hposition;
-					selectedColumn = header.getColumnNumFromX(offsetX);
-					//writeln(offsetX);
-					if(selectedColumn != -1){
-						if(items[selection].getTextInputType(selectedColumn) != TextInputType.DISABLE){
-							text = items[selection].getText(selectedColumn);
-							invokeActionEvent(EventType.READYFORTEXTINPUT,selectedColumn);
-							PopUpTextInput p = new PopUpTextInput("textInput", text, Coordinate(0,0,header.getColumnWidth(selectedColumn),20));
-							p.al ~= this;
-							popUpHandler.addPopUpElement(p);
-							/+textInputArea = Coordinate(header.getRangeWidth(0, selectedColumn), (selection + 1) * rowHeight /*- hposition*/, 
-											header.getRangeWidth(0, selectedColumn + 1), (selection + 2) * rowHeight /*- hposition*/);
-							writeln(textInputArea);+/
-							
-						}else{
+				}else if(offsetY > rowHeight && button == MouseButton.LEFT){
+					offsetY -= rowHeight;
+					//writeln(selection);
+					if(selection == (offsetY / rowHeight) + vposition){
+						//invokeActionEvent(EventType.TEXTBOXSELECT, (offsetY / rowHeight) + vposition);
+						if(!enableTextInput){
 							invokeActionEvent(new Event(source, null, null, null, null, (offsetY / rowHeight) + vposition,EventType.TEXTBOXSELECT, items[selection]));
+						}else{
+							offsetX += hposition;
+							selectedColumn = header.getColumnNumFromX(offsetX);
+							//writeln(offsetX);
+							if(selectedColumn != -1){
+								if(items[selection].getTextInputType(selectedColumn) != TextInputType.DISABLE){
+									text = items[selection].getText(selectedColumn);
+									invokeActionEvent(EventType.READYFORTEXTINPUT,selectedColumn);
+									PopUpTextInput p = new PopUpTextInput("textInput", text, Coordinate(0,0,header.getColumnWidth(selectedColumn),20));
+									p.al ~= this;
+									popUpHandler.addPopUpElement(p);
+									/+textInputArea = Coordinate(header.getRangeWidth(0, selectedColumn), (selection + 1) * rowHeight /*- hposition*/, 
+													header.getRangeWidth(0, selectedColumn + 1), (selection + 2) * rowHeight /*- hposition*/);
+									writeln(textInputArea);+/
+							
+								}else{
+									invokeActionEvent(new Event(source, null, null, null, null, (offsetY / rowHeight) + vposition,EventType.TEXTBOXSELECT, items[selection]));
+								}
+							}
+						}
+					}else{
+						if((offsetY / rowHeight) + vposition < items.length){
+							selection = (offsetY / rowHeight) + vposition;
+							draw();
 						}
 					}
 				}
-			}else{
-				if((offsetY / rowHeight) + vposition < items.length){
-					selection = (offsetY / rowHeight) + vposition;
-					draw();
-				}
+			}else if(button == MouseButton.MID){
+				dragMid = true;
 			}
+		}else{
+			dragMid = false;
+			dragSld = null;
+		}
+	}
+	public override void onDrag(int x, int y, int relX, int relY, ubyte button){
+		if(dragMid){
+			hSlider.value += x;
+			vSlider.value += y;
+		}else if(dragSld){
+			dragSld.onDrag(x,y,relX,relY,button);
 		}
 	}
 	public override void onScroll(int x, int y, int wX, int wY){
@@ -639,7 +652,9 @@ public class ListBox : WindowElement, ActionListener, ElementContainer{
 	}
 	
 }
-
+/**
+ * A simple toggle button.
+ */
 public class CheckBox : WindowElement{
 	public int iconChecked, iconUnchecked;
 	private bool checked;
@@ -667,13 +682,31 @@ public class CheckBox : WindowElement{
 		elementContainer.drawUpdate(this);
 	}
 	
-	public override void onClick(int offsetX, int offsetY, int type = 0){
-		checked = !checked;
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
+		if(state == ButtonState.PRESSED && button == MouseButton.LEFT){
+			checked = !checked;
+			draw();
+			invokeActionEvent(EventType.CHECKBOX, checked);
+		}
+	}
+	/**
+	 * Returns the current value (whether it's checked or not) as a boolean.
+	 */
+	public @nogc @property bool value(){
+		return checked;
+	}
+	/**
+	 * Sets the new value (whether it's checked or not) as a boolean.
+	 */
+	public @property bool value(bool b){
+		checked = b;
 		draw();
-		invokeActionEvent(EventType.CHECKBOX, checked);
+		return checked;
 	}
 }
-
+/**
+ * Radio buttons, for selecting from multiple options.
+ */
 public class RadioButtonGroup : WindowElement{
 	public int iconChecked, iconUnchecked;
 	private int bposition, rowHeight, buttonpos;
@@ -711,13 +744,18 @@ public class RadioButtonGroup : WindowElement{
 		elementContainer.drawUpdate(this);
 	}
 	
-	public override void onClick(int offsetX, int offsetY, int type = 0){
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		bposition = (offsetY) / 16;
 		bposition--;
 		draw();
 		invokeActionEvent(EventType.RADIOBUTTON, bposition);
 	}
-	public int getValue(){
+	public @property @nogc int value(){
+		return bposition;
+	}
+	public @property int value(int newval){
+		bposition = newval;
+		draw();
 		return bposition;
 	}
 }
@@ -727,14 +765,23 @@ abstract class Slider : WindowElement{
 	
 	public int value, maxValue, barLength;
 	
-	/*
+	/**
 	 * Returns the slider position. If barLenght > 1, then it returns the lower value.
 	 */
-	public int getSliderPosition(){
+	public @nogc @property int sliderPosition(){
+		return value;
+	}
+	public @property int sliderPosition(int newval){
+		if(newval < maxValue){
+			value = newval;
+			draw();
+		}
 		return value;
 	}
 }
-
+/**
+ * Vertical slider.
+ */
 public class VSlider : Slider{
 	//public int[] brush;
 	
@@ -775,7 +822,7 @@ public class VSlider : Slider{
 	}
 	
 	
-	public override void onClick(int offsetX, int offsetY, int type = 0){
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(offsetY <= getAvailableStyleSheet.getImage("upArrowA").height){
 			if(value != 0) value--;
 
@@ -796,7 +843,6 @@ public class VSlider : Slider{
 
 		invokeActionEvent(EventType.SLIDER, value);
 		draw();
-
 	}
 	public override void onScroll(int x, int y, int wX, int wY){
 
@@ -807,10 +853,20 @@ public class VSlider : Slider{
 		}
 		invokeActionEvent(EventType.SLIDER, value);
 		draw();
-
+	}
+	override public void onDrag(int x,int y,int relX,int relY,ubyte button) {
+		value+=relY;
+		if(value >= maxValue - barLength)
+			value = maxValue;
+		else if(value < 0)
+			value = 0;
+		invokeActionEvent(EventType.SLIDER, value);
+		draw();
 	}
 }
-
+/**
+ * Horizontal slider.
+ */
 public class HSlider : Slider{
 	public this(int maxValue, int barLenght, string source, Coordinate coordinates){
 		position = coordinates;
@@ -847,7 +903,7 @@ public class HSlider : Slider{
 		}
 		elementContainer.drawUpdate(this);
 	}
-	public override void onClick(int offsetX, int offsetY, int type = 0){
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(offsetX <= getAvailableStyleSheet.getImage("rightArrowA").width){
 			if(value != 0) value--;
 		}
@@ -874,8 +930,20 @@ public class HSlider : Slider{
 		invokeActionEvent(EventType.SLIDER, value);
 		draw();
 	}
+	override public void onDrag(int x,int y,int relX,int relY,ubyte button) {
+		value+=relX;
+		if(value >= maxValue - barLength)
+			value = maxValue;
+		else if(value < 0)
+			value = 0;
+		invokeActionEvent(EventType.SLIDER, value);
+		draw();
+	}
+	
 }
-
+/**
+ * Menubar containing menus in a tree-like structure.
+ */
 public class MenuBar: WindowElement{
 	private PopUpMenuElement[] menus;
 	//private wstring[] menuNames;
@@ -920,9 +988,8 @@ public class MenuBar: WindowElement{
 		output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, ss.getColor("windowdescent"));
 		elementContainer.drawUpdate(this);
 	}
-	public override void onClick(int offsetX, int offsetY, int type = 0){
-		
-		if(offsetX < usedWidth){
+	override public void onClick(int offsetX,int offsetY,int state,ubyte button){
+		if(offsetX < usedWidth && button == MouseButton.LEFT && state == ButtonState.PRESSED){
 			for(int i = menuWidths.length - 1 ; i >= 0 ; i--){
 				if(menuWidths[i] < offsetX){
 					PopUpMenu p = new PopUpMenu(menus[i].getSubElements(), menus[i].source);
@@ -936,7 +1003,9 @@ public class MenuBar: WindowElement{
 	}
 	
 }
-
+/**
+ * For creating pop-up elements like menus.
+ */
 public abstract class PopUpElement{
 	public ActionListener[] al;
 	public BitmapDrawer output;
