@@ -43,8 +43,8 @@ public class ExtendibleMap{
 	this(){
 
 	}
-	/// Loads the bitmaps for the Tilelayer from the XMP files
-	public T[wchar] loadTileSet(T)(int num){
+	
+	/+public T[wchar] loadTileSet(T)(int num){
 		T[wchar] result;
 
 		foreach(Element e1; tileSource[num].elements){
@@ -57,9 +57,19 @@ public class ExtendibleMap{
 			}
 		}
 		return result;
-	}
+	}+/
+	/// Loads the bitmaps for the Tilelayer from the XMP files
 	public ABitmap[wchar] loadTileSet(int num){
 		ABitmap[wchar] result;
+		foreach(Element e1; tileSource[num].elements){
+			if(e1.tag.name == "File"){
+				ExtendibleBitmap xmp = new ExtendibleBitmap(e1.tag.attr["source"]);
+				foreach(Element e2; e1.elements){
+					result[to!wchar(parseHex(e2.tag.attr["wcharID"]))] = loadBitmapFromXMP!ABitmap(xmp, e2.tag.attr["source"]);
+
+				}
+			}
+		}
 		return result;
 	}
 	/// Loads the bitmaps for the Tilelayer from the XMP files
@@ -258,12 +268,13 @@ public class ExtendibleMap{
 public class TileLayerData{
 	public MapData mapping;		///Mapping data.
 	public bool isEmbedded;		///Whether the data is embedded with base64 coding or not.
+	public bool warp;			///Toggle warp.
 	public string name;			///Name of the layer, primarily used by the editors.
 	public string subtype;		///Subtype of the layer, eg. 32bit, transformable.
 	public int tX, tY;			///Sizes of the tile for the layer.
 	public int mX, mY;			///Sizes of the mapping.
 	public int priority;		///Layerpriority.
-	public double sX, sY;		///Used by the autoscroll for paralax scrolling.
+	public double sX, sY, sXOffset, sYOffset;		///Used by the autoscroll for paralax scrolling.
 	
 	/// Constructor for TileLayers with preexisting mapping.
 	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, MapData mapping, string name, string subtype = ""){

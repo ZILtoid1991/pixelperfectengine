@@ -1,0 +1,13 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"CPUblit": "0.1.0",
+		"cpublit": "0.1.0",
+		"derelict-sdl2": "2.1.4",
+		"derelict-util": "2.0.6",
+		"libinputvisitor": "1.2.2",
+		"sdlang-d": "0.10.2",
+		"taggedalgebraic": "0.10.11",
+		"unit-threaded": "0.6.36"
+	}
+}

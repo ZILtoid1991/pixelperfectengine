@@ -47,6 +47,10 @@ public struct MapDataChunk{
 		this.tileID = tileID;
 		attribute = BitmapAttrib(hM,vM,pri);
 	}
+	this(wchar tileID, BitmapAttrib attribute){
+		this.tileID = tileID;
+		this.attribute =attribute;
+	}
 }
 /**
  * Mainly stores TileLayer mapdata, can be repurposed for other kinds of layers
@@ -78,6 +82,12 @@ public class MapData{
 			result ~= ch.attribute;
 		}
 		return result;
+	}
+	/**
+	 * Writes the mapping at the given point.
+	 */
+	public void writeMapping(int x, int y, wchar c, BitmapAttrib b){
+		mapping[x+(header.sizeX) * y] = MapDataChunk(c, b);
 	}
 	/**
 	 * Saves the MapData into a file.

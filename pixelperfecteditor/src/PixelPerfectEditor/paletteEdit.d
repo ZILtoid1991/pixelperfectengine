@@ -5,7 +5,7 @@ import PixelPerfectEngine.graphics.common;
 import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.extbmp.extbmp;
 import PixelPerfectEngine.system.etc;
-
+/+
 public class PaletteEditor : Window, ActionListener{
 	private SmallButton[16] plusR, minusR, plusG, minusG, plusB, minusB, plusA, minusA;
 	private Button nextPage, prevPage, addColor;
@@ -81,7 +81,7 @@ public class PaletteEditor : Window, ActionListener{
 	}
 	
 }
-
++/
 public class ColorDisplay : WindowElement{
 	Bitmap32Bit paletteDisplay, selectionDisplay;
 	public this(){

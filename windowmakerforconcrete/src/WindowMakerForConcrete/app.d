@@ -24,7 +24,7 @@ public class Main {
 	private Raster mainRaster;
 }
 
-public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListener{
+public class EditorWindowHandler : WindowHandler, ElementContainer{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
 	public ListBox componentList, prop;
 	//private ListBoxColumn[] propTL, propSL, propSLE;
@@ -92,15 +92,19 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		menuElements[3][0] = new PopUpMenuElement("helpFile", "Content", "F1");
 		menuElements[3][1] = new PopUpMenuElement("about", "About");
 		
-		addElement(new MenuBar("menubar",Coordinate(0,0,800,16),menuElements), EventProperties.MOUSE);
+		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,800,16),menuElements);
+		addElement(mb, EventProperties.MOUSE);
+		mb.onMouseLClickPre = &actionEvent;
 		
 		ListBoxHeader componentListHeader = new ListBoxHeader(["Name","Type"],[100,160]);
 		componentList = new ListBox("componentList", Coordinate(648,32,792,208),[],componentListHeader,16);
 		addElement(componentList, EventProperties.MOUSE | EventProperties.SCROLL);
+		componentList.onItemSelect = &actionEvent;
 
 		ListBoxHeader propHeader = new ListBoxHeader(["Name","Value"],[160,160]);
 		prop = new ListBox("prop", Coordinate(648,240,792,472),[],propHeader,16,true);
 		addElement(prop, EventProperties.MOUSE | EventProperties.SCROLL);
+		prop.onItemSelect = &actionEvent;
 
 		foreach(WindowElement we; elements){
 			we.draw();
@@ -119,7 +123,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	public void addElement(WindowElement we, int eventProperties){
 		elements ~= we;
 		we.elementContainer = this;
-		we.al ~= this;
+		//we.al ~= this;
 		if((eventProperties & EventProperties.KEYBOARD) == EventProperties.KEYBOARD){
 			keyboardC ~= we;
 		}
@@ -150,20 +154,6 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 				break;
 		}
 	}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
-	/*public Bitmap16Bit[wchar] getFontSet(int style){
-		switch(style){
-			case 0: return basicFont;
-			case 1: return altFont;
-			case 3: return alarmFont;
-			default: break;
-		}
-		return basicFont;
-		
-	}*/
-	/*public Bitmap16Bit getStyleBrush(int style){
-		return styleBrush[style];
-	}*/
 	public override void drawUpdate(WindowElement sender){
 		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
 	}
@@ -205,7 +195,7 @@ public class DummyWindow : Window {
  * It's recommended that the main meat of your application is in a separate class, with optional classes for different modules.
  * Use inheritance to monitor events.
  */
-public class MainApplication : InputListener, MouseListener, SystemEventListener, ActionListener{
+public class MainApplication : InputListener, MouseListener, SystemEventListener{
 	public OutputScreen outScrn;
 	public SpriteLayer sl;
 	public EffectLayer el;
@@ -545,7 +535,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 				}
 				break;
 			case "load":
-				ewh.addWindow(new FileDialog("Load Window"w, "loadDialog", this, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", false));
+				ewh.addWindow(new FileDialog("Load Window"w, "loadDialog", &actionEvent, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", false));
 				break;
 			case "loadDialog":
 				try{
@@ -564,11 +554,11 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 				if(windowData.filename.length){
 					windowData.serialize(windowData.filename);
 				}else{
-					ewh.addWindow(new FileDialog("Save Window"w, "saveDialog", this, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", true));
+					ewh.addWindow(new FileDialog("Save Window"w, "saveDialog", &actionEvent, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", true));
 				}
 				break;
 			case "saveAs":
-				ewh.addWindow(new FileDialog("Save Window"w, "saveDialog", this, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", true));
+				ewh.addWindow(new FileDialog("Save Window"w, "saveDialog", &actionEvent, [FileDialog.FileAssociationDescriptor("SDLang file"w, ["*.sdl"])], "./", true));
 				break;
 			case "saveDialog":
 				try{
@@ -578,7 +568,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 				}
 				break;
 			case "export":
-				ewh.addWindow(new FileDialog("Export to D file"w, "exportDialog", this, [FileDialog.FileAssociationDescriptor("D file"w, ["*.d"])], "./", true));
+				ewh.addWindow(new FileDialog("Export to D file"w, "exportDialog", &actionEvent, [FileDialog.FileAssociationDescriptor("D file"w, ["*.d"])], "./", true));
 				break;
 			case "exportDialog":
 				try{

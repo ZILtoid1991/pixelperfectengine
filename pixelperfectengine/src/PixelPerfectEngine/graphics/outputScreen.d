@@ -14,7 +14,8 @@ import std.conv;
 
 
 /**
- *Output window, uses SDL to output the graphics on screen.
+ * Output window, uses SDL to output the graphics on screen.
+ * TODO: Add borderless window support for better concreteUI integration.
  */
 public class OutputScreen : RefreshListener{
     private SDL_Window* window;

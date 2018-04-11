@@ -16,7 +16,7 @@ import std.string;
 
 import converterdialog;
 
-class MultiImportDialog : Window, ActionListener { 
+class MultiImportDialog : Window { 
 	Label label1;
 	Label label2;
 	//Label label3;
@@ -54,14 +54,14 @@ class MultiImportDialog : Window, ActionListener {
 		addElement(bitmapID, EventProperties.MOUSE);
 		numFrom = new TextBox("0"w, "numFrom", Coordinate(75, 45, 220, 65));
 		addElement(numFrom, EventProperties.MOUSE);
-		numFrom.al ~= this;
+		numFrom.onTextInput = &numFrom_onTextInput;
 		//numTo = new TextBox("1"w, "numTo", Coordinate(75, 70, 220, 90));
 		sWidth = new TextBox("32"w, "sWidth", Coordinate(75, 70, 220, 90));
 		addElement(sWidth, EventProperties.MOUSE);
-		sWidth.al ~= this;
+		sWidth.onTextInput = &sWidth_onTextInput;
 		sHeight = new TextBox("32"w, "sHeight", Coordinate(75, 95, 220, 115));
 		addElement(sHeight, EventProperties.MOUSE);
-		sHeight.al ~= this;
+		sHeight.onTextInput = &sHeight_onTextInput;
 		paletteID = new TextBox("default"w, "paletteID", Coordinate(75, 120, 220, 140));
 		addElement(paletteID, EventProperties.MOUSE);
 		checkBox_palImp = new CheckBox("Import palette from file"w, "checkBox_palImp", Coordinate(5, 150, 220, 166));
@@ -72,10 +72,10 @@ class MultiImportDialog : Window, ActionListener {
 		addElement(rb_bitDepth, EventProperties.MOUSE);
 		button_ok = new Button("Ok"w, "button_ok", Coordinate(160, 295, 220, 315));
 		addElement(button_ok, EventProperties.MOUSE);
-		button_ok.al ~= this;
+		button_ok.onMouseLClickRel = &buttonOk_mouseLClickRel;
 		button_cancel = new Button("Cancel"w, "button_cancel", Coordinate(95, 295, 155, 315));
 		addElement(button_cancel, EventProperties.MOUSE);
-		button_cancel.al ~= this;
+		button_cancel.onMouseLClickRel = &buttonClose_mouseLClickRel;
 		this.c = c;
 		fullX = x;
 		fullY = y;
@@ -104,7 +104,56 @@ class MultiImportDialog : Window, ActionListener {
 		}
 		return true;
 	}
-	override public void actionEvent(Event event){
+	private void numFrom_onTextInput(Event ev){
+		if(!isNumeric(ev.text, true)){
+			parent.messageWindow("Input Type Error", "Input field \"numFrom\"'s text is impossible to parse as a number!");
+		}
+	}
+	private void sWidth_onTextInput(Event ev){
+	
+	}
+	private void sHeight_onTextInput(Event ev){
+	
+	}
+	private void buttonOk_mouseLClickRel(Event ev){
+		try{
+			wstring foreTag, afterTag;
+			int digits;
+			if(checkIDbase(bitmapID.getText(),foreTag,afterTag,digits)){
+				string bitDepth;
+				switch(rb_bitDepth.value){
+					case 1:
+						bitDepth = "4bit";
+						break;
+					case 2:
+						bitDepth = "8bit";
+						break;
+					case 3:
+						bitDepth = "16bit";
+						break;
+					case 4:
+						bitDepth = "32bit";
+						break;
+					default:
+						bitDepth = "1bit";
+						break;
+				}
+				//string palID = checkBox_palImp.value ? to!string(paletteID.getText()) : null;
+				c.multiImport(to!string(foreTag), to!string(afterTag), digits, to!string(paletteID.getText()), checkBox_palImp.value, bitDepth, to!int(numFrom.getText()), to!int(sWidth.getText()), to!int(sHeight.getText()), checkBox_hex.value);
+				close();
+			}else{
+				parent.messageWindow("Input Error"w, "IDBase must have the following format:\n <foretag><####><aftertag>"w);
+			}
+		}catch(ConvException e){
+			parent.messageWindow("Input Error"w, "Please check the fields if they're containing the correct type of data."w);
+		}catch(Exception e){
+			parent.messageWindow(to!wstring(e.classinfo.toString()), to!wstring(e.msg));
+		}
+	}
+	private void buttonClose_mouseLClickRel(Event ev){
+		close();
+	}
+	deprecated public void actionEvent(Event event){
 		switch(event.source){
 			case "numFrom":
 				if(!isNumeric(event.text, true)){

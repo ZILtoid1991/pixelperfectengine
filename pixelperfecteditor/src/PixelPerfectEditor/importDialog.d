@@ -15,7 +15,7 @@ import std.conv;
 
 import converterdialog;
 
-public class ImportDialog : Window, ActionListener { 
+public class ImportDialog : Window { 
 	Label label1;
 	TextBox bitmapID;
 	TextBox paletteID;
@@ -42,41 +42,34 @@ public class ImportDialog : Window, ActionListener {
 		addElement(chkBPal, EventProperties.MOUSE);
 		addElement(radioButtonGroup1, EventProperties.MOUSE);
 		addElement(buttonOk, EventProperties.MOUSE);
-		buttonOk.al ~= this;
-		buttonClose.al ~= this;
+		buttonOk.onMouseLClickRel = &buttonOk_mouseLClickRel;
+		buttonClose.onMouseLClickRel = &buttonClose_mouseLClickRel;
 		addElement(buttonClose, EventProperties.MOUSE);
 		this.c = c;
 	}
-	override public void actionEvent(Event event) {
-		switch(event.source){
-			case "buttonOk":
-				string bitDepth;
-				switch(radioButtonGroup1.value){
-					case 1:
-						bitDepth = "4bit";
-						break;
-					case 2:
-						bitDepth = "8bit";
-						break;
-					case 3:
-						bitDepth = "16bit";
-						break;
-					case 4:
-						bitDepth = "32bit";
-						break;
-					default:
-						bitDepth = "1bit";
-						break;
-				}
-				c.singleImport(to!string(bitmapID.getText()), to!string(paletteID.getText()), chkBPal.value, bitDepth);
-				parent.closeWindow(this);
+	private void buttonOk_mouseLClickRel(Event ev) {
+		string bitDepth;
+		switch(radioButtonGroup1.value){
+			case 1:
+				bitDepth = "4bit";
 				break;
-			case "buttonClose":
-				parent.closeWindow(this);
+			case 2:
+				bitDepth = "8bit";
 				break;
-			default: 
+			case 3:
+				bitDepth = "16bit";
+				break;
+			case 4:
+				bitDepth = "32bit";
+				break;
+			default:
+				bitDepth = "1bit";
 				break;
 		}
+		c.singleImport(to!string(bitmapID.getText()), to!string(paletteID.getText()), chkBPal.value, bitDepth);
+		close();
 	}
-	
+	private void buttonClose_mouseLClickRel(Event ev){
+		close();
+	}
 }

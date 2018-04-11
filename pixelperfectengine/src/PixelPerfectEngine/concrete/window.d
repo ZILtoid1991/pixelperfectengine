@@ -323,15 +323,16 @@ public class Window : ElementContainer{
 /**
  * Standard text input form for various applications.
  */
-public class TextInputDialog : Window, ActionListener{
-	public ActionListener[] al;
+public class TextInputDialog : Window{
+	//public ActionListener[] al;
 	private TextBox textInput;
 	private string source;
+	public void function(wstring text) textOutput;
 	/**
 	 * Creates a TextInputDialog. Auto-sizing version is not implemented yet.
 	 */
 	public this(Coordinate size, string source, wstring title, wstring message, wstring text = ""){
-		this(size, title);
+		super(size, title);
 		Label msg = new Label(message, "null", Coordinate(8, 20, size.width()-8, 39));
 		addElement(msg, EventProperties.MOUSE);
 
@@ -339,30 +340,26 @@ public class TextInputDialog : Window, ActionListener{
 		addElement(textInput, EventProperties.MOUSE);
 
 		Button ok = new Button("Ok","ok", Coordinate(size.width()-48,65,size.width()-8,84));
-		ok.al ~= this;
+		ok.onMouseLClickRel = &button_onClick;
 		addElement(ok,EventProperties.MOUSE);
 		this.source = source;
 	}
 
-	public this(Coordinate size, wstring title){
-		super(size, title);
-	}
-
-	public void actionEvent(Event event){
-		if(event.source == "ok"){
-			foreach(a; al){
-				a.actionEvent(new Event(this.source, "TextInputDialog", null, null, textInput.getText(), 0, EventType.TEXTINPUT));
-			}
-			close();
+	public void button_onClick(Event ev){
+		if(textOutput !is null){
+			textOutput(textInput.getText);
 		}
+			
+		close();
+		
 	}
 }
 /**
  * Default dialog for simple messageboxes.
  */
-public class DefaultDialog : Window, ActionListener{
-	public ActionListener[] al;
+public class DefaultDialog : Window{
 	private string source;
+	public void delegate(Event ev) output;
 
 	public this(Coordinate size, string source, wstring title, wstring[] message, wstring[] options = ["Ok"], string[] values = ["close"]){
 		this(size, title);
@@ -382,7 +379,7 @@ public class DefaultDialog : Window, ActionListener{
 		for(int i; i < options.length; i++){
 			x2 = x1 - ((getStyleSheet().getFontset("default").getTextLength(options[i]) + 16));
 			buttons ~= new Button(options[i], values[i], Coordinate(x2, button2, x1, button1));
-			buttons[i].al ~= this;
+			buttons[i].onMouseLClickRel = &actionEvent;
 			addElement(buttons[i], EventProperties.MOUSE);
 			x1 = x2;
 		}
@@ -402,20 +399,22 @@ public class DefaultDialog : Window, ActionListener{
 	public this(Coordinate size, wstring title){
 		super(size, title);
 	}
-	public void actionEvent(Event event){
-		if(event.source == "close"){
-				close();
+	public void actionEvent(Event ev){
+		if(ev.source == "close"){
+			close();
 		}else{
-			foreach(a; al){
-				a.actionEvent(new Event(event.source, this.source, null, null, null, 0, EventType.CLICK));
+			if(output !is null){
+				ev.subsource = source;
+				output(ev);
 			}
 		}
 	}
 }
 /**
  * File dialog window for opening files.
+ * TODO: rewrite for new event handling system.
  */
-public class FileDialog : Window, ActionListener{
+public class FileDialog : Window{
 	/**
 	 * Defines file association descriptions
 	 */
@@ -443,7 +442,7 @@ public class FileDialog : Window, ActionListener{
 		}
 	}
 
-	private ActionListener al;
+	//private ActionListener al;
 	private string source;
 	private string[] pathList, driveList;
 	private string directory, filename;
@@ -454,17 +453,18 @@ public class FileDialog : Window, ActionListener{
 	private FileAssociationDescriptor[] filetypes;
 	public static const string subsourceID = "filedialog";
 	private int selectedType;
+	public void delegate(Event ev) onFileselect;
 
 	/**
 	 * Creates a file dialog with the given parameters. 
 	 * File types are given in the format '*.format', later implementations will enable file type descriptions.
 	 */
-	public this(wstring title, string source, ActionListener a, FileAssociationDescriptor[] filetypes, string startDir, bool save = false, string filename = ""){
+	public this(wstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes, string startDir, bool save = false, string filename = ""){
 		this(Coordinate(20,20,240,198), title);
 		this.source = source;
 		this.filetypes = filetypes;
 		this.save = save;
-		al = a;
+		//al = a;
 		directory = startDir;
 		//generate buttons
 		Button[] buttons;
@@ -477,13 +477,13 @@ public class FileDialog : Window, ActionListener{
 		buttons ~= new Button("Close","close",Coordinate(166, 154, 216, 174));
 		buttons ~= new Button("Type","type",Coordinate(166, 130, 216, 150));
 		for(int i; i < buttons.length; i++){
-			buttons[i].al ~= this;
+			buttons[i].onMouseLClickRel = &actionEvent;
 			addElement(buttons[i], EventProperties.MOUSE);
 		}
 		//generate textbox
 		tb = new TextBox(to!wstring(filename), "filename", Coordinate(4, 130, 162, 150));
 		//tb.addTextInputHandler(tih);
-		tb.al ~= this;
+		tb.onTextInput = &actionEvent;
 		addElement(tb, EventProperties.MOUSE);
 		//generate listbox
 
@@ -495,7 +495,7 @@ public class FileDialog : Window, ActionListener{
 		addElement(lb, EventProperties.MOUSE | EventProperties.SCROLL);
 		spanDir();
 		//scrollC ~= lb;
-		lb.al ~= this;
+		lb.onItemSelect = &actionEvent;
 		detectDrive();
 	}
 
@@ -638,7 +638,8 @@ public class FileDialog : Window, ActionListener{
 		//wstring s = to!wstring(directory);
 		filename = to!string(tb.getText);
 		//al.actionEvent("file", EventType.FILEDIALOGEVENT, 0, s);
-		al.actionEvent(new Event(source, "filedialog", directory, filename, null, 0, EventType.FILEDIALOGEVENT));
+		if(onFileselect !is null)
+			onFileselect(new Event(source, "filedialog", directory, filename, null, 0, EventType.FILEDIALOGEVENT));
 		parent.closeWindow(this);
 	}
 
@@ -676,7 +677,7 @@ public class FileDialog : Window, ActionListener{
 					e ~= new PopUpMenuElement(to!string(i),filetypes[i].description, filetypes[i].getTypesForSelector());
 				}
 				PopUpMenu p = new PopUpMenu(e,"fileSelector");
-				p.al ~= this;
+				p.onMouseClick = &actionEvent;
 				parent.addPopUpElement(p);
 				break;
 			default: break;
@@ -785,6 +786,9 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		return defaultStyle;
 	}
 	public void closeWindow(Window sender){
+		//writeln(sender);
+		dragEventState = false;
+		dragEventDest = null;
 		int p = whichWindow(sender);
 		for(int i ; i < windows.length ; i++)
 			spriteLayer.removeSprite(i);
@@ -829,8 +833,10 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 				for(int i ; i < windows.length ; i++){
 					if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
 						//if(i == 0){
+						dragEventState = true;
 						windows[i].passMouseEvent(x - windows[i].position.left, y - windows[i].position.top, state, button);
-						dragEventDest = windows[i];
+						if(dragEventState)
+							dragEventDest = windows[i];
 					/*if(windows.length !=0){
 						dragEventState = true;
 						dragEventDest = windows[0];

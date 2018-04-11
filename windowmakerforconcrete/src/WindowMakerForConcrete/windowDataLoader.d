@@ -134,9 +134,9 @@ public class WindowData {
 	}
 	public void exportToDLangFile(string path, string tab = "\t"){
 		import std.file;
-		string result, ctor;
+		string result = "import PixelPerfectEngine.concrete.window;\n", ctor;
 		// Generate class header
-		result ~= "class " ~ windowName ~ " : Window { \n";
+		result ~= "public class " ~ windowName ~ " : Window, ActionListener { \n";
 		// Generate basic ctor for class 
 		ctor ~= tab ~ "this(){" ~ "\n" ~ tab ~ tab
 				~ "super(Coordinate(0, 0, " ~ to!string(root.expectTag("Window").expectTagValue!int("width")) ~ ", " ~ to!string(root.expectTag("Window").expectTagValue!int("height")) ~ "), \""
@@ -203,6 +203,8 @@ public class WindowData {
 				default:
 					break;
 			}
+			ctor ~= tab ~ tab ~ "addElement(" ~ t0.expectTagValue!string("name") ~ ", EventProperties.MOUSE);\n";
+			//ctor ~= tab ~ tab ~ t0.expectTagValue!string("name") ~ ".al ~= this;\n";
 		}
 		result ~= ctor ~ tab ~ "}\n}";
 		write(path, result);

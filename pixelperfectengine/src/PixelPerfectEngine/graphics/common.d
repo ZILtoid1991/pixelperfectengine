@@ -6,12 +6,14 @@
 
 module PixelPerfectEngine.graphics.common;
 
+//public import CPUblit.colorspaces;
+
 /**
  * Represents a box on a 2D field.
  */
 public struct Coordinate{
 	public int left, top, right, bottom;
-	this(int left, int top, int right, int bottom){
+	@nogc this(int left, int top, int right, int bottom){
 		this.left=left;
 		this.top=top;
 		this.right=right;
@@ -90,28 +92,28 @@ public struct Color{
 		ubyte[4] colors;	///Normal representation, aliases are used for color naming.
 	}
 	version(LittleEndian){
-		public @property ubyte alpha(){ return colors[0]; }
-		public @property ubyte red(){ return colors[1]; }
-		public @property ubyte green(){ return colors[2]; }
-		public @property ubyte blue(){ return colors[3]; }
-		public @property ubyte alpha(ubyte value){ return colors[0] = value; }
-		public @property ubyte red(ubyte value){ return colors[1] = value; }
-		public @property ubyte green(ubyte value){ return colors[2] = value; }
-		public @property ubyte blue(ubyte value){ return colors[3] = value; }
+		public @nogc @property ubyte alpha(){ return colors[0]; }
+		public @nogc @property ubyte red(){ return colors[1]; }
+		public @nogc @property ubyte green(){ return colors[2]; }
+		public @nogc @property ubyte blue(){ return colors[3]; }
+		public @nogc @property ubyte alpha(ubyte value){ return colors[0] = value; }
+		public @nogc @property ubyte red(ubyte value){ return colors[1] = value; }
+		public @nogc @property ubyte green(ubyte value){ return colors[2] = value; }
+		public @nogc @property ubyte blue(ubyte value){ return colors[3] = value; }
 	}else{
-		public @property ubyte alpha(){ return colors[3]; }
-		public @property ubyte red(){ return colors[2]; }
-		public @property ubyte green(){ return colors[1]; }
-		public @property ubyte blue(){ return colors[0]; }
-		public @property ubyte alpha(ubyte value){ return colors[3] = value; }
-		public @property ubyte red(ubyte value){ return colors[2] = value; }
-		public @property ubyte green(ubyte value){ return colors[1] = value; }
-		public @property ubyte blue(ubyte value){ return colors[0] = value; }
+		public @nogc @property ubyte alpha(){ return colors[3]; }
+		public @nogc @property ubyte red(){ return colors[2]; }
+		public @nogc @property ubyte green(){ return colors[1]; }
+		public @nogc @property ubyte blue(){ return colors[0]; }
+		public @nogc @property ubyte alpha(ubyte value){ return colors[3] = value; }
+		public @nogc @property ubyte red(ubyte value){ return colors[2] = value; }
+		public @nogc @property ubyte green(ubyte value){ return colors[1] = value; }
+		public @nogc @property ubyte blue(ubyte value){ return colors[0] = value; }
 	}
 	/**
 	 * Contructs a color from four individual values.
 	 */
-	public this(ubyte alpha, ubyte red, ubyte green, ubyte blue){
+	public @nogc this(ubyte alpha, ubyte red, ubyte green, ubyte blue){
 		this.alpha = alpha;
 		this.red = red;
 		this.green = green;
@@ -120,7 +122,7 @@ public struct Color{
 	/**
 	 * Constructs a color from a single 32 bit unsigned integer.
 	 */
-	public this(uint val){
+	public @nogc this(uint val){
 		raw = val;
 	}
 	/**
@@ -152,3 +154,4 @@ public struct Color{
 		return "0x" ~ intToHex(raw, 8);
 	}
 }
+//alias Pixel32Bit Color;

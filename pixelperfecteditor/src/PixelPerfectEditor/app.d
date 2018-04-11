@@ -63,7 +63,7 @@ int main(string[] args)
 	Editor e = new Editor(args);
 	
 	e.whereTheMagicHappens;
-    e.destroy();
+    //e.destroy();
 	//SDL_Quit();
 	//testAdvBitArrays(128);
 	//TileLayerTest prg = new TileLayerTest();
@@ -112,7 +112,7 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 	bool isRunning, up, down, left, right, scrup, scrdown, scrleft, scrright;
 	OutputScreen output;
 	Raster r;
-	TileLayer t;
+	TransformableTileLayer t;
 	SpriteLayer s;
 	//Bitmap16Bit[wchar] tiles;
 	InputHandler ih;
@@ -121,13 +121,13 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 		isRunning = true;
 		ExtendibleBitmap tileSource = new ExtendibleBitmap("tiletest.xmp");
 		ExtendibleBitmap spriteSource = new ExtendibleBitmap("collisionTest.xmp");
-		t = new TileLayer(32,32, LayerRenderingMode.COPY);
+		t = new TransformableTileLayer(32,32, LayerRenderingMode.COPY);
 		s = new SpriteLayer();
 		c = new CollisionDetector();
 		Bitmap16Bit dlangMan = loadBitmapFromXMP!Bitmap16Bit(spriteSource,"DLangMan");
 		CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
 		dlangMan.offsetIndexes(256);
-		s.addSprite(dlangMan,0,0,0,BitmapAttrib(true,false));
+		s.addSprite(dlangMan,0,0,0,BitmapAttrib(false,true));
 		s.addSprite(dlangMan,1,64,64,BitmapAttrib(false,false));
 		s.collisionDetector[1] = c;
 		c.source = s;
@@ -160,6 +160,20 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 		ih.kb ~= KeyBinding(0, ScanCode.np2,0, "scrdown", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, ScanCode.np4,0, "scrleft", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, ScanCode.np6,0, "scrright", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F1,0, "A+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F2,0, "A-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F3,0, "B+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F4,0, "B-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F5,0, "C+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F6,0, "C-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F7,0, "D+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F8,0, "D-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F9,0, "x0+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F10,0, "x0-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F11,0, "y0+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.F12,0, "y0-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.PAGEUP,0, "theta+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.PAGEDOWN,0, "theta-", Devicetype.KEYBOARD, KeyModifier.ANY);
 
 		t.loadMapping(256,256,mapping, attrMapping);
 		//t.setWrapMode(true);
@@ -168,6 +182,11 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 		r = new Raster(320,240,output);
 		output.setMainRaster(r);
 		loadPaletteFromXMP(tileSource, "default", r);
+		/*for(int y ; y < 240 ; y++){
+			for(int x ; x < 240 ; x++){
+				writeln('[',x,',',y,"] : ", t.transformFunc([x,y]));
+			}
+		}*/
 		r.addLayer(t, 0);
 		r.addLayer(s, 1);
 		r.palette ~= cast(Color[])spriteSource.getPalette("default");
@@ -208,6 +227,24 @@ class TileLayerTest : SystemEventListener, InputListener, CollisionListener{
 			case "scrdown": scrdown = true; break;
 			case "scrleft": scrleft = true; break;
 			case "scrright": scrright = true; break;
+			case "A+": t.A = t.A + 0.01; 
+				writeln(t.A); 
+				break;
+			case "A-": t.A = t.A - 0.01; 
+				writeln(t.A); 
+				break;
+			case "B+": t.B = t.B + 0.01; break;
+			case "B-": t.B = t.B - 0.01; break;
+			case "C+": t.C = t.C + 0.01; break;
+			case "C-": t.C = t.C - 0.01; break;
+			case "D+": t.D = t.D + 0.01; break;
+			case "D-": t.D = t.D - 0.01; break;
+			case "x0+": t.x_0 = t.x_0 + 0.01; break;
+			case "x0-": t.x_0 = t.x_0 - 0.01; break;
+			case "y0+": t.y_0 = t.y_0 + 0.01; break;
+			case "y0-": t.y_0 = t.y_0 - 0.01; break;
+			case "theta+": t.rotate(1); break;
+			case "theta-": t.rotate(-1); break;
 			default: break;
 		}
 	}

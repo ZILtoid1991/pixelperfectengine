@@ -10,8 +10,9 @@ subPackage{
   importPaths "./pixelperfectengine/src/"
   targetPath "./pixelperfectengine/lib/"
   targetType "library"
-  dependency "sdlang-d" version="~>0.10.1"
+  dependency "sdlang-d" version="==0.10.2"
   dependency "derelict-sdl2" version="~>2.1.0"
+  dependency "CPUblit" version="*"
 }
 subPackage{
   name "pixelperfecteditor"
@@ -21,7 +22,7 @@ subPackage{
   targetPath "./pixelperfecteditor/bin/pixelperfecteditor/"
   dependency "pixelperfectengine:pixelperfectengine" version="*"
   dependency "derelict-fi" version="==2.0.3"
-  dependency "sdlang-d" version="~>0.10.1"
+  //dependency "sdlang-d" version="~>0.10.1"
   dependency "derelict-sdl2" version="~>2.1.0"
 }
 subPackage{
@@ -31,6 +32,6 @@ subPackage{
   importPaths "./windowmakerforconcrete/src/WindowMakerForConcrete/"
   targetPath "./windowmakerforconcrete/bin/WindowMakerForConcrete/"
   dependency "pixelperfectengine:pixelperfectengine" version="*"
-  dependency "sdlang-d" version="~>0.10.1"
+  dependency "sdlang-d" version="==0.10.2"
   dependency "derelict-sdl2" version="~>2.1.0"
 }

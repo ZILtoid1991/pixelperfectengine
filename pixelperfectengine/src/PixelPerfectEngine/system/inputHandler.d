@@ -192,10 +192,9 @@ public class InputHandler : TextInputHandler{
 								invokeKeyPressed(k.ID, event.key.timestamp, 0, Devicetype.KEYBOARD);
 							}
 						}
-					}
-					else{
+					}else{
 						switch(event.key.keysym.scancode){
-							case SDL_SCANCODE_RETURN: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ENTER); break;
+							case ScanCode.ENTER, ScanCode.ENTER2, ScanCode.NP_ENTER: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ENTER); break;
 							case SDL_SCANCODE_ESCAPE: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ESCAPE); break;
 							case SDL_SCANCODE_BACKSPACE: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.BACKSPACE); break;
 							case SDL_SCANCODE_UP: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORUP); break;

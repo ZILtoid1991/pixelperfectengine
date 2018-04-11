@@ -77,13 +77,28 @@ T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
 				break;*/
 			default:
 				throw new FileAccessException("Bitdepth error!");
-				break;
 		}
 		
 		return result;
 	}else static if(T.stringof == Bitmap32Bit.stringof){
 		T result = new T(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
 		return result;
+	}else static if(T.stringof == ABitmap.stringof){
+		
+		switch(xmp.bitdepth[xmp.searchForID(ID)]){
+			case "4bit":
+				return new Bitmap4Bit(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+			case "8bit":
+				return new Bitmap8Bit(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+			case "16bit":
+				return new Bitmap16Bit(cast(ushort[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+			case "32bit":
+				return new Bitmap32Bit(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
+			default:
+				return null;
+				
+		}
+		
 	}else static assert("Template argument \'" ~ T.stringof ~ "\' not supported in function \'T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID)\'");
 }
 /**
@@ -113,7 +128,9 @@ Fontset!Bitmap16Bit loadFontsetFromXMP(ExtendibleBitmap xmp, string fontName){
 	}
 	return new Fontset!Bitmap16Bit(fontName, characters['0'].height, characters);
 }
-
+/**
+ * Loads a *.wav file if SDL2 mixer is used
+ */
 public Mix_Chunk* loadSoundFromFile(const char* filename){
 	return Mix_LoadWAV(filename);
 }

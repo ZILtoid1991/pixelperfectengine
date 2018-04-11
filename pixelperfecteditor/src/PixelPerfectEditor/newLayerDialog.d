@@ -5,7 +5,7 @@ import PixelPerfectEngine.graphics.common;
 
 import std.conv;
 
-public class NewLayerDialog : Window, ActionListener{ 
+public class NewLayerDialog : Window{ 
 	RadioButtonGroup radioButtonGroup1;
 	Label label1;
 	Label label2;
@@ -51,7 +51,7 @@ public class NewLayerDialog : Window, ActionListener{
 		addElement(layerName, EventProperties.MOUSE);
 		button_File = new Button("File..."w, "button_File", Coordinate(210, 60, 300, 80));
 		addElement(button_File, EventProperties.MOUSE);
-		button_File.al ~= this;
+		button_File.onMouseLClickRel = &button_File_onMouseLClickRel;
 		label6 = new Label("file:"w, "label6", Coordinate(155, 64, 203, 80));
 		addElement(label6, EventProperties.MOUSE);
 		fileName = new TextBox(""w, "fileName", Coordinate(155, 85, 300, 105));
@@ -62,16 +62,17 @@ public class NewLayerDialog : Window, ActionListener{
 		addElement(checkBox_ed, EventProperties.MOUSE);
 		button_Import = new Button("Import symbol data"w, "button_Import", Coordinate(155, 160, 300, 180));
 		addElement(button_Import, EventProperties.MOUSE);
-		button_Import.al ~= this;
+		button_Import.onMouseLClickRel = &button_Import_onMouseLClickRel;
 		button_Ok = new Button("Ok"w, "button_Ok", Coordinate(228, 185, 300, 205));
 		addElement(button_Ok, EventProperties.MOUSE);
-		button_Ok.al ~= this;
+		button_Ok.onMouseLClickRel = &button_Ok_onMouseLClickRel;
 		this.nldl = nldl;
 	}
-	override public void actionEvent(Event event){
+	/+public deprecated void actionEvent(Event event){
 		switch(event.source){
 			case "button_File":
-				parent.addWindow(new FileDialog("Specify map file"w, "mapFile", this, [FileDialog.FileAssociationDescriptor("PPE map binary"w,["*.mbf"])], ".\\", !checkBox_ef.value));
+				parent.addWindow(new FileDialog("Specify map file"w, "mapFile", this, [FileDialog.FileAssociationDescriptor("PPE map binary"w,["*.mbf"]),
+													FileDialog.FileAssociationDescriptor("PPE extendible map file"w,["*.xmf"])], ".\\", !checkBox_ef.value));
 				break;
 			case "mapFile":
 				fileName.setText(to!wstring(event.path ~ '\\' ~ event.filename));
@@ -83,7 +84,7 @@ public class NewLayerDialog : Window, ActionListener{
 							nldl.newSpriteLayerEvent(to!string(layerName.getText));
 							close();
 						}catch(Exception e){
-							parent.messageWindow("Error!"w,to!wstring(e.message));
+							parent.messageWindow("Error"w,to!wstring(e.message));
 						}
 						break;
 					case 1:
@@ -92,7 +93,7 @@ public class NewLayerDialog : Window, ActionListener{
 													to!int(tileY.getText),to!int(mapX.getText),to!int(mapY.getText));
 							close();
 						}catch(Exception e){
-							parent.messageWindow("Error!"w,to!wstring(e.message));
+							parent.messageWindow("Error"w,to!wstring(e.message));
 						}
 						break;
 					default: break;
@@ -103,6 +104,38 @@ public class NewLayerDialog : Window, ActionListener{
 				break;
 			default: break;
 		}
+	}+/
+	private void button_File_onMouseLClickRel(Event ev){
+		parent.addWindow(new FileDialog("Specify map file"w, "mapFile", &onFileDialog, [FileDialog.FileAssociationDescriptor("PPE map binary"w,["*.mbf"]),
+							FileDialog.FileAssociationDescriptor("PPE extendible map file"w,["*.xmf"])], ".\\", !checkBox_ef.value));
+	}
+	private void onFileDialog(Event ev){
+		fileName.setText(to!wstring(ev.path ~ '\\' ~ ev.filename));
+	}
+	private void button_Ok_onMouseLClickRel(Event ev){
+		switch(radioButtonGroup1.value){
+			case 0:
+				try{
+					nldl.newSpriteLayerEvent(to!string(layerName.getText));
+					close();
+				}catch(Exception e){
+					parent.messageWindow("Error"w,to!wstring(e.message));
+				}
+				break;
+			case 1:
+				try{
+					nldl.newTileLayerEvent(to!string(layerName.getText),to!string(fileName.getText),checkBox_ed.value,checkBox_ef.value,to!int(tileX.getText),
+											to!int(tileY.getText),to!int(mapX.getText),to!int(mapY.getText));
+					close();
+				}catch(Exception e){
+					parent.messageWindow("Error"w,to!wstring(e.message));
+				}
+				break;
+			default: break;
+		}
+	}
+	private void button_Import_onMouseLClickRel(Event ev){
+	
 	}
 }
 

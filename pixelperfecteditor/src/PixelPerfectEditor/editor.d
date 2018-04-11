@@ -6,8 +6,6 @@
 
 module editor;
 
-import std.conv;
-
 import PixelPerfectEngine.graphics.outputScreen;
 import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.layers;
@@ -39,10 +37,10 @@ public interface IEditor{
 	public void xmpToolkit();
 	public void passActionEvent(Event e);
 	public void createNewDocument(wstring name, int rX, int rY, int pal);
-	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority);
+	//public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority);
 }
 
-public class NewDocumentDialog : Window, ActionListener{
+public class NewDocumentDialog : Window{
 	public IEditor ie;
 	private TextBox[] textBoxes;
 	public this(Coordinate size, wstring title){
@@ -71,75 +69,17 @@ public class NewDocumentDialog : Window, ActionListener{
 			//we.addTextInputHandler(inputhandler);
 			addElement(we, EventProperties.MOUSE);
 		}
-		buttons[0].al ~= this;
+		buttons[0].onMouseLClickRel = &buttonOn_onMouseLClickRel;
 	}
 
-	public void actionEvent(Event event){
-		if(event.source == "ok"){
-			ie.createNewDocument(textBoxes[0].getText(), to!int(textBoxes[1].getText()), to!int(textBoxes[2].getText()), to!int(textBoxes[3].getText()));
+	public void buttonOn_onMouseLClickRel(Event event){
+		ie.createNewDocument(textBoxes[0].getText(), to!int(textBoxes[1].getText()), to!int(textBoxes[2].getText()), to!int(textBoxes[3].getText()));
 			
-			parent.closeWindow(this);
-		}
+		parent.closeWindow(this);
 	}
 }
 
-/+public class NewLayerDialog : Window, ActionListener{
-	public IEditor ie;
-	private TextBox[] textBoxes;
-	private RadioButtonGroup layerType;
-	public this(Coordinate size, wstring title){
-		super(size, title);
-	}
-	public this(IEditor ie){
-		this(Coordinate(10,10,220,310),"New Layer");
-		this.ie = ie;
-		Label[] labels;
-		labels ~= new Label("Name:","",Coordinate(5,20,80,39));
-		labels ~= new Label("TileX:","",Coordinate(5,40,80,59));
-		labels ~= new Label("TileY:","",Coordinate(5,60,80,79));
-		labels ~= new Label("MapX:","",Coordinate(5,80,80,99));
-		labels ~= new Label("MapY:","",Coordinate(5,100,80,119));
-		labels ~= new Label("Priority:","",Coordinate(5,120,80,139));
-		textBoxes ~= new TextBox("","name",Coordinate(81,20,200,39));
-		textBoxes ~= new TextBox("","tX",Coordinate(81,40,200,59));
-		textBoxes ~= new TextBox("","tY",Coordinate(81,60,200,79));
-		textBoxes ~= new TextBox("","mX",Coordinate(81,80,200,99));
-		textBoxes ~= new TextBox("","mY",Coordinate(81,100,200,119));
-		textBoxes ~= new TextBox("","pri",Coordinate(81,120,200,139));
-		layerType = new RadioButtonGroup("Layertype:","layertype",Coordinate(5,150,200,270),["Dummy","Tile(8Bit)","Tile(16Bit)","Tile(32Bit)","Sprite(8Bit)","Sprite(16Bit)","Sprite(32Bit)"],16,1);
-		Button b = new Button("Ok","ok",Coordinate(150,275,215,295));
-		b.al ~= this;
-		addElement(b, EventProperties.MOUSE);
-		foreach(WindowElement we; labels){
-			addElement(we, EventProperties.MOUSE);
-		}
-		foreach(TextBox we; textBoxes){
-			//we.addTextInputHandler(this);
-			addElement(we, EventProperties.MOUSE);
-		}
-		addElement(layerType, EventProperties.MOUSE);
-	}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
-	public void actionEvent(string source, int type, int value, wstring message){}
-	public void actionEvent(Event event){
-		if(event.source == "ok"){
-
-			switch(layerType.getValue){
-				case 1, 2, 3:
-					ie.createNewLayer(to!string(textBoxes[0].getText), layerType.getValue, to!int(textBoxes[1].getText), to!int(textBoxes[2].getText), to!int(textBoxes[3].getText),
-							to!int(textBoxes[4].getText), to!int(textBoxes[5].getText));
-					break;
-				case 4, 5, 6:
-					ie.createNewLayer(to!string(textBoxes[0].getText), layerType.getValue, 0, 0, 0, 0, to!int(textBoxes[5].getText));
-					break;
-				default: break;
-			}
-			parent.closeWindow(this);
-		}
-	}
-}+/
-
-public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListener{
+public class EditorWindowHandler : WindowHandler, ElementContainer{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
 	private ListBox layerList, prop;
 	//private ListBoxColumn[] propTL, propSL, propSLE;
@@ -163,43 +103,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 
 	public void initGUI(){
 		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
-		/*layerListE ~= ListBoxColumn("Num", [""]);
-		layerListE ~= ListBoxColumn("Name", [""]);
-		layerListE ~= ListBoxColumn("Type", [""]);
-		layerList = new ListBox("layerList", Coordinate(5,7,205,98), layerListE, [30,160,64],15);
-		propTL ~= ListBoxColumn("ID", [""]);
-		propTL ~= ListBoxColumn("Name", [""]);
-		propSL ~= ListBoxColumn("Type", [""]);
-		propSL ~= ListBoxColumn("Name", [""]);
-		propSL ~= ListBoxColumn("SizeX", [""]);
-		propSL ~= ListBoxColumn("SizeY", [""]);
-		propSLE ~= ListBoxColumn("Type", [""]);
-		propSLE ~= ListBoxColumn("Name", [""]);
-		propSLE ~= ListBoxColumn("PosX", [""]);
-		propSLE ~= ListBoxColumn("PosY", [""]);
-		prop = new ListBox("prop", Coordinate(5,105,460,391), propSL, propSLW,15);
-		addElement(layerList, EventProperties.MOUSE | EventProperties.SCROLL);
-		addElement(prop, EventProperties.MOUSE | EventProperties.SCROLL);
-		/*addElement(new Button("New","new",Coordinate(210,5,290,25)), EventProperties.MOUSE);
-		addElement(new Button("Load","load",Coordinate(295,5,375,25)), EventProperties.MOUSE);
-		addElement(new Button("Save","save",Coordinate(380,5,460,25)), EventProperties.MOUSE);
-		addElement(new Button("Save As","saveas",Coordinate(465,5,545,25)), EventProperties.MOUSE);
-		addElement(new Button("Help","help",Coordinate(550,5,630,25)), EventProperties.MOUSE);
-		addElement(new Button("New Layer","newL",Coordinate(210,30,290,50)), EventProperties.MOUSE);
-		addElement(new Button("Del Layer","delL",Coordinate(295,30,375,50)), EventProperties.MOUSE);
-		addElement(new Button("Imp Layer","impL",Coordinate(380,30,460,50)), EventProperties.MOUSE);
-		addElement(new Button("Imp TileD","impTD",Coordinate(465,30,545,50)), EventProperties.MOUSE);
-		addElement(new Button("Imp ObjD","impOD",Coordinate(550,30,630,50)), EventProperties.MOUSE);
-		addElement(new Button("Imp Map","impM",Coordinate(210,55,290,75)), EventProperties.MOUSE);
-		addElement(new Button("Imp Img","impI",Coordinate(295,55,375,75)), EventProperties.MOUSE);
-		addElement(new Button("XMP Edit","xmp",Coordinate(380,55,460,75)), EventProperties.MOUSE);
-		addElement(new Button("Palette","pal",Coordinate(465,55,545,75)), EventProperties.MOUSE);
-		addElement(new Button("Settings","setup",Coordinate(550,55,630,75)), EventProperties.MOUSE);
-		addElement(new Button("Doc Prop","docP",Coordinate(210,80,290,100)), EventProperties.MOUSE);
-		addElement(new Button("Export","exp",Coordinate(295,80,375,100)), EventProperties.MOUSE);*/
-		//addElement(new Button("Save","save",Coordinate(380,80,460,100)), EventProperties.MOUSE);
-		//addElement(new Button("Save As","saveas",Coordinate(465,80,545,100)), EventProperties.MOUSE);
-		//wstring[] menuNames = ["FILE", "EDIT", "VIEW", "LAYERS", "TOOLS", "HELP"];
+		
 		PopUpMenuElement[] menuElements;
 		menuElements ~= new PopUpMenuElement("file", "FILE");
 
@@ -268,7 +172,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 		labels ~= new Label("0","tx",Coordinate(256,435,310,455));
 		labels ~= new Label("TileY:","null",Coordinate(315,435,365,455));
 		labels ~= new Label("0","ty",Coordinate(366,435,420,455));*/
-		addElement(new MenuBar("menubar",Coordinate(0,0,640,16),menuElements), EventProperties.MOUSE);
+		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,640,16),menuElements);
+		addElement(mb, EventProperties.MOUSE);
+		mb.onMouseLClickPre = &actionEvent;
 		foreach(WindowElement we; labels){
 			addElement(we, 0);
 		}
@@ -284,7 +190,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	public void addElement(WindowElement we, int eventProperties){
 		elements ~= we;
 		we.elementContainer = this;
-		we.al ~= this;
+		//we.al ~= this;
 		if((eventProperties & EventProperties.KEYBOARD) == EventProperties.KEYBOARD){
 			keyboardC ~= we;
 		}
@@ -298,6 +204,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 
 	
 	public void actionEvent(Event event){
+		writeln(event.source);
 		switch(event.source){
 			case "exit":
 				ie.onExit;
@@ -321,20 +228,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 				break;
 		}
 	}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
-	/*public Bitmap16Bit[wchar] getFontSet(int style){
-		switch(style){
-			case 0: return basicFont;
-			case 1: return altFont;
-			case 3: return alarmFont;
-			default: break;
-		}
-		return basicFont;
-		
-	}*/
-	/*public Bitmap16Bit getStyleBrush(int style){
-		return styleBrush[style];
-	}*/
+	
 	public override void drawUpdate(WindowElement sender){
 		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
 	}
@@ -362,7 +256,15 @@ public class EditorWindowHandler : WindowHandler, ElementContainer, ActionListen
 	}
 }
 
-public class Editor : InputListener, MouseListener, IEditor, ActionListener, SystemEventListener, NewLayerDialogListener{
+public enum PlacementMode : uint{
+	NULL		=	0,
+	NORMAL		=	1,
+	VOIDFILL	=	2,
+	OVERWRITE	=	3,
+
+}
+
+public class Editor : InputListener, MouseListener, IEditor, SystemEventListener, NewLayerDialogListener{
 	public OutputScreen[] ow;
 	public Raster[] rasters;
 	public InputHandler input;
@@ -371,6 +273,7 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 	//public TileLayer32Bit[int] backgroundLayers32;
 	public Layer[int] layers;
 	public wchar selectedTile;
+	public BitmapAttrib selectedTileAttrib;
 	public int selectedLayer;
 	public SpriteLayer windowing;
 	public SpriteLayer bitmapPreview;
@@ -384,31 +287,82 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 	private uint[5] framecounter;
 	public char[40] windowTitle;
 	public ConfigurationProfile configFile;
-	private int mouseX, mouseY, activeLayer;
+	private int mouseX, mouseY;
 	private Coordinate selection, selectedTiles;
+	public PlacementMode pm;
 
 	public void mouseButtonEvent(Uint32 which, Uint32 timestamp, Uint32 windowID, Uint8 button, Uint8 state, Uint8 clicks, Sint32 x, Sint32 y){
 		//writeln(windowID);
 		x /= 2;
 		y /= 2;
 		if(windowID == 2){
-			if(button == MouseButton.LEFT){
+			if(button == MouseButton.LEFT){//placement
 				if(state == ButtonState.PRESSED && !mouseState){
 					mouseX = x;
 					mouseY = y;
 					mouseState = true;
 				}else if(mouseState){
+					mouseState = false;
 					if(mouseX == x && mouseY == y){//placement
-					
-					}else{		//select
-					
+						if(layers[selectedLayer].classinfo == typeid(TileLayer)){
+							TileLayer tl = cast(TileLayer)(layers[selectedLayer]);
+							int targetX = (x + tl.getSX()) / tl.getTileWidth();
+							int targetY = (y + tl.getSY()) / tl.getTileHeight();
+							if(targetX >= 0 && targetY >= 0 && targetX < tl.getMX && targetY < tl.getMY){
+								if(pm == PlacementMode.NORMAL || (pm == PlacementMode.VOIDFILL && tl.readMapping(targetX,targetY) == 0xFFFF
+															|| (pm == PlacementMode.OVERWRITE && tl.readMapping(targetX,targetY) != 0xFFFF))){
+									tl.writeMapping(targetX,targetY,selectedTile);
+									tl.writeTileAttribute(targetX,targetY,selectedTileAttrib);
+									document.tld[selectedLayer].mapping.writeMapping(targetX,targetY,selectedTile,selectedTileAttrib);
+								}
+							}
+						}else{//sprite placement
+							
+						}
+					}else{		//select or region fill
+						Coordinate c = Coordinate();
+						if(mouseX>x){
+							c.left = x;
+							c.right = mouseX;
+						}else{
+							c.left = mouseX;
+							c.right = x;
+						}
+						if(mouseY>y){
+							c.top = y;
+							c.bottom = mouseY;
+						}else{
+							c.top = mouseY;
+							c.bottom = y;
+						}
+						if(layers[selectedLayer].classinfo == typeid(TileLayer)){
+							TileLayer tl = cast(TileLayer)(layers[selectedLayer]);
+							c.left = (c.left + tl.getSX()) / tl.getTileWidth();
+							c.right = (c.right + tl.getSX()) / tl.getTileWidth();
+							c.top = (c.top + tl.getSY()) / tl.getTileHeight();
+							c.bottom = (c.bottom + tl.getSY()) / tl.getTileHeight();
+							for(int iY = c.top ; iY < c.bottom ; iY++){
+								for(int iX = c.left ; iX < c.right ; iX++){
+									if(pm == PlacementMode.NORMAL || (pm == PlacementMode.VOIDFILL && tl.readMapping(iX,iY) == 0xFFFF
+																|| (pm == PlacementMode.OVERWRITE && tl.readMapping(iX,iY) != 0xFFFF))){
+										tl.writeMapping(iX,iY,selectedTile);
+										tl.writeTileAttribute(iX,iY,selectedTileAttrib);
+										document.tld[selectedLayer].mapping.writeMapping(iX,iY,selectedTile,selectedTileAttrib);
+									}
+								}
+							}
+						}
 					}
 				}
+			}else if(button == MouseButton.MID && pm != PlacementMode.NULL){//deletion
+				
 			}
 		}
 	}
 	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){}
-	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){}
+	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
+	
+	}
 	public void keyPressed(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){
 		switch(ID){
 			case "nextLayer":
@@ -441,11 +395,11 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 	public void passActionEvent(Event e){
 		switch(e.source){
 			case "saveas": 
-				FileDialog fd = new FileDialog("Save document as","docSave",this,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.map"])],".\\",true);
+				FileDialog fd = new FileDialog("Save document as","docSave",&actionEvent,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.xmf"])],".\\",true);
 				wh.addWindow(fd);
 				break;
 			case "load":
-				FileDialog fd = new FileDialog("Load document","docLoad",this,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.map"])],".\\",false);
+				FileDialog fd = new FileDialog("Load document","docLoad",&actionEvent,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.xmf"])],".\\",false);
 				wh.addWindow(fd);
 				break;
 			default: break;
@@ -511,10 +465,11 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		}
 	}
 	public this(string[] args){
+		pm = PlacementMode.OVERWRITE;
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
 		configFile = new ConfigurationProfile();
 
-		windowing = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
+		windowing = new SpriteLayer(LayerRenderingMode.COPY);
 		bitmapPreview = new SpriteLayer();
 
 		wh = new EditorWindowHandler(1280,960,640,480,windowing);
@@ -557,10 +512,37 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		//rasters[0].addRefreshListener(ow[0],0);
 
 	}
-	
-
-	
-
+	/**
+	 * Writes a singe element to a TileLayer
+	 */
+	public void writeToTileLayer(int x, int y, int num, wchar c, BitmapAttrib b){
+		//update the mapfile
+		document.tld[num].mapping.writeMapping(x,y,c,b);
+		//update the tilelayer
+		backgroundLayers[num].writeMapping(x,y,c);
+		backgroundLayers[num].writeTileAttribute(x,y,b);
+	}
+	/**
+	 * Writes an area always
+	 */
+	public void writeAreaWithOverride(int left, int top, int right, int bottom, int num, wchar c, BitmapAttrib b){
+		for(int y = top ; y < bottom ; y++){
+			for(int x = left ; x < right ; x++){
+				writeToTileLayer(x,y,num,c,b);
+			}
+		}
+	}
+	/**
+	 * Writes an area if c = 0xFFFF
+	 */
+	public void writeAreaWithoutOverride(int left, int top, int right, int bottom, int num, wchar c, BitmapAttrib b){
+		for(int y = top ; y < bottom ; y++){
+			for(int x = left ; x < right ; x++){
+				if(backgroundLayers[num].readMapping(x,y) == 0xFFFF)
+					writeToTileLayer(x,y,num,c,b);
+			}
+		}
+	}
 	public void whereTheMagicHappens(){
 		while(!onexit){
 			input.test();
@@ -579,7 +561,7 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		exitDialog=true;
 		DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","Exit application", ["Are you sure?"],["Yes","No","Pls save"],["ok","close","save"]);
 
-		dd.al ~= this;
+		dd.output = &actionEvent;
 		wh.addWindow(dd);
 
 	}
@@ -601,20 +583,7 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 		document.metaData["rY"] = to!string(rY);
 		document.metaData["pal"] = to!string(pal);
 	}
-	public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority){
-		switch(type){
-			case 1:
-				TileLayerData md = new TileLayerData(tX,tY,mX,mY,1,1,document.getNumOfLayers(), name);
-				document.addTileLayer(md);
-				TileLayer t = new TileLayer(tX, tY);
-				t.loadMapping(mX,mY,md.mapping.getCharMapping(),md.mapping.getAttribMapping());
-				backgroundLayers[priority] = t;
-				rasters[1].addLayer(t, priority);
-				break;
-			
-			default: break;
-		}
-	}
+	
 	public void newLayer(){
 		if(document !is null){
 			NewLayerDialog ndd = new NewLayerDialog(this);
@@ -625,25 +594,216 @@ public class Editor : InputListener, MouseListener, IEditor, ActionListener, Sys
 
 	}
 	public void newTileLayerEvent(string name, string file, bool embed, bool preexisting, int tX, int tY, int mX, int mY){
+		import std.path;
 		TileLayer tl = new TileLayer(tX, tY, LayerRenderingMode.ALPHA_BLENDING);
-		int pri = activeLayer;
-		TileLayerData tld;
-		if(layers.get(activeLayer, null)){
-			pri++;
+		
+		while(layers.get(selectedLayer, null)){
+			selectedLayer++;
 		}
-		if(preexisting){
-			
-		}else{
-			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, pri, name);
+		TileLayerData tld;
+		if(preexisting && !embed){
+			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, MapData.load(file), name);
+		}else if(!preexisting && embed){
+			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, name);
+		}else if(!preexisting && !embed){
+			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, name);
+			tld.mapping.save(file);
+		}else if(extension(file) == ".xmf"){
+			wh.messageWindow("Error"w, "Function of importing embedded mapping from *.xmf files not yet implemented"w, 320);
+			return;
 		}
 		tld.isEmbedded = embed;
 		tl.loadMapping(mX,mY,tld.mapping.getCharMapping(),tld.mapping.getAttribMapping());
-		layers[pri] = tl;
+		layers[selectedLayer] = tl;
+		if(rasters.length > 1){
+			rasters[1].addLayer(tl,selectedLayer);
+		}
 	}
 	public void newSpriteLayerEvent(string name){
-	
+		SpriteLayer sl = new SpriteLayer();
+		
+		while(layers.get(selectedLayer, null)){
+			selectedLayer++;
+		}
+		SpriteLayerData sld = new SpriteLayerData(name, 1.0, 1.0, selectedLayer);
+		layers[selectedLayer] = sl;
+		if(rasters.length > 1){
+			rasters[1].addLayer(sl,selectedLayer);
+		}
 	}
 	public void importTileLayerSymbolData(string file){
 	
+	}
+	public int getPreviousTileLayer(int pri){
+		import std.algorithm.sorting;
+		int[] list = document.tld.keys;
+		list.sort();
+		int n, i;
+		for( ; i < list.length ; i++){
+			if(pri == list[i]){
+				n = list[i];
+				break;
+			}
+		}
+		selectedLayer--;
+		if(i == 0){
+			return n;
+		}else{
+			return list[i - 1];
+		}
+	}
+	public int getNextTileLayer(int pri){
+		import std.algorithm.sorting;
+		int[] list = document.tld.keys;
+		list.sort();
+		int n, i;
+		for( ; i < list.length ; i++){
+			if(pri == list[i]){
+				n = list[i];
+				break;
+			}
+		}
+		selectedLayer++;
+		if(i == list.length - 1){
+			return n;
+		}else{
+			return list[i + 1];
+		}
+	}
+	public int moveLayerDown(int pri){
+		selectedLayer--;
+		import std.algorithm.sorting;
+		int[] list = layers.keys;
+		list.sort();
+		int n, i;
+		for( ; i < list.length ; i++){
+			if(pri == list[i]){
+				n = list[i];
+				break;
+			}
+		}
+		if(i == 0){
+			Layer l = layers[n];
+			layers[n] = layers[n - 1];
+			if(document.tld.get(n, null)){
+				document.tld[n - 1] = document.tld[n];
+				document.tld.remove(n);
+				document.tld[n - 1].priority -= 1;
+			}else{
+				document.sld[n - 1] = document.sld[n];
+				document.sld.remove(n);
+				document.sld[n - 1].priority -= 1;
+			}
+			n--;
+			return n;
+		}
+		if(list[i - 1] == n - 1){	//swap two layers
+			Layer l = layers[n];
+			layers[n] = layers[n - 1];
+			if(document.tld.get(n, null)){
+				document.tld[n - 1] = document.tld[n];
+				document.tld.remove(n);
+				document.tld[n - 1].priority -= 1;
+			}else{
+				document.sld[n - 1] = document.sld[n];
+				document.sld.remove(n);
+				document.sld[n - 1].priority -= 1;
+			}
+			n--;
+			layers[n] = l;
+			if(document.tld.get(n, null)){
+				document.tld[n + 1] = document.tld[n];
+				document.tld.remove(n);
+				document.tld[n + 1].priority += 1;
+			}else{
+				document.sld[n + 1] = document.sld[n];
+				document.sld.remove(n);
+				document.sld[n + 1].priority += 1;
+			}
+		}else{						//lower the priority of the current layer
+			Layer l = layers[n];
+			layers.remove(n);
+			if(document.tld.get(n, null)){
+				document.tld[n - 1] = document.tld[n];
+				document.tld.remove(n);
+				document.tld[n - 1].priority -= 1;
+			}else{
+				document.sld[n - 1] = document.sld[n];
+				document.sld.remove(n);
+				document.sld[n - 1].priority -= 1;
+			}
+			n--;
+			layers[n] = l;
+			
+		}
+		return n;
+	}
+	public int moveLayerUp(int pri){
+		selectedLayer++;
+		import std.algorithm.sorting;
+		int[] list = layers.keys;
+		list.sort();
+		int n, i;
+		for( ; i < list.length ; i++){
+			if(pri == list[i]){
+				n = list[i];
+				break;
+			}
+		}
+		if(i == list.length - 1){
+			Layer l = layers[n];
+			layers[n] = layers[n - 1];
+			if(document.tld.get(n, null)){
+				document.tld[n - 1] = document.tld[n];
+				document.tld.remove(n);
+				document.tld[n - 1].priority -= 1;
+			}else{
+				document.sld[n - 1] = document.sld[n];
+				document.sld.remove(n);
+				document.sld[n - 1].priority -= 1;
+			}
+			n--;
+			return n;
+		}
+		if(list[i + 1] == n + 1){	//swap two layers
+			Layer l = layers[n];
+			layers[n] = layers[n + 1];
+			if(document.tld.get(n, null)){
+				document.tld[n + 1] = document.tld[n];
+				document.tld.remove(n);
+				document.tld[n + 1].priority += 1;
+			}else{
+				document.sld[n + 1] = document.sld[n];
+				document.sld.remove(n);
+				document.sld[n + 1].priority += 1;
+			}
+			n++;
+			layers[n] = l;
+			if(document.tld.get(n, null)){
+				document.tld[n - 1] = document.tld[n];
+				document.tld.remove(n);
+				document.tld[n - 1].priority -= 1;
+			}else{
+				document.sld[n - 1] = document.sld[n];
+				document.sld.remove(n);
+				document.sld[n - 1].priority -= 1;
+			}
+		}else{						//higher the priority of the current layer
+			Layer l = layers[n];
+			layers.remove(n);
+			if(document.tld.get(n, null)){
+				document.tld[n + 1] = document.tld[n];
+				document.tld.remove(n);
+				document.tld[n + 1].priority += 1;
+			}else{
+				document.sld[n + 1] = document.sld[n];
+				document.sld.remove(n);
+				document.sld[n + 1].priority += 1;
+			}
+			n++;
+			layers[n] = l;
+			
+		}
+		return n;
 	}
 }
