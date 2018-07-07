@@ -10,6 +10,7 @@ import std.conv;
 import std.base64;
 import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.layers;
+import PixelPerfectEngine.system.exc;
 import core.stdc.stdlib;
 import core.stdc.stdio;
 import std.string;
@@ -27,122 +28,76 @@ public import PixelPerfectEngine.system.exc;
  */
 public struct MapDataHeader{
 	public uint flags;
-	public uint fileLength;
+	public uint fileLength;	/// fileLength = sizeX * sizeY + MapDataHeader.sizeof;
 	public int sizeX;
 	public int sizeY;
-	this(uint fileLength, int sizeX, int sizeY){
-		this.fileLength = fileLength;
+	this(int sizeX, int sizeY){
+		this.fileLength = sizeX * sizeY + MapDataHeader.sizeof;
 		this.sizeX = sizeX;
 		this.sizeY = sizeY;
 	}
 }
+
 /**
- * Contains data for a single tile.
+ * Saves a map to an external file.
  */
-public struct MapDataChunk{
-	public wchar tileID;
-	public BitmapAttrib attribute;
-	public ubyte reserved; ///Reserved for future use, currently used as padding
-	this(wchar tileID, bool hM, bool vM, ubyte pri){
-		this.tileID = tileID;
-		attribute = BitmapAttrib(hM,vM,pri);
+public void saveMapFile(MapDataHeader* header, ref MappingElement[] map, string name){
+	FILE* outputStream = fopen(toStringz(name), "wb");
+	if(outputStream is null){
+		import std.conv;
+		version(Windows){
+			DWORD errorCode = GetLastError();
+		}else version(Posix){
+			int errorCode = errno;
+		}
+		throw new FileAccessException("File access error! Error number: " ~ to!string(errorCode));
 	}
-	this(wchar tileID, BitmapAttrib attribute){
-		this.tileID = tileID;
-		this.attribute =attribute;
-	}
+
+	fwrite(cast(void*)header, MapDataHeader.sizeof, 1, outputStream);
+	fwrite(cast(void*)map.ptr, MappingElement.sizeof, map.length, outputStream);
+
+	fclose(outputStream);
 }
+
 /**
- * Mainly stores TileLayer mapdata, can be repurposed for other kinds of layers
+ * Loads a map from an external file. Header must be preallocated.
  */
-public class MapData{
-	MapDataHeader header;
-	MapDataChunk[] mapping;
-	this(int x, int y, MapDataChunk[] mapping){
-		header = MapDataHeader(MapDataHeader.sizeof + (x * y * MapDataChunk.sizeof), x, y);
-		this.mapping = mapping;
-	}
-	this(int x, int y, string base64string){
-		header = MapDataHeader(MapDataHeader.sizeof + (x * y * MapDataChunk.sizeof), x, y);
-		mapping = cast(MapDataChunk[])cast(void[])Base64.decode(base64string);
-	}
-	this(MapDataHeader header){
-		this.header = header;
-	}
-	public wchar[] getCharMapping(){
-		wchar[] result;
-		foreach(ch; mapping){
-			result ~= ch.tileID;
+public MappingElement[] loadMapFile(MapDataHeader* header, string name){
+	FILE* inputStream = fopen(toStringz(name), "rb");
+	MappingElement[] result;
+	if(inputStream is null){
+		import std.conv;
+		version(Windows){
+			DWORD errorCode = GetLastError();
+		}else version(Posix){
+			int errorCode = errno;
 		}
-		return result;
+		throw new FileAccessException("File access error! Error number: " ~ to!string(errorCode));
 	}
-	public BitmapAttrib[] getAttribMapping(){
-		BitmapAttrib[] result;
-		foreach(ch; mapping){
-			result ~= ch.attribute;
-		}
-		return result;
-	}
-	/**
-	 * Writes the mapping at the given point.
-	 */
-	public void writeMapping(int x, int y, wchar c, BitmapAttrib b){
-		mapping[x+(header.sizeX) * y] = MapDataChunk(c, b);
-	}
-	/**
-	 * Saves the MapData into a file.
-	 */
-	public void save(string filename){
-		
-		
-		FILE* outputStream = fopen(toStringz(filename),"wb");
-		if(!outputStream){
-			version(Windows){
-				DWORD errorCode = GetLastError();
-				throw new FileAccessException("File access error no.: " ~ to!string(errorCode) ~ "\n" ~ sysErrorString(errorCode));
-			}else{
-				int errorCode = errno;
-				throw new FileAccessException("File access error no.: " ~ to!string(errorCode));
-			}
-		}
-		fwrite(cast(void*)&header, MapDataHeader.sizeof, 1, outputStream);
-		fwrite(cast(void*)mapping.ptr, MapDataChunk.sizeof, header.sizeX * header.sizeY, outputStream);
-		fclose(outputStream);
-	}
-	/**
-	 * Loads and returns a MapData loaded into the memory.
-	 */
-	public static MapData load(string filename){
-		FILE* inputStream = fopen(toStringz(filename),"rb");
-		if(!inputStream){
-			version(Windows){
-				DWORD errorCode = GetLastError();
-				throw new FileAccessException("File access error no.: " ~ to!string(errorCode) ~ "\n" ~ sysErrorString(errorCode));
-			}else{
-				int errorCode = errno;
-				throw new FileAccessException("File access error no.: " ~ to!string(errorCode));
-			}
-		}
-		MapDataHeader mdh;
-		fread(cast(void*)&mdh, MapDataHeader.sizeof,1,inputStream);
-		MapData output = new MapData(mdh);
-		output.mapping.length = mdh.sizeX * mdh.sizeY;
-		fread(cast(void*)output.mapping.ptr, MapDataChunk.sizeof, mdh.sizeX * mdh.sizeY,inputStream);
-		fclose(inputStream);
-		return output;
-	}
-	/**
-	 * For embeding into maps
-	 */
-	public string getBase64String(){
-		return Base64.encode(cast(ubyte[])cast(void[])mapping);
-	}
-	/**
-	 * Load directly into a TileLayer
-	 */
-	public void loadIntoTileLayer(TileLayer t){
-		BitmapAttrib[] ba;
-		wchar[] chr;
-		ba.length = header.sizeX * header.sizeY;
-	}
+
+	fread(cast(void*)header, MapDataHeader.sizeof, 1, inputStream);
+	result.length = header.sizeX * header.sizeY;
+	fread(cast(void*)result, MappingElement.sizeof, result.length, inputStream);
+
+	fclose(inputStream);
+	return result;
+}
+
+/**
+ * Loads a map from a BASE64 string.
+ */
+public MappingElement[] loadMapFromBase64(in char[] input, int length){
+	MappingElement[] result;
+	result.length = length;
+	Base64.decode(input, cast(ubyte[])cast(void[])result);
+	return result;
+}
+
+/**
+ * Saves a map to a BASE64 string.
+ */
+public char[] saveMapToBase64(in MappingElement[] input){
+	char[] result;
+	Base64.encode(cast(ubyte[])cast(void[])input, result);
+	return result;
 }

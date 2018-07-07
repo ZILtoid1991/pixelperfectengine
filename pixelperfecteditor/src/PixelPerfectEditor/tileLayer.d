@@ -3,6 +3,7 @@
  import PixelPerfectEngine.concrete.window;
  import PixelPerfectEngine.graphics.common;
  import editor;
+ import addTiles;
  import std.conv;
  
  public class TileLayerEditor : Window { 
@@ -274,6 +275,7 @@
 	}
 	private void button_Add_onMouseLClickRel(Event ev){
 		FileDialog f = new FileDialog("Add new tile"w, "tileAdd", &onAddTile, [FileDialog.FileAssociationDescriptor("XMP file"w, ["*.xmp"])], "./");
+		parent.addWindow(f);
 	}
 	private void button_res_onMouseLClickRel(Event ev){
 	
@@ -303,7 +305,10 @@
 		selectedLayer = edi.moveLayerUp(selectedLayer);
 	}
 	private void onAddTile(Event ev){
-	
+		import PixelPerfectEngine.extbmp.extbmp;
+		Window w = new AddTiles(new ExtendibleBitmap(ev.path ~ ev.filename),edi.document,AddTiles.AcceptedBMPType.ALL,
+					edi.document.tld[selectedLayer].tX,edi.document.tld[selectedLayer].tY,selectedLayer,edi.backgroundLayers[selectedLayer],edi.palman);
+		parent.addWindow(w);
 	}
 	private void onResourceImport(Event ev){
 	

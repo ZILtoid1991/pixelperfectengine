@@ -106,7 +106,7 @@ public class ExtendibleMap{
 		e.tag.attr["source"] = file;
 		tileSource[num] ~= e;
 	}
-	/// Adds a new tile for the tilesource. Source: the ID in the file.
+	/// Adds a new tile for the tilesource. If file source doesn't exist, it adds to the filelist. Source: the ID in the file. 
 	void addTileToTileSource(int num, wchar ID, string name, string source, string file){
 		foreach(Element e; tileSource[num].elements){
 			if(e.tag.attr["source"] == file){
@@ -117,6 +117,13 @@ public class ExtendibleMap{
 				return;
 			}
 		}
+		Element e = new Element(new Tag("File"));
+		e.tag.attr["source"] = file;
+		tileSource[num] ~= e;
+		Element e0 = new Element("TileSource",name);
+		e0.tag.attr["wcharID"] = intToHex(ID, 4);
+		e0.tag.attr["source"] = source;
+		e ~= e0;
 	}
 	/// Adds a new TileLayer to the file.
 	void addTileLayer(TileLayerData t){
@@ -153,15 +160,17 @@ public class ExtendibleMap{
 				case "TileLayer":
 					//tileSource ~= e1;
 					int priority = to!int(e1.tag.attr["priority"]);
-					MapData md;
+					MappingElement[] md;
 					foreach(Element e2; e1.elements){
 						switch(e2.tag.name){
 							case "file":
-								md = MapData.load(e2.tag.text);
+								MapDataHeader mheader;
+								md = loadMapFile(&mheader, e2.tag.text);
 								mapDataFileSource[priority] = e2.tag.text;
 								break;
 							case "base64":
-								md = new MapData(to!int(e1.tag.attr["mX"]), to!int(e1.tag.attr["mY"]), e2.tag.text);
+								//md = new MapData(to!int(e1.tag.attr["mX"]), to!int(e1.tag.attr["mY"]), e2.tag.text);
+								md = loadMapFromBase64(e2.tag.text, to!int(e1.tag.attr["mX"]) * to!int(e1.tag.attr["mY"]));
 								break;
 							case "tileSource":
 								tileSource[priority] = e2;
@@ -223,10 +232,12 @@ public class ExtendibleMap{
 				e1.tag.attr["subtype"] = tld[i].subtype;
 			e1.tag.attr["priority"] = to!string(tld[i].priority);
 			if(tld[i].isEmbedded){
-				Element e2 = new Element("base64",tld[i].mapping.getBase64String());
+				Element e2 = new Element("base64", to!string(saveMapToBase64(tld[i].mapping)));
 			}else{
 				Element e2 = new Element("file",mapDataFileSource[i]);
-				tld[i].mapping.save(mapDataFileSource[i]);
+				//tld[i].mapping.save(mapDataFileSource[i]);
+				MapDataHeader header = MapDataHeader(tld[i].mX, tld[i].mY);
+				saveMapFile(&header, tld[i].mapping, mapDataFileSource[i]);
 			}
 			doc ~= e1;
 			//e1.items ~= new ProcessingInstruction("map " ~ tld[i].getMapdataForSaving());
@@ -266,7 +277,7 @@ public class ExtendibleMap{
  * Stores Data regarding to the TileLayer. 
  */
 public class TileLayerData{
-	public MapData mapping;		///Mapping data.
+	public MappingElement[] mapping;		///Mapping data.
 	public bool isEmbedded;		///Whether the data is embedded with base64 coding or not.
 	public bool warp;			///Toggle warp.
 	public string name;			///Name of the layer, primarily used by the editors.
@@ -277,7 +288,7 @@ public class TileLayerData{
 	public double sX, sY, sXOffset, sYOffset;		///Used by the autoscroll for paralax scrolling.
 	
 	/// Constructor for TileLayers with preexisting mapping.
-	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, MapData mapping, string name, string subtype = ""){
+	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, MappingElement[] mapping, string name, string subtype = ""){
 		this.tX = tX;
 		this.tY = tY;
 		this.mX = mX;

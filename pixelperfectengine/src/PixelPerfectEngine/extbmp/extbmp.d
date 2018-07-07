@@ -64,6 +64,10 @@ public class ExtendibleBitmap{
 		this.filename = filename;
 		loadFile();
 	}
+	///
+	public @property string dir(){
+		return filename;
+	}
 	/// Sets the filename 
 	public void setFileName(string s){
 		filename = s;

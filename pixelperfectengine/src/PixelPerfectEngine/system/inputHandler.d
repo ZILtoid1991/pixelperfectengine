@@ -180,15 +180,12 @@ public class InputHandler : TextInputHandler{
 					kb ~= kb0;
 				}
 			}
-
-
 			switch(event.type){
 				case SDL_KEYDOWN:
 
 					if(!tiEnable){
 						foreach(k; kb){
 							if(event.key.keysym.scancode == k.scancode && ((event.key.keysym.mod | k.keymodIgnore) == (k.keymod | k.keymodIgnore)) && k.devicetype == Devicetype.KEYBOARD){
-
 								invokeKeyPressed(k.ID, event.key.timestamp, 0, Devicetype.KEYBOARD);
 							}
 						}
@@ -291,7 +288,6 @@ public class InputHandler : TextInputHandler{
 					invokeControllerRemovedEvent(event.jdevice.which);
 					break;
 				default: break;
-
 			}
 
 		}

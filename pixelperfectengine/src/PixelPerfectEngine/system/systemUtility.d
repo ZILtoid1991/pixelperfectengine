@@ -109,4 +109,6 @@ public void INIT_CONCRETE(WindowHandler wh){
 	ss.addFontset(defaultFont, "default");
 	wh.defaultStyle = ss;
 	Window.defaultStyle = ss;
+	WindowElement.styleSheet = ss;
+	PopUpElement.styleSheet = ss;
 }

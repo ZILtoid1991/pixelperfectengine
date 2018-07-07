@@ -59,3 +59,15 @@ public class MapFileException : Exception{
 		super(msg, file, line, next);
 	}
 }
+
+public class SpriteLayerException : Exception{
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+		super(msg, file, line, next);
+	}
+}
+
+public class SpritePriorityException : SpriteLayerException{
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+		super(msg, file, line, next);
+	}
+}

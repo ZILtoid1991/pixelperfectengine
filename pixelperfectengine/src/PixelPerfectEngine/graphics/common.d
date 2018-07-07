@@ -19,18 +19,6 @@ public struct Coordinate{
 		this.right=right;
 		this.bottom=bottom;
 	}
-	/**
-	 * Use width() instead for better readability!
-	 */
-	public deprecated int getXSize(){
-		return right-left;
-	}
-	/**
-	 * Use height() instead for better readability!
-	 */
-	public deprecated int getYSize(){
-		return bottom-top;
-	}
 	/** 
 	 * Returns the width of the represented box.
 	 */
@@ -43,10 +31,16 @@ public struct Coordinate{
 	public @property @nogc int height(){
 		return bottom-top;
 	}
+	/**
+	 * Returns the area of the represented box.
+	 */
+	public @property @nogc size_t area(){
+		return width * height;
+	}
 	/** 
 	 * Moves the box to the given position.
 	 */
-	public void move(int x, int y){
+	public @nogc void move(int x, int y){
 		right = x + width();
 		bottom = y + height();
 		left = x;
@@ -55,7 +49,7 @@ public struct Coordinate{
 	/** 
 	 * Moves the box by the given values.
 	 */
-	public void relMove(int x, int y){
+	public @nogc void relMove(int x, int y){
 		left = left + x;
 		right = right + x;
 		top = top + y;

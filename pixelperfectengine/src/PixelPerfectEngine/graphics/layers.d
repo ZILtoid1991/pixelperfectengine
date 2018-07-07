@@ -7,12 +7,13 @@ module PixelPerfectEngine.graphics.layers;
 
 public import PixelPerfectEngine.graphics.bitmap;
 public import PixelPerfectEngine.graphics.common;
-import std.conv;
+import PixelPerfectEngine.graphics.transformFunctions;
+import PixelPerfectEngine.system.binarySearchTree;
 import std.parallelism;
 //import std.container.rbtree;
 //import system.etc;
 import PixelPerfectEngine.system.exc;
-import std.algorithm;
+//import std.algorithm;
 import derelict.sdl2.sdl;
 import core.stdc.stdlib;
 //import std.range;
@@ -28,13 +29,6 @@ static immutable ubyte[16] alphaSSEMask = [255,0,0,0,255,0,0,0,255,0,0,0,255,0,0
 static immutable uint[4] SSEUQWmaxvalue = [0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF] ;*/
 
 //static immutable uint[2] alphaMMXmul_0 = [1,1];
-
-public enum FlipRegister : ubyte {
-	NORM	=	0x00,
-	X		=	0x01,
-	Y		=	0x02,
-	XY		=	0x03
-}
 
 /**
  * The basis of all layer classes, containing functions for rendering.
@@ -120,9 +114,9 @@ abstract class Layer {
 				jnz		loopentry;
 			}
 		}else version(X86){
-			//src -= 4;
 			int c = length / 2;
-			void* dest = src + length * 4 - 4;
+			uint* dest = src + length;
+			src -= 1;
 			asm @nogc{
 				mov		ESI, src[EBP];
 				mov		EDI, dest[EBP];
@@ -141,9 +135,8 @@ abstract class Layer {
 				jnz		loopentry;
 			}
 		}else version(X86_64){
-			int c = length / 2, dest = length * 4;
 			int c = length / 2;
-			void* dest = src + length * 4 - 4;
+			uint* dest = src + length;
 			asm @nogc{
 				mov		RSI, src[RBP];
 				mov		RDI, dest[RBP];
@@ -177,15 +170,6 @@ abstract class Layer {
 	}
 }
 
-public struct BLInfo{
-	public int tileX, tileY, mX, mY;
-	this(int tileX1,int tileY1,int x1,int y1){
-		tileX = tileX1;
-		tileY = tileY1;
-		mX = x1;
-		mY = y1;
-	}
-}
 /**
  * Sets the rendering mode of the TileLayer.
  * 
@@ -202,19 +186,17 @@ public enum LayerRenderingMode{
  * Tile interface, defines common functions.
  */
 public interface ITileLayer{
-	public BLInfo getLayerInfo();
-	/// Returns the whole mapping data, primarily used for serialization.
-	public wchar[] getMapping();
+	public MappingElement[] getMapping();
 	/// Reads the mapping element from the given area.
-	@nogc public wchar readMapping(int x, int y);
+	@nogc public MappingElement readMapping(int x, int y);
 	/// Writes the given element into the mapping at the given location.
-	@nogc public void writeMapping(int x, int y, wchar w);
+	@nogc public void writeMapping(int x, int y, MappingElement w);
 	/// Loads the mapping, primarily used for deserialization.
-	public void loadMapping(int x, int y, wchar[] map, BitmapAttrib[] tileAttributes);
+	public void loadMapping(int x, int y, MappingElement[] mapping);
 	/// Removes the tile from the display list with the given ID.
 	public void removeTile(wchar id);
 	/// Returns the tile ID from the location by pixel.
-	@nogc public wchar tileByPixel(int x, int y);
+	@nogc public MappingElement tileByPixel(int x, int y);
 	/// Returns the width of the tiles.
 	@nogc public int getTileWidth();
 	/// Returns the height of the tiles.
@@ -229,8 +211,16 @@ public interface ITileLayer{
 	@nogc public int getTY();
 	/// Adds a tile.
 	public void addTile(ABitmap tile, wchar id);
-	/// Returns a tile by ID if exists, returns null otherwise
-	public ABitmap getTile(wchar id);
+}
+
+public struct MappingElement{
+	wchar tileID;				///Determines which tile is being used for the given instance
+	BitmapAttrib attributes;	///General attributes
+	ubyte reserved;				///Currently unused
+	@nogc this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false)){
+		this.tileID = tileID;
+		this.attributes = attributes;
+	}
 }
 
 /**
@@ -239,88 +229,105 @@ public interface ITileLayer{
  * Can use any kind of bitmaps thanks to code restructuring.
  */
 public class TileLayer : Layer, ITileLayer{
+	protected struct DisplayListItem{
+		ABitmap tile;			///reference counting only
+		void* pixelDataPtr;		///points to the pixeldata
+		Color* palettePtr;		///points to the palette if present
+		wchar ID;				///ID, mainly as a padding to 32 bit alignment
+		ubyte wordLength;		///to avoid calling the more costly classinfo
+		ubyte reserved;
+		this(wchar ID, ABitmap tile){
+			palettePtr = tile.getPalettePtr();
+			this.ID = ID;
+			this.tile=tile;
+			if(tile.classinfo == typeid(Bitmap4Bit)){
+				wordLength = 4;
+				pixelDataPtr = (cast(Bitmap4Bit)(tile)).getPtr;
+			}else if(tile.classinfo == typeid(Bitmap8Bit)){
+				wordLength = 8;
+				pixelDataPtr = (cast(Bitmap8Bit)(tile)).getPtr;
+			}else if(tile.classinfo == typeid(Bitmap16Bit)){
+				wordLength = 16;
+				pixelDataPtr = (cast(Bitmap16Bit)(tile)).getPtr;
+			}else if(tile.classinfo == typeid(Bitmap32Bit)){
+				wordLength = 32;
+				pixelDataPtr = (cast(Bitmap32Bit)(tile)).getPtr;
+			}
+		}
+	}
 	protected int tileX, tileY, mX, mY;
 	protected int totalX, totalY;
-	private wchar[] mapping;
-	private BitmapAttrib[] tileAttributes;
-	Color[][8] src;
-	private ABitmap[wchar] tileSet;
+	protected MappingElement[] mapping;
+	//private wchar[] mapping;
+	//private BitmapAttrib[] tileAttributes;
+	Color[] src;
+	protected BinarySearchTree!(wchar, DisplayListItem) displayList;
 	protected bool warpMode;
-	protected @nogc void function(ref int y, ref int x) hBlankInterrupt0;
 	///Constructor. tX , tY : Set the size of the tiles on the layer.
 	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
 		tileX=tX;
 		tileY=tY;
 		setRenderingMode(renderMode);
-		for(int i; i < 8; i++){
-			src[i].length = tileX;
-		}
+		src.length = tileX;
 	}
-	/*~this(){
-		foreach(p; src){
-			if(p){
-				free(p);
-			}
-		}
-	}*/
 	/// Warpmode: if enabled, the layer will be turned into an "infinite" mode.
 	public void setWarpMode(bool w){
 		warpMode = w;
 	}
 	///Gets the the ID of the given element from the mapping. x , y : Position.
-	@nogc public wchar readMapping(int x, int y){
-		/*if(x<0 || x>totalX/tileX){
-		 return 0xFFFF;
-		 }*/
+	@nogc public MappingElement readMapping(int x, int y){
+		if(!warpMode){
+			if(x < 0 || y < 0 || x >= mX || y >= mY){
+				return MappingElement(0xFFFF);
+			}
+		}else{
+			x = x % mX;
+			y = y % mY;
+		}
 		return mapping[x+(mX*y)];
 	}
-	///
-	@nogc public BitmapAttrib readTileAttribute(int x, int y){
-		return tileAttributes[x+(mX*y)];
-	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
-	@nogc public void writeMapping(int x, int y, wchar w){
+	@nogc public void writeMapping(int x, int y, MappingElement w){
 		mapping[x+(mX*y)]=w;
 	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
-	@nogc public void writeTileAttribute(int x, int y, BitmapAttrib ba){
+	/*@nogc public void writeTileAttribute(int x, int y, BitmapAttrib ba){
 		tileAttributes[x+(mX*y)]=ba;
-	}
+	}*/
 	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
 	///x*y=map.length
-	public void loadMapping(int x, int y, wchar[] map, BitmapAttrib[] tileAttributes){
+	public void loadMapping(int x, int y, MappingElement[] mapping){
 		mX=x;
 		mY=y;
-		mapping = map;
-		this.tileAttributes = tileAttributes;
+		this.mapping = mapping;
 		totalX=mX*tileX;
 		totalY=mY*tileY;
 	}
 	///Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
 	public void addTile(ABitmap tile, wchar id){
 		if(tile.width==tileX && tile.height==tileY){
-			tileSet[id]=tile;
+			displayList[id]=DisplayListItem(id, tile);
 		}else{
 			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
 		}
 	}
 	///Removes the tile with the ID from the set.
 	public void removeTile(wchar id){
-		tileSet.remove(id);
+		displayList.remove(id);
 	}
 	///Returns which tile is at the given pixel
-	@nogc public wchar tileByPixel(int x, int y){
+	@nogc public MappingElement tileByPixel(int x, int y){
 		x /= tileX;
 		y /= tileY;
 		if(warpMode){
-			x %= totalX;
-			y %= totalY;
+			x %= mX;
+			y %= mY;
 		}
-		if(x >= mX || y >= mY || x < 0 || y < 0) return 0xFFFF;
+		if(x >= mX || y >= mY || x < 0 || y < 0) return MappingElement(0xFFFF);
 		return mapping[x + y*mX];
 	}
 	///Returns the tile's attribute at the given pixel
-	@nogc public BitmapAttrib tileAttributeByPixel(int x, int y){
+	/+@nogc public BitmapAttrib tileAttributeByPixel(int x, int y){
 		x /= tileX;
 		y /= tileY;
 		if(warpMode){
@@ -329,9 +336,10 @@ public class TileLayer : Layer, ITileLayer{
 		}
 		if(x >= mX || y >= mY || x < 0 || y < 0) return BitmapAttrib(false,false);
 		return tileAttributes[x + y*mX];
-	}
+	}+/
 	
-	public override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
+	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
+		import core.stdc.stdio;
 		int y = sY < 0 && !warpMode ? sY * -1 : 0;
 		int sY0 = cast(int)(cast(uint)(sY) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
 		int offsetP = y*pitch;	// The offset of the line that is being written
@@ -347,106 +355,79 @@ public class TileLayer : Layer, ITileLayer{
 			int targetX = totalX - sX > rasterX && !warpMode ? rasterX : rasterX - (totalX - sX);
 			void *p0 = (workpad + (x*Color.sizeof) + offsetP);
 			while(x < targetX){
-				wchar currentTile = tileByPixel(x+sX,y+sY);
+				MappingElement currentTile = tileByPixel(x+sX,y+sY);
 				int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
 				int xp = (offsetXA != 0 && x == 0) ? offsetXA : 0;	// offset of the first column
 				tileXtarget -= xp;	// length of the first tile
-				if(currentTile != 0xFFFF){ // skip if tile is null
-					BitmapAttrib tileAttrib = tileAttributeByPixel(x+sX,y+sY);
-					
-					//if(tileXtarget + x > ){}
-					
-					ABitmap ab = tileSet[currentTile];	// pointer to the current tile's pixeldata
-					int tileYOffset = tileY * threads.length;
-					tileYOffset *= tileAttrib.vertMirror ? -1 : 1;	//vertical mirroring
-					int pitchOffset = pitch * threads.length;
-					/+switch(ab.classinfo){
-						case typeid(Bitmap4Bit):+/
-					if(ab.classinfo == typeid(Bitmap4Bit)){
-						//tileYOffset >>=1;
-						foreach(int threadOffset; threads.parallel){
-							void* p1 = p0;
-							Bitmap4Bit bmp = cast(Bitmap4Bit)(ab);
-							ubyte* c = bmp.getPtr();
-							c += tileAttrib.vertMirror ? ((tileY - offsetYA - 1 + threadOffset) * tileX)>>1 : ((offsetYA + threadOffset) * tileX)>>1;
-							for(int y0 = offsetYA + threadOffset ; y0 < offsetYB ; y0+=threads.length){
-								main4BitColorLookupFunction(c, cast(uint*)src[threadOffset].ptr, cast(uint*)ab.getPalettePtr, tileX, 0);
-								if(tileAttrib.horizMirror){//Horizontal mirroring
-									flipHorizontal(cast(uint*)src[threadOffset].ptr, tileX);
+				if(currentTile.tileID != 0xFFFF){ // skip if tile is null
+					//BitmapAttrib tileAttrib = tileAttributeByPixel(x+sX,y+sY);
+					DisplayListItem d = displayList[currentTile.tileID];	// pointer to the current tile's pixeldata
+					int tileYOffset = tileY;
+					tileYOffset *= currentTile.attributes.vertMirror ? -1 : 1;	//vertical mirroring
+					//int pitchOffset = pitch * threads.length;
+					void* p1 = p0;
+					switch(d.wordLength){
+						case 4:
+							ubyte* c = cast(ubyte*)d.pixelDataPtr;
+							c += currentTile.attributes.vertMirror ? ((tileY - offsetYA - 1) * tileX)>>1 : (offsetYA * tileX)>>1;
+							for(int y0 = offsetYA ; y0 < offsetYB ; y0++){
+								main4BitColorLookupFunction(c, cast(uint*)src.ptr, cast(uint*)d.palettePtr, tileX, x & 1);
+								if(currentTile.attributes.horizMirror){//Horizontal mirroring
+									flipHorizontal(cast(uint*)src.ptr, tileX);
 								}
-								mainRenderingFunction(cast(uint*)src[threadOffset].ptr + xp, cast(uint*)p1, tileXtarget);
-								c += tileYOffset>>1;
-								p1 += pitchOffset;
+								mainRenderingFunction(cast(uint*)src.ptr + xp, cast(uint*)p1, tileXtarget);
+								c += tileYOffset>>>1;
+								p1 += pitch;
 							}
-							/+}+/
-						}
-					}else if(ab.classinfo == typeid(Bitmap8Bit)){
-						/+	break;
-						case typeid(Bitmap8Bit):+/
-						foreach(int threadOffset; threads.parallel){
-							void* p1 = p0;
-							Bitmap8Bit bmp = cast(Bitmap8Bit)(ab);
-							ubyte* c = bmp.getPtr();
-							c += tileAttrib.vertMirror ? (tileY - offsetYA - 1 + threadOffset) * tileX : (offsetYA + threadOffset) * tileX;
-							for(int y0 = offsetYA + threadOffset ; y0 < offsetYB ; y0+=threads.length){
-								main8BitColorLookupFunction(c, cast(uint*)src[threadOffset].ptr, cast(uint*)ab.getPalettePtr, tileX);
-								if(tileAttrib.horizMirror){//Horizontal mirroring
-									flipHorizontal(cast(uint*)src[threadOffset].ptr, tileX);
+							break;
+						case 8:
+							ubyte* c = cast(ubyte*)d.pixelDataPtr;
+							c += currentTile.attributes.vertMirror ? (tileY - offsetYA - 1) * tileX : offsetYA * tileX;
+							for(int y0 = offsetYA ; y0 < offsetYB ; y0++){
+								main8BitColorLookupFunction(c, cast(uint*)src.ptr, cast(uint*)d.palettePtr, tileX);
+								if(currentTile.attributes.horizMirror){//Horizontal mirroring
+									flipHorizontal(cast(uint*)src.ptr, tileX);
 								}
-								mainRenderingFunction(cast(uint*)src[threadOffset].ptr + xp, cast(uint*)p1, tileXtarget);
+								mainRenderingFunction(cast(uint*)src.ptr + xp, cast(uint*)p1, tileXtarget);
 								c += tileYOffset;
-								p1 += pitchOffset;
+								p1 += pitch;
 							}
-							/+}+/
-						}
-					}else if(ab.classinfo == typeid(Bitmap16Bit)){
-							/+break;
-						case typeid(Bitmap16Bit):+/
-						foreach(int threadOffset; threads.parallel){
-							void* p1 = p0;
-							Bitmap16Bit bmp = cast(Bitmap16Bit)(ab);
-							ushort* c = bmp.getPtr();
-							c += tileAttrib.vertMirror ? (tileY - offsetYA - 1 + threadOffset) * tileX : (offsetYA + threadOffset) * tileX;
-							for(int y0 = offsetYA + threadOffset ; y0 < offsetYB ; y0+=threads.length){
-								mainColorLookupFunction(c, cast(uint*)src[threadOffset].ptr, cast(uint*)palette, tileX);
-								if(tileAttrib.horizMirror){//Horizontal mirroring
-									flipHorizontal(cast(uint*)src[threadOffset].ptr, tileX);
+							break;
+						case 16:
+							ushort* c = cast(ushort*)d.pixelDataPtr;
+							c += currentTile.attributes.vertMirror ? (tileY - offsetYA - 1) * tileX : offsetYA * tileX;
+							for(int y0 = offsetYA ; y0 < offsetYB ; y0++){
+								mainColorLookupFunction(c, cast(uint*)src.ptr, cast(uint*)palette, tileX);
+								if(currentTile.attributes.horizMirror){//Horizontal mirroring
+									flipHorizontal(cast(uint*)src.ptr, tileX);
 								}
-								mainRenderingFunction(cast(uint*)src[threadOffset].ptr + xp, cast(uint*)p1, tileXtarget);
+								mainRenderingFunction(cast(uint*)src.ptr + xp, cast(uint*)p1, tileXtarget);
 								c += tileYOffset;
-								p1 += pitchOffset;
+								p1 += pitch;
 							}
-							
-						}
-					}else if(ab.classinfo == typeid(Bitmap32Bit)){
-							/+break;
-						case typeid(Bitmap32Bit):+/
-						foreach(int threadOffset; threads.parallel){
-							void* p1 = p0;
-							Bitmap32Bit bmp = cast(Bitmap32Bit)(ab);
-							Color* c = bmp.getPtr();								
-							c += tileAttrib.vertMirror ? (tileY - offsetYA - 1 + threadOffset) * tileX : (offsetYA + threadOffset) * tileX;
-							for(int y0 = offsetYA + threadOffset ; y0 < offsetYB ; y0+=threads.length){
-								if(tileAttrib.horizMirror){//Horizontal mirroring
-									copy32bit(cast(uint*)c, cast(uint*)src[threadOffset].ptr, tileX);
-									flipHorizontal(cast(uint*)src[threadOffset].ptr, tileX);
-									mainRenderingFunction(cast(uint*)src[threadOffset].ptr + xp, cast(uint*)p1, tileXtarget);
+							break;
+						case 32:
+							Color* c = cast(Color*)d.pixelDataPtr;								
+							c += currentTile.attributes.vertMirror ? (tileY - offsetYA - 1) * tileX : offsetYA * tileX;
+							for(int y0 = offsetYA ; y0 < offsetYB ; y0++){
+								if(currentTile.attributes.horizMirror){//Horizontal mirroring
+									copy32bit(cast(uint*)c, cast(uint*)src.ptr, tileX);
+									flipHorizontal(cast(uint*)src.ptr, tileX);
+									mainRenderingFunction(cast(uint*)src.ptr + xp, cast(uint*)p1, tileXtarget);
 								}else{
 									mainRenderingFunction(cast(uint*)(c + xp), cast(uint*)p1, tileXtarget);
 								}
 								c += tileYOffset;
-								p1 += pitchOffset;
+								p1 += pitch;
 							}
-							
-						}
-							/+break;
+							break;
 						default:
-							break;+/
+							break;
 					}
-					p0 += tileXtarget * Color.sizeof;
+					
 				}
+				p0 += tileXtarget * Color.sizeof;
 				x+=tileXtarget;
-
 			}
 			offsetP	+= !y ? pitch * (tileY - offsetY) : pitch * tileY;
 			/*if(y + tileY > y) y += tileY - offsetY0;
@@ -457,14 +438,7 @@ public class TileLayer : Layer, ITileLayer{
 				
 		
 	}
-	
-	public BLInfo getLayerInfo(){
-		return BLInfo(tileX,tileY,mX,mY);
-	}
-	public ABitmap getTile(wchar id){
-		return tileSet[id];
-	}
-	public wchar[] getMapping(){
+	public MappingElement[] getMapping(){
 		return mapping;
 	}
 	@nogc public int getTileWidth(){
@@ -487,275 +461,228 @@ public class TileLayer : Layer, ITileLayer{
 	}
 }
 /**
- * Implements a modified TileLayer with transformability.
+ * Implements a modified TileLayer with transformability with capabilities similar to MODE7.
  * <br/>
  * Transform function:
- * x_out = scale_x * (x_in + sX - x_0) + shear_x * (y_in + sY - y_0) + x_0
- * y_out = shear_y * (x_in + sX - x_0) + scale_y * (y_in + sY - y_0) + y_0
+ * [x',y'] = ([A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0])>>>8 + [x_0,y_0]
  * <br/>
- * For per-scanline transformation, use SuperTransformableTileLayer.
+ * All basic transform values are integer based, 256 equals with 1.0
  * <br/>
- * All basic transform values are integer based, 65536 equals with 1.0
+ * Restrictions compared to standard TileLayer:
+ * <ul>
+ * <li>Only a single type of bitmap can be used and 4 bit ones are excluded.</li>
+ * <li>8 bit tiles will share the same palette.</li>
+ * <li>Tile sizes must have any of the following sizes: 8, 16, 32, 64.</li>
+ * <li>Maximum layer size in pixels are restricted to 65536*65536</li>
+ * </ul>
+ * HDMA emulation supported through delegate hBlankInterrupt.
  */
-public class TransformableTileLayer : TileLayer{
-	//protected int[2] ac, bd, xy0;
-	protected float[4] transformPoints;
-	protected float[4] tpOrigin;
+public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int TileY = 8) : Layer, ITileLayer{
+	protected struct DisplayListItem{
+		void* pixelSrc;		///Used for quicker access to the Data
+		wchar ID;			///ID, mainly used as a padding
+		ushort reserved;	///Padding for 32 bit
+		this(wchar ID, BMPType tile){
+			this.ID = ID;
+			pixelSrc = cast(void*)tile.getPtr();
+		}
+	}
+	protected BinarySearchTree!(wchar, DisplayListItem) displayList;
+	protected short[4] transformPoints;	/** Defines how the layer is being transformed */
+	protected short[2] tpOrigin;
 	protected Bitmap32Bit backbuffer;	///used to store current screen output
-	private bool needsUpdate;
-	protected static immutable uint[4] maskAC = [uint.max, 0, uint.max, 0];
-	protected @nogc void function(int y, ref float[4] transformPoints, ref float[4] tpOrigin) hBlankInterrupt1;
+	static if(BMPType.mangleof == Bitmap8Bit.mangleof){
+		protected ubyte[] src;
+		protected Color* palettePtr;	///Shared palette
+	}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
+		protected ushort[] src;
+	}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
+		
+	}else static assert("Template parameter " ~ BMPType.mangleof ~ " not supported by TransformableTileLayer!");
+	protected bool needsUpdate;			///Set to true if backbuffer needs an update
+	protected bool warpMode;			///Repeats the whole layer if set to true
+	protected int mX, mY;				///"Inherited" from TileLayer
+	static if(TileX == 8)
+		protected immutable int shiftX = 3;
+	else static if(TileX == 16)
+		protected immutable int shiftX = 4;
+	else static if(TileX == 32)
+		protected immutable int shiftX = 5;
+	else static if(TileX == 64)
+		protected immutable int shiftX = 6;
+	else static assert("Unsupported horizontal tile size!");
+	static if(TileY == 8)
+		protected immutable int shiftY = 3;
+	else static if(TileY == 16)
+		protected immutable int shiftY = 4;
+	else static if(TileY == 32)
+		protected immutable int shiftY = 5;
+	else static if(TileY == 64)
+		protected immutable int shiftY = 6;
+	else static assert("Unsupported vertical tile size!");
+	protected int totalX, totalY;		
+	protected MappingElement[] mapping;
 
-	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
-		super(tX, tY, renderMode);
-		A = 1.0;
+	public @nogc void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y) hBlankInterrupt;
+
+	this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
+		A = 256;
 		B = 0;
 		C = 0;
-		D = 1.0;
+		D = 256;
 		x_0 = 0;
 		y_0 = 0;
+		setRenderingMode(renderMode);
+		needsUpdate = true;
 	}
 	override public void setRasterizer(int rX,int rY) {
-		backbuffer = new Bitmap32Bit(rX, rY);
 		super.setRasterizer(rX,rY);
+		backbuffer = new Bitmap32Bit(rX, rY);
+		static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+			src.length = rX;
+		}
 	}
 	
-	override public void updateRaster(void* workpad,int pitch,Color* palette,int[] threads) {
+	override public @nogc void updateRaster(void* workpad,int pitch,Color* palette,int[] threads) {
+		//import core.stdc.stdio;
 		if(needsUpdate){
 			needsUpdate = false;
 			//clear buffer
-			backbuffer.clear();
+			//backbuffer.clear();
+			Color* dest = backbuffer.getPtr();
+			short[2] sXsY = [cast(short)sX,cast(short)sY];
+			short[4] localTP = transformPoints;
+			short[2] localTPO = tpOrigin;
 			//write new data into it
-			foreach(int thread; threads.parallel){
-				for(int y = thread; y < rasterY; y += threads.length){
-					for(int x; x < rasterX; x++){
-						int[2] newpix = transformFunc([x,y]);
-						wchar tile = super.tileByPixel(newpix[0], newpix[1]);
-						if(tile != 0xFFFF){
-							BitmapAttrib b = super.tileAttributeByPixel(newpix[0], newpix[1]);
-							newpix[0] = /+b.horizMirror ? tileX - (newpix[0] % tileX) - 1 :+/ newpix[0] % tileX;
-							newpix[1] = /+b.vertMirror ? tileY - (newpix[1] % tileY) - 1 :+/ newpix[1] % tileY;
-							ABitmap ab = tileSet[tile];
-							Color c;
-							if(ab.classinfo == typeid(Bitmap4Bit)){
-								Bitmap4Bit bmp = cast(Bitmap4Bit)ab;
-								c = bmp.getPalettePtr[bmp.readPixel(newpix[0], newpix[1])];
-							}else if(ab.classinfo == typeid(Bitmap8Bit)){
-								Bitmap8Bit bmp = cast(Bitmap8Bit)ab;
-								c = bmp.getPalettePtr[bmp.readPixel(newpix[0], newpix[1])];
-							}else if(ab.classinfo == typeid(Bitmap16Bit)){
-								Bitmap16Bit bmp = cast(Bitmap16Bit)ab;
-								c = palette[bmp.readPixel(newpix[0], newpix[1])];
-							}else if(ab.classinfo == typeid(Bitmap32Bit)){
-								Bitmap32Bit bmp = cast(Bitmap32Bit)ab;
-								c = bmp.readPixel(newpix[0], newpix[1]);
-							}
-							backbuffer.writePixel(x,y,c);
+			for(short y; y < rasterY; y++){
+				if(hBlankInterrupt !is null){
+					hBlankInterrupt(localTP, sXsY, localTPO, y);
+				}
+				for(short x; x < rasterX; x++){
+					
+					int[2] xy = transformFunctionInt([x,y], localTP, localTPO, sXsY);
+					//printf("[%i,%i]",xy[0],xy[1]);
+					MappingElement currentTile = tileByPixelWithoutTransform(xy[0],xy[1]);
+					if(currentTile.tileID != 0xFFFF){
+						DisplayListItem d = displayList[currentTile.tileID];
+						static if(BMPType.mangleof == Bitmap8Bit.mangleof){
+							ubyte* tsrc = cast(ubyte*)d.pixelSrc;
+						}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
+							ushort* tsrc = cast(ushort*)d.pixelSrc;
+						}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
+							Color* tsrc = cast(Color*)d.pixelSrc;
+						}
+						xy = [xy[0] & (TileX - 1), xy[1] & (TileY - 1)];
+						tsrc += xy[0] + xy[1] * TileX;
+						static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+							src[x] = *tsrc;
+						}else{
+							*dest = *tsrc;
+							dest++;
+						}
+					}else{
+						static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+							src[x] = 0;
 						}
 					}
+				}
+				static if(BMPType.mangleof == Bitmap8Bit.mangleof){
+					main8BitColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palettePtr, rasterX);
+					dest += rasterX;
+				}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
+					mainColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palette, rasterX);
+					dest += rasterX;
 				}
 			}
 		}
 		//render surface onto the raster
-		foreach(int thread; threads.parallel){
-			void* p0 = workpad + thread * pitch;
-			int w = backbuffer.width;
-			Color* c = backbuffer.getPtr();
-			for(int y = thread; y < rasterY; y += threads.length){
-				mainRenderingFunction(cast(uint*)c,cast(uint*)p0,w);
-				c += w * threads.length;
-				p0 += pitch * threads.length;
-			}
+		void* p0 = workpad;
+		Color* c = backbuffer.getPtr();
+		for(int y; y < rasterY; y++){
+			mainRenderingFunction(cast(uint*)c,cast(uint*)p0,rasterX);
+			c += rasterX;
+			p0 += pitch;
 		}
+		
 	}
-	/+override public @nogc wchar tileByPixel(int x,int y) {
-		int[2] newpix = transformFunc([x,y]);
-		return super.tileByPixel(newpix[0], newpix[1]);
+	///Returns which tile is at the given pixel
+	@nogc public MappingElement tileByPixel(int x, int y){
+		int[2] xy = transformFunctionInt([cast(short)x,cast(short)y],transformPoints,tpOrigin,[cast(short)sX,cast(short)sY]);
+		return tileByPixelWithoutTransform(xy[0],xy[1]);
 	}
-	override public @nogc BitmapAttrib tileAttributeByPixel(int x,int y) {
-		int[2] newpix = transformFunc([x,y]);
-		return super.tileAttributeByPixel(newpix[0], newpix[1]);
-	}+/
-	
+	///Returns which tile is at the given pixel
+	@nogc protected MappingElement tileByPixelWithoutTransform(int x, int y){
+		x >>>= shiftX;
+		y >>>= shiftY;
+		if(warpMode){
+			x %= mX;
+			y %= mY;
+		}
+		if(x >= mX || y >= mY || x < 0 || y < 0) return MappingElement(0xFFFF);
+		return mapping[x + y*mX];
+	}
+		
 	/**
-	 * Main transform function, returns the point where the pixel is needed to be read from.
-	 * The function reads as:
-	 * [x',y'] = [A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0]) + [x_0,y_0]
+	 * Horizontal scaling. Greater than 256 means zooming in, less than 256 means zooming out.
 	 */
-	public @nogc int[2] transformFunc(int[2] xy){
-		version(X86){
-			int[2] result;
-			int[4] scrollpos = [sX, sY, sX, sY];
-			asm @nogc{
-				mov			EBX, this;
-				movq		XMM7, xy;
-				cvtdq2ps	XMM0, XMM7;	// ---- ---- yyyy xxxx
-				movups		XMM1, XMM0;	// ---- ---- YYYY XXXX
-				pslldq		XMM1, 8;	// YYYY XXXX ---- ----
-				por			XMM0, XMM1; // YYYY XXXX yyyy xxxx
-				movups		XMM7, scrollpos;
-				cvtdq2ps	XMM1, XMM7;
-				addps		XMM0, XMM1; // [x,y] + [sX,sY]
-				movups		XMM6, tpOrigin[EBX];
-				subps		XMM0, XMM6;	// [x,y] + [sX,sY] - [x_0,y_0]
-				movups		XMM2, transformPoints[EBX];	// dddd cccc bbbb aaaa
-				mulps		XMM2, XMM0;	//[A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0])
-				movups		XMM3, XMM2; // DDDD CCCC BBBB AAAA
-				psrldq		XMM3, 4;	// ---- DDDD CCCC BBBB
-				pand		XMM2, maskAC;	// ---- CCCC ---- AAAA
-				pand		XMM3, maskAC;	// ---- DDDD ---- BBBB
-				addps		XMM2, XMM3;	// ---- c+d ---- a+b
-				movups		XMM3, XMM2; // ---- C+D ---- A+B
-				psrldq		XMM3, 4;	// ---- ---- C+D ----
-				por			XMM2, XMM3; // ---- c+d C+D A+B
-				addps		XMM2, XMM6; // [A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0]) + [x_0,y_0]
-				cvttps2dq	XMM7, XMM2;
-				movq		result, XMM7;
-			}
-			return result;
-		}else version(X86_64){
-			int[2] result;
-			int[4] scrollpos = [sX, sY, sX, sY];
-			asm @nogc{
-				mov			RBX, this;
-				movq		XMM7, xy;
-				cvtdq2ps	XMM0, XMM7;	// ---- ---- yyyy xxxx
-				movups		XMM1, XMM0;	// ---- ---- YYYY XXXX
-				pslldq		XMM1, 8;	// YYYY XXXX ---- ----
-				por			XMM0, XMM1; // YYYY XXXX yyyy xxxx
-				movups		XMM7, scrollpos;
-				cvtdq2ps	XMM1, XMM7;
-				addps		XMM0, XMM1; // [x,y] + [sX,sY]
-				movups		XMM6, tpOrigin[RBX];
-				subps		XMM0, XMM6;	// [x,y] + [sX,sY] - [x_0,y_0]
-				movups		XMM2, transformPoints[RBX];	// dddd cccc bbbb aaaa
-				mulps		XMM2, XMM0;	//[A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0])
-				movups		XMM3, XMM2; // DDDD CCCC BBBB AAAA
-				psrldq		XMM3, 4;	// ---- DDDD CCCC BBBB
-				pand		XMM2, maskAC;	// ---- CCCC ---- AAAA
-				pand		XMM3, maskAC;	// ---- DDDD ---- BBBB
-				addps		XMM2, XMM3;	// ---- c+d ---- a+b
-				movups		XMM3, XMM2; // ---- C+D ---- A+B
-				psrldq		XMM3, 4;	// ---- ---- C+D ----
-				por			XMM2, XMM3; // ---- c+d C+D A+B
-				addps		XMM2, XMM6; // [A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0]) + [x_0,y_0]
-				cvttps2dq	XMM7, XMM2;
-				movq		result, XMM7;
-			}
-			return result;
-		}else{
-			
-		}
-	}
-	/+public @nogc @property int A(){
-		return ac[0];
-	}
-	public @nogc @property int B(){
-		return bd[0];
-	}
-	public @nogc @property int C(){
-		return ac[1];
-	}
-	public @nogc @property int D(){
-		return bd[1];
-	}
-	public @nogc @property int x_0(){
-		return xy0[0];
-	}
-	public @nogc @property int y_0(){
-		return xy0[1];
-	}
-	public @nogc @property int A(int newval){
-		ac[0] = newval;
-		needsUpdate = true;
-		return ac[0];
-	}
-	public @nogc @property int B(int newval){
-		bd[0] = newval;
-		needsUpdate = true;
-		return bd[0];
-	}
-	public @nogc @property int C(int newval){
-		ac[1] = newval;
-		needsUpdate = true;
-		return ac[1];
-	}
-	public @nogc @property int D(int newval){
-		bd[1] = newval;
-		needsUpdate = true;
-		return bd[1];
-	}
-	public @nogc @property int x_0(int newval){
-		xy0[0] = newval;
-		needsUpdate = true;
-		return xy0[0];
-	}
-	public @nogc @property int y_0(int newval){
-		xy0[1] = newval;
-		needsUpdate = true;
-		return xy0[1];
-	}+/
-	public @nogc @property float A(){
+	public @nogc @property short A(){
 		return transformPoints[0];
 	}
-	public @nogc @property float B(){
+	/**
+	 * Horizontal shearing.
+	 */
+	public @nogc @property short B(){
 		return transformPoints[1];
 	}
-	public @nogc @property float C(){
+	/**
+	 * Vertical shearing.
+	 */
+	public @nogc @property short C(){
 		return transformPoints[2];
 	}
-	public @nogc @property float D(){
+	/**
+	 * Vertical scaling. Greater than 256 means zooming in, less than 256 means zooming out.
+	 */
+	public @nogc @property short D(){
 		return transformPoints[3];
 	}
-	public @nogc @property float x_0(){
+	public @nogc @property short x_0(){
 		return tpOrigin[0];
 	}
-	public @nogc @property float y_0(){
+	public @nogc @property short y_0(){
 		return tpOrigin[1];
 	}
-	public @nogc @property float A(float newval){
+	public @nogc @property short A(short newval){
 		transformPoints[0] = newval;
 		needsUpdate = true;
 		return transformPoints[0];
 	}
-	public @nogc @property float B(float newval){
+	public @nogc @property short B(short newval){
 		transformPoints[1] = newval;
 		needsUpdate = true;
 		return transformPoints[1];
 	}
-	public @nogc @property float C(float newval){
+	public @nogc @property short C(short newval){
 		transformPoints[2] = newval;
 		needsUpdate = true;
 		return transformPoints[2];
 	}
-	public @nogc @property float D(float newval){
+	public @nogc @property short D(short newval){
 		transformPoints[3] = newval;
 		needsUpdate = true;
 		return transformPoints[3];
 	}
-	public @nogc @property float x_0(float newval){
+	public @nogc @property short x_0(short newval){
 		tpOrigin[0] = newval;
-		tpOrigin[2] = newval;
+		//tpOrigin[2] = newval;
 		needsUpdate = true;
 		return tpOrigin[0];
 	}
-	public @nogc @property float y_0(float newval){
+	public @nogc @property short y_0(short newval){
 		tpOrigin[1] = newval;
-		tpOrigin[3] = newval;
+		//tpOrigin[3] = newval;
 		needsUpdate = true;
 		return tpOrigin[1];
-	}
-	/**
-	 * Relative rotation clockwise by given degrees.
-	 */
-	public @nogc void rotate(double theta){
-		import std.math;
-		theta *= PI / 180;
-		transformPoints[0] += cos(theta);
-		transformPoints[1] += sin(theta);
-		transformPoints[2] += -1.0 * sin(theta);
-		transformPoints[3] += cos(theta);
-		needsUpdate = true;
 	}
 	override public @safe @nogc void scroll(int x,int y) {
 		super.scroll(x,y);
@@ -765,10 +692,74 @@ public class TransformableTileLayer : TileLayer{
 		super.relScroll(x,y);
 		needsUpdate = true;
 	}
-	
+	public MappingElement[] getMapping(){
+		return mapping;
+	}
+	@nogc public int getTileWidth(){
+		return TileX;
+	}
+	@nogc public int getTileHeight(){
+		return TileY;
+	}
+	@nogc public int getMX(){
+		return mX;
+	}
+	@nogc public int getMY(){
+		return mY;
+	}
+	@nogc public int getTX(){
+		return totalX;
+	}
+	@nogc public int getTY(){
+		return totalY;
+	}
+	/// Warpmode: if enabled, the layer will be turned into an "infinite" mode.
+	public void setWarpMode(bool w){
+		warpMode = w;
+	}
+	///Gets the the ID of the given element from the mapping. x , y : Position.
+	@nogc public MappingElement readMapping(int x, int y){
+		if(!warpMode){
+			if(x < 0 || y < 0 || x >= mX || y >= mY){
+				return MappingElement(0xFFFF);
+			}
+		}else{
+			x = x % mX;
+			y = y % mY;
+		}
+		return mapping[x+(mX*y)];
+	}
+	///Writes to the map. x , y : Position. w : ID of the tile.
+	@nogc public void writeMapping(int x, int y, MappingElement w){
+		mapping[x+(mX*y)]=w;
+	}
+	public void addTile(ABitmap tile, wchar id){
+		if(tile.classinfo != typeid(BMPType)){
+			throw new TileFormatException("Incorrect type of tile!");
+		}
+		if(tile.width == TileX && tile.height == TileY){
+			displayList[id]=DisplayListItem(id, cast(BMPType)tile);
+		}else{
+			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
+		}
+	}
+	///Removes the tile with the ID from the set.
+	public void removeTile(wchar id){
+		displayList.remove(id);
+	}
+	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
+	///x*y=map.length
+	public void loadMapping(int x, int y, MappingElement[] mapping){
+		mX=x;
+		mY=y;
+		this.mapping = mapping;
+		totalX=mX*TileX;
+		totalY=mY*TileY;
+	}
 }
 /**
  *Used by the collision detectors
+ *DEPRECATED! Use the new system instead!
  */
 public interface ISpriteCollision{
 	///Returns all sprite coordinates.
@@ -785,9 +776,9 @@ public interface ISpriteLayer{
 	///Removes the sprite with the given ID.
 	public void removeSprite(int n);
 	///Moves the sprite to the given location.
-	public void moveSprite(int n, int x, int y);
+	public @nogc void moveSprite(int n, int x, int y);
 	///Relatively moves the sprite by the given values.
-	public void relMoveSprite(int n, int x, int y);
+	public @nogc void relMoveSprite(int n, int x, int y);
 	///Gets the coordinate of the sprite.
 	public Coordinate getSpriteCoordinate(int n);
 	///Adds a sprite to the layer.
@@ -815,73 +806,179 @@ public interface SpriteMovementListener{
 /**
  * General-purpose sprite controller and renderer.
  */
-public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer{
-	private ABitmap[int] spriteSet;			///Stores the sprites.
-	private Coordinate[int] coordinates;		///Stores the coordinates.
-	private BitmapAttrib[int] spriteAttributes;	///Stores spriteattributes. (layer priority, mirroring, etc.)
-	private int[] spriteSorter;					///Stores the priorities.
-	public SpriteMovementListener[int] collisionDetector;
-	Color*[8] src;
-	size_t[8] prevSize;
+public class SpriteLayer : Layer, ISpriteLayer{
+	/**
+	 * Helps to determine the displaying properties and order of sprites.
+	 */
+	protected struct DisplayListItem{
+		Coordinate position;		/// Stores the position relative to the origin point. Actual display position is determined by the scroll positions.
+		Coordinate slice;			/// To compensate for the lack of scanline interrupt capabilities, this enables chopping off parts of a sprite.
+		//ABitmap sprite;				/// Defines the sprite being displayed on the screen.
+		void* pixelData;
+		Color* palette;
+		int priority;				/// Used for automatic sorting and identification, otherwise the DisplayList is pre-sorted for better performance.
+		BitmapAttrib attributes;	/// Horizontal and vertical mirroring.
+		ubyte wordLength;			/// Determines the word length of a sprite in a much quicker way than getting classinfo.
+		this(Coordinate position, ABitmap sprite, int priority, BitmapAttrib attributes = BitmapAttrib(false, false)){
+			this.position = position;
+			//this.sprite = sprite;
+			palette = sprite.getPalettePtr();
+			this.priority = priority;
+			this.attributes = attributes;
+			slice = Coordinate(0,0,sprite.width,sprite.height);
+			if(sprite.classinfo == typeid(Bitmap4Bit)){
+				wordLength = 4;
+				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
+			}else if(sprite.classinfo == typeid(Bitmap8Bit)){
+				wordLength = 8;
+				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
+			}else if(sprite.classinfo == typeid(Bitmap16Bit)){
+				wordLength = 16;
+				pixelData = (cast(Bitmap16Bit)(sprite)).getPtr;
+			}else if(sprite.classinfo == typeid(Bitmap32Bit)){
+				wordLength = 32;
+				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
+			}
+		}
+		this(Coordinate position, Coordinate slice, ABitmap sprite, int priority, BitmapAttrib attributes = BitmapAttrib(false, false)){
+			this.position = position;
+			//this.sprite = sprite;
+			palette = sprite.getPalettePtr();
+			this.priority = priority;
+			this.attributes = attributes;
+			if(slice.top < 0)
+				slice.top = 0;
+			if(slice.left < 0)
+				slice.left = 0;
+			if(slice.right >= sprite.width)
+				slice.right = sprite.width - 1;
+			if(slice.bottom >= sprite.height)
+				slice.bottom = sprite.height - 1;
+			this.slice = slice;
+			if(sprite.classinfo == typeid(Bitmap4Bit)){
+				wordLength = 4;
+				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
+				palette = sprite.getPalettePtr();
+			}else if(sprite.classinfo == typeid(Bitmap8Bit)){
+				wordLength = 8;
+				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
+				palette = sprite.getPalettePtr();
+			}else if(sprite.classinfo == typeid(Bitmap16Bit)){
+				wordLength = 16;
+				pixelData = (cast(Bitmap16Bit)(sprite)).getPtr;
+			}else if(sprite.classinfo == typeid(Bitmap32Bit)){
+				wordLength = 32;
+				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
+			}
+		}
+		void replaceSprite(ABitmap sprite){
+			//this.sprite = sprite;
+			palette = sprite.getPalettePtr();
+			if(sprite.classinfo == typeid(Bitmap4Bit)){
+				wordLength = 4;
+				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
+				palette = sprite.getPalettePtr();
+			}else if(sprite.classinfo == typeid(Bitmap8Bit)){
+				wordLength = 8;
+				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
+				palette = sprite.getPalettePtr();
+			}else if(sprite.classinfo == typeid(Bitmap16Bit)){
+				wordLength = 16;
+				pixelData = (cast(Bitmap16Bit)(sprite)).getPtr;
+			}else if(sprite.classinfo == typeid(Bitmap32Bit)){
+				wordLength = 32;
+				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
+			}
+		}
+		@nogc int opCmp(in DisplayListItem d){
+			return priority - d.priority;
+		}
+		@nogc bool opEquals(in DisplayListItem d){
+			return priority == d.priority;
+		}
+	}
+	protected DisplayListItem[] displayList;	///Stores the display data with the 
+	//private ABitmap[int] spriteSet;			///Stores the sprites.
+	//private Coordinate[int] coordinates;		///Stores the coordinates.
+	//private BitmapAttrib[int] spriteAttributes;	///Stores spriteattributes. (layer priority, mirroring, etc.)
+	//private int[] spriteSorter;					///Stores the priorities.
+	//public SpriteMovementListener[int] collisionDetector;	Deprecated, different collision detection will be used in the future.
+	Color[] src;
+	//size_t[8] prevSize;
 	
 	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
 		setRenderingMode(renderMode);
 		//src[0].length = 1024;
-		for(int i; i < src.length; i++){
-			src[i] = cast(Color*)malloc(256);
-			prevSize[i]	= 256;
-		}
 	}
-	~this(){
+	/+~this(){
 		foreach(p; src){
 			if(p)
 				free(p);
 		}
+	}+/
+	override public void setRasterizer(int rX,int rY) {
+		super.setRasterizer(rX,rY);
+		/+for(int i; i < src.length; i++){
+			src[i].length=rY;
+		}+/
+		src.length = rY;
 	}
 	
 	public void addSprite(ABitmap s, int n, Coordinate c, BitmapAttrib attr){
-		spriteSet[n] = s;
-		coordinates[n] = c;
-		spriteAttributes[n] = attr;
-		spriteSorter ~= n;
-		//sortSprites();
-		spriteSorter.sort();
-		
+		import std.algorithm.sorting;
+		import std.algorithm.searching;
+		DisplayListItem d = DisplayListItem(c, s, n, attr);
+		if(canFind(displayList, d)){
+			throw new SpritePriorityException("Sprite number already exists!");
+		}else{
+			displayList ~= d;
+			displayList.sort!"a > b"();
+		}
 	}
 	
 	public void addSprite(ABitmap s, int n, int x, int y, BitmapAttrib attr){
-		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,x+s.width,y+s.height);
-		spriteAttributes[n] = attr;
-		//spriteSorter[n] = n;
-		spriteSorter ~= n;
-		//sortSprites();
-		
-		spriteSorter.sort();
-		
+		import std.algorithm.sorting;
+		import std.algorithm.searching;
+		Coordinate c = Coordinate(x,y,x+s.width,y+s.height);
+		DisplayListItem d = DisplayListItem(c, s, n, attr);
+		if(canFind(displayList, d)){
+			throw new SpritePriorityException("Sprite number already exists!");
+		}else{
+			displayList ~= d;
+			displayList.sort!"a > b"();
+		}
 	}
 	public void editSpriteAttribute(S, T)(int n, T value){
-		spriteAttributes[n].S = value;
+		for(int i; i < displayList.length ; i++){
+			if(displayList[i].priority == n){
+				displayList[i].S = value;
+				return;
+			}
+		}
 	}
 	public void replaceSpriteAttribute(int n, BitmapAttrib attr){
-		spriteAttributes[n] = attr;
+		for(int i; i < displayList.length ; i++){
+			if(displayList[i].priority == n){
+				displayList[i].attributes = attr;
+				return;
+			}
+		}
 	}
 	public void replaceSprite(ABitmap s, int n){
-
-		if(!(s.width == spriteSet[n].width && s.height == spriteSet[n].height)){
-			coordinates[n] = Coordinate(coordinates[n].left,coordinates[n].top,coordinates[n].left + s.width,coordinates[n].top + s.height);
+		for(int i; i < displayList.length ; i++){
+			if(displayList[i].priority == n){
+				displayList[i].replaceSprite(s);
+				return;
+			}
 		}
-		spriteSet[n] = s;
 	}
 
 	public void replaceSprite(ABitmap s, int n, int x, int y){
-		spriteSet[n] = s;
-		coordinates[n] = Coordinate(x,y,x+s.width,y+s.height);
+		
 	}
 
 	public void replaceSprite(ABitmap s, int n, Coordinate c){
-		spriteSet[n] = s;
-		coordinates[n] = c;
+		
 	}
 	
 	/*public ushort getTransparencyIndex(){
@@ -889,182 +986,186 @@ public class SpriteLayer : Layer, ISpriteCollision, ISpriteLayer{
 	}*/
 	
 	public void removeSprite(int n){
-		//spriteSorter.remove(n);
-		coordinates.remove(n);
-		spriteAttributes.remove(n);
-		spriteSet.remove(n);
-		int[] newSpriteSorter;
-		for(int i; i < spriteSorter.length; i++){
-			//writeln(0);
-			if(spriteSorter[i] != n){
-				newSpriteSorter ~= spriteSorter[i];
-				
+		DisplayListItem[] ndl;
+		ndl.reserve(displayList.length);
+		for(int i; i < displayList.length ; i++){
+			if(displayList[i].priority != n){
+				ndl ~= displayList[i];
 			}
 		}
-		spriteSorter = newSpriteSorter;
-		//writeln(spriteSorter);
-		//sortSprites();
+		displayList = ndl;
 	}
-	public void moveSprite(int n, int x, int y){
-		coordinates[n].move(x,y);
-		callCollisionDetector(n);
+	public @nogc void moveSprite(int n, int x, int y){
+		for(int i; i < displayList.length ; i++){
+			if(displayList[i].priority == n){
+				displayList[i].position.move(x,y);
+				return;
+			}
+		}
 	}
-	public void relMoveSprite(int n, int x, int y){
-		coordinates[n].relMove(x,y);
-		callCollisionDetector(n);
-	}
-	
-	///Returns all sprite coordinates.
-	public ref Coordinate[int] getCoordinates(){
-		return coordinates;
-	}
-	///Returns all sprite attributes.
-	public ref BitmapAttrib[int] getSpriteAttributes(){
-		return spriteAttributes;
-	}
-	public ref int[] getSpriteSorter(){
-		return spriteSorter;
-	}
-	
-	private void callCollisionDetector(int n){
-		foreach(c; collisionDetector){
-			c.spriteMoved(n);
+	public @nogc void relMoveSprite(int n, int x, int y){
+		for(int i; i < displayList.length ; i++){
+			if(displayList[i].priority == n){
+				displayList[i].position.relMove(x,y);
+				return;
+			}
 		}
 	}
 	
-	public Coordinate getSpriteCoordinate(int n){
-		return coordinates[n];
+	public @nogc Coordinate getSpriteCoordinate(int n){
+		for(int i; i < displayList.length ; i++){
+			if(displayList[i].priority == n){
+				return displayList[i].position;
+			}
+		}
+		return Coordinate(0,0,0,0);
 	}
 
-	public override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
-		foreach_reverse(int i ; spriteSorter){
-			if((coordinates[i].right > sX && coordinates[i].bottom > sY) && (coordinates[i].left < sX + rasterX && coordinates[i].top < sY + rasterY)) {
-				int offsetXA = sX > coordinates[i].left ? sX - coordinates[i].left : 0;//Left hand side offset
-				int offsetXB = sX + rasterX < coordinates[i].right ? coordinates[i].right - rasterX : 0; //Right hand side offset
-				int offsetYA = sY > coordinates[i].top ? sY - coordinates[i].top : 0;
-				int offsetYB = sY + rasterY < coordinates[i].bottom ? coordinates[i].bottom - rasterY : 0;
-				int sizeX = coordinates[i].width(), offsetX = coordinates[i].left - sX;
+	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
+		foreach(i ; displayList){
+			if((i.position.right > sX && i.position.bottom > sY) && (i.position.left < sX + rasterX && i.position.top < sY + rasterY)){
+				int offsetXA = sX > i.position.left ? sX - i.position.left : 0;//Left hand side offset
+				int offsetXB = sX + rasterX < i.position.right ? i.position.right - rasterX : 0; //Right hand side offset
+				int offsetYA = sY > i.position.top ? sY - i.position.top : 0;
+				int offsetYB = sY + rasterY < i.position.bottom ? i.position.bottom - rasterY : 0;
+				int sizeX = i.position.width(), offsetX = i.position.left - sX;
 				int length = sizeX - offsetXA - offsetXB, lfour = length * 4;
-				int offsetY = sY < coordinates[i].top ? (coordinates[i].top-sY)*pitch : 0;
-				int pitchOffset = pitch * threads.length;
-				int sizeXOffset = sizeX * threads.length;
-				sizeXOffset *= spriteAttributes[i].vertMirror ? -1 : 1;
-				ABitmap ab = spriteSet[i];
-				/+switch(ab.classinfo){
-					case typeid(Bitmap4Bit):+/
-				if(ab.classinfo == typeid(Bitmap4Bit)){
-					Bitmap4Bit bmp = cast(Bitmap4Bit)ab;
-					ubyte* p0 = bmp.getPtr();
-					if(spriteAttributes[i].vertMirror)
-						p0 += (sizeX * (coordinates[i].height - offsetYB))>>1;
-					else
-						p0 += (sizeX * offsetYA)>>1;
-					if(!spriteAttributes[i].horizMirror)
-						p0 += offsetXA>>1;
-					else
-						p0 += offsetXB>>1;
-					foreach(int threadOffset; threads.parallel){
-						src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
-						ubyte* p1 = p0 + threadOffset * sizeX;
-						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
-						for(int y = offsetYA + threadOffset ; y < coordinates[i].height - offsetYB ; y+=threads.length){		
-							main4BitColorLookupFunction(p1, cast(uint*)src[threadOffset], cast(uint*)ab.getPalettePtr(), length, offsetXA);
-							if(spriteAttributes[i].horizMirror){//Flips lines if needed
-								flipHorizontal(cast(uint*)src[threadOffset], length);
+				int offsetY = sY < i.position.top ? (i.position.top-sY)*pitch : 0;
+				//int pitchOffset = pitch * threads.length;
+				//int sizeXOffset = sizeX * threads.length;
+				//sizeXOffset *= i.attributes.vertMirror ? -1 : 1;
+				int sizeXOffset = sizeX * (i.attributes.vertMirror ? -1 : 1);
+				switch(i.wordLength){
+					case 4:
+						//Bitmap4Bit bmp = cast(Bitmap4Bit)i.sprite;
+						//ubyte* p0 = bmp.getPtr();
+						ubyte* p0 = cast(ubyte*)i.pixelData;
+						if(i.attributes.vertMirror)
+							p0 += (sizeX * (i.position.height - offsetYB))>>1;
+						else
+							p0 += (sizeX * offsetYA)>>1;
+						if(!i.attributes.horizMirror)
+							p0 += offsetXA>>1;
+						else
+							p0 += offsetXB>>1;
+						//foreach(int threadOffset; threads.parallel){
+						//ubyte* p1 = p0 + threadOffset * sizeX;
+						//void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
+						//for(int y = offsetYA + threadOffset ; y < i.position.height - offsetYB ; y+=threads.length){
+						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){	
+							//main4BitColorLookupFunction(p1, cast(uint*)src[threadOffset], cast(uint*)i.sprite.getPalettePtr(), length, offsetXA);
+							main4BitColorLookupFunction(p0, cast(uint*)src.ptr, cast(uint*)i.palette, length, offsetXA);
+							if(i.attributes.horizMirror){//Flips lines if needed
+								flipHorizontal(cast(uint*)src.ptr, length);
 							}
-							mainRenderingFunction(cast(uint*)src[threadOffset], cast(uint*)dest, length);
-							dest += pitchOffset;
-							p1 += sizeXOffset;
+							mainRenderingFunction(cast(uint*)src.ptr, cast(uint*)dest, length);
+							//dest += pitchOffset;
+							dest += pitch;
+							//p1 += sizeXOffset;
+							p0 += sizeXOffset;
 						}
-					}
-				}else if(ab.classinfo == typeid(Bitmap8Bit)){
-						/+break;
-					case typeid(Bitmap8Bit):+/
-					Bitmap8Bit bmp = cast(Bitmap8Bit)ab;
-					ubyte* p0 = bmp.getPtr();
-					if(spriteAttributes[i].vertMirror)
-						p0 += sizeX * (coordinates[i].height - offsetYB);
-					else
+						//}
+						break;
+					case 8:
+						//Bitmap8Bit bmp = cast(Bitmap8Bit)i.sprite;
+						//ubyte* p0 = bmp.getPtr();
+						ubyte* p0 = cast(ubyte*)i.pixelData;
+						if(i.attributes.vertMirror)
+							p0 += sizeX * (i.position.height - offsetYB);
+						else
 						p0 += sizeX * offsetYA;
-					if(!spriteAttributes[i].horizMirror)
-						p0 += offsetXA;
-					else
-						p0 += offsetXB;
-					foreach(int threadOffset; threads.parallel){
-						src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
-						ubyte* p1 = p0 + threadOffset * sizeX;
-						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
-						for(int y = offsetYA + threadOffset ; y < coordinates[i].height - offsetYB ; y+=threads.length){		
-							main8BitColorLookupFunction(p1, cast(uint*)src[threadOffset], cast(uint*)ab.getPalettePtr(), length);
-							if(spriteAttributes[i].horizMirror){//Flips lines if needed
-								flipHorizontal(cast(uint*)src[threadOffset], length);
+						if(!i.attributes.horizMirror)
+							p0 += offsetXA;
+						else
+							p0 += offsetXB;
+						//foreach(int threadOffset; threads.parallel){
+						//ubyte* p1 = p0 + threadOffset * sizeX;
+						//void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
+						//for(int y = offsetYA + threadOffset ; y < i.position.height - offsetYB ; y+=threads.length){	
+						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){	
+							//main8BitColorLookupFunction(p1, cast(uint*)src[threadOffset], cast(uint*)i.sprite.getPalettePtr(), length);
+							main8BitColorLookupFunction(p0, cast(uint*)src.ptr, cast(uint*)i.palette, length);
+							if(i.attributes.horizMirror){//Flips lines if needed
+								flipHorizontal(cast(uint*)src.ptr, length);
 							}
-							mainRenderingFunction(cast(uint*)src[threadOffset], cast(uint*)dest, length);
-							dest += pitchOffset;
-							p1 += sizeXOffset;
+							mainRenderingFunction(cast(uint*)src.ptr, cast(uint*)dest, length);
+							//dest += pitchOffset;
+							dest += pitch;
+							//p1 += sizeXOffset;
+							p0 += sizeXOffset;
 						}
-					}
-				}else if(ab.classinfo == typeid(Bitmap16Bit)){
-						/+break;
-					case typeid(Bitmap16Bit):+/
-					Bitmap16Bit bmp = cast(Bitmap16Bit)ab;
-					ushort* p0 = bmp.getPtr();
-					if(spriteAttributes[i].vertMirror)
-						p0 += sizeX * (coordinates[i].height - offsetYB);
-					else
-						p0 += sizeX * offsetYA;
-					if(!spriteAttributes[i].horizMirror)
-						p0 += offsetXA;
-					else
-						p0 += offsetXB;
-					foreach(int threadOffset; threads.parallel){
-						if(prevSize[threadOffset] < lfour)
-							src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
-						ushort* p1 = p0 + threadOffset * sizeX;
-						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
-						for(int y = offsetYA + threadOffset ; y < coordinates[i].height - offsetYB ; y+=threads.length){		
-							mainColorLookupFunction(p1, cast(uint*)src[threadOffset], cast(uint*)palette, length);
-							if(spriteAttributes[i].horizMirror){//Flips lines if needed
-								flipHorizontal(cast(uint*)src[threadOffset], length);
+						//}
+						break;
+					case 16:
+						//Bitmap16Bit bmp = cast(Bitmap16Bit)i.sprite;
+						//ushort* p0 = bmp.getPtr();
+						ushort* p0 = cast(ushort*)i.pixelData;
+						if(i.attributes.vertMirror)
+							p0 += sizeX * (i.position.height - offsetYB);
+						else
+							p0 += sizeX * offsetYA;
+						if(!i.attributes.horizMirror)
+							p0 += offsetXA;
+						else
+							p0 += offsetXB;
+						//foreach(int threadOffset; threads.parallel){
+						//ushort* p1 = p0 + threadOffset * sizeX;
+						//void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
+						//for(int y = offsetYA + threadOffset ; y < i.position.height - offsetYB ; y+=threads.length){
+						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){
+							//mainColorLookupFunction(p1, cast(uint*)src[threadOffset], cast(uint*)palette, length);
+							//mainColorLookupFunction(p1, cast(uint*)src[threadOffset].ptr, cast(uint*)palette, length);
+							mainColorLookupFunction(p0, cast(uint*)src.ptr, cast(uint*)palette, length);
+							if(i.attributes.horizMirror){//Flips lines if needed
+								flipHorizontal(cast(uint*)src.ptr, length);
 							}
-							mainRenderingFunction(cast(uint*)src[threadOffset], cast(uint*)dest, length);
-							dest += pitchOffset;
-							p1 += sizeXOffset;
+							mainRenderingFunction(cast(uint*)src.ptr, cast(uint*)dest, length);
+							//dest += pitchOffset;
+							dest += pitch;
+							//p1 += sizeXOffset;
+							p0 += sizeXOffset;
 						}
-					}
-				}else if(ab.classinfo == typeid(Bitmap32Bit)){
-						/+break;
-					case typeid(Bitmap32Bit):+/
-					Bitmap32Bit bmp = cast(Bitmap32Bit)ab;
-					Color* p0 = bmp.getPtr();
-					if(spriteAttributes[i].vertMirror)
-						p0 += sizeX * (coordinates[i].height - offsetYB);
-					else
-						p0 += sizeX * offsetYA;
-					if(!spriteAttributes[i].horizMirror)
-						p0 += offsetXA;
-					else
-						p0 += offsetXB;
-					foreach(int threadOffset; threads.parallel){
-						if(spriteAttributes[i].horizMirror)
-							src[threadOffset] = cast(Color*)realloc(src[threadOffset], lfour);
-						Color* p1 = p0 + threadOffset * sizeX;
-						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
-						for(int y = offsetYA + threadOffset ; y < coordinates[i].height - offsetYB ; y+=threads.length){		
-							if(spriteAttributes[i].horizMirror){//Flips lines if needed
-								copy32bit(cast(uint*)p1, cast(uint*)src[threadOffset], length);
-								flipHorizontal(cast(uint*)src[threadOffset], length);
-								mainRenderingFunction(cast(uint*)src[threadOffset], cast(uint*)dest, length);
+						//}
+						break;
+					case 32:
+						//Bitmap32Bit bmp = cast(Bitmap32Bit)i.sprite;
+						//Color* p0 = bmp.getPtr();
+						uint* p0 = cast(uint*)i.pixelData;
+						if(i.attributes.vertMirror)
+							p0 += sizeX * (i.position.height - offsetYB);
+						else
+							p0 += sizeX * offsetYA;
+						if(!i.attributes.horizMirror)
+							p0 += offsetXA;
+						else
+							p0 += offsetXB;
+						//foreach(int threadOffset; threads.parallel){
+							
+						//uint* p1 = p0 + threadOffset * sizeX;
+						//void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
+						//for(int y = offsetYA + threadOffset ; y < i.position.height - offsetYB ; y+=threads.length){		
+						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){
+							if(i.attributes.horizMirror){//Flips lines if needed
+								//copy32bit(p1, cast(uint*)(src[threadOffset].ptr), length);
+								copy32bit(p0, cast(uint*)(src.ptr), length);
+								flipHorizontal(cast(uint*)(src.ptr), length);
+								mainRenderingFunction(cast(uint*)(src.ptr), cast(uint*)dest, length);
 							}else{
-								mainRenderingFunction(cast(uint*)p1, cast(uint*)dest, length);
+								mainRenderingFunction(p0, cast(uint*)dest, length);
 							}
-							dest += pitchOffset;
-							p1 += sizeXOffset;
+							//dest += pitchOffset;
+							dest += pitch;
+							//p1 += sizeXOffset;
+							p0 += sizeXOffset;
 						}
-					}
-					/+	break;
+						//}
+						break;
 					default:
-						break;+/
+						break;
 				}
 				
 			}
@@ -1136,6 +1237,7 @@ public class EffectLayer : Layer{
 	 * Adds a new command with the specified values.
 	 */
 	public void addCommand(int priority, EffectLayerCommand command){
+		import std.algorithm.sorting;
 		commandList[priority] = command;
 		commandListPriorities ~= priority;
 		commandListPriorities.sort();

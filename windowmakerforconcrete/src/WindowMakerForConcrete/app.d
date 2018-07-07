@@ -240,29 +240,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		WindowElement.inputHandler = input;
 
 		INIT_CONCRETE(ewh);
-		/*StyleSheet ss = new StyleSheet();
-
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI0"),"closeButtonA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI1"),"closeButtonB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI0"),"checkBoxA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI1"),"checkBoxB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI2"),"radioButtonA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI3"),"radioButtonB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI4"),"upArrowA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI5"),"upArrowB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI6"),"downArrowA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI7"),"downArrowB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI8"),"plusA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUI9"),"plusB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIA"),"minusA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIB"),"minusB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIC"),"leftArrowA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUID"),"leftArrowB");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIE"),"rightArrowA");
-		ss.setImage(loadBitmapFromXMP(ssOrigin,"GUIF"),"rightArrowB");
-		ss.addFontset(defaultFont, "default");
-		ewh.defaultStyle = ss;
-		Window.defaultStyle = ss;*/
+		
 		ewh.initGUI();
 		ewh.ma = this;
 

@@ -18,7 +18,7 @@ public class StyleSheet{
 		Color(0xFF,0x00,0xFF,0x00),Color(0xFF,0x00,0x7F,0x00),Color(0xFF,0x00,0x00,0xFF),Color(0xFF,0x00,0x00,0x7F),
 		Color(0xFF,0xFF,0xFF,0x00),Color(0xFF,0xFF,0x7F,0x00),Color(0xFF,0x7F,0x7F,0x7F),Color(0xFF,0x00,0x00,0x00)];	///Default 16 color palette
 	private Fontset!Bitmap16Bit[string] font;		///Fonts stored here.
-	private ushort[string] color;		///Colors are identificated by strings.
+	private ushort[string] color;		///Colors are identified by strings.
 	private Bitmap16Bit[string] images;		///For icons, pattern fills, etc...
 	public int[string] drawParameters;		///Draw parameters are used for border thickness, padding, etc...
 	public string[string] fontTypes;		///Font type descriptions for various kind of components

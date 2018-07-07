@@ -9,6 +9,7 @@ module editor;
 import PixelPerfectEngine.graphics.outputScreen;
 import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.layers;
+import PixelPerfectEngine.graphics.paletteMan;
 import PixelPerfectEngine.extbmp.extbmp;
 
 import PixelPerfectEngine.graphics.bitmap;
@@ -23,12 +24,14 @@ import std.stdio;
 import std.conv;
 import derelict.sdl2.sdl;
 import PixelPerfectEngine.concrete.window;
+import PixelPerfectEngine.concrete.eventChainSystem;
 import PixelPerfectEngine.map.mapload;
 
 import converterdialog;
 import tileLayer;
 import newLayerDialog;
 import about;
+import editorEvents;
 
 public interface IEditor{
 	public void onExit();
@@ -277,7 +280,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public int selectedLayer;
 	public SpriteLayer windowing;
 	public SpriteLayer bitmapPreview;
-	public bool onexit, exitDialog, newLayerDialog, mouseState;
+	public bool onexit, exitDialog, newLayerDialog, mouseState, rasterRefresh;
 	public WindowElement[] elements;
 	public Window test;
 	public EditorWindowHandler wh;
@@ -290,6 +293,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	private int mouseX, mouseY;
 	private Coordinate selection, selectedTiles;
 	public PlacementMode pm;
+	public UndoableStack undoStack;
+	public PaletteManager palman;
 
 	public void mouseButtonEvent(Uint32 which, Uint32 timestamp, Uint32 windowID, Uint8 button, Uint8 state, Uint8 clicks, Sint32 x, Sint32 y){
 		//writeln(windowID);
@@ -303,17 +308,15 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 					mouseState = true;
 				}else if(mouseState){
 					mouseState = false;
-					if(mouseX == x && mouseY == y){//placement
+					if(mouseX == x && mouseY == y){//single placement
 						if(layers[selectedLayer].classinfo == typeid(TileLayer)){
 							TileLayer tl = cast(TileLayer)(layers[selectedLayer]);
 							int targetX = (x + tl.getSX()) / tl.getTileWidth();
 							int targetY = (y + tl.getSY()) / tl.getTileHeight();
 							if(targetX >= 0 && targetY >= 0 && targetX < tl.getMX && targetY < tl.getMY){
-								if(pm == PlacementMode.NORMAL || (pm == PlacementMode.VOIDFILL && tl.readMapping(targetX,targetY) == 0xFFFF
-															|| (pm == PlacementMode.OVERWRITE && tl.readMapping(targetX,targetY) != 0xFFFF))){
-									tl.writeMapping(targetX,targetY,selectedTile);
-									tl.writeTileAttribute(targetX,targetY,selectedTileAttrib);
-									document.tld[selectedLayer].mapping.writeMapping(targetX,targetY,selectedTile,selectedTileAttrib);
+								if(pm == PlacementMode.NORMAL || (pm == PlacementMode.VOIDFILL && tl.readMapping(targetX,targetY).tileID == 0xFFFF
+															|| (pm == PlacementMode.OVERWRITE))){
+									undoStack.addToTop(new WriteToMapSingle(cast(ITileLayer)(layers[selectedLayer]), x, y, MappingElement(selectedTile, selectedTileAttrib)));
 								}
 							}
 						}else{//sprite placement
@@ -341,27 +344,26 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 							c.right = (c.right + tl.getSX()) / tl.getTileWidth();
 							c.top = (c.top + tl.getSY()) / tl.getTileHeight();
 							c.bottom = (c.bottom + tl.getSY()) / tl.getTileHeight();
-							for(int iY = c.top ; iY < c.bottom ; iY++){
-								for(int iX = c.left ; iX < c.right ; iX++){
-									if(pm == PlacementMode.NORMAL || (pm == PlacementMode.VOIDFILL && tl.readMapping(iX,iY) == 0xFFFF
-																|| (pm == PlacementMode.OVERWRITE && tl.readMapping(iX,iY) != 0xFFFF))){
-										tl.writeMapping(iX,iY,selectedTile);
-										tl.writeTileAttribute(iX,iY,selectedTileAttrib);
-										document.tld[selectedLayer].mapping.writeMapping(iX,iY,selectedTile,selectedTileAttrib);
-									}
-								}
+							//Fill
+							if(pm == PlacementMode.VOIDFILL){
+								undoStack.addToTop(new WriteToMapVoidFill(cast(ITileLayer)(layers[selectedLayer]), c, MappingElement(selectedTile, selectedTileAttrib)));
+							}else{
+								undoStack.addToTop(new WriteToMapOverwrite(cast(ITileLayer)(layers[selectedLayer]), c, MappingElement(selectedTile, selectedTileAttrib)));
 							}
 						}
 					}
 				}
-			}else if(button == MouseButton.MID && pm != PlacementMode.NULL){//deletion
+			}else if(button == MouseButton.MID){//deletion
 				
 			}
 		}
+		setRasterRefresh;
 	}
-	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){}
+	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){
+		setRasterRefresh;
+	}
 	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
-	
+		setRasterRefresh;
 	}
 	public void keyPressed(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){
 		switch(ID){
@@ -401,6 +403,14 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			case "load":
 				FileDialog fd = new FileDialog("Load document","docLoad",&actionEvent,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.xmf"])],".\\",false);
 				wh.addWindow(fd);
+				break;
+			case "newLayer":
+				NewLayerDialog nld = new NewLayerDialog(this);
+				wh.addWindow(nld);
+				break;
+			case "layerTools":
+				TileLayerEditor tle = new TileLayerEditor(this);
+				wh.addWindow(tle);
 				break;
 			default: break;
 		}
@@ -446,13 +456,13 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				break;
 		}
 	}
-	public void onQuit(){onexit = !onexit;}
+	public void onQuit(){onExit();}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
 	public void xmpToolkit(){
 		wh.addWindow(new ConverterDialog(input,bitmapPreview));
 	}
-	public void placeObject(int x, int y){
+	/*public void placeObject(int x, int y){
 		if(backgroundLayers.get(selectedLayer, null) !is null){
 			int sX = backgroundLayers[selectedLayer].getSX(), sY = backgroundLayers[selectedLayer].getSY();
 			sX += x;
@@ -463,7 +473,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				backgroundLayers[selectedLayer].writeMapping(sX, sY, selectedTile);
 			}
 		}
-	}
+	}*/
 	public this(string[] args){
 		pm = PlacementMode.OVERWRITE;
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
@@ -510,44 +520,21 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		Color(0xFF,0xFF,0xFF,0x00),Color(0xFF,0xFF,0x7F,0x00),Color(0xFF,0x7F,0x7F,0x7F),Color(0xFF,0x00,0x00,0x00)];// StyleSheet.defaultpaletteforGUI;
 		//writeln(rasters[0].palette);
 		//rasters[0].addRefreshListener(ow[0],0);
-
+		WindowElement.onDraw = &setRasterRefresh;
+		PopUpElement.onDraw = &setRasterRefresh;
+		Window.onDrawUpdate = &setRasterRefresh;
 	}
-	/**
-	 * Writes a singe element to a TileLayer
-	 */
-	public void writeToTileLayer(int x, int y, int num, wchar c, BitmapAttrib b){
-		//update the mapfile
-		document.tld[num].mapping.writeMapping(x,y,c,b);
-		//update the tilelayer
-		backgroundLayers[num].writeMapping(x,y,c);
-		backgroundLayers[num].writeTileAttribute(x,y,b);
-	}
-	/**
-	 * Writes an area always
-	 */
-	public void writeAreaWithOverride(int left, int top, int right, int bottom, int num, wchar c, BitmapAttrib b){
-		for(int y = top ; y < bottom ; y++){
-			for(int x = left ; x < right ; x++){
-				writeToTileLayer(x,y,num,c,b);
-			}
-		}
-	}
-	/**
-	 * Writes an area if c = 0xFFFF
-	 */
-	public void writeAreaWithoutOverride(int left, int top, int right, int bottom, int num, wchar c, BitmapAttrib b){
-		for(int y = top ; y < bottom ; y++){
-			for(int x = left ; x < right ; x++){
-				if(backgroundLayers[num].readMapping(x,y) == 0xFFFF)
-					writeToTileLayer(x,y,num,c,b);
-			}
-		}
+	public void setRasterRefresh(){
+		rasterRefresh = true;
 	}
 	public void whereTheMagicHappens(){
+		rasters[0].refresh();
 		while(!onexit){
 			input.test();
-
-			rasters[0].refresh();
+			if(rasterRefresh){
+				rasters[0].refresh();
+				//rasterRefresh = false;
+			}
 			if(rasters.length == 2){
 				rasters[1].refresh();
 			}
@@ -602,18 +589,18 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		}
 		TileLayerData tld;
 		if(preexisting && !embed){
-			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, MapData.load(file), name);
+			//tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, MapData.load(file), name);
 		}else if(!preexisting && embed){
 			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, name);
 		}else if(!preexisting && !embed){
 			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, name);
-			tld.mapping.save(file);
+			//tld.mapping.save(file);
 		}else if(extension(file) == ".xmf"){
 			wh.messageWindow("Error"w, "Function of importing embedded mapping from *.xmf files not yet implemented"w, 320);
 			return;
 		}
 		tld.isEmbedded = embed;
-		tl.loadMapping(mX,mY,tld.mapping.getCharMapping(),tld.mapping.getAttribMapping());
+		//tl.loadMapping(mX,mY,tld.mapping.getCharMapping(),tld.mapping.getAttribMapping());
 		layers[selectedLayer] = tl;
 		if(rasters.length > 1){
 			rasters[1].addLayer(tl,selectedLayer);

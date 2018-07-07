@@ -30,7 +30,9 @@ abstract class WindowElement{
 
 	public static InputHandler inputHandler;
 	public static PopUpHandler popUpHandler;
-	//public static StyleSheet defaultStyle;
+	public static StyleSheet styleSheet;
+
+	public static void delegate() onDraw;
 
 	public void delegate(Event ev) onMouseLClickRel;
 	public void delegate(Event ev) onMouseRClickRel;
@@ -93,10 +95,10 @@ abstract class WindowElement{
 	}
 
 	public StyleSheet getAvailableStyleSheet(){
-		if(customStyle is null){
-			return elementContainer.getStyleSheet();
+		if(customStyle !is null){
+			return customStyle;
 		}
-		return customStyle;
+		return elementContainer.getStyleSheet();
 	}
 
 	public void setCustomStyle(StyleSheet s){
@@ -149,6 +151,9 @@ public class Button : WindowElement{
 		
 		output.drawText(position.width/2, position.height/2, text, getAvailableStyleSheet().getFontset("default"));
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(button == MouseButton.RIGHT && enableRightButtonClick){
@@ -230,6 +235,9 @@ public class SmallButton : WindowElement{
 			output.insertBitmap(0,0,getAvailableStyleSheet().getImage(iconUnpressed));
 		}
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(button == MouseButton.RIGHT && enableRightButtonClick){
@@ -299,6 +307,9 @@ public class Label : WindowElement{
 			output = new BitmapDrawer(position.width, position.height);
 		output.drawText(0, 0, text, getAvailableStyleSheet().getFontset("default"), 1);
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	/*public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(state == ButtonState.PRESSED)
@@ -426,6 +437,9 @@ public class TextBox : WindowElement, TextInputListener{
 		
 		output.drawText(2, 2, text, getAvailableStyleSheet().getFontset("default"), 1);
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	
 	alias onKey = WindowElement.onKey;
@@ -757,7 +771,9 @@ public class ListBox : WindowElement, ElementContainer{
 		elementContainer.drawUpdate(this);
 		
 		fullRedraw = false;
-		//writeln(0);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(button == MouseButton.RIGHT){
@@ -863,7 +879,38 @@ public class ListBox : WindowElement, ElementContainer{
 		vSlider.onScroll(x,y,0,0);
 		hSlider.onScroll(x,y,0,0);
 	}
-	
+	/**
+	 * Returns a line.
+	 */
+	public @nogc ListBoxItem readLine(int line){
+		return items[line];
+	}
+	/**
+	 * Adds a line to the bottom of the list.
+	 */
+	public void addLine(ListBoxItem i){
+		items ~= i;
+	}
+	/**
+	 * Inserts a line to a given point of the list.
+	 */
+	public void addLine(ListBoxItem i, int n){
+		if(n == items.length){
+			items ~= i;
+		}else{
+			items.length++;
+			for(int j = items.length - 1; j > n; j++){
+				items[j] = items[j - 1];
+			}
+			items[n] = i;
+		}
+	}
+	/**
+	 * Removes a line from the list.
+	 */
+	public void removeLine(int n){
+		items.remove(n);
+	}
 }
 /**
  * A simple toggle button.
@@ -894,6 +941,9 @@ public class CheckBox : WindowElement{
 			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage("checkBoxA"));
 		}
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
@@ -993,6 +1043,9 @@ public class RadioButtonGroup : WindowElement{
 			}
 		}
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
@@ -1104,6 +1157,9 @@ public class VSlider : Slider{
 			output.drawFilledRectangle(0,position.width,posA, posB, getAvailableStyleSheet.getColor("windowascent"));
 		}
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	
 	
@@ -1221,6 +1277,9 @@ public class HSlider : Slider{
 			output.drawFilledRectangle(posA, posB, 0, position.height(),getAvailableStyleSheet().getColor("windowascent"));
 		}
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(button == MouseButton.RIGHT){
@@ -1342,6 +1401,9 @@ public class MenuBar: WindowElement{
 		output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, ss.getColor("windowdescent"));
 		output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, ss.getColor("windowdescent"));
 		elementContainer.drawUpdate(this);
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	private void redirectIncomingEvents(Event ev){
 		if(onMouseLClickPre !is null){
@@ -1404,6 +1466,7 @@ public abstract class PopUpElement{
 	//public ActionListener[] al;
 	public BitmapDrawer output;
 	public static InputHandler inputhandler;
+	public static StyleSheet styleSheet;
 	public Coordinate coordinates;
 	public StyleSheet customStyle;
 	protected PopUpHandler parent;
@@ -1418,6 +1481,7 @@ public abstract class PopUpElement{
 	public void delegate(Event ev) onMouseRClickPre;
 	public void delegate(Event ev) onMouseMClickPre;*/
 
+	public static void delegate() onDraw;
 	public void delegate(Event ev) onMouseClick;
 
 	public abstract void draw();
@@ -1438,6 +1502,9 @@ public abstract class PopUpElement{
 	protected StyleSheet getStyleSheet(){
 		if(customStyle !is null){
 			return customStyle;
+		}
+		if(styleSheet !is null){
+			return styleSheet;
 		}
 		return parent.getStyleSheet();
 	}
@@ -1512,7 +1579,9 @@ public class PopUpMenu : PopUpElement{
 		output.drawLine(0,width-1,0,0,ss.getColor("windowascent"));
 		output.drawLine(0,width-1,height-1,height-1,ss.getColor("windowdescent"));
 		output.drawLine(width-1,width-1,0,height-1,ss.getColor("windowdescent"));
-		
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	public override void onClick(int offsetX, int offsetY, int type = 0){
 		offsetY /= height / elements.length;
@@ -1638,8 +1707,10 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 		}
 		
 		output.drawText(2, 2, text, getStyleSheet().getFontset("default"), 1);
-		//elementContainer.drawUpdate(this);
-		//parent.drawUpdate(this);
+		
+		if(onDraw !is null){
+			onDraw();
+		}
 	}
 	private void deleteCharacter(int n){
 		//text = remove(text, i);
@@ -1812,7 +1883,7 @@ public class ListBoxHeader{
 	}
 }
 /**
- * Defines an item in the row of a ListBox. Passed through the Event class
+ * Defines an item in the row of a ListBox. Can be passed through the Event class
  */
  public class ListBoxItem{
 	private wstring[] text;

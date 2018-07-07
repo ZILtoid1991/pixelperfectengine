@@ -39,6 +39,7 @@ public class Window : ElementContainer{
 	public Coordinate position;
 	public StyleSheet customStyle;
 	public static StyleSheet defaultStyle;
+	public static void delegate() onDrawUpdate;
 	/**
 	 * If the current window doesn't contain a custom StyleSheet, it gets from it's parent. 
 	 */
@@ -142,7 +143,7 @@ public class Window : ElementContainer{
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
 		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
 
-		int headerLength = extraButtons.length == 0 ? position.width - 1 : position.width() - 1 - ((extraButtons.length/2) * x1) ;
+		int headerLength = extraButtons.length == 0 ? position.width - 1 : position.width() - 1 - ((extraButtons.length>>2) * x1) ;
 		//drawing the header
 		drawHeader();
 
@@ -161,6 +162,9 @@ public class Window : ElementContainer{
 		}
 		fullUpdate = false;
 		parent.drawUpdate(this);
+		if(onDrawUpdate !is null){
+			onDrawUpdate();
+		}
 	}
 	/**
 	 *
@@ -169,7 +173,7 @@ public class Window : ElementContainer{
 		output.drawFilledRectangle(0, position.width() - 1, 0, getStyleSheet().getImage("closeButtonA").height - 1, getStyleSheet().getColor("window"));
 		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
 		int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().getImage("closeButtonA").height, x2 = position.width;
-		int headerLength = extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 - ((extraButtons.length/2) * x1) ;
+		int headerLength = extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 - ((extraButtons.length>>1) * x1) ;
 		foreach(s ; extraButtons){
 			x2 -= x1;
 			output.insertBitmap(x2,0,getStyleSheet().getImage(s));
