@@ -209,13 +209,14 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 	private PlacementMode placementMode;
 	private int placementX, placementY;
 	public EventChainSystem ecs;
+	public ushort[string] colorBackup;
 	public this(){
 		sl = new SpriteLayer();
 		ewh = new EditorWindowHandler(1600,960,800,480,sl);
 		ecs = new EventChainSystem(20);
 
 		//Fontset defaultFont = loadFontsetFromXMP(new ExtendibleBitmap("system/sysfont.xmp"), "font");
-		ExtendibleBitmap ssOrigin = new ExtendibleBitmap("system/sysdef.xmp");
+		//ExtendibleBitmap ssOrigin = new ExtendibleBitmap("system/sysdef.xmp");
 
 		input = new InputHandler();
 		input.ml ~= this;
@@ -240,6 +241,8 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		WindowElement.inputHandler = input;
 
 		INIT_CONCRETE(ewh);
+
+		colorBackup = ewh.defaultStyle.color;
 		
 		ewh.initGUI();
 		ewh.ma = this;
@@ -261,6 +264,7 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		updateElementList();
 	}
 	public void whereTheMagicHappens(){
+		ewh.defaultStyle.color = colorBackup;
 		while(!onExit){
 			input.test();
 			rstr.refresh();
@@ -280,6 +284,8 @@ public class MainApplication : InputListener, MouseListener, SystemEventListener
 		writeln(ID);
 		switch(ID){
 			case "sysesc":
+				writeln(ewh.defaultStyle);
+				writeln(ewh.defaultStyle.color);
 				placementMode = PlacementMode.NULL;
 				placementX = 0;
 				placementY = 0;
@@ -612,6 +618,7 @@ public enum PlacementMode : ubyte{
 int main(string[] argv){
 	initialzeSDL();
 	SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
+	import core.memory;
 	
 	mainApp = new MainApplication();
     if(argv.length > 1){

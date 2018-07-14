@@ -13,6 +13,8 @@ subPackage{
   dependency "sdlang-d" version="==0.10.2"
   dependency "derelict-sdl2" version="~>2.1.0"
   dependency "CPUblit" version="*"
+  dependency "intel-intrinsics" version="*"
+  dependency "libpcm" version="*"
 }
 subPackage{
   name "pixelperfecteditor"

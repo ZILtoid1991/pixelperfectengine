@@ -30,11 +30,54 @@ package static immutable uint[4] maskAC = [0, uint.max, 0, uint.max];
  * Scrolling point. sX:0/2 sY:1/3
  */
 public @nogc int[2] transformFunctionInt(short[2] xy, short[4] ABCD, short[2] x0y0, short[2] sXsY){
-	int[2] result;
-	int[2] nXnY = [xy[0] + sXsY[0] - x0y0[0],  xy[1] + sXsY[1] - x0y0[1]];
-	result[0] = (ABCD[0] * nXnY[0] + ABCD[1] * nXnY[1] + x0y0[0])>>>8;
-	result[1] = (ABCD[2] * nXnY[0] + ABCD[3] * nXnY[1] + x0y0[1])>>>8;
-	return result;
+//public @nogc int[2] transformFunctionInt(short[4] xy, short[4] ABCD, short[4] x0y0, short[4] sXsY){
+	version(X86){
+		int[2] result;
+		asm @nogc{
+			movd	XMM0, xy;//load XY values twice
+			pslldq	XMM0, 4;
+			movd	XMM2, xy;
+			por		XMM0, XMM2;
+			movd	XMM1, sXsY;//load SxSy values twice
+			pslldq	XMM1, 4;
+			movd	XMM2, sXsY;
+			por		XMM1, XMM2;
+			paddw	XMM0, XMM1;//[x,y] + [sX,sY]
+			movd	XMM1, x0y0;//load x0y0 values twice
+			pslldq	XMM1, 4;
+			movd	XMM2, x0y0;
+			por		XMM1, XMM2;
+			psubw	XMM0, XMM1;//([x,y] + [sX,sY] - [x_0,y_0])
+			movq	XMM2, ABCD;//load ABCD into XMM2
+			pmaddwd	XMM2, XMM0;//([A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0]))
+			psrad	XMM2, 8;//divide by 256 ([A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0]))>>>8
+			movq	result, XMM2;
+		}
+		/*asm @nogc{
+			movq	XMM0, xy;//load XY values twice
+			movq	XMM1, sXsY;//load SxSy values twice
+			pslldq	XMM1, 4;
+			movd	XMM1, sXsY;
+			por		XMM1, XMM2;
+			paddw	XMM0, XMM1;//[x,y] + [sX,sY]
+			movd	XMM1, x0y0;//load SxSy values twice
+			pslldq	XMM1, 4;
+			movd	XMM1, x0y0;
+			por		XMM1, XMM2;
+			psubw	XMM0, XMM1;//([x,y] + [sX,sY] - [x_0,y_0])
+			movq	XMM2, ABCD;//load ABCD into XMM2
+			pmaddwd	XMM2, XMM0;//([A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0]))
+			psrad	XMM2, 8;//divide by 256 ([A,B,C,D] * ([x,y] + [sX,sY] - [x_0,y_0]))>>>8
+			movq	result, XMM2;
+		}*/
+		return [result[0] + x0y0[0], result[1] + x0y0[1]];
+	}else{
+		int[2] result;
+		int[2] nXnY = [xy[0] + sXsY[0] - x0y0[0],  xy[1] + sXsY[1] - x0y0[1]];
+		result[0] = ((ABCD[0] * nXnY[0] + ABCD[1] * nXnY[1])>>>8) + x0y0[0];
+		result[1] = ((ABCD[2] * nXnY[0] + ABCD[3] * nXnY[1])>>>8) + x0y0[1];
+		return result;
+	}
 }
 /**
  * Relative rotation clockwise by given degrees. Returns the new transform points.

@@ -1,10 +1,14 @@
-# Pixel Perfect Engine ver 0.9.4-alpha.2
+# Pixel Perfect Engine ver 0.9.4-alpha.3
 
 2D retro graphics engine written in D by László Szerémi (laszloszeremi@outlook.com, https://twitter.com/ziltoid1991, https://www.patreon.com/ShapeshiftingLizard).
 
 Required libaries:
 Derelict SDL2		https://github.com/DerelictOrg/DerelictSDL2
-Derelict FI     https://github.com/DerelictOrg/DerelictFI
+Derelict FI			https://github.com/DerelictOrg/DerelictFI		(for editor only)
+sdlang-d			https://github.com/Abscissa/SDLang-D
+libpcm				https://github.com/ZILtoid1991/libPCM
+cpublit				https://github.com/ZILtoid1991/CPUblit
+intel-intrinsics	https://github.com/AuburnSounds/intel-intrinsics
 
 
 See Wiki for further info and version history!

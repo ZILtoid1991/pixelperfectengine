@@ -12,24 +12,27 @@ public enum StageType : ubyte{
 	ascending	=	1,
 	descending	=	2,
 	sustain		=	3,	/// Descending until either a key release command or reaches zero.
+	revSustain	=	4,	/// Ascending until either key release or max level reached.
+	hold		=	5,	/// Keeps the value of targetLevel until holdTime.
 }
 
 /**
  * Defines a single envelope stage.
  */
 public struct EnvelopeStage{
+
 	public uint targetLevel;	/// If reached, jumps to the next stage 
 	public uint stepping;		/// If slow enabled, it sets how much clockcycles needed for a single increment, otherwise sets the increment for each clockcycle
 	public byte linearity;		/// 0 = Linear. Greater than 0 = Pseudolog. Less than 0 = Pseudoantilog.
 	mixin(bitfields!(
-		ubyte, "type", 2,
+		ubyte, "type", 3,
 		bool, "slow", 1,
-		ubyte, "unused", 5));
-	public byte[2] reserved;
+		ubyte, "unused", 4));
+	public ushort holdTime;		/// If used, it describes the hold time in milliseconds
 }
 
 public struct EnvelopeGenerator{
-	private EnvelopeStage* stages;
+	private EnvelopeStage[] stages;
 	private sizediff_t currentStage;
 	private uint currentLevel, stepNumber;
 	private uint log;

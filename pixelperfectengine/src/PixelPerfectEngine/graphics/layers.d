@@ -20,6 +20,9 @@ import core.stdc.stdlib;
 import CPUblit.composing;
 import CPUblit.colorlookup;
 
+version(LDC){
+	import inteli.emmintrin;
+}
 
 /*static immutable ushort[4] alphaMMXmul_const256 = [256,256,256,256];
 static immutable ushort[4] alphaMMXmul_const1 = [1,1,1,1];
@@ -93,79 +96,14 @@ abstract class Layer {
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette, int[] threads);
 	///Standard algorithm for horizontal mirroring
 	@nogc protected void flipHorizontal(uint* src, int length){
-		version(NO_SSE2){
-			int c = length / 2;
-			void* dest = src + length * 4 - 4;
-			asm @nogc{
-				mov		ESI, src[EBP];
-				mov		EDI, dest[EBP];
-				mov		ECX, c;
-
-			loopentry:
-
-				movd	MM0, [ESI];
-				movd	MM1, [EDI];
-				movd	[ESI], MM1;
-				movd	[EDI], MM0;
-				add		ESI, 4;
-				sub		EDI, 4;
-				dec		ECX;
-				cmp		ECX, 0;
-				jnz		loopentry;
-			}
-		}else version(X86){
-			int c = length / 2;
-			uint* dest = src + length;
-			src -= 1;
-			asm @nogc{
-				mov		ESI, src[EBP];
-				mov		EDI, dest[EBP];
-				mov		ECX, c;
-
-			loopentry:
-
-				movd	XMM0, [ESI];
-				movd	XMM1, [EDI];
-				movd	[ESI], XMM1;
-				movd	[EDI], XMM0;
-				add		ESI, 4;
-				sub		EDI, 4;
-				dec		ECX;
-				cmp		ECX, 0;
-				jnz		loopentry;
-			}
-		}else version(X86_64){
-			int c = length / 2;
-			uint* dest = src + length;
-			asm @nogc{
-				mov		RSI, src[RBP];
-				mov		RDI, dest[RBP];
-				mov		RCX, c;
-
-			loopentry:
-
-				movd	XMM0, [RSI];
-				movd	XMM1, [RDI];
-				movd	[RSI], XMM1;
-				movd	[RDI], XMM0;
-				add		RSI, 4;
-				sub		RDI, 4;
-				dec		RCX;
-				cmp		RCX, 0;
-				jnz		loopentry;
-			}
-		}else{
-			src -= 4;
-			Color s, d;
-			void* dest = src + (Color.sizeof * length);
-			for(int i ; i < length ; i++){
-				s = *cast(Color*)src;
-				d = *cast(Color*)dest;
-				*cast(Color*)dest = s;
-				*cast(Color*)src = d;
-				src += 4;
-				dest -= 4;
-			}
+		uint s;
+		uint* dest = src + length;
+		for(int i ; i < length ; i++){
+			s = *src;
+			*src = *dest;
+			*dest = s;
+			src++;
+			dest--;
 		}
 	}
 }
@@ -472,7 +410,7 @@ public class TileLayer : Layer, ITileLayer{
  * <ul>
  * <li>Only a single type of bitmap can be used and 4 bit ones are excluded.</li>
  * <li>8 bit tiles will share the same palette.</li>
- * <li>Tile sizes must have any of the following sizes: 8, 16, 32, 64.</li>
+ * <li>Tiles must have any of the following sizes: 8, 16, 32, 64.</li>
  * <li>Maximum layer size in pixels are restricted to 65536*65536</li>
  * </ul>
  * HDMA emulation supported through delegate hBlankInterrupt.
@@ -522,6 +460,10 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	else static assert("Unsupported vertical tile size!");
 	protected int totalX, totalY;		
 	protected MappingElement[] mapping;
+	version(LDC){
+		protected int4 _tileAmpersand;
+		protected static short8 _increment;
+	}
 
 	public @nogc void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y) hBlankInterrupt;
 
@@ -532,8 +474,13 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		D = 256;
 		x_0 = 0;
 		y_0 = 0;
+		_tileAmpersand = [TileX - 1, TileY - 1, TileX - 1, TileY - 1];
 		setRenderingMode(renderMode);
-		needsUpdate = true;
+		needsUpdate = true;	
+	}
+	static this(){
+		for(int i ; i < 8 ; i+=2)
+			_increment[i] = 2;
 	}
 	override public void setRasterizer(int rX,int rY) {
 		super.setRasterizer(rX,rY);
@@ -558,34 +505,112 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 				if(hBlankInterrupt !is null){
 					hBlankInterrupt(localTP, sXsY, localTPO, y);
 				}
-				for(short x; x < rasterX; x++){
-					
-					int[2] xy = transformFunctionInt([x,y], localTP, localTPO, sXsY);
-					//printf("[%i,%i]",xy[0],xy[1]);
-					MappingElement currentTile = tileByPixelWithoutTransform(xy[0],xy[1]);
-					if(currentTile.tileID != 0xFFFF){
-						DisplayListItem d = displayList[currentTile.tileID];
-						static if(BMPType.mangleof == Bitmap8Bit.mangleof){
-							ubyte* tsrc = cast(ubyte*)d.pixelSrc;
-						}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
-							ushort* tsrc = cast(ushort*)d.pixelSrc;
-						}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
-							Color* tsrc = cast(Color*)d.pixelSrc;
-						}
-						xy = [xy[0] & (TileX - 1), xy[1] & (TileY - 1)];
-						tsrc += xy[0] + xy[1] * TileX;
-						static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
-							src[x] = *tsrc;
+				version(DMD){
+					for(short x; x < rasterX; x++){
+						int[2] xy = transformFunctionInt([x,y], localTP, localTPO, sXsY);
+						//printf("[%i,%i]",xy[0],xy[1]);
+						MappingElement currentTile = tileByPixelWithoutTransform(xy[0],xy[1]);
+						if(currentTile.tileID != 0xFFFF){
+							DisplayListItem d = displayList[currentTile.tileID];
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof){
+								ubyte* tsrc = cast(ubyte*)d.pixelSrc;
+							}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
+								ushort* tsrc = cast(ushort*)d.pixelSrc;
+							}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
+								Color* tsrc = cast(Color*)d.pixelSrc;
+							}
+							xy = [xy[0] & (TileX - 1), xy[1] & (TileY - 1)];
+							tsrc += xy[0] + xy[1] * TileX;
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+								src[x] = *tsrc;
+							}else{
+								*dest = *tsrc;
+								dest++;
+							}
 						}else{
-							*dest = *tsrc;
-							dest++;
-						}
-					}else{
-						static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
-							src[x] = 0;
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+								src[x] = 0;
+							}
 						}
 					}
-				}
+				}else version(LDC){
+					/*short8 _sXsY = [sXsY[0],sXsY[1],sXsY[0],sXsY[1],sXsY[0],sXsY[1],sXsY[0],sXsY[1]], 
+							_localTP = [localTP[0], localTP[1],localTP[2], localTP[3], localTP[0], localTP[1],localTP[2], localTP[3]], 
+							_localTPO = [localTPO[0],localTPO[1],localTPO[0],localTPO[1],localTPO[0],localTPO[1],localTPO[0],localTPO[1]];
+					int4 _localTPO_0 = [localTPO[0],localTPO[1],localTPO[0],localTPO[1]];*/
+					short8 _sXsY, _localTP, _localTPO;
+					for(int i; i < 8; i++){
+						_sXsY[i] = sXsY[i & 1];
+						_localTP[i] = localTP[i & 3];
+						_localTPO[i] = localTPO[i & 1];
+					}
+					short8 xy_in;
+					for(int i = 1; i < 8; i += 2){
+						xy_in[i] = y;
+					}
+					xy_in[4] = 1;
+					xy_in[6] = 1;
+					int4 _localTPO_0;
+					for(int i; i < 4; i++){
+						_localTPO_0[i] = localTPO[i & 1];
+					}
+					for(short x; x < rasterX; x++){
+						int4 xy = _mm_srai_epi32(_mm_madd_epi16(_localTP, xy_in + _sXsY - _localTPO),8) + _localTPO_0;
+						MappingElement currentTile0 = tileByPixelWithoutTransform(xy[0],xy[1]), currentTile1 = tileByPixelWithoutTransform(xy[2],xy[3]);
+						xy &= _tileAmpersand;
+						if(currentTile0.tileID != 0xFFFF){
+							DisplayListItem d = displayList[currentTile0.tileID];
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof){
+								ubyte* tsrc = cast(ubyte*)d.pixelSrc;
+							}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
+								ushort* tsrc = cast(ushort*)d.pixelSrc;
+							}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
+								Color* tsrc = cast(Color*)d.pixelSrc;
+							}
+							
+							tsrc += xy[0] + xy[1] * TileX;
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+								src[x] = *tsrc;
+							}else{
+								*dest = *tsrc;
+								dest++;
+							}
+						}else{
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+								src[x] = 0;
+							}else{
+								(*dest).raw = 0;
+							}
+						}
+						x++;
+						if(currentTile1.tileID != 0xFFFF){
+							DisplayListItem d = displayList[currentTile1.tileID];
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof){
+								ubyte* tsrc = cast(ubyte*)d.pixelSrc;
+							}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
+								ushort* tsrc = cast(ushort*)d.pixelSrc;
+							}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
+								Color* tsrc = cast(Color*)d.pixelSrc;
+							}
+							//xy = [xy[2] & (TileX - 1), xy[3] & (TileY - 1)];
+							tsrc += xy[2] + xy[3] * TileX;
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+								src[x] = *tsrc;
+							}else{
+								*dest = *tsrc;
+								dest++;
+							}
+						}else{
+							static if(BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+								src[x] = 0;
+							}else{
+								(*dest).raw = 0;
+							}
+						}
+						xy_in += _increment;
+
+					}
+				}else static assert("Compiler not supported");
 				static if(BMPType.mangleof == Bitmap8Bit.mangleof){
 					main8BitColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palettePtr, rasterX);
 					dest += rasterX;

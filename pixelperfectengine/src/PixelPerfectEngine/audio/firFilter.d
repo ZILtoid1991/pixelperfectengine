@@ -8,31 +8,31 @@ module PixelPerfectEngine.audio.firFilter;
 
 public struct FiniteImpulseResponse(int L){
 	//static assert(L % 2 == 0);
-	public float[L] vals;
+	public short[L] vals;
 }
 
 public struct FiniteImpulseResponseFilter(int L){
 	FiniteImpulseResponse!L* impulseResponse;
-	private float[L + 3] delayLine;
+	private short[L + 3] delayLine;
 	private uint stepping;
 	private uint truncating;
 	this(FiniteImpulseResponse!L* impulseResponse){
 		this.impulseResponse = impulseResponse;
 		version(X86){
-			truncating = (L * 4) - 1;
+			truncating = (L * 8) - 1;
 		}else version(X86_64){
-			truncating = (L * 4) - 1;
+			truncating = (L * 8) - 1;
 		}else{
 			truncating = L - 1;
 		}
 	}
-	public @nogc float filter(float input){
+	/*public @nogc int calculate(short input){
 		if(stepping < 3){
 			delayLine[L + (L - stepping)] = input;
 		}
 		delayLine[L - stepping] = input;
 		version(X86){
-			float[4] result;
+			int[4] result;
 			asm @nogc{
 				mov		ESI, impulseResponse[EBP];
 				mov		EDI, delayLine[EBP];
@@ -41,14 +41,13 @@ public struct FiniteImpulseResponseFilter(int L){
 				mov		ECX, L;
 
 			filterloop:
-				xor		EBX, EBX;
-				add		EBX, EDX;
+				mov		EBX, EDX;
 				and		EBX, EAX;
 				add		EBX, EDI;
 				movups	XMM0, [EBX];
 				movups	XMM1, [ESI];
-				mulps	XMM1, XMM0;
-				addps	XMM2, XMM1;
+				pmaddwd	XMM1, XMM0;
+				paddd	XMM2, XMM1;
 				add		ESI, 16;
 				add		EDX, 16;
 				dec		ECX;
@@ -60,7 +59,7 @@ public struct FiniteImpulseResponseFilter(int L){
 			stepping &= truncating;
 			return result[0] + result[1] + result[2] + result[3];
 		}else version(X86_64){
-			float[4] result;
+			int[4] result;
 			asm @nogc{
 				mov		RSI, impulseResponse[RBP];
 				mov		RDI, delayLine[RBP];
@@ -69,8 +68,7 @@ public struct FiniteImpulseResponseFilter(int L){
 				mov		ECX, L;
 
 			filterloop:
-				xor		RBX, RBX;
-				add		RBX, RDX;
+				mov		RBX, RDX;
 				and		RBX, RAX;
 				add		RBX, RDI;
 				movups	XMM0, [RBX];
@@ -88,7 +86,7 @@ public struct FiniteImpulseResponseFilter(int L){
 			stepping &= truncating;
 			return result[0] + result[1] + result[2] + result[3];
 		}else{
-			float result;
+			int result;
 			for(int i; i < L; i++){
 				result += delayLine[(i + stepping) & truncating] * impulseResponse.vals[i];
 			}
@@ -96,5 +94,5 @@ public struct FiniteImpulseResponseFilter(int L){
 			stepping &= truncating;
 		}
 		
-	}
+	}*/
 }
