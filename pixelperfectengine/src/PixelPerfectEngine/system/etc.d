@@ -100,7 +100,7 @@ int parseHex(string s){
 			case 'd','D': result += 13; break;
 			case 'e','E': result += 14; break;
 			case 'f','F': result += 15; break;
-			default: throw new Exception("String cannot be parsed!"); 
+			default: throw new Exception("String cannot be parsed!");
 		}
 	}
 	return result;
@@ -135,4 +135,25 @@ bool isInteger(S)(S s){
 		}
 		return true;
 	}else static assert("Template patameter " ~ S.stringof ~ " not supported in function 'bool isInteger(S)(S s)' of module 'PixelPerfectEngine.system.etc'");
+}
+
+/**
+ * Returns true if x is power of two.
+ */
+public @nogc bool isPowerOf2(T = uint)(T x){
+	return x && ((x & (x - 1U)) == 0U);
+}
+
+/**
+ * From "Hackers Delight"
+ * val remains unchanged if it is already a power of 2.
+ */
+public @nogc T nextPow2(T)(T val){
+	val--;
+	val |= val >> 16;
+	val |= val >> 8;
+	val |= val >> 4;
+	val |= val >> 2;
+	val |= val >> 1;
+	return val + 1;
 }

@@ -1,6 +1,7 @@
 module PixelPerfectEngine.audio.common;
 
 import std.bitmanip;
+import std.math;
 
 /**
  * Defines basic functions for an envelope generator.
@@ -47,20 +48,27 @@ public enum MICPCommandList : ushort{
 	ParamEdit	=	7,		///val0: Parameter ID, val1: New value, val2: Unused
 	ParamEditFP	=	8,		///val0: Parameter ID, valf: New value
 	ParamEdit32 =	9,		///val0: Parameter ID, val32: New value
-	SysExc	=	16,			
+	SysExc	=	16,
 	MIDIThruMICP	=	17,	///val0 is unused
 	Wait	=	24			///val0: bits 32-47 if needed, val32: bits 0-31
 }
 
 /**
- * All PPE-FX synths and effects should be inherited from this class. 
+ * All PPE-FX synths and effects should be inherited from this class.
  */
 abstract class AbstractPPEFX{
-	public abstract @nogc void render(float** inputBuffers, float** outputBuffers, float samplerate, size_t bufferlength);
+	public abstract @nogc void render(float** inputBuffers, float** outputBuffers);
+	public abstract @nogc int setRenderParams(float samplerate, size_t framelength, size_t nOfFrames);
 	public abstract @nogc void receiveMICPCommand(MICPCommand cmd);
 	public abstract @nogc void loadConfig(ref void[] data);
 	public abstract @nogc ref void[] saveConfig();
 	public abstract @nogc PPEFXInfo* getPPEFXInfo();
+	public @nogc float midiNoteToFrequency(float note, float tuning = 440.0f){
+    	return tuning * pow(2.0, (note - 69.0f) / 12.0f);
+	}
+	public @nogc float frequencyToMidiNote(float frequency, float tuning = 440.0f){
+    	return 69.0f + 12.0f * log2(frequency / tuning);
+	}
 }
 
 public struct PPEFXInfo{

@@ -2,12 +2,14 @@
 	"fileVersion": 1,
 	"versions": {
 		"CPUblit": "0.1.0",
-		"cpublit": "0.1.0",
+		"cpublit": "0.2.1",
 		"derelict-sdl2": "2.1.4",
 		"derelict-util": "2.0.6",
+		"intel-intrinsics": "1.0.11",
 		"libinputvisitor": "1.2.2",
-		"sdlang-d": "0.10.2",
+		"libpcm": "0.2.2",
+		"sdlang-d": "0.10.4",
 		"taggedalgebraic": "0.10.11",
-		"unit-threaded": "0.6.36"
+		"unit-threaded": "0.7.51"
 	}
 }

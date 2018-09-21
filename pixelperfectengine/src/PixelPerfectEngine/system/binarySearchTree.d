@@ -7,6 +7,7 @@ module PixelPerfectEngine.system.binarySearchTree;
  */
 
 import core.stdc.stdlib;
+import core.stdc.string;
 
 /**
  * Implements a mostly @nogc-able container format, with relatively fast access times.
@@ -14,10 +15,12 @@ import core.stdc.stdlib;
  * TODO: Implement ordered tree traversal.
  */
 public struct BinarySearchTree(K, E){
-	private BSTNode!(K, E)* root;
+	private BSTNode!(K, E)* root;		///Points to the root element
+	private BSTNode!(K, E)* storage;	///Stores the pointer of the nodes
 	//private sizediff_t bal;
-	private size_t nOfElements;
-	
+	private size_t nOfElements;			///Current number of elements
+	private size_t strCap;				///Storage capacity
+
 	/*~this(){
 		if(root !is null){
 			BSTNode!(K, E)*[] nodes = collectNodes(root);
@@ -30,7 +33,7 @@ public struct BinarySearchTree(K, E){
 	 * Tree traversal for quick access.
 	 * TODO: Make it NOGC
 	 */
-	public int opApply(scope int delegate(ref E) dg){
+	/*public int opApply(scope int delegate(ref E) dg){
 		int result;
 		result = treeTraversalByDepth(dg, root);
 		return result;
@@ -52,6 +55,48 @@ public struct BinarySearchTree(K, E){
 			}
 		}
 		return result;
+	}*/
+	/**
+	 * Tree traversal, mostly follows the order in which the elements were added, removal might mix things up.
+	 * Usage:
+	 * int pos = -1, E elem, K key;
+	 * while(bst.normalTreeTraversal(pos, elem, key)){
+	 * [...]
+	 * }
+	 */
+	public @nogc bool normalTreeTraversal(ref int pos, ref E elem, ref K key){
+		pos++;
+		if(pos >= nOfElements){
+			return false;
+		}
+		elem = storage[pos].elem;
+		key = storage[pos].key;
+		return true;
+	}
+	/**
+	 * Reserves a given amount of nodes. Does nothing if the new capacity is smaller than the number of elements.
+	 * Returns the new capacity.
+	 */
+	public @nogc size_t reserve(size_t cap){
+		if(nOfElements > cap)
+			return strCap;
+		storage = cast(BSTNode!(K,E)*)realloc(storage, cap * BSTNode!(K,E).sizeof);
+		strCap = cap;
+		return cap;
+	}
+	/**
+	 * Grows the capacity by the power of two.
+	 * Returns the new capacity.
+	 */
+	public @nogc size_t grow(){
+		return reserve(strCap << 1);
+	}
+	/**
+	 * Shrinks to the minimum size that is absolutely needed to store the elements of the tree.
+	 * Returns the new capacity.
+	 */
+	public @nogc size_t shrink(){
+		return reserve(nOfElements);
 	}
 	/**
 	 * Gets an element without allocation. Returns E.init if key not found.
@@ -74,22 +119,27 @@ public struct BinarySearchTree(K, E){
 		}while(!found);
 		return result;
 	}
-	
+
 	/**
 	 * Inserts a new element with some automatic optimization.
 	 * TODO: Make the optimization better.
 	 */
 	public @nogc E opIndexAssign(E value, K i){
 		if(root is null){
-			root = cast(BSTNode!(K, E)*)malloc(BSTNode!(K, E).sizeof);
+			if(!strCap){
+				reserve(1);
+				root = storage;
+			}
 			*root = BSTNode!(K, E)(i,value);
 			nOfElements++;
 			return value;
 		}
+		if(strCap <= nOfElements)
+			grow();
 		if(insertAt(&root, i, value)){
 			rebalanceTree(&root);
+			nOfElements++;
 		}
-		nOfElements++;
 		return value;
 	}
 	/**
@@ -126,7 +176,7 @@ public struct BinarySearchTree(K, E){
 			return false;
 		}else if(key < (*node).key){
 			if((*node).left is null){
-				(*node).left = cast(BSTNode!(K, E)*)malloc(BSTNode!(K, E).sizeof);
+				(*node).left = &storage[nOfElements];// = cast(BSTNode!(K, E)*)malloc(BSTNode!(K, E).sizeof);
 				*(*node).left = BSTNode!(K, E)(key,val);
 				if((*node).right is null){
 					return true;
@@ -161,7 +211,7 @@ public struct BinarySearchTree(K, E){
 		while(crnt !is null){
 			if(crnt.key == key){
 				if(crnt.left is null && crnt.right is null){
-					free(crnt);
+					removeByPointer(crnt);
 					if(prev !is null){
 						if(handside)
 							prev.right = null;
@@ -178,7 +228,7 @@ public struct BinarySearchTree(K, E){
 						else
 							prev.left = crnt.right;
 					}
-					free(crnt);
+					removeByPointer(crnt);
 					crnt = null;
 				}else if(crnt.right is null){
 					if(prev is null){
@@ -189,7 +239,7 @@ public struct BinarySearchTree(K, E){
 						else
 							prev.left = crnt.left;
 					}
-					free(crnt);
+					removeByPointer(crnt);
 					crnt = null;
 				}else{
 					BSTNode!(K, E)* temp;
@@ -218,6 +268,25 @@ public struct BinarySearchTree(K, E){
 				handside = true;
 				crnt = crnt.right;
 			}
+		}
+	}
+	/**
+	 * Deletes an item by pointer value, then updates the node references if needed.
+	 */
+	private @nogc void removeByPointer(BSTNode!(K, E)* node){
+		const sizediff_t index = cast(sizediff_t)(node - storage);
+		if (index != nOfElements){
+			for (int i = index ; index < nOfElements ; i++){
+				for (int j ; j < nOfElements ; j++){
+					if (storage[j].left == storage + i){
+						storage[j].left--;
+					}
+					if (storage[j].right == storage + i){
+						storage[j].right--;
+					}
+				}
+			}
+			memcpy(cast(void*)(storage + index), cast(void*)(storage + index + 1), nOfElements - index);
 		}
 	}
 	/**
@@ -293,7 +362,7 @@ public struct BinarySearchTree(K, E){
 				rotateRight(node);
 			}
 		}
-		
+
 	}
 
 	public BSTNode!(K, E)*[] collectNodes(BSTNode!(K, E)* source){
@@ -307,7 +376,9 @@ public struct BinarySearchTree(K, E){
 		}
 		return result;
 	}
-
+	/**
+	 * Finds the smallest value from the root.
+	 */
 	public @nogc BSTNode!(K, E)* findMin(){
 		bool found;
 		BSTNode!(K, E)* result = root;
@@ -319,7 +390,9 @@ public struct BinarySearchTree(K, E){
 		}while(!found);
 		return result;
 	}
-
+	/**
+	 * Finds the smallest value from the given root.
+	 */
 	public @nogc BSTNode!(K, E)* findMin(BSTNode!(K, E)* from){
 		bool found;
 		BSTNode!(K, E)* result = from;
@@ -331,7 +404,9 @@ public struct BinarySearchTree(K, E){
 		}while(!found);
 		return result;
 	}
-
+	/**
+	 * Finds the largest value from the root.
+	 */
 	public @nogc BSTNode!(K, E)* findMax(){
 		bool found;
 		BSTNode!(K, E)* result = root;
@@ -343,7 +418,9 @@ public struct BinarySearchTree(K, E){
 		}while(!found);
 		return result;
 	}
-
+	/**
+	 * Finds the largest value from the given root.
+	 */
 	public @nogc BSTNode!(K, E)* findMax(BSTNode!(K, E)* from){
 		bool found;
 		BSTNode!(K, E)* result = from;
@@ -437,4 +514,20 @@ public struct BSTNode(K, E){
 		}
 		return result ~ "]";
 	}
+}
+unittest{
+	import std.stdio;
+	import std.random;
+
+	BinarySearchTree!(int,int) test0, test1;
+	//test 0: fill tree with consequential values
+	for(int i ; i < 32 ; i++){
+		test0[i] = i;
+	}
+	writeln(test0);
+	//test 1: fill tree with random values
+	for(int i ; i < 32 ; i++){
+		test0[rand()] = i;
+	}
+	writeln(test1);
 }

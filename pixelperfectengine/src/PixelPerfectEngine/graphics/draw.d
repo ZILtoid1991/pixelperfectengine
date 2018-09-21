@@ -297,7 +297,19 @@ public class BitmapDrawer{
 		}
 	}
 	public void insertColorLetter(int x, int y, Bitmap16Bit bitmap, ushort[8] colorvect){
-		version(NO_SSE2){
+		version(LDC){
+			for(int iy ; iy < bitmap.height ; iy++){
+				int x2 = x;
+				for(int ix ; ix < bitmap.width; ix++){
+					if(bitmap.readPixel(ix,iy)){
+						output.writePixel(x2,y,colorvect[0]);
+					}
+					x2++;
+				}
+				y++;
+			}
+
+		}else version(NO_SSE2){
 			ushort[4] colortester = [1,1,1,1], colorvect4 = [colorvect[0],colorvect[0],colorvect[0],colorvect[0]];
 			ushort* psrc = bitmap.getPtr, pdest = output.getPtr;
 			int pitch = output.width;

@@ -23,6 +23,9 @@ public struct BitmapAttrib{
 		this.vertMirror = vertMirror;
 		this.priority = priority;
 	}
+	string toString() const{
+		return "[horizMirror: " ~ horizMirror ~ " ; vertMirror: " ~ vertMirror ~ " ; priority: " ~ priority ~ "]";
+	}
 }
 
 /**
@@ -51,7 +54,7 @@ abstract class ABitmap{
 	@nogc public Color* getPalettePtr(){
 		return palettePtr;
 	}
-	/** 
+	/**
 	 * Sets the palette pointer. Make sure that you set it to a valid memory location.
 	 */
 	@nogc public void setPalettePtr(Color* p){
@@ -67,7 +70,7 @@ abstract class ABitmap{
 	abstract @nogc void clear();
 }
 /*
- * S: Wordlength by usage. Possible values: 
+ * S: Wordlength by usage. Possible values:
  * - QB: QuadByte or 2Bit (currently unimplemented)
  * - HB: HalfByte or 4Bit
  * - B: Byte or 8Bit
@@ -84,7 +87,7 @@ alias Bitmap16Bit = Bitmap!("HW",ushort);
 alias Bitmap32Bit = Bitmap!("W",Color);
 /**
  * Implements a bitmap with variable bit depth. Use the aliases to initialize them.
- * Note for 16Bit bitmap: It's using the master palette, It's not implementing any 16 bit RGB or RGBA color space directly. Can implement such 
+ * Note for 16Bit bitmap: It's using the master palette, It's not implementing any 16 bit RGB or RGBA color space directly. Can implement such
  * colorspaces via proper lookup tables.
  * Note for 4Bit bitmap: It's width needs to be an even number (for rendering simplicity), otherwise it'll cause an exception.
  */
@@ -131,16 +134,21 @@ public class Bitmap(string S,T) : ABitmap{
 		///Returns the pixel at the given position.
 		@nogc public ubyte readPixel(int x, int y){
 			if(x & 1)
-				return (pixels[x>>1+(iX*y)])>>4;
-			else
 				return pixels[x>>1+(iX*y)] & 0x0F;
+			else
+				return (pixels[x>>1+(iX*y)])>>4;
 		}
 		///Writes the pixel at the given position.
 	    @nogc public void writePixel(int x, int y, ubyte color){
-			if(x & 1) color<<=4;
-				x/=2;
-			pixels[x+(iX*y)]|= color;
+			if(x & 1){
+				pixels[x+(iX*y)]&= 0xF0;
+				pixels[x+(iX*y)]|= color;
+			}else{
+				pixels[x+(iX*y)]&= 0x0F;
+				pixels[x+(iX*y)]|= color<<4;
+			}
 		}
+		///Resizes the array behind the bitmap.
 		public void resize(int x,int y){
 			if(x & 1)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
@@ -148,7 +156,7 @@ public class Bitmap(string S,T) : ABitmap{
 			iX = x;
 			iY = y;
 		}
-		
+
 	}else static if(S == "B"){
 		///Creates an empty bitmap.
 		this(int x, int y, Color* palettePtr = null){
@@ -254,7 +262,7 @@ public class Bitmap(string S,T) : ABitmap{
 	override @nogc @property string wordLengthByString() {
 		return S;
 	}
-	
+
 }
 
 
@@ -266,6 +274,6 @@ public class Bitmap(string S,T) : ABitmap{
 public ABitmap generateDummyBitmap(int x, int y, wchar c){
 	Color* p = errorPalette.ptr;
 	Bitmap4Bit result = new Bitmap4Bit(x, y, p);
-	
+
 	return result;
 }*/

@@ -26,7 +26,6 @@ import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.system.inputHandler;
 import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.etc;
-//import system.tgaconv;
 import PixelPerfectEngine.system.config;
 import PixelPerfectEngine.system.binarySearchTree;
 
@@ -59,13 +58,11 @@ int main(string[] args){
 	DerelictFI.load(fiSource);*/
 	
 	//printf("aaaaaaaaaaaaaaaaaa");
-	SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
+	debug SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
 	
 	Editor e = new Editor(args);
 	e.whereTheMagicHappens;
-    //e.destroy();
-	//SDL_Quit();
-	//testAdvBitArrays(128);
+    
 	//TileLayerTest prg = new TileLayerTest();
 	//prg.whereTheMagicHappens;
 	//testBinarySearchTrees(11, 1);
@@ -113,7 +110,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 		ExtendibleBitmap spriteSource = new ExtendibleBitmap("collisionTest.xmp");
 		//t = new TileLayer(32,32, LayerRenderingMode.COPY);
 		tt = new TransformableTileLayer!(Bitmap16Bit,32,32)(LayerRenderingMode.COPY);
-		s = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
+		s = new SpriteLayer(LayerRenderingMode.BLITTER);
 		//c = new CollisionDetector();
 		dlangMan = loadBitmapFromXMP!Bitmap16Bit(spriteSource,"DLangMan");
 		//CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
@@ -137,7 +134,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 		}
 		//wchar[] mapping;
 		MappingElement[] mapping;
-		mapping.length = 8*8;
+		mapping.length = 16*16;
 		//attrMapping.length = 256*256;
 		for(int i; i < mapping.length; i++){
 			//mapping[i] = to!wchar(uniform(0x0000,0x00AA));
@@ -171,11 +168,11 @@ class TileLayerTest : SystemEventListener, InputListener{
 		ih.kb ~= KeyBinding(0, ScanCode.NP_PLUS,0, "theta+", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, ScanCode.NP_MINUS,0, "theta-", Devicetype.KEYBOARD, KeyModifier.ANY);
 
-		tt.loadMapping(8,8,mapping);
-		//tt.setWarpMode(true);
+		tt.loadMapping(16,16,mapping);
+		tt.setWarpMode(true);
 		//tt.hBlankInterrupt = &ttlHBlankInterrupt;
 		//t.setWrapMode(true);
-
+		//tt.D = -256;
 		output = new OutputScreen("TileLayer test", 1280,960);
 		r = new Raster(320,240,output);
 		output.setMainRaster(r);
@@ -224,6 +221,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 	}
 	override public void keyPressed(string ID,uint timestamp,uint devicenumber,uint devicetype) {
 		//writeln(ID);
+		import PixelPerfectEngine.graphics.transformFunctions;
 		switch(ID){
 			case "up": up = true; break;
 			case "down": down = true; break;
@@ -247,8 +245,22 @@ class TileLayerTest : SystemEventListener, InputListener{
 			case "x0-": tt.x_0 = cast(short)(tt.x_0 - 1); break;
 			case "y0+": tt.y_0 = cast(short)(tt.y_0 + 1); break;
 			case "y0-": tt.y_0 = cast(short)(tt.y_0 - 1); break;
-			/*case "theta+": theta += 1; tt.rotate(theta); break;
-			case "theta-": theta -= 1; tt.rotate(theta); break;*/
+			case "theta+":
+				theta += 1; 
+				short[4] newTP = rotateFunction(theta);
+				tt.A = newTP[0];
+				tt.B = newTP[1];
+				tt.C = newTP[2];
+				tt.D = newTP[3];
+				break;
+			case "theta-": 
+				theta -= 1; 
+				short[4] newTP = rotateFunction(theta);
+				tt.A = newTP[0];
+				tt.B = newTP[1];
+				tt.C = newTP[2];
+				tt.D = newTP[3];
+				break;
 			default: break;
 		}
 	}

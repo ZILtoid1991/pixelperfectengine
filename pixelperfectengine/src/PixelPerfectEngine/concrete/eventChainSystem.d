@@ -3,8 +3,8 @@ module PixelPerfectEngine.concrete.eventChainSystem;
  * Defines an undoable event.
  */
 public interface UndoableEvent{
-	public abstract void redo();	///called both when a redo command is initialized or the event is added to the stack.
-	public abstract void undo();	///called when an undo command is initialized on the stack.
+	public void redo();	///called both when a redo command is initialized or the event is added to the stack.
+	public void undo();	///called when an undo command is initialized on the stack.
 }
 
 /**

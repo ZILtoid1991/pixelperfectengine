@@ -7,7 +7,7 @@
 module PixelPerfectEngine.concrete.elements;
 
 import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.graphics.draw;
+public import PixelPerfectEngine.graphics.draw;
 import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.inputHandler;
 import std.algorithm;
@@ -921,13 +921,14 @@ public class CheckBox : WindowElement{
 	public int[] brush;
 	public void delegate(Event ev) onToggle;
 	
-	public this(wstring text, string source, Coordinate coordinates){
+	public this(wstring text, string source, Coordinate coordinates, bool checked = false){
 		position = coordinates;
 		this.text = text;
 		this.source = source;
 		brush ~= 2;
 		brush ~= 3;
 		output = new BitmapDrawer(position.width, position.height);
+		this.checked = checked;
 		//draw();
 	}
 	
@@ -1588,7 +1589,8 @@ public class PopUpMenu : PopUpElement{
 		if(elements[offsetY].source == "\\submenu\\"){
 			PopUpMenu m = new PopUpMenu(elements[offsetY].subElements, this.source, elements[offsetY].iconWidth);
 			m.onMouseClick = onMouseClick;
-			parent.addPopUpElement(m);
+			//parent.getAbsolutePosition()
+			parent.addPopUpElement(m, coordinates.left + width, coordinates.top + offsetY * (height / elements.length));
 			//parent.closePopUp(this);
 		}else{
 			//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
@@ -1668,6 +1670,12 @@ public class PopUpMenuElement{
 	public PopUpMenuElement opIndexAssign(PopUpMenuElement value, size_t i){
 		subElements[i] = value;
 		return value;
+	}
+	public PopUpMenuElement opOpAssign(string op)(PopUpMenuElement value){
+		static if(op == "~"){
+			subElements ~= value;
+			return value;
+		}else static assert("Operator " ~ op ~ " not supported!");
 	}
 	public size_t getLength(){
 		return subElements.length;
@@ -1812,6 +1820,7 @@ public interface PopUpHandler : StyleSheetContainer{
 	public void addPopUpElement(PopUpElement p, int x, int y);
 	public void endPopUpSession();
 	public void closePopUp(PopUpElement p);
+	//public Coordinate getAbsolutePosition(PopUpElement sender);
 	//public void drawUpdate(PopUpElement sender);
 	//public StyleSheet getDefaultStyleSheet();
 
@@ -1977,6 +1986,7 @@ public interface ElementContainer : StyleSheetContainer{
 public interface StyleSheetContainer{
 	public StyleSheet getStyleSheet();
 	
+
 	public void drawUpdate(WindowElement sender);
 	
 }

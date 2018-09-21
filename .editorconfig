@@ -1,0 +1,30 @@
+[*]
+trim_trailing_whitespace = true
+end_of_line = lf
+insert_final_newline = true
+
+[*.sh]
+tab_width = 4
+indent_size = 4
+indent_style = tab
+
+[makefile]
+tab_width = 4
+indent_size = 4
+indent_style = tab
+
+[*.d]
+dfmt_align_switch_statements = true
+dfmt_brace_style = otbs
+dfmt_outdent_attributes = true
+dfmt_outdent_labels = true
+dfmt_soft_max_line_length = 80
+dfmt_space_after_cast = false
+dfmt_space_after_keywords = false
+dfmt_split_operator_at_line_end = false
+end_of_line = lf
+indent_size = 4
+indent_style = tab
+insert_final_newline = true
+max_line_length = 128
+tab_width = 4

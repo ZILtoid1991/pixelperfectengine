@@ -8,7 +8,7 @@
 import std.stdio;
 import std.conv;
 import std.algorithm.searching;
-public import derelict.sdl2.sdl;
+import derelict.sdl2.sdl;
 /**
  * Basic Force Feedback implementation.
  */
