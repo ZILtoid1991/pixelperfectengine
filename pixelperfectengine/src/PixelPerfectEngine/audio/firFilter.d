@@ -16,7 +16,8 @@ version(LDC){
 /**
  * Defines a finite impulse response.
  */
-public struct FiniteImpulseResponse(int L){
+public struct FiniteImpulseResponse(int L)
+		if(isPowerOf2(L)){
 	//static assert(L % 2 == 0);
 	public short[L] vals;	///Holds the values.
 }

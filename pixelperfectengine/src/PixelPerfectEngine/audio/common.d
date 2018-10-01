@@ -60,9 +60,12 @@ abstract class AbstractPPEFX{
 	public abstract @nogc void render(float** inputBuffers, float** outputBuffers);
 	public abstract @nogc int setRenderParams(float samplerate, size_t framelength, size_t nOfFrames);
 	public abstract @nogc void receiveMICPCommand(MICPCommand cmd);
-	public abstract @nogc void loadConfig(ref void[] data);
-	public abstract @nogc ref void[] saveConfig();
-	public abstract @nogc PPEFXInfo* getPPEFXInfo();
+	public abstract void loadConfig(ref void[] data);
+	public abstract ref void[] saveConfig();
+	public abstract PPEFXInfo* getPPEFXInfo();
+	/**
+	 * Converts a midi note to frequency, can also take fine tuning.
+	 */
 	public @nogc float midiNoteToFrequency(float note, float tuning = 440.0f){
     	return tuning * pow(2.0, (note - 69.0f) / 12.0f);
 	}

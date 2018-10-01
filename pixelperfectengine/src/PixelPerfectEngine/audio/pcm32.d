@@ -12,15 +12,21 @@ import PixelPerfectEngine.audio.envGen;
 import PixelPerfectEngine.audio.lfo;
 
 import PixelPerfectEngine.system.platform;
+import PixelPerfectEngine.system.binarySearchTree;
 
 static if(USE_INTEL_INTRINSICS)
 	import inteli.emmintrin;
 
 import libPCM.codecs;
 import libPCM.common;
+import libPCM.file;
+import libPCM.types;
 
 import std.bitmanip;
 import std.math;
+
+import core.stdc.stdlib;
+import core.stdc.string;
 
 /**
  * Sampling synthesizer implementation. Has per channel FIR (1024 stage) and IIR (low-pass) filters, and four stereo outputs.
@@ -90,7 +96,8 @@ public class PCM32 : AbstractPPEFX{
 	 * Does not store the data regarding instrument samples.
 	 */
 	public struct ChannelPresetMain{
-		ushort firType;		///Selects the FIR filter type
+		ubyte firTypeL;		///Selects the FIR filter type for the left channel
+		ubyte firTypeR;		///Selects the FIR filter type for the right channel
 		ubyte iirType;		///Selects the IIR filter type
 		ubyte lfoWave;		///Selects the LFO Waveform
 
@@ -108,8 +115,8 @@ public class PCM32 : AbstractPPEFX{
 		ControlData firLevelCtrl;		///Sets the modifiers for the firLevel (fixValue controls don't work)
 		ControlData firFeedbackCtrl;	///Sets the modifiers for the firFeedback (fixValue controls don't work)
 
-		ControlData sendLevelLCtrl;
-		ControlData sendLevelRCtrl;
+		ControlData sendLevelLCtrl;		///Modifies all left channel outputs
+		ControlData sendLevelRCtrl;		///Modifies all right channel outputs
 
 		ControlData _QCtrl;
 		ControlData f0Ctrl;
@@ -120,29 +127,158 @@ public class PCM32 : AbstractPPEFX{
 		 * Routing policies:
 		 * enableIIR: Enables IIR filter
 		 * enableFIR: Enables FIR filter
+		 * serialFIR: If true, it runs the two FIR filters in serial [L -> R]
 		 * routeFIRintoIIR: Reverses the routing of the two filters
 		 *
 		 * Legato:
-		 * retrigSample: Enables sample retriggering if keyOn command received without keyoff
-		 * retrigEGA: Enables retriggering of envelope generator A
-		 * retrigEGB: Enables retriggering of envelope generator B
+		 * resetSample: Disables sample resetting if keyOn command received without keyoff
+		 * resetEGA: Disables resetting of envelope generator A
+		 * resetEGB: Disables resetting of envelope generator B
+		 * resetLFO: Disables resetting of LFO
 		 */
 		mixin(bitfields!(
 			bool,"enableIIR",1,
 			bool,"enableFIR",1,
+			bool,"serialFIR",1,
 			bool,"routeFIRintoIIR",1,
-			bool,"retrigSample",1
-			bool,"retrigEGA",1
-			bool,"retrigEGB",1
-			/*bool,"loop",1
-			bool,"pingpong",1*/
-			ushort,"reserved",8+2,
+			bool,"resetSample",1,
+			bool,"resetEGA",1,
+			bool,"resetEGB",1,
+			bool,"resetLFO",1,
+
+			ushort,"reserved",8,
 		));
 	}
 	/**
 	 * Preset data.
 	 * Stores data on how to handle instrument samples.
+	 * Important: fromX are always the lower values. Overlapping values are not supported.
 	 */
+	public struct ChannelPresetSamples{
+		///Sets certain properties of the sample
+		enum Flags : ushort{
+			///Enables sample looping
+			enableLoop = 0b0000_0000_0000_0001,
+			///Changes looping from one-way to ping-pong (doesn't work with most differental codecs)
+			pingPongLoop = 0b0000_0000_0000_0010,
+			///Disables pitch changes on different notes.
+			isPercussive = 0b0000_0000_0000_0100,
+			///Plays only a slice from the sample (doesn't work with most differental codecs)
+			slice = 0b0000_0000_0000_1000,
+		}
+		uint sampleSelect;	///Selects the sample that will be used
+		uint loopFrom;
+		uint loopTo;
+		float midFreq;
+		ushort loopFlags;	///See enum Flags for options
+		ushort midNote;
+		ushort fromNote = 0x0FFF;
+		ushort toNote = 0x0FFF + 0x7F;
+		/+ushort fromVelocity;
+		ushort toVelocity = ushort.max;
+		ushort fromExpressiveVal;
+		ushort toExpressiveVal = ushort.max;+/
+		/**
+		 * Used mainly for ordering them in a BSTree.
+		 */
+		@nogc int opCmp(ChannelPresetSamples rhs){
+			if(this.toNote < rhs.fromNote)
+				return -1;
+			else if(this.fromNote > rhs.toNote)
+				return 1;
+			else
+				return 0;
+		}
+		/**
+		 * Range lookup.
+		 */
+		@nogc int opCmp(ushort rhs){
+			if(this.fromNote > rhs){//hit from lower range
+				if(this.toNote < rhs){//hit from upper range
+					return 0;
+				}else{//overshoot
+					return 1;
+				}
+			}else{//undershoot
+				return -1;
+			}
+		}
+		/**
+		 * Equals function for other ChannelPresetSamples.
+		 */
+		@nogc bool opEquals(ChannelPresetSamples b) {
+			return opCmp(b) == 0;
+		}
+		/**
+		 * Equals function for ushort by note.
+		 */
+		@nogc bool opEquals(ushort b) {
+			return opCmp(b) == 0;
+		}
+	}
+	/**
+	 * Stores information regarding to samples.
+	 * IMPORTANT: Always call unloadSample for unloading samples from the memory.
+	 */
+	public struct Sample{
+		size_t length;		///Length of sample
+		ubyte* dataPtr;		///Points to the first sample of the stream
+		CodecType codec;	///Selects the codec type
+		ushort flags;		///Mainly for 32bit alignment, placeholder for future flags (stereo sample support?)
+		float sampleFreq;	///Overrides the *.pcm file's sampling frequency
+		this(size_t length, ubyte* dataPtr, CodecType codec){
+			this.length = length;
+			this.dataPtr = dataPtr;
+			this.codec = codec;
+		}
+		/**
+		 * Unloads the sample from memory.
+		 */
+		@nogc void unloadSample(){
+			length = 0;
+			free(dataPtr);
+		}
+	}
+	/**
+	 * Stores sample preset data for editing and storing purposes.
+	 */
+	public struct SamplePreset{
+		char[32] name;		///Must match file source name without the .pcm extension in the sample pool(s) being used
+		float freq;
+		uint id;
+	}
+	/**
+	 * Stores data on LFO or FIR for editing and storing purposes.
+	 */
+	public struct FXSamplePreset{
+		char[32] name;		///Must match file source name without the .pcm extension in the sample pool(s) being used
+		ubyte id;
+		ubyte[3] unused;
+	}
+	/**
+	 * Stores instrument preset data for editing and storing purposes.
+	 */
+	public struct InstrumentPreset{
+		char[32] name;
+		ushort id;
+		ushort egaStages;
+		ushort egbStages;
+		ushort sampleLayers;
+	}
+	/**
+	 * RIFF header to identify preset data in banks.
+	 */
+	enum RIFFID : char[4]{
+		riffInitial = "RIFF",		///to initialize the RIFF format
+		bankInitial = "BANK",		///currently unused
+		instrumentPreset = "INSP",	///indicates that the next chunk is an instrument preset. length = InstrumentPreset.sizeof + ChannelPresetMain.sizeof
+		envGenA = "ENVA",			///indicates that there's envelope generator data for the current preset. length = EnvelopeStage.sizeof * egaStages
+		envGenB = "ENVB",			///indicates that there's envelope generator data for the current preset. length = EnvelopeStage.sizeof * egbStages
+		instrumentData = "INSD",	///indicates that the next chunk contains sample layer data for the current preset. length = ChannelPresetSamples.sizeof * sampleLayers
+		samplePreset = "SLMP",		///indicates that the next chunk is a sample preset. length = SamplePreset * sizeof
+		lfoPreset = "LFOP",			///indicates that the next chunk is an LFO preset. length = FXSamplePreset * sizeof
+		fiResponse = "FIRS",		///indicates that the next chunk is an FIR preset. length = FXSamplePreset * sizeof
+	}
 	/**
 	 * Stores data for a single channel.
 	 */
@@ -151,14 +287,19 @@ public class PCM32 : AbstractPPEFX{
 		uint loopfrom, loopto;	///describe a loop cycle between the two values
 		uint stepping;			///describes how much the sample should go forward, 65536 equals a whole step
 		ulong forward;			///current position
-		short[] intBuff;		///buffer for FIR-filters
+		short[][2] intBuff;		///buffer for FIR-filters
 		CodecType codecType;
 		DecoderWorkpad workpad, secWorkpad;
-		EnvelopeGenerator envGenA;
-		EnvelopeGenerator envGenB;
+		ushort id;
+		//EnvelopeGenerator envGenA;
+		//EnvelopeGenerator envGenB;
 		FiniteImpulseResponseFilter!(1024)[2] firFilter;
 		LowFreqOsc!(256) lfo;
 	}
+	BinarySearchTree!(ushort,EnvelopeGenerator) envGenA;
+	BinarySearchTree!(ushort,EnvelopeGenerator) envGenB;
+	BinarySearchTree!(ushort,ChannelPresetMain) presets;
+	BinarySearchTree!(ushort,BinarySearchTree2!(ChannelPresetSamples)) sampleLayers;
 	float sampleRate;
 	int frameLength, bufferLength;
 	version(X86){
@@ -200,12 +341,22 @@ public class PCM32 : AbstractPPEFX{
 		IIRFilterBuff[8] iirFilters;
 		void* iirFiltersPtr;
 	}else{
-		float[32] x_n_minus1, x_n_minus2, y_n_minus1, y_n_minus2, b0a0, b1a0, b2a0, a1a0, a2a0;
+		protected float[32] x_n_minus1, x_n_minus2, y_n_minus1, y_n_minus2, b0a0, b1a0, b2a0, a1a0, a2a0;
 	}
-	float[32][] y_n, x_n;
-	float[32] iirDryLevel, iirWetLevel;
+	protected float[32][] y_n, x_n;
+	protected float[32] iirDryLevel, iirWetLevel;
 	protected float sampleRate;
 	protected size_t frameLength, nOfFrames;
+	protected BinarySearchTree!(ushort, FiniteImpulseResponse!(1024)) finiteImpulseResponses;
+	protected BinarySearchTree!(uint, Sample) samples;
+
+	protected string samplePoolPath;	///Specifies the path for the sample pool
+	/**
+	 * Make sure that the string describes a valid path.
+	 */
+	public this(string samplePoolPath = "./audio/samples/"){
+		this.samplePoolPath = samplePoolPath;
+	}
 
 	protected @nogc void calculateIIR(){
 		static if(USE_INTEL_INTRINSICS){
@@ -328,5 +479,117 @@ public class PCM32 : AbstractPPEFX{
 		this.frameLength = framelength;
 		this.nOfFrames = nOfFrames;
 	}
+	/**
+	 * Loads a bank into the synthesizer, also loads samples on the way from the selected sample pool.
+	 * For the latter, it'll be able to use compression through lzbacon's datapak file format (default path for
+	 * that is ./audio/samplepool.dpk), otherwise a folder with uncompressed data is used (default path for that
+	 * is ./audio/samplepool/).
+	 */
+	public void loadConfig(ref void[] data){
+		import PixelPerfectEngine.system.file : RIFFHeader;
+		import std.string : toStringz;
+		size_t pos;
+		bool riffHeaderFound, envGenAFound, envGenBFound, cpsFound;
+		InstrumentPreset currentInstr;
+		while(data.length < pos){
+			RIFFHeader header = *cast(RIFFHeader*)(data.ptr + pos);
+			pos += RIFFHeader.sizeof;
+			switch(header.data){
+				case RIFFID.riffInitial:
+					riffHeaderFound = true;
+					break;
+				case RIFFID.instrumentPreset:
+					envGenAFound = false;
+					envGenBFound = false;
+					cpsFound = false;
+					currentInstr = *cast(InstrumentPreset*)(data.ptr + pos);
+					pos += InstrumentPreset.length;
+					break;
+				case RIFFID.envGenA:
+					if(!envGenAFound){
+						envGenAFound = true;
+						EnvelopeGenerator ega;
+						ega.stages.reserve(currentInstr.egaStages);
+						for(int i ; i < currentInstr.egaStages ; i++){
+							ega.stages ~= *cast(EnvelopeStage*)(data.ptr + pos);
+							pos += EnvelopeStage.length;
+						}
+						envGenA[currentInstr.id] = ega;
+					}
+					break;
+				case RIFFID.envGenB:
+					if(!envGenBFound){
+						envGenBFound = true;
+						EnvelopeGenerator egb;
+						egb.stages.reserve(currentInstr.egbStages);
+						for(int i ; i < currentInstr.egbStages ; i++){
+							egb.stages ~= *cast(EnvelopeStage*)(data.ptr + pos);
+							pos += EnvelopeStage.length;
+						}
+						envGenB[currentInstr.id] = egb;
+					}
+					break;
+				case RIFFID.samplePreset:
+					if(!envGenBFound){
+						cpsFound = true;
+						for(int i ; i < currentInstr.sampleLayers ; i++){
+							sampleLayers[currentInstr.id].add(*cast(ChannelPresetSamples*)(data.ptr + pos));
+							pos += ChannelPresetSamples.length;
+						}
+					}
+					break;
+				case RIFFID.instrumentData:
+					presets[currentInstr.id] = *cast(ChannelPresetMain*)(data.ptr + pos);
+					pos += ChannelPresetMain.length;
+					break;
+				case RIFFID.samplePreset:
+					SamplePreset slmp = *cast(SamplePreset*)(data.ptr + pos);
+					pos += SamplePreset.length;
+					string filename = samplePoolPath;
+					foreach(c ; slmp.name){
+						if(c){
+							filename ~= c;
+						}else{
+							break;
+						}
+					}
+					filename ~= ".pcm";
+					PCMFile file = loadPCMFile(toStringz(filename));
+					//sampleSrc ~= file.data;
+					Sample s;
+					s.codec = file.data.codecType;
+					s.sampleFreq = slmp.freq;
+					s.length = file.header.length;
+					s.dataPtr = cast(ubyte*)malloc(file.data.data.length);
+					memcpy(s.dataPtr, file.data.data.ptr, file.data.data.length);
+					file.destroy;
+					samples[slmp.id] = s;
+					break;
+				case RIFFID.fiResponse:
+					FXSamplePreset slmp = *cast(FXSamplePreset*)(data.ptr + pos);
+					pos += FXSamplePreset.length;
+					string filename = samplePoolPath;
+					foreach(c ; slmp.name){
+						if(c){
+							filename ~= c;
+						}else{
+							break;
+						}
+					}
+					filename ~= ".pcm";
+					PCMFile file = loadPCMFile(toStringz(filename));
+					FiniteImpulseResponse!(1024) fir;
+					memcpy(fir.vals.ptr, file.data.data.ptr, 1024);
+					file.destroy;
+					finiteImpulseResponses[slmp.id] = fir;
+					break;
+				case RIFFID.lfoPreset:
+					break;
+				default:
+					throw new Exception("Invalid data error!");
+			}
+		}
+	}
+
 }
 

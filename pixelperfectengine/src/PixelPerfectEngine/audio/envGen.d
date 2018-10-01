@@ -21,8 +21,8 @@ public enum StageType : ubyte{
  */
 public struct EnvelopeStage{
 
-	public uint targetLevel;	/// If reached, jumps to the next stage 
-	public uint stepping;		/// If slow enabled, it sets how much clockcycles needed for a single increment, otherwise sets the increment for each clockcycle
+	public uint targetLevel;	/// If reached, jumps to the next stage
+	public uint stepping;		/// If slow enabled, it sets how much cycles needed for a single increment, otherwise sets the increment for each cycle
 	public byte linearity;		/// 0 = Linear. Greater than 0 = Pseudolog. Less than 0 = Pseudoantilog.
 	mixin(bitfields!(
 		ubyte, "type", 3,
@@ -32,11 +32,15 @@ public struct EnvelopeStage{
 }
 
 public struct EnvelopeGenerator{
-	private EnvelopeStage[] stages;
+	public EnvelopeStage[] stages;
 	private sizediff_t currentStage;
 	private uint currentLevel, stepNumber;
 	private uint log;
 	private bool isRunning, keyON;
+
+	public @nogc @property uint output(){
+		return currentLevel;
+	}
 
 	public @nogc void step(){
 		if(isRunning){
@@ -46,7 +50,7 @@ public struct EnvelopeGenerator{
 						currentLevel += stages[currentStage].stepping;
 						log += stages[currentStage].stepping;
 						currentLevel += log / (128 - stages[currentStage].linearity);
-						
+
 						if(currentLevel >= stages[currentStage].targetLevel){
 							currentLevel = stages[currentStage].targetLevel;
 							currentStage++;
@@ -80,7 +84,7 @@ public struct EnvelopeGenerator{
 						currentLevel -= stages[currentStage].stepping;
 						log += stages[currentStage].stepping;
 						currentLevel -= log / (128 - stages[currentStage].linearity);
-						
+
 						if(currentLevel <= stages[currentStage].targetLevel){
 							currentLevel = stages[currentStage].targetLevel;
 							currentStage++;
@@ -114,7 +118,7 @@ public struct EnvelopeGenerator{
 						currentLevel -= stages[currentStage].stepping;
 						log += stages[currentStage].stepping;
 						currentLevel -= log / (128 - stages[currentStage].linearity);
-						
+
 						if(currentLevel <= 0){
 							isRunning = false;
 						}

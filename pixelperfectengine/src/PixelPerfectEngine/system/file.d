@@ -39,7 +39,7 @@ public Bitmap16Bit[] loadBitmapFromFile(string filename){
 	return bar;
 }
 /**
- * Gets a bitmap from the XMP file. 
+ * Gets a bitmap from the XMP file.
  */
 T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
 	static if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof){
@@ -73,18 +73,18 @@ T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
 				result = new T(subresult,xmp.getXsize(ID),xmp.getYsize(ID));
 				break;
 			/*case "1bit":
-				
+
 				break;*/
 			default:
 				throw new FileAccessException("Bitdepth error!");
 		}
-		
+
 		return result;
 	}else static if(T.stringof == Bitmap32Bit.stringof){
 		T result = new T(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
 		return result;
 	}else static if(T.stringof == ABitmap.stringof){
-		
+
 		switch(xmp.bitdepth[xmp.searchForID(ID)]){
 			case "4bit":
 				return new Bitmap4Bit(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
@@ -96,9 +96,9 @@ T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
 				return new Bitmap32Bit(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
 			default:
 				return null;
-				
+
 		}
-		
+
 	}else static assert("Template argument \'" ~ T.stringof ~ "\' not supported in function \'T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID)\'");
 }
 /**
@@ -137,4 +137,12 @@ public Mix_Chunk* loadSoundFromFile(const char* filename){
 
 File loadFileFromDisk(string filename){
 	return File(filename, "r");
+}
+
+/**
+ * Implements the RIFF serialization system
+ */
+public struct RIFFHeader{
+	char[4] data;
+	uint length;
 }
