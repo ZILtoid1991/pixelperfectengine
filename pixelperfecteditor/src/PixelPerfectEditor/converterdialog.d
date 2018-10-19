@@ -1,5 +1,5 @@
 ﻿/*
- * PixelPerfectEditor, converterdialog module 
+ * PixelPerfectEditor, converterdialog module
  *
  * Copyright 2017, under Boost License
  *
@@ -27,7 +27,7 @@ import converter;
 import importDialog;
 import multiImportDialog;
 /**
- *Creates a window for converting external bitmaps for the engine's native format 
+ *Creates a window for converting external bitmaps for the engine's native format
  */
 public class ConverterDialog : Window{
 	private ListBox imageList, fileList, animationList, frameList;
@@ -93,7 +93,7 @@ public class ConverterDialog : Window{
 	public this(Coordinate size, wstring title){
 		super(size, title);
 	}
-	
+
 	public void singleImport(string bitmapID, string paletteID, bool importPal, string bitDepth){
 		try{
 			importDirectlyToXMP(importFileName,paletteID,selection,new ImportData([bitmapID],bitDepth,0,0,0));
@@ -168,13 +168,13 @@ public class ConverterDialog : Window{
 						//id.al ~= this;
 						parent.addWindow(new ImportDialog(this));
 						break;
-					case "importmulti": 
+					case "importmulti":
 						string fileName = event.path;
 						fileName ~= '\\';
 						fileName ~= event.filename;
 						importFileName = fileName;
 						BitmapInfo bi = getBitmapInfo(importFileName);
-						 
+
 						parent.addWindow(new MultiImportDialog(bi.width, bi.height, this));
 						break;
 					case "palettefile":
@@ -183,14 +183,14 @@ public class ConverterDialog : Window{
 						fileName ~= event.filename;
 						importFileName = fileName;
 						TextInputDialog tid = new TextInputDialog(Coordinate(0,0,200,90),"palName","Import Palette","Palette ID:");
-						
+
 						parent.addWindow(tid);
 						break;
 					default: break;
 				}
 				break;
 			/+case "impDial":
-				
+
 				try{
 					/*Bitmap32Bit bmp = import32BitBitmapFromFile(importFileName);
 					 selection.addBitmap(cast(void[])bmp.getRawdata(),bmp.getX,bmp.getY,"32bit",to!string(event.text),"ARGB");
@@ -214,7 +214,7 @@ public class ConverterDialog : Window{
 				break;+/
 			case "TextInputDialog":
 				switch(event.source){
-					case "palName": 
+					case "palName":
 						importPaletteDirectlyToXMP(importFileName,selection,to!string(event.text));
 						break;
 					default: break;
@@ -241,7 +241,7 @@ public class ConverterDialog : Window{
 								previewWindow.close();
 							}else{
 								previewModeOn = true;
-								
+
 								previewWindow = new PreviewWindow(preview, viewer, this);
 								parent.addWindow(previewWindow);
 							}
@@ -425,7 +425,7 @@ interface SheetDialogListener{
 	public void actionEvent(Event event){
 		//writeln(event.source);
 		switch(event.source){
-			case "ok": 
+			case "ok":
 				foreach(a; al){
 					a.actionEvent(new Event("impDial","impDial","","",name.getText,bitdepthSetter.getValue,-3));
 
@@ -445,15 +445,15 @@ public class PreviewWindow : Window{
 	public this(Bitmap32Bit previewImage, ISpriteLayer spriteLayer, ConverterDialog cd){
 		Coordinate size = Coordinate(0,0,previewImage.width > 78 ? previewImage.width + 2 : 80, previewImage.height + 18);
 		super(size, "Preview");
-		spriteLayer.addSprite(previewImage, -1, 2, 18, BitmapAttrib(false,false));
+		spriteLayer.addSprite(previewImage, -1, 2, 18);
 		this.spriteLayer = spriteLayer;
 		this.cd = cd;
 	}
-	
+
 	public deprecated void actionEvent(Event event) {
-	
+
 	}
-	
+
 	override public void move(int x,int y) {
 		spriteLayer.moveSprite(-1,x+2,y+18);
 		super.move(x,y);
@@ -467,6 +467,6 @@ public class PreviewWindow : Window{
 		cd.previewModeOn = false;
 		super.close;
 	}
-	
+
 }
 

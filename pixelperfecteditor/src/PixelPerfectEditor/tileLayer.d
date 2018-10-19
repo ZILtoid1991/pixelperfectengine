@@ -5,8 +5,8 @@
  import editor;
  import addTiles;
  import std.conv;
- 
- public class TileLayerEditor : Window { 
+
+ public class TileLayerEditor : Window {
 	ListBox tileList;
 	Button button_Add;
 	Button button_rem;
@@ -38,6 +38,7 @@
 	TextBox layerName;
 	Editor edi;
 	int selectedLayer;
+	BitmapAttrib attributes;
 	this(Editor e){
 		super(Coordinate(0, 0, 410, 410), "TileLayer"w);
 		tileList = new ListBox("tileList",Coordinate(5, 20, 320, 244), null, new ListBoxHeader(["ID"w, "Name"w, "Source"w], [32, 80, 320]), 16);
@@ -209,22 +210,22 @@
 		}
 	}+/
 	private void checkBox_hm_onToggle(Event ev){
-	
+		attributes.horizMirror = ev.value != 0;
 	}
 	private void checkBox_vm_onToggle(Event ev){
-	
+		attributes.vertMirror = ev.value != 0;
 	}
 	private void checkBox_overwrite_onToggle(Event ev){
-	
+
 	}
 	private void checkBox_vis_onToggle(Event ev){
-	
+
 	}
 	private void checkBox_solo_onToggle(Event ev){
-	
+
 	}
 	private void checkBox_warp_onToggle(Event ev){
-	
+
 	}
 	private void sXRate_onTextInput(Event ev){
 		import std.string;
@@ -259,16 +260,16 @@
 		}
 	}
 	private void textBox_pri_onTextInput(Event ev){
-	
+
 	}
 	private void button_rem_onMouseLClickRel(Event ev){
-	
+
 	}
 	private void button_rrem_onMouseLClickRel(Event ev){
-	
+
 	}
 	private void button_rep_onMouseLClickRel(Event ev){
-	
+
 	}
 	private void button_imp_onMouseLClickRel(Event ev){
 		FileDialog f = new FileDialog("Import resources from file"w, "resImp", &onResourceImport, [FileDialog.FileAssociationDescriptor("MAP file"w, ["*.map"])], "./");
@@ -278,7 +279,7 @@
 		parent.addWindow(f);
 	}
 	private void button_res_onMouseLClickRel(Event ev){
-	
+
 	}
 	private void button_prev_onMouseLClickRel(Event ev){
 		selectedLayer = edi.getPreviousTileLayer(selectedLayer);
@@ -311,6 +312,6 @@
 		parent.addWindow(w);
 	}
 	private void onResourceImport(Event ev){
-	
+
 	}
 }

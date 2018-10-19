@@ -33,7 +33,7 @@ public class ExtendibleMap{
 	public string[string] metaData;		///Stores metadata. Serialized as: [index] = value &lt = &gt &lt index &gt value &lt / index &gt
 	public string filename;			///Name of the file alongside with the path.
 	/// Load from datastream
-	
+
 	/// Load from file
 	this(string filename){
 		this.filename = filename;
@@ -43,7 +43,7 @@ public class ExtendibleMap{
 	this(){
 
 	}
-	
+
 	/+public T[wchar] loadTileSet(T)(int num){
 		T[wchar] result;
 
@@ -106,7 +106,7 @@ public class ExtendibleMap{
 		e.tag.attr["source"] = file;
 		tileSource[num] ~= e;
 	}
-	/// Adds a new tile for the tilesource. If file source doesn't exist, it adds to the filelist. Source: the ID in the file. 
+	/// Adds a new tile for the tilesource. If file source doesn't exist, it adds to the filelist. Source: the ID in the file.
 	void addTileToTileSource(int num, wchar ID, string name, string source, string file){
 		foreach(Element e; tileSource[num].elements){
 			if(e.tag.attr["source"] == file){
@@ -137,7 +137,7 @@ public class ExtendibleMap{
 		return tld[num];
 	}
 	/// Gets the number of layers.
-	int getNumOfLayers(){
+	size_t getNumOfLayers(){
 		return tld.length + sld.length;
 	}
 	/// Removes a tilelayer.
@@ -179,14 +179,14 @@ public class ExtendibleMap{
 								break;
 						}
 					}
-					tld[priority] = new TileLayerData(to!int(e1.tag.attr["tX"]), to!int(e1.tag.attr["tY"]), 
+					tld[priority] = new TileLayerData(to!int(e1.tag.attr["tX"]), to!int(e1.tag.attr["tY"]),
 						to!int(e1.tag.attr["mX"]), to!int(e1.tag.attr["mY"]), to!double(e1.tag.attr["sX"]), to!double(e1.tag.attr["sY"]),
 						to!int(e1.tag.attr["priority"]), md, e1.tag.attr["name"], e1.tag.attr.get("subType",""));
-					
+
 					break;
 				case "SpriteLayer":
 					auto ea = new Element("SpriteLayer");
-					SpriteLayerData s = new SpriteLayerData(e1.tag.attr["name"], to!double(e1.tag.attr["sX"]), to!double(e1.tag.attr["sY"]), 
+					SpriteLayerData s = new SpriteLayerData(e1.tag.attr["name"], to!double(e1.tag.attr["sX"]), to!double(e1.tag.attr["sY"]),
 						to!int(e1.tag.attr["priority"]), e1.tag.attr.get("subType",""));
 					foreach(Element e2; e1.elements){
 						if(e2.tag.name == "Object"){
@@ -202,7 +202,7 @@ public class ExtendibleMap{
 					break;
 				default: break;
 			}
-		}	
+		}
 	}
 	/// Saves the file to the given location
 	void saveFile(string filename){
@@ -274,7 +274,7 @@ public class ExtendibleMap{
 
 
 /**
- * Stores Data regarding to the TileLayer. 
+ * Stores Data regarding to the TileLayer.
  */
 public class TileLayerData{
 	public MappingElement[] mapping;		///Mapping data.
@@ -286,7 +286,7 @@ public class TileLayerData{
 	public int mX, mY;			///Sizes of the mapping.
 	public int priority;		///Layerpriority.
 	public double sX, sY, sXOffset, sYOffset;		///Used by the autoscroll for paralax scrolling.
-	
+
 	/// Constructor for TileLayers with preexisting mapping.
 	public this(int tX, int tY, int mX, int mY, double sX, double sY, int priority, MappingElement[] mapping, string name, string subtype = ""){
 		this.tX = tX;
@@ -317,8 +317,8 @@ public class TileLayerData{
 		initMapping.length = mX*mY;
 		this.mapping = initMapping;*/
 	}
-	
-	
+
+
 }
 /**
  * Stores data regarding to the SpriteLayer.

@@ -17,8 +17,8 @@ subPackage{
   targetType "executable"
   sourcePaths "./pixelperfecteditor/src/PixelPerfectEditor/"
   importPaths "./pixelperfecteditor/src/PixelPerfectEditor/"
-  targetPath "./pixelperfecteditor/bin/pixelperfecteditor/"
-  dependency "pixelperfectengine:pixelperfectengine" version="*"
+  //targetPath "./pixelperfecteditor/bin/pixelperfecteditor/"
+  dependency "pixelperfectengine" version="*"
   dependency "derelict-fi" version="==2.0.3"
 }
 subPackage{
@@ -26,6 +26,6 @@ subPackage{
   targetType "executable"
   sourcePaths "./windowmakerforconcrete/src/WindowMakerForConcrete/"
   importPaths "./windowmakerforconcrete/src/WindowMakerForConcrete/"
-  targetPath "./windowmakerforconcrete/bin/WindowMakerForConcrete/"
-  dependency "pixelperfectengine:pixelperfectengine" version="*"
+  //targetPath "./windowmakerforconcrete/bin/WindowMakerForConcrete/"
+  dependency "pixelperfectengine" version="*"
 }

@@ -41,13 +41,13 @@ version(Windows){
 }
 
 static this(){
-	
+
 	DerelictSDL2.load(sdlSource);
 	DerelictFI.load(fiSource);
 }
 
 static ~this(){
-	
+
 	//DerelictSDL2.unload();
 	//DerelictFI.unload();
 }
@@ -56,17 +56,24 @@ int main(string[] args){
 	//stdout.flush;
     /*DerelictSDL2.load(sdlSource);
 	DerelictFI.load(fiSource);*/
-	
+
 	//printf("aaaaaaaaaaaaaaaaaa");
 	debug SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
-	
-	Editor e = new Editor(args);
+
+	/*if(args.length > 1){
+		if(args[1] == "--test"){*/
+			TileLayerTest prg = new TileLayerTest();
+			prg.whereTheMagicHappens;
+			writeln(prg.isRunning);
+			return 0;
+		/*}
+	}*/
+
+	/*Editor e = new Editor(args);
 	e.whereTheMagicHappens;
-    
-	//TileLayerTest prg = new TileLayerTest();
-	//prg.whereTheMagicHappens;
+
 	//testBinarySearchTrees(11, 1);
-	return 0;
+	return 0;*/
 }
 
 void testBinarySearchTrees(int nOfElements, int nOfTimes){
@@ -106,8 +113,8 @@ class TileLayerTest : SystemEventListener, InputListener{
 	this(){
 		theta = 0;
 		isRunning = true;
-		ExtendibleBitmap tileSource = new ExtendibleBitmap("tiletest.xmp");
-		ExtendibleBitmap spriteSource = new ExtendibleBitmap("collisionTest.xmp");
+		ExtendibleBitmap tileSource = new ExtendibleBitmap("./assets/tiletest.xmp");
+		ExtendibleBitmap spriteSource = new ExtendibleBitmap("./assets/collisionTest.xmp");
 		//t = new TileLayer(32,32, LayerRenderingMode.COPY);
 		tt = new TransformableTileLayer!(Bitmap16Bit,32,32)(LayerRenderingMode.COPY);
 		s = new SpriteLayer(LayerRenderingMode.BLITTER);
@@ -115,9 +122,9 @@ class TileLayerTest : SystemEventListener, InputListener{
 		dlangMan = loadBitmapFromXMP!Bitmap16Bit(spriteSource,"DLangMan");
 		//CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
 		dlangMan.offsetIndexes(256,false);
-		s.addSprite(dlangMan,0,0,0,BitmapAttrib(false,false));
+		s.addSprite(dlangMan,0,0,0);
 		for(int i = 1 ; i < 2 ; i++){
-			s.addSprite(dlangMan,i,uniform(-31,320),uniform(-31,240),BitmapAttrib(false,false));
+			s.addSprite(dlangMan,i,uniform(-31,320),uniform(-31,240));
 		}
 		//s.collisionDetector[1] = c;
 		//c.source = s;
@@ -190,7 +197,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 		writeln(tt);
 		//r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);
-		
+
 	}
 	private @nogc void ttlHBlankInterrupt(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y){
 		localABCD[0]++;
@@ -214,10 +221,10 @@ class TileLayerTest : SystemEventListener, InputListener{
 		isRunning = false;
 	}
 	override public void controllerAdded(uint ID) {
-		
+
 	}
 	override public void controllerRemoved(uint ID) {
-		
+
 	}
 	override public void keyPressed(string ID,uint timestamp,uint devicenumber,uint devicetype) {
 		//writeln(ID);
@@ -231,9 +238,9 @@ class TileLayerTest : SystemEventListener, InputListener{
 			case "scrdown": scrdown = true; break;
 			case "scrleft": scrleft = true; break;
 			case "scrright": scrright = true; break;
-			case "A+": tt.A = cast(short)(tt.A + 16); 
+			case "A+": tt.A = cast(short)(tt.A + 16);
 				break;
-			case "A-": tt.A = cast(short)(tt.A - 16); 
+			case "A-": tt.A = cast(short)(tt.A - 16);
 				break;
 			case "B+": tt.B = cast(short)(tt.B + 16); break;
 			case "B-": tt.B = cast(short)(tt.B - 16); break;
@@ -246,15 +253,15 @@ class TileLayerTest : SystemEventListener, InputListener{
 			case "y0+": tt.y_0 = cast(short)(tt.y_0 + 1); break;
 			case "y0-": tt.y_0 = cast(short)(tt.y_0 - 1); break;
 			case "theta+":
-				theta += 1; 
+				theta += 1;
 				short[4] newTP = rotateFunction(theta);
 				tt.A = newTP[0];
 				tt.B = newTP[1];
 				tt.C = newTP[2];
 				tt.D = newTP[3];
 				break;
-			case "theta-": 
-				theta -= 1; 
+			case "theta-":
+				theta -= 1;
 				short[4] newTP = rotateFunction(theta);
 				tt.A = newTP[0];
 				tt.B = newTP[1];
@@ -280,6 +287,6 @@ class TileLayerTest : SystemEventListener, InputListener{
 /*public void spriteCollision(CollisionEvent ce){
 		writeln("COLLISION!!!!11!1111!!!ONEONEONE!!!");
 	}
-	
+
 	public void backgroundCollision(CollisionEvent ce){}*/
 }

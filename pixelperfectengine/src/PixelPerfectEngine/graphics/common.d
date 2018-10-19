@@ -1,6 +1,6 @@
 ﻿/*
  * Copyright (c) 2015-2017, by Laszlo Szeremi, under Boost license
- * 
+ *
  * Pixel Perfect Engine, graphics.common module
  */
 
@@ -19,16 +19,16 @@ public struct Coordinate{
 		this.right=right;
 		this.bottom=bottom;
 	}
-	/** 
+	/**
 	 * Returns the width of the represented box.
 	 */
-	public @property @nogc int width(){
+	public @property @nogc @safe nothrow pure int width(){
 		return right-left;
 	}
-	/** 
+	/**
 	 * Returns the height of the represented box.
 	 */
-	public @property @nogc int height(){
+	public @property @nogc @safe nothrow pure int height(){
 		return bottom-top;
 	}
 	/**
@@ -37,7 +37,7 @@ public struct Coordinate{
 	public @property @nogc size_t area(){
 		return width * height;
 	}
-	/** 
+	/**
 	 * Moves the box to the given position.
 	 */
 	public @nogc void move(int x, int y){
@@ -46,7 +46,7 @@ public struct Coordinate{
 		left = x;
 		top = y;
 	}
-	/** 
+	/**
 	 * Moves the box by the given values.
 	 */
 	public @nogc void relMove(int x, int y){
@@ -120,7 +120,7 @@ public struct Color{
 		raw = val;
 	}
 	/**
-	 * Operator overloading for quick math. '*' is alpha-blending, '^' is XOR blitter, '&' is normal "blitter". 
+	 * Operator overloading for quick math. '*' is alpha-blending, '^' is XOR blitter, '&' is normal "blitter".
 	 * Alpha is used from right hand side and kept on left hand side when needed
 	 */
 	public Color opBinary(string op)(Color rhs){
@@ -136,7 +136,7 @@ public struct Color{
 			return rhs.alpha ? rhs : this;
 		}else static if(op == "*"){
 			return Color(alpha, cast(ubyte)( ( (rhs.red * (1 + rhs.alpha)) + (red * (256 - rhs.alpha)) )>>8 ),
-								cast(ubyte)( ( (rhs.green * (1 + rhs.alpha)) + (green * (256 - rhs.alpha)) )>>8 ), 
+								cast(ubyte)( ( (rhs.green * (1 + rhs.alpha)) + (green * (256 - rhs.alpha)) )>>8 ),
 								cast(ubyte)( ( (rhs.blue * (1 + rhs.alpha)) + (blue * (256 - rhs.alpha)) )>>8 ));
 		}else static assert(0, "Operator '" ~ op ~ "' not supported!");
 	}

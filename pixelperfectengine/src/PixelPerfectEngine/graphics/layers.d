@@ -87,8 +87,9 @@ abstract class Layer {
 		return sY;
 	}
 	/// Override this to enable output to the raster
-	public abstract void updateRaster(void* workpad, int pitch, Color* palette, int[] threads);
+	public abstract void updateRaster(void* workpad, int pitch, Color* palette);
 	///Standard algorithm for horizontal mirroring
+	///Will be deprecated in later versions and instead external functions will be used.
 	@nogc protected void flipHorizontal(uint* src, int length){
 		uint s;
 		uint* dest = src + length;
@@ -273,7 +274,7 @@ public class TileLayer : Layer, ITileLayer{
 		return tileAttributes[x + y*mX];
 	}+/
 
-	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
+	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette){
 		//import core.stdc.stdio;
 		int y = sY < 0 && !warpMode ? sY * -1 : 0;
 		int sY0 = cast(int)(cast(uint)(sY) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
@@ -406,10 +407,9 @@ public class TileLayer : Layer, ITileLayer{
  * <br/>
  * Restrictions compared to standard TileLayer:
  * <ul>
- * <li>Only a single type of bitmap can be used and 4 bit ones are excluded.</li>
- * <li>8 bit tiles currently share the same palette.</li>
- * <li>Tiles must have any of the following sizes: 8, 16, 32, 64.</li>
- * <li>Maximum layer size in pixels are restricted to 65536*65536</li>
+ * <li>Tiles must have any of the following sizes: 8, 16, 32, 64; since this layer needs to do modulo computations for each pixel.</li>
+ * <li>Maximum layer size in pixels are restricted to 65536*65536 due to architectural limitations. Accelerated versions might raise
+ * this limitation.</li>
  * </ul>
  * HDMA emulation supported through delegate hBlankInterrupt.
  */
@@ -466,8 +466,11 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		protected int4 _tileAmpersand;
 		protected static short8 _increment;
 	}
-
-	public @nogc void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y) hBlankInterrupt;
+	alias HBIDelegate = @nogc void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y);
+	/**
+	 * Called before each line being redrawn. Can modify global values for each lines.
+	 */
+	public HBIDelegate hBlankInterrupt;
 
 	this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
 		A = 256;
@@ -492,7 +495,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		}
 	}
 
-	override public @nogc void updateRaster(void* workpad,int pitch,Color* palette,int[] threads) {
+	override public @nogc void updateRaster(void* workpad,int pitch,Color* palette) {
 		//import core.stdc.stdio;
 		if(needsUpdate){
 			needsUpdate = false;
@@ -523,7 +526,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 							}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
 								Color* tsrc = cast(Color*)d.pixelSrc;
 							}
-							xy = [xy[0] & (TileX - 1), xy[1] & (TileY - 1)];
+							xy[0] = xy[0] & (TileX - 1);
+							xy[1] = xy[1] & (TileY - 1);
 							const int totalOffset = xy[0] + xy[1] * TileX;
 							static if(BMPType.mangleof == Bitmap4Bit.mangleof){
 								src[x] = (totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | currentTile.paletteSel<<4;
@@ -581,7 +585,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 							}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
 								Color* tsrc = cast(Color*)d.pixelSrc;
 							}
-							xy = [xy[0] & (TileX - 1), xy[1] & (TileY - 1)];
+							xy[0] = xy[0] & (TileX - 1);
+							xy[1] = xy[1] & (TileY - 1);
 							const int totalOffset = xy[0] + xy[1] * TileX;
 							static if(BMPType.mangleof == Bitmap4Bit.mangleof){
 								src[x] = (totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | currentTile0.paletteSel<<4;
@@ -613,7 +618,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 							}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
 								Color* tsrc = cast(Color*)d.pixelSrc;
 							}
-							xy = [xy[0] & (TileX - 1), xy[1] & (TileY - 1)];
+							xy[0] = xy[0] & (TileX - 1);
+							xy[1] = xy[1] & (TileY - 1);
 							const int totalOffset = xy[0] + xy[1] * TileX;
 							static if(BMPType.mangleof == Bitmap4Bit.mangleof){
 								src[x] = (totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | currentTile1.paletteSel<<4;
@@ -637,10 +643,10 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 
 					}
 				}else static assert(false, "Compiler not supported");
-				static if(BMPType.mangleof == Bitmap8Bit.mangleof){
+				/*static if(BMPType.mangleof == Bitmap8Bit.mangleof){
 					main8BitColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palettePtr, rasterX);
 					dest += rasterX;
-				}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
+				}else*/ static if(BMPType.mangleof == Bitmap4Bit.mangleof || BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
 					mainColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palette, rasterX);
 					dest += rasterX;
 				}
@@ -717,16 +723,25 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		needsUpdate = true;
 		return transformPoints[0];
 	}
+	/**
+	 * Horizontal shearing.
+	 */
 	public @nogc @property short B(short newval){
 		transformPoints[1] = newval;
 		needsUpdate = true;
 		return transformPoints[1];
 	}
+	/**
+	 * Vertical shearing.
+	 */
 	public @nogc @property short C(short newval){
 		transformPoints[2] = newval;
 		needsUpdate = true;
 		return transformPoints[2];
 	}
+	/**
+	 * Vertical scaling. Greater than 256 means zooming in, less than 256 means zooming out.
+	 */
 	public @nogc @property short D(short newval){
 		transformPoints[3] = newval;
 		needsUpdate = true;
@@ -897,9 +912,11 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		//ABitmap sprite;				/// Defines the sprite being displayed on the screen.
 		void* pixelData;			/// Points to the pixel data.
 		//Color* palette;
+		int width;					/// Width of the sprite
+		int height;					/// Height of the sprite
 		int scaleHoriz;				/// Horizontal scaling
 		int scaleVert;				/// Vertical scaling
-		int priority;				/// Used for automatic sorting and identification, otherwise the DisplayList is pre-sorted for better performance.
+		int priority;				/// Used for automatic sorting and identification.
 		BitmapAttrib attributes;	/// Horizontal and vertical mirroring. DEPRECATED
 		ubyte wordLength;			/// Determines the word length of a sprite in a much quicker way than getting classinfo.
 		/**
@@ -909,8 +926,8 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		this(Coordinate position, ABitmap sprite, int priority, ushort paletteSel = 0, int scaleHoriz = 1024,
 				int scaleVert = 1024){
 			this.position = position;
-			//this.sprite = sprite;
-			//palette = sprite.getPalettePtr();
+			this.width = sprite.width;
+			this.height = sprite.height;
 			this.priority = priority;
 			//this.attributes = attributes;
 			this.scaleVert = scaleVert;
@@ -964,9 +981,28 @@ public class SpriteLayer : Layer, ISpriteLayer{
 				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
 			}
 		}
+		/**
+		 * Resets the slice to its original position.
+		 */
+		@nogc void resetSlice(){
+			slice.left = 0;
+			slice.top = 0;
+			slice.right = position.width;
+			slice.bottom = position.height;
+		}
+		/**
+		 * Replaces the sprite with a new one.
+		 * If the sizes are mismatching, the top-left coordinates are left as is, but the slicing is reset.
+		 */
 		void replaceSprite(ABitmap sprite){
 			//this.sprite = sprite;
 			//palette = sprite.getPalettePtr();
+			if(this.width != sprite.width || this.height != sprite.height){
+				this.width = sprite.width;
+				this.height = sprite.height;
+				position.right = position.left + cast(int)scaleNearestLength(width, scaleHoriz);
+				position.bottom = position.top + cast(int)scaleNearestLength(height, scaleVert);
+			}
 			if(sprite.classinfo == typeid(Bitmap4Bit)){
 				wordLength = 4;
 				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
@@ -995,12 +1031,7 @@ public class SpriteLayer : Layer, ISpriteLayer{
 				"; PaletteSel: " ~ conv.to!string(paletteSel) ~ "; WordLenght: " ~ conv.to!string(wordLength) ~ "]";
 		}
 	}
-	protected DisplayListItem[] displayList;	///Stores the display data with the
-	//private ABitmap[int] spriteSet;			///Stores the sprites.
-	//private Coordinate[int] coordinates;		///Stores the coordinates.
-	//private BitmapAttrib[int] spriteAttributes;	///Stores spriteattributes. (layer priority, mirroring, etc.)
-	//private int[] spriteSorter;					///Stores the priorities.
-	//public SpriteMovementListener[int] collisionDetector;	Deprecated, different collision detection will be used in the future.
+	protected DisplayListItem[] displayList;	///Stores the display data
 	Color[] src;
 	//size_t[8] prevSize;
 
@@ -1177,28 +1208,32 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		}
 		return Coordinate(0,0,0,0);
 	}
-	///Scales sprite horizontally
+	///Scales sprite horizontally. Returns the new size, or -1 if the scaling value is invalid, or -2 if spriteID not found.
 	public @nogc int scaleSpriteHoriz(int n, int hScl){
-		if (!hScl) return 0;
+		if (!hScl) return -1;
 		for(int i; i < displayList.length ; i++){
 			if(displayList[i].priority == n){
-				return displayList[i].scaleHoriz = hScl;
+				displayList[i].scaleHoriz = hScl;
+				return displayList[i].position.right = displayList[i].position.left + cast(int)scaleNearestLength(
+						displayList[i].width, hScl);
 			}
 		}
-		return 0;
+		return -2;
 	}
-	///Scales sprite vertically
+	///Scales sprite vertically. Returns the new size, or -1 if the scaling value is invalid, or -2 if spriteID not found.
 	public @nogc int scaleSpriteVert(int n, int vScl){
-		if (!vScl) return 0;
+		if (!vScl) return -1;
 		for(int i; i < displayList.length ; i++){
 			if(displayList[i].priority == n){
-				return displayList[i].scaleVert = vScl;
+				displayList[i].scaleHoriz = vScl;
+				return displayList[i].position.right = displayList[i].position.left + cast(int)scaleNearestLength(
+						displayList[i].width, vScl);
 			}
 		}
-		return 0;
+		return -2;
 	}
 
-	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette, int[] threads){
+	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette){
 		foreach(i ; displayList){
 			const int left = i.position.left + i.slice.left;
 			const int top = i.position.top + i.slice.top;
@@ -1462,7 +1497,7 @@ public class EffectLayer : Layer{
 		commandListPriorities = newCommandListPriorities;
 	}
 
-	override public void updateRaster(void* workpad,int pitch,Color* palette,int[] threads) {
+	override public void updateRaster(void* workpad,int pitch,Color* palette) {
 		/*foreach(int i; commandListPriorities){
 			switch(commandList[i].command){
 				case CommandType.XORBLITTERLINE:
@@ -1497,4 +1532,7 @@ public class EffectLayer : Layer{
 		}*/
 	}
 
+}
+unittest{
+	TransformableTileLayer test = new TransformableTileLayer();
 }

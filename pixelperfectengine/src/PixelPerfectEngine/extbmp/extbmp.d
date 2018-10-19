@@ -15,7 +15,7 @@ import std.file;
 
 public import PixelPerfectEngine.extbmp.animation;
 /**
- * Proprietary image format for the engine. Mainly created to get around the lack of 16bit indexed image formats. 
+ * Proprietary image format for the engine. Mainly created to get around the lack of 16bit indexed image formats.
  * Stores most data in XML, binary is stored after the document. Most data is little endian, future versions might be able to specify big endian data in the binary, but due to
  * the main targets (x86 and ARM) are mainly little endian, it's unlikely.
  */
@@ -68,7 +68,7 @@ public class ExtendibleBitmap{
 	public @property string dir(){
 		return filename;
 	}
-	/// Sets the filename 
+	/// Sets the filename
 	public void setFileName(string s){
 		filename = s;
 	}
@@ -88,7 +88,7 @@ public class ExtendibleBitmap{
 				rawData0.length = 0;
 				headerLoad();
 			}*/
-			
+
 			if(rawData.length > 8 + headerLength){
 				rawData0 = rawData[8 + headerLength..rawData.length];
 			}
@@ -109,7 +109,7 @@ public class ExtendibleBitmap{
 			rawData.length=8;
 			*cast(uint*)rawData.ptr = flags;
 			headerSave();
-			
+
 			*cast(int*)(rawData.ptr+4) = headerLength;
 			rawData ~= rawData0;
 			//File file = File(f, "w");
@@ -220,7 +220,7 @@ public class ExtendibleBitmap{
 			doc ~= e1;
 		}
 		string h = doc.toString();
-		headerLength = h.length;
+		headerLength = cast(int)h.length;
 		//writeln(h);
 		writeln(headerLength);
 		rawData ~= cast(void[])h;
@@ -238,8 +238,9 @@ public class ExtendibleBitmap{
 		return bitmapID;
 	}
 	/// Adds a bitmap to the file (any supported formats).
-	public void addBitmap(void[] data, int x, int y, string bitDepth, string ID, string format = null, string palette = null){
-		int o = rawData0.length;
+	public void addBitmap(void[] data, int x, int y, string bitDepth, string ID, string format = null,
+			string palette = null){
+		size_t o = rawData0.length;
 		rawData0 ~= data;
 		offset ~= o;
 		iX ~= x;
@@ -251,8 +252,9 @@ public class ExtendibleBitmap{
 		paletteMode ~= palette;
 	}
 	/// Adds a bitmap to the file (16bit).
-	public void addBitmap(ushort[] data, int x, int y, string bitDepth, string ID, string format = null, string palette = null){
-		int o = rawData0.length;
+	public void addBitmap(ushort[] data, int x, int y, string bitDepth, string ID, string format = null,
+			string palette = null){
+		const size_t o = rawData0.length;
 		rawData0 ~= cast(void[])data;
 		offset ~= o;
 		iX ~= x;
@@ -261,10 +263,12 @@ public class ExtendibleBitmap{
 		bitdepth ~= bitDepth;
 		length ~= data.length * 2;
 		this.format ~= format;
+		paletteMode ~= palette;
 	}
 	/// Adds a bitmap to the file (4bit, 8bit or 32bit).
-	public void addBitmap(ubyte[] data, int x, int y, string bitDepth, string ID, string format = null, string palette = null, ReplaceData rd = null){
-		int o = rawData0.length;
+	public void addBitmap(ubyte[] data, int x, int y, string bitDepth, string ID, string format = null,
+			string palette = null, ReplaceData rd = null){
+		const size_t o = rawData0.length;
 		rawData0 ~= cast(void[])data;
 		offset ~= o;
 		iX ~= x;
@@ -273,7 +277,7 @@ public class ExtendibleBitmap{
 		bitdepth ~= bitDepth;
 		length ~= data.length;
 		this.format ~= format;
-
+		paletteMode ~= palette;
 	}
 	/// Adds a palette to the file (32bit only, ARGB).
 	public void addPalette(void[] data, string ID){
@@ -328,7 +332,7 @@ public class ExtendibleBitmap{
 			case "32bit": pitch = 32; break;
 			default: break;
 		}
-		
+
 		int l = iX[n]*iY[n]*(pitch/8);
 		if(pitch == 1){
 			BitArray ba = BitArray(rawData0[offset[n]..offset[n]+l], l);
@@ -477,7 +481,7 @@ public class ReplaceData{
 	ubyte[] src;
 	ushort[] dest;
 	this(){
-		
+
 	}
 	/// Adds a new replaceattribute
 	void addReplaceAttr(ubyte f, ushort t){
@@ -520,7 +524,7 @@ public class ReplaceData{
 		}
 		return to!ubyte(s);
 	}
-	
+
 }
 
 public enum ExtBMPFlags : uint{

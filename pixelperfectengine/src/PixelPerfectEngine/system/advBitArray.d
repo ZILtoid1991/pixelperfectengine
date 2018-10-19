@@ -12,10 +12,10 @@ import std.stdio;
 public class AdvancedBitArray{
 	private static const ubyte[8] maskData = [0b11111110,0b11111101,0b11111011,0b11110111,0b11101111,0b11011111,0b10111111,0b01111111];
 	protected void[] rawData;
-	protected int length;
+	protected size_t length;
 
 
-	this(int length){
+	this(size_t length){
 		setLength(length);
 
 	}
@@ -29,26 +29,26 @@ public class AdvancedBitArray{
 	}
 	//this(bool[] data){}
 
-	public int getLenght(){
+	public size_t getLenght(){
 		return length;
 	}
 
-	public void setLength(int l){
+	public void setLength(size_t l){
 		//test if resizing needed
-		if(length == l) return;
-		else if(length < l){
+		//if(length == l) return;
+		/+else if(length < l){
 			if((l + 32) / 8 > rawData.length){
 				rawData.length = (l + 32 + (32 - l%32)) / 8;
 			}
 		}else{
 			for(int i = l ; i < length ; i++){
 				this[i] = false;
-			}
-			rawData.length = (l + 32 + (32 - l%32)) / 8;
-		}
+			}+/
+		rawData.length = (l + 32 + (32 - l%32)) / 8;
+		/+}+/
 		this.length = l;
 	}
-	bool opEquals()(auto ref const AdvancedBitArray o) {  
+	bool opEquals()(auto ref const AdvancedBitArray o) {
 		for(int i ; i < rawData.length ; i += 4){
 			if(cast(uint)rawData[i] != cast(uint)o.rawData[i]) return false;
 		}
@@ -163,7 +163,7 @@ public class AdvancedBitArray{
 	}
 
 	bool opIndexAssign(bool value, size_t i){
-		int bytepos = i / 8, bitpos = i % 8;
+		size_t bytepos = i / 8, bitpos = i % 8;
 		if(value){
 			*cast(ubyte*)(rawData.ptr + bytepos) |= 0xFF - maskData[bitpos];
 		}else{
@@ -173,11 +173,11 @@ public class AdvancedBitArray{
 	}
 
 	bool opIndex(size_t i){
-		int bytepos = i / 8, bitpos = i % 8;
+		size_t bytepos = i / 8, bitpos = i % 8;
 		return (*cast(ubyte*)(rawData.ptr + bytepos) & (0xFF - maskData[bitpos])) != 0;
 	}
 	AdvancedBitArray opSlice(size_t i1, size_t i2){
-		int bitShift = i1 % 8, bitShift2 = i2 % 8, byteShift = i1 / 8, byteShift2 = i2 / 8, l = i2 - i1, l2 = byteShift2 - byteShift;
+		size_t bitShift = i1 % 8, bitShift2 = i2 % 8, byteShift = i1 / 8, byteShift2 = i2 / 8, l = i2 - i1, l2 = byteShift2 - byteShift;
 		AdvancedBitArray result = new AdvancedBitArray(l);
 		if(bitShift == 0){
 			for(int i ; i < l2 ; i+=4){
@@ -277,7 +277,7 @@ public class AdvancedBitArray{
 
 		/*if(bitShiftA && bitShiftB){
 			for( ; i < wordlength - 7 ; i+=4){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+1+i))>>(32-bitShiftA), 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+1+i))>>(32-bitShiftA),
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+1+i))>>(32-bitShiftB);
 				//writeln(a,',',b);
 				if((a & b)){
@@ -285,7 +285,7 @@ public class AdvancedBitArray{
 				}
 			}
 			if(i < wordlength - 3 || bitlength){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+3+i))>>(32-bitShiftA), 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+3+i))>>(32-bitShiftA),
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+1+i))>>(32-bitShiftB);
 				a >>= 32 - bitlength2;
 				b >>= 32 - bitlength2;
@@ -296,7 +296,7 @@ public class AdvancedBitArray{
 		}
 		}else if(bitShiftB){
 			for( ; i < wordlength - 7 ; i+=4){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)<<bitShiftA) , 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)<<bitShiftA) ,
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+3+i))>>(32-bitShiftB);
 				//writeln(a,',',b);
 				if(!(a & b)){
@@ -304,7 +304,7 @@ public class AdvancedBitArray{
 				}
 			}
 			if(i < wordlength - 3 || bitlength){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)<<bitShiftA) , 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)<<bitShiftA) ,
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i))<<bitShiftB | (*cast(uint*)(target.rawData.ptr + (byteShiftB)+3+i))>>(32-bitShiftB);
 				a >>= 32 - bitlength2;
 				b >>= 32 - bitlength2;
@@ -315,7 +315,7 @@ public class AdvancedBitArray{
 			}
 		}else if(bitShiftA){
 			for( ; i < wordlength - 7 ; i+=4){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+4+i))>>(32-bitShiftA), 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+4+i))>>(32-bitShiftA),
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i)<<bitShiftB) ;
 				//writeln(a,',',b);
 				if((a & b)){
@@ -323,7 +323,7 @@ public class AdvancedBitArray{
 				}
 			}
 			if(i < wordlength - 3 || bitlength){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+4+i))>>(32-bitShiftA), 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i))<<bitShiftA | (*cast(uint*)(rawData.ptr + (byteShiftA)+4+i))>>(32-bitShiftA),
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i)) ;
 				a >>= 32 - bitlength2;
 				b >>= 32 - bitlength2;
@@ -334,7 +334,7 @@ public class AdvancedBitArray{
 			}
 		}else{
 			for( ; i < wordlength - 7 ; i+=4){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)) , 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)) ,
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i)) ;
 				//writeln(a,',',b);
 				if((a & b)){
@@ -342,7 +342,7 @@ public class AdvancedBitArray{
 				}
 			}
 			if(i < wordlength - 3 || bitlength){
-				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)) , 
+				uint a = (*cast(uint*)(rawData.ptr + (byteShiftA)+i)) ,
 					b = (*cast(uint*)(target.rawData.ptr + (byteShiftB)+i)) ;
 				//writeln(a,',',b);
 				a >>= 32 - bitlength2;

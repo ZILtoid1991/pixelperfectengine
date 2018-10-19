@@ -11,13 +11,26 @@ module PixelPerfectEngine.audio.lfo;
  */
 
 public struct LowFreqOsc(int Length){
-	ubyte[Length] table;
-	uint stepping;		///Current position
-	uint cycle;			///Defines how much needs to be added to the counter each cycle
-	uint forward;		///Steps the oscillator forward>>10 steps
-
-	public @nogc ubyte step(){
+	public ubyte[Length]* table;
+	private uint cycle;			///Defines how much needs to be added to the counter each cycle
+	private uint forward;		///Steps the oscillator forward>>16 steps
+	/**
+	 * Steps a single cycle forward in a milisecond
+	 */
+	public @nogc void step(){
 		forward += cycle;
-		return table[forward & (Length - 1)];
+
+	}
+	public @nogc @property nothrow ubyte output(){
+		return table[0][forward >> 16 & (Length - 1)];
+	}
+	/**
+	 * Sets the frequency of the LFO.
+	 */
+	public @nogc void setFrequency(float freq){
+		cycle = cast(uint)((freq / 1000f) * 65_536f);
+	}
+	public @nogc void reset(){
+		forward = 0;
 	}
 }

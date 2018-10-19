@@ -143,15 +143,17 @@ public class Window : ElementContainer{
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
 		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
 
-		int headerLength = extraButtons.length == 0 ? position.width - 1 : position.width() - 1 - ((extraButtons.length>>2) * x1) ;
+		//int headerLength = cast(int)(extraButtons.length == 0 ? position.width - 1 : position.width() - 1 - ((extraButtons.length>>2) * x1) );
 		//drawing the header
 		drawHeader();
 
 		//drawing the border of the window
 		output.drawLine(0, position.width() - 1, y1, y1, getStyleSheet().getColor("windowascent"));
 		output.drawLine(0, 0, y1, position.height() - 1, getStyleSheet().getColor("windowascent"));
-		output.drawLine(0, position.width() - 1, position.height() - 1, position.height() - 1,  getStyleSheet().getColor("windowdescent"));
-		output.drawLine(position.width() - 1, position.width() - 1, y1, position.height() - 1, getStyleSheet().getColor("windowdescent"));
+		output.drawLine(0, position.width() - 1, position.height() - 1, position.height() - 1,
+				getStyleSheet().getColor("windowdescent"));
+		output.drawLine(position.width() - 1, position.width() - 1, y1, position.height() - 1,
+				getStyleSheet().getColor("windowdescent"));
 
 		//output.drawText(x1+1, 1, title, getFontSet(0), 1);
 
@@ -167,13 +169,16 @@ public class Window : ElementContainer{
 		}
 	}
 	/**
-	 *
+	 * Draws the header.
 	 */
 	protected void drawHeader(){
-		output.drawFilledRectangle(0, position.width() - 1, 0, getStyleSheet().getImage("closeButtonA").height - 1, getStyleSheet().getColor("window"));
+		output.drawFilledRectangle(0, position.width() - 1, 0, getStyleSheet().getImage("closeButtonA").height - 1,
+				getStyleSheet().getColor("window"));
 		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
-		int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().getImage("closeButtonA").height, x2 = position.width;
-		int headerLength = extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 - ((extraButtons.length>>1) * x1) ;
+		const int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().getImage("closeButtonA").height;
+		int x2 = position.width;
+		int headerLength = cast(int)(extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 -
+				((extraButtons.length>>1) * x1));
 		foreach(s ; extraButtons){
 			x2 -= x1;
 			output.insertBitmap(x2,0,getStyleSheet().getImage(s));
@@ -182,7 +187,8 @@ public class Window : ElementContainer{
 		output.drawLine(x1, x1, 0, y1 - 1, getStyleSheet().getColor("windowascent"));
 		output.drawLine(x1, headerLength, y1 - 1, y1 - 1, getStyleSheet().getColor("windowdescent"));
 		output.drawLine(headerLength, headerLength, 0, y1 - 1, getStyleSheet().getColor("windowdescent"));
-		output.drawText(x1, (y1-getStyleSheet().getFontset("default").getSize())/2, title, getStyleSheet().getFontset("default"),1);
+		output.drawText(x1,(y1-getStyleSheet().getFontset("default").getSize())/2,title,getStyleSheet().getFontset("default"),
+				1);
 	}
 	public void setTitle(wstring s){
 		title = s;
@@ -578,16 +584,16 @@ public class FileDialog : Window{
 	 * Returns the filename from the path.
 	 */
 	private string getFilenameFromPath(string p, bool b = false){
-		int n, m = p.length;
+		size_t n, m = p.length;
 		string s;
-		for(int i ; i < p.length ; i++){
+		for(size_t i ; i < p.length ; i++){
 			if(std.path.isDirSeparator(p[i])){
 				n = i;
 			}
 		}
 		//n++;
 		if(b){
-			for(int i ; i < p.length ; i++){
+			for(size_t i ; i < p.length ; i++){
 				if(p[i] == '.'){
 					m = i;
 				}
@@ -732,9 +738,12 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	 */
 	public void messageWindow(wstring title, wstring message, int width = 256){
 		StyleSheet ss = getDefaultStyleSheet();
-		wstring[] formattedMessage = ss.getFontset(ss.fontTypes["Label"]).breakTextIntoMultipleLines(message, width - ss.drawParameters["WindowLeftPadding"] - ss.drawParameters["WindowRightPadding"]);
-		int height = formattedMessage.length * (ss.getFontset(ss.fontTypes["Label"]).getSize() + ss.drawParameters["TextSpacingTop"] + ss.drawParameters["TextSpacingBottom"]);
-		height += ss.drawParameters["WindowTopPadding"] + ss.drawParameters["WindowBottomPadding"] + ss.drawParameters["ComponentHeight"];
+		wstring[] formattedMessage = ss.getFontset(ss.fontTypes["Label"]).breakTextIntoMultipleLines(message, width -
+				ss.drawParameters["WindowLeftPadding"] - ss.drawParameters["WindowRightPadding"]);
+		int height = cast(int)(formattedMessage.length * (ss.getFontset(ss.fontTypes["Label"]).getSize() +
+				ss.drawParameters["TextSpacingTop"] + ss.drawParameters["TextSpacingBottom"]));
+		height += ss.drawParameters["WindowTopPadding"] + ss.drawParameters["WindowBottomPadding"] +
+				ss.drawParameters["ComponentHeight"];
 		Coordinate c = Coordinate(mouseX - width / 2, mouseY - height / 2, mouseX + width / 2, mouseY + height / 2);
 		addWindow(new DefaultDialog(c, null, title, formattedMessage));
 	}

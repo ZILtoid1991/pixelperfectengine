@@ -24,6 +24,7 @@ import libPCM.types;
 
 import std.bitmanip;
 import std.math;
+import std.container.array;
 
 import core.stdc.stdlib;
 import core.stdc.string;
@@ -32,6 +33,9 @@ import core.stdc.string;
  * Sampling synthesizer implementation. Has per channel FIR (1024 stage) and IIR (low-pass) filters, and four stereo outputs.
  */
 public class PCM32 : AbstractPPEFX{
+	enum LFO_TABLE_LENGTH = 256;
+	enum FIR_TABLE_LENGTH = 1024;
+	enum WHOLE_STEP_FORWARD = 1_048_576;
 	/**
 	 * Defines the source of certain modifier values
 	 */
@@ -110,7 +114,7 @@ public class PCM32 : AbstractPPEFX{
 		float iirWetLevel;	///Sets the level of the wet signal
 		float lfoFreq;		///Sets the LFO frequency
 
-		float4 sendLevels;	///1: Main left; 2: Main right; 3: Aux left; 4: Aux right
+		float[4] sendLevels;	///1: Main left; 2: Main right; 3: Aux left; 4: Aux right
 
 		ControlData firLevelCtrl;		///Sets the modifiers for the firLevel (fixValue controls don't work)
 		ControlData firFeedbackCtrl;	///Sets the modifiers for the firFeedback (fixValue controls don't work)
@@ -128,6 +132,7 @@ public class PCM32 : AbstractPPEFX{
 		 * enableIIR: Enables IIR filter
 		 * enableFIR: Enables FIR filter
 		 * serialFIR: If true, it runs the two FIR filters in serial [L -> R]
+		 * monoFIR: If true, only the left channel will be used, and serialFIR is ignored
 		 * routeFIRintoIIR: Reverses the routing of the two filters
 		 *
 		 * Legato:
@@ -135,18 +140,25 @@ public class PCM32 : AbstractPPEFX{
 		 * resetEGA: Disables resetting of envelope generator A
 		 * resetEGB: Disables resetting of envelope generator B
 		 * resetLFO: Disables resetting of LFO
+		 *
+		 * Other:
+		 * loopOnKeyOff: Enables the use of release stages of the LFO to control the runtime after key off commands.
+		 * Recommended for wavetables.
 		 */
 		mixin(bitfields!(
 			bool,"enableIIR",1,
 			bool,"enableFIR",1,
 			bool,"serialFIR",1,
+			bool,"monoFIR",1,
 			bool,"routeFIRintoIIR",1,
+
 			bool,"resetSample",1,
 			bool,"resetEGA",1,
 			bool,"resetEGB",1,
 			bool,"resetLFO",1,
+			bool,"loopOnKeyOff",1,
 
-			ushort,"reserved",8,
+			ushort,"reserved",6,
 		));
 	}
 	/**
@@ -178,6 +190,15 @@ public class PCM32 : AbstractPPEFX{
 		ushort toVelocity = ushort.max;
 		ushort fromExpressiveVal;
 		ushort toExpressiveVal = ushort.max;+/
+		@nogc @property bool isPercussive(){
+			return (loopFlags & Flags.isPercussive) != 0;
+		}
+		@nogc @property bool isLooping(){
+			return (loopFlags & Flags.isPercussive) != 0;
+		}
+		@nogc @property bool pingPongLoop(){
+			return (loopFlags & Flags.isPercussive) != 0;
+		}
 		/**
 		 * Used mainly for ordering them in a BSTree.
 		 */
@@ -266,11 +287,37 @@ public class PCM32 : AbstractPPEFX{
 		ushort sampleLayers;
 	}
 	/**
+	 * Stores global settings of the instrument.
+	 */
+	public struct GlobalSettings{
+		float tuning = 440.0;		///base tuning
+		///Used for channel masking. The channel indicated by this value is used as the first channel that won't be ignored.
+		///Last channel not to be ignored is baseChannel + 31
+		ushort baseChannel;
+		/*
+		 * Bitfields:
+		 * enablePassthruCH29 - 32: Enables the channels to be used for external effecting purposes.
+		 * Note commands can be used to control the filters if needed.
+		 * Input for CH29 is PPEFXinput 0
+		 * Input for CH30 is PPEFXinput 1
+		 * Input for CH31 is PPEFXinput 2
+		 * Input for CH32 is PPEFXinput 3
+		 */
+		mixin(bitfields!(
+			bool,"enablePassthruCH29",1,
+			bool,"enablePassthruCH30",1,
+			bool,"enablePassthruCH31",1,
+			bool,"enablePassthruCH32",1,
+			ushort,"unused",12,
+		));
+	}
+	/**
 	 * RIFF header to identify preset data in banks.
 	 */
 	enum RIFFID : char[4]{
 		riffInitial = "RIFF",		///to initialize the RIFF format
 		bankInitial = "BANK",		///currently unused
+		globalSettings = "GLOB",	///global settings (eg. tunings, routing, channel masking)
 		instrumentPreset = "INSP",	///indicates that the next chunk is an instrument preset. length = InstrumentPreset.sizeof + ChannelPresetMain.sizeof
 		envGenA = "ENVA",			///indicates that there's envelope generator data for the current preset. length = EnvelopeStage.sizeof * egaStages
 		envGenB = "ENVB",			///indicates that there's envelope generator data for the current preset. length = EnvelopeStage.sizeof * egbStages
@@ -283,26 +330,58 @@ public class PCM32 : AbstractPPEFX{
 	 * Stores data for a single channel.
 	 */
 	protected struct Channel{
-		CommonDecoderFuncPtr codec;
-		uint loopfrom, loopto;	///describe a loop cycle between the two values
-		uint stepping;			///describes how much the sample should go forward, 65536 equals a whole step
+		ChannelPresetMain preset;
+		@nogc short function(ubyte*, DecoderWorkpad*) codec;
+		uint loopfrom, loopto;	///describe a loop cycle between the two values for the current sample
+		uint stepping;			///describes how much the sample should go forward, 1_048_576 equals a whole step
 		ulong forward;			///current position
-		short[][2] intBuff;		///buffer for FIR-filters
+		Sample* sample;
+		short*[3] intBuff;		///buffer for FIR-filters [0,1], output [2], IIR-filter output converted to int [3]
 		CodecType codecType;
 		DecoderWorkpad workpad, secWorkpad;
-		ushort id;
-		//EnvelopeGenerator envGenA;
-		//EnvelopeGenerator envGenB;
-		FiniteImpulseResponseFilter!(1024)[2] firFilter;
-		LowFreqOsc!(256) lfo;
+		ushort presetID;
+		ushort note;
+		ushort vel;
+		ushort exprVal;
+		float freq;
+		float baseFreq;
+		float pitchbend = 0f;
+		float iirF0;
+		float iir_q;
+		float[4] sendLevels;
+		EnvelopeGenerator envGenA;
+		EnvelopeGenerator envGenB;
+		FiniteImpulseResponseFilter!(FIR_TABLE_LENGTH)[2] firFilter;
+		LowFreqOsc!(LFO_TABLE_LENGTH) lfo;
+		//bool keyON;
+		//bool isRunning;
+		ushort arpeggiatorSpeed;	///ms between notes
+
+		enum ArpMode : ubyte{
+			off,
+			ascending,
+			descending,
+			ascThenDesc,
+		}
+		mixin(bitfields!(
+			bool,"keyON",1,
+			bool,"isRunning",1,
+			bool,"enableLooping",1,
+			bool,"pingPongLoop",1,
+			bool,"slice",1,
+			ubyte,"arpMode",3,
+			ubyte,"octaves",4,
+			bool,"arpWay",1,
+			ubyte,"nOfNotes",3,
+		));
+		ushort[4] arpeggiatorNotes;	///notes to arpeggiate
+		ushort arpPos;
+		ubyte curOctave, curNote;
+		short output, firBuf0, firBuf1;				///Previous outputs
+		short firLevel0, firLevel1, firFbk0, firFbk1;
 	}
-	BinarySearchTree!(ushort,EnvelopeGenerator) envGenA;
-	BinarySearchTree!(ushort,EnvelopeGenerator) envGenB;
-	BinarySearchTree!(ushort,ChannelPresetMain) presets;
-	BinarySearchTree!(ushort,BinarySearchTree2!(ChannelPresetSamples)) sampleLayers;
-	float sampleRate;
-	int frameLength, bufferLength;
-	version(X86){
+
+	static if(ARCH_INTEL_X86){
 		static if(USE_INTEL_INTRINSICS){
 			/**
 			 * Contains IIR related registers in order for use in SSE2 applications
@@ -343,12 +422,23 @@ public class PCM32 : AbstractPPEFX{
 	}else{
 		protected float[32] x_n_minus1, x_n_minus2, y_n_minus1, y_n_minus2, b0a0, b1a0, b2a0, a1a0, a2a0;
 	}
-	protected float[32][] y_n, x_n;
+	protected BinarySearchTree!(ushort,EnvelopeStageList) envGenA;
+	protected BinarySearchTree!(ushort,EnvelopeStageList) envGenB;
+	protected BinarySearchTree!(ushort,ChannelPresetMain) presets;
+	protected BinarySearchTree!(ushort,BinarySearchTree2!(ChannelPresetSamples)) sampleLayers;
+
+	protected float*[32] y_n; ///Output
+	protected float*[32] x_n; ///Input
 	protected float[32] iirDryLevel, iirWetLevel;
+	protected Channel[32] channels;
 	protected float sampleRate;
 	protected size_t frameLength, nOfFrames;
-	protected BinarySearchTree!(ushort, FiniteImpulseResponse!(1024)) finiteImpulseResponses;
+	protected BinarySearchTree!(ubyte, FiniteImpulseResponse!(1024)) finiteImpulseResponses;
 	protected BinarySearchTree!(uint, Sample) samples;
+	protected BinarySearchTree!(ubyte, ubyte[256]) lfoTables;
+
+	//global parameters
+	protected GlobalSettings globals;
 
 	protected string samplePoolPath;	///Specifies the path for the sample pool
 	/**
@@ -356,19 +446,36 @@ public class PCM32 : AbstractPPEFX{
 	 */
 	public this(string samplePoolPath = "./audio/samples/"){
 		this.samplePoolPath = samplePoolPath;
+		this.globals.tuning = 440.0f;
 	}
-
+	public @nogc @property BinarySearchTree!(ushort,ChannelPresetMain)* presetPtr(){
+		return &presets;
+	}
+	public @nogc @property BinarySearchTree!(ushort,EnvelopeStageList)* envGenAPtr(){
+		return &envGenA;
+	}
+	public @nogc @property BinarySearchTree!(ushort,EnvelopeStageList)* envGenBPtr(){
+		return &envGenB;
+	}
+	public @nogc @property BinarySearchTree!(ushort,BinarySearchTree2!(ChannelPresetSamples))* sampleLayersPtr(){
+		return &sampleLayers;
+	}
 	protected @nogc void calculateIIR(){
 		static if(USE_INTEL_INTRINSICS){
-			float* y_nptr = cast(float*)y_n.ptr;
-			float* x_nptr = cast(float*)x_n.ptr;
+			//float* y_nptr = cast(float*)y_n.ptr;
+			//float* x_nptr = cast(float*)x_n.ptr;
 			float* vals = cast(float*)iirFiltersPtr;
 			float* iirDryLevelPtr = iirDryLevel.ptr;
 			float* iirWetLevelPtr = iirWetLevel.ptr;
-			for(int i = frameLength * bufferLength ; i >= 0 ; i--){
+			for(size_t i = frameLength ; i >= 0 ; i--){
 				for(int j ; j < 8 ; j++){
+					const int k = j << 2;
 					__m128 workVal = _mm_load_ps(vals);//b0a0
-					__m128 x_n0 = _mm_load_ps(x_nptr);//x_n0
+					__m128 x_n0;// = [x_n[k][i],x_n[k+1][i],x_n[k+2][i],x_n[k+3][i]];
+					x_n0[0] = x_n[k][i];
+					x_n0[1] = x_n[k+1][i];
+					x_n0[2] = x_n[k+2][i];
+					x_n0[3] = x_n[k+3][i];
 					__m128 y_n0;//output
 					y_n0 = workVal * x_n0;//(b0/a0)*x_n0
 					vals += 4;
@@ -398,17 +505,21 @@ public class PCM32 : AbstractPPEFX{
 					_mm_store_ps(vals_y_n0,y_n0);//store current y_n0 as y_n1
 					//calculate mixing
 					y_n0 = y_n0 * _mm_load_ps(iirWetLevelPtr) + x_n0 * _mm_load_ps(iirDryLevelPtr);
-					_mm_store_ps(y_nptr,y_n0);//store output in buffer
+					//_mm_store_ps(y_nptr,y_n0);//store output in buffer
+					y_n[k][i] = y_n0[0];
+					y_n[k+1][i] = y_n0[1];
+					y_n[k+2][i] = y_n0[2];
+					y_n[k+3][i] = y_n0[3];
 					vals += 4;
-					x_nptr += 4;
-					y_nptr += 4;
+					//x_nptr += 4;
+					//y_nptr += 4;
 				}
 				vals = cast(float*)iirFiltersPtr;
 			}
 		}else{
 			float* y_nptr = cast(float*)y_n.ptr;
 			float* x_nptr = cast(float*)x_n.ptr;
-			for(int i = frameLength * bufferLength ; i >= 0 ; i--){
+			for(int i = frameLength ; i >= 0 ; i--){
 				asm @nogc{
 					mov		ECX, 8;
 					//mov		ESI, iirFiltersPtr[EBP];
@@ -462,22 +573,1051 @@ public class PCM32 : AbstractPPEFX{
 	public @nogc void refreshFilter(int ch, IIRFilterType type, float freq, float Q){
 
 	}
-	public @nogc void receiveMICPCommand(MICPCommand cmd){
+	override public @nogc void render(float** inputBuffers, float** outputBuffers){
+		float* mainL = outputBuffers[0], mainR = outputBuffers[1], auxL = outputBuffers[2], auxR = outputBuffers[3];
+		float* ch29 = inputBuffers[0], ch30 = inputBuffers[1], ch31 = inputBuffers[2], ch32 = inputBuffers[3];
+		for(int fr; fr < nOfFrames; fr++){
+			int ch;
+			for(; ch < 28; ch++){
+				if(channels[ch].isRunning){
+					for(int s; s < frameLength; s++){
+						ulong prevForvard = channels[ch].forward;
+						channels[ch].forward += channels[ch].stepping;
+						while(prevForvard>>10 < channels[ch].forward>>10){
+							channels[ch].output = channels[ch].codec(channels[ch].sample.dataPtr, &channels[ch].workpad);
+							prevForvard += WHOLE_STEP_FORWARD;
+							if(channels[ch].enableLooping){
+								if(channels[ch].workpad.position == channels[ch].loopfrom){
+									channels[ch].secWorkpad = channels[ch].workpad;
+								}else if(channels[ch].workpad.position == channels[ch].loopto){
+									channels[ch].workpad = channels[ch].secWorkpad;
+								}
+							}
+						}
+						if(channels[ch].sample.length <= channels[ch].workpad.position){
+							channels[ch].isRunning = false;
+							break;
+						}
+						channels[ch].intBuff[2][s] = channels[ch].output;
+					}
+
+					if(channels[ch].preset.enableFIR){
+						if(channels[ch].preset.routeFIRintoIIR){
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+								}else{//parralel mixing due to channel limit
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+								}
+							}else{
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+							mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+							mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+							mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+							mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+						}else{
+							int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+							floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}else{
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}
+							}else{
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}
+
+
+					}else{
+						int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}
+					channels[ch].envGenA.step;
+					channels[ch].envGenB.step;
+					channels[ch].lfo.step;
+				}
+			}
+			if(globals.enablePassthruCH29){
+				if(channels[ch].preset.enableFIR){
+					if(channels[ch].preset.routeFIRintoIIR){
+						floatToInt16(ch29, channels[ch].intBuff[2], frameLength);
+						for(int s; s < frameLength; s++){
+							channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+									(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+							channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+						}
+						if(!channels[ch].preset.monoFIR){
+							if(channels[ch].preset.serialFIR){
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+								}
+								int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+							}else{//parralel mixing due to channel limit
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+						}else{
+							int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+						}
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}else{
+						//int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						memcpy(x_n[ch], ch29, frameLength * float.sizeof);
+						floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+						for(int s; s < frameLength; s++){
+							channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+									(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+							channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+						}
+						if(!channels[ch].preset.monoFIR){
+							if(channels[ch].preset.serialFIR){
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+							}else{
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}else{
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+						}
+					}
+				}else{
+					memcpy(x_n[ch], ch29, frameLength * float.sizeof);
+					mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+					mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+					mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+					mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+				}
+				channels[ch].envGenA.step;
+				channels[ch].envGenB.step;
+				channels[ch].lfo.step;
+			}else{
+				if(channels[ch].isRunning){
+					for(int s; s < frameLength; s++){
+						ulong prevForvard = channels[ch].forward;
+						channels[ch].forward += channels[ch].stepping;
+						while(prevForvard>>10 < channels[ch].forward>>10){
+							channels[ch].output = channels[ch].codec(channels[ch].sample.dataPtr, &channels[ch].workpad);
+							prevForvard += WHOLE_STEP_FORWARD;
+							if(channels[ch].enableLooping){
+								if(channels[ch].workpad.position == channels[ch].loopfrom){
+									channels[ch].secWorkpad = channels[ch].workpad;
+								}else if(channels[ch].workpad.position == channels[ch].loopto){
+									channels[ch].workpad = channels[ch].secWorkpad;
+								}
+							}
+						}
+						if(channels[ch].sample.length <= channels[ch].workpad.position){
+							channels[ch].isRunning = false;
+							break;
+						}
+						channels[ch].intBuff[2][s] = channels[ch].output;
+					}
+
+					if(channels[ch].preset.enableFIR){
+						if(channels[ch].preset.routeFIRintoIIR){
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+								}else{//parralel mixing due to channel limit
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+								}
+							}else{
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+							mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+							mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+							mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+							mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+						}else{
+							int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+							floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}else{
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}
+							}else{
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}
+
+
+					}else{
+						int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}
+					channels[ch].envGenA.step;
+					channels[ch].envGenB.step;
+					channels[ch].lfo.step;
+				}
+			}
+			ch++;
+			if(globals.enablePassthruCH30){
+				if(channels[ch].preset.enableFIR){
+					if(channels[ch].preset.routeFIRintoIIR){
+						floatToInt16(ch29, channels[ch].intBuff[2], frameLength);
+						for(int s; s < frameLength; s++){
+							channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+									(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+							channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+						}
+						if(!channels[ch].preset.monoFIR){
+							if(channels[ch].preset.serialFIR){
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+								}
+								int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+							}else{//parralel mixing due to channel limit
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+						}else{
+							int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+						}
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}else{
+						//int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						memcpy(x_n[ch], ch29, frameLength * float.sizeof);
+						floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+						for(int s; s < frameLength; s++){
+							channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+									(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+							channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+						}
+						if(!channels[ch].preset.monoFIR){
+							if(channels[ch].preset.serialFIR){
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+							}else{
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}else{
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+						}
+					}
+				}else{
+					memcpy(x_n[ch], ch29, frameLength * float.sizeof);
+					mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+					mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+					mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+					mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+				}
+				channels[ch].envGenA.step;
+				channels[ch].envGenB.step;
+				channels[ch].lfo.step;
+			}else{
+				if(channels[ch].isRunning){
+					for(int s; s < frameLength; s++){
+						ulong prevForvard = channels[ch].forward;
+						channels[ch].forward += channels[ch].stepping;
+						while(prevForvard>>10 < channels[ch].forward>>10){
+							channels[ch].output = channels[ch].codec(channels[ch].sample.dataPtr, &channels[ch].workpad);
+							prevForvard += WHOLE_STEP_FORWARD;
+							if(channels[ch].enableLooping){
+								if(channels[ch].workpad.position == channels[ch].loopfrom){
+									channels[ch].secWorkpad = channels[ch].workpad;
+								}else if(channels[ch].workpad.position == channels[ch].loopto){
+									channels[ch].workpad = channels[ch].secWorkpad;
+								}
+							}
+						}
+						if(channels[ch].sample.length <= channels[ch].workpad.position){
+							channels[ch].isRunning = false;
+							break;
+						}
+						channels[ch].intBuff[2][s] = channels[ch].output;
+					}
+
+					if(channels[ch].preset.enableFIR){
+						if(channels[ch].preset.routeFIRintoIIR){
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+								}else{//parralel mixing due to channel limit
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+								}
+							}else{
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+							mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+							mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+							mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+							mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+						}else{
+							int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+							floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}else{
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}
+							}else{
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}
+
+
+					}else{
+						int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}
+					channels[ch].envGenA.step;
+					channels[ch].envGenB.step;
+					channels[ch].lfo.step;
+				}
+			}
+			ch++;
+			if(globals.enablePassthruCH31){
+				if(channels[ch].preset.enableFIR){
+					if(channels[ch].preset.routeFIRintoIIR){
+						floatToInt16(ch29, channels[ch].intBuff[2], frameLength);
+						for(int s; s < frameLength; s++){
+							channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+									(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+							channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+						}
+						if(!channels[ch].preset.monoFIR){
+							if(channels[ch].preset.serialFIR){
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+								}
+								int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+							}else{//parralel mixing due to channel limit
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+						}else{
+							int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+						}
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}else{
+						//int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						memcpy(x_n[ch], ch29, frameLength * float.sizeof);
+						floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+						for(int s; s < frameLength; s++){
+							channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+									(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+							channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+						}
+						if(!channels[ch].preset.monoFIR){
+							if(channels[ch].preset.serialFIR){
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+							}else{
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}else{
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+						}
+					}
+				}else{
+					memcpy(x_n[ch], ch29, frameLength * float.sizeof);
+					mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+					mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+					mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+					mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+				}
+				channels[ch].envGenA.step;
+				channels[ch].envGenB.step;
+				channels[ch].lfo.step;
+			}else{
+				if(channels[ch].isRunning){
+					for(int s; s < frameLength; s++){
+						ulong prevForvard = channels[ch].forward;
+						channels[ch].forward += channels[ch].stepping;
+						while(prevForvard>>10 < channels[ch].forward>>10){
+							channels[ch].output = channels[ch].codec(channels[ch].sample.dataPtr, &channels[ch].workpad);
+							prevForvard += WHOLE_STEP_FORWARD;
+							if(channels[ch].enableLooping){
+								if(channels[ch].workpad.position == channels[ch].loopfrom){
+									channels[ch].secWorkpad = channels[ch].workpad;
+								}else if(channels[ch].workpad.position == channels[ch].loopto){
+									channels[ch].workpad = channels[ch].secWorkpad;
+								}
+							}
+						}
+						if(channels[ch].sample.length <= channels[ch].workpad.position){
+							channels[ch].isRunning = false;
+							break;
+						}
+						channels[ch].intBuff[2][s] = channels[ch].output;
+					}
+
+					if(channels[ch].preset.enableFIR){
+						if(channels[ch].preset.routeFIRintoIIR){
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+								}else{//parralel mixing due to channel limit
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+								}
+							}else{
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+							mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+							mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+							mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+							mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+						}else{
+							int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+							floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}else{
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}
+							}else{
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}
+
+
+					}else{
+						int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}
+					channels[ch].envGenA.step;
+					channels[ch].envGenB.step;
+					channels[ch].lfo.step;
+				}
+			}
+			ch++;
+			if(globals.enablePassthruCH32){
+				if(channels[ch].preset.enableFIR){
+					if(channels[ch].preset.routeFIRintoIIR){
+						floatToInt16(ch29, channels[ch].intBuff[2], frameLength);
+						for(int s; s < frameLength; s++){
+							channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+									(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+							channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+						}
+						if(!channels[ch].preset.monoFIR){
+							if(channels[ch].preset.serialFIR){
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+								}
+								int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+							}else{//parralel mixing due to channel limit
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+						}else{
+							int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+						}
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}else{
+						//int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						memcpy(x_n[ch], ch29, frameLength * float.sizeof);
+						floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+						for(int s; s < frameLength; s++){
+							channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+									(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+							channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+						}
+						if(!channels[ch].preset.monoFIR){
+							if(channels[ch].preset.serialFIR){
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+							}else{
+								for(int s; s < frameLength; s++){
+									channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+											(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+									channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+								}
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}else{
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+							convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+						}
+					}
+				}else{
+					memcpy(x_n[ch], ch29, frameLength * float.sizeof);
+					mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+					mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+					mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+					mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+				}
+				channels[ch].envGenA.step;
+				channels[ch].envGenB.step;
+				channels[ch].lfo.step;
+			}else{
+				if(channels[ch].isRunning){
+					for(int s; s < frameLength; s++){
+						ulong prevForvard = channels[ch].forward;
+						channels[ch].forward += channels[ch].stepping;
+						while(prevForvard>>10 < channels[ch].forward>>10){
+							channels[ch].output = channels[ch].codec(channels[ch].sample.dataPtr, &channels[ch].workpad);
+							prevForvard += WHOLE_STEP_FORWARD;
+							if(channels[ch].enableLooping){
+								if(channels[ch].workpad.position == channels[ch].loopfrom){
+									channels[ch].secWorkpad = channels[ch].workpad;
+								}else if(channels[ch].workpad.position == channels[ch].loopto){
+									channels[ch].workpad = channels[ch].secWorkpad;
+								}
+							}
+						}
+						if(channels[ch].sample.length <= channels[ch].workpad.position){
+							channels[ch].isRunning = false;
+							break;
+						}
+						channels[ch].intBuff[2][s] = channels[ch].output;
+					}
+
+					if(channels[ch].preset.enableFIR){
+						if(channels[ch].preset.routeFIRintoIIR){
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[1],x_n[ch],frameLength);
+								}else{//parralel mixing due to channel limit
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[0][s] += cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+								}
+							}else{
+								int16ToFloat(channels[ch].intBuff[0],x_n[ch],frameLength);
+							}
+							mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+							mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+							mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+							mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+						}else{
+							int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+							floatToInt16(y_n[ch],channels[ch].intBuff[2],frameLength);
+							for(int s; s < frameLength; s++){
+								channels[ch].firBuf0 = cast(short)channels[ch].firFilter[0].calculate(cast(short)(channels[ch].intBuff[2][s] +
+										(channels[ch].firBuf0 * channels[ch].firFbk0)>>16));
+								channels[ch].intBuff[0][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel0);
+							}
+							if(!channels[ch].preset.monoFIR){
+								if(channels[ch].preset.serialFIR){
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[0][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf0 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}else{
+									for(int s; s < frameLength; s++){
+										channels[ch].firBuf1 = cast(short)channels[ch].firFilter[1].calculate(cast(short)(channels[ch].intBuff[2][s] +
+												(channels[ch].firBuf1 * channels[ch].firFbk1)>>16));
+										channels[ch].intBuff[1][s] = cast(short)(channels[ch].firBuf1 * channels[ch].firLevel1);
+									}
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], mainR, frameLength, channels[ch].sendLevels[1]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+									convAndMixStreamIntoTarget(channels[ch].intBuff[1], auxR, frameLength, channels[ch].sendLevels[3]);
+								}
+							}else{
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainL, frameLength, channels[ch].sendLevels[0]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], mainR, frameLength, channels[ch].sendLevels[1]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxL, frameLength, channels[ch].sendLevels[2]);
+								convAndMixStreamIntoTarget(channels[ch].intBuff[0], auxR, frameLength, channels[ch].sendLevels[3]);
+							}
+						}
+
+
+					}else{
+						int16ToFloat(channels[ch].intBuff[2],x_n[ch],frameLength);
+						mixStreamIntoTarget(y_n[ch], mainL, frameLength, channels[ch].sendLevels[0]);
+						mixStreamIntoTarget(y_n[ch], mainR, frameLength, channels[ch].sendLevels[1]);
+						mixStreamIntoTarget(y_n[ch], auxL, frameLength, channels[ch].sendLevels[2]);
+						mixStreamIntoTarget(y_n[ch], auxR, frameLength, channels[ch].sendLevels[3]);
+					}
+					channels[ch].envGenA.step;
+					channels[ch].envGenB.step;
+					channels[ch].lfo.step;
+				}
+			}
+			//update arpeggiators on all channels
+			updateArppegiators();
+			calculateIIR();
+		}
+
+	}
+	protected @nogc void updateArppegiators(){
+		for(int ch; ch < 32; ch++){
+			if(channels[ch].arpMode != Channel.ArpMode.off){
+				if(channels[ch].arpPos++ >= channels[ch].arpeggiatorSpeed){
+					channels[ch].arpPos = 0;
+					final switch(channels[ch].arpMode){
+						case Channel.ArpMode.ascending:
+							if(channels[ch].arpPos++ == channels[ch].nOfNotes){
+								channels[ch].arpPos = 0;
+								if(channels[ch].curOctave++ == channels[ch].octaves){
+									channels[ch].curOctave = 0;
+								}
+							}
+							break;
+						case Channel.ArpMode.descending:
+							if(channels[ch].arpPos-- == 0){
+								channels[ch].arpPos = channels[ch].nOfNotes;
+								if(channels[ch].curOctave-- == 0){
+									channels[ch].curOctave = channels[ch].octaves;
+								}
+							}
+							break;
+						case Channel.ArpMode.ascThenDesc:
+							if(channels[ch].arpWay){
+								if(channels[ch].arpPos++ == channels[ch].nOfNotes){
+									channels[ch].arpPos = 0;
+									if(channels[ch].curOctave++ == channels[ch].octaves){
+										channels[ch].curOctave = 0;
+										channels[ch].arpWay = false;
+									}
+								}
+							}else{
+								if(channels[ch].arpPos-- == 0){
+									channels[ch].arpPos = channels[ch].nOfNotes;
+									if(channels[ch].curOctave-- == 0){
+										channels[ch].curOctave = channels[ch].octaves;
+										channels[ch].arpWay = true;
+									}
+								}
+							}
+							break;
+					}
+					keyOn(cast(ubyte)ch, cast(ushort)(channels[ch].arpeggiatorNotes[channels[ch].arpPos] + channels[ch].curOctave * 12),
+							channels[ch].vel, channels[ch].exprVal);
+				}
+			}
+		}
+	}
+	override public @nogc void receiveMICPCommand(MICPCommand cmd){
+		cmd.channel = cast(ushort)(cmd.channel - globals.baseChannel);
 		switch(cmd.command){
 			case MICPCommandList.KeyOn:
+				keyOn(cast(ubyte)cmd.channel, cmd.val0, cmd.vals[0], cmd.vals[1]);
 				break;
 			case MICPCommandList.KeyOff:
+				keyOff(cast(ubyte)cmd.channel, cmd.val0, cmd.vals[0], cmd.vals[1]);
 				break;
 			case MICPCommandList.ParamEdit:
 				break;
 			case MICPCommandList.ParamEditFP:
 				break;
+			default:
+				break;
 		}
 	}
-	public @nogc int setRenderParams(float samplerate, size_t framelength, size_t nOfFrames){
+	/**
+	 * Changes the preset of a given channel.
+	 * ch must be between 0 and 31.
+	 */
+	public @nogc void changePreset(ubyte ch, ushort preset){
+		channels[ch].presetID = preset;
+		channels[ch].envGenA.reset;
+		channels[ch].envGenA.stages = envGenA.getPtr(preset);
+		channels[ch].envGenB.reset;
+		channels[ch].envGenB.stages = envGenB.getPtr(preset);
+		channels[ch].preset = presets[preset];
+		channels[ch].lfo.reset;
+		channels[ch].lfo.table = lfoTables.getPtr(channels[ch].preset.lfoWave);
+		channels[ch].presetID = preset;
+		channels[ch].firFilter[0].impulseResponse = finiteImpulseResponses.getPtr(channels[ch].preset.firTypeL);
+		channels[ch].firFilter[1].impulseResponse = finiteImpulseResponses.getPtr(channels[ch].preset.firTypeR);
+
+	}
+	/**
+	 * Sets a key-on command on the selected channel with the given note, velocity, and expressive value.
+	 */
+	public @nogc void keyOn(ubyte ch, ushort note, ushort vel, ushort exprVal){
+		channels[ch].keyON = true;
+		channels[ch].isRunning = true;
+		channels[ch].note = note;
+		channels[ch].vel = vel;
+		channels[ch].exprVal = exprVal;
+		channels[ch].forward = 0;
+		//get sample to play
+		ChannelPresetSamples cps = sampleLayers[channels[ch].presetID].lookup(note);
+		channels[ch].sample = samples.getPtr(cps.sampleSelect);
+		//calculate stepping
+		if(cps.isPercussive){//if percussive, ignore pitch change except for the pitch bend commands
+			channels[ch].baseFreq = cps.midFreq;
+			channels[ch].freq = bendFreqByPitch(channels[ch].pitchbend, channels[ch].baseFreq);
+			channels[ch].stepping = calculateStepping(channels[ch].freq);
+		}else{//calculate note frequency with pitchbend
+			const float delta_note = cast(float)note - cast(float)cps.midNote;
+			channels[ch].baseFreq = bendFreqByPitch(delta_note, cps.midFreq);
+			channels[ch].freq = bendFreqByPitch(channels[ch].pitchbend, channels[ch].baseFreq);
+			channels[ch].stepping = calculateStepping(channels[ch].freq);
+		}
+		channels[ch].enableLooping = cps.isLooping;
+		channels[ch].pingPongLoop = cps.pingPongLoop;
+		if(channels[ch].preset.resetEGA){
+			channels[ch].envGenA.setKeyOn;
+		}
+		if(channels[ch].preset.resetEGB){
+			channels[ch].envGenB.setKeyOn;
+		}
+		if(channels[ch].preset.resetLFO){
+			channels[ch].lfo.reset;
+		}
+
+	}
+	/**
+	 * Sets a key-off command on the selected channel with the given note, velocity, and expressive value.
+	 */
+	public @nogc void keyOff(ubyte ch, ushort note, ushort vel, ushort exprVal){
+		channels[ch].keyON = false;
+		channels[ch].note = note;
+		channels[ch].vel = vel;
+		channels[ch].exprVal = exprVal;
+		channels[ch].envGenA.setKeyOff;
+		channels[ch].envGenB.setKeyOff;
+	}
+	/**
+	 * Programs a note into the channel's sequencer.
+	 * If exprVal not 0, it sets which note has to be rewritten, otherwise it adds a new note to the sequencer.
+	 */
+	public @nogc void prgKeyOn(ubyte ch, ushort note, ushort vel, ushort exprVal){
+		if(exprVal){
+			exprVal--;
+			exprVal &= 3;
+			channels[ch].arpeggiatorNotes[exprVal] = note;
+		}else{
+			if(channels[ch].nOfNotes < 3){
+				channels[ch].arpeggiatorNotes[channels[ch].nOfNotes] = note;
+				channels[ch].nOfNotes = cast(ubyte)(channels[ch].nOfNotes + 1);
+			}
+		}
+	}
+	/**
+	 * Removes a note from the channel's sequencer.
+	 * If note not 0, it removes the note from the list if there's an equal of it.
+	 * If exprVal not 0, it removes the given note.
+	 */
+	public @nogc void prgKeyOff(ubyte ch, ushort note, ushort vel, ushort exprVal){
+		if(note){
+			for(int i; i < 4; i++)
+				if(channels[ch].arpeggiatorNotes[exprVal] == note)
+					exprVal = cast(ushort)(i+1);
+		}
+		if(exprVal){
+			exprVal--;
+			exprVal &= 3;
+			channels[ch].arpeggiatorNotes[exprVal] = 0;
+			for(; exprVal < 3; exprVal++)
+				channels[ch].arpeggiatorNotes[exprVal] = channels[ch].arpeggiatorNotes[exprVal + 1];
+
+			if(channels[ch].nOfNotes)
+				channels[ch].nOfNotes = cast(ubyte)(channels[ch].nOfNotes - 1);
+		}else{
+			if(channels[ch].nOfNotes > 0){
+				channels[ch].arpeggiatorNotes[channels[ch].nOfNotes] = 0;
+				channels[ch].nOfNotes = cast(ubyte)(channels[ch].nOfNotes - 1);
+			}
+		}
+
+	}
+	/**
+	 * Calculates the length of the stepping for each sample.
+	 * Uses double precision to ensure precision.
+	 */
+	protected @nogc uint calculateStepping(float freq){
+		return cast(uint)((cast(double)freq / cast(double)sampleRate) * cast(double)WHOLE_STEP_FORWARD);
+	}
+	override public @nogc int setRenderParams(float samplerate, size_t framelength, size_t nOfFrames){
 		this.sampleRate = samplerate;
 		this.frameLength = framelength;
 		this.nOfFrames = nOfFrames;
+		return 0;
 	}
 	/**
 	 * Loads a bank into the synthesizer, also loads samples on the way from the selected sample pool.
@@ -485,7 +1625,7 @@ public class PCM32 : AbstractPPEFX{
 	 * that is ./audio/samplepool.dpk), otherwise a folder with uncompressed data is used (default path for that
 	 * is ./audio/samplepool/).
 	 */
-	public void loadConfig(ref void[] data){
+	override public void loadConfig(ref void[] data){
 		import PixelPerfectEngine.system.file : RIFFHeader;
 		import std.string : toStringz;
 		size_t pos;
@@ -503,16 +1643,18 @@ public class PCM32 : AbstractPPEFX{
 					envGenBFound = false;
 					cpsFound = false;
 					currentInstr = *cast(InstrumentPreset*)(data.ptr + pos);
-					pos += InstrumentPreset.length;
+					pos += InstrumentPreset.sizeof;
+					presets[currentInstr.id] = *cast(ChannelPresetMain*)(data.ptr + pos);
+					pos += ChannelPresetMain.sizeof;
 					break;
 				case RIFFID.envGenA:
 					if(!envGenAFound){
 						envGenAFound = true;
-						EnvelopeGenerator ega;
-						ega.stages.reserve(currentInstr.egaStages);
+						EnvelopeStageList ega;
+						ega.reserve(currentInstr.egaStages);
 						for(int i ; i < currentInstr.egaStages ; i++){
-							ega.stages ~= *cast(EnvelopeStage*)(data.ptr + pos);
-							pos += EnvelopeStage.length;
+							ega.insertBack(*cast(EnvelopeStage*)(data.ptr + pos));
+							pos += EnvelopeStage.sizeof;
 						}
 						envGenA[currentInstr.id] = ega;
 					}
@@ -520,31 +1662,31 @@ public class PCM32 : AbstractPPEFX{
 				case RIFFID.envGenB:
 					if(!envGenBFound){
 						envGenBFound = true;
-						EnvelopeGenerator egb;
-						egb.stages.reserve(currentInstr.egbStages);
+						EnvelopeStageList egb;
+						egb.reserve(currentInstr.egbStages);
 						for(int i ; i < currentInstr.egbStages ; i++){
-							egb.stages ~= *cast(EnvelopeStage*)(data.ptr + pos);
-							pos += EnvelopeStage.length;
+							egb.insertBack(*cast(EnvelopeStage*)(data.ptr + pos));
+							pos += EnvelopeStage.sizeof;
 						}
 						envGenB[currentInstr.id] = egb;
 					}
 					break;
-				case RIFFID.samplePreset:
+				case RIFFID.instrumentData:
 					if(!envGenBFound){
 						cpsFound = true;
 						for(int i ; i < currentInstr.sampleLayers ; i++){
 							sampleLayers[currentInstr.id].add(*cast(ChannelPresetSamples*)(data.ptr + pos));
-							pos += ChannelPresetSamples.length;
+							pos += ChannelPresetSamples.sizeof;
 						}
 					}
 					break;
-				case RIFFID.instrumentData:
+				/*case RIFFID.instrumentPreset:
 					presets[currentInstr.id] = *cast(ChannelPresetMain*)(data.ptr + pos);
-					pos += ChannelPresetMain.length;
-					break;
+					pos += ChannelPresetMain.sizeof;
+					break;*/
 				case RIFFID.samplePreset:
 					SamplePreset slmp = *cast(SamplePreset*)(data.ptr + pos);
-					pos += SamplePreset.length;
+					pos += SamplePreset.sizeof;
 					string filename = samplePoolPath;
 					foreach(c ; slmp.name){
 						if(c){
@@ -567,7 +1709,7 @@ public class PCM32 : AbstractPPEFX{
 					break;
 				case RIFFID.fiResponse:
 					FXSamplePreset slmp = *cast(FXSamplePreset*)(data.ptr + pos);
-					pos += FXSamplePreset.length;
+					pos += FXSamplePreset.sizeof;
 					string filename = samplePoolPath;
 					foreach(c ; slmp.name){
 						if(c){
@@ -578,18 +1720,43 @@ public class PCM32 : AbstractPPEFX{
 					}
 					filename ~= ".pcm";
 					PCMFile file = loadPCMFile(toStringz(filename));
-					FiniteImpulseResponse!(1024) fir;
-					memcpy(fir.vals.ptr, file.data.data.ptr, 1024);
+					FiniteImpulseResponse!(FIR_TABLE_LENGTH) fir;
+					memcpy(fir.vals.ptr, file.data.data.ptr, FIR_TABLE_LENGTH);
 					file.destroy;
 					finiteImpulseResponses[slmp.id] = fir;
 					break;
 				case RIFFID.lfoPreset:
+					FXSamplePreset slmp = *cast(FXSamplePreset*)(data.ptr + pos);
+					pos += FXSamplePreset.sizeof;
+					string filename = samplePoolPath;
+					foreach(c ; slmp.name){
+						if(c){
+							filename ~= c;
+						}else{
+							break;
+						}
+					}
+					filename ~= ".pcm";
+					PCMFile file = loadPCMFile(toStringz(filename));
+					ubyte[LFO_TABLE_LENGTH] table;
+					memcpy(table.ptr, file.data.data.ptr, FIR_TABLE_LENGTH);
+					file.destroy;
+					lfoTables[slmp.id] = table;
+					break;
+				case RIFFID.globalSettings:
+					globals = *cast(GlobalSettings*)(data.ptr + pos);
+					pos += GlobalSettings.sizeof;
 					break;
 				default:
 					throw new Exception("Invalid data error!");
 			}
 		}
 	}
-
+	/**
+	 *Not supported currently
+	 */
+	override public ref void[] saveConfig(){
+		throw new Exception("Unimplemented feature!");
+	}
 }
 

@@ -25,7 +25,7 @@ public class UndoableStack{
 			events = events[currentPos..$];
 		}
 		e.redo;
-		for(int i = events.length - 1 ; i > 0 ; i--){
+		for(int i = cast(int)events.length - 1 ; i > 0 ; i--){
 			events[i] = events[i - 1];
 		}
 		events[0] = e;

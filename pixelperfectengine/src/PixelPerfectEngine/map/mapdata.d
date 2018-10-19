@@ -32,7 +32,7 @@ public struct MapDataHeader{
 	public int sizeX;
 	public int sizeY;
 	this(int sizeX, int sizeY){
-		this.fileLength = sizeX * sizeY + MapDataHeader.sizeof;
+		this.fileLength = cast(uint)(sizeX * sizeY + MapDataHeader.sizeof);
 		this.sizeX = sizeX;
 		this.sizeY = sizeY;
 	}

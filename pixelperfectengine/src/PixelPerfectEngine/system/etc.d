@@ -46,7 +46,7 @@ string intToHex(int i, int format = 0){
 		i = i >>> 4;
 	}while(i > 0);
 	if(result.length < format){
-		for(int j = result.length ; j < format ; j++){
+		for(size_t j = result.length ; j < format ; j++){
 			result ~= '0';
 		}
 	}
@@ -70,7 +70,7 @@ string intToOct(int i, int format){
 		i = i / 8;
 	}while(i > 0);
 	if(result.length < format){
-		for(int j = result.length ; j < format ; j++){
+		for(size_t j = result.length ; j < format ; j++){
 			result ~= '0';
 		}
 	}
@@ -134,7 +134,8 @@ bool isInteger(S)(S s){
 				return false;
 		}
 		return true;
-	}else static assert("Template patameter " ~ S.stringof ~ " not supported in function 'bool isInteger(S)(S s)' of module 'PixelPerfectEngine.system.etc'");
+	}else static assert(false, "Template patameter " ~ S.stringof ~ " not supported in function 'bool isInteger(S)(S s)'
+			of module 'PixelPerfectEngine.system.etc'");
 }
 
 /**

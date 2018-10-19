@@ -27,12 +27,15 @@ public interface IRaster{
 
 ///Handles multiple layers onto one framebuffer.
 public class Raster : IRaster{
-    private ushort rX, rY;		///Stores screen resolution
+    private ushort rX, rY;		///Stores screen resolution. Set overscan resolutions at OutputWindow
     //public SDL_Surface* workpad;
 	public SDL_Texture*[] frameBuffer;
 	public void*[] fbData;
 	public int[] fbPitch;
-    public Color[] palette; ///FORMAT IS ARGB. Master palette, layers or bitmaps can define their own palettes if needed.
+	/**
+	 * Color format is ARGB, with each index having their own transparency.
+	 */
+    public Color[] palette;
     private Layer[int] layerList;	///Stores the layers by their priorities.
 	private int[] layerPriorityHandler, threads;
     private bool r;
@@ -44,9 +47,10 @@ public class Raster : IRaster{
 	//public Bitmap16Bit[2] frameBuffer;
 
     ///Default constructor. x and y : represent the resolution of the raster.
-    public this(ushort x, ushort y, OutputScreen oW, int[] threads = [0]){
+    public this(ushort x, ushort y, OutputScreen oW, size_t paletteLength = 65536){
         //workpad = SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-		this.threads = threads;
+		//this.threads = threads;
+		assert(paletteLength <= 65536);
 		SDL_Renderer* renderer = oW.renderer;
         rX=x;
         rY=y;
@@ -65,12 +69,21 @@ public class Raster : IRaster{
 		oW.setMainRaster(this);
 		addRefreshListener(oW);
 	}
+	/**
+	 * Returns the current FPS count.
+	 */
 	public @nogc @property real fps(){
 		return framesPerSecond;
 	}
+	/**
+	 * Returns the current average FPS count.
+	 */
 	public @nogc @property real avgfps(){
 		return avgFPS;
 	}
+	/**
+	 * Resets the avgFPS to zero.
+	 */
 	public @nogc void resetAvgfps(){
 		avgFPS = 0;
 	}
@@ -80,19 +93,15 @@ public class Raster : IRaster{
 				SDL_DestroyTexture(t);
 		}
 	}
-    //Adds a RefreshListener to its list.
+    ///Adds a RefreshListener to its list.
     public void addRefreshListener(RefreshListener r){
         rL ~= r;
     }
-	///Writes a color at the last position
-	public void addColor(Color val){
-		palette ~= val;
-	}
-
+	///Edits the given color index.
 	public void editColor(ushort c, Color val){
 		palette[c] = val;
 	}
-	//Sets the number of colors.
+	///Sets the number of colors.
 	public void setupPalette(int i){
 		palette.length = i;
 	}
@@ -108,6 +117,7 @@ public class Raster : IRaster{
 		layerPriorityHandler ~= i;
 		layerPriorityHandler.sort();
     }
+	///Removes a layer at the given priority.
 	public void removeLayer(int n){
 		layerList.remove(n);
 		int[] newlayerPriorityHandler;
@@ -121,7 +131,7 @@ public class Raster : IRaster{
 		layerPriorityHandler = newlayerPriorityHandler;
 	}
 	/**
-	 * Refreshes the whole framebuffer. 
+	 * Refreshes the whole framebuffer.
 	 */
     public void refresh(){
 
@@ -138,9 +148,9 @@ public class Raster : IRaster{
 		SDL_LockTexture(frameBuffer[doubleBufferRegisters[0]], null, &fbData[doubleBufferRegisters[0]], &fbPitch[doubleBufferRegisters[0]]);
 
 		for(int i ; i < layerPriorityHandler.length ; i++){
-			layerList[layerPriorityHandler[i]].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette.ptr, threads);
+			layerList[layerPriorityHandler[i]].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette.ptr);
 		}
-        
+
 		SDL_UnlockTexture(frameBuffer[doubleBufferRegisters[0]]);
         r = false;
 
@@ -159,15 +169,15 @@ public class Raster : IRaster{
 			avgFPS = framesPerSecond;
     }
 
-	
+
     ///Returns the workpad.
     public SDL_Texture* getOutput(){
 		if(fbData[0] !is null)
 			return frameBuffer[0];
 		return frameBuffer[1];
     }
-    
-    
+
+
     ///Returns if the raster is refreshing.
     public bool isRefreshing(){
         return r;

@@ -1,10 +1,10 @@
-module importDialog;
+module newConverterDialog;
 
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.graphics.common;
 
 
-public class ImportDialog : Window, ActionListener { 
+public class ImportDialog : Window {
 	Label label1;
 	TextBox bitmapID;
 	TextBox paletteID;
@@ -24,8 +24,6 @@ public class ImportDialog : Window, ActionListener {
 		buttonOk = new Button("Ok"w, "buttonOk", Coordinate(145, 200, 220, 220));
 		buttonClose = new Button("Close"w, "buttonClose", Coordinate(65, 200, 135, 220));
 	}
-	override public void actionEvent(Event event) {
-	
-	}
-	
+
+
 }

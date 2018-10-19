@@ -24,8 +24,8 @@ import derelict.sdl2.sdl;
 import sdlang;
 
 public class ConfigurationProfile{
-	public static const ushort[string] keymodifierStrings; 
-	public static const string[ushort] joymodifierStrings; 
+	public static const ushort[string] keymodifierStrings;
+	public static const string[ushort] joymodifierStrings;
 	public static const string[Devicetype] devicetypeStrings;
 	private static Dictionary keyNameDict, joyButtonNameDict, joyAxisNameDict;
 	public int sfxVol, musicVol;
@@ -53,7 +53,7 @@ public class ConfigurationProfile{
 	}
 
 	static this(){
-		keymodifierStrings = 
+		keymodifierStrings =
 				["NONE"	: 0x0000, "LSHIFT": 0x0001, "RSHIFT": 0x0002, "LCTRL": 0x0040, "RCTRL": 0x0080, "CTRL": 0x0020, "LALT": 0x0100, "RALT": 0x0200 , "LGUI": 0x0400,
 					"RGUI": 0x0800, "NUM": 0x1000, "CAPS": 0x2000, "MODE": 0x4000, "RESERVED": 0x8000, "ANY": 0xFFFF];
 		joymodifierStrings = [0x0000: "buttons",0x0004: "dpad",0x0008: "axis"];
@@ -64,9 +64,9 @@ public class ConfigurationProfile{
 	}
 	///Restores configuration profile
 	public void restore(){
-		
+
 		//string s = cast(string)std.file.read(configFile);
-		
+
 		Tag root;
 
 		try{
@@ -89,12 +89,12 @@ public class ConfigurationProfile{
 				}else if(t0.name == "input"){
 					foreach(Tag t1; t0.tags){
 						switch(t1.name){
-							case "device": 
+							case "device":
 								InputDeviceData device;
 								string name = t1.getValue!string("");
 								int devicenumber = t1.getAttribute!int("devNum");
 								switch(t1.expectAttribute!string("type")){
-									case "keyboard": 
+									case "keyboard":
 										device = InputDeviceData(devicenumber, Devicetype.KEYBOARD, name);
 										foreach(Tag t2; t1.tags){
 											if(t2.name is null){
@@ -112,7 +112,7 @@ public class ConfigurationProfile{
 														uint scanCode = t2.getAttribute!int("keyCode", joyButtonNameDict.decode(t2.getAttribute!string("keyName")));
 														keyBindingList ~= KeyBinding(0, scanCode, devicenumber, t2.expectValue!string(), Devicetype.JOYSTICK);
 														break;
-													case "dpad": 
+													case "dpad":
 														uint scanCode = t2.getAttribute!int("keyCode");
 														keyBindingList ~= KeyBinding(4, scanCode, devicenumber, t2.expectValue!string(), Devicetype.JOYSTICK);
 														break;
@@ -142,7 +142,7 @@ public class ConfigurationProfile{
 											}
 										}
 										break;
-									default: 
+									default:
 										device = InputDeviceData(devicenumber, Devicetype.KEYBOARD, name);
 										break;
 								}
@@ -161,15 +161,15 @@ public class ConfigurationProfile{
 		catch(ParseException e){
 			writeln(e.msg);
 		}
-		
-		
-		
+
+
+
 	}
 	public void store(){
-		
-		
+
+
 		Tag root = new Tag(null, null);		//, [Value(appName), Value(appVers)]
-		
+
 		Tag t0 = new Tag(root, null, "audio");
 		Tag t0_0 = new Tag(t0, null, "soundVol", [Value(sfxVol)]);
 		Tag t0_1 = new Tag(t0, null, "musicVolt", [Value(musicVol)]);
@@ -202,7 +202,7 @@ public class ConfigurationProfile{
 				foreach(KeyBinding k; keyBindingList){
 					if(k.devicetype == idd.type && k.devicenumber == idd.deviceNumber){
 						new Tag(t2_0, null, null, [Value(k.ID)], [new Attribute(null, "keyCode", Value(to!int(k.scancode))), new Attribute(null, "keyMod", Value(joymodifierStrings[k.keymod]))]);
-						
+
 					}
 				}
 				new Tag(t2_0, null, "enableForceFeedback", [Value(idd.enableForceFeedback)]);
@@ -224,7 +224,7 @@ public class ConfigurationProfile{
 		string data = root.toSDLDocument();
 		std.file.write(path, data);
 	}
-	
+
 	public ushort stringToKeymod(string s){
 		if(s == "NONE;")	return KeyModifier.NONE;
 		if(s == "ANY;")		return KeyModifier.ANY;
@@ -289,7 +289,7 @@ public class ConfigurationProfile{
 		}
 	}
 	public void useVideoMode(int mode, OutputScreen window){
-		
+
 	}
 	public void autodetectVideoModes(int display = 0){
 		int displaymodes = SDL_GetNumDisplayModes(display);
@@ -298,13 +298,13 @@ public class ConfigurationProfile{
 		for(int i ; i <= displaymodes ; i++){
 			SDL_DisplayMode d = SDL_DisplayMode();
 			if(SDL_GetDisplayMode(display,i,&d) == 0){
-				
+
 				videoModes ~= d;
-				
+
 			}
 		}
 	}
-	public int getNumOfVideoModes(){
+	public size_t getNumOfVideoModes(){
 		return videoModes.length;
 	}
 	public string videoModeToString(size_t n){
