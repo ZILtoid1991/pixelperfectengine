@@ -3,8 +3,9 @@ docs.json
 __dummy.html
 *.o
 *.obj
+*.lib
 *.exe
 *.ps1
 system/
 pixelperfecteditor/bin
-lib/
+pixelperfectengine/lib
