@@ -262,17 +262,6 @@ public class TileLayer : Layer, ITileLayer{
 		if(x >= mX || y >= mY || x < 0 || y < 0) return MappingElement(0xFFFF);
 		return mapping[x + y*mX];
 	}
-	///Returns the tile's attribute at the given pixel
-	/+@nogc public BitmapAttrib tileAttributeByPixel(int x, int y){
-		x /= tileX;
-		y /= tileY;
-		if(warpMode){
-			x %= totalX;
-			y %= totalY;
-		}
-		if(x >= mX || y >= mY || x < 0 || y < 0) return BitmapAttrib(false,false);
-		return tileAttributes[x + y*mX];
-	}+/
 
 	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette){
 		//import core.stdc.stdio;
@@ -287,7 +276,7 @@ public class TileLayer : Layer, ITileLayer{
 			//int offsetY = tileX * ((y + sY)%tileY);
 			int offsetYA = !y ? offsetY : 0;	//top offset for first tile, 0 otherwise
 			int offsetYB = y + tileY > rasterY ? offsetY0 : tileY;	//bottom offset of last tile, equals tileY otherwise
-			int x = sX < 0 && !warpMode ? sX * -1 : 0;
+			uint x = (cast(uint)(sY) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
 			int targetX = totalX - sX > rasterX && !warpMode ? rasterX : rasterX - (totalX - sX);
 			void *p0 = (workpad + (x*Color.sizeof) + offsetP);
 			while(x < targetX){
@@ -297,7 +286,7 @@ public class TileLayer : Layer, ITileLayer{
 				tileXtarget -= xp;	// length of the first tile
 				if(currentTile.tileID != 0xFFFF){ // skip if tile is null
 					//BitmapAttrib tileAttrib = tileAttributeByPixel(x+sX,y+sY);
-					DisplayListItem d = displayList[currentTile.tileID];	// pointer to the current tile's pixeldata
+					const DisplayListItem d = displayList[currentTile.tileID];	// pointer to the current tile's pixeldata
 					int tileYOffset = tileY;
 					tileYOffset *= currentTile.attributes.vertMirror ? -1 : 1;	//vertical mirroring
 					//int pitchOffset = pitch * threads.length;
@@ -618,9 +607,9 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 							}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
 								Color* tsrc = cast(Color*)d.pixelSrc;
 							}
-							xy[0] = xy[0] & (TileX - 1);
-							xy[1] = xy[1] & (TileY - 1);
-							const int totalOffset = xy[0] + xy[1] * TileX;
+							xy[2] = xy[2] & (TileX - 1);
+							xy[3] = xy[3] & (TileY - 1);
+							const int totalOffset = xy[2] + xy[3] * TileX;
 							static if(BMPType.mangleof == Bitmap4Bit.mangleof){
 								src[x] = (totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | currentTile1.paletteSel<<4;
 							}else static if(BMPType.mangleof == Bitmap8Bit.mangleof ){
@@ -873,7 +862,9 @@ public interface ISpriteLayer{
 	///Replaces the sprite and moves to the given position.
 	public void replaceSprite(ABitmap s, int n, Coordinate c);
 	///Edits a sprite attribute.
-	public void editSpriteAttribute(S, T)(int n, T value);
+	public void editSpriteAttribute(string S, T)(int n, T value);
+	///Reads a sprite attribute
+	public T readSpriteAttribute(string S, T)(int n);
 	///Replaces a sprite attribute. DEPRECATED
 	public void replaceSpriteAttribute(int n, BitmapAttrib attr);
 	///Returns the displayed portion of the sprite.
@@ -1032,7 +1023,7 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		}
 	}
 	protected DisplayListItem[] displayList;	///Stores the display data
-	Color[] src;
+	Color[1024] src;
 	//size_t[8] prevSize;
 
 	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
@@ -1050,7 +1041,7 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		/+for(int i; i < src.length; i++){
 			src[i].length=rY;
 		}+/
-		src.length = rY;
+		//src.length = rY;
 	}
 	///Returns the displayed portion of the sprite.
 	public @nogc Coordinate getSlice(int n){
@@ -1126,13 +1117,22 @@ public class SpriteLayer : Layer, ISpriteLayer{
 			displayList.sort!"a > b"();
 		}
 	}
-	public void editSpriteAttribute(S, T)(int n, T value){
+	public void editSpriteAttribute(string S, T)(int n, T value){
 		for(int i; i < displayList.length ; i++){
 			if(displayList[i].priority == n){
-				displayList[i].S = value;
+				mixin("displayList[i]."~S~" = value;");
 				return;
 			}
 		}
+	}
+	///Reads a sprite attribute
+	public T readSpriteAttribute(string S, T)(int n){
+		for(int i; i < displayList.length ; i++){
+			if(displayList[i].priority == n){
+				mixin("return displayList[i]."~S~";");
+			}
+		}
+		return T.init;
 	}
 	public void replaceSpriteAttribute(int n, BitmapAttrib attr){
 		for(int i; i < displayList.length ; i++){
@@ -1214,8 +1214,9 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		for(int i; i < displayList.length ; i++){
 			if(displayList[i].priority == n){
 				displayList[i].scaleHoriz = hScl;
-				return displayList[i].position.right = displayList[i].position.left + cast(int)scaleNearestLength(
-						displayList[i].width, hScl);
+				const int newWidth = cast(int)scaleNearestLength(displayList[i].width, hScl);
+				displayList[i].slice.right = newWidth;
+				return displayList[i].position.right = displayList[i].position.left + newWidth;
 			}
 		}
 		return -2;
@@ -1225,9 +1226,10 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		if (!vScl) return -1;
 		for(int i; i < displayList.length ; i++){
 			if(displayList[i].priority == n){
-				displayList[i].scaleHoriz = vScl;
-				return displayList[i].position.right = displayList[i].position.left + cast(int)scaleNearestLength(
-						displayList[i].width, vScl);
+				displayList[i].scaleVert = vScl;
+				const int newHeight = cast(int)scaleNearestLength(displayList[i].height, vScl);
+				displayList[i].slice.bottom = newHeight;
+				return displayList[i].position.bottom = displayList[i].position.top + newHeight;
 			}
 		}
 		return -2;
@@ -1237,171 +1239,95 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		foreach(i ; displayList){
 			const int left = i.position.left + i.slice.left;
 			const int top = i.position.top + i.slice.top;
-			const int right = i.position.left + i.slice.width;
-			const int bottom = i.position.bottom + i.slice.height;
+			const int right = i.position.left + i.slice.right;
+			const int bottom = i.position.top + i.slice.bottom;
 			/+if((i.position.right > sX && i.position.bottom > sY) && (i.position.left < sX + rasterX && i.position.top < sY +
 					rasterY)){+/
-			if((right > sX || left < sX + rasterX) && (bottom > sY || top < sY + rasterY) && i.slice.width && i.slice.height){
-				int offsetXA = sX > i.position.left ? sX - i.position.left : 0;//Left hand side offset
-				int offsetXB = sX + rasterX < i.position.right ? i.position.right - rasterX : 0; //Right hand side offset
-				int offsetYA = sY > i.position.top ? sY - i.position.top : 0;
-				int offsetYB = sY + rasterY < i.position.bottom ? i.position.bottom - rasterY : 0;
-				if(offsetXA < i.slice.left)
-					offsetXA += i.slice.left - offsetXA;
-				if(offsetXB < i.position.width - i.slice.right)
-					offsetXB += i.position.width - i.slice.right - offsetXB;
-				if(offsetYA < i.slice.top)
-					offsetYA += i.slice.top - offsetYA;
-				if(offsetYB < i.position.height - i.slice.bottom)
-					offsetYB += i.position.height - i.slice.bottom - offsetYB;
+			if((right > sX && left < sX + rasterX) && (bottom > sY && top < sY + rasterY) && i.slice.width && i.slice.height){
+				int offsetXA = sX > left ? sX - left : 0;//Left hand side offset
+				int offsetXB = sX + rasterX < right ? right - rasterX : 0; //Right hand side offset
+				int offsetYA = sY > top ? sY - top : 0;
+				int offsetYB = sY + rasterY < bottom ? bottom - rasterY : 0;
+				//const int offsetYB0 = cast(int)scaleNearestLength(offsetYB, i.scaleVert);
 				const int sizeX = i.slice.width();
 				const int offsetX = left - sX;
 				int length = sizeX - offsetXA - offsetXB;
+				int lengthY = i.slice.height - offsetYA - offsetYB;
 				//const int lfour = length * 4;
 				const int offsetY = sY < top ? (top-sY)*pitch : 0;	//used if top portion of the sprite is off-screen
 				int offset, prevOffset;
-				bool needsLineUpdate = true;
-				const int sizeXOffset = i.position.width * (i.scaleVert < 0 ? -1 : 1);
+				const int scaleVertAbs = i.scaleVert * (i.scaleVert < 0 ? -1 : 1);
+				//int offset = offsetYA<<10 , prevOffset = (offsetYA*scaleVertAbs)>>10;
+				const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));
+				const int sizeXOffset = i.width * (i.scaleVert < 0 ? -1 : 1);
 				switch(i.wordLength){
 					case 4:
-						//Bitmap4Bit bmp = cast(Bitmap4Bit)i.sprite;
-						//ubyte* p0 = bmp.getPtr();
-						ubyte* p0 = cast(ubyte*)i.pixelData;
-						if(i.scaleVert < 0)
-							p0 += (sizeX * (i.position.height - offsetYB))>>1;
-						else
-							p0 += (sizeX * offsetYA)>>1;
-						if(i.scaleHoriz > 0)
-							p0 += offsetXA>>1;
-						else
-							p0 += offsetXB>>1;
-						//foreach(int threadOffset; threads.parallel){
-						//ubyte* p1 = p0 + threadOffset * sizeX;
-						//void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
+						size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB);
 						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-						//for(int y = offsetYA + threadOffset ; y < i.position.height - offsetYB ; y+=threads.length){
 						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){
-							//main4BitColorLookupFunction(p0, cast(uint*)src.ptr, cast(uint*)i.palette, length, offsetXA);
-							if(needsLineUpdate){
-								horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel << 4), length,
-										offsetXA & 1, i.scaleHoriz);
-								needsLineUpdate = false;
+							horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel << 4), i.width, offsetXA & 1, i.scaleHoriz);
+							prevOffset += 1024;
+							for(; offset < prevOffset; offset += scaleVertAbs){
+								y++;
+								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+								dest += pitch;
 							}
-
-							mainRenderingFunction(cast(uint*)src.ptr, cast(uint*)dest, length);
-
-							dest += pitch;
-							prevOffset = offset;
-							offset += i.scaleVert;
-							if(prevOffset>>10 < offset>>10){
-								p0 += sizeXOffset;
-								needsLineUpdate = true;
-							}
+							p0 += sizeXOffset;
 						}
 						//}
 						break;
 					case 8:
-						//Bitmap8Bit bmp = cast(Bitmap8Bit)i.sprite;
-						//ubyte* p0 = bmp.getPtr();
-						ubyte* p0 = cast(ubyte*)i.pixelData;
-						if(i.scaleVert < 0)
-							p0 += sizeX * (i.position.height - offsetYB);
-						else
-						p0 += sizeX * offsetYA;
-						if(i.scaleHoriz > 0)
-							p0 += offsetXA;
-						else
-							p0 += offsetXB;
-						//foreach(int threadOffset; threads.parallel){
-						//ubyte* p1 = p0 + threadOffset * sizeX;
-						//void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
+						size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB);
 						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-						//for(int y = offsetYA + threadOffset ; y < i.position.height - offsetYB ; y+=threads.length){
-						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){
-							if(needsLineUpdate){
-								horizontalScaleNearestAndCLU(p0, src.ptr, palette, length, i.scaleHoriz);
-								needsLineUpdate = false;
+						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+							horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel << 8), i.width, i.scaleHoriz);
+							prevOffset += 1024;
+							for(; offset < prevOffset; offset += scaleVertAbs){
+								y++;
+								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+								dest += pitch;
 							}
-
-							mainRenderingFunction(cast(uint*)src.ptr, cast(uint*)dest, length);
-							//dest += pitchOffset;
-							dest += pitch;
-							prevOffset = offset;
-							offset += i.scaleVert;
-							if(prevOffset>>10 < offset>>10){
-								p0 += sizeXOffset;
-								needsLineUpdate = true;
-							}
+							p0 += sizeXOffset;
 						}
-						//}
 						break;
 					case 16:
-						//Bitmap16Bit bmp = cast(Bitmap16Bit)i.sprite;
-						//ushort* p0 = bmp.getPtr();
-						ushort* p0 = cast(ushort*)i.pixelData;
-						if(i.scaleVert < 0)
-							p0 += sizeX * (i.position.height - offsetYB);
-						else
-							p0 += sizeX * offsetYA;
-						if(i.scaleHoriz > 0)
-							p0 += offsetXA;
-						else
-							p0 += offsetXB;
-						//foreach(int threadOffset; threads.parallel){
-						//ushort* p1 = p0 + threadOffset * sizeX;
-						//void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
+						//ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - 1) : 0);
+						size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB);
 						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-						//for(int y = offsetYA + threadOffset ; y < i.position.height - offsetYB ; y+=threads.length){
-						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){
-							if(needsLineUpdate){
-								horizontalScaleNearestAndCLU(p0, src.ptr, palette, length, i.scaleHoriz);
-								needsLineUpdate = false;
+						/*for( ; y < offsetYA ; ){
+							prevOffset += 1024;
+							for(; offset < prevOffset; offset += scaleVertAbs){
+								y++;
 							}
-
-							mainRenderingFunction(cast(uint*)src.ptr, cast(uint*)dest, length);
-							//dest += pitchOffset;
-							dest += pitch;
-							prevOffset = offset;
-							offset += i.scaleVert;
-							if(prevOffset>>10 < offset>>10){
-								p0 += sizeXOffset;
-								needsLineUpdate = true;
+							p0 += sizeXOffset;
+						}*/
+						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+							horizontalScaleNearestAndCLU(p0, src.ptr, palette, i.width, i.scaleHoriz);
+							prevOffset += 1024;
+							for(; offset < prevOffset; offset += scaleVertAbs){
+								y++;
+								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+								dest += pitch;
 							}
+							p0 += sizeXOffset;
 						}
-						//}
 						break;
 					case 32:
-						//Bitmap32Bit bmp = cast(Bitmap32Bit)i.sprite;
-						//Color* p0 = bmp.getPtr();
-						Color* p0 = cast(Color*)i.pixelData;
-						if(i.scaleVert < 0)
-							p0 += sizeX * (i.position.height - offsetYB);
-						else
-							p0 += sizeX * offsetYA;
-						if(i.scaleHoriz > 0)
-							p0 += offsetXA;
-						else
-							p0 += offsetXB;
-						//foreach(int threadOffset; threads.parallel){
-
-						//uint* p1 = p0 + threadOffset * sizeX;
-						//void* dest = workpad + (offsetX + offsetXA)*4 + offsetY + threadOffset * pitch;
+						Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
+						size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB);
 						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-						//for(int y = offsetYA + threadOffset ; y < i.position.height - offsetYB ; y+=threads.length){
 						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){
-							if(needsLineUpdate){
-								horizontalScaleNearest(p0, src.ptr, length, i.scaleHoriz);
-								needsLineUpdate = false;
+							horizontalScaleNearest(p0, src.ptr, i.width, i.scaleHoriz);
+							prevOffset += 1024;
+							for(; offset < prevOffset; offset += scaleVertAbs){
+								y++;
+								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+								dest += pitch;
 							}
-							mainRenderingFunction(cast(uint*)(src.ptr), cast(uint*)dest, length);
-
-							dest += pitch;
-							prevOffset = offset;
-							offset += i.scaleVert;
-							if(prevOffset>>10 < offset>>10){
-								p0 += sizeXOffset;
-								needsLineUpdate = true;
-							}
+							p0 += sizeXOffset;
 						}
 						//}
 						break;

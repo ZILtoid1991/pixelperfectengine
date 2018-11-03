@@ -1407,7 +1407,7 @@ public class MenuBar: WindowElement{
 		foreach(m ; menus){
 			output.drawText(x, ss.drawParameters["MenuBarVertPadding"],m.text,f,1);
 			x += f.getTextLength(m.text) + ss.drawParameters["MenuBarHorizPadding"];
-			output.drawLine(x, x, 0, position.height() - 1, ss.getColor("MenuBarSeparatorColor"));
+			//output.drawLine(x, x, 0, position.height() - 1, ss.getColor("MenuBarSeparatorColor"));
 			x += ss.drawParameters["MenuBarHorizPadding"];
 		}
 		output.drawLine(0, 0, 0, position.height()-1, ss.getColor("windowascent"));

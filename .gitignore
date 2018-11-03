@@ -6,6 +6,7 @@ __dummy.html
 *.lib
 *.exe
 *.ps1
+*.pdb
 system/
-pixelperfecteditor/bin
-pixelperfectengine/lib
+pixelperfecteditor/bin/
+pixelperfectengine/lib/

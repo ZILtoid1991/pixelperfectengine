@@ -1,7 +1,7 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"cpublit": "0.2.1",
+		"cpublit": "0.2.3",
 		"derelict-fi": "2.0.3",
 		"derelict-sdl2": "2.1.4",
 		"derelict-util": "2.0.6",
@@ -9,7 +9,7 @@
 		"libinputvisitor": "1.2.2",
 		"libpcm": "0.2.2",
 		"sdlang-d": "0.10.4",
-		"taggedalgebraic": "0.10.11",
+		"taggedalgebraic": "0.10.12",
 		"unit-threaded": "0.7.52"
 	}
 }

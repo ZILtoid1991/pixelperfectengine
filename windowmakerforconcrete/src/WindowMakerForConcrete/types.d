@@ -9,6 +9,7 @@ public enum ValueType{
 	Bool,
 }
 public enum ElementType{
+	NULL,
 	Label,
 	Button,
 	SmallButton,
@@ -16,7 +17,7 @@ public enum ElementType{
 	ListBox,
 	RadioButtonGroup,
 	CheckBox,
-	HScroll,
-	VScroll,
+	HSlider,
+	VSlider,
 	MenuBar,
 }

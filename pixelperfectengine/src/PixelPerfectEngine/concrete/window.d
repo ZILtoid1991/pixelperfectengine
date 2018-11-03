@@ -34,7 +34,7 @@ public class Window : ElementContainer{
 	public BitmapDrawer output;
 	public int header;//, sizeX, sizeY;
 	protected int moveX, moveY;
-	protected bool fullUpdate;
+	protected bool fullUpdate, isActive;
 	protected string[] extraButtons;
 	public Coordinate position;
 	public StyleSheet customStyle;
@@ -135,17 +135,20 @@ public class Window : ElementContainer{
 	/**
 	 * Draws the window. Intended to be used by the WindowHandler.
 	 */
-	public void draw(){
+	public void draw(bool drawHeaderOnly = false){
 		if(output.output.width != position.width || output.output.height != position.height)
 			output = new BitmapDrawer(position.width(), position.height());
-		output.drawFilledRectangle(0, position.width() - 1, getStyleSheet().getImage("closeButtonA").height, position.height() - 1, getStyleSheet().getColor("window"));
-		int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().getImage("closeButtonA").height, x2 = position.width;
+		//drawing the header
+		drawHeader();
+		if(drawHeaderOnly)
+			return;
+		output.drawFilledRectangle(0, position.width() - 1, getStyleSheet().getImage("closeButtonA").height,
+				position.height() - 1, getStyleSheet().getColor("window"));
+		int y1 = getStyleSheet().getImage("closeButtonA").height;
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
 		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
 
 		//int headerLength = cast(int)(extraButtons.length == 0 ? position.width - 1 : position.width() - 1 - ((extraButtons.length>>2) * x1) );
-		//drawing the header
-		drawHeader();
 
 		//drawing the border of the window
 		output.drawLine(0, position.width() - 1, y1, y1, getStyleSheet().getColor("windowascent"));
@@ -172,8 +175,8 @@ public class Window : ElementContainer{
 	 * Draws the header.
 	 */
 	protected void drawHeader(){
-		output.drawFilledRectangle(0, position.width() - 1, 0, getStyleSheet().getImage("closeButtonA").height - 1,
-				getStyleSheet().getColor("window"));
+		const ushort colorC = isActive ? getStyleSheet().getColor("WHAtop") : getStyleSheet().getColor("window");
+		output.drawFilledRectangle(0, position.width() - 1, 0, getStyleSheet().getImage("closeButtonA").height - 1, colorC);
 		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
 		const int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().getImage("closeButtonA").height;
 		int x2 = position.width;
@@ -183,12 +186,20 @@ public class Window : ElementContainer{
 			x2 -= x1;
 			output.insertBitmap(x2,0,getStyleSheet().getImage(s));
 		}
-		output.drawLine(x1, headerLength, 0, 0, getStyleSheet().getColor("windowascent"));
-		output.drawLine(x1, x1, 0, y1 - 1, getStyleSheet().getColor("windowascent"));
-		output.drawLine(x1, headerLength, y1 - 1, y1 - 1, getStyleSheet().getColor("windowdescent"));
-		output.drawLine(headerLength, headerLength, 0, y1 - 1, getStyleSheet().getColor("windowdescent"));
+		const ushort colorA = isActive ? getStyleSheet().getColor("WHAascent") : getStyleSheet().getColor("windowascent"),
+				colorB = isActive ? getStyleSheet().getColor("WHAdescent") : getStyleSheet().getColor("windowdescent");
+		output.drawLine(x1, headerLength, 0, 0, colorA);
+		output.drawLine(x1, x1, 0, y1 - 1, colorA);
+		output.drawLine(x1, headerLength, y1 - 1, y1 - 1, colorB);
+		output.drawLine(headerLength, headerLength, 0, y1 - 1, colorB);
 		output.drawText(x1,(y1-getStyleSheet().getFontset("default").getSize())/2,title,getStyleSheet().getFontset("default"),
 				1);
+	}
+	public @nogc @property bool active(){
+		return isActive;
+	}
+	public @nogc @property bool active(bool val){
+		return isActive = val;
 	}
 	public void setTitle(wstring s){
 		title = s;
@@ -762,19 +773,19 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	}
 
 	public void setWindowToTop(Window sender){
-		int s;
-		foreach(Window w; windows){
-			if(w == sender){
+		for(size_t s; s < windows.length; s++){
+			if(windows[s] == sender){
+				windows[0].active = false;
+				windows[0].draw(true);
 				Window ww = windows[s];
+				ww.active = true;
+				ww.draw(true);
 				windows[s] = windows[0];
 				windows[0] = ww;
 				updateSpriteOrder();
 				break;
-			}else{
-				s++;
 			}
 		}
-
 	}
 
 	private void updateSpriteOrder(){

@@ -11,24 +11,20 @@ public interface UndoableEvent{
  * Implements an undoable event list with automatic handling of undo/redo commands
  */
 public class UndoableStack{
-	private UndoableEvent[] events;
-	private size_t currentPos;
+	protected UndoableEvent[] events;
+	protected size_t currentPos, currentCap, maxLength;
 
 	public this(size_t maxElements){
+		maxLength = maxElements;
 		events.length = maxElements;
 	}
 	/**
-	 * Adds an event to the top of the stack. If there are any undone events, they'll be lost. Bottom event is also lost.
+	 * Adds an event to the top of the stack. If there are any undone events, they'll be lost. Bottom event is always lost.
 	 */
 	public void addToTop(UndoableEvent e){
-		if(currentPos){
-			events = events[currentPos..$];
-		}
+		events = e ~ events[currentPos..$-1];
+		events.length = maxLength;
 		e.redo;
-		for(int i = cast(int)events.length - 1 ; i > 0 ; i--){
-			events[i] = events[i - 1];
-		}
-		events[0] = e;
 	}
 	/**
 	 * Undos top event.

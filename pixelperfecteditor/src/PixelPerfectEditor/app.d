@@ -60,20 +60,20 @@ int main(string[] args){
 	//printf("aaaaaaaaaaaaaaaaaa");
 	debug SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
 
-	/*if(args.length > 1){
-		if(args[1] == "--test"){*/
+	if(args.length > 1){
+		if(args[1] == "--test"){
 			TileLayerTest prg = new TileLayerTest();
 			prg.whereTheMagicHappens;
 			writeln(prg.isRunning);
 			return 0;
-		/*}
-	}*/
+		}
+	}
 
-	/*Editor e = new Editor(args);
+	Editor e = new Editor(args);
 	e.whereTheMagicHappens;
 
 	//testBinarySearchTrees(11, 1);
-	return 0;*/
+	return 0;
 }
 
 void testBinarySearchTrees(int nOfElements, int nOfTimes){
@@ -117,12 +117,14 @@ class TileLayerTest : SystemEventListener, InputListener{
 		ExtendibleBitmap spriteSource = new ExtendibleBitmap("./assets/collisionTest.xmp");
 		//t = new TileLayer(32,32, LayerRenderingMode.COPY);
 		tt = new TransformableTileLayer!(Bitmap16Bit,32,32)(LayerRenderingMode.COPY);
-		s = new SpriteLayer(LayerRenderingMode.BLITTER);
+		s = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
 		//c = new CollisionDetector();
 		dlangMan = loadBitmapFromXMP!Bitmap16Bit(spriteSource,"DLangMan");
 		//CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
 		dlangMan.offsetIndexes(256,false);
 		s.addSprite(dlangMan,0,0,0);
+		//s.scaleSpriteHoriz(0,-1024);
+		//s.scaleSpriteVert(0,-1024);
 		for(int i = 1 ; i < 2 ; i++){
 			s.addSprite(dlangMan,i,uniform(-31,320),uniform(-31,240));
 		}
@@ -174,6 +176,12 @@ class TileLayerTest : SystemEventListener, InputListener{
 		ih.kb ~= KeyBinding(0, ScanCode.PAGEDOWN,0, "y0-", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, ScanCode.NP_PLUS,0, "theta+", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, ScanCode.NP_MINUS,0, "theta-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.n1,0, "sV+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.n2,0, "sV-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.n3,0, "sH+", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.n4,0, "sH-", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.Q,0, "HM", Devicetype.KEYBOARD, KeyModifier.ANY);
+		ih.kb ~= KeyBinding(0, ScanCode.W,0, "VM", Devicetype.KEYBOARD, KeyModifier.ANY);
 
 		tt.loadMapping(16,16,mapping);
 		tt.setWarpMode(true);
@@ -252,6 +260,42 @@ class TileLayerTest : SystemEventListener, InputListener{
 			case "x0-": tt.x_0 = cast(short)(tt.x_0 - 1); break;
 			case "y0+": tt.y_0 = cast(short)(tt.y_0 + 1); break;
 			case "y0-": tt.y_0 = cast(short)(tt.y_0 - 1); break;
+			case "sH-":
+				if(s.readSpriteAttribute!("scaleHoriz", int)(0) == 16){
+					s.scaleSpriteHoriz(0,-16);
+					return;
+				}
+				s.scaleSpriteHoriz(0,s.readSpriteAttribute!("scaleHoriz", int)(0) - 16);
+				writeln(s.readSpriteAttribute!("scaleHoriz", int)(0));
+				break;
+			case "sH+":
+				if(s.readSpriteAttribute!("scaleHoriz", int)(0) == -16){
+					s.scaleSpriteHoriz(0,16);
+					return;
+				}
+				s.scaleSpriteHoriz(0,s.readSpriteAttribute!("scaleHoriz", int)(0) + 16);
+				writeln(s.readSpriteAttribute!("scaleHoriz", int)(0));
+				break;
+			case "sV-":
+				if(s.readSpriteAttribute!("scaleVert", int)(0) == 16){
+					s.scaleSpriteVert(0,-16);
+					return;
+				}
+				s.scaleSpriteVert(0,s.readSpriteAttribute!("scaleVert", int)(0) - 16);
+				break;
+			case "sV+":
+				if(s.readSpriteAttribute!("scaleVert", int)(0) == -16){
+					s.scaleSpriteVert(0,16);
+					return;
+				}
+				s.scaleSpriteVert(0,s.readSpriteAttribute!("scaleVert", int)(0) + 16);
+				break;
+			case "HM":
+				s.scaleSpriteHoriz(0,s.readSpriteAttribute!("scaleHoriz", int)(0) * -1);
+				break;
+			case "VM":
+				s.scaleSpriteVert(0,s.readSpriteAttribute!("scaleVert", int)(0) * -1);
+				break;
 			case "theta+":
 				theta += 1;
 				short[4] newTP = rotateFunction(theta);

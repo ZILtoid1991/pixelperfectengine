@@ -51,7 +51,7 @@ public class NewDocumentDialog : Window{
 	}
 	public this(InputHandler inputhandler){
 		this(Coordinate(10,10,220,150),"New Document");
-		
+
 		Button[] buttons;
 		Label[] labels;
 		buttons ~= new Button("Ok", "ok", Coordinate(150,110,200,130));
@@ -77,7 +77,7 @@ public class NewDocumentDialog : Window{
 
 	public void buttonOn_onMouseLClickRel(Event event){
 		ie.createNewDocument(textBoxes[0].getText(), to!int(textBoxes[1].getText()), to!int(textBoxes[2].getText()), to!int(textBoxes[3].getText()));
-			
+
 		parent.closeWindow(this);
 	}
 }
@@ -106,7 +106,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 
 	public void initGUI(){
 		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
-		
+
 		PopUpMenuElement[] menuElements;
 		menuElements ~= new PopUpMenuElement("file", "FILE");
 
@@ -120,7 +120,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		menuElements[0][6] = new PopUpMenuElement("exit", "Exit application", "Alt + F4");
 
 		menuElements ~= new PopUpMenuElement("edit", "EDIT");
-		
+
 		menuElements[1].setLength(7);
 		menuElements[1][0] = new PopUpMenuElement("undo", "Undo", "Ctrl + Z");
 		menuElements[1][1] = new PopUpMenuElement("redo", "Redo", "Ctrl + Shift + Z");
@@ -156,25 +156,8 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		menuElements[5].setLength(2);
 		menuElements[5][0] = new PopUpMenuElement("helpFile", "Content", "F1");
 		menuElements[5][1] = new PopUpMenuElement("about", "About");
-		
-		//addElement(new Button("Exit","exit",Coordinate(550,80,630,100)), EventProperties.MOUSE);
-		/*labels ~= new Label("Layer info:","null",Coordinate(5,395,101,415));
-		labels ~= new Label("ScrollX:","null",Coordinate(5,415,70,435));
-		labels ~= new Label("0","sx",Coordinate(71,415,140,435));
-		labels ~= new Label("ScrollY:","null",Coordinate(145,415,210,435));
-		labels ~= new Label("0","sy",Coordinate(211,415,280,435));
-		labels ~= new Label("ScrollRateX:","null",Coordinate(281,415,378,435));
-		labels ~= new Label("0","srx",Coordinate(379,415,420,435));
-		labels ~= new Label("ScrollRateY:","null",Coordinate(421,415,518,435));
-		labels ~= new Label("0","sry",Coordinate(519,415,560,435));
-		labels ~= new Label("MapX:","null",Coordinate(5,435,45,455));
-		labels ~= new Label("0","mx",Coordinate(46,435,100,455));
-		labels ~= new Label("MapY:","null",Coordinate(105,435,145,455));
-		labels ~= new Label("0","my",Coordinate(146,435,200,455));
-		labels ~= new Label("TileX:","null",Coordinate(205,435,255,455));
-		labels ~= new Label("0","tx",Coordinate(256,435,310,455));
-		labels ~= new Label("TileY:","null",Coordinate(315,435,365,455));
-		labels ~= new Label("0","ty",Coordinate(366,435,420,455));*/
+
+
 		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,640,16),menuElements);
 		addElement(mb, EventProperties.MOUSE);
 		mb.onMouseLClickPre = &actionEvent;
@@ -205,7 +188,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		}
 	}
 
-	
+
 	public void actionEvent(Event event){
 		writeln(event.source);
 		switch(event.source){
@@ -231,11 +214,11 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 				break;
 		}
 	}
-	
+
 	public override void drawUpdate(WindowElement sender){
 		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
 	}
-	
+
 	override public void passMouseEvent(int x,int y,int state,ubyte button) {
 		foreach(WindowElement e; mouseC){
 			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
@@ -247,7 +230,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 	public override void passScrollEvent(int wX, int wY, int x, int y){
 		foreach(WindowElement e; scrollC){
 			if(e.getPosition().left < wX && e.getPosition().right > wX && e.getPosition().top < wX && e.getPosition().bottom > wY){
-				
+
 				e.onScroll(y, x, wX, wY);
 
 				return;
@@ -320,7 +303,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 								}
 							}
 						}else{//sprite placement
-							
+
 						}
 					}else{		//select or region fill
 						Coordinate c = Coordinate();
@@ -354,7 +337,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 					}
 				}
 			}else if(button == MouseButton.MID){//deletion
-				
+
 			}
 		}
 		setRasterRefresh;
@@ -396,7 +379,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void keyReleased(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){}
 	public void passActionEvent(Event e){
 		switch(e.source){
-			case "saveas": 
+			case "saveas":
 				FileDialog fd = new FileDialog("Save document as","docSave",&actionEvent,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.xmf"])],".\\",true);
 				wh.addWindow(fd);
 				break;
@@ -487,7 +470,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 
 		//Initialize the Concrete framework
 		INIT_CONCRETE(wh);
-		
+
 
 		wh.initGUI();
 
@@ -505,7 +488,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		//OutputWindow.setDriver("software");
 		ow ~= new OutputScreen("Pixel Perfect Editor", 1280, 960);
 
-		rasters ~= new Raster(640, 480, ow[0]);
+		rasters ~= new Raster(640, 480, ow[0], 0);
 		ow[0].setMainRaster(rasters[0]);
 		rasters[0].addLayer(windowing, 0);
 		rasters[0].addLayer(bitmapPreview, 1);
@@ -513,12 +496,24 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		//loadPaletteFromFile("VDPeditUI0.pal", guiR);
 		//load24bitPaletteFromFile("VDPeditUI0.pal", rasters[0]);
 		//loadPaletteFromXMP(ssOrigin, "default", rasters[0]);
-		//foreach(c ; StyleSheet.defaultpaletteforGUI)
-		rasters[0].palette ~= [Color(0x00,0x00,0x00,0x00),Color(0xFF,0xFF,0xFF,0xFF),Color(0xFF,0x34,0x9e,0xff),Color(0xff,0xa2,0xd7,0xff),	
-		Color(0xff,0x00,0x2c,0x59),Color(0xff,0x00,0x75,0xe7),Color(0xff,0xff,0x00,0x00),Color(0xFF,0x7F,0x00,0x00),
-		Color(0xFF,0x00,0xFF,0x00),Color(0xFF,0x00,0x7F,0x00),Color(0xFF,0x00,0x00,0xFF),Color(0xFF,0x00,0x00,0x7F),
-		Color(0xFF,0xFF,0xFF,0x00),Color(0xFF,0xFF,0x7F,0x00),Color(0xFF,0x7F,0x7F,0x7F),Color(0xFF,0x00,0x00,0x00)];// StyleSheet.defaultpaletteforGUI;
-		//writeln(rasters[0].palette);
+		rasters[0].palette = [Color(0x00,0x00,0x00,0x00),	//transparent
+	Color(0xFF,0xFF,0xFF,0xFF),		//normaltext
+	Color(0xFF,0x77,0x77,0x77),		//window
+	Color(0xFF,0xCC,0xCC,0xCC),		//windowascent
+	Color(0xFF,0x33,0x33,0x33),		//windowdescent
+	Color(0xff,0x22,0x22,0x22),		//windowinactive
+	Color(0xff,0xff,0x00,0x00),		//selection
+	Color(0xFF,0x77,0x77,0xFF),		//WHAascent
+	Color(0xFF,0x00,0x00,0x77),		//WHAdescent
+	Color(0xFF,0x00,0x00,0xDD),		//WHAtop
+	Color(0xFF,0x00,0x00,0xFF),
+	Color(0xFF,0x00,0x00,0x7F),
+	Color(0xFF,0x22,0x22,0x22),
+	Color(0xFF,0x22,0x22,0x22),
+	Color(0xFF,0x7F,0x7F,0x7F),
+	Color(0xFF,0x00,0x00,0x00)];
+
+		writeln(rasters[0].palette);
 		//rasters[0].addRefreshListener(ow[0],0);
 		WindowElement.onDraw = &setRasterRefresh;
 		PopUpElement.onDraw = &setRasterRefresh;
@@ -546,7 +541,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void onExit(){
 
 		exitDialog=true;
-		DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","Exit application", ["Are you sure?"],["Yes","No","Pls save"],["ok","close","save"]);
+		DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","Exit application", ["Are you sure?"],
+				["Yes","No","Pls save"],["ok","close","save"]);
 
 		dd.output = &actionEvent;
 		wh.addWindow(dd);
@@ -570,7 +566,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		document.metaData["rY"] = to!string(rY);
 		document.metaData["pal"] = to!string(pal);
 	}
-	
+
 	public void newLayer(){
 		if(document !is null){
 			NewLayerDialog ndd = new NewLayerDialog(this);
@@ -583,7 +579,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void newTileLayerEvent(string name, string file, bool embed, bool preexisting, int tX, int tY, int mX, int mY){
 		import std.path;
 		TileLayer tl = new TileLayer(tX, tY, LayerRenderingMode.ALPHA_BLENDING);
-		
+
 		while(layers.get(selectedLayer, null)){
 			selectedLayer++;
 		}
@@ -608,7 +604,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	}
 	public void newSpriteLayerEvent(string name){
 		SpriteLayer sl = new SpriteLayer();
-		
+
 		while(layers.get(selectedLayer, null)){
 			selectedLayer++;
 		}
@@ -619,7 +615,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		}
 	}
 	public void importTileLayerSymbolData(string file){
-	
+
 	}
 	public int getPreviousTileLayer(int pri){
 		import std.algorithm.sorting;
@@ -721,7 +717,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			}
 			n--;
 			layers[n] = l;
-			
+
 		}
 		return n;
 	}
@@ -789,7 +785,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			}
 			n++;
 			layers[n] = l;
-			
+
 		}
 		return n;
 	}

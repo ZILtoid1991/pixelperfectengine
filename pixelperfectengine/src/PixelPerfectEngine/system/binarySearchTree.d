@@ -16,6 +16,7 @@ import core.stdc.string;
  * Tree traversal through D's Range capabilities.
  * TODO:
  * <ul>
+ * <li>Implement tree traversal.</li>
  * <li>Improve tree optimization speeds.</li>
  * <li>Fix potential memory leakage issues.</li>
  * </ul>
@@ -37,6 +38,17 @@ public struct BinarySearchTree(K, E){
 			this.right = right;
 		}
 
+		@nogc int opApply(int delegate(Node) @nogc dg){
+			if(left)
+				if(left.opApply(dg))
+					return 1;
+			if(dg(this))
+				return 1;
+			if(right)
+				if(right.opApply(dg))
+					return 1;
+			return 0;
+		}
 		@nogc int opCmp(ref Node rhs){
 			return key - rhs.key;
 		}
@@ -112,10 +124,11 @@ public struct BinarySearchTree(K, E){
 	}
 	private Node* root;		///Points to the root element
 	private size_t nOfElements;			///Current number of elements
-	private size_t curr;
-	private Node* pos;
+	/+private size_t curr, currHeight;
+	private Node** traceF, traceR;	///Used for Range
+	private Node* pos;+/
 
-	/**
+	/+/**
 	 * Returns true if the range have reached one of the endpoints.
 	 */
 	public @nogc bool empty(){
@@ -131,8 +144,42 @@ public struct BinarySearchTree(K, E){
 	 * Jumps to the next front element and returns it.
 	 */
 	public @nogc Node popFront(){
-
+		//if trace isn't allocated, then allocate it
+		if(traceF is null){
+			size_t height = root.height;
+			traceF = cast(Node**)malloc(size_t.sizeof * height);
+			while(--height){
+				traceF[height] = null;
+			}
+			traceF[0] = root;
+			//build up initial trace then return the smallest value
+			bool found;
+			while(!found){
+				if(traceF[currHeight].left !is null){
+					currHeight++;
+				}else{
+					pos = traceF[currHeight];
+					found = true;
+				}
+			}
+			return *pos;
+		}
+		//find the next smallest node
+		bool found;
+		K key = pos.key;
+		while(!found){
+			if(traceF[currHeight].key > pos.key){
+				found = true
+			}
+		}
+		curr++;
 		return *pos;
+	}+/
+	/**
+	 * Used for foreach iteration.
+	 */
+	public @nogc int opApply(int delegate(Node) @nogc dg){
+		return root.opApply(dg);
 	}
 	/**
 	 * Gets an element without allocation. Returns E.init if key not found.

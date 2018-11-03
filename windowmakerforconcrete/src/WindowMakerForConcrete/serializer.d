@@ -9,28 +9,70 @@ import std.utf;
 public class WindowSerializer{
 	Tag root;
 	string filename;
+	public this(){
+		root = new Tag(null, null);
+	}
 	public this(string filename){
-	
+		this.filename = filename;
+	}
+	public void store(string filename){
+		this.filename = filename;
+		store();
 	}
 	public void store(){
-		
+
 	}
-	public void deserialize(DummyWindow dw){
-		import PixelPerfectEngine.concrete.elements;
+	public void deserialize(DummyWindow dw, Editor e){
+
 	}
 	public void generateDCode(string output){
-		
+
 	}
-	public void editValue(T)(string target, string property, string namespace = null, T value){
-		
+	public Value[] editValue(string target, string property, Value[] val){
+		Value[] result;
+		foreach(t0; root.tags){
+			if(t0.getValue!string() == target){
+				result = t0.getTagValues(property);
+				t0.getTag(property).values = val;
+				return result;
+			}
+		}
+		return result;
 	}
-	public T getValue(T)(string target, string property, string namespace = null){
-	
+	public Value[] getValue(string target, string property){
+		foreach(t0; root.tags){
+			if(t0.getValue!string() == target){
+				return t0.getTagValues(property);
+			}
+		}
+		return null;
 	}
-	public void removeValue(string target, string property, string namespace = null){
-		
+	public string renameWindow(string name){
+		string oldname = root.getTag("Window").getValue!string();
+		root.getTag("Window").values[0] = Value(name);
+		return oldname;
+	}
+	public Value[] editWindowValue(string property, Value[] val){
+		Value[] result = root.getTag("Window").getTag(property).values;
+		root.getTag("Window").getTag(property).values = val;
+		return result;
+	}
+	public Value[] getWindowValue(string property, Value[] val){
+		return root.getTag("Window").getTag(property).values;
+	}
+	public void renameElement(string oldName, string newName){
+		foreach(t; root.tags){
+			if(t.getValue!string() == oldName){
+				t.values[0] = Value(newName);
+				return;
+			}
+		}
 	}
 	public void addElement(ElementType type, string name, Coordinate initPos){
+		foreach(t; root.tags){
+			if(t.getValue!string() == name)
+				throw new ElementCollisionException("Similarly named element already exists!");
+		}
 		Tag t1;
 		switch(type){
 			case ElementType.Label:
@@ -62,11 +104,11 @@ public class WindowSerializer{
 				t1 = new Tag(root, null, "CheckBox", [Value(name)]);
 				new Tag(t1, null, "text", [Value(name)]);
 				return;
-			case ElementType.HScroll:
-				t1 = new Tag(root, null, "HScroll", [Value(name)]);
+			case ElementType.HSlider:
+				t1 = new Tag(root, null, "HSlider", [Value(name)]);
 				return;
-			case ElementType.VScroll:
-				t1 = new Tag(root, null, "VScroll", [Value(name)]);
+			case ElementType.VSlider:
+				t1 = new Tag(root, null, "VSlider", [Value(name)]);
 				return;
 			case ElementType.MenuBar:
 				t1 = new Tag(root, null, "MenuBar", [Value(name)]);
@@ -80,7 +122,31 @@ public class WindowSerializer{
 		new Tag(t1, "position", "right", [Value(initPos.right)]);
 		new Tag(t1, "position", "bottom", [Value(initPos.bottom)]);
 	}
-	public void removeElement(string name){
-		
+	public void addElement(Tag tag){
+		foreach(t; root.tags){
+			if(t.values[0].get!string() == tag.values[0].get!string())
+				throw new ElementCollisionException("Similarly named element already exists!");
+		}
+		root.add(tag);
 	}
+	public Tag removeElement(string name){
+		foreach(t; root.tags){
+			if(t.values[0].get!string() == name){
+				t.remove;
+				return t;
+			}
+		}
+		return null;
+	}
+}
+class ElementCollisionException : Exception{
+	@nogc @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
+    {
+        super(msg, file, line, nextInChain);
+    }
+
+    @nogc @safe pure nothrow this(string msg, Throwable nextInChain, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, nextInChain);
+    }
 }
