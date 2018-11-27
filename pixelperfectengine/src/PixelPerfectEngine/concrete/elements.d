@@ -52,9 +52,7 @@ abstract class WindowElement{
 	public void onDrag(int x, int y, int relX, int relY, ubyte button){
 
 	}
-	public void onKey(char c, int type){
 
-	}
 	public void onScroll(int x, int y, int wX, int wY){
 
 	}
@@ -102,7 +100,7 @@ abstract class WindowElement{
 		if(customStyle !is null){
 			return customStyle;
 		}
-		return elementContainer.getStyleSheet();
+		return styleSheet;
 	}
 
 	public void setCustomStyle(StyleSheet s){
@@ -119,6 +117,12 @@ abstract class WindowElement{
 	 */
 	@nogc public bool getState(){
 		return !state;
+	}
+	/**
+	 * Returns the source string.
+	 */
+	@property public string getSource(){
+		return source;
 	}
 }
 
@@ -363,7 +367,7 @@ public class Label : WindowElement{
 public class TextBox : WindowElement, TextInputListener{
 	private bool enableEdit, insert;
 	private uint pos;
-	public int brush, textpos;
+	//public int brush, textpos;
 	//public TextInputHandler tih;
 	public void delegate(Event ev) onTextInput;
 
@@ -446,27 +450,6 @@ public class TextBox : WindowElement, TextInputListener{
 		}
 	}
 
-	alias onKey = WindowElement.onKey;
-	public void onKey(wchar c, int type){
-
-		/*if(enableEdit){
-		 if(type == 0){
-		 text ~= c;
-		 pos++;
-		 draw();
-		 }else if(type == 1){
-		 pos++;
-		 }else if(type == 2){
-		 pos--;
-		 }else if(type == 3){
-		 invokeActionEvent(EventType.TEXTINPUT, 0, text);
-		 }else{
-		 deleteCharacter(pos);
-		 pos--;
-		 draw();
-		 }
-		 }*/
-	}
 	private void deleteCharacter(int n){
 		//text = remove(text, i);
 		wstring newtext;
@@ -569,7 +552,7 @@ public class ListBox : WindowElement, ElementContainer{
 	public ListBoxHeader header;
 	public ListBoxItem[] items;
 	public int[] columnWidth;
-	public int selection, brushHeader, brush, fontHeader, rowHeight;
+	public int selection, brushHeader, brush, fontHeader;
 	public ushort selectionColor;
 	private bool fullRedraw, bodyDrawn, enableTextInput, textInputMode, insert, dragMid;
 	private VSlider vSlider;
@@ -584,9 +567,13 @@ public class ListBox : WindowElement, ElementContainer{
 
 	public this(string source, Coordinate coordinates, ListBoxItem[] items, ListBoxHeader header, int rowHeight,
 			bool enableTextInput = false){
+		this(source, coordinates, items, header, enableTextInput);
+	}
+
+	public this(string source,Coordinate coordinates,ListBoxItem[] items,ListBoxHeader header,bool enableTextInput=false){
 		position = coordinates;
 		this.source = source;
-		this.rowHeight = rowHeight;
+		//this.rowHeight = rowHeight;
 		this.items = items;
 		this.header = header;
 		updateColumns();
@@ -600,9 +587,9 @@ public class ListBox : WindowElement, ElementContainer{
 
 		output = new BitmapDrawer(position.width, position.height);
 
-		int foo = cast(uint)(rowHeight * this.items.length);
+		/*int foo = cast(uint)(rowHeight * this.items.length);
 		if(foo < position.height())
-			foo = position.width();
+			foo = position.width();*/
 		this.enableTextInput = enableTextInput;
 		//inputHandler.addTextInputListener(source, this);
 
@@ -680,7 +667,7 @@ public class ListBox : WindowElement, ElementContainer{
 		draw();
 	}
 	public void updateColumns(){
-
+		const int rowHeight = getStyleSheet().drawParameters["ListBoxRowHeight"];
 		fullX = header.getFullWidth();
 		selection = 0;
 
@@ -714,6 +701,7 @@ public class ListBox : WindowElement, ElementContainer{
 	}
 
 	private void drawBody(){
+		const int rowHeight = getStyleSheet().drawParameters["ListBoxRowHeight"];
 		int foo;
 		for(int i; i < header.getNumberOfColumns(); i++){
 			int bar;
@@ -730,6 +718,7 @@ public class ListBox : WindowElement, ElementContainer{
 	}
 
 	public override void draw(){
+		const int rowHeight = getStyleSheet().drawParameters["ListBoxRowHeight"];
 		if(output.output.width != position.width || output.output.height != position.height){
 			output = new BitmapDrawer(position.width(), position.height());
 			bodyDrawn = false;
@@ -787,6 +776,7 @@ public class ListBox : WindowElement, ElementContainer{
 		}
 	}
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
+		const int rowHeight = getStyleSheet().drawParameters["ListBoxRowHeight"];
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
@@ -1982,6 +1972,12 @@ public class Event{
 		this.value = value;
 		this.type = type;
 		this.aux = aux;
+	}
+	/**
+	 * Returns the full path including the filename
+	 */
+	public @property string getFullPath(){
+		return path ~ filename;
 	}
 }
 

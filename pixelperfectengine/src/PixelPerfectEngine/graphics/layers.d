@@ -994,6 +994,7 @@ public class SpriteLayer : Layer, ISpriteLayer{
 				position.right = position.left + cast(int)scaleNearestLength(width, scaleHoriz);
 				position.bottom = position.top + cast(int)scaleNearestLength(height, scaleVert);
 			}
+			resetSlice();
 			if(sprite.classinfo == typeid(Bitmap4Bit)){
 				wordLength = 4;
 				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;

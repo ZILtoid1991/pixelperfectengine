@@ -25,6 +25,7 @@ public class UndoableStack{
 		events = e ~ events[currentPos..$-1];
 		events.length = maxLength;
 		e.redo;
+		currentPos = 0;
 	}
 	/**
 	 * Undos top event.
@@ -41,7 +42,7 @@ public class UndoableStack{
 	 * Redos top event.
 	 */
 	public void redo(){
-		if(currentPos > 0){
+		if(currentPos >= 0){
 			if(events[currentPos]){
 				currentPos--;
 				events[currentPos].redo;

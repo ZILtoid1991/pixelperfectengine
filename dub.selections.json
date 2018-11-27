@@ -1,6 +1,7 @@
 {
 	"fileVersion": 1,
 	"versions": {
+		"bmfont": "0.1.0",
 		"cpublit": "0.2.3",
 		"derelict-fi": "2.0.3",
 		"derelict-sdl2": "2.1.4",

@@ -6,11 +6,13 @@ import editorEvents;
 
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.system.inputHandler;
+import PixelPerfectEngine.system.etc : csvParser, isInteger;
 import PixelPerfectEngine.graphics.layers;
 import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.outputScreen;
 
 import conv = std.conv;
+import stdio = std.stdio;
 
 public class EditorWindowHandler : WindowHandler, ElementContainer{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
@@ -41,7 +43,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		menuElements[0] ~= new PopUpMenuElement("load", "Load window", "Ctrl + L");
 		menuElements[0] ~= new PopUpMenuElement("save", "Save window", "Ctrl + S");
 		menuElements[0] ~= new PopUpMenuElement("saveAs", "Save window as", "Ctrl + Shift + S");
-		menuElements[0] ~= new PopUpMenuElement("saveTemp", "Export window as D code", "Ctrl + Shift + I");
+		menuElements[0] ~= new PopUpMenuElement("Export", "Export window as D code", "Ctrl + Shift + X");
 		menuElements[0] ~= new PopUpMenuElement("exit", "Exit application", "Alt + F4");
 
 		menuElements ~= new PopUpMenuElement("edit", "EDIT");
@@ -49,6 +51,8 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		menuElements[1] ~= new PopUpMenuElement("undo", "Undo", "Ctrl + Z");
 		menuElements[1] ~= new PopUpMenuElement("redo", "Redo", "Ctrl + Shift + Z");
 		menuElements[1] ~= new PopUpMenuElement("copy", "Copy", "Ctrl + C");
+		menuElements[1] ~= new PopUpMenuElement("cut", "Cut", "Ctrl + X");
+		menuElements[1] ~= new PopUpMenuElement("paste", "Paste", "Ctrl + V");
 
 		menuElements ~= new PopUpMenuElement("elements", "ELEMENTS");
 
@@ -70,8 +74,8 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,rasterX - 1,16),menuElements);
 		addElement(mb, EventProperties.MOUSE);
 
-		objectList = new ListBox("objectList", Coordinate(644,20,rasterX - 5,238), [], new ListBoxHeader(["Name"w,"Type"w],[128,128]),16);
-		propList = new ListBox("propList", Coordinate(644,242,rasterX - 5,477), [], new ListBoxHeader(["Prop"w,"Val"w],[128,128]),16,true);
+		objectList = new ListBox("objectList", Coordinate(644,20,rasterX - 5,238), [], new ListBoxHeader(["Type"w,"Name"w],[128,128]),16);
+		propList = new ListBox("propList", Coordinate(644,242,rasterX - 5,477), [], new ListBoxHeader(["Prop"w,"Val"w],[128,256]),16,true);
 		addElement(objectList, EventProperties.MOUSE | EventProperties.SCROLL);
 		addElement(propList, EventProperties.MOUSE | EventProperties.SCROLL);
 
@@ -154,18 +158,19 @@ public class DummyWindow : Window{
 
 }
 
-public class Editor : SystemEventListener{
+public class Editor : SystemEventListener, InputListener{
 	EditorWindowHandler ewh;
 	DummyWindow dw;
 	SpriteLayer sprtL;
 	Raster mainRaster;
 	OutputScreen outScrn;
 	InputHandler inputH;
-	bool onExit;
+	bool onExit, undoPressed, redoPressed;
 	int x0, y0;
 	ElementType typeSel;
 	UndoableStack eventStack;
 	WindowElement[string] elements;
+	string selection;
 
 	static string[ElementType] nameBases;
 	public this(){
@@ -178,25 +183,30 @@ public class Editor : SystemEventListener{
 
 		ewh = new EditorWindowHandler(1696,960,848,480,sprtL, this);
 		mainRaster.palette = [Color(0x00,0x00,0x00,0x00),	//transparent
-	Color(0xFF,0xFF,0xFF,0xFF),		//normaltext
-	Color(0xFF,0x77,0x77,0x77),		//window
-	Color(0xFF,0xCC,0xCC,0xCC),		//windowascent
-	Color(0xFF,0x33,0x33,0x33),		//windowdescent
-	Color(0xff,0x22,0x22,0x22),		//windowinactive
-	Color(0xff,0xff,0x00,0x00),		//selection
-	Color(0xFF,0x77,0x77,0xFF),		//WHAascent
-	Color(0xFF,0x00,0x00,0x77),		//WHAdescent
-	Color(0xFF,0x00,0x00,0xDD),		//WHAtop
-	Color(0xFF,0x00,0x00,0xFF),
-	Color(0xFF,0x00,0x00,0x7F),
-	Color(0xFF,0x22,0x22,0x22),
-	Color(0xFF,0x22,0x22,0x22),		//secondarytext
-	Color(0xFF,0x7F,0x7F,0x7F),
-	Color(0xFF,0x00,0x00,0x00)];
+				Color(0xFF,0xFF,0xFF,0xFF),		//normaltext
+				Color(0xFF,0x77,0x77,0x77),		//window
+				Color(0xFF,0xCC,0xCC,0xCC),		//windowascent
+				Color(0xFF,0x33,0x33,0x33),		//windowdescent
+				Color(0xff,0x22,0x22,0x22),		//windowinactive
+				Color(0xff,0xff,0x00,0x00),		//selection
+				Color(0xFF,0x77,0x77,0xFF),		//WHAascent
+				Color(0xFF,0x00,0x00,0x77),		//WHAdescent
+				Color(0xFF,0x00,0x00,0xDD),		//WHAtop
+				Color(0xFF,0x00,0x00,0xFF),
+				Color(0xFF,0x00,0x00,0x7F),
+				Color(0xFF,0x22,0x22,0x22),
+				Color(0xFF,0x22,0x22,0x22),		//secondarytext
+				Color(0xFF,0x7F,0x7F,0x7F),
+				Color(0xFF,0x00,0x00,0x00)];
 		INIT_CONCRETE(ewh);
 		inputH = new InputHandler();
 		inputH.sel ~= this;
+		inputH.il ~= this;
 		inputH.ml ~= ewh;
+		inputH.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LOCKKEYIGNORE);
+		inputH.kb ~= KeyBinding(KeyModifier.LCTRL | KeyModifier.LSHIFT, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, KeyModifier.LOCKKEYIGNORE);
+		PopUpElement.inputhandler = inputH;
+		WindowElement.inputHandler = inputH;
 		ewh.initGUI();
 		dw = new DummyWindow(Coordinate(0,16,640,480), "New Window"w, this);
 		ewh.addWindow(dw);
@@ -204,6 +214,9 @@ public class Editor : SystemEventListener{
 		wserializer = new WindowSerializer();
 		dwtarget = dw;
 		editorTarget = this;
+		ewh.objectList.onItemSelect = &onObjectListSelect;
+		ewh.propList.onTextInput = &onAttributeEdit;
+		updateElementList;
 	}
 	static this(){
 		nameBases[ElementType.Label] = "label";
@@ -221,6 +234,81 @@ public class Editor : SystemEventListener{
 		for(int i ; true ; i++){
 			if(elements.get(input ~ conv.to!string(i), null) is null)
 				return input ~ conv.to!string(i);
+		}
+	}
+	public void onObjectListSelect(Event ev){
+		ListBoxItem lbi = cast(ListBoxItem)ev.aux;
+		if(lbi.getText(0) != "Window"){
+			selection = conv.to!string(lbi.getText(1));
+		}else{//Fill attribute list with data related to the window
+			selection = "Window";
+		}
+		updatePropertyList;
+	}
+	public void onLoadFile(Event ev){
+		wserializer = new WindowSerializer(ev.getFullPath);
+		wserializer.deserialize(dw, this);
+	}
+	public void onSaveFileAs(Event ev){
+		wserializer.store(ev.getFullPath);
+	}
+	public void onExportWindow(Event ev){
+		wserializer.generateDCode(ev.getFullPath);
+	}
+	public void onAttributeEdit(Event ev){
+		import std.utf : toUTF8;
+		ListBoxItem lbi = cast(ListBoxItem)ev.aux;
+		if(selection == "Window"){
+			switch(lbi.getText(0)){
+				case "name":
+					eventStack.addToTop(new WindowRenameEvent(conv.to!string(ev.text)));
+					return;
+				case "title":
+					eventStack.addToTop(new WindowRetitleEvent(ev.text));
+					return;
+				case "size:x":
+					eventStack.addToTop(new WindowWidthChangeEvent(conv.to!int(ev.text)));
+					return;
+				case "size:y":
+					eventStack.addToTop(new WindowHeightChangeEvent(conv.to!int(ev.text)));
+					return;
+				default:
+					return;
+			}
+		}else{
+			switch(lbi.getText(0)){
+				case "text":
+					eventStack.addToTop(new TextEditEvent(ev.text, selection));
+					return;
+				case "name":
+					eventStack.addToTop(new RenameEvent(selection, conv.to!string(ev.text)));
+					selection = conv.to!string(ev.text);
+					return;
+				case "position":
+					wstring[] src = csvParser(ev.text, ';');
+					if(src.length == 4){
+						Coordinate c;
+						foreach(s; src){
+							if(!isInteger(s)){
+								ewh.messageWindow("Format Error!", "Value is not integer!");
+								return;
+							}
+						}
+						c.left = conv.to!int(src[0]);
+						c.top = conv.to!int(src[1]);
+						c.right = conv.to!int(src[2]);
+						c.bottom = conv.to!int(src[3]);
+						eventStack.addToTop(new PositionEditEvent(c, selection));
+					}else{
+						ewh.messageWindow("Format Error!", "Correct format is: [int];[int];[int];[int];");
+					}
+					return;
+				case "source":
+					eventStack.addToTop(new SourceEditEvent(selection, conv.to!string(ev.text)));
+					return;
+				default:
+					return;
+			}
 		}
 	}
 	public void placementEvent(int x, int y, int state){
@@ -264,7 +352,7 @@ public class Editor : SystemEventListener{
 						we = new ListBox(s,c,[], new ListBoxHeader(["col0", "col1"],[40,40]), 16);
 						break;
 					case ElementType.CheckBox:
-						s = getNextName("textBox");
+						s = getNextName("CheckBox");
 						we = new CheckBox(conv.to!wstring(s),s,c);
 						break;
 					case ElementType.RadioButtonGroup:
@@ -288,16 +376,118 @@ public class Editor : SystemEventListener{
 				}
 				eventStack.addToTop(new PlacementEvent(we, typeSel, s));
 				typeSel = ElementType.NULL;
+				//updateElementList;
 			}
 		}
 	}
 
-	public void selectEvent(WindowElement we){
+	public void updateElementList(){
+		ewh.objectList.clearData;
+		ListBoxItem[] list = [new ListBoxItem(["Window", ""])];
+		foreach(s; elements.byKey){
+			list ~= new ListBoxItem([conv.to!wstring(elements[s].classinfo.name[37..$]), conv.to!wstring(s)]);
+		}
+		ewh.objectList.updateColumns(list);
+	}
+	public void updatePropertyList(){
+		import sdlang;
+		import std.utf;
+		ewh.propList.clearData;
+		if(elements.get(selection, null) !is null){
+			string classname = elements[selection].classinfo.name[37..$];
+			ListBoxItem[] list = [new ListBoxItem(["name", conv.to!wstring(selection)], [TextInputType.NULL, TextInputType.TEXT]),
+					new ListBoxItem(["source", conv.to!wstring(wserializer.getValue(selection, "source")[0].get!string())],
+					[TextInputType.NULL, TextInputType.TEXT])];
+			if(classname == "Label" || classname == "TextBox" || classname == "Button" || classname == "CheckBox" ||
+					classname == "RadioButtonGroup"){
+				list ~= new ListBoxItem(["text", toUTF16(wserializer.getValue(selection, "text")[0].get!string())], [
+						TextInputType.NULL, TextInputType.TEXT]);
+			}
+			Value[] pos0 = wserializer.getValue(selection, "position");
+			wstring pos1 = conv.to!wstring(pos0[0].get!int) ~ ";" ~ conv.to!wstring(pos0[1].get!int) ~ ";" ~
+					conv.to!wstring(pos0[2].get!int) ~ ";" ~ conv.to!wstring(pos0[3].get!int) ~ ";";
+			list ~= new ListBoxItem(["position", pos1], [TextInputType.NULL, TextInputType.TEXT]);
+			switch(classname){
+				case "Button", "SmallButton":
+					list ~= new ListBoxItem(["icon", conv.to!wstring(wserializer.getValue(selection, "icon")[0].get!string())],
+							[TextInputType.NULL, TextInputType.TEXT] );
+					break;
+				case "ListBox":
+					list ~= new ListBoxItem(["header", "[...]"], [TextInputType.NULL, TextInputType.NULL]);
+					break;
+				case "RadioButtonGroup":
+					wstring optionName;
+					Value[] optionNameValues = wserializer.getValue(selection, "options");
+					foreach(v ; optionNameValues){
+						optionName ~= toUTF16(v.get!string()) ~ ';';
+					}
+					list ~= [new ListBoxItem(["rowHeight",conv.to!wstring(wserializer.getValue(selection,"rowHeight")[0].get!int())],
+							[TextInputType.NULL, TextInputType.DECIMAL]), new ListBoxItem(["options", optionName], [TextInputType.NULL,
+							TextInputType.TEXT])];
+					break;
+				case "HSlider", "VSlider":
+					list ~= [new ListBoxItem(["barLength",conv.to!wstring(wserializer.getValue(selection,"barLength")[0].get!int())],
+							[TextInputType.NULL, TextInputType.DECIMAL]),
+							new ListBoxItem(["maxValue",conv.to!wstring(wserializer.getValue(selection,"maxValue")[0].get!int())],
+							[TextInputType.NULL, TextInputType.DECIMAL])];
+					break;
+				default:
+					break;
+			}
+			ewh.propList.updateColumns(list);
+		}else{
+			ListBoxItem[] list = [new ListBoxItem(["name", conv.to!wstring(wserializer.getWindowName)], [TextInputType.NULL,
+					TextInputType.TEXT]),
+					new ListBoxItem(["title", toUTF16(wserializer.getWindowValue("title")[0].get!string())], [TextInputType.NULL,
+					TextInputType.TEXT]),
+					new ListBoxItem(["size:x", conv.to!wstring(wserializer.getWindowValue("size:x")[0].get!int())], [TextInputType.NULL,
+					TextInputType.TEXT]),
+					new ListBoxItem(["size:y", conv.to!wstring(wserializer.getWindowValue("size:y")[0].get!int())], [TextInputType.NULL,
+					TextInputType.TEXT])];
 
+			ewh.propList.updateColumns(list);
+		}
+	}
+
+	public void selectEvent(WindowElement we){
+		foreach(s; elements.byKey){
+			if(elements[s] == we){
+				selection = s;
+				updatePropertyList;
+				return;
+			}
+		}
 	}
 
 	public void menuEvent(Event ev){
 		switch(ev.source){
+			case "Export":
+				ewh.addWindow(new FileDialog("Export Window"w, "export", &onExportWindow,
+						[FileDialog.FileAssociationDescriptor("D file"w, ["*.d"])], "./", true));
+				break;
+			case "saveAs":
+				ewh.addWindow(new FileDialog("Save Window as"w, "windowsaver", &onSaveFileAs,
+						[FileDialog.FileAssociationDescriptor("SDL file"w, ["*.sdl"])], "./", true));
+				break;
+			case "save":
+				if(wserializer.getFilename){
+					wserializer.store;
+				}else{
+					ewh.addWindow(new FileDialog("Save Window as"w, "windowsaver", &onSaveFileAs,
+							[FileDialog.FileAssociationDescriptor("SDL file"w, ["*.sdl"])], "./", true));
+				}
+				break;
+			case "load":
+				//stdio.writeln(&onLoadFile);
+				ewh.addWindow(new FileDialog("Load Window"w, "windowloader", &onLoadFile,
+						[FileDialog.FileAssociationDescriptor("SDL file"w, ["*.sdl"])], "./"));
+				break;
+			case "undo":
+				eventStack.undo;
+				break;
+			case "redo":
+				eventStack.redo;
+				break;
 			case "exit":
 				onQuit;
 				break;
@@ -343,4 +533,34 @@ public class Editor : SystemEventListener{
 	}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
+	public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
+		switch(ID){
+			case "undo":
+				if(!undoPressed){
+					undoPressed = true;
+					eventStack.undo;
+				}
+				break;
+			case "redo":
+				if(!redoPressed){
+					redoPressed = true;
+					eventStack.redo;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	public void keyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype){
+		switch(ID){
+			case "undo":
+				undoPressed = false;
+				break;
+			case "redo":
+				redoPressed = false;
+				break;
+			default:
+				break;
+		}
+	}
 }

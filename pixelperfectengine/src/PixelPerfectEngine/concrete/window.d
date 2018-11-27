@@ -102,6 +102,7 @@ public class Window : ElementContainer{
 		while(elements.length > i){
 			if(elements[i] == we){
 				elements = remove(elements, i);
+				break;
 			}else{
 				i++;
 			}
@@ -110,6 +111,7 @@ public class Window : ElementContainer{
 		while(mouseC.length > i){
 			if(mouseC[i] == we){
 				mouseC = remove(mouseC, i);
+				break;
 			}else{
 				i++;
 			}
@@ -118,6 +120,7 @@ public class Window : ElementContainer{
 		while(scrollC.length > i){
 			if(scrollC[i] == we){
 				scrollC = remove(scrollC, i);
+				break;
 			}else{
 				i++;
 			}
@@ -126,6 +129,7 @@ public class Window : ElementContainer{
 		while(keyboardC.length > i){
 			if(keyboardC[i] == we){
 				keyboardC = remove(keyboardC, i);
+				break;
 			}else{
 				i++;
 			}
@@ -136,8 +140,10 @@ public class Window : ElementContainer{
 	 * Draws the window. Intended to be used by the WindowHandler.
 	 */
 	public void draw(bool drawHeaderOnly = false){
-		if(output.output.width != position.width || output.output.height != position.height)
+		if(output.output.width != position.width || output.output.height != position.height){
 			output = new BitmapDrawer(position.width(), position.height());
+
+		}
 		//drawing the header
 		drawHeader();
 		if(drawHeaderOnly)
@@ -323,6 +329,7 @@ public class Window : ElementContainer{
 	public void setHeight(int y){
 		position.bottom = position.top + y;
 		draw();
+		parent.refreshWindow(this);
 	}
 	/**
 	 * Sets the width of the window, also issues a redraw.
@@ -330,6 +337,7 @@ public class Window : ElementContainer{
 	public void setWidth(int x){
 		position.right = position.left + x;
 		draw();
+		parent.refreshWindow(this);
 	}
 	/**
 	 * Sets the size of the window, also issues a redraw.
@@ -338,6 +346,7 @@ public class Window : ElementContainer{
 		position.right = position.left + x;
 		position.bottom = position.top + y;
 		draw();
+		parent.refreshWindow(this);
 	}
 }
 
@@ -485,6 +494,7 @@ public class FileDialog : Window{
 		this.source = source;
 		this.filetypes = filetypes;
 		this.save = save;
+		this.onFileselect = onFileselect;
 		//al = a;
 		directory = startDir;
 		//generate buttons
@@ -586,8 +596,7 @@ public class FileDialog : Window{
 					driveList ~= (s);
 				}
 			}
-		}
-		else{
+		}else{
 
 		}
 	}
@@ -939,6 +948,10 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		spriteLayer.relMoveSprite(whichWindow(w), x, y);
 
 	}
+	public void refreshWindow(Window w){
+		int n = whichWindow(w);
+		spriteLayer.replaceSprite(windows[n].output.output, n, windows[n].position);
+	}
 	public void relMoveWindow(int x, int y, Window w){
 		spriteLayer.relMoveSprite(whichWindow(w), x, y);
 	}
@@ -946,7 +959,9 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		popUpElements ~= p;
 		p.addParent(this);
 		p.draw;
-		p.coordinates.move(mouseX, mouseY);
+		mouseX -= (p.coordinates.width/2);
+		mouseY -= (p.coordinates.height/2);
+		p.coordinates.move(mouseX,mouseY);
 		numOfPopUpElements--;
 		spriteLayer.addSprite(p.output.output,numOfPopUpElements,mouseX,mouseY);
 
@@ -1005,6 +1020,7 @@ public interface IWindowHandler : PopUpHandler{
 	public void moveUpdate(Window sender);
 	public void setWindowToTop(Window sender);
 	public void addWindow(Window w);
+	public void refreshWindow(Window w);
 	public void moveWindow(int x, int y, Window w);
 	public void relMoveWindow(int x, int y, Window w);
 	public void drawUpdate(Window sender);

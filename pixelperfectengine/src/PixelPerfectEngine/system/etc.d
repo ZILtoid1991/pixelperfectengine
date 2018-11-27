@@ -106,8 +106,8 @@ int parseHex(string s){
 	return result;
 }
 ///Parses a comma separated string into a single array.
-string[] csvParser(string input, char separator = ','){
-	string[] result;
+S[] csvParser(S)(S input, char separator = ','){
+	S[] result;
 	int j;
 	for(int i ; i < input.length ; i++){
 		if(input[i] == separator){
@@ -119,14 +119,14 @@ string[] csvParser(string input, char separator = ','){
 	return result;
 }
 ///Joins prettyprint strings to a single string for file storage.
-string stringArrayJoin(string[] input){
-	string result;
-	foreach(string s ; input){
+S stringArrayJoin(S)(S[] input){
+	S result;
+	foreach(s ; input){
 		result ~= s ~ "\n";
 	}
 	return result;
 }
-///
+///Tests if the input string is integer and returns true if it is.
 bool isInteger(S)(S s){
 	static if(S.mangleof == string.mangleof || S.mangleof == wstring.mangleof || S.mangleof == dstring.mangleof){
 		foreach(c; s){
