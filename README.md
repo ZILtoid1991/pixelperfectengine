@@ -1,6 +1,6 @@
-# Pixel Perfect Engine ver 0.9.4-alpha.3
+# Pixel Perfect Engine ver 0.9.4-beta
 
-2D retro graphics engine written in D by László Szerémi (laszloszeremi@outlook.com, https://twitter.com/ziltoid1991, https://www.patreon.com/ShapeshiftingLizard).
+2D retro graphics engine written in D by László Szerémi (laszloszeremi@outlook.com, https://twitter.com/ziltoid1991, https://www.patreon.com/ShapeshiftingLizard, https://ko-fi.com/D1D45NEN).
 
 Required libaries:
 Derelict SDL2		https://github.com/DerelictOrg/DerelictSDL2
@@ -20,7 +20,7 @@ Sample dependencies section:
 "dependencies": {
                 "derelict-sdl2": "~>2.1.0",
 		"derelict-fi": "~>2.0.3",
-		"pixelperfectengine:pixelperfectengine": "*"
+		"pixelperfectengine": "*"
 	},
 ```
 
@@ -40,11 +40,12 @@ Sample dependencies section:
 
 # Known issues:
 
-* If you add the dependency as "pixelperfectengine" or build using the command "dub build pixelperfectengine" it will fail. Probably dub related issue.
 * The engine doesn't clear the framebuffer to spare some CPU time, this results some trippy effects if a part of the screen is not being overwritten.
 * There's also some speed issues from it, as SDL2 writes the framebuffer back to the main memory. This will probably end up in the slow replacement of SDL2's graphical side with something faster.
 * WindowMakerForConcrete and PixelPerfectEditor are currently unfinished. The former will be soon working fully with extra features (such as undo/redo, snapping to grid and components), then the latter can be developed without an issue.
 * Error handling isn't fully realized, so a lot of errors might happen. You can help me by reporting errors, testing on various systems (I only have access for an old Athlon64 X2 at the moment with relatively high-cost of upgrade).
+* Upscaled sprites have a rather jerky, odd behavior when they're being partly obscured. This will be fixed, do not plan with it on the long run for a wacky effect.
+* Upscaled sprites wider than 2048 pixels will cause some serious memory leakage issues.
 
 # Future plans:
 
