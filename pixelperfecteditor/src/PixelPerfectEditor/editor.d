@@ -22,7 +22,8 @@ import PixelPerfectEngine.system.config;
 import PixelPerfectEngine.system.systemUtility;
 import std.stdio;
 import std.conv;
-import derelict.sdl2.sdl;
+//import derelict.sdl2.sdl;
+import bindbc.sdl;
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.concrete.eventChainSystem;
 import PixelPerfectEngine.map.mapload;
@@ -32,6 +33,7 @@ import tileLayer;
 import newLayerDialog;
 import about;
 import editorEvents;
+//import bmfontimport;
 
 public interface IEditor{
 	public void onExit();
@@ -39,18 +41,18 @@ public interface IEditor{
 	public void newLayer();
 	public void xmpToolkit();
 	public void passActionEvent(Event e);
-	public void createNewDocument(wstring name, int rX, int rY, int pal);
+	public void createNewDocument(dstring name, int rX, int rY, int pal);
 	//public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority);
 }
 
 public class NewDocumentDialog : Window{
 	public IEditor ie;
 	private TextBox[] textBoxes;
-	public this(Coordinate size, wstring title){
+	public this(Coordinate size, dstring title){
 		super(size, title);
 	}
 	public this(InputHandler inputhandler){
-		this(Coordinate(10,10,220,150),"New Document");
+		this(Coordinate(10,10,220,150),"New Document"d);
 
 		Button[] buttons;
 		Label[] labels;
@@ -103,7 +105,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		propSLEW = [160, 320, 40, 56];
 		WindowElement.popUpHandler = this;
 	}
+	public void clearArea(WindowElement sender){
 
+	}
 	public void initGUI(){
 		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
 
@@ -149,7 +153,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		menuElements[4].setLength(2);
 		menuElements[4][0] = new PopUpMenuElement("xmpTool", "XMP Toolkit", "Alt + X");
 		menuElements[4][1] = new PopUpMenuElement("mapXMLEdit", "Edit map as XML", "Ctrl + Alt + X");
-		//menuElements[4][0] = new PopUpMenuElement("", "", "");
+		//menuElements[4][2] = new PopUpMenuElement("bmfontimport", "Import BMFont File");
 
 		menuElements ~= new PopUpMenuElement("help", "HELP");
 
@@ -158,7 +162,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		menuElements[5][1] = new PopUpMenuElement("about", "About");
 
 
-		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,640,16),menuElements);
+		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,848,16),menuElements);
 		addElement(mb, EventProperties.MOUSE);
 		mb.onMouseLClickPre = &actionEvent;
 		foreach(WindowElement we; labels){
@@ -208,6 +212,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 				Window w = new AboutWindow();
 				addWindow(w);
 				w.relMove(30,30);
+				break;
+			case "bmfontimport":
+				//addWindow(new BMFontImport());
 				break;
 			default:
 				ie.passActionEvent(event);
@@ -465,7 +472,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		windowing = new SpriteLayer(LayerRenderingMode.COPY);
 		bitmapPreview = new SpriteLayer();
 
-		wh = new EditorWindowHandler(1280,960,640,480,windowing);
+		wh = new EditorWindowHandler(1696,960,848,480,windowing);
 		wh.ie = this;
 
 		//Initialize the Concrete framework
@@ -486,9 +493,9 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 
 		//OutputWindow.setScalingQuality("2");
 		//OutputWindow.setDriver("software");
-		ow ~= new OutputScreen("Pixel Perfect Editor", 1280, 960);
+		ow ~= new OutputScreen("Pixel Perfect Editor", 1696, 960);
 
-		rasters ~= new Raster(640, 480, ow[0], 0);
+		rasters ~= new Raster(848, 480, ow[0], 0);
 		ow[0].setMainRaster(rasters[0]);
 		rasters[0].addLayer(windowing, 0);
 		rasters[0].addLayer(bitmapPreview, 1);
@@ -553,7 +560,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		ndd.ie = this;
 		wh.addWindow(ndd);
 	}
-	public void createNewDocument(wstring name, int rX, int rY, int pal){
+	public void createNewDocument(dstring name, int rX, int rY, int pal){
 		ow ~= new OutputScreen("Edit window", to!ushort(rX*2),to!ushort(rY*2));
 		rasters ~= new Raster(to!ushort(rX), to!ushort(rY), ow[1]);
 		rasters[1].setupPalette(pal);
@@ -592,7 +599,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, name);
 			//tld.mapping.save(file);
 		}else if(extension(file) == ".xmf"){
-			wh.messageWindow("Error"w, "Function of importing embedded mapping from *.xmf files not yet implemented"w, 320);
+			wh.messageWindow("Error"d, "Function of importing embedded mapping from *.xmf files not yet implemented"d, 320);
 			return;
 		}
 		tld.isEmbedded = embed;

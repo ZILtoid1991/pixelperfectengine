@@ -49,7 +49,7 @@ public class AddTiles : Window{
 	PaletteManager palman;
 
 	this(ExtendibleBitmap source, ExtendibleMap document, AcceptedBMPType acceptedTypes, int x, int y, int layerNum, ITileLayer target, PaletteManager palman){
-		super(Coordinate(0, 0, 485, 340), "Add tiles"w);
+		super(Coordinate(0, 0, 485, 340), "Add tiles"d);
 		this.palman = palman;
 		this.target = target;
 		this.source = source;
@@ -57,33 +57,33 @@ public class AddTiles : Window{
 		this.acceptedTypes = acceptedTypes;
 		this.x = x;
 		this.y = y;
-		listBox_Added = new ListBox("listBox_Added",Coordinate(5, 20, 245, 225), null, new ListBoxHeader(["ID"w, "Name"w, "Type"w, "SrcID"w, "Pal"w], [32, 128, 48, 200, 80]), 16);
+		listBox_Added = new ListBox("listBox_Added",Coordinate(5, 20, 245, 225), null, new ListBoxHeader(["ID"d, "Name"d, "Type"d, "SrcID"d, "Pal"d], [32, 128, 48, 200, 80]), 16);
 		addElement(listBox_Added, EventProperties.MOUSE);
-		listBox_Available = new ListBox("listBox_Available",Coordinate(250, 20, 480, 225), null, new ListBoxHeader(["ID"w, "Type"w], [200, 48]), 16);
+		listBox_Available = new ListBox("listBox_Available",Coordinate(250, 20, 480, 225), null, new ListBoxHeader(["ID"d, "Type"d], [200, 48]), 16);
 		addElement(listBox_Available, EventProperties.MOUSE);
-		button_Add = new Button("Add"w, "button_Add", Coordinate(335, 230, 405, 250));
+		button_Add = new Button("Add"d, "button_Add", Coordinate(335, 230, 405, 250));
 		addElement(button_Add, EventProperties.MOUSE);
 		button_Add.onMouseLClickRel = &button_Add_mouseClick;
-		button_Remove = new Button("Remove"w, "button_Remove", Coordinate(410, 230, 480, 250));
+		button_Remove = new Button("Remove"d, "button_Remove", Coordinate(410, 230, 480, 250));
 		addElement(button_Remove, EventProperties.MOUSE);
 		button_Remove.onMouseLClickRel = &button_Remove_mouseClick;
-		button_Finish = new Button("Finish"w, "button_Finish", Coordinate(410, 255, 480, 275));
+		button_Finish = new Button("Finish"d, "button_Finish", Coordinate(410, 255, 480, 275));
 		addElement(button_Finish, EventProperties.MOUSE);
 		button_Finish.onMouseLClickRel = &button_Finish_mouseClick;
-		button_ABI = new Button("Add by intrinsic"w, "button_ABI", Coordinate(250, 255, 405, 275));
+		button_ABI = new Button("Add by intrinsic"d, "button_ABI", Coordinate(250, 255, 405, 275));
 		addElement(button_ABI, EventProperties.MOUSE);
 		button_ABI.onMouseLClickRel = &button_ABI_mouseClick;
-		label1 = new Label("Name:"w, "label1", Coordinate(5, 232, 66, 248));
+		label1 = new Label("Name:"d, "label1", Coordinate(5, 232, 66, 248));
 		addElement(label1, EventProperties.MOUSE);
-		label2 = new Label("ID:"w, "label2", Coordinate(5, 257, 68, 273));
+		label2 = new Label("ID:"d, "label2", Coordinate(5, 257, 68, 273));
 		addElement(label2, EventProperties.MOUSE);
-		label3 = new Label("Intrinsic: foretag####aftertag"w, "label3", Coordinate(5, 282, 400, 300));
+		label3 = new Label("Intrinsic: foretag####aftertag"d, "label3", Coordinate(5, 282, 400, 300));
 		addElement(label3, EventProperties.MOUSE);
-		textBox_Name = new TextBox("NULL"w, "textBox_Name", Coordinate(55, 230, 330, 250));
+		textBox_Name = new TextBox("NULL"d, "textBox_Name", Coordinate(55, 230, 330, 250));
 		addElement(textBox_Name, EventProperties.MOUSE);
-		textBox_ID = new TextBox("0x0000"w, "textBox_ID", Coordinate(55, 255, 150, 275));
+		textBox_ID = new TextBox("0x0000"d, "textBox_ID", Coordinate(55, 255, 150, 275));
 		addElement(textBox_ID, EventProperties.MOUSE);
-		label4 = new Label("Start with \"[h]\" to use hex numbering system."w, "label4", Coordinate(5, 307, 479, 323));
+		label4 = new Label("Start with \"[h]\" to use hex numbering system."d, "label4", Coordinate(5, 307, 479, 323));
 		addElement(label4, EventProperties.MOUSE);
 		getAvailableBitmaps;
 	}
@@ -106,18 +106,18 @@ public class AddTiles : Window{
 			int x = to!int(textBox_ID.getText);
 			ab.ID = to!wchar(x);
 		}catch(Exception e){
-			
+
 		}
 		// get name
 		try{
 			ab.name = to!string(textBox_Name.getText);
 		}catch(Exception e){
-			
+
 		}
 		ab.srcID = to!string(listBox_Available.readLine(listBox_Available.selection).getText(0));
 		ab.palette = source.getPaletteMode(ab.name);
 		abList ~= ab;
-		listBox_Added.addLine(new ListBoxItem([textBox_ID.getText, to!wstring(ab.name), to!wstring(ab.type), to!wstring(ab.srcID)]));
+		listBox_Added.addLine(new ListBoxItem([textBox_ID.getText, to!dstring(ab.name), to!dstring(ab.type), to!dstring(ab.srcID)]));
 	}
 	private void button_Finish_mouseClick(Event e){
 		foreach(a; abList){
@@ -146,17 +146,17 @@ public class AddTiles : Window{
 				t.addTile(b,a.ID);
 			}
 		}else if(target.classinfo == typeid(TransformableTileLayer!Bitmap8Bit)){
-		
+
 		}else if(target.classinfo == typeid(TransformableTileLayer!Bitmap16Bit)){
-		
+
 		}else if(target.classinfo == typeid(TransformableTileLayer!Bitmap32Bit)){
-		
+
 		}
-		
+
 		close;
 	}
 	private void button_ABI_mouseClick(Event e){
-		
+
 	}
 	private bool parseIntrinsic(wstring s){
 		string foretag, aftertag;
@@ -200,27 +200,27 @@ public class AddTiles : Window{
 			switch(acceptedTypes){
 				case AcceptedBMPType.Indexed4Bit:
 					if(x == source.getXsize(i) && y == source.getYsize(i) && source.bitdepth[i] == "4bit"){
-						items ~= new ListBoxItem([to!wstring(source.bitmapID[i]), to!wstring(source.bitdepth[i])]);
+						items ~= new ListBoxItem([to!dstring(source.bitmapID[i]), to!dstring(source.bitdepth[i])]);
 					}
 					break;
 				case AcceptedBMPType.Indexed8Bit:
 					if(x == source.getXsize(i) && y == source.getYsize(i) && source.bitdepth[i] == "8bit"){
-						items ~= new ListBoxItem([to!wstring(source.bitmapID[i]), to!wstring(source.bitdepth[i])]);
+						items ~= new ListBoxItem([to!dstring(source.bitmapID[i]), to!dstring(source.bitdepth[i])]);
 					}
 					break;
 				case AcceptedBMPType.Indexed16Bit:
 					if(x == source.getXsize(i) && y == source.getYsize(i) && source.bitdepth[i] == "16bit"){
-						items ~= new ListBoxItem([to!wstring(source.bitmapID[i]), to!wstring(source.bitdepth[i])]);
+						items ~= new ListBoxItem([to!dstring(source.bitmapID[i]), to!dstring(source.bitdepth[i])]);
 					}
 					break;
 				case AcceptedBMPType.DirectColor32Bit:
 					if(x == source.getXsize(i) && y == source.getYsize(i) && source.bitdepth[i] == "32bit"){
-						items ~= new ListBoxItem([to!wstring(source.bitmapID[i]), to!wstring(source.bitdepth[i])]);
+						items ~= new ListBoxItem([to!dstring(source.bitmapID[i]), to!dstring(source.bitdepth[i])]);
 					}
 					break;
 				default:
 					if(x == source.getXsize(i) && y == source.getYsize(i)){
-						items ~= new ListBoxItem([to!wstring(source.bitmapID[i]), to!wstring(source.bitdepth[i])]);
+						items ~= new ListBoxItem([to!dstring(source.bitmapID[i]), to!dstring(source.bitdepth[i])]);
 					}
 					break;
 			}

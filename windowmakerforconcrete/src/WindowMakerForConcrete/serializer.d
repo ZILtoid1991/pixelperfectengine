@@ -51,34 +51,34 @@ public class WindowSerializer{
 		foreach(t0; root.all.tags){
 			switch(t0.getFullName.toString){
 				case "Label":
-					WindowElement we = new Label(toUTF16(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					WindowElement we = new Label(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.name] = we;
 					dw.addElement(we,0);
 					break;
 				case "Button":
-					WindowElement we = new Button(toUTF16(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					WindowElement we = new Button(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.name] = we;
 					dw.addElement(we,0);
 					break;
 				case "TextBox":
-					WindowElement we = new TextBox(toUTF16(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					WindowElement we = new TextBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.name] = we;
 					dw.addElement(we,0);
 					break;
 				case "CheckBox":
-					WindowElement we = new CheckBox(toUTF16(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					WindowElement we = new CheckBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.name] = we;
 					dw.addElement(we,0);
 					break;
 				case "ListBox":
 					int[] columnWidths;
-					wstring[] columnTexts;
+					dstring[] columnTexts;
 					foreach(t1; t0.expectTag("header").tags){
-						columnTexts ~= toUTF16(t1.values[0].get!string);
+						columnTexts ~= toUTF32(t1.values[0].get!string);
 						columnWidths ~= t1.values[1].get!int;
 					}
 					WindowElement we = new ListBox(t0.expectTagValue!string("source"), parseCoordinate(t0.expectTag("position")), [],
@@ -87,18 +87,18 @@ public class WindowSerializer{
 					dw.addElement(we,0);
 					break;
 				case "RadioButtonGroup":
-					wstring[] options;
+					dstring[] options;
 					Value[] vals = t0.expectTag("options").values;
 					foreach(v; vals){
-						options ~= toUTF16(v.get!string);
+						options ~= toUTF32(v.get!string);
 					}
-					WindowElement we = new RadioButtonGroup(toUTF16(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					WindowElement we = new RadioButtonGroup(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")), options, 16, 0);
 					e.elements[t0.name] = we;
 					dw.addElement(we,0);
 					break;
 				case "Window":
-					dw.setTitle(toUTF16(t0.expectTagValue!string("title")));
+					dw.setTitle(toUTF32(t0.expectTagValue!string("title")));
 					dw.setSize(t0.expectTagValue!int("size:x"),t0.expectTagValue!int("size:y"));
 					break;
 				default:

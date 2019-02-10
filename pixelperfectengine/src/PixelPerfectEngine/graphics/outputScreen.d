@@ -5,8 +5,7 @@
  */
 module PixelPerfectEngine.graphics.outputScreen;
 
-//import directx.d2d1;
-import derelict.sdl2.sdl;
+import bindbc.sdl;
 import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.system.exc;
 import std.stdio;
@@ -29,7 +28,8 @@ public class OutputScreen : RefreshListener{
     this(const char* title, ushort x, ushort y, uint flags = SDL_WINDOW_OPENGL, SDL_Rect* outputArea = null){
         SDL_Init(SDL_INIT_VIDEO);
 		this.outputArea = outputArea;
-        window = SDL_CreateWindow(title , SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, x, y, flags);
+        window = SDL_CreateWindow(title , cast(int)SDL_WINDOWPOS_UNDEFINED, cast(int)SDL_WINDOWPOS_UNDEFINED, x, y,
+				cast(SDL_WindowFlags)flags);
         if (window == null) {
 //                throw new Exception();
 			throw new GraphicsInitializationException("Graphics initialization error! " ~ to!string(SDL_GetError()));
@@ -89,10 +89,10 @@ public class OutputScreen : RefreshListener{
 			default: break;
 		}
 	}
-    
+
     ///Displays the output from the raster when invoked.
     public void refreshFinished(){
-		//SDL_Rect r = SDL_Rect(0,0,640,480); 
+		//SDL_Rect r = SDL_Rect(0,0,640,480);
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, mainRaster.getOutput,null,null);
 		SDL_RenderPresent(renderer);

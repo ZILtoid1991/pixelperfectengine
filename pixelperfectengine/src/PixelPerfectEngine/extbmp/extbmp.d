@@ -266,8 +266,8 @@ public class ExtendibleBitmap{
 		paletteMode ~= palette;
 	}
 	/// Adds a bitmap to the file (4bit, 8bit or 32bit).
-	public void addBitmap(ubyte[] data, int x, int y, string bitDepth, string ID, string format = null,
-			string palette = null, ReplaceData rd = null){
+	/*public void addBitmap(ubyte[] data, int x, int y, string bitDepth, string ID, string format = null,
+			string palette = null){
 		const size_t o = rawData0.length;
 		rawData0 ~= cast(void[])data;
 		offset ~= o;
@@ -278,7 +278,7 @@ public class ExtendibleBitmap{
 		length ~= data.length;
 		this.format ~= format;
 		paletteMode ~= palette;
-	}
+	}*/
 	/// Adds a palette to the file (32bit only, ARGB).
 	public void addPalette(void[] data, string ID){
 		if(paletteLength.get(ID, -1)==-1){
@@ -288,7 +288,7 @@ public class ExtendibleBitmap{
 		}else{
 
 		}
-		writeln(cast(ubyte[])data);
+		//writeln(cast(ubyte[])data);
 	}
 	/// Removes the palette with the given ID.
 	public void removePalette(string ID){

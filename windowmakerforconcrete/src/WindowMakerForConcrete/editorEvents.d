@@ -1,7 +1,7 @@
 module editorEvents;
 
 import std.stdio;
-import std.utf : toUTF8, toUTF16;
+import std.utf : toUTF8, toUTF32;
 
 import editor;
 import serializer;
@@ -86,8 +86,8 @@ public class AttributeEditEvent : UndoableEvent{
 }
 
 public class TextEditEvent : AttributeEditEvent{
-	private wstring oldText, newText;
-	public this(wstring newText, string targetName){
+	private dstring oldText, newText;
+	public this(dstring newText, string targetName){
 		this.newText = newText;
 		this.oldText = editorTarget.elements[targetName].getText;
 		super([Value(toUTF8(newText))], "text", targetName);
@@ -144,8 +144,8 @@ public class WindowAttributeEditEvent : UndoableEvent{
 }
 
 public class WindowRetitleEvent : WindowAttributeEditEvent{
-	private wstring oldTitle, newTitle;
-	public this(wstring title){
+	private dstring oldTitle, newTitle;
+	public this(dstring title){
 		newTitle = title;
 		super("title", [Value(toUTF8(title))]);
 		oldTitle = dwtarget.getTitle();

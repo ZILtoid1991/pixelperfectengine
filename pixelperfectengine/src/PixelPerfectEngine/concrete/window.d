@@ -27,11 +27,11 @@ import std.datetime;
  */
 public class Window : ElementContainer{
 	protected WindowElement[] elements, mouseC, keyboardC, scrollC;
-	protected wstring title;
+	protected dstring title;
 	protected WindowElement draggedElement;
 	public IWindowHandler parent;
 	//public Bitmap16Bit[int] altStyleBrush;
-	public BitmapDrawer output;
+	protected BitmapDrawer output;
 	public int header;//, sizeX, sizeY;
 	protected int moveX, moveY;
 	protected bool fullUpdate, isActive;
@@ -67,7 +67,7 @@ public class Window : ElementContainer{
 	 * Standard constructor. "size" sets both the initial position and the size of the window.
 	 * Extra buttons are handled from the StyleSheet, currently unimplemented.
 	 */
-	public this(Coordinate size, wstring title, string[] extraButtons = []){
+	public this(Coordinate size, dstring title, string[] extraButtons = []){
 		position = size;
 		output = new BitmapDrawer(position.width(), position.height());
 		this.title = title;
@@ -198,8 +198,8 @@ public class Window : ElementContainer{
 		output.drawLine(x1, x1, 0, y1 - 1, colorA);
 		output.drawLine(x1, headerLength, y1 - 1, y1 - 1, colorB);
 		output.drawLine(headerLength, headerLength, 0, y1 - 1, colorB);
-		output.drawText(x1,(y1-getStyleSheet().getFontset("default").getSize())/2,title,getStyleSheet().getFontset("default"),
-				1);
+		output.drawColorText(x1,(y1-getStyleSheet().getFontset("default").getSize())/2,title,getStyleSheet().getFontset("default"),
+				isActive ? getStyleSheet().getColor("WHTextActive") : getStyleSheet().getColor("WHTextInactive"), 0);
 	}
 	public @nogc @property bool active(){
 		return isActive;
@@ -207,11 +207,11 @@ public class Window : ElementContainer{
 	public @nogc @property bool active(bool val){
 		return isActive = val;
 	}
-	public void setTitle(wstring s){
+	public void setTitle(dstring s){
 		title = s;
 		drawHeader;
 	}
-	public wstring getTitle(){
+	public dstring getTitle(){
 		return title;
 	}
 	/**
@@ -348,6 +348,20 @@ public class Window : ElementContainer{
 		draw();
 		parent.refreshWindow(this);
 	}
+	/**
+	 * Returns the outputted bitmap.
+	 * Can be overridden for 32 bit outputs.
+	 */
+	public @property ABitmap getOutput(){
+		return output.output;
+	}
+	/**
+	 * Clears the background where the element is being drawn.
+	 */
+	public void clearArea(WindowElement sender){
+		Coordinate c = sender.position;
+		output.drawFilledRectangle(c.left, c.right, c.top, c.bottom, getStyleSheet.getColor("window"));
+	}
 }
 
 /**
@@ -357,11 +371,11 @@ public class TextInputDialog : Window{
 	//public ActionListener[] al;
 	private TextBox textInput;
 	private string source;
-	public void function(wstring text) textOutput;
+	public void function(dstring text) textOutput;
 	/**
 	 * Creates a TextInputDialog. Auto-sizing version is not implemented yet.
 	 */
-	public this(Coordinate size, string source, wstring title, wstring message, wstring text = ""){
+	public this(Coordinate size, string source, dstring title, dstring message, dstring text = ""){
 		super(size, title);
 		Label msg = new Label(message, "null", Coordinate(8, 20, size.width()-8, 39));
 		addElement(msg, EventProperties.MOUSE);
@@ -391,12 +405,13 @@ public class DefaultDialog : Window{
 	private string source;
 	public void delegate(Event ev) output;
 
-	public this(Coordinate size, string source, wstring title, wstring[] message, wstring[] options = ["Ok"], string[] values = ["close"]){
+	public this(Coordinate size, string source, dstring title, dstring[] message, dstring[] options = ["Ok"],
+			string[] values = ["close"]){
 		this(size, title);
 		//generate text
 		this.source = source;
 		int x1, x2, y1 = 20, y2 = getStyleSheet.drawParameters["TextSpacingTop"] + getStyleSheet.drawParameters["TextSpacingBottom"]
-								+ getStyleSheet.getFontset(getStyleSheet.fontTypes["Label"]).letters[' '].height;
+								+ getStyleSheet.getFontset(getStyleSheet.fontTypes["default"]).getSize;
 		//Label msg = new Label(message[0], "null", Coordinate(5, 20, size.width()-5, 40));
 		//addElement(msg, EventProperties.MOUSE);
 
@@ -426,7 +441,7 @@ public class DefaultDialog : Window{
 		this(size, title);
 	}*/
 
-	public this(Coordinate size, wstring title){
+	public this(Coordinate size, dstring title){
 		super(size, title);
 	}
 	public void actionEvent(Event ev){
@@ -449,22 +464,22 @@ public class FileDialog : Window{
 	 * Defines file association descriptions
 	 */
 	public struct FileAssociationDescriptor{
-		public wstring description;		/// Describes the file type. Eg. "PPE map files"
+		public dstring description;		/// Describes the file type. Eg. "PPE map files"
 		public string[] types;			/// The extensions associated with a given file format. Eg. ["*.htm","*.html"]. First is preferred one at saving.
 		/**
 		 * Creates a single FileAssociationDescriptor
 		 */
-		public this(wstring description, string[] types){
+		public this(dstring description, string[] types){
 			this.description = description;
 			this.types = types;
 		}
 		/**
 		 * Returns the types as a single string.
 		 */
-		public wstring getTypesForSelector(){
-			wstring result;
+		public dstring getTypesForSelector(){
+			dstring result;
 			foreach(string s ; types){
-				result ~= to!wstring(s);
+				result ~= to!dstring(s);
 				result ~= ";";
 			}
 			result.length--;
@@ -489,7 +504,8 @@ public class FileDialog : Window{
 	 * Creates a file dialog with the given parameters.
 	 * File types are given in the format '*.format', later implementations will enable file type descriptions.
 	 */
-	public this(wstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes, string startDir, bool save = false, string filename = ""){
+	public this(dstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
+			string startDir, bool save = false, string filename = ""){
 		this(Coordinate(20,20,240,198), title);
 		this.source = source;
 		this.filetypes = filetypes;
@@ -512,7 +528,7 @@ public class FileDialog : Window{
 			addElement(buttons[i], EventProperties.MOUSE);
 		}
 		//generate textbox
-		tb = new TextBox(to!wstring(filename), "filename", Coordinate(4, 130, 162, 150));
+		tb = new TextBox(to!dstring(filename), "filename", Coordinate(4, 130, 162, 150));
 		//tb.addTextInputHandler(tih);
 		tb.onTextInput = &actionEvent;
 		addElement(tb, EventProperties.MOUSE);
@@ -530,7 +546,7 @@ public class FileDialog : Window{
 		detectDrive();
 	}
 
-	public this(Coordinate size, wstring title){
+	public this(Coordinate size, dstring title){
 		super(size, title);
 	}
 	/**
@@ -545,7 +561,7 @@ public class FileDialog : Window{
 				/*columns[0].elements ~= to!wstring(getFilenameFromPath(de.name));
 				columns[1].elements ~= "<DIR>";
 				columns[2].elements ~= formatDate(de.timeLastModified);*/
-				items ~= new ListBoxItem([to!wstring(getFilenameFromPath(de.name)),"<DIR>",formatDate(de.timeLastModified)]);
+				items ~= new ListBoxItem([to!dstring(getFilenameFromPath(de.name)),"<DIR>"d,formatDate(de.timeLastModified)]);
 			}
 		}
 		//foreach(f; filetypes){
@@ -556,7 +572,7 @@ public class FileDialog : Window{
 					/*columns[0].elements ~= to!wstring(getFilenameFromPath(de.name, true));
 					columns[1].elements ~= to!wstring(ft);
 					columns[2].elements ~= formatDate(de.timeLastModified);*/
-					items ~= new ListBoxItem([to!wstring(getFilenameFromPath(de.name)),to!wstring(ft),formatDate(de.timeLastModified)]);
+					items ~= new ListBoxItem([to!dstring(getFilenameFromPath(de.name)),to!dstring(ft),formatDate(de.timeLastModified)]);
 				}
 			}
 		}
@@ -567,19 +583,19 @@ public class FileDialog : Window{
 	/**
 	 * Standard date formatting tool.
 	 */
-	private wstring formatDate(SysTime time){
-		wstring s;
-		s ~= to!wstring(time.year());
+	private dstring formatDate(SysTime time){
+		dstring s;
+		s ~= to!dstring(time.year());
 		s ~= "-";
-		s ~= to!wstring(time.month());
+		s ~= to!dstring(time.month());
 		s ~= "-";
-		s ~= to!wstring(time.day());
+		s ~= to!dstring(time.day());
 		s ~= " ";
-		s ~= to!wstring(time.hour());
+		s ~= to!dstring(time.hour());
 		s ~= ":";
-		s ~= to!wstring(time.minute());
+		s ~= to!dstring(time.minute());
 		s ~= ":";
-		s ~= to!wstring(time.second());
+		s ~= to!dstring(time.second());
 		return s;
 	}
 	/**
@@ -652,7 +668,7 @@ public class FileDialog : Window{
 			ListBoxItem[] items;
 			foreach(string drive; driveList){
 				pathList ~= drive;
-				items ~= new ListBoxItem([to!wstring(drive),"<DIR>","N/A"]);
+				items ~= new ListBoxItem([to!dstring(drive),"<DIR>","N/A"]);
 			}
 			lb.updateColumns(items);
 			lb.draw();
@@ -690,10 +706,11 @@ public class FileDialog : Window{
 
 					}else{
 						filename = getFilenameFromPath(pathList[event.value]);
-						tb.setText(to!wstring(filename));
+						tb.setText(to!dstring(filename));
 					}
 				}catch(Exception e){
-					DefaultDialog d = new DefaultDialog(Coordinate(10,10,256,80),"null",to!wstring("Error!"), PixelPerfectEngine.system.etc.stringArrayConv([e.msg]));
+					DefaultDialog d = new DefaultDialog(Coordinate(10,10,256,80),"null",to!dstring("Error!"),
+							PixelPerfectEngine.system.etc.stringArrayConv([e.msg]));
 					parent.addWindow(d);
 				}
 				break;
@@ -756,9 +773,9 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	/**
 	 * Adds a DefaultDialog as a message box
 	 */
-	public void messageWindow(wstring title, wstring message, int width = 256){
+	public void messageWindow(dstring title, dstring message, int width = 256){
 		StyleSheet ss = getDefaultStyleSheet();
-		wstring[] formattedMessage = ss.getFontset(ss.fontTypes["Label"]).breakTextIntoMultipleLines(message, width -
+		dstring[] formattedMessage = ss.getFontset(ss.fontTypes["Label"]).breakTextIntoMultipleLines(message, width -
 				ss.drawParameters["WindowLeftPadding"] - ss.drawParameters["WindowRightPadding"]);
 		int height = cast(int)(formattedMessage.length * (ss.getFontset(ss.fontTypes["Label"]).getSize() +
 				ss.drawParameters["TextSpacingTop"] + ss.drawParameters["TextSpacingBottom"]));
@@ -1024,7 +1041,7 @@ public interface IWindowHandler : PopUpHandler{
 	public void moveWindow(int x, int y, Window w);
 	public void relMoveWindow(int x, int y, Window w);
 	public void drawUpdate(Window sender);
-	public void messageWindow(wstring title, wstring message, int width = 256);
+	public void messageWindow(dstring title, dstring message, int width = 256);
 }
 
 public enum EventProperties : uint{

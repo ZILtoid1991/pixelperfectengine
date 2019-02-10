@@ -12,8 +12,8 @@ import std.string;
 import std.conv;
 import std.random;
 
-import derelict.sdl2.sdl;
-import derelict.freeimage.freeimage;
+import bindbc.sdl;
+//import derelict.freeimage.freeimage;
 
 //import system.config;
 
@@ -28,37 +28,13 @@ import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.config;
 import PixelPerfectEngine.system.binarySearchTree;
+import PixelPerfectEngine.system.common;
 
 import editor;
 import PixelPerfectEngine.extbmp.extbmp;
 
-version(Windows){
-	static const string sdlSource = "system\\SDL2.dll";
-	static const string fiSource = "system\\FreeImage.dll";
-}else{
-	static const string sdlSource = "/system/SDL2.so";
-	static const string fiSource = "/system/FreeImage.so";
-}
-
-static this(){
-
-	DerelictSDL2.load(sdlSource);
-	DerelictFI.load(fiSource);
-}
-
-static ~this(){
-
-	//DerelictSDL2.unload();
-	//DerelictFI.unload();
-}
-
 int main(string[] args){
-	//stdout.flush;
-    /*DerelictSDL2.load(sdlSource);
-	DerelictFI.load(fiSource);*/
-
-	//printf("aaaaaaaaaaaaaaaaaa");
-	debug SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "1");
+	initialzeSDL();
 
 	if(args.length > 1){
 		if(args[1] == "--test"){
@@ -113,8 +89,8 @@ class TileLayerTest : SystemEventListener, InputListener{
 	this(){
 		theta = 0;
 		isRunning = true;
-		ExtendibleBitmap tileSource = new ExtendibleBitmap("./assets/tiletest.xmp");
-		ExtendibleBitmap spriteSource = new ExtendibleBitmap("./assets/collisionTest.xmp");
+		ExtendibleBitmap tileSource = new ExtendibleBitmap("../assets/tiletest.xmp");
+		ExtendibleBitmap spriteSource = new ExtendibleBitmap("../assets/collisionTest.xmp");
 		//t = new TileLayer(32,32, LayerRenderingMode.COPY);
 		tt = new TransformableTileLayer!(Bitmap16Bit,32,32)(LayerRenderingMode.COPY);
 		s = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);

@@ -19,7 +19,7 @@ import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.dictionary;
 import PixelPerfectEngine.graphics.outputScreen;
 
-import derelict.sdl2.sdl;
+import bindbc.sdl;
 
 import sdlang;
 
@@ -47,20 +47,22 @@ public class ConfigurationProfile{
 		if(exists(path)){
 			restore();
 		}else{
-			std.file.copy("system/defaultConfig.sdl",path);
+			std.file.copy("../system/defaultConfig.sdl",path);
 			restore();
 		}
 	}
 
 	static this(){
 		keymodifierStrings =
-				["NONE"	: 0x0000, "LSHIFT": 0x0001, "RSHIFT": 0x0002, "LCTRL": 0x0040, "RCTRL": 0x0080, "CTRL": 0x0020, "LALT": 0x0100, "RALT": 0x0200 , "LGUI": 0x0400,
-					"RGUI": 0x0800, "NUM": 0x1000, "CAPS": 0x2000, "MODE": 0x4000, "RESERVED": 0x8000, "ANY": 0xFFFF];
+				["NONE"	: 0x0000, "LSHIFT": 0x0001, "RSHIFT": 0x0002, "LCTRL": 0x0040, "RCTRL": 0x0080, "CTRL": 0x0020,
+						"LALT": 0x0100, "RALT": 0x0200 , "LGUI": 0x0400, "RGUI": 0x0800, "NUM": 0x1000, "CAPS": 0x2000, "MODE": 0x4000,
+						"RESERVED": 0x8000, "ANY": 0xFFFF];
 		joymodifierStrings = [0x0000: "buttons",0x0004: "dpad",0x0008: "axis"];
-		devicetypeStrings = [Devicetype.JOYSTICK: "joystick", Devicetype.KEYBOARD: "keyboard", Devicetype.MOUSE: "mouse", Devicetype.TOUCHSCREEN: "touchscreen" ];
-		keyNameDict = new Dictionary("system/keycodeNamings.sdl");
-		joyButtonNameDict = new Dictionary("system/joyButtonNamings.sdl");
-		joyAxisNameDict = new Dictionary("system/joyAxisNamings.sdl");
+		devicetypeStrings = [Devicetype.JOYSTICK: "joystick", Devicetype.KEYBOARD: "keyboard", Devicetype.MOUSE: "mouse",
+				Devicetype.TOUCHSCREEN: "touchscreen" ];
+		keyNameDict = new Dictionary("../system/keycodeNamings.sdl");
+		joyButtonNameDict = new Dictionary("../system/joyButtonNamings.sdl");
+		joyAxisNameDict = new Dictionary("../system/joyAxisNamings.sdl");
 	}
 	///Restores configuration profile
 	public void restore(){

@@ -71,12 +71,14 @@ abstract class ABitmap{
 }
 /*
  * S: Wordlength by usage. Possible values:
+ * - b: bit (for collision shapes)
  * - QB: QuadByte or 2Bit (currently unimplemented)
  * - HB: HalfByte or 4Bit
  * - B: Byte or 8Bit
  * - HW: HalfWord or 16Bit
  * - W: Word or 32Bit
  * T: Type. Possible values:
+ * - bool: 1Bit (for collision shapes)
  * - ubyte: 8Bit or under
  * - ushort: 16Bit
  * - Color: 32Bit
@@ -256,7 +258,7 @@ public class Bitmap(string S,T) : ABitmap{
 			}
 		}
 	}
-	@nogc public T* getPtr(){
+	@nogc public T* getPtr() pure{
 		return pixels.ptr;
 	}
 	override @nogc @property string wordLengthByString() {

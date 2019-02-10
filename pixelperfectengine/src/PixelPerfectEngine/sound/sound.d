@@ -6,15 +6,14 @@
 
 module PixelPerfectEngine.sound.sound;
 
-import derelict.sdl2.mixer;
-import derelict.sdl2.sdl;
+import bindbc.sdl.mixer;
 import std.conv;
 public import PixelPerfectEngine.system.exc;
 
 public class SoundStream{
 	public Mix_Chunk*[int] soundBank;
 	public this(){
-		DerelictSDL2Mixer.load();
+		loadSDLMixer();
 		if(Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) < 0){
 			//string msg = Mix_GetError();
 			throw new AudioInitializationException(to!string(Mix_GetError()) , __FILE__, __LINE__, null);

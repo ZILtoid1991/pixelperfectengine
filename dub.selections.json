@@ -1,16 +1,20 @@
 {
 	"fileVersion": 1,
 	"versions": {
+		"bindbc-loader": "0.1.1",
+		"bindbc-sdl": "0.6.1",
 		"bmfont": "0.1.0",
-		"cpublit": "0.2.3",
+		"cpublit": "0.3.1-alpha",
 		"derelict-fi": "2.0.3",
 		"derelict-sdl2": "2.1.4",
 		"derelict-util": "2.0.6",
-		"intel-intrinsics": "1.0.13",
+		"dimage": "0.2.0-alpha.2",
+		"intel-intrinsics": "1.1.0",
 		"libinputvisitor": "1.2.2",
 		"libpcm": "0.2.2",
 		"sdlang-d": "0.10.4",
 		"taggedalgebraic": "0.10.12",
-		"unit-threaded": "0.7.52"
+		"unit-threaded": "0.7.55",
+		"vfile": "0.1.0"
 	}
 }

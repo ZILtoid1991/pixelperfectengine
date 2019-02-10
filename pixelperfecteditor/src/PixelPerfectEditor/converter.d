@@ -8,9 +8,9 @@ import PixelPerfectEngine.system.exc;
 import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.map.mapload;
 
-import derelict.freeimage.freeimage;
+//import derelict.freeimage.freeimage;
 //import derelict.freeimage.functions;
-import derelict.freeimage.types;
+//import derelict.freeimage.types;
 
 import std.stdio;
 import std.path;
@@ -125,13 +125,13 @@ class NamingConvention{
 public class BitmapInfo{
 	int width, height;
 	public this(){
-		
+
 	}
 }
 
 public BitmapInfo getBitmapInfo(string path){
 	import std.string;
-	FREE_IMAGE_FORMAT format;
+	/*FREE_IMAGE_FORMAT format;
 	switch(extension(path)){
 		case ".png": format = FIF_PNG; break;
 		case ".tga": format = FIF_TARGA; break;
@@ -145,11 +145,12 @@ public BitmapInfo getBitmapInfo(string path){
 	bi.height = FreeImage_GetHeight(source);
 	if(source)
 		FreeImage_Unload(source);
-	return bi;
+	return bi;*/
+	throw new Exception("Function unimplemented!");
 }
 
 public void importDirectlyToXMP(string path, string palette, ExtendibleBitmap target, ImportData id){
-	import std.string;
+	/*import std.string;
 	FREE_IMAGE_FORMAT format;
 	switch(extension(path)){
 		case ".png": format = FIF_PNG; break;
@@ -174,13 +175,13 @@ public void importDirectlyToXMP(string path, string palette, ExtendibleBitmap ta
 				}
 			}
 			break;
-		case "16bit": 
+		case "16bit":
 			for(int y; y < iY; y++){
 				for(int x; x < iX; x++){
 					ubyte c; FreeImage_GetPixelIndex(source, x, iY - 1 - y, &c);
 					raw16 ~= to!ushort(id.paletteOffset + c);
 				}
-			} 
+			}
 			break;
 		default:
 			switch(FreeImage_GetBPP(source)){
@@ -246,7 +247,7 @@ public void importDirectlyToXMP(string path, string palette, ExtendibleBitmap ta
 					//si++;
 				}
 			}
-			
+
 		}
 	}else{
 		if(id.bitdepth == "16bit"){
@@ -256,12 +257,13 @@ public void importDirectlyToXMP(string path, string palette, ExtendibleBitmap ta
 		}
 	}
 	if(source)
-		FreeImage_Unload(source);
+		FreeImage_Unload(source);*/
+	throw new Exception("XMP is being deprecated. Please use different graphics format.");
 }
 
 public void importPaletteDirectlyToXMP(string path, ExtendibleBitmap target, string paletteID, ushort offset = 0){
 	import std.string;
-	FREE_IMAGE_FORMAT format;
+	/*FREE_IMAGE_FORMAT format;
 	switch(extension(path)){
 		case ".png": format = FIF_PNG; break;
 		case ".tga": format = FIF_TARGA; break;
@@ -294,7 +296,8 @@ public void importPaletteDirectlyToXMP(string path, ExtendibleBitmap target, str
 	}
 	target.addPalette(cast(void[])palette, paletteID);
 	if(source)
-		FreeImage_Unload(source);
+		FreeImage_Unload(source);*/
+	throw new Exception("XMP is being deprecated. Please use different graphics format.");
 }
 
 public Bitmap32Bit getBitmapPreview(ExtendibleBitmap xmp, string ID){

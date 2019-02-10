@@ -8,7 +8,7 @@ module PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.outputScreen;
 import PixelPerfectEngine.graphics.layers;
 import PixelPerfectEngine.graphics.bitmap;
-import derelict.sdl2.sdl;
+import bindbc.sdl;
 public import PixelPerfectEngine.graphics.common;
 import std.conv;
 import std.algorithm.sorting;

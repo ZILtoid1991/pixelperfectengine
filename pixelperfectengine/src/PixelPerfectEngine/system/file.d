@@ -6,8 +6,10 @@
  */
 
 import std.file;
+import std.path;
 import std.stdio;
-import std.conv;
+import std.conv : to;
+import core.stdc.string : memcpy;
 import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.exc;
 
@@ -17,29 +19,108 @@ import PixelPerfectEngine.graphics.fontsets;
 
 import PixelPerfectEngine.extbmp.extbmp;
 
-import derelict.sdl2.mixer;
+import dimage.tga;
+import dimage.png;
+
+import bindbc.sdl.mixer;
 
 /**
- * FILE FORMAT IS DEPRECATED! USE XMP INSTEAD!
+ * Loads a bitmap from disk.
+ * Currently supported formats: *.tga, *.png
  */
-public Bitmap16Bit[] loadBitmapFromFile(string filename){
-	auto fileData = cast(ushort[])std.file.read(filename);
-	ushort x = fileData[1], y = fileData[2], nOfSprites = fileData[0];
-	//writeln(fileData.length);
-	Bitmap16Bit[] bar;
-	for(int i; i < nOfSprites; i++){
-		//writeln(3+(x*y*i));
-		ushort[] pixeldata = fileData[(3+(x*y*i)) .. (3+(x*y*(i+1)))];
-		Bitmap16Bit foo = new Bitmap16Bit(pixeldata , x, y);
-
-		bar ~= foo;
-
+public T loadBitmapFromFile(T)(string filename)
+		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
+		|| T.stringof == Bitmap32Bit.stringof){
+	switch(extension(filename)){
+		case ".tga", ".TGA":
+			TGA imageFile = TGA.load(File(filename));
+			if(!imageFile.getHeader.topOrigin){
+				imageFile.flipVertical;
+			}
+			static if(T.stringof == Bitmap4Bit.stringof){
+				if(imageFile.getBitdepth != 4)
+					throw new BitmapFormatException("Bitdepth mismatch exception!");
+				return new Bitmap4Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+			}else static if(T.stringof == Bitmap8Bit.stringof){
+				if(imageFile.getBitdepth != 8)
+					throw new BitmapFormatException("Bitdepth mismatch exception!");
+				return new Bitmap8Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+			}else static if(T.stringof == Bitmap16Bit.stringof){
+				if(imageFile.getBitdepth != 16)
+					throw new BitmapFormatException("Bitdepth mismatch exception!");
+				return new Bitmap16Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+			}else static if(T.stringof == Bitmap32Bit.stringof){
+				if(imageFile.getBitdepth != 32)
+					throw new BitmapFormatException("Bitdepth mismatch exception!");
+				return new Bitmap32Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+			}
+			break;
+		case ".png", ".PNG":
+			PNG imageFile = PNG.load(File(filename));
+			static if(T.stringof == Bitmap8Bit.stringof){
+				if(imageFile.getBitdepth != 8)
+					throw new BitmapFormatException("Bitdepth mismatch exception!");
+				return new Bitmap8Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+			}else static if(T.stringof == Bitmap32Bit.stringof){
+				if(imageFile.getBitdepth != 32)
+					throw new BitmapFormatException("Bitdepth mismatch exception!");
+				return new Bitmap32Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+			}
+			break;
+		default:
+			throw new Exception("Unsupported file format!");
 	}
+}
+/**
+ * Loads a bitmap sheet from file.
+ * This one doesn't require TGA devarea extensions.
+ */
+public T[] loadBitmapSheetFromFile(T)(string filename, int x, int y)
+		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
+		|| T.stringof == Bitmap32Bit.stringof){
+	T source = loadBitmapFromFile(filename);
+	if(source.width % x == 0 && source.height % y == 0){
 
-	return bar;
+	}else throw new Exception("Requested size cannot be divided by input file's sizes!");
+	T[] output;
+	static if (T.stringof == Bitmap4Bit.stringof)
+		const size_t length = x / 2, pitch = output.width / 2;
+	else static if (T.stringof == Bitmap8Bit.stringof)
+		const size_t length = x, pitch = output.width;
+	else static if (T.stringof == Bitmap16Bit.stringof)
+		const size_t length = x * 2, pitch = output.width * 2;
+	else static if (T.stringof == Bitmap32Bit.stringof)
+		const size_t length = x * 4, pitch = output.width * 4;
+	const size_t pitch0 = pitch * y;
+	for (int mY ; mY < source.height / y ; mY++){
+		for (int mX ; mX < source.width / x ; mX++){
+			T next = new T(x, y);
+			for (int lY ; lY < y ; lY++){
+				memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch * mY) + (x * mX), length);
+			}
+		}
+	}
+	return output;
+}
+/**
+ * Loads a palette from a file.
+ */
+public Color[] loadPaletteFromFile(string filename){
+	File f = File(filename);
+	switch(extension(filename)){
+		case ".tga", ".TGA":
+			TGA imageFile = TGA.load(f);
+			return cast(Color[])(cast(void[])imageFile.getPaletteData);
+		case ".png", ".PNG":
+			PNG imageFile = PNG.load(f);
+			return cast(Color[])(cast(void[])imageFile.getPaletteData);
+		default:
+			throw new Exception("Unsupported file format!");
+	}
 }
 /**
  * Gets a bitmap from the XMP file.
+ * DEPRECATED! Recommended to use *.tga with devarea extensions or even *.png files.
  */
 T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
 	static if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof){
@@ -103,6 +184,7 @@ T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
 }
 /**
  * Loads a palette from an XMP file.
+ * Deprecated!
  */
 public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target, int offset = 0){
 	target.palette = cast(Color[])xmp.getPalette(ID);
@@ -117,17 +199,26 @@ public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target, i
 }
 /**
  * Loads a fontset from an XMP file.
+ * Deprecated!
  */
-Fontset!Bitmap16Bit loadFontsetFromXMP(ExtendibleBitmap xmp, string fontName){
-	Bitmap16Bit[wchar] characters;
+/+Fontset!Bitmap8Bit loadFontsetFromXMP(ExtendibleBitmap xmp, string fontName){
+	Bitmap8Bit[wchar] characters;
 	foreach(s;xmp.bitmapID){
 		//writeln(parseHex(s[fontName.length..(s.length-1)]));
 		//if(fontName == s[0..(fontName.length-1)]){
-		characters[to!wchar(parseHex(s[fontName.length..s.length]))] = loadBitmapFromXMP!Bitmap16Bit(xmp,s);
-		//}
+		characters[to!wchar(parseHex(s[fontName.length..s.length]))] = loadBitmapFromXMP!Bitmap8Bit(xmp,s);
 	}
-	return new Fontset!Bitmap16Bit(fontName, characters['0'].height, characters);
-}
+	foreach(c;characters){
+		for(int y; y < c.height; y++){
+			for(int x; x < c.width; x++){
+				if(c.readPixel(x,y)){
+					c.writePixel(x,y, ubyte.max);
+				}
+			}
+		}
+	}
+	return new Fontset!Bitmap8Bit(fontName, characters['0'].height, characters);
+}+/
 /**
  * Loads a *.wav file if SDL2 mixer is used
  */

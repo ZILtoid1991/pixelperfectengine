@@ -29,9 +29,9 @@ public class StyleSheet{
 	Color(0xFF,0xFF,0x7F,0x00),
 	Color(0xFF,0x7F,0x7F,0x7F),
 	Color(0xFF,0x00,0x00,0x00)];	///Default 16 color palette
-	private Fontset!Bitmap16Bit[string] font;		///Fonts stored here.
-	private ushort[string] color;		///Colors are identified by strings.
-	private Bitmap16Bit[string] images;		///For icons, pattern fills, etc...
+	private Fontset!Bitmap8Bit[string] font;		///Fonts stored here.
+	private ubyte[string] color;		///Colors are identified by strings.
+	private Bitmap8Bit[string] images;		///For icons, pattern fills, etc...
 	public int[string] drawParameters;		///Draw parameters are used for border thickness, padding, etc...
 	public string[string] fontTypes;		///Font type descriptions for various kind of components
 
@@ -49,6 +49,8 @@ public class StyleSheet{
 		color["red"] = 0x0006;
 		color["WHAascent"] = 0x0007;
 		color["WHAdescent"] = 0x0008;
+		color["WHTextActive"] = 0x0001;
+		color["WHTextInactive"] = 0x000F;
 		color["WHAtop"] = 0x0009;
 		color["blue"] = 0x000A;
 		color["darkblue"] = 0x000B;
@@ -76,24 +78,25 @@ public class StyleSheet{
 		drawParameters["WindowBottomPadding"] = 5;
 		drawParameters["ComponentHeight"] = 20;
 
-		fontTypes["Label"] = "default";
+		fontTypes["default"] = "OpenSans";
+
 	}
-	public void addFontset(Fontset!Bitmap16Bit f, string style){
+	public void addFontset(Fontset!Bitmap8Bit f, string style){
 		font[style] = f;
 	}
-	public Fontset!Bitmap16Bit getFontset(string style){
-		return font.get(style, font["default"]);
+	public Fontset!Bitmap8Bit getFontset(string style){
+		return font.get(fontTypes.get(style, style), font[fontTypes["default"]]);
 	}
-	public void setColor(ushort c, string colorName){
+	public void setColor(ubyte c, string colorName){
 		color[colorName] = c;
 	}
-	public ushort getColor(string colorName){
+	public ubyte getColor(string colorName){
 		return color[colorName];
 	}
-	public void setImage(Bitmap16Bit bitmap, string name){
+	public void setImage(Bitmap8Bit bitmap, string name){
 		images[name] = bitmap;
 	}
-	public Bitmap16Bit getImage(string name){
+	public Bitmap8Bit getImage(string name){
 		return images.get(name, null);
 	}
 }

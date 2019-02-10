@@ -6,15 +6,22 @@
 
 module PixelPerfectEngine.system.common;
 
-import derelict.sdl2.sdl;
+import bindbc.sdl;
 
 public void initialzeSDL(){
-	version(Windows){
-		static const string sdlSource = "system\\SDL2.dll";
-		//static const string fiSource = "system\\FreeImage.dll";
-	}else{
-		static const string sdlSource = "/system/SDL2.so";
-		//static const string fiSource = "/system/FreeImage.so";
+	SDLSupport sdls = loadSDL();
+	if(sdls == SDLSupport.noLibrary){
+		version(Windows){
+			import core.sys.windows.winuser;
+			MessageBox(null, "SDL2.DLL was not found in the binary folder!\nIf required, please reinstall this software!",
+					"Initialization Error", MB_ICONERROR);
+		}else{
+			import core.stdc.stdio;
+			printf("Initialization error!\nSDL2 library is not installed.\n");
+		}
 	}
-	DerelictSDL2.load(sdlSource);
+	version(Windows){
+		debug
+			SDL_SetHint("SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING","1");
+	}
 }

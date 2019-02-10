@@ -32,7 +32,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		WindowElement.popUpHandler = this;
 		this.ie = ie;
 	}
+	public void clearArea(WindowElement sender){
 
+	}
 	public void initGUI(){
 		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
 
@@ -74,8 +76,8 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,rasterX - 1,16),menuElements);
 		addElement(mb, EventProperties.MOUSE);
 
-		objectList = new ListBox("objectList", Coordinate(644,20,rasterX - 5,238), [], new ListBoxHeader(["Type"w,"Name"w],[128,128]),16);
-		propList = new ListBox("propList", Coordinate(644,242,rasterX - 5,477), [], new ListBoxHeader(["Prop"w,"Val"w],[128,256]),16,true);
+		objectList = new ListBox("objectList", Coordinate(644,20,rasterX - 5,238), [], new ListBoxHeader(["Type"d,"Name"d],[128,128]),16);
+		propList = new ListBox("propList", Coordinate(644,242,rasterX - 5,477), [], new ListBoxHeader(["Prop"d,"Val"d],[128,256]),16,true);
 		addElement(objectList, EventProperties.MOUSE | EventProperties.SCROLL);
 		addElement(propList, EventProperties.MOUSE | EventProperties.SCROLL);
 
@@ -133,7 +135,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 
 public class DummyWindow : Window{
 	Editor ed;
-	public this(Coordinate coordinates, wstring name, Editor ed){
+	public this(Coordinate coordinates, dstring name, Editor ed){
 		super(coordinates, name);
 		this.ed = ed;
 	}
@@ -208,7 +210,7 @@ public class Editor : SystemEventListener, InputListener{
 		PopUpElement.inputhandler = inputH;
 		WindowElement.inputHandler = inputH;
 		ewh.initGUI();
-		dw = new DummyWindow(Coordinate(0,16,640,480), "New Window"w, this);
+		dw = new DummyWindow(Coordinate(0,16,640,480), "New Window"d, this);
 		ewh.addWindow(dw);
 		eventStack = new UndoableStack(10);
 		wserializer = new WindowSerializer();
@@ -238,10 +240,10 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void onObjectListSelect(Event ev){
 		ListBoxItem lbi = cast(ListBoxItem)ev.aux;
-		if(lbi.getText(0) != "Window"){
+		if(lbi.getText(0) != "window"){
 			selection = conv.to!string(lbi.getText(1));
 		}else{//Fill attribute list with data related to the window
-			selection = "Window";
+			selection = "window";
 		}
 		updatePropertyList;
 	}
@@ -258,7 +260,7 @@ public class Editor : SystemEventListener, InputListener{
 	public void onAttributeEdit(Event ev){
 		import std.utf : toUTF8;
 		ListBoxItem lbi = cast(ListBoxItem)ev.aux;
-		if(selection == "Window"){
+		if(selection == "window"){
 			switch(lbi.getText(0)){
 				case "name":
 					eventStack.addToTop(new WindowRenameEvent(conv.to!string(ev.text)));
@@ -285,7 +287,7 @@ public class Editor : SystemEventListener, InputListener{
 					selection = conv.to!string(ev.text);
 					return;
 				case "position":
-					wstring[] src = csvParser(ev.text, ';');
+					dstring[] src = csvParser(ev.text, ';');
 					if(src.length == 4){
 						Coordinate c;
 						foreach(s; src){
@@ -337,15 +339,15 @@ public class Editor : SystemEventListener, InputListener{
 				switch(typeSel){
 					case ElementType.Label:
 						s = getNextName("label");
-						we = new Label(conv.to!wstring(s),s,c);
+						we = new Label(conv.to!dstring(s),s,c);
 						break;
 					case ElementType.Button:
 						s = getNextName("button");
-						we = new Button(conv.to!wstring(s),s,c);
+						we = new Button(conv.to!dstring(s),s,c);
 						break;
 					case ElementType.TextBox:
 						s = getNextName("textBox");
-						we = new TextBox(conv.to!wstring(s),s,c);
+						we = new TextBox(conv.to!dstring(s),s,c);
 						break;
 					case ElementType.ListBox:
 						s = getNextName("listBox");
@@ -353,11 +355,11 @@ public class Editor : SystemEventListener, InputListener{
 						break;
 					case ElementType.CheckBox:
 						s = getNextName("CheckBox");
-						we = new CheckBox(conv.to!wstring(s),s,c);
+						we = new CheckBox(conv.to!dstring(s),s,c);
 						break;
 					case ElementType.RadioButtonGroup:
 						s = getNextName("radioButtonGroup");
-						we = new RadioButtonGroup(conv.to!wstring(s),s,c,["opt0", "opt1"],16,0);
+						we = new RadioButtonGroup(conv.to!dstring(s),s,c,["opt0", "opt1"],16,0);
 						break;
 					case ElementType.MenuBar:
 						s = getNextName("menuBar");
@@ -383,9 +385,9 @@ public class Editor : SystemEventListener, InputListener{
 
 	public void updateElementList(){
 		ewh.objectList.clearData;
-		ListBoxItem[] list = [new ListBoxItem(["Window", ""])];
+		ListBoxItem[] list = [new ListBoxItem(["window", ""])];
 		foreach(s; elements.byKey){
-			list ~= new ListBoxItem([conv.to!wstring(elements[s].classinfo.name[37..$]), conv.to!wstring(s)]);
+			list ~= new ListBoxItem([conv.to!dstring(elements[s].classinfo.name[37..$]), conv.to!dstring(s)]);
 		}
 		ewh.objectList.updateColumns(list);
 	}
@@ -395,40 +397,40 @@ public class Editor : SystemEventListener, InputListener{
 		ewh.propList.clearData;
 		if(elements.get(selection, null) !is null){
 			string classname = elements[selection].classinfo.name[37..$];
-			ListBoxItem[] list = [new ListBoxItem(["name", conv.to!wstring(selection)], [TextInputType.NULL, TextInputType.TEXT]),
-					new ListBoxItem(["source", conv.to!wstring(wserializer.getValue(selection, "source")[0].get!string())],
+			ListBoxItem[] list = [new ListBoxItem(["name", conv.to!dstring(selection)], [TextInputType.NULL, TextInputType.TEXT]),
+					new ListBoxItem(["source", conv.to!dstring(wserializer.getValue(selection, "source")[0].get!string())],
 					[TextInputType.NULL, TextInputType.TEXT])];
 			if(classname == "Label" || classname == "TextBox" || classname == "Button" || classname == "CheckBox" ||
 					classname == "RadioButtonGroup"){
-				list ~= new ListBoxItem(["text", toUTF16(wserializer.getValue(selection, "text")[0].get!string())], [
+				list ~= new ListBoxItem(["text", toUTF32(wserializer.getValue(selection, "text")[0].get!string())], [
 						TextInputType.NULL, TextInputType.TEXT]);
 			}
 			Value[] pos0 = wserializer.getValue(selection, "position");
-			wstring pos1 = conv.to!wstring(pos0[0].get!int) ~ ";" ~ conv.to!wstring(pos0[1].get!int) ~ ";" ~
-					conv.to!wstring(pos0[2].get!int) ~ ";" ~ conv.to!wstring(pos0[3].get!int) ~ ";";
+			dstring pos1 = conv.to!dstring(pos0[0].get!int) ~ ";" ~ conv.to!dstring(pos0[1].get!int) ~ ";" ~
+					conv.to!dstring(pos0[2].get!int) ~ ";" ~ conv.to!dstring(pos0[3].get!int) ~ ";";
 			list ~= new ListBoxItem(["position", pos1], [TextInputType.NULL, TextInputType.TEXT]);
 			switch(classname){
 				case "Button", "SmallButton":
-					list ~= new ListBoxItem(["icon", conv.to!wstring(wserializer.getValue(selection, "icon")[0].get!string())],
+					list ~= new ListBoxItem(["icon", conv.to!dstring(wserializer.getValue(selection, "icon")[0].get!string())],
 							[TextInputType.NULL, TextInputType.TEXT] );
 					break;
 				case "ListBox":
 					list ~= new ListBoxItem(["header", "[...]"], [TextInputType.NULL, TextInputType.NULL]);
 					break;
 				case "RadioButtonGroup":
-					wstring optionName;
+					dstring optionName;
 					Value[] optionNameValues = wserializer.getValue(selection, "options");
 					foreach(v ; optionNameValues){
-						optionName ~= toUTF16(v.get!string()) ~ ';';
+						optionName ~= toUTF32(v.get!string()) ~ ';';
 					}
-					list ~= [new ListBoxItem(["rowHeight",conv.to!wstring(wserializer.getValue(selection,"rowHeight")[0].get!int())],
+					list ~= [new ListBoxItem(["rowHeight",conv.to!dstring(wserializer.getValue(selection,"rowHeight")[0].get!int())],
 							[TextInputType.NULL, TextInputType.DECIMAL]), new ListBoxItem(["options", optionName], [TextInputType.NULL,
 							TextInputType.TEXT])];
 					break;
 				case "HSlider", "VSlider":
-					list ~= [new ListBoxItem(["barLength",conv.to!wstring(wserializer.getValue(selection,"barLength")[0].get!int())],
+					list ~= [new ListBoxItem(["barLength",conv.to!dstring(wserializer.getValue(selection,"barLength")[0].get!int())],
 							[TextInputType.NULL, TextInputType.DECIMAL]),
-							new ListBoxItem(["maxValue",conv.to!wstring(wserializer.getValue(selection,"maxValue")[0].get!int())],
+							new ListBoxItem(["maxValue",conv.to!dstring(wserializer.getValue(selection,"maxValue")[0].get!int())],
 							[TextInputType.NULL, TextInputType.DECIMAL])];
 					break;
 				default:
@@ -436,13 +438,13 @@ public class Editor : SystemEventListener, InputListener{
 			}
 			ewh.propList.updateColumns(list);
 		}else{
-			ListBoxItem[] list = [new ListBoxItem(["name", conv.to!wstring(wserializer.getWindowName)], [TextInputType.NULL,
+			ListBoxItem[] list = [new ListBoxItem(["name", conv.to!dstring(wserializer.getWindowName)], [TextInputType.NULL,
 					TextInputType.TEXT]),
-					new ListBoxItem(["title", toUTF16(wserializer.getWindowValue("title")[0].get!string())], [TextInputType.NULL,
+					new ListBoxItem(["title", toUTF32(wserializer.getWindowValue("title")[0].get!string())], [TextInputType.NULL,
 					TextInputType.TEXT]),
-					new ListBoxItem(["size:x", conv.to!wstring(wserializer.getWindowValue("size:x")[0].get!int())], [TextInputType.NULL,
+					new ListBoxItem(["size:x", conv.to!dstring(wserializer.getWindowValue("size:x")[0].get!int())], [TextInputType.NULL,
 					TextInputType.TEXT]),
-					new ListBoxItem(["size:y", conv.to!wstring(wserializer.getWindowValue("size:y")[0].get!int())], [TextInputType.NULL,
+					new ListBoxItem(["size:y", conv.to!dstring(wserializer.getWindowValue("size:y")[0].get!int())], [TextInputType.NULL,
 					TextInputType.TEXT])];
 
 			ewh.propList.updateColumns(list);
@@ -462,25 +464,25 @@ public class Editor : SystemEventListener, InputListener{
 	public void menuEvent(Event ev){
 		switch(ev.source){
 			case "Export":
-				ewh.addWindow(new FileDialog("Export Window"w, "export", &onExportWindow,
-						[FileDialog.FileAssociationDescriptor("D file"w, ["*.d"])], "./", true));
+				ewh.addWindow(new FileDialog("Export Window"d, "export", &onExportWindow,
+						[FileDialog.FileAssociationDescriptor("D file"d, ["*.d"])], "./", true));
 				break;
 			case "saveAs":
-				ewh.addWindow(new FileDialog("Save Window as"w, "windowsaver", &onSaveFileAs,
-						[FileDialog.FileAssociationDescriptor("SDL file"w, ["*.sdl"])], "./", true));
+				ewh.addWindow(new FileDialog("Save Window as"d, "windowsaver", &onSaveFileAs,
+						[FileDialog.FileAssociationDescriptor("SDL file"d, ["*.sdl"])], "./", true));
 				break;
 			case "save":
 				if(wserializer.getFilename){
 					wserializer.store;
 				}else{
-					ewh.addWindow(new FileDialog("Save Window as"w, "windowsaver", &onSaveFileAs,
-							[FileDialog.FileAssociationDescriptor("SDL file"w, ["*.sdl"])], "./", true));
+					ewh.addWindow(new FileDialog("Save Window as"d, "windowsaver", &onSaveFileAs,
+							[FileDialog.FileAssociationDescriptor("SDL file"d, ["*.sdl"])], "./", true));
 				}
 				break;
 			case "load":
 				//stdio.writeln(&onLoadFile);
-				ewh.addWindow(new FileDialog("Load Window"w, "windowloader", &onLoadFile,
-						[FileDialog.FileAssociationDescriptor("SDL file"w, ["*.sdl"])], "./"));
+				ewh.addWindow(new FileDialog("Load Window"d, "windowloader", &onLoadFile,
+						[FileDialog.FileAssociationDescriptor("SDL file"d, ["*.sdl"])], "./"));
 				break;
 			case "undo":
 				eventStack.undo;

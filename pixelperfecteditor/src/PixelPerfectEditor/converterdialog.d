@@ -90,7 +90,7 @@ public class ConverterDialog : Window{
 		addElement(frameList, EventProperties.MOUSE);
 	}
 
-	public this(Coordinate size, wstring title){
+	public this(Coordinate size, dstring title){
 		super(size, title);
 	}
 
@@ -113,7 +113,7 @@ public class ConverterDialog : Window{
 				importPaletteDirectlyToXMP(importFileName,selection,paletteID);
 			}
 		}catch(Exception e){
-			parent.messageWindow(to!wstring(e.classinfo.toString()), to!wstring(e.msg));
+			parent.messageWindow(to!dstring(e.classinfo.toString()), to!dstring(e.msg));
 		}
 	}
 
@@ -131,7 +131,7 @@ public class ConverterDialog : Window{
 						newFile.saveFile(fileName);
 						if(files is null){
 							selection = newFile;
-							labels["path"].setText(to!wstring(fileName));
+							labels["path"].setText(to!dstring(fileName));
 						}else{
 							files ~= newFile;
 							filenames ~= fileName;
@@ -149,7 +149,7 @@ public class ConverterDialog : Window{
 						ExtendibleBitmap newFile = new ExtendibleBitmap(fileName);
 						if(files is null){
 							selection = newFile;
-							labels["path"].setText(to!wstring(fileName));
+							labels["path"].setText(to!dstring(fileName));
 						}else{
 							files ~= newFile;
 							filenames ~= fileName;
@@ -285,27 +285,15 @@ public class ConverterDialog : Window{
 				break;
 		}
 	}
-	/+public void sheetDialogEvent(string a, string b, int numFrom, int numOfDigits, int x, int y, int bitdepth, NumberingStyle ns){
-		string bd;
-		switch(bitdepth){
-			case 0: bd="8bit"; break;
-			case 1: bd="16bit"; break;
-			case 2: bd="32bit"; break;
-			default: bd="1bit"; break;
-		}
-		importDirectlyToXMP(importFileName,selection,new ImportData(new NamingConvention(a,b,ns,numFrom,numOfDigits),bd,x,y,0));
-	}+/
-
 	private void updateFileList(){
 
 	}
 	private void updateImageList(){
-		//wstring[] IDs = stringArrayConv(selection.bitmapID);
-		//wstring[] bt = stringArrayConv(selection.bitdepth), form = stringArrayConv(selection.format), pm = stringArrayConv(selection.paletteMode);
+
 		ListBoxItem[] items;
 		for(int i; i < selection.bitmapID.length; i++){
-			items ~= new ListBoxItem([to!wstring(selection.bitmapID[i]),to!wstring(selection.bitdepth[i]),to!wstring(selection.format[i]),to!wstring(selection.paletteMode[i]),
-					to!wstring(selection.getXsize(i)),to!wstring(selection.getYsize(i))]);
+			items ~= new ListBoxItem([to!dstring(selection.bitmapID[i]),to!dstring(selection.bitdepth[i]),to!dstring(selection.format[i])
+					,to!dstring(selection.paletteMode[i]), to!dstring(selection.getXsize(i)),to!dstring(selection.getYsize(i))]);
 		}
 		//imageList.updateColumns([ListBoxColumn("BitmapID",IDs),ListBoxColumn("Bitdepth",bt),ListBoxColumn("Format",form),ListBoxColumn("PalMode",pm)]);
 		imageList.updateColumns(items);
@@ -315,7 +303,7 @@ public class ConverterDialog : Window{
 		//wstring[] IDs, frames;
 		ListBoxItem[] items;
 		foreach(s; selection.animData.byKey){
-			items ~=  new ListBoxItem([to!wstring(s), to!wstring(selection.animData[s].ID.length)]);
+			items ~=  new ListBoxItem([to!dstring(s), to!dstring(selection.animData[s].ID.length)]);
 		}
 		animationList.updateColumns(items);
 		animationList.draw();
@@ -324,7 +312,8 @@ public class ConverterDialog : Window{
 		//wstring[] num, IDs, dur;
 		ListBoxItem[] items;
 		for(int i ; i < selection.animData[animationSelection].ID.length ; i++){
-			items ~=  new ListBoxItem([to!wstring(i), to!wstring(selection.animData[animationSelection].ID[i]), to!wstring(selection.animData[animationSelection].duration[i])]);
+			items ~=  new ListBoxItem([to!dstring(i), to!dstring(selection.animData[animationSelection].ID[i]), to!dstring(
+					selection.animData[animationSelection].duration[i])]);
 		}
 		frameList.updateColumns(items);
 		frameList.draw();
@@ -335,108 +324,6 @@ public class ConverterDialog : Window{
 interface SheetDialogListener{
 	public void SheetDialogEvent(string a, string b, int numFrom, int numOfDigits, int x, int y, int bitdepth, NumberingStyle ns);
 }
-
-/+public class SpriteSheetDialog : Window, ActionListener{
-	private TextBox nameA, nameB, numFrom, gridX, gridY, nOfZeros;
-	private RadioButtonGroup numberingConvention, bitDepthSetter;
-	//private InputHandler inputHandler;
-	public SheetDialogListener sdl;
-	public this(SheetDialogListener sdl){
-		this.sdl = sdl;
-		this(Coordinate(0,0,230,340),"Sheet import settings");
-		nameA = new TextBox("","nameA",Coordinate(120,20,220,40));
-		addElement(nameA,EventProperties.MOUSE);
-		addElement(new Label("NameA:","reversed",Coordinate(10,20,120,40)),EventProperties.MOUSE);
-
-		nameB = new TextBox("","nameB",Coordinate(120,50,220,70));
-		addElement(nameB,EventProperties.MOUSE);
-		addElement(new Label("NameB:","reversed",Coordinate(10,50,120,70)),EventProperties.MOUSE);
-
-		numFrom = new TextBox("","numFrom",Coordinate(120,80,220,100));
-		addElement(numFrom,EventProperties.MOUSE);
-		addElement(new Label("NumFrom:","reversed",Coordinate(10,80,120,100)),EventProperties.MOUSE);
-
-		gridX = new TextBox("","gridX",Coordinate(120,110,220,130));
-		addElement(gridX,EventProperties.MOUSE);
-		addElement(new Label("gridX:","reversed",Coordinate(10,110,120,130)),EventProperties.MOUSE);
-
-		gridY = new TextBox("","gridY",Coordinate(120,140,220,160));
-		addElement(gridY,EventProperties.MOUSE);
-		addElement(new Label("gridY:","reversed",Coordinate(10,140,120,160)),EventProperties.MOUSE);
-
-		nOfZeros = new TextBox("","nOfZeros",Coordinate(120,170,220,190));
-		addElement(nOfZeros,EventProperties.MOUSE);
-		addElement(new Label("NumOfZeros:","reversed",Coordinate(10,170,120,190)),EventProperties.MOUSE);
-
-		bitDepthSetter = new RadioButtonGroup("Bitdepth:","cmode",Coordinate(10,210,110,310),["8Bit","16Bit","32Bit","1Bit"],16,0);
-		addElement(bitDepthSetter,EventProperties.MOUSE);
-		numberingConvention = new RadioButtonGroup("numConv:","numConv",Coordinate(120,210,220,310),["Dec","Oct","Hex"],16,0);
-		addElement(numberingConvention,EventProperties.MOUSE);
-		Button ok = new Button("Ok","ok",Coordinate(160,315,220,335));
-		addElement(ok,EventProperties.MOUSE);
-		ok.al~=this;
-	}
-
-	public this(Coordinate size, wstring title){
-		super(size, title);
-	}
-	public void actionEvent(string source, int type, int value, wstring message){}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
-	public void actionEvent(Event event){
-		if(event.source == "ok"){
-			NumberingStyle ns;
-			switch(numberingConvention.getValue){
-				case 0: ns = NumberingStyle.DECIMAL; break;
-				case 1: ns = NumberingStyle.OCTAL; break;
-				case 2: ns = NumberingStyle.HEXADECIMAL; break;
-				default: break;
-			}
-			sdl.SheetDialogEvent(to!string(nameA.getText),to!string(nameB.getText),to!int(numFrom.getText),to!int(nOfZeros.getText),to!int(gridX.getText),to!int(gridY.getText),bitDepthSetter.getValue,ns);
-			parent.closeWindow(this);
-		}
-	}
-}+/
-
-/+public class ImportDialog : Window, ActionListener{
-	private TextBox name;
-	private RadioButtonGroup bitdepthSetter;
-	public ActionListener[] al;
-	public this(InputHandler inputhandler){
-		this(Coordinate(0,0,220,200), "Import settings");
-		addElement(new Label("ID:","0000",Coordinate(10,20,80,40)), EventProperties.MOUSE);
-		name = new TextBox("","name", Coordinate(100,20,210,40));
-		//name.addTextInputHandler(inputhandler);
-		bitdepthSetter = new RadioButtonGroup("Bitdepth:","cmode",Coordinate(20,50,200,150),["8Bit","16Bit","32Bit","1Bit"],16,0);
-		Button b1 = new Button("Ok","ok",Coordinate(80,160,140,180));
-		addElement(b1, EventProperties.MOUSE);
-		b1.al ~= this;
-		Button b2 = new Button("Cancel","cancel",Coordinate(150,160,210,180));
-		addElement(b2, EventProperties.MOUSE);
-		b2.al ~= this;
-		addElement(bitdepthSetter, EventProperties.MOUSE);
-		addElement(name, EventProperties.MOUSE);
-	}
-
-	public this(Coordinate size, wstring title){
-		super(size, title);
-	}
-	public void actionEvent(string source, int type, int value, wstring message){}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){}
-	public void actionEvent(Event event){
-		//writeln(event.source);
-		switch(event.source){
-			case "ok":
-				foreach(a; al){
-					a.actionEvent(new Event("impDial","impDial","","",name.getText,bitdepthSetter.getValue,-3));
-
-				}
-				parent.closeWindow(this);
-				break;
-			case "cancel": parent.closeWindow(this); break;
-			default: break;
-		}
-	}
-}+/
 
 public class PreviewWindow : Window{
 	Bitmap32Bit previewImage;

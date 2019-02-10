@@ -10,10 +10,10 @@ import std.algorithm.mutation;
 
 
 ///Converts string[] to wstring[]
-public wstring[] stringArrayConv(string[] s){
-	wstring[] result;
+public dstring[] stringArrayConv(string[] s){
+	dstring[] result;
 	foreach(ss; s){
-		wstring ws;
+		dstring ws;
 		foreach(c; ss){
 			ws ~= c;
 		}

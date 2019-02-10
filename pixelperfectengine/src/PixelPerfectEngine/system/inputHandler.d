@@ -1,6 +1,6 @@
 ﻿module PixelPerfectEngine.system.inputHandler;
 /*
- * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
+ * Copyright (C) 2015-2019, by Laszlo Szeremi under the Boost license.
  *
  * Pixel Perfect Engine, input module
  */
@@ -8,14 +8,14 @@
 import std.stdio;
 import std.conv;
 import std.algorithm.searching;
-import derelict.sdl2.sdl;
+import bindbc.sdl;
 /**
  * Basic Force Feedback implementation.
  */
 public class ForceFeedbackHandler{
 	public SDL_Haptic*[] haptic;
 	private InputHandler src;
-	
+
 	public this(InputHandler src){
 		SDL_InitSubSystem(SDL_INIT_HAPTIC);
 		this.src = src;
@@ -100,7 +100,7 @@ public class InputHandler : TextInputHandler{
 			}
 		}
 	}
-	
+
 	~this(){
 		foreach(SDL_Joystick* p; joysticks)
 			SDL_JoystickClose(p);
@@ -123,13 +123,13 @@ public class InputHandler : TextInputHandler{
 		while(SDL_PollEvent(&event)){
 			//writeln(event.type);
 			if(enableBindingCapture){
-				
+
 				KeyBinding kb0;
 				if(event.type == SDL_KEYDOWN){
 					kb0 = KeyBinding(event.key.keysym.mod, event.key.keysym.scancode, 0, proposedID, Devicetype.KEYBOARD);
 					enableBindingCapture = false;
 				}else if(event.type == SDL_JOYBUTTONDOWN){
-					
+
 					kb0 = KeyBinding(0, event.jbutton.button, event.jbutton.which, proposedID, Devicetype.JOYSTICK);
 					enableBindingCapture = false;
 				}else if(event.type == SDL_JOYHATMOTION){
@@ -167,7 +167,7 @@ public class InputHandler : TextInputHandler{
 							}
 						}
 					}
-					
+
 					if(delOldOnEvent && delConflKeys){
 						KeyBinding[] kb1;
 						for(int i; i < kb.length; i++){
@@ -191,19 +191,45 @@ public class InputHandler : TextInputHandler{
 						}
 					}else{
 						switch(event.key.keysym.scancode){
-							case ScanCode.ENTER, ScanCode.ENTER2, ScanCode.NP_ENTER: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ENTER); break;
-							case SDL_SCANCODE_ESCAPE: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ESCAPE); break;
-							case SDL_SCANCODE_BACKSPACE: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.BACKSPACE); break;
-							case SDL_SCANCODE_UP: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORUP); break;
-							case SDL_SCANCODE_DOWN: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORDOWN); break;
-							case SDL_SCANCODE_LEFT: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORLEFT); break;
-							case SDL_SCANCODE_RIGHT: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORRIGHT); break;
-							case SDL_SCANCODE_INSERT: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.INSERT); break;
-							case SDL_SCANCODE_DELETE: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.DELETE); break;
-							case SDL_SCANCODE_HOME: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.HOME); break;
-							case SDL_SCANCODE_END: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.END); break;
-							case SDL_SCANCODE_PAGEUP: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PAGEUP); break;
-							case SDL_SCANCODE_PAGEDOWN: tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PAGEDOWN); break;
+							case SDL_SCANCODE_RETURN, SDL_SCANCODE_RETURN2, SDL_SCANCODE_KP_ENTER:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ENTER);
+								break;
+							case SDL_SCANCODE_ESCAPE:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.ESCAPE);
+								break;
+							case SDL_SCANCODE_BACKSPACE:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.BACKSPACE);
+								break;
+							case SDL_SCANCODE_UP:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORUP);
+								break;
+							case SDL_SCANCODE_DOWN:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORDOWN);
+								break;
+							case SDL_SCANCODE_LEFT:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORLEFT);
+								break;
+							case SDL_SCANCODE_RIGHT:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CURSORRIGHT);
+								break;
+							case SDL_SCANCODE_INSERT:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.INSERT);
+								break;
+							case SDL_SCANCODE_DELETE:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.DELETE);
+								break;
+							case SDL_SCANCODE_HOME:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.HOME);
+								break;
+							case SDL_SCANCODE_END:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.END);
+								break;
+							case SDL_SCANCODE_PAGEUP:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PAGEUP);
+								break;
+							case SDL_SCANCODE_PAGEDOWN:
+								tiSelect.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PAGEDOWN);
+								break;
 							default: break;
 						}
 					}
@@ -217,9 +243,10 @@ public class InputHandler : TextInputHandler{
 						}
 					}
 					break;
-				case SDL_TEXTINPUT:	 
+				case SDL_TEXTINPUT:
 					if(tiEnable){
-						tiSelect.textInputEvent(event.text.timestamp, event.text.windowID, event.text.text);
+						import std.utf : toUTF32;
+						tiSelect.textInputEvent(event.text.timestamp, event.text.windowID, toUTF32(event.text.text.idup));
 					}
 					break;
 				case SDL_JOYBUTTONDOWN:
@@ -252,7 +279,7 @@ public class InputHandler : TextInputHandler{
 						}
 					}
 					break;
-				case SDL_MOUSEBUTTONDOWN: 
+				case SDL_MOUSEBUTTONDOWN:
 					invokeMouseEvent(event.button.which, event.button.timestamp, event.button.windowID, event.button.button, event.button.state, event.button.clicks, event.button.x, event.button.y);
 					break;
 				case SDL_MOUSEBUTTONUP:
@@ -293,7 +320,7 @@ public class InputHandler : TextInputHandler{
 		}
 
 	}
-	
+
 	private void invokeKeyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
 		foreach(i; il){
 			if(i)
@@ -375,7 +402,7 @@ public class InputHandler : TextInputHandler{
 	}
 	public void removeTextInputListener(TextInputListener tl){
 		//tl.remove(ID);
-		
+
 	}*/
 	/*
 	 * Converts between SDL and PPE key modificators.
@@ -392,9 +419,9 @@ public class InputHandler : TextInputHandler{
 	 * bit 9: Left OSKey
 	 * bit 10: Right OSKey
 	 * bit 11: Any OSKey
-	 * bit 12: NumLock 
+	 * bit 12: NumLock
 	 * bit 13: CapsLock
-	 * bit 14: 
+	 * bit 14:
 	 */
 }
 
@@ -474,7 +501,7 @@ public interface MouseListener{
 }
 
 public interface TextInputListener{
-	public void textInputEvent(uint timestamp, uint windowID, char[32] text);
+	public void textInputEvent(uint timestamp, uint windowID, dstring text);
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0);
 	//public void textSelectionEvent(uint timestamp, uint window, int action);
 	//public void textClipboardEvent(uint timestamp, uint window, wstring text);

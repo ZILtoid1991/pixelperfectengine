@@ -15,7 +15,7 @@ import std.parallelism;
 //import system.etc;
 import PixelPerfectEngine.system.exc;
 //import std.algorithm;
-import derelict.sdl2.sdl;
+import bindbc.sdl;
 import core.stdc.stdlib;
 //import std.range;
 import CPUblit.composing;
@@ -26,7 +26,9 @@ import conv = std.conv;
 version(LDC){
 	import inteli.emmintrin;
 }
-
+@nogc void localBlt(uint* src, uint* dest, size_t length){
+	blitter(src, dest, length);
+}
 /**
  * The basis of all layer classes, containing functions for rendering.
  * TODO: Move rendering functions to an external library.
@@ -58,7 +60,7 @@ abstract class Layer {
 				mainRenderingFunction = &alphaBlend32bit;
 				break;
 			case LayerRenderingMode.BLITTER:
-				mainRenderingFunction = &blitter32bit;
+				mainRenderingFunction = &localBlt;
 				break;
 			default:
 				mainRenderingFunction = &copy32bit;
