@@ -7,6 +7,7 @@ __dummy.html
 *.exe
 *.ps1
 *.pdb
+*.old
 system/
 pixelperfecteditor/bin/
 pixelperfectengine/lib/

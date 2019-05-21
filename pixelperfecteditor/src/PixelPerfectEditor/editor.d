@@ -22,23 +22,26 @@ import PixelPerfectEngine.system.config;
 import PixelPerfectEngine.system.systemUtility;
 import std.stdio;
 import std.conv;
+import core.stdc.string : memcpy;
 //import derelict.sdl2.sdl;
 import bindbc.sdl;
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.concrete.eventChainSystem;
 import PixelPerfectEngine.map.mapload;
 
-import converterdialog;
-import tileLayer;
-import newLayerDialog;
+//import converterdialog;
+//import newLayerDialog;
 import about;
 import editorEvents;
-//import bmfontimport;
+import layerlist;
+import materialList;
+import document;
+import rasterWindow;
 
 public interface IEditor{
 	public void onExit();
 	public void newDocument();
-	public void newLayer();
+	//public void newLayer();
 	public void xmpToolkit();
 	public void passActionEvent(Event e);
 	public void createNewDocument(dstring name, int rX, int rY, int pal);
@@ -86,12 +89,13 @@ public class NewDocumentDialog : Window{
 
 public class EditorWindowHandler : WindowHandler, ElementContainer{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
-	private ListBox layerList, prop;
+	//private ListBox layerList, prop;
 	//private ListBoxColumn[] propTL, propSL, propSLE;
 	//private ListBoxColumn[] layerListE;
 	public Label[] labels;
 	private int[] propTLW, propSLW, propSLEW;
 	public IEditor ie;
+	public bool layerList, materialList;
 
 	//public InputHandler ih;
 
@@ -104,6 +108,12 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		propSLW = [160, 320, 48, 64];
 		propSLEW = [160, 320, 40, 56];
 		WindowElement.popUpHandler = this;
+	}
+	private void onLayerListClose(){
+		layerList = false;
+	}
+	private void onMaterialListClose(){
+		materialList = false;
 	}
 	public void clearArea(WindowElement sender){
 
@@ -137,8 +147,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		menuElements ~= new PopUpMenuElement("view", "VIEW");
 
 		menuElements[2].setLength(2);
-		menuElements[2][0] = new PopUpMenuElement("layerList", "Layer list", "Alt + L");
-		menuElements[2][1] = new PopUpMenuElement("layerTools", "Layer tools", "Alt + T");
+		menuElements[2][0] = new PopUpMenuElement("layerList", "Layers", "Alt + L");
+		menuElements[2][1] = new PopUpMenuElement("materialList", "Materials", "Alt + M");
+		//menuElements[2][2] = new PopUpMenuElement("layerTools", "Layer tools", "Alt + T");
 
 		menuElements ~= new PopUpMenuElement("layers", "LAYERS");
 
@@ -194,16 +205,12 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 
 
 	public void actionEvent(Event event){
-		writeln(event.source);
 		switch(event.source){
 			case "exit":
 				ie.onExit;
 				break;
 			case "new":
 				ie.newDocument;
-				break;
-			case "newL":
-				ie.newLayer;
 				break;
 			case "xmpTool":
 				ie.xmpToolkit();
@@ -213,8 +220,15 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 				addWindow(w);
 				w.relMove(30,30);
 				break;
-			case "bmfontimport":
-				//addWindow(new BMFontImport());
+			case "layerList":
+				if(!layerList)
+					addWindow(new LayerList(848 - 98, 16, &onLayerListClose));
+				layerList = true;
+				break;
+			case "materialList":
+				if(!materialList)
+					addWindow(new MaterialList(848 - 98, 16 + 213, &onMaterialListClose));
+				materialList = true;
 				break;
 			default:
 				ie.passActionEvent(event);
@@ -257,9 +271,9 @@ public enum PlacementMode : uint{
 
 }
 
-public class Editor : InputListener, MouseListener, IEditor, SystemEventListener, NewLayerDialogListener{
+public class Editor : InputListener, MouseListener, IEditor, SystemEventListener {
 	public OutputScreen[] ow;
-	public Raster[] rasters;
+	public Raster rasters;
 	public InputHandler input;
 	public TileLayer[int] backgroundLayers;
 	//public TileLayer8Bit[int] backgroundLayers8;
@@ -271,10 +285,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public SpriteLayer windowing;
 	public SpriteLayer bitmapPreview;
 	public bool onexit, exitDialog, newLayerDialog, mouseState, rasterRefresh;
-	public WindowElement[] elements;
 	public Window test;
 	public EditorWindowHandler wh;
-	public ExtendibleMap document;
 	public EffectLayer selectionLayer;
 	//public ForceFeedbackHandler ffb;
 	private uint[5] framecounter;
@@ -285,68 +297,11 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public PlacementMode pm;
 	public UndoableStack undoStack;
 	public PaletteManager palman;
+	public MapDocument[dstring] documents;
+	public MapDocument selDoc;
 
 	public void mouseButtonEvent(Uint32 which, Uint32 timestamp, Uint32 windowID, Uint8 button, Uint8 state, Uint8 clicks, Sint32 x, Sint32 y){
-		//writeln(windowID);
-		x /= 2;
-		y /= 2;
-		if(windowID == 2){
-			if(button == MouseButton.LEFT){//placement
-				if(state == ButtonState.PRESSED && !mouseState){
-					mouseX = x;
-					mouseY = y;
-					mouseState = true;
-				}else if(mouseState){
-					mouseState = false;
-					if(mouseX == x && mouseY == y){//single placement
-						if(layers[selectedLayer].classinfo == typeid(TileLayer)){
-							TileLayer tl = cast(TileLayer)(layers[selectedLayer]);
-							int targetX = (x + tl.getSX()) / tl.getTileWidth();
-							int targetY = (y + tl.getSY()) / tl.getTileHeight();
-							if(targetX >= 0 && targetY >= 0 && targetX < tl.getMX && targetY < tl.getMY){
-								if(pm == PlacementMode.NORMAL || (pm == PlacementMode.VOIDFILL && tl.readMapping(targetX,targetY).tileID == 0xFFFF
-															|| (pm == PlacementMode.OVERWRITE))){
-									undoStack.addToTop(new WriteToMapSingle(cast(ITileLayer)(layers[selectedLayer]), x, y, MappingElement(selectedTile, selectedTileAttrib)));
-								}
-							}
-						}else{//sprite placement
 
-						}
-					}else{		//select or region fill
-						Coordinate c = Coordinate();
-						if(mouseX>x){
-							c.left = x;
-							c.right = mouseX;
-						}else{
-							c.left = mouseX;
-							c.right = x;
-						}
-						if(mouseY>y){
-							c.top = y;
-							c.bottom = mouseY;
-						}else{
-							c.top = mouseY;
-							c.bottom = y;
-						}
-						if(layers[selectedLayer].classinfo == typeid(TileLayer)){
-							TileLayer tl = cast(TileLayer)(layers[selectedLayer]);
-							c.left = (c.left + tl.getSX()) / tl.getTileWidth();
-							c.right = (c.right + tl.getSX()) / tl.getTileWidth();
-							c.top = (c.top + tl.getSY()) / tl.getTileHeight();
-							c.bottom = (c.bottom + tl.getSY()) / tl.getTileHeight();
-							//Fill
-							if(pm == PlacementMode.VOIDFILL){
-								undoStack.addToTop(new WriteToMapVoidFill(cast(ITileLayer)(layers[selectedLayer]), c, MappingElement(selectedTile, selectedTileAttrib)));
-							}else{
-								undoStack.addToTop(new WriteToMapOverwrite(cast(ITileLayer)(layers[selectedLayer]), c, MappingElement(selectedTile, selectedTileAttrib)));
-							}
-						}
-					}
-				}
-			}else if(button == MouseButton.MID){//deletion
-
-			}
-		}
 		setRasterRefresh;
 	}
 	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){
@@ -395,12 +350,12 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				wh.addWindow(fd);
 				break;
 			case "newLayer":
-				NewLayerDialog nld = new NewLayerDialog(this);
-				wh.addWindow(nld);
+				//NewLayerDialog nld = new NewLayerDialog(this);
+				//wh.addWindow(nld);
 				break;
 			case "layerTools":
-				TileLayerEditor tle = new TileLayerEditor(this);
-				wh.addWindow(tle);
+				//TileLayerEditor tle = new TileLayerEditor(this);
+				//wh.addWindow(tle);
 				break;
 			default: break;
 		}
@@ -437,7 +392,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 					case "docLoad":
 						string path = event.path;
 						path ~= event.filename;
-						document = new ExtendibleMap(path);
+						//document = new ExtendibleMap(path);
 						break;
 					default: break;
 				}
@@ -450,7 +405,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
 	public void xmpToolkit(){
-		wh.addWindow(new ConverterDialog(input,bitmapPreview));
+		//wh.addWindow(new ConverterDialog(input,bitmapPreview));
 	}
 	/*public void placeObject(int x, int y){
 		if(backgroundLayers.get(selectedLayer, null) !is null){
@@ -477,7 +432,64 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 
 		//Initialize the Concrete framework
 		INIT_CONCRETE(wh);
-
+		//Initialize custom GUI elements
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE1.tga", 16, 16);
+			WindowElement.styleSheet.setImage(customGUIElems[0], "menuButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[1], "menuButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[2], "fullSizeButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[3], "fullSizeButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[4], "smallSizeButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[5], "smallSizeButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[6], "newDocumentButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[7], "newDocumentButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[8], "saveDocumentButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[9], "saveDocumentButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[10], "loadDocumentButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[11], "loadDocumentButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[12], "settingsButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[13], "settingsButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[14], "blankButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[15], "blankButtonB");
+		}
+		/+{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE2.tga");
+			WindowElement.styleSheet.setImage(customGUIElems[0], "");
+			WindowElement.styleSheet.setImage(customGUIElems[1], "");
+			WindowElement.styleSheet.setImage(customGUIElems[2], "");
+			WindowElement.styleSheet.setImage(customGUIElems[3], "");
+			WindowElement.styleSheet.setImage(customGUIElems[4], "");
+			WindowElement.styleSheet.setImage(customGUIElems[5], "");
+			WindowElement.styleSheet.setImage(customGUIElems[6], "");
+			WindowElement.styleSheet.setImage(customGUIElems[7], "");
+			WindowElement.styleSheet.setImage(customGUIElems[8], "");
+			WindowElement.styleSheet.setImage(customGUIElems[9], "");
+			WindowElement.styleSheet.setImage(customGUIElems[10], "");
+			WindowElement.styleSheet.setImage(customGUIElems[11], "");
+			WindowElement.styleSheet.setImage(customGUIElems[12], "");
+			WindowElement.styleSheet.setImage(customGUIElems[13], "");
+			WindowElement.styleSheet.setImage(customGUIElems[14], "");
+			WindowElement.styleSheet.setImage(customGUIElems[15], "");
+		}+/
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE3.tga", 16, 16);
+			WindowElement.styleSheet.setImage(customGUIElems[0], "trashButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[1], "trashButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[2], "visibilityButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[3], "visibilityButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[4], "newTileLayerButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[5], "newTileLayerButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[6], "newSpriteLayerButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[7], "newSpriteLayerButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[8], "newTransformableTileLayerButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[9], "newTransformableTileLayerButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[10], "importMaterialDataButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[11], "importMaterialDataButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[12], "importLayerDataButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[13], "importLayerDataButtonB");
+			/+WindowElement.styleSheet.setImage(customGUIElems[14], "");
+			WindowElement.styleSheet.setImage(customGUIElems[15], "");+/
+		}
 
 		wh.initGUI();
 
@@ -495,53 +507,44 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		//OutputWindow.setDriver("software");
 		ow ~= new OutputScreen("Pixel Perfect Editor", 1696, 960);
 
-		rasters ~= new Raster(848, 480, ow[0], 0);
-		ow[0].setMainRaster(rasters[0]);
-		rasters[0].addLayer(windowing, 0);
-		rasters[0].addLayer(bitmapPreview, 1);
-		//rasters[0].setupPalette(512);
-		//loadPaletteFromFile("VDPeditUI0.pal", guiR);
-		//load24bitPaletteFromFile("VDPeditUI0.pal", rasters[0]);
-		//loadPaletteFromXMP(ssOrigin, "default", rasters[0]);
-		rasters[0].palette = [Color(0x00,0x00,0x00,0x00),	//transparent
-	Color(0xFF,0xFF,0xFF,0xFF),		//normaltext
-	Color(0xFF,0x77,0x77,0x77),		//window
-	Color(0xFF,0xCC,0xCC,0xCC),		//windowascent
-	Color(0xFF,0x33,0x33,0x33),		//windowdescent
-	Color(0xff,0x22,0x22,0x22),		//windowinactive
-	Color(0xff,0xff,0x00,0x00),		//selection
-	Color(0xFF,0x77,0x77,0xFF),		//WHAascent
-	Color(0xFF,0x00,0x00,0x77),		//WHAdescent
-	Color(0xFF,0x00,0x00,0xDD),		//WHAtop
-	Color(0xFF,0x00,0x00,0xFF),
-	Color(0xFF,0x00,0x00,0x7F),
-	Color(0xFF,0x22,0x22,0x22),
-	Color(0xFF,0x22,0x22,0x22),
-	Color(0xFF,0x7F,0x7F,0x7F),
-	Color(0xFF,0x00,0x00,0x00)];
-
-		writeln(rasters[0].palette);
+		rasters = new Raster(848, 480, ow[0], 0);
+		ow[0].setMainRaster(rasters);
+		rasters.addLayer(windowing, 0);
+		rasters.addLayer(bitmapPreview, 1);
+		//ISSUE: Copying the palette from StyleSheet.defaultPaletteForGUI doesn't work
+		//SOLUTION: Load the palette from a file
+		rasters.palette = loadPaletteFromFile("../system/concreteGUIE1.tga");
 		//rasters[0].addRefreshListener(ow[0],0);
 		WindowElement.onDraw = &setRasterRefresh;
 		PopUpElement.onDraw = &setRasterRefresh;
 		Window.onDrawUpdate = &setRasterRefresh;
 	}
+	/**
+	 * Opens a window to aks the user for the data on the new tile layer
+	 */
+	public void initNewTileLayer(){
+
+	}
+	/**
+	 * Creates a new tile layer with the given data.
+	 *
+	 * file: Optional field. If given, it specifies the external file for binary map data. If it specifies an already
+	 * existing file, then that file will be loaded. If null, then the map data will be embedded as a BASE64 chunk.
+	 * tmplt: Optional field. Specifies the initial tile source data from a map file alongside with the name of the layer
+	 */
+	public void newTileLayer(int pos, int tX, int tY, int mX, int mY, string name, string file, string tmplt){
+
+	}
 	public void setRasterRefresh(){
 		rasterRefresh = true;
 	}
 	public void whereTheMagicHappens(){
-		rasters[0].refresh();
+		//rasters.refresh();
 		while(!onexit){
 			input.test();
-			if(rasterRefresh){
-				rasters[0].refresh();
-				//rasterRefresh = false;
-			}
-			if(rasters.length == 2){
-				rasters[1].refresh();
-			}
-			//rudamentaryFrameCounter();
-			//onexit = true;
+
+			rasters.refresh();
+
 		}
 		configFile.store();
 	}
@@ -561,239 +564,10 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		wh.addWindow(ndd);
 	}
 	public void createNewDocument(dstring name, int rX, int rY, int pal){
-		ow ~= new OutputScreen("Edit window", to!ushort(rX*2),to!ushort(rY*2));
-		rasters ~= new Raster(to!ushort(rX), to!ushort(rY), ow[1]);
-		rasters[1].setupPalette(pal);
-		ow[1].setMainRaster(rasters[1]);
-		selectionLayer = new EffectLayer();
-		rasters[1].addLayer(selectionLayer, 65536);
-		document = new ExtendibleMap();
-		document.metaData["name"] = to!string(name);
-		document.metaData["rX"] = to!string(rX);
-		document.metaData["rY"] = to!string(rY);
-		document.metaData["pal"] = to!string(pal);
-	}
-
-	public void newLayer(){
-		if(document !is null){
-			NewLayerDialog ndd = new NewLayerDialog(this);
-			wh.addWindow(ndd);
-		}
-	}
-	private void updateLayerList(){
-
-	}
-	public void newTileLayerEvent(string name, string file, bool embed, bool preexisting, int tX, int tY, int mX, int mY){
-		import std.path;
-		TileLayer tl = new TileLayer(tX, tY, LayerRenderingMode.ALPHA_BLENDING);
-
-		while(layers.get(selectedLayer, null)){
-			selectedLayer++;
-		}
-		TileLayerData tld;
-		if(preexisting && !embed){
-			//tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, MapData.load(file), name);
-		}else if(!preexisting && embed){
-			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, name);
-		}else if(!preexisting && !embed){
-			tld = new TileLayerData(tX, tY, mX, mY, 1.0, 1.0, selectedLayer, name);
-			//tld.mapping.save(file);
-		}else if(extension(file) == ".xmf"){
-			wh.messageWindow("Error"d, "Function of importing embedded mapping from *.xmf files not yet implemented"d, 320);
-			return;
-		}
-		tld.isEmbedded = embed;
-		//tl.loadMapping(mX,mY,tld.mapping.getCharMapping(),tld.mapping.getAttribMapping());
-		layers[selectedLayer] = tl;
-		if(rasters.length > 1){
-			rasters[1].addLayer(tl,selectedLayer);
-		}
-	}
-	public void newSpriteLayerEvent(string name){
-		SpriteLayer sl = new SpriteLayer();
-
-		while(layers.get(selectedLayer, null)){
-			selectedLayer++;
-		}
-		SpriteLayerData sld = new SpriteLayerData(name, 1.0, 1.0, selectedLayer);
-		layers[selectedLayer] = sl;
-		if(rasters.length > 1){
-			rasters[1].addLayer(sl,selectedLayer);
-		}
-	}
-	public void importTileLayerSymbolData(string file){
-
-	}
-	public int getPreviousTileLayer(int pri){
-		import std.algorithm.sorting;
-		int[] list = document.tld.keys;
-		list.sort();
-		int n, i;
-		for( ; i < list.length ; i++){
-			if(pri == list[i]){
-				n = list[i];
-				break;
-			}
-		}
-		selectedLayer--;
-		if(i == 0){
-			return n;
-		}else{
-			return list[i - 1];
-		}
-	}
-	public int getNextTileLayer(int pri){
-		import std.algorithm.sorting;
-		int[] list = document.tld.keys;
-		list.sort();
-		int n, i;
-		for( ; i < list.length ; i++){
-			if(pri == list[i]){
-				n = list[i];
-				break;
-			}
-		}
-		selectedLayer++;
-		if(i == list.length - 1){
-			return n;
-		}else{
-			return list[i + 1];
-		}
-	}
-	public int moveLayerDown(int pri){
-		selectedLayer--;
-		import std.algorithm.sorting;
-		int[] list = layers.keys;
-		list.sort();
-		int n, i;
-		for( ; i < list.length ; i++){
-			if(pri == list[i]){
-				n = list[i];
-				break;
-			}
-		}
-		if(i == 0){
-			Layer l = layers[n];
-			layers[n] = layers[n - 1];
-			if(document.tld.get(n, null)){
-				document.tld[n - 1] = document.tld[n];
-				document.tld.remove(n);
-				document.tld[n - 1].priority -= 1;
-			}else{
-				document.sld[n - 1] = document.sld[n];
-				document.sld.remove(n);
-				document.sld[n - 1].priority -= 1;
-			}
-			n--;
-			return n;
-		}
-		if(list[i - 1] == n - 1){	//swap two layers
-			Layer l = layers[n];
-			layers[n] = layers[n - 1];
-			if(document.tld.get(n, null)){
-				document.tld[n - 1] = document.tld[n];
-				document.tld.remove(n);
-				document.tld[n - 1].priority -= 1;
-			}else{
-				document.sld[n - 1] = document.sld[n];
-				document.sld.remove(n);
-				document.sld[n - 1].priority -= 1;
-			}
-			n--;
-			layers[n] = l;
-			if(document.tld.get(n, null)){
-				document.tld[n + 1] = document.tld[n];
-				document.tld.remove(n);
-				document.tld[n + 1].priority += 1;
-			}else{
-				document.sld[n + 1] = document.sld[n];
-				document.sld.remove(n);
-				document.sld[n + 1].priority += 1;
-			}
-		}else{						//lower the priority of the current layer
-			Layer l = layers[n];
-			layers.remove(n);
-			if(document.tld.get(n, null)){
-				document.tld[n - 1] = document.tld[n];
-				document.tld.remove(n);
-				document.tld[n - 1].priority -= 1;
-			}else{
-				document.sld[n - 1] = document.sld[n];
-				document.sld.remove(n);
-				document.sld[n - 1].priority -= 1;
-			}
-			n--;
-			layers[n] = l;
-
-		}
-		return n;
-	}
-	public int moveLayerUp(int pri){
-		selectedLayer++;
-		import std.algorithm.sorting;
-		int[] list = layers.keys;
-		list.sort();
-		int n, i;
-		for( ; i < list.length ; i++){
-			if(pri == list[i]){
-				n = list[i];
-				break;
-			}
-		}
-		if(i == list.length - 1){
-			Layer l = layers[n];
-			layers[n] = layers[n - 1];
-			if(document.tld.get(n, null)){
-				document.tld[n - 1] = document.tld[n];
-				document.tld.remove(n);
-				document.tld[n - 1].priority -= 1;
-			}else{
-				document.sld[n - 1] = document.sld[n];
-				document.sld.remove(n);
-				document.sld[n - 1].priority -= 1;
-			}
-			n--;
-			return n;
-		}
-		if(list[i + 1] == n + 1){	//swap two layers
-			Layer l = layers[n];
-			layers[n] = layers[n + 1];
-			if(document.tld.get(n, null)){
-				document.tld[n + 1] = document.tld[n];
-				document.tld.remove(n);
-				document.tld[n + 1].priority += 1;
-			}else{
-				document.sld[n + 1] = document.sld[n];
-				document.sld.remove(n);
-				document.sld[n + 1].priority += 1;
-			}
-			n++;
-			layers[n] = l;
-			if(document.tld.get(n, null)){
-				document.tld[n - 1] = document.tld[n];
-				document.tld.remove(n);
-				document.tld[n - 1].priority -= 1;
-			}else{
-				document.sld[n - 1] = document.sld[n];
-				document.sld.remove(n);
-				document.sld[n - 1].priority -= 1;
-			}
-		}else{						//higher the priority of the current layer
-			Layer l = layers[n];
-			layers.remove(n);
-			if(document.tld.get(n, null)){
-				document.tld[n + 1] = document.tld[n];
-				document.tld.remove(n);
-				document.tld[n + 1].priority += 1;
-			}else{
-				document.sld[n + 1] = document.sld[n];
-				document.sld.remove(n);
-				document.sld[n + 1].priority += 1;
-			}
-			n++;
-			layers[n] = l;
-
-		}
-		return n;
+		MapDocument md = new MapDocument();
+		Window w = new RasterWindow(rX, rY, rasters.palette.ptr, name, md);
+		wh.addWindow(w);
+		documents[name] = md;
+		selDoc = md;
 	}
 }

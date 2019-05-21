@@ -438,12 +438,15 @@ public class TextBox : WindowElement, TextInputListener{
 
 		//draw cursor
 		if(enableEdit){
-			const int x = getAvailableStyleSheet().getFontset("default").chars[' '].xadvance ,
+			const int x = getAvailableStyleSheet().getFontset("default").getTextLength(text[0..pos]) ,
 					y = getAvailableStyleSheet().getFontset("default").getSize;
-			if(!insert)
-				output.drawLine((x*pos) + 2, (x*pos) + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
-			else
-				output.drawFilledRectangle((x*pos) + 2, (x * (pos + 1)) + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
+			if(!insert){
+				output.drawLine(x + 2, x + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
+			}else{
+				const int x0 = pos == text.length ? x + getAvailableStyleSheet().getFontset("default").chars[' '].xadvance :
+						getAvailableStyleSheet().getFontset("default").getTextLength(text[0..pos + 1]);
+				output.drawFilledRectangle(x + 2, x0 + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
+			}
 		}
 
 		output.drawColorText(2, 2, text, getAvailableStyleSheet().getFontset("default"),
@@ -591,27 +594,12 @@ public class ListBox : WindowElement, ElementContainer{
 
 		output = new BitmapDrawer(position.width, position.height);
 
-		/*int foo = cast(uint)(rowHeight * this.items.length);
-		if(foo < position.height())
-			foo = position.width();*/
+
 		this.enableTextInput = enableTextInput;
 		//inputHandler.addTextInputListener(source, this);
 
 	}
-	/*~this(){
-		if(!(inputHandler is null))
-			inputHandler.removeTextInputListener(source);
-	}*/
-	/*public void actionEvent(Event event){
-		if(event.source == "textInput"){
-			items[selection].setText(selectedColumn, event.text);
-			invokeActionEvent(new Event(source, null, null, null, event.text, selection,EventType.TEXTINPUT, items[selection]));
-			updateColumns();
-			draw();
-		}else{
-			draw();
-		}
-	}*/
+
 	private void textInput(Event ev){
 		items[selection].setText(selectedColumn, ev.text);
 		//invokeActionEvent(new Event(source, null, null, null, event.text, selection,EventType.TEXTINPUT, items[selection]));
@@ -751,7 +739,7 @@ public class ListBox : WindowElement, ElementContainer{
 			headerArea.drawColorText(foo + 1, 0, header.getText(i), getStyleSheet().getFontset("default"),
 					getAvailableStyleSheet().getColor("normaltext"), 0);
 			foo += header.getColumnWidth(i);
-			headerArea.drawLine(foo, foo, 0, rowHeight - 2, getStyleSheet().getColor("windowascent"));
+			headerArea.drawLine(foo, foo, 0, rowHeight, getStyleSheet().getColor("windowascent"));
 		}
 
 		output.insertBitmapSlice(0,0,headerArea.output,Coordinate(hposition,0,hposition + position.width() - 17,
@@ -760,7 +748,7 @@ public class ListBox : WindowElement, ElementContainer{
 		//draw the selector
 		if(selection - vposition >= 0 && vposition + ((position.height()-17-rowHeight) / rowHeight) >= selection &&
 				items.length != 0)
-			output.drawFilledRectangle(1, position.width() - 2, rowHeight + (rowHeight * (selection - vposition)),
+			output.drawFilledRectangle(1, position.width() - 2, 1 + rowHeight + (rowHeight * (selection - vposition)),
 					(rowHeight * 2) + (rowHeight * (selection - vposition)), getStyleSheet().getColor("selection"));
 
 		// draw the body
@@ -1727,12 +1715,15 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 
 		//draw cursor
 		if(enableEdit){
-			const int x = getStyleSheet().getFontset("default").chars[' '].xadvance ,
+			const int x = getStyleSheet().getFontset("default").getTextLength(text[0..textPos]) ,
 					y = getStyleSheet().getFontset("default").getSize;
-			if(!insert)
-				output.drawLine((x*textPos) + 2, (x*textPos) + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
-			else
-				output.drawFilledRectangle((x*textPos) + 2, (x*(textPos + 1)) + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
+			if(!insert){
+				output.drawLine(x + 2, x + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
+			}else{
+				const int x0 = textPos == text.length ? x + getStyleSheet().getFontset("default").chars[' '].xadvance :
+						getStyleSheet().getFontset("default").getTextLength(text[0..textPos + 1]);
+				output.drawFilledRectangle(x + 2, x0 + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
+			}
 		}
 
 		output.drawColorText(2, 2, text, getStyleSheet().getFontset("default"), getStyleSheet().getColor("normaltext"), 0);

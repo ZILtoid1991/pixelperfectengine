@@ -77,6 +77,9 @@ public class Window : ElementContainer{
 		//closeButton = 2;
 		this.extraButtons = extraButtons;
 	}
+	public void addElement(WindowElement we){
+		addElement(we, EventProperties.MOUSE | EventProperties.SCROLL);
+	}
 	/**
 	 * Adds a new WindowElement with the given event properties.
 	 */
@@ -187,7 +190,7 @@ public class Window : ElementContainer{
 		const int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().getImage("closeButtonA").height;
 		int x2 = position.width;
 		int headerLength = cast(int)(extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 -
-				((extraButtons.length>>1) * x1));
+				(extraButtons.length * x1));
 		foreach(s ; extraButtons){
 			x2 -= x1;
 			output.insertBitmap(x2,0,getStyleSheet().getImage(s));
@@ -411,7 +414,7 @@ public class DefaultDialog : Window{
 		//generate text
 		this.source = source;
 		int x1, x2, y1 = 20, y2 = getStyleSheet.drawParameters["TextSpacingTop"] + getStyleSheet.drawParameters["TextSpacingBottom"]
-								+ getStyleSheet.getFontset(getStyleSheet.fontTypes["default"]).getSize;
+								+ getStyleSheet.getFontset("default").getSize;
 		//Label msg = new Label(message[0], "null", Coordinate(5, 20, size.width()-5, 40));
 		//addElement(msg, EventProperties.MOUSE);
 
@@ -457,7 +460,7 @@ public class DefaultDialog : Window{
 }
 /**
  * File dialog window for opening files.
- * TODO: rewrite for new event handling system.
+ * Returns the selected filetype as an int value of the position of the types that were handled to the ctor.
  */
 public class FileDialog : Window{
 	/**
@@ -465,7 +468,7 @@ public class FileDialog : Window{
 	 */
 	public struct FileAssociationDescriptor{
 		public dstring description;		/// Describes the file type. Eg. "PPE map files"
-		public string[] types;			/// The extensions associated with a given file format. Eg. ["*.htm","*.html"]. First is preferred one at saving.
+		public string[] types;			/// The extensions associated with a given file format. Eg. ["*.htm","*.html"]. First is preferred one at saving, if no filetype is described when typing.
 		/**
 		 * Creates a single FileAssociationDescriptor
 		 */
@@ -499,6 +502,11 @@ public class FileDialog : Window{
 	public static const string subsourceID = "filedialog";
 	private int selectedType;
 	public void delegate(Event ev) onFileselect;
+	private Button button_up;
+	private Button button_drv;
+	private Button button_ok;
+	private Button button_close;
+	private Button button_type;
 
 	/**
 	 * Creates a file dialog with the given parameters.
@@ -513,36 +521,43 @@ public class FileDialog : Window{
 		this.onFileselect = onFileselect;
 		//al = a;
 		directory = startDir;
-		//generate buttons
-		Button[] buttons;
-		buttons ~= new Button("Up","up",Coordinate(4, 154, 54, 174));
-		buttons ~= new Button("Drive","drv",Coordinate(58, 154, 108, 174));
-		if(save)
-			buttons ~= new Button("Save","ok",Coordinate(112, 154, 162, 174));
-		else
-			buttons ~= new Button("Load","ok",Coordinate(112, 154, 162, 174));
-		buttons ~= new Button("Close","close",Coordinate(166, 154, 216, 174));
-		buttons ~= new Button("Type","type",Coordinate(166, 130, 216, 150));
-		for(int i; i < buttons.length; i++){
+
+		button_up = new Button("Up"d,"up",Coordinate(4, 154, 54, 174));
+		button_up.onMouseLClickRel = &up;
+		addElement(button_up);
+		button_drv = new Button("Drive"d,"drv",Coordinate(58, 154, 108, 174));
+		button_up.onMouseLClickRel = &changeDrive;
+		addElement(button_drv);
+		button_ok = new Button(save ? "Save"d : "Load"d,"ok",Coordinate(112, 154, 162, 174));
+		button_ok.onMouseLClickRel = &fileEvent;
+		addElement(button_ok);
+		button_close = new Button("Close"d,"close",Coordinate(166, 154, 216, 174));
+		button_close.onMouseLClickRel = &button_close_onMouseLClickRel;
+		addElement(button_close);
+		button_type = new Button("Type","type",Coordinate(166, 130, 216, 150));
+		button_type.onMouseLClickRel = &button_type_onMouseLClickRel;
+		addElement(button_type);
+		/+for(int i; i < buttons.length; i++){
 			buttons[i].onMouseLClickRel = &actionEvent;
 			addElement(buttons[i], EventProperties.MOUSE);
-		}
+		}+/
 		//generate textbox
 		tb = new TextBox(to!dstring(filename), "filename", Coordinate(4, 130, 162, 150));
 		//tb.addTextInputHandler(tih);
-		tb.onTextInput = &actionEvent;
+		//tb.onTextInput = &actionEvent;
 		addElement(tb, EventProperties.MOUSE);
 		//generate listbox
 
 		//test parameters
 
 		//Date format: yyyy-mm-dd hh:mm:ss
-		lb = new ListBox("lb", Coordinate(4, 20, 216, 126),null, new ListBoxHeader(["Name", "Type", "Date"], [160, 40, 176]) ,15);
-
+		lb = new ListBox("lb", Coordinate(4, 20, 216, 126),null, new ListBoxHeader(["Name", "Type", "Date"], [160, 40, 176]),
+				15);
+		lb.onItemSelect = &listBox_onItemSelect;
 		addElement(lb, EventProperties.MOUSE | EventProperties.SCROLL);
 		spanDir();
 		//scrollC ~= lb;
-		lb.onItemSelect = &actionEvent;
+		//lb.onItemSelect = &actionEvent;
 		detectDrive();
 	}
 
@@ -644,7 +659,7 @@ public class FileDialog : Window{
 	/**
 	 * Called when the up button is pressed. Goes up in the folder hiearchy.
 	 */
-	private void up(){
+	private void up(Event ev){
 		int n;
 		for(int i ; i < directory.length ; i++){
 			if(std.path.isDirSeparator(directory[i])){
@@ -662,7 +677,7 @@ public class FileDialog : Window{
 	/**
 	 * Displays the drives. Under Linux, it goes into the /dev/ folder.
 	 */
-	private void changeDrive(){
+	private void changeDrive(Event ev){
 		version(Windows){
 			pathList.length = 0;
 			ListBoxItem[] items;
@@ -680,21 +695,51 @@ public class FileDialog : Window{
 	/**
 	 * Creates an action event, then closes the window.
 	 */
-	private void fileEvent(){
+	private void fileEvent(Event ev){
 		//wstring s = to!wstring(directory);
 		filename = to!string(tb.getText);
 		//al.actionEvent("file", EventType.FILEDIALOGEVENT, 0, s);
 		if(onFileselect !is null)
-			onFileselect(new Event(source, "filedialog", directory, filename, null, 0, EventType.FILEDIALOGEVENT));
+			onFileselect(new Event(source, "", directory, filename, null, selectedType, EventType.FILEDIALOGEVENT));
 		parent.closeWindow(this);
 	}
+	private void event_fileSelector(Event ev){
+		selectedType = ev.value;
+	}
+	private void button_type_onMouseLClickRel(Event ev){
+		PopUpMenuElement[] e;
+		for(int i ; i < filetypes.length ; i++){
+			e ~= new PopUpMenuElement(filetypes[i].types[0],filetypes[i].description, filetypes[i].getTypesForSelector());
+		}
+		PopUpMenu p = new PopUpMenu(e,"fileSelector");
+		p.onMouseClick = &event_fileSelector;
+		parent.addPopUpElement(p);
+	}
+	private void button_close_onMouseLClickRel(Event ev){
+		parent.closeWindow(this);
+	}
+	private void listBox_onItemSelect(Event ev){
+		try{
+			if(pathList.length == 0) return;
+			if(isDir(pathList[ev.value])){
+				directory = pathList[ev.value];
+				spanDir();
+			}else{
+				filename = getFilenameFromPath(pathList[ev.value]);
+				tb.setText(to!dstring(filename));
+			}
+		}catch(Exception e){
+			DefaultDialog d = new DefaultDialog(Coordinate(10,10,256,80),"null",to!dstring("Error!"),
+					PixelPerfectEngine.system.etc.stringArrayConv([e.msg]));
+			parent.addWindow(d);
+		}
+	}
+	/+public void actionEvent(Event event){
 
-	public void actionEvent(Event event){
-
-		if(event.subsource == "fileSelector"){
+		/+if(event.subsource == "fileSelector"){
 			selectedType = event.value;
 			spanDir();
-		}
+		}+/
 		switch(event.source){
 			case "lb":
 				try{
@@ -721,15 +766,15 @@ public class FileDialog : Window{
 			case "type":
 				PopUpMenuElement[] e;
 				for(int i ; i < filetypes.length ; i++){
-					e ~= new PopUpMenuElement(to!string(i),filetypes[i].description, filetypes[i].getTypesForSelector());
+					e ~= new PopUpMenuElement(filetypes[i].types[0],filetypes[i].description, filetypes[i].getTypesForSelector());
 				}
 				PopUpMenu p = new PopUpMenu(e,"fileSelector");
-				p.onMouseClick = &actionEvent;
+				p.onMouseClick = &event_fileSelector;
 				parent.addPopUpElement(p);
 				break;
 			default: break;
 		}
-	}
+	}+/
 }
 /**
  * Handles windows as well as PopUpElements.

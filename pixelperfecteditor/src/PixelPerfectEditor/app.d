@@ -30,23 +30,25 @@ import PixelPerfectEngine.system.config;
 import PixelPerfectEngine.system.binarySearchTree;
 import PixelPerfectEngine.system.common;
 
-import editor;
+public import editor;
 import PixelPerfectEngine.extbmp.extbmp;
+
+public Editor prg;
 
 int main(string[] args){
 	initialzeSDL();
 
-	if(args.length > 1){
+	/+if(args.length > 1){
 		if(args[1] == "--test"){
 			TileLayerTest prg = new TileLayerTest();
 			prg.whereTheMagicHappens;
 			writeln(prg.isRunning);
 			return 0;
 		}
-	}
+	}+/
 
-	Editor e = new Editor(args);
-	e.whereTheMagicHappens;
+	prg = new Editor(args);
+	prg.whereTheMagicHappens;
 
 	//testBinarySearchTrees(11, 1);
 	return 0;

@@ -26,12 +26,12 @@ import conv = std.conv;
 version(LDC){
 	import inteli.emmintrin;
 }
+/// For generating a function out of a template
 @nogc void localBlt(uint* src, uint* dest, size_t length){
 	blitter(src, dest, length);
 }
 /**
  * The basis of all layer classes, containing functions for rendering.
- * TODO: Move rendering functions to an external library.
  */
 abstract class Layer {
 	protected @nogc void function(uint* src, uint* dest, size_t length) mainRenderingFunction;		///Used to get around some readability issues. (void* src, void* dest, int length)
@@ -110,12 +110,12 @@ abstract class Layer {
  *
  * COPY is the fastest, but overrides any kind of transparency keying. It directly writes into the framebuffer. Should only be used for certain applications, like bottom layers.
  * BLITTER uses a custom BitBlT algorithm for the SSE2 instruction set. Automatically generates the copying mask depending on the alpha-value. Any alpha-value that's non-zero will cause a non-transparent pixel, and all zeros are completely transparent. Gradual transparency in not avaliable.
- * ALPHA_BLENDING uses SSE2 for alpha blending. The slowest (although speed loss might be minimal due to memory access times), but allows gradual transparencies.
+ * ALPHA_BLENDING uses SSE2 for alpha blending. The slowest (although speed loss might be minimal due to memory access limitation), but allows gradual transparencies.
  */
 public enum LayerRenderingMode{
-	COPY,
-	BLITTER,
-	ALPHA_BLENDING
+	COPY,			///the fastest, but overrides any kind of transparency keying. It directly writes into the framebuffer. Should only be used for certain applications, like bottom layers.
+	BLITTER,		///uses a custom BitBlT algorithm for the SSE2 instruction set. Automatically generates the copying mask depending on the alpha-value. Any alpha-value that's non-zero will cause a non-transparent pixel, and all zeros are completely transparent. Gradual transparency in not avaliable.
+	ALPHA_BLENDING	///uses SSE2 for alpha blending. The slowest (although speed loss might be minimal due to memory access limitation), but allows gradual transparencies.
 }
 /**
  * Tile interface, defines common functions.
@@ -133,26 +133,29 @@ public interface ITileLayer{
 	/// Returns the tile ID from the location by pixel.
 	@nogc public MappingElement tileByPixel(int x, int y);
 	/// Returns the width of the tiles.
-	@nogc public int getTileWidth();
+	@nogc public int getTileWidth() pure;
 	/// Returns the height of the tiles.
-	@nogc public int getTileHeight();
+	@nogc public int getTileHeight() pure;
 	/// Returns the width of the mapping.
-	@nogc public int getMX();
+	@nogc public int getMX() pure;
 	/// Returns the height of the mapping.
-	@nogc public int getMY();
+	@nogc public int getMY() pure;
 	/// Returns the total width of the tile layer.
-	@nogc public int getTX();
+	@nogc public int getTX() pure;
 	/// Returns the total height of the tile layer.
-	@nogc public int getTY();
+	@nogc public int getTY() pure;
 	/// Adds a tile.
 	public void addTile(ABitmap tile, wchar id);
 }
-
+/**
+ * Universal Mapping element, that is stored on 32 bit.
+ */
 public struct MappingElement{
 	wchar tileID;				///Determines which tile is being used for the given instance
-	BitmapAttrib attributes;	///General attributes
+	BitmapAttrib attributes;	///General attributes, such as vertical and horizontal mirroring. The extra 6 bits can be used for various purposes
 	ubyte paletteSel;			///Selects the palette for the bitmap if supported
-	@nogc this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false)){
+	///Default constructor
+	@nogc @safe this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false)){
 		this.tileID = tileID;
 		this.attributes = attributes;
 	}
@@ -164,6 +167,10 @@ public struct MappingElement{
  * Can use any kind of bitmaps thanks to code restructuring.
  */
 public class TileLayer : Layer, ITileLayer{
+	/**
+	 * Implements a single tile to be displayed.
+	 * Is ordered in a BinarySearchTree for fast lookup.
+	 */
 	protected struct DisplayListItem{
 		ABitmap tile;			///reference counting only
 		void* pixelDataPtr;		///points to the pixeldata
@@ -171,6 +178,7 @@ public class TileLayer : Layer, ITileLayer{
 		wchar ID;				///ID, mainly as a padding to 32 bit alignment
 		ubyte wordLength;		///to avoid calling the more costly classinfo
 		ubyte reserved;		///currently unused
+		///Default ctor
 		this(wchar ID, ABitmap tile){
 			//palettePtr = tile.getPalettePtr();
 			//this.paletteSel = paletteSel;
@@ -198,7 +206,7 @@ public class TileLayer : Layer, ITileLayer{
 	protected MappingElement[] mapping;
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
-	protected Color[] src;
+	protected Color[] src;		///Local buffer
 	protected BinarySearchTree!(wchar, DisplayListItem) displayList;
 	protected bool warpMode;
 	///Constructor. tX , tY : Set the size of the tiles on the layer.
@@ -270,16 +278,16 @@ public class TileLayer : Layer, ITileLayer{
 		int y = sY < 0 && !warpMode ? sY * -1 : 0;
 		int sY0 = cast(int)(cast(uint)(sY) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
 		int offsetP = y*pitch;	// The offset of the line that is being written
-		int offsetY = sY0 % tileY;		//Scroll offset upwards
-		int offsetY0 = (sY + rasterY) % tileY;
-		int offsetXA = sX%tileX;	// tile offset of the first column
+		const int offsetY = sY0 % tileY;		//Scroll offset upwards
+		const int offsetY0 = (sY + rasterY) % tileY;
+		const int offsetXA = sX%tileX;	// tile offset of the first column
 		//for( ; y < rasterY ; y+=tileY){
 		while(y < rasterY){
 			//int offsetY = tileX * ((y + sY)%tileY);
-			int offsetYA = !y ? offsetY : 0;	//top offset for first tile, 0 otherwise
-			int offsetYB = y + tileY > rasterY ? offsetY0 : tileY;	//bottom offset of last tile, equals tileY otherwise
+			const int offsetYA = !y ? offsetY : 0;	//top offset for first tile, 0 otherwise
+			const int offsetYB = y + tileY > rasterY ? offsetY0 : tileY;	//bottom offset of last tile, equals tileY otherwise
 			uint x = (cast(uint)(sY) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
-			int targetX = totalX - sX > rasterX && !warpMode ? rasterX : rasterX - (totalX - sX);
+			const int targetX = totalX - sX > rasterX && !warpMode ? rasterX : rasterX - (totalX - sX);
 			void *p0 = (workpad + (x*Color.sizeof) + offsetP);
 			while(x < targetX){
 				MappingElement currentTile = tileByPixel(x+sX,y+sY);
@@ -369,22 +377,22 @@ public class TileLayer : Layer, ITileLayer{
 	public MappingElement[] getMapping(){
 		return mapping;
 	}
-	@nogc public int getTileWidth(){
+	@nogc public int getTileWidth() pure{
 		return tileX;
 	}
-	@nogc public int getTileHeight(){
+	@nogc public int getTileHeight() pure{
 		return tileY;
 	}
-	@nogc public int getMX(){
+	@nogc public int getMX() pure{
 		return mX;
 	}
-	@nogc public int getMY(){
+	@nogc public int getMY() pure{
 		return mY;
 	}
-	@nogc public int getTX(){
+	@nogc public int getTX() pure{
 		return totalX;
 	}
-	@nogc public int getTY(){
+	@nogc public int getTY() pure{
 		return totalY;
 	}
 }
@@ -507,7 +515,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 						//printf("[%i,%i]",xy[0],xy[1]);
 						MappingElement currentTile = tileByPixelWithoutTransform(xy[0],xy[1]);
 						if(currentTile.tileID != 0xFFFF){
-							DisplayListItem d = displayList[currentTile.tileID];
+							const DisplayListItem d = displayList[currentTile.tileID];
 							static if(BMPType.mangleof == Bitmap4Bit.mangleof){
 								ubyte* tsrc = cast(ubyte*)d.pixelSrc;
 							}else static if(BMPType.mangleof == Bitmap8Bit.mangleof){
@@ -767,22 +775,22 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	public MappingElement[] getMapping(){
 		return mapping;
 	}
-	@nogc public int getTileWidth(){
+	@nogc public int getTileWidth() pure{
 		return TileX;
 	}
-	@nogc public int getTileHeight(){
+	@nogc public int getTileHeight() pure{
 		return TileY;
 	}
-	@nogc public int getMX(){
+	@nogc public int getMX() pure{
 		return mX;
 	}
-	@nogc public int getMY(){
+	@nogc public int getMY() pure{
 		return mY;
 	}
-	@nogc public int getTX(){
+	@nogc public int getTX() pure{
 		return totalX;
 	}
-	@nogc public int getTY(){
+	@nogc public int getTY() pure{
 		return totalY;
 	}
 	/// Warpmode: if enabled, the layer will be turned into an "infinite" mode.
@@ -1019,14 +1027,14 @@ public class SpriteLayer : Layer, ISpriteLayer{
 		@nogc bool opEquals(in DisplayListItem d) const{
 			return priority == d.priority;
 		}
-		string toString(){
+		string toString() const{
 			return "[Position: " ~ position.toString ~ ";\nDisplayed portion: " ~ slice.toString ~";\nPriority" ~
 				conv.to!string(priority) ~ "; PixelData: " ~ conv.to!string(pixelData) ~ "; Attributes: " ~ attributes.toString ~
 				"; PaletteSel: " ~ conv.to!string(paletteSel) ~ "; WordLenght: " ~ conv.to!string(wordLength) ~ "]";
 		}
 	}
 	protected DisplayListItem[] displayList;	///Stores the display data
-	Color[1024] src;
+	Color[2048] src;							///Local buffer for scaling
 	//size_t[8] prevSize;
 
 	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
@@ -1247,45 +1255,49 @@ public class SpriteLayer : Layer, ISpriteLayer{
 			/+if((i.position.right > sX && i.position.bottom > sY) && (i.position.left < sX + rasterX && i.position.top < sY +
 					rasterY)){+/
 			if((right > sX && left < sX + rasterX) && (bottom > sY && top < sY + rasterY) && i.slice.width && i.slice.height){
-				int offsetXA = sX > left ? sX - left : 0;//Left hand side offset
-				int offsetXB = sX + rasterX < right ? right - rasterX : 0; //Right hand side offset
-				int offsetYA = sY > top ? sY - top : 0;
-				int offsetYB = sY + rasterY < bottom ? bottom - rasterY : 0;
+				int offsetXA = sX > left ? sX - left : 0;//Left hand side offset, zero if not obscured
+				const int offsetXB = sX + rasterX < right ? right - rasterX : 0; //Right hand side offset, zero if not obscured
+				const int offsetYA = sY > top ? sY - top : 0;		//top offset of sprite, zero if not obscured
+				const int offsetYB = sY + rasterY < bottom ? bottom - rasterY : 0;	//bottom offset of sprite, zero if not obscured
 				//const int offsetYB0 = cast(int)scaleNearestLength(offsetYB, i.scaleVert);
-				const int sizeX = i.slice.width();
+				const int sizeX = i.slice.width();		//total displayed width
 				const int offsetX = left - sX;
-				int length = sizeX - offsetXA - offsetXB;
-				int lengthY = i.slice.height - offsetYA - offsetYB;
+				const int length = sizeX - offsetXA - offsetXB;
+				//int lengthY = i.slice.height - offsetYA - offsetYB;
 				//const int lfour = length * 4;
 				const int offsetY = sY < top ? (top-sY)*pitch : 0;	//used if top portion of the sprite is off-screen
-				int offset, prevOffset;
-				const int scaleVertAbs = i.scaleVert * (i.scaleVert < 0 ? -1 : 1);
-				//int offset = offsetYA<<10 , prevOffset = (offsetYA*scaleVertAbs)>>10;
-				const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));
+				//offset = i.scaleVert % 1024;
+				const int scaleVertAbs = i.scaleVert * (i.scaleVert < 0 ? -1 : 1);	//absolute value of vertical offset, used in various calculations
+				//int offset, prevOffset;
+				const int offsetAmount = scaleVertAbs <= 1024 ? 1024 : scaleVertAbs;	//used to limit the amount of re-rendering every line
+				//offset = offsetYA<<10;
+				const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));	//amount of skipped lines (I think) TODO: remove floating-point arithmetic
 				const int sizeXOffset = i.width * (i.scaleVert < 0 ? -1 : 1);
+				int prevOffset = offsetYA0 * offsetAmount;		//
+				int offset = offsetYA0 * scaleVertAbs;
+				const size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB); //determines offset based on mirroring
+				const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
+				void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
 				switch(i.wordLength){
 					case 4:
 						ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
-						size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB);
-						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){
-							horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel << 4), i.width, offsetXA & 1, i.scaleHoriz);
-							prevOffset += 1024;
+						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+							horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel << 4), scalelength, offsetXA & 1,
+									i.scaleHoriz);
+							prevOffset += offsetAmount;
 							for(; offset < prevOffset; offset += scaleVertAbs){
 								y++;
 								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
 								dest += pitch;
 							}
-							p0 += sizeXOffset;
+							p0 += sizeXOffset >>> 1;
 						}
 						//}
 						break;
 					case 8:
 						ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-						size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB);
-						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
 						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-							horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel << 8), i.width, i.scaleHoriz);
+							horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel << 8), scalelength, i.scaleHoriz);
 							prevOffset += 1024;
 							for(; offset < prevOffset; offset += scaleVertAbs){
 								y++;
@@ -1297,18 +1309,8 @@ public class SpriteLayer : Layer, ISpriteLayer{
 						break;
 					case 16:
 						ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-						//ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - 1) : 0);
-						size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB);
-						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-						/*for( ; y < offsetYA ; ){
-							prevOffset += 1024;
-							for(; offset < prevOffset; offset += scaleVertAbs){
-								y++;
-							}
-							p0 += sizeXOffset;
-						}*/
 						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-							horizontalScaleNearestAndCLU(p0, src.ptr, palette, i.width, i.scaleHoriz);
+							horizontalScaleNearestAndCLU(p0, src.ptr, palette, scalelength, i.scaleHoriz);
 							prevOffset += 1024;
 							for(; offset < prevOffset; offset += scaleVertAbs){
 								y++;
@@ -1320,10 +1322,8 @@ public class SpriteLayer : Layer, ISpriteLayer{
 						break;
 					case 32:
 						Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-						size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB);
-						void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-						for(int y = offsetYA ; y < i.slice.height - offsetYB ; y++){
-							horizontalScaleNearest(p0, src.ptr, i.width, i.scaleHoriz);
+						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+							horizontalScaleNearest(p0, src.ptr, scalelength, i.scaleHoriz);
 							prevOffset += 1024;
 							for(; offset < prevOffset; offset += scaleVertAbs){
 								y++;

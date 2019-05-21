@@ -31,9 +31,10 @@ import bindbc.sdl.mixer;
 public T loadBitmapFromFile(T)(string filename)
 		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
 		|| T.stringof == Bitmap32Bit.stringof){
+	File f = File(filename);
 	switch(extension(filename)){
 		case ".tga", ".TGA":
-			TGA imageFile = TGA.load(File(filename));
+			TGA imageFile = TGA.load!(File, false, false)(f);
 			if(!imageFile.getHeader.topOrigin){
 				imageFile.flipVertical;
 			}
@@ -54,9 +55,8 @@ public T loadBitmapFromFile(T)(string filename)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
 				return new Bitmap32Bit(imageFile.getImageData, imageFile.width, imageFile.height);
 			}
-			break;
 		case ".png", ".PNG":
-			PNG imageFile = PNG.load(File(filename));
+			PNG imageFile = PNG.load!File(f);
 			static if(T.stringof == Bitmap8Bit.stringof){
 				if(imageFile.getBitdepth != 8)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
@@ -66,7 +66,6 @@ public T loadBitmapFromFile(T)(string filename)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
 				return new Bitmap32Bit(imageFile.getImageData, imageFile.width, imageFile.height);
 			}
-			break;
 		default:
 			throw new Exception("Unsupported file format!");
 	}
@@ -78,26 +77,27 @@ public T loadBitmapFromFile(T)(string filename)
 public T[] loadBitmapSheetFromFile(T)(string filename, int x, int y)
 		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
 		|| T.stringof == Bitmap32Bit.stringof){
-	T source = loadBitmapFromFile(filename);
+	T source = loadBitmapFromFile!T(filename);
 	if(source.width % x == 0 && source.height % y == 0){
 
 	}else throw new Exception("Requested size cannot be divided by input file's sizes!");
 	T[] output;
 	static if (T.stringof == Bitmap4Bit.stringof)
-		const size_t length = x / 2, pitch = output.width / 2;
+		const size_t length = x / 2, pitch = source.width / 2;
 	else static if (T.stringof == Bitmap8Bit.stringof)
-		const size_t length = x, pitch = output.width;
+		const size_t length = x, pitch = source.width;
 	else static if (T.stringof == Bitmap16Bit.stringof)
-		const size_t length = x * 2, pitch = output.width * 2;
+		const size_t length = x * 2, pitch = source.width * 2;
 	else static if (T.stringof == Bitmap32Bit.stringof)
-		const size_t length = x * 4, pitch = output.width * 4;
+		const size_t length = x * 4, pitch = source.width * 4;
 	const size_t pitch0 = pitch * y;
 	for (int mY ; mY < source.height / y ; mY++){
 		for (int mX ; mX < source.width / x ; mX++){
 			T next = new T(x, y);
 			for (int lY ; lY < y ; lY++){
-				memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch * mY) + (x * mX), length);
+				memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch0 * mY) + (length * mX), length);
 			}
+			output ~= next;
 		}
 	}
 	return output;
@@ -110,7 +110,23 @@ public Color[] loadPaletteFromFile(string filename){
 	switch(extension(filename)){
 		case ".tga", ".TGA":
 			TGA imageFile = TGA.load(f);
-			return cast(Color[])(cast(void[])imageFile.getPaletteData);
+			Color[] result;
+			ubyte[] src = imageFile.getPaletteData;
+			switch(imageFile.getPaletteBitdepth){
+				case 24:
+					for(ushort i; i < src.length; i+=3){
+						result ~= Color(255, src[i + 2], src[i + 1], src[i]);
+					}
+					break;
+				case 32:
+					for(ushort i; i < src.length; i+=4){
+						result ~= Color(src[i + 3], src[i + 2], src[i + 1], src[i]);
+					}
+					break;
+				default:
+					return [];
+			}
+			return result;
 		case ".png", ".PNG":
 			PNG imageFile = PNG.load(f);
 			return cast(Color[])(cast(void[])imageFile.getPaletteData);

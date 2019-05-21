@@ -1,7 +1,7 @@
 module editorEvents;
 
-import PixelPerfectEngine.concrete.eventChainSystem;
-import PixelPerfectEngine.graphics.layers;
+public import PixelPerfectEngine.concrete.eventChainSystem;
+public import PixelPerfectEngine.graphics.layers;
 
 public class WriteToMapVoidFill : UndoableEvent{
 	ITileLayer target;

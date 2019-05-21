@@ -38,13 +38,13 @@ abstract class ABitmap{
 	/**
 	 * Returns the width of the bitmap.
 	 */
-	@property @nogc public int width(){
+	public int width() pure @safe @property @nogc{
 		return iX;
 	}
 	/**
 	 * Returns the height of the bitmap.
 	 */
-	@property @nogc public int height(){
+	public int height() pure @safe @property @nogc{
 		return iY;
 	}
 	abstract AdvancedBitArray generateStandardCollisionModel();
@@ -72,7 +72,7 @@ abstract class ABitmap{
 /*
  * S: Wordlength by usage. Possible values:
  * - b: bit (for collision shapes)
- * - QB: QuadByte or 2Bit (currently unimplemented)
+ * - QB: QuarterByte or 2Bit (currently unimplemented)
  * - HB: HalfByte or 4Bit
  * - B: Byte or 8Bit
  * - HW: HalfWord or 16Bit

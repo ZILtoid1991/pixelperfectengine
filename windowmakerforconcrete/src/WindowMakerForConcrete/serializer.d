@@ -53,25 +53,25 @@ public class WindowSerializer{
 				case "Label":
 					WindowElement we = new Label(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.name] = we;
+					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we,0);
 					break;
 				case "Button":
 					WindowElement we = new Button(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.name] = we;
+					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we,0);
 					break;
 				case "TextBox":
 					WindowElement we = new TextBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.name] = we;
+					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we,0);
 					break;
 				case "CheckBox":
 					WindowElement we = new CheckBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.name] = we;
+					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we,0);
 					break;
 				case "ListBox":
@@ -83,7 +83,7 @@ public class WindowSerializer{
 					}
 					WindowElement we = new ListBox(t0.expectTagValue!string("source"), parseCoordinate(t0.expectTag("position")), [],
 							new ListBoxHeader(columnTexts, columnWidths));
-					e.elements[t0.name] = we;
+					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we,0);
 					break;
 				case "RadioButtonGroup":
@@ -94,7 +94,7 @@ public class WindowSerializer{
 					}
 					WindowElement we = new RadioButtonGroup(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")), options, 16, 0);
-					e.elements[t0.name] = we;
+					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we,0);
 					break;
 				case "Window":
@@ -116,18 +116,18 @@ public class WindowSerializer{
 			}
 			switch(t0.getFullName.toString){
 				case "Button", "Label", "TextBox", "CheckBox":
-					elementCtors ~= "new " ~ t0.getFullName.toString ~ "(\"" ~ t0.getTagValue!string("text") ~ "\"w, \"" ~
+					elementCtors ~= "new " ~ t0.getFullName.toString ~ "(\"" ~ t0.getTagValue!string("text") ~ "\"d, \"" ~
 							t0.getTagValue!string("source") ~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
 				case "RadioButtonGroup":
 					string options = "[";
 					foreach(v; t0.getTagValues("options")){
-						options ~= "\"" ~ v.get!string() ~ "\"w, ";
+						options ~= "\"" ~ v.get!string() ~ "\"d, ";
 					}
 					if(options != "[")
 						options.length -= 2;
 					options ~= "]";
-					elementCtors ~= "\t\tnew RadioButtonGroup(\"" ~ t0.getTagValue!string("text") ~ "\"w, \"" ~ t0.getTagValue!string("source")
+					elementCtors ~= "\t\tnew RadioButtonGroup(\"" ~ t0.getTagValue!string("text") ~ "\"d, \"" ~ t0.getTagValue!string("source")
 							~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "), " ~ options ~ ",16,0);\n";
 					break;
 				case "HSlider", "VSlider":
@@ -138,8 +138,8 @@ public class WindowSerializer{
 				case "ListBox":
 					string headerCtorA = "new ListBoxHeader([", headerCtorB = "], [";
 					foreach(t1; t0.expectTag("header").tags){
-						headerCtorA ~= "\"" ~ t0.values[0].get!string ~ "\"w, ";
-						headerCtorB ~= conv.to!string(t0.values[1].get!int) ~ ", ";
+						headerCtorA ~= "\"" ~ t1.values[0].get!string ~ "\"d, ";
+						headerCtorB ~= conv.to!string(t1.values[1].get!int) ~ ", ";
 					}
 					headerCtorA.length -= 2;
 					headerCtorB.length -= 2;
@@ -161,7 +161,7 @@ public class WindowSerializer{
 							extraButtons = "]";
 						}
 					}
-					windowCtor = "super(\"" ~ t0.getTagValue!string("title") ~ "\"w, Coordinate(0, 0, " ~
+					windowCtor = "super(\"" ~ t0.getTagValue!string("title") ~ "\"d, Coordinate(0, 0, " ~
 							conv.to!string(t0.getTagValue!int("size:x")) ~ ", " ~ conv.to!string(t0.getTagValue!int("size:y")) ~ " )" ~
 							extraButtons ~ ");\n";
 					break;

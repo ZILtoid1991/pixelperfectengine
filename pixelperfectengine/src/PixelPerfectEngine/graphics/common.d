@@ -22,19 +22,19 @@ public struct Coordinate{
 	/**
 	 * Returns the width of the represented box.
 	 */
-	public @property @nogc @safe nothrow pure int width(){
+	public @property @nogc @safe nothrow pure int width() const{
 		return right-left;
 	}
 	/**
 	 * Returns the height of the represented box.
 	 */
-	public @property @nogc @safe nothrow pure int height(){
+	public @property @nogc @safe nothrow pure int height() const{
 		return bottom-top;
 	}
 	/**
 	 * Returns the area of the represented box.
 	 */
-	public @property @nogc size_t area(){
+	public @property @nogc @safe nothrow pure size_t area() const{
 		return width * height;
 	}
 	/**
@@ -58,13 +58,13 @@ public struct Coordinate{
 	/**
 	 * Returns a string with the coordinates that is useful for debugging
 	 */
-	public string toString(){
+	public string toString() const{
 		import PixelPerfectEngine.system.etc;
 		import std.conv;
 		/*return "Coordinate: Left: 0x" ~ intToHex(left, 8) ~ " Top: 0x" ~ intToHex(top, 8) ~ " Right: 0x" ~ intToHex(right, 8) ~ " Bottom: 0x" ~ intToHex(bottom, 8) ~
 				" Width: 0x" ~ intToHex(width(), 8) ~ " Height: 0x" ~ intToHex(height(), 8);*/
-		return "Coordinate: Left: " ~ to!string(left) ~ " Top: " ~ to!string(top) ~ " Right: " ~ to!string(right) ~ " Bottom: " ~ to!string(bottom) ~
-				" Width: " ~ to!string(width()) ~ " Height: " ~ to!string(height());
+		return "Coordinate: Left: " ~ to!string(left) ~ " Top: " ~ to!string(top) ~ " Right: " ~ to!string(right) ~
+				" Bottom: " ~ to!string(bottom) ~ " Width: " ~ to!string(width()) ~ " Height: " ~ to!string(height());
 	}
 }
 /**
@@ -79,6 +79,7 @@ public struct Quad{
 }
 /**
  * Various representations of color with various accessibility modes.
+ * Probably will be replaced with a struct from either CPUBLiT or dimage.
  */
 public struct Color{
 	union{
@@ -86,23 +87,39 @@ public struct Color{
 		ubyte[4] colors;	///Normal representation, aliases are used for color naming.
 	}
 	version(LittleEndian){
-		public @nogc @property ubyte alpha(){ return colors[0]; }
-		public @nogc @property ubyte red(){ return colors[1]; }
-		public @nogc @property ubyte green(){ return colors[2]; }
-		public @nogc @property ubyte blue(){ return colors[3]; }
-		public @nogc @property ubyte alpha(ubyte value){ return colors[0] = value; }
-		public @nogc @property ubyte red(ubyte value){ return colors[1] = value; }
-		public @nogc @property ubyte green(ubyte value){ return colors[2] = value; }
-		public @nogc @property ubyte blue(ubyte value){ return colors[3] = value; }
+		///Returns the alpha channel of the color
+		public @nogc @property pure ubyte alpha() const{ return colors[0]; }
+		///Returns the red channel of the color
+		public @nogc @property pure ubyte red() const{ return colors[1]; }
+		///Returns the green channel of the color
+		public @nogc @property pure ubyte green() const{ return colors[2]; }
+		///Returns the blue channel of the color
+		public @nogc @property pure ubyte blue() const{ return colors[3]; }
+		///Sets the alpha channel of the color
+		public @nogc @property pure ubyte alpha(ubyte value) { return colors[0] = value; }
+		///Sets the red channel of the color
+		public @nogc @property pure ubyte red(ubyte value) { return colors[1] = value; }
+		///Sets the green channel of the color
+		public @nogc @property pure ubyte green(ubyte value) { return colors[2] = value; }
+		///Sets the blue channel of the color
+		public @nogc @property pure ubyte blue(ubyte value) { return colors[3] = value; }
 	}else{
-		public @nogc @property ubyte alpha(){ return colors[3]; }
-		public @nogc @property ubyte red(){ return colors[2]; }
-		public @nogc @property ubyte green(){ return colors[1]; }
-		public @nogc @property ubyte blue(){ return colors[0]; }
-		public @nogc @property ubyte alpha(ubyte value){ return colors[3] = value; }
-		public @nogc @property ubyte red(ubyte value){ return colors[2] = value; }
-		public @nogc @property ubyte green(ubyte value){ return colors[1] = value; }
-		public @nogc @property ubyte blue(ubyte value){ return colors[0] = value; }
+		///Returns the alpha channel of the color
+		public @nogc @property pure ubyte alpha() const{ return colors[3]; }
+		///Returns the red channel of the color
+		public @nogc @property pure ubyte red() const{ return colors[2]; }
+		///Returns the green channel of the color
+		public @nogc @property pure ubyte green() const{ return colors[1]; }
+		///Returns the blue channel of the color
+		public @nogc @property pure ubyte blue() const{ return colors[0]; }
+		///Sets the alpha channel of the color
+		public @nogc @property pure ubyte alpha(ubyte value) { return colors[3] = value; }
+		///Sets the red channel of the color
+		public @nogc @property pure ubyte red(ubyte value) { return colors[2] = value; }
+		///Sets the green channel of the color
+		public @nogc @property pure ubyte green(ubyte value) { return colors[1] = value; }
+		///Sets the blue channel of the color
+		public @nogc @property pure ubyte blue(ubyte value) { return colors[0] = value; }
 	}
 	/**
 	 * Contructs a color from four individual values.
@@ -143,7 +160,7 @@ public struct Color{
 	/**
 	 * Returns a string for debugging.
 	 */
-	public string toString(){
+	public string toString() const{
 		import PixelPerfectEngine.system.etc;
 		return "0x" ~ intToHex(raw, 8);
 	}

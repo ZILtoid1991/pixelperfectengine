@@ -1,0 +1,48 @@
+	Window "BMFontImport" {
+		title "Import BMFont file"
+		size:x 255
+		size:y 120
+		extraButtons
+	}
+	Label "label0" {
+		text "File source:"
+		source "label0"
+		position 5 22 100 40
+	}
+	TextBox "fileInput" {
+		text "file"
+		source "fileInput"
+		position 110 20 250 40
+	}
+	Button "fileButton" {
+		text "File"
+		icon "null"
+		source "fileButton"
+		position 5 45 100 65
+	}
+	Label "label1" {
+		text "Font name:"
+		source "label1"
+		position 5 72 100 90
+	}
+	Label "label2" {
+		text "Font size:"
+		source "label2"
+		position 5 97 100 115
+	}
+	Button "exportButton" {
+		text "Conv. to XMP"
+		icon "null"
+		source "exportButton"
+		position 110 45 250 65
+	}
+	TextBox "fontNameInput" {
+		text "font"
+		source "fontNameInput"
+		position 110 69 250 88
+	}
+	Label "fontSizeOut" {
+		text "none"
+		source "label3"
+		position 110 97 250 115
+	}

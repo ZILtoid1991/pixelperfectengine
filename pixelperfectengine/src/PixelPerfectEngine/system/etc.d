@@ -9,8 +9,8 @@ import std.algorithm.mutation;
  */
 
 
-///Converts string[] to wstring[]
-public dstring[] stringArrayConv(string[] s){
+///Converts string[] to dstring[]
+public dstring[] stringArrayConv(string[] s) pure @safe{
 	dstring[] result;
 	foreach(ss; s){
 		dstring ws;
@@ -22,7 +22,7 @@ public dstring[] stringArrayConv(string[] s){
 	return result;
 }
 ///Returns a hexadecimal string representation of the integer.
-string intToHex(int i, int format = 0){
+string intToHex(int i, int format = 0) pure @safe{
 	string result;
 	do{
 		switch(i & 0x000F){
@@ -50,11 +50,11 @@ string intToHex(int i, int format = 0){
 			result ~= '0';
 		}
 	}
-	reverse(cast(char[])result);
+	reverse(result.dup);
 	return result;
 }
 ///Returns a octal string representation of the integer.
-string intToOct(int i, int format){
+string intToOct(int i, int format) pure @safe{
 	string result;
 	do{
 		switch(i & 0x0007){
@@ -74,11 +74,11 @@ string intToOct(int i, int format){
 			result ~= '0';
 		}
 	}
-	reverse(cast(char[])result);
+	reverse(result.dup);
 	return result;
 }
 ///Parses a hexadecimal int represented as a string.
-int parseHex(string s){
+int parseHex(string s) pure @safe{
 	//std.stdio.writeln(s);
 	int result;
 	for(int i ; i < s.length; i++){
@@ -106,7 +106,7 @@ int parseHex(string s){
 	return result;
 }
 ///Parses a comma separated string into a single array.
-S[] csvParser(S)(S input, char separator = ','){
+S[] csvParser(S)(S input, char separator = ',') pure @safe{
 	S[] result;
 	int j;
 	for(int i ; i < input.length ; i++){
@@ -119,7 +119,7 @@ S[] csvParser(S)(S input, char separator = ','){
 	return result;
 }
 ///Joins prettyprint strings to a single string for file storage.
-S stringArrayJoin(S)(S[] input){
+S stringArrayJoin(S)(S[] input) pure @safe{
 	S result;
 	foreach(s ; input){
 		result ~= s ~ "\n";
@@ -127,7 +127,7 @@ S stringArrayJoin(S)(S[] input){
 	return result;
 }
 ///Tests if the input string is integer and returns true if it is.
-bool isInteger(S)(S s){
+bool isInteger(S)(S s) pure @safe{
 	static if(S.mangleof == string.mangleof || S.mangleof == wstring.mangleof || S.mangleof == dstring.mangleof){
 		foreach(c; s){
 			if(c > '9' || c < '0')
@@ -141,7 +141,7 @@ bool isInteger(S)(S s){
 /**
  * Returns true if x is power of two.
  */
-public @nogc bool isPowerOf2(T = uint)(T x){
+public @nogc bool isPowerOf2(T = uint)(T x) pure @safe{
 	return x && ((x & (x - 1U)) == 0U);
 }
 
@@ -149,7 +149,7 @@ public @nogc bool isPowerOf2(T = uint)(T x){
  * From "Hackers Delight"
  * val remains unchanged if it is already a power of 2.
  */
-public @nogc T nextPow2(T)(T val){
+public @nogc T nextPow2(T)(T val) pure @safe{
 	val--;
 	val |= val >> 16;
 	val |= val >> 8;
