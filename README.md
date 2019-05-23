@@ -2,15 +2,6 @@
 
 2D retro graphics engine written in D by László Szerémi (laszloszeremi@outlook.com, https://twitter.com/ziltoid1991, https://www.patreon.com/ShapeshiftingLizard, https://ko-fi.com/D1D45NEN).
 
-Required libaries:
-Derelict SDL2		https://github.com/DerelictOrg/DerelictSDL2
-Derelict FI			https://github.com/DerelictOrg/DerelictFI		(for editor only)
-sdlang-d			https://github.com/Abscissa/SDLang-D
-libpcm				https://github.com/ZILtoid1991/libPCM
-cpublit				https://github.com/ZILtoid1991/CPUblit
-intel-intrinsics	https://github.com/AuburnSounds/intel-intrinsics
-
-
 See Wiki for further info and version history!
 
 
@@ -18,14 +9,12 @@ See Wiki for further info and version history!
 Sample dependencies section:
 ```
 "dependencies": {
-                "derelict-sdl2": "~>2.1.0",
-		"derelict-fi": "~>2.0.3",
 		"pixelperfectengine": "*"
 	},
 ```
 
 # Usage with most IDEs:
-1: Download and build the source. You will need both the engine and editor by default, as the engine uses its own custom bitmap format XMP due to its more advanced palette handling. Other advantages of the format is that it can store multiple bitmaps in a single file with no regard of their sizes.
+1: Download and build the source. The engine previously used a proprietary format made out of XML that was very prone to errors. This is being deprecated, with replacements being TGA and PNG.
 
 2: Add /source/ to the include path. You might also need to add the sources of derelict-SDL2, derelict-util, sdlang-d, libinputvisitor, taggedalgebraic, cpublit
 
@@ -35,13 +24,13 @@ Sample dependencies section:
 
 # Common usage:
 
-* Make sure you copy the /system/ folder from the assets folder, you might also want to make some changes to the configuration file here. Failing to do these will result in your program crashing due to missing files.
-* Put a compiled version of the SDL2 library into the forementioned /system/ folder and load the SDL2 library with the derelict loader. (in the future you will have to call a function from PixelPerfectEngine.system.init).
+* Make sure you copy the /system/ folder from the assets/_system folder, you might also want to make some changes to the configuration file here. Failing to do these will result in your program crashing due to missing files.
+* I personally like to put binary files (executables and libraries) into a separate /bin/ folder, this will make it easy to port, since all you need to do is just replace this folder for different releases.
 
 # Known issues:
 
 * The engine doesn't clear the framebuffer to spare some CPU time, this results some trippy effects if a part of the screen is not being overwritten.
-* There's also some speed issues from it, as SDL2 writes the framebuffer back to the main memory. This will probably end up in the slow replacement of SDL2's graphical side with something faster.
+* There's also some speed issues as SDL2 writes the framebuffer back to the main memory. This will probably end up in the slow replacement of SDL2's graphical side with something faster.
 * WindowMakerForConcrete and PixelPerfectEditor are currently unfinished. The former will be soon working fully with extra features (such as undo/redo, snapping to grid and components), then the latter can be developed without an issue.
 * Error handling isn't fully realized, so a lot of errors might happen. You can help me by reporting errors, testing on various systems (I only have access for an old Athlon64 X2 at the moment with relatively high-cost of upgrade).
 * Upscaled sprites have a rather jerky, odd behavior when they're being partly obscured. This will be fixed, do not plan with it on the long run for a wacky effect.
@@ -49,6 +38,5 @@ Sample dependencies section:
 
 # Future plans:
 
-* More use of language features, such as templates for bitmaps.
-* Making able for the basic layer types to be used on a single layer with mixing various types.
+* Hardware acceleration, possibly through OpenCL since GLSL lacks the ability of reading textures as integers in older versions.
 * Adding support for scripting languages (QScript, Lua, Python).
