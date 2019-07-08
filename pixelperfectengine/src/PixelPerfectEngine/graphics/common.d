@@ -88,43 +88,43 @@ public struct Color{
 	}
 	version(LittleEndian){
 		///Returns the alpha channel of the color
-		public @nogc @property pure ubyte alpha() const{ return colors[0]; }
+		public @nogc @safe @property pure nothrow ubyte alpha() const{ return colors[0]; }
 		///Returns the red channel of the color
-		public @nogc @property pure ubyte red() const{ return colors[1]; }
+		public @nogc @safe @property pure nothrow ubyte red() const{ return colors[1]; }
 		///Returns the green channel of the color
-		public @nogc @property pure ubyte green() const{ return colors[2]; }
+		public @nogc @safe @property pure nothrow ubyte green() const{ return colors[2]; }
 		///Returns the blue channel of the color
-		public @nogc @property pure ubyte blue() const{ return colors[3]; }
+		public @nogc @safe @property pure nothrow ubyte blue() const{ return colors[3]; }
 		///Sets the alpha channel of the color
-		public @nogc @property pure ubyte alpha(ubyte value) { return colors[0] = value; }
+		public @nogc @safe @property pure nothrow ubyte alpha(ubyte value) { return colors[0] = value; }
 		///Sets the red channel of the color
-		public @nogc @property pure ubyte red(ubyte value) { return colors[1] = value; }
+		public @nogc @safe @property pure nothrow ubyte red(ubyte value) { return colors[1] = value; }
 		///Sets the green channel of the color
-		public @nogc @property pure ubyte green(ubyte value) { return colors[2] = value; }
+		public @nogc @safe @property pure nothrow ubyte green(ubyte value) { return colors[2] = value; }
 		///Sets the blue channel of the color
-		public @nogc @property pure ubyte blue(ubyte value) { return colors[3] = value; }
+		public @nogc @safe @property pure nothrow ubyte blue(ubyte value) { return colors[3] = value; }
 	}else{
 		///Returns the alpha channel of the color
-		public @nogc @property pure ubyte alpha() const{ return colors[3]; }
+		public @nogc @safe @property pure nothrow ubyte alpha() const{ return colors[3]; }
 		///Returns the red channel of the color
-		public @nogc @property pure ubyte red() const{ return colors[2]; }
+		public @nogc @safe @property pure nothrow ubyte red() const{ return colors[2]; }
 		///Returns the green channel of the color
-		public @nogc @property pure ubyte green() const{ return colors[1]; }
+		public @nogc @safe @property pure nothrow ubyte green() const{ return colors[1]; }
 		///Returns the blue channel of the color
-		public @nogc @property pure ubyte blue() const{ return colors[0]; }
+		public @nogc @safe @property pure nothrow ubyte blue() const{ return colors[0]; }
 		///Sets the alpha channel of the color
-		public @nogc @property pure ubyte alpha(ubyte value) { return colors[3] = value; }
+		public @nogc @safe @property pure nothrow ubyte alpha(ubyte value) { return colors[3] = value; }
 		///Sets the red channel of the color
-		public @nogc @property pure ubyte red(ubyte value) { return colors[2] = value; }
+		public @nogc @safe @property pure nothrow ubyte red(ubyte value) { return colors[2] = value; }
 		///Sets the green channel of the color
-		public @nogc @property pure ubyte green(ubyte value) { return colors[1] = value; }
+		public @nogc @safe @property pure nothrow ubyte green(ubyte value) { return colors[1] = value; }
 		///Sets the blue channel of the color
-		public @nogc @property pure ubyte blue(ubyte value) { return colors[0] = value; }
+		public @nogc @safe @property pure nothrow ubyte blue(ubyte value) { return colors[0] = value; }
 	}
 	/**
 	 * Contructs a color from four individual values.
 	 */
-	public @nogc this(ubyte alpha, ubyte red, ubyte green, ubyte blue){
+	public @nogc this(ubyte alpha, ubyte red, ubyte green, ubyte blue) nothrow pure @safe {
 		this.alpha = alpha;
 		this.red = red;
 		this.green = green;
@@ -133,7 +133,7 @@ public struct Color{
 	/**
 	 * Constructs a color from a single 32 bit unsigned integer.
 	 */
-	public @nogc this(uint val){
+	public @nogc this(uint val) nothrow pure @safe {
 		raw = val;
 	}
 	/**

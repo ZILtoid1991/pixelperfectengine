@@ -14,7 +14,7 @@ public class UndoableStack{
 	protected UndoableEvent[] events;
 	protected size_t currentPos, currentCap, maxLength;
 
-	public this(size_t maxElements){
+	public this(size_t maxElements) @safe pure nothrow{
 		maxLength = maxElements;
 		events.length = maxElements;
 	}

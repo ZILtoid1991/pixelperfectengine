@@ -510,7 +510,7 @@ public class FileDialog : Window{
 
 	/**
 	 * Creates a file dialog with the given parameters.
-	 * File types are given in the format '*.format', later implementations will enable file type descriptions.
+	 * File types are given in the format '*.format'.
 	 */
 	public this(dstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
 			string startDir, bool save = false, string filename = ""){
@@ -862,7 +862,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	private void updateSpriteOrder(){
 		for(int i ; i < windows.length ; i++){
 			spriteLayer.removeSprite(i);
-			spriteLayer.addSprite(windows[i].output.output, i, windows[i].position);
+			spriteLayer.addSprite(windows[i].getOutput, i, windows[i].position);
 
 		}
 	}

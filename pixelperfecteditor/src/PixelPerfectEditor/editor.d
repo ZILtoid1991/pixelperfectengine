@@ -27,7 +27,7 @@ import core.stdc.string : memcpy;
 import bindbc.sdl;
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.concrete.eventChainSystem;
-import PixelPerfectEngine.map.mapload;
+import PixelPerfectEngine.map.mapformat;
 
 //import converterdialog;
 //import newLayerDialog;
@@ -37,6 +37,7 @@ import layerlist;
 import materialList;
 import document;
 import rasterWindow;
+import newTileLayer;
 
 public interface IEditor{
 	public void onExit();
@@ -361,10 +362,10 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		}
 	}
 	/*public void actionEvent(string source, int type, int value, wstring message){
-		writeln(source);
+
 
 		if(source == "file"){
-			writeln(message);
+
 		}
 	}
 	public void actionEvent(string source, string subSource, int type, int value, wstring message){
@@ -378,7 +379,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		}
 	}*/
 	public void actionEvent(Event event){
-		//writeln(event.subsource);
+
 		switch(event.subsource){
 			case "exitdialog":
 				if(event.source == "ok"){
@@ -483,12 +484,12 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			WindowElement.styleSheet.setImage(customGUIElems[7], "newSpriteLayerButtonB");
 			WindowElement.styleSheet.setImage(customGUIElems[8], "newTransformableTileLayerButtonA");
 			WindowElement.styleSheet.setImage(customGUIElems[9], "newTransformableTileLayerButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[10], "importMaterialDataButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[11], "importMaterialDataButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[12], "importLayerDataButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[13], "importLayerDataButtonB");
-			/+WindowElement.styleSheet.setImage(customGUIElems[14], "");
-			WindowElement.styleSheet.setImage(customGUIElems[15], "");+/
+			WindowElement.styleSheet.setImage(customGUIElems[10], "importLayerDataButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[11], "importLayerDataButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[12], "importMaterialDataButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[13], "importMaterialDataButtonB");
+			WindowElement.styleSheet.setImage(customGUIElems[14], "paletteButtonA");
+			WindowElement.styleSheet.setImage(customGUIElems[15], "paletteButtonB");
 		}
 
 		wh.initGUI();
@@ -523,7 +524,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	 * Opens a window to aks the user for the data on the new tile layer
 	 */
 	public void initNewTileLayer(){
-
+		wh.addWindow(new NewTileLayerDialog(this));
 	}
 	/**
 	 * Creates a new tile layer with the given data.
@@ -532,8 +533,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	 * existing file, then that file will be loaded. If null, then the map data will be embedded as a BASE64 chunk.
 	 * tmplt: Optional field. Specifies the initial tile source data from a map file alongside with the name of the layer
 	 */
-	public void newTileLayer(int pos, int tX, int tY, int mX, int mY, string name, string file, string tmplt){
-
+	public void newTileLayer(int tX, int tY, int mX, int mY, dstring name, string file, string tmplt, bool embed) {
+		selDoc.events.addToTop(new CreateTileLayerEvent(selDoc, tX, tY, mX, mY, name, file, tmplt, embed));
 	}
 	public void setRasterRefresh(){
 		rasterRefresh = true;
@@ -564,7 +565,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		wh.addWindow(ndd);
 	}
 	public void createNewDocument(dstring name, int rX, int rY, int pal){
-		MapDocument md = new MapDocument();
+		import std.utf : toUTF8;
+		MapDocument md = new MapDocument(toUTF8(name), rX, rY);
 		Window w = new RasterWindow(rX, rY, rasters.palette.ptr, name, md);
 		wh.addWindow(w);
 		documents[name] = md;

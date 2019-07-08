@@ -29,45 +29,45 @@ public class VideoModeException : Exception{
 //public class VideoException
 
 public class FileAccessException : Exception{
-	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
 
 }
 
 public class TileFormatException : Exception{
-	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
 
 }
 
 public class BitmapFormatException : Exception{
-	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
 }
 
 public class ConfigFileException : Exception{
-	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
 }
 
 public class MapFileException : Exception{
-	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
 }
 
 public class SpriteLayerException : Exception{
-	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
 }
 
 public class SpritePriorityException : SpriteLayerException{
-	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
 }

@@ -79,7 +79,7 @@ string intToOct(int i, int format) pure @safe{
 }
 ///Parses a hexadecimal int represented as a string.
 int parseHex(string s) pure @safe{
-	//std.stdio.writeln(s);
+
 	int result;
 	for(int i ; i < s.length; i++){
 		result *= 16;
@@ -157,4 +157,40 @@ public @nogc T nextPow2(T)(T val) pure @safe{
 	val |= val >> 2;
 	val |= val >> 1;
 	return val + 1;
+}
+/**
+ * Safely converts an array to a type.
+ */
+public T reinterpretGet(T, S)(S[] source) pure @trusted {
+	T _reinterpretGet() pure @system {
+		return (cast(T[])(cast(void[])source))[0];
+	}
+	if(S.sizeof * source.length == T.sizeof)
+		return _reinterpretGet();
+	else
+		throw new Exception("Reinterpretation error!");
+}
+/**
+ * Safely converts the type of an array.
+ */
+public T[] reinterpretCast(T, S)(S[] source) pure @trusted {
+	T[] _reinterpretCast() pure @system {
+		return cast(T[])(cast(void[])source);
+	}
+	if((S.sizeof * source.length) % T.sizeof == 0)
+		return _reinterpretCast();
+	else
+		throw new Exception("Reinterpretation error!");
+}
+/**
+ * Safely converts a single instance into a bytestream.
+ */
+public T[] toStream(T = ubyte, S)(S source) pure @trusted {
+	T[] _toStream() pure @system {
+		return cast(T[])(cast(void[])[source]);
+	}
+	if(S.sizeof % T.sizeof == 0)
+		return _toStream();
+	else
+		throw new Exception("Reinterpretation error!");
 }

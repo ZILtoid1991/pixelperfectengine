@@ -553,24 +553,24 @@ public enum TextInputType : uint{
 
 /// Standard key modifiers to avoid public SDL imports and to allow alternative library backends.
 public enum KeyModifier : ushort{
-	NONE 		= 0x0000,
-	LSHIFT 		= 0x0001,
-	RSHIFT 		= 0x0002,
-	SHIFT 		= 0x0003,
-	LCTRL 		= 0x0040,
-	RCTRL	 	= 0x0080,
-	CTRL 		= 0x00C0,
-	LALT 		= 0x0100,
-	RALT 		= 0x0200,
-	ALT 		= 0x0300,
-	LGUI 		= 0x0400,
-	RGUI	 	= 0x0800,
-	GUI 		= 0x0C00,
-	NUM 		= 0x1000,
-	CAPS 		= 0x2000,
+	NONE 		= 0x0000,	//0b0000_0000_0000_0000
+	LSHIFT 		= 0x0001,	//0b0000_0000_0000_0001
+	RSHIFT 		= 0x0002,	//0b0000_0000_0000_0010
+	SHIFT 		= 0x0003,	//0b0000_0000_0000_0011
+	LCTRL 		= 0x0040,	//0b0000_0000_0100_0000
+	RCTRL	 	= 0x0080,	//0b0000_0000_1000_0000
+	CTRL 		= 0x00C0,	//0b0000_0000_1100_0000
+	LALT 		= 0x0100,	//0b0000_0001_0000_0000
+	RALT 		= 0x0200,	//0b0000_0010_0000_0000
+	ALT 		= 0x0300,	//0b0000_0011_0000_0000
+	LGUI 		= 0x0400,	//0b0000_0100_0000_0000
+	RGUI	 	= 0x0800,	//0b0000_1000_0000_0000
+	GUI 		= 0x0C00,	//0b0000_1100_0000_0000
+	NUM 		= 0x1000,	//0b0001_0000_0000_0000
+	CAPS 		= 0x2000,	//0b0010_0000_0000_0000
 	LOCKKEYIGNORE	= NUM + CAPS,		///Use this if only Caps lock and Num lock needs to be ignored
-	MODE 		= 0x4000,
-	RESERVED 	= 0x8000,
+	MODE 		= 0x4000,	//0b0100_0000_0000_0000
+	RESERVED 	= 0x8000,	//0b1000_0000_0000_0000
 	ANY			= 0xFFFF
 }
 public enum JoyModifier : ushort{

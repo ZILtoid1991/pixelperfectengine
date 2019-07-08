@@ -6,7 +6,7 @@ import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.extbmp.extbmp;
 import PixelPerfectEngine.system.exc;
 import PixelPerfectEngine.system.etc;
-import PixelPerfectEngine.map.mapload;
+import PixelPerfectEngine.map.mapformat;
 
 //import derelict.freeimage.freeimage;
 //import derelict.freeimage.functions;
@@ -329,7 +329,7 @@ public Bitmap32Bit getBitmapPreview(ExtendibleBitmap xmp, string ID){
 	return result;
 }
 
-public void autoloadFromXMP(string filename, ExtendibleMap map, int layerNum){
+/*public void autoloadFromXMP(string filename, ExtendibleMap map, int layerNum){
 	ExtendibleBitmap xmpFile = new ExtendibleBitmap(filename);
 	map.addFileToTileSource(layerNum, filename);
 	for(int i ; i < xmpFile.bitmapID.length ; i++){
@@ -344,7 +344,7 @@ public void autoloadFromXMP(string filename, ExtendibleMap map, int layerNum){
 			writeln("Bitmap \'"~xmpFile.bitmapID[i]~"\' does not follow the format xxxx\\{description} and will be skipped.");
 		}
 	}
-}
+}*/
 
 enum LookupMethod : uint{
 	NearestValue	=	1,

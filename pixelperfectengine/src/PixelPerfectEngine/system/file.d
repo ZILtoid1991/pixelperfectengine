@@ -19,11 +19,60 @@ import PixelPerfectEngine.graphics.fontsets;
 
 import PixelPerfectEngine.extbmp.extbmp;
 
+public import dimage.base;
 import dimage.tga;
 import dimage.png;
 
+import vfile;
+
 import bindbc.sdl.mixer;
 
+/**
+ * Loads an Image from a File or VFile.
+ * Automatically detects format from file extension.
+ */
+public Image loadImage(F = File)(F file) @trusted{
+	switch(extension(file.name)){
+		case ".tga", ".TGA":
+			TGA imageFile = TGA.load!(F, true, true)(file);
+			if(!imageFile.getHeader.topOrigin){
+				imageFile.flipVertical;
+			}
+			return imageFile;
+		case ".png", ".PNG":
+			PNG imageFile = PNG.load!File(file);
+			return imageFile;
+		default:
+			throw new Exception("Unsupported file format!");
+	}
+}
+/**
+ * Loads a bitmap from Image.
+ */
+public T loadBitmapFromImage(T)(Image img) @trusted
+		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
+		|| T.stringof == Bitmap32Bit.stringof){
+	// Later we might want to detect image type from classinfo, until then let's rely on similarities between types
+	static if(T.stringof == Bitmap4Bit.stringof){
+		if(img.getBitdepth != 4)
+			throw new BitmapFormatException("Bitdepth mismatch exception!");
+		return new Bitmap4Bit(img.getImageData, img.width, img.height);
+	}else static if(T.stringof == Bitmap8Bit.stringof){
+		if(img.getBitdepth != 8)
+			throw new BitmapFormatException("Bitdepth mismatch exception!");
+		return new Bitmap8Bit(img.getImageData, img.width, img.height);
+	}else static if(T.stringof == Bitmap16Bit.stringof){
+		if(img.getBitdepth != 16)
+			throw new BitmapFormatException("Bitdepth mismatch exception!");
+		return new Bitmap16Bit(reinterpretCast!ushort(img.getImageData), img.width, img.height);
+	}else static if(T.stringof == Bitmap32Bit.stringof){
+		if(img.getBitdepth != 32)
+			throw new BitmapFormatException("Bitdepth mismatch exception!");
+		return new Bitmap32Bit(reinterpretCast!Color(img.getImageData), img.width, img.height);
+	}
+
+}
+//TODO: Make collision model loader for 1 bit bitmaps
 /**
  * Loads a bitmap from disk.
  * Currently supported formats: *.tga, *.png
@@ -76,36 +125,66 @@ public T loadBitmapFromFile(T)(string filename)
  */
 public T[] loadBitmapSheetFromFile(T)(string filename, int x, int y)
 		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
-		|| T.stringof == Bitmap32Bit.stringof){
+		|| T.stringof == Bitmap32Bit.stringof) {
 	T source = loadBitmapFromFile!T(filename);
 	if(source.width % x == 0 && source.height % y == 0){
-
-	}else throw new Exception("Requested size cannot be divided by input file's sizes!");
-	T[] output;
-	static if (T.stringof == Bitmap4Bit.stringof)
-		const size_t length = x / 2, pitch = source.width / 2;
-	else static if (T.stringof == Bitmap8Bit.stringof)
-		const size_t length = x, pitch = source.width;
-	else static if (T.stringof == Bitmap16Bit.stringof)
-		const size_t length = x * 2, pitch = source.width * 2;
-	else static if (T.stringof == Bitmap32Bit.stringof)
-		const size_t length = x * 4, pitch = source.width * 4;
-	const size_t pitch0 = pitch * y;
-	for (int mY ; mY < source.height / y ; mY++){
-		for (int mX ; mX < source.width / x ; mX++){
-			T next = new T(x, y);
-			for (int lY ; lY < y ; lY++){
-				memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch0 * mY) + (length * mX), length);
+		T[] output;
+		static if (T.stringof == Bitmap4Bit.stringof)
+			const size_t length = x / 2, pitch = source.width / 2;
+		else static if (T.stringof == Bitmap8Bit.stringof)
+			const size_t length = x, pitch = source.width;
+		else static if (T.stringof == Bitmap16Bit.stringof)
+			const size_t length = x * 2, pitch = source.width * 2;
+		else static if (T.stringof == Bitmap32Bit.stringof)
+			const size_t length = x * 4, pitch = source.width * 4;
+		const size_t pitch0 = pitch * y;
+		for (int mY ; mY < source.height / y ; mY++){
+			for (int mX ; mX < source.width / x ; mX++){
+				T next = new T(x, y);
+				for (int lY ; lY < y ; lY++){
+					memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch0 * mY) + (length * mX), length);
+				}
+				output ~= next;
 			}
-			output ~= next;
 		}
-	}
-	return output;
+		return output;
+	}else throw new Exception("Requested size cannot be divided by input file's sizes!");
+}
+/**
+ * Creates a bitmap sheet from an image file.
+ * This one doesn't require embedded data.
+ */
+public T[] loadBitmapSheetFromImage(T)(Image img, int x, int y)
+		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
+		|| T.stringof == Bitmap32Bit.stringof) {
+	T source = loadBitmapFromImage!T(img);
+	if(source.width % x == 0 && source.height % y == 0){
+		T[] output;
+		static if (T.stringof == Bitmap4Bit.stringof)
+			const size_t length = x / 2, pitch = source.width / 2;
+		else static if (T.stringof == Bitmap8Bit.stringof)
+			const size_t length = x, pitch = source.width;
+		else static if (T.stringof == Bitmap16Bit.stringof)
+			const size_t length = x * 2, pitch = source.width * 2;
+		else static if (T.stringof == Bitmap32Bit.stringof)
+			const size_t length = x * 4, pitch = source.width * 4;
+		const size_t pitch0 = pitch * y;
+		for (int mY ; mY < source.height / y ; mY++){
+			for (int mX ; mX < source.width / x ; mX++){
+				T next = new T(x, y);
+				for (int lY ; lY < y ; lY++){
+					memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch0 * mY) + (length * mX), length);
+				}
+				output ~= next;
+			}
+		}
+		return output;
+	}else throw new Exception("Requested size cannot be divided by input file's sizes!");
 }
 /**
  * Loads a palette from a file.
  */
-public Color[] loadPaletteFromFile(string filename){
+public Color[] loadPaletteFromFile(string filename) {
 	File f = File(filename);
 	switch(extension(filename)){
 		case ".tga", ".TGA":
@@ -204,37 +283,10 @@ T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
  */
 public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target, int offset = 0){
 	target.palette = cast(Color[])xmp.getPalette(ID);
-	//writeln(target.palette);
-	/*target.setupPalette(0);
-	int max = (palette.length / 3);
-	for(int i ; i < max ; i++){
-		target.addColor(palette[(i * 3)], palette[(i * 3) + 1], palette[(i * 3) + 2]);
-		//writeln(i);
-	}*/
+
 
 }
-/**
- * Loads a fontset from an XMP file.
- * Deprecated!
- */
-/+Fontset!Bitmap8Bit loadFontsetFromXMP(ExtendibleBitmap xmp, string fontName){
-	Bitmap8Bit[wchar] characters;
-	foreach(s;xmp.bitmapID){
-		//writeln(parseHex(s[fontName.length..(s.length-1)]));
-		//if(fontName == s[0..(fontName.length-1)]){
-		characters[to!wchar(parseHex(s[fontName.length..s.length]))] = loadBitmapFromXMP!Bitmap8Bit(xmp,s);
-	}
-	foreach(c;characters){
-		for(int y; y < c.height; y++){
-			for(int x; x < c.width; x++){
-				if(c.readPixel(x,y)){
-					c.writePixel(x,y, ubyte.max);
-				}
-			}
-		}
-	}
-	return new Fontset!Bitmap8Bit(fontName, characters['0'].height, characters);
-}+/
+
 /**
  * Loads a *.wav file if SDL2 mixer is used
  */

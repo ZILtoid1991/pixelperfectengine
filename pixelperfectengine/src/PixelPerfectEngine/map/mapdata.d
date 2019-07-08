@@ -11,6 +11,7 @@ import std.base64;
 import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.layers;
 import PixelPerfectEngine.system.exc;
+import PixelPerfectEngine.system.etc;
 import core.stdc.stdlib;
 import core.stdc.stdio;
 import std.string;
@@ -27,12 +28,12 @@ public import PixelPerfectEngine.system.exc;
  * Contains the very basic data for the map binary file (*.mbf).
  */
 public struct MapDataHeader{
-	public uint flags;
-	public uint fileLength;	/// fileLength = sizeX * sizeY + MapDataHeader.sizeof;
-	public int sizeX;
-	public int sizeY;
+	public uint flags;		///Currently unused
+	//public uint fileLength;	/// fileLength = sizeX * sizeY + MapDataHeader.sizeof;
+	public int sizeX;		///width of the map
+	public int sizeY;		///Height of the map
 	this(int sizeX, int sizeY){
-		this.fileLength = cast(uint)(sizeX * sizeY + MapDataHeader.sizeof);
+		//this.fileLength = cast(uint)(sizeX * sizeY + MapDataHeader.sizeof);
 		this.sizeX = sizeX;
 		this.sizeY = sizeY;
 	}
@@ -58,29 +59,23 @@ public void saveMapFile(MapDataHeader* header, ref MappingElement[] map, string 
 
 	fclose(outputStream);
 }
-
+///Ditto, but safer.
+public void saveMapFile(F = File)(MapDataHeader header, MappingElement[] map, F file) @trusted {
+	ubyte[] writeBuf = toStream(header);
+	file.rawWrite(writeBuf);
+	file.rawWrite(map);
+}
 /**
- * Loads a map from an external file. Header must be preallocated.
+ * Loads a map from an external file.
  */
-public MappingElement[] loadMapFile(MapDataHeader* header, string name){
-	FILE* inputStream = fopen(toStringz(name), "rb");
-	MappingElement[] result;
-	if(inputStream is null){
-		import std.conv;
-		version(Windows){
-			DWORD errorCode = GetLastError();
-		}else version(Posix){
-			int errorCode = errno;
-		}
-		throw new FileAccessException("File access error! Error number: " ~ to!string(errorCode));
-	}
-
-	fread(cast(void*)header, MapDataHeader.sizeof, 1, inputStream);
-	result.length = header.sizeX * header.sizeY;
-	fread(cast(void*)result, MappingElement.sizeof, result.length, inputStream);
-
-	fclose(inputStream);
-	return result;
+public MappingElement[] loadMapFile(F = File)(F file, ref MapDataHeader header){
+	ubyte[] readbuffer;
+	readbuffer.length = MapDataHeader.sizeof;
+	readbuffer = file.rawRead(readbuffer);
+	header = reinterpretGet!MapDataHeader(readbuffer);
+	readbuffer.length = header.sizeX * header.sizeY * MappingElement.sizeof;
+	readbuffer = file.rawRead(readbuffer);
+	return reinterpretCast!MappingElement(readbuffer);
 }
 
 /**

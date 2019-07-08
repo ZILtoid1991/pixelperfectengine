@@ -32,32 +32,33 @@ public struct BitmapAttrib{
  * Base bitmap functions, for enable the use of the same .
  */
 abstract class ABitmap{
-	private Color* palettePtr;		///Set this to either a portion of the master palette or to a self-defined place. Not used in 32 bit bitmaps.
+	private Color* palettePtr;		///Set this to either a portion of the master palette or to a self-defined place. Not used in 32 bit bitmaps. DEPRECATED!
     private int iX;
     private int iY;
 	/**
 	 * Returns the width of the bitmap.
 	 */
-	public int width() pure @safe @property @nogc{
+	public int width() pure @safe @property @nogc {
 		return iX;
 	}
 	/**
 	 * Returns the height of the bitmap.
 	 */
-	public int height() pure @safe @property @nogc{
+	public int height() pure @safe @property @nogc {
 		return iY;
 	}
 	abstract AdvancedBitArray generateStandardCollisionModel();
 	/**
 	 * Returns the palette pointer.
 	 */
-	@nogc public Color* getPalettePtr(){
+	@nogc public Color* getPalettePtr() {
 		return palettePtr;
 	}
 	/**
 	 * Sets the palette pointer. Make sure that you set it to a valid memory location.
+	 * DEPRECATED!
 	 */
-	@nogc public void setPalettePtr(Color* p){
+	@nogc public void setPalettePtr(Color* p) {
 		palettePtr = p;
 	}
 	/**
@@ -71,14 +72,14 @@ abstract class ABitmap{
 }
 /*
  * S: Wordlength by usage. Possible values:
- * - b: bit (for collision shapes)
+ * - b: bit (for collision shapes) (currently unimplemented)
  * - QB: QuarterByte or 2Bit (currently unimplemented)
  * - HB: HalfByte or 4Bit
  * - B: Byte or 8Bit
  * - HW: HalfWord or 16Bit
  * - W: Word or 32Bit
  * T: Type. Possible values:
- * - bool: 1Bit (for collision shapes)
+ * - bool: 1Bit (for collision shapes) (currently unimplemented)
  * - ubyte: 8Bit or under
  * - ushort: 16Bit
  * - Color: 32Bit
@@ -100,23 +101,23 @@ public class Bitmap(string S,T) : ABitmap{
 		 * Resizes the bitmap.
 		 * NOTE: It's not for scaling.
 		 */
-		public void resize(int x, int y){
+		public void resize(int x, int y) @safe pure{
 			pixels.length=x*y;
 			iX = x;
 			iY = y;
 		}
 		///Returns the pixel at the given position.
-		@nogc public T readPixel(int x, int y){
+		@nogc public T readPixel(int x, int y) @safe pure{
 			return pixels[x+(iX*y)];
 		}
 		///Writes the pixel at the given position.
-		@nogc public void writePixel(int x, int y, T color){
+		@nogc public void writePixel(int x, int y, T color) @safe pure{
 			pixels[x+(iX*y)]=color;
 		}
 	}
 	static if(S == "HB"){
-		///Creates an empty bitmap.
-		this(int x, int y, Color* palettePtr = null){
+		///Creates an empty bitmap. DEPRECATED!
+		this(int x, int y, Color* palettePtr){
 			if(x & 1)
 				x++;
 			iX=x;
@@ -124,8 +125,8 @@ public class Bitmap(string S,T) : ABitmap{
 			pixels.length=(x*y)/2;
 			this.palettePtr = palettePtr;
 		}
-		///Creates a bitmap from an array.
-		this(ubyte[] p, int x, int y, Color* palettePtr = null){
+		///Creates a bitmap from an array. DEPRECATED!
+		this(ubyte[] p, int x, int y, Color* palettePtr){
 			if (p.length/2 < x * y || x & 1)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX=x;
@@ -133,15 +134,33 @@ public class Bitmap(string S,T) : ABitmap{
 			pixels=p;
 			this.palettePtr = palettePtr;
 		}
+		///Creates an empty bitmap.
+		this(int x, int y) @safe pure{
+			if(x & 1)
+				x++;
+			iX=x;
+			iY=y;
+			pixels.length=(x*y)/2;
+			//this.palettePtr = palettePtr;
+		}
+		///Creates a bitmap from an array.
+		this(ubyte[] p, int x, int y) @safe pure{
+			if (p.length/2 < x * y || x & 1)
+				throw new BitmapFormatException("Incorrect Bitmap size exception!");
+			iX=x;
+			iY=y;
+			pixels=p;
+			//this.palettePtr = palettePtr;
+		}
 		///Returns the pixel at the given position.
-		@nogc public ubyte readPixel(int x, int y){
+		@nogc public ubyte readPixel(int x, int y) @safe pure{
 			if(x & 1)
 				return pixels[x>>1+(iX*y)] & 0x0F;
 			else
 				return (pixels[x>>1+(iX*y)])>>4;
 		}
 		///Writes the pixel at the given position.
-	    @nogc public void writePixel(int x, int y, ubyte color){
+	    @nogc public void writePixel(int x, int y, ubyte color) @safe pure{
 			if(x & 1){
 				pixels[x+(iX*y)]&= 0xF0;
 				pixels[x+(iX*y)]|= color;
@@ -151,7 +170,7 @@ public class Bitmap(string S,T) : ABitmap{
 			}
 		}
 		///Resizes the array behind the bitmap.
-		public void resize(int x,int y){
+		public void resize(int x,int y) @safe pure{
 			if(x & 1)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			pixels.length=x*y;
@@ -160,8 +179,8 @@ public class Bitmap(string S,T) : ABitmap{
 		}
 
 	}else static if(S == "B"){
-		///Creates an empty bitmap.
-		this(int x, int y, Color* palettePtr = null){
+		///Creates an empty bitmap. DEPRECATED!
+		this(int x, int y, Color* palettePtr){
 			if(x < 0 || y < 0)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX=x;
@@ -169,8 +188,8 @@ public class Bitmap(string S,T) : ABitmap{
 			pixels.length=x*y;
 			this.palettePtr = palettePtr;
 		}
-		///Creates a bitmap from an array.
-		this(ubyte[] p, int x, int y, Color* palettePtr = null){
+		///Creates a bitmap from an array. DEPRECATED!
+		this(ubyte[] p, int x, int y, Color* palettePtr){
 			if (p.length < x * y)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX=x;
@@ -178,9 +197,27 @@ public class Bitmap(string S,T) : ABitmap{
 			pixels=p;
 			this.palettePtr = palettePtr;
 		}
+		///Creates an empty bitmap.
+		this(int x, int y) @safe pure{
+			if(x < 0 || y < 0)
+				throw new BitmapFormatException("Incorrect Bitmap size exception!");
+			iX=x;
+			iY=y;
+			pixels.length=x*y;
+			//this.palettePtr = palettePtr;
+		}
+		///Creates a bitmap from an array.
+		this(ubyte[] p, int x, int y) @safe pure{
+			if (p.length < x * y)
+				throw new BitmapFormatException("Incorrect Bitmap size exception!");
+			iX=x;
+			iY=y;
+			pixels=p;
+			//this.palettePtr = palettePtr;
+		}
 	}else static if(S == "HW"){
 		///Creates an empty bitmap.
-		this(int x, int y){
+		this(int x, int y) @safe pure{
 			if(x < 0 || y < 0)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX=x;
@@ -188,7 +225,7 @@ public class Bitmap(string S,T) : ABitmap{
 			pixels.length=x*y;
 		}
 		///Creates a bitmap from an array.
-		this(ushort[] p, int x, int y){
+		this(ushort[] p, int x, int y) @safe pure{
 			if (p.length < x * y)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX=x;
@@ -197,7 +234,7 @@ public class Bitmap(string S,T) : ABitmap{
 		}
 	}else static if(S == "W"){
 		///Creates an empty bitmap.
-		public this(int x, int y){
+		public this(int x, int y) @safe pure{
 			if(x < 0 || y < 0)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX = x;
@@ -205,7 +242,7 @@ public class Bitmap(string S,T) : ABitmap{
 			pixels.length = x * y;
 		}
 		///Creates a bitmap from an array.
-		public this(Color[] p, int x, int y){
+		public this(Color[] p, int x, int y) @safe pure{
 			if (p.length < x * y)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			iX = x;
@@ -217,7 +254,7 @@ public class Bitmap(string S,T) : ABitmap{
 		/**
 		 * Offsets all indexes in the bitmap by a certain value. Keeps zeroth index (usually for transparency) if needed. Useful when converting bitmaps.
 		 */
-		public @nogc void offsetIndexes(ushort offset, bool keepZerothIndex = true){
+		public @nogc void offsetIndexes(ushort offset, bool keepZerothIndex = true) @safe pure{
 			for(int i ; i < pixels.length ; i++){
 				if(!(pixels[i] == 0 && keepZerothIndex)){
 					pixels[i] += offset;
@@ -258,7 +295,7 @@ public class Bitmap(string S,T) : ABitmap{
 			}
 		}
 	}
-	@nogc public T* getPtr() pure{
+	@nogc public T* getPtr() pure {
 		return pixels.ptr;
 	}
 	override @nogc @property string wordLengthByString() {

@@ -172,14 +172,14 @@ public class Button : WindowElement{
 				draw();
 				//invokeActionEvent(EventType.CLICK, -1);
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				isPressed = false;
 				draw();
 				//invokeActionEvent(EventType.CLICK, 0);
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID && enableMiddleButtonClick){
@@ -188,14 +188,14 @@ public class Button : WindowElement{
 				draw();
 				//invokeActionEvent(EventType.CLICK, -1);
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				isPressed = false;
 				draw();
 				//invokeActionEvent(EventType.CLICK, 0);
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
@@ -204,14 +204,14 @@ public class Button : WindowElement{
 				draw();
 				//invokeActionEvent(EventType.CLICK, -1);
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				isPressed = false;
 				draw();
 				//invokeActionEvent(EventType.CLICK, 0);
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -256,14 +256,14 @@ public class SmallButton : WindowElement{
 				draw();
 				//invokeActionEvent(EventType.CLICK, -1);
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				isPressed = false;
 				draw();
 				//invokeActionEvent(EventType.CLICK, 0);
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID && enableMiddleButtonClick){
@@ -272,14 +272,14 @@ public class SmallButton : WindowElement{
 				draw();
 				//invokeActionEvent(EventType.CLICK, -1);
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				isPressed = false;
 				draw();
 				//invokeActionEvent(EventType.CLICK, 0);
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
@@ -288,14 +288,14 @@ public class SmallButton : WindowElement{
 				draw();
 				//invokeActionEvent(EventType.CLICK, -1);
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				isPressed = false;
 				draw();
 				//invokeActionEvent(EventType.CLICK, 0);
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -312,7 +312,6 @@ public class Label : WindowElement{
 		//draw();
 	}
 	public override void draw(){
-		//writeln(elementContainer);
 		output = new BitmapDrawer(position.width, position.height);
 		output.drawColorText(0, 0, text, getAvailableStyleSheet().getFontset("default"),
 				getAvailableStyleSheet().getColor("normaltext"), 0);
@@ -334,31 +333,31 @@ public class Label : WindowElement{
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID){
 			if(state == ButtonState.PRESSED){
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
 			if(state == ButtonState.PRESSED){
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -395,31 +394,31 @@ public class TextBox : WindowElement, TextInputListener{
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID){
 			if(state == ButtonState.PRESSED){
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
 			if(state == ButtonState.PRESSED){
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -468,7 +467,7 @@ public class TextBox : WindowElement, TextInputListener{
 		text = newtext;
 	}
 	public void textInputEvent(uint timestamp, uint windowID, dstring text){
-		//writeln(0);
+
 		int j = pos;
 		dstring newtext;
 		for(int i ; i < pos ; i++){
@@ -499,7 +498,7 @@ public class TextBox : WindowElement, TextInputListener{
 		draw();
 		//invokeActionEvent(EventType.TEXTINPUT, 0, text);
 		if(onTextInput !is null)
-			onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT));
+			onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT, null, this));
 	}
 
 
@@ -510,7 +509,7 @@ public class TextBox : WindowElement, TextInputListener{
 			draw();
 			//invokeActionEvent(EventType.TEXTINPUT, 0, text);
 			if(onTextInput !is null){
-				onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT));
+				onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT, null, this));
 			}
 		}else if(key == TextInputKey.BACKSPACE){
 			if(pos > 0){
@@ -604,7 +603,7 @@ public class ListBox : WindowElement, ElementContainer{
 		items[selection].setText(selectedColumn, ev.text);
 		//invokeActionEvent(new Event(source, null, null, null, event.text, selection,EventType.TEXTINPUT, items[selection]));
 		if(onTextInput !is null){
-			onTextInput(new Event(source, null, null, null, ev.text, selection,EventType.TEXTINPUT, items[selection]));
+			onTextInput(new Event(source, null, null, null, ev.text, selection,EventType.TEXTINPUT, items[selection], this));
 		}
 		updateColumns();
 		draw();
@@ -698,7 +697,7 @@ public class ListBox : WindowElement, ElementContainer{
 		for(int i; i < header.getNumberOfColumns(); i++){
 			int bar;
 			for(int j; j < items.length; j++){
-				//writeln(foo + 1, bar);
+
 				textArea.drawColorText(foo + 1, bar, items[j].getText(i), getStyleSheet().getFontset("default"),
 						getAvailableStyleSheet().getColor("normaltext"), 0);
 
@@ -756,7 +755,7 @@ public class ListBox : WindowElement, ElementContainer{
 			bodyDrawn = true;
 			drawBody();
 		}
-		//writeln(textArea.output.getX(),textArea.output.getY());
+
 		output.insertBitmapSlice(0, rowHeight, textArea.output, Coordinate(hposition,vposition * rowHeight,hposition +
 				position.width() - 17 , vposition * rowHeight + areaY - rowHeight));
 
@@ -774,31 +773,31 @@ public class ListBox : WindowElement, ElementContainer{
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID){
 			if(state == ButtonState.PRESSED){
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
 			if(state == ButtonState.PRESSED){
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -816,19 +815,19 @@ public class ListBox : WindowElement, ElementContainer{
 
 				}else if(offsetY > rowHeight && button == MouseButton.LEFT){
 					offsetY -= rowHeight;
-					//writeln(selection);
+
 					if(selection == (offsetY / rowHeight) + vposition){
 						//invokeActionEvent(EventType.TEXTBOXSELECT, (offsetY / rowHeight) + vposition);
 						if(!enableTextInput){
 							//invokeActionEvent(new Event(source, null, null, null, null, (offsetY / rowHeight) + vposition,EventType.TEXTBOXSELECT, items[selection]));
 							if(onItemSelect !is null){
 								onItemSelect(new Event(source, null, null, null, null, (offsetY / rowHeight) + vposition,
-										EventType.TEXTBOXSELECT, items[selection]));
+										EventType.TEXTBOXSELECT, items[selection], this));
 							}
 						}else{
 							offsetX += hposition;
 							selectedColumn = header.getColumnNumFromX(offsetX);
-							//writeln(offsetX);
+
 							if(selectedColumn != -1){
 								if(items[selection].getTextInputType(selectedColumn) != TextInputType.DISABLE){
 									text = items[selection].getText(selectedColumn);
@@ -836,15 +835,13 @@ public class ListBox : WindowElement, ElementContainer{
 									PopUpTextInput p = new PopUpTextInput("textInput",text,Coordinate(0,0,header.getColumnWidth(selectedColumn),20));
 									p.onTextInput = &textInput;
 									popUpHandler.addPopUpElement(p);
-									/+textInputArea = Coordinate(header.getRangeWidth(0, selectedColumn), (selection + 1) * rowHeight /*- hposition*/,
-													header.getRangeWidth(0, selectedColumn + 1), (selection + 2) * rowHeight /*- hposition*/);
-									writeln(textInputArea);+/
 
-								}/*else{*/
+
+								}
 								if(onItemSelect !is null){
 									onItemSelect(new Event(source, null, null, null, null, (offsetY / rowHeight) + vposition,
-											EventType.TEXTBOXSELECT, items[selection]));
-									/*}*/
+											EventType.TEXTBOXSELECT, items[selection], this));
+
 								}
 							}
 						}
@@ -959,21 +956,21 @@ public class CheckBox : WindowElement{
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID){
 			if(state == ButtonState.PRESSED){
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
@@ -981,14 +978,14 @@ public class CheckBox : WindowElement{
 				checked = !checked;
 				draw();
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 				if(onToggle !is null){
-					onToggle(new Event(source, null, null, null, null, checked ? 1 : 0, EventType.CHECKBOX));
+					onToggle(new Event(source, null, null, null, null, checked ? 1 : 0, EventType.CHECKBOX, null, this));
 				}
 			}else{
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -1058,37 +1055,37 @@ public class RadioButtonGroup : WindowElement{
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID){
 			if(state == ButtonState.PRESSED){
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
 			if(state == ButtonState.PRESSED){
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 				bposition = (offsetY) / 16;
 				bposition--;
 				draw();
 				if(onToggle !is null){
-					onToggle(new Event(source, null, null, null, null, bposition, EventType.RADIOBUTTON));
+					onToggle(new Event(source, null, null, null, null, bposition, EventType.RADIOBUTTON, null, this));
 				}
 			}else{
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -1173,27 +1170,27 @@ public class VSlider : Slider{
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID){
 			if(state == ButtonState.PRESSED){
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
 			if(state == ButtonState.PRESSED){
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 				if(offsetY <= getAvailableStyleSheet.getImage("upArrowA").height){
 					if(value != 0) value--;
@@ -1210,11 +1207,11 @@ public class VSlider : Slider{
 				}
 				draw();
 				if(onScrolling !is null){
-					onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER));
+					onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
 				}
 			}else{
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -1229,7 +1226,7 @@ public class VSlider : Slider{
 		}
 		draw();
 		if(onScrolling !is null){
-			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER));
+			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
 		}
 	}
 	override public void onDrag(int x,int y,int relX,int relY,ubyte button) {
@@ -1240,7 +1237,7 @@ public class VSlider : Slider{
 			value = 0;
 		draw();
 		if(onScrolling !is null){
-			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER));
+			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
 		}
 
 	}
@@ -1255,7 +1252,7 @@ public class HSlider : Slider{
 		this.source = source;
 		this.maxValue = maxValue;
 		this.barLength = barLenght;
-		//writeln(barLenght,',',maxValue);
+
 		output = new BitmapDrawer(position.width, position.height);
 		brush ~= 14;
 		brush ~= 16;
@@ -1291,27 +1288,27 @@ public class HSlider : Slider{
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID){
 			if(state == ButtonState.PRESSED){
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
 			if(state == ButtonState.PRESSED){
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 				if(offsetX <= getAvailableStyleSheet.getImage("rightArrowA").width){
 					if(value != 0) value--;
@@ -1328,11 +1325,11 @@ public class HSlider : Slider{
 				}
 				draw();
 				if(onScrolling !is null){
-					onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER));
+					onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
 				}
 			}else{
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
@@ -1345,7 +1342,7 @@ public class HSlider : Slider{
 		}
 		draw();
 		if(onScrolling.ptr){
-			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER));
+			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
 		}
 	}
 	override public void onDrag(int x,int y,int relX,int relY,ubyte button) {
@@ -1356,7 +1353,7 @@ public class HSlider : Slider{
 			value = 0;
 		draw();
 		if(onScrolling.ptr){
-			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER));
+			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
 		}
 	}
 
@@ -1420,35 +1417,35 @@ public class MenuBar: WindowElement{
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else if(button == MouseButton.MID){
 			if(state == ButtonState.PRESSED){
 				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}else{
 			if(state == ButtonState.PRESSED){
 				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}else{
 				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK));
+					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 				}
 			}
 		}
-		//writeln(onMouseLClickPre);
+
 		if(offsetX < usedWidth && button == MouseButton.LEFT && state == ButtonState.PRESSED){
 			for(int i = cast(int)menuWidths.length - 1 ; i >= 0 ; i--){
 				if(menuWidths[i] < offsetX){
@@ -1487,17 +1484,19 @@ public abstract class PopUpElement{
 	public void delegate(Event ev) onMouseRClickPre;
 	public void delegate(Event ev) onMouseMClickPre;*/
 
-	public static void delegate() onDraw;
-	public void delegate(Event ev) onMouseClick;
+	public static void delegate() onDraw;			///Called when the element finished drawing
+	public void delegate(Event ev) onMouseClick;	///Called on mouse click on element
 
-	public abstract void draw();
-
+	public abstract void draw();					///Called to draw the element
+	///Mouse click events passed here
 	public void onClick(int offsetX, int offsetY, int type = 0){
 
 	}
+	///Mouse scroll events passed here
 	public void onScroll(int x, int y, int wX, int wY){
 
 	}
+	///Mouse movement events passed here
 	public void onMouseMovement(int x, int y){
 
 	}
@@ -1514,13 +1513,11 @@ public abstract class PopUpElement{
 		}
 		return parent.getStyleSheet();
 	}
-	/*protected void invokeActionEvent(Event e){
-		foreach(ActionListener a; al){
-			//a.actionEvent(source, type, value, message);
-			//writeln(a);
-			a.actionEvent(e);
-		}
-	}*/
+	///Returns the output of the element.
+	///This method is preferred over directly accessing output.output, which won't be available in later versions.
+	public ABitmap getOutput() @safe{
+		return output.output;
+	}
 }
 
 /**
@@ -1548,7 +1545,7 @@ public class PopUpMenu : PopUpElement{
 			minwidth = (ss.drawParameters["PopUpMenuVertPadding"] * 2) + ss.drawParameters["PopUpMenuMinTextSpace"] + iconWidth;
 			width = minwidth;
 			foreach(e; elements){
-				int newwidth = ss.getFontset("default").getTextLength(e.text~e.secondaryText) + iconWidth;
+				const int newwidth = ss.getFontset("default").getTextLength(e.text~e.secondaryText) + iconWidth;
 				if(newwidth > width){
 					width = newwidth;
 				}
@@ -1602,7 +1599,7 @@ public class PopUpMenu : PopUpElement{
 		}else{
 			//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
 			if(onMouseClick !is null)
-				onMouseClick(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
+				onMouseClick(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK, null, this));
 			parent.endPopUpSession();
 			//parent.closePopUp(this);
 		}
@@ -1777,7 +1774,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 				inputhandler.stopTextInput(this);
 				//invokeActionEvent(new Event(source, null, null, null, text, text.length, EventType.TEXTINPUT));
 				if(onTextInput !is null)
-					onTextInput(new Event(source, null, null, null, text, cast(int)text.length, EventType.TEXTINPUT));
+					onTextInput(new Event(source, null, null, null, text, cast(int)text.length, EventType.TEXTINPUT, null, this));
 				break;
 			case TextInputKey.BACKSPACE:
 				if(textPos > 0){
@@ -1969,11 +1966,12 @@ public class Event{
 	public dstring text;
 	public int value, type;
 	public Object aux;
+	public Object sender;
 	/**
 	 *If a field is unneeded, leave it blank by setting it to null.
 	 */
 	this(string source, string subsource, string path, string filename, dstring textinput, int value, int type,
-			Object aux = null){
+			Object aux = null, Object sender = null){
 		this.source = source;
 		this.subsource = subsource;
 		this.path = path;
@@ -1982,6 +1980,7 @@ public class Event{
 		this.value = value;
 		this.type = type;
 		this.aux = aux;
+		this.sender = sender;
 	}
 	/**
 	 * Returns the full path including the filename

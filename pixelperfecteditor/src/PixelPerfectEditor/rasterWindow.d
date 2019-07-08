@@ -8,6 +8,7 @@ import PixelPerfectEngine.graphics.layers;
 import CPUblit.composing;
 import CPUblit.draw;
 import CPUblit.colorlookup;
+import PixelPerfectEngine.system.inputHandler : MouseButton;
 
 import document;
 
@@ -18,14 +19,14 @@ public class RasterWindow : Window {
 	protected Bitmap32Bit trueOutput, rasterOutput;
 	protected Color[] paletteLocal;
 	protected Color* paletteShared;
-	protected Layer[int] layers;
-	protected int[] layerList, mutedLayers;
+	//protected Layer[int] layers;
+	protected int[] layerList;
 	protected int rasterX, rasterY;
 	protected dstring documentName;
 	protected MapDocument document;
 
 	public this(int x, int y, Color* paletteShared, dstring documentName, MapDocument document){
-		trueOutput = new Bitmap32Bit(x,y);
+		trueOutput = new Bitmap32Bit(x + 2,y + 18);
 		rasterOutput = new Bitmap32Bit(x + 2, y + 18);
 		super(Coordinate(0, 0, x + 2, y + 18), documentName, ["settingsButtonA", "rightArrowA", "leftArrowA",
 				"downArrowA", "upArrowA",]);
@@ -36,15 +37,24 @@ public class RasterWindow : Window {
 	public override @property ABitmap getOutput(){
 		return trueOutput;
 	}
-	public @property Color[] palette(Color[] val) inout {
+	public @property Color[] palette(Color[] val) @safe pure {
 		return paletteLocal = val;
 	}
-	public override void passMouseEvent(int x, int y, int state, ubyte button){
+	public @property Color[] palette() @safe pure {
+		return paletteLocal;
+	}
+	public override void passMouseEvent(int x, int y, int state, ubyte button) {
 		StyleSheet ss = getStyleSheet;
-		if(y >= ss.drawParameters["WindowHeaderHeight"] && y < trueOutput.height - 1 && x > 0 && x < trueOutput.width){
+		if(y >= ss.drawParameters["WindowHeaderHeight"] && y < trueOutput.height - 1 && x > 0 && x < trueOutput.width - 1) {
 			y -= ss.drawParameters["WindowHeaderHeight"];
 			x--;
+			//Normal mode:
+			//left : drag layer ; right : menu ; middle : quick nav ; other buttons : user defined
+			//Selection mode:
+			//left : select ; right : menu ; middle : quick nav ; other buttons : user defined
+			//TileLayer placement mode:
 			//left : placement ; right : menu ; middle : delete ; other buttons : user defined
+			document.passMouseEvent(x, y, state, button);
 		}else
 			super.passMouseEvent(x, y, state, button);
 	}
@@ -56,8 +66,8 @@ public class RasterWindow : Window {
 		}
 
 		drawHeader();
-		for(int y ; y < 16 ; y++){
-			colorLookup(output.output.getPtr + y * position.width, trueOutput.getPtr + y * position.width, paletteShared,
+		for(int y ; y < 16 ; y++){	//copy 8 bit bitmap with color lookup
+			colorLookup(output.output.getPtr + (y * position.width), trueOutput.getPtr + (y * position.width), paletteShared,
 					position.width);
 		}
 		/*if(drawHeaderOnly)
@@ -65,29 +75,49 @@ public class RasterWindow : Window {
 		//draw the borders. we do not need fills or drawing elements
 		uint* ptr = cast(uint*)trueOutput.getPtr;
 		StyleSheet ss = getStyleSheet;
-		drawLine!uint(0, 16, 0, position.height, paletteShared[ss.getColor("windowascent")].raw, ptr, trueOutput.width);
-		drawLine!uint(0, 16, position.width, 16, paletteShared[ss.getColor("windowascent")].raw, ptr, trueOutput.width);
-		drawLine!uint(position.width, 16, position.width, position.height, paletteShared[ss.getColor("windowdescent")].raw,
+		drawLine!uint(0, 16, 0, position.height - 1, paletteShared[ss.getColor("windowascent")].raw, ptr, trueOutput.width);
+		drawLine!uint(0, 16, position.width - 1, 16, paletteShared[ss.getColor("windowascent")].raw, ptr, trueOutput.width);
+		drawLine!uint(position.width - 1, 16, position.width - 1, position.height - 1, paletteShared[ss.getColor("windowdescent")].raw,
 				ptr, trueOutput.width);
-		drawLine!uint(0, position.height, position.width, position.height, paletteShared[ss.getColor("windowdescent")].raw,
+		drawLine!uint(0, position.height - 1, position.width - 1, position.height - 1, paletteShared[ss.getColor("windowdescent")].raw,
 				ptr, trueOutput.width);
 	}
 	/**
 	 * Updates the raster of the window.
 	 */
-	public void updateRaster(){
+	public void updateRaster() {
 		//update each layer individually
 		for(int i ; i < layerList.length ; i++){
-			layers[layerList[i]].updateRaster(rasterOutput.getPtr, rasterX * 4, paletteLocal.ptr);
+			document.mainDoc[layerList[i]].updateRaster(rasterOutput.getPtr, rasterX * 4, paletteLocal.ptr);
 		}
 		//copy the raster output to the target
 		Color* p0 = rasterOutput.getPtr, p1 = trueOutput.getPtr + (17 * trueOutput.width);
 		const int x = rasterOutput.width;
 		p1++;
-		for(int y ; y < rasterY; y++){
+		for (int y ; y < rasterY; y++) {
 			helperFunc(p0, p1, x);
 			p0 += x;
 			p1 += trueOutput.width;
+		}
+	}
+	/**
+	 * Adds a new layer then reorders the display list.
+	 */
+	public void addLayer(int p) {
+		import std.algorithm.sorting : sort;
+		layerList ~= p;
+		layerList.sort();
+	}
+	/**
+	 * Removes a layer then reorders the display list.
+	 */
+	public void removeLayer(int p) {
+		import std.algorithm.mutation : remove;
+		for (int i ; i < layerList.length ; i++) {
+			if (layerList[i] == p) {
+				layerList.remove(i);
+				return;
+			}
 		}
 	}
 	/**
