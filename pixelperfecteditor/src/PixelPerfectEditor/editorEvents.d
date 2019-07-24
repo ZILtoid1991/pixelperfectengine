@@ -7,6 +7,8 @@ public import PixelPerfectEngine.graphics.layers;
 public import PixelPerfectEngine.map.mapformat;
 
 import std.stdio;
+import std.conv : to;
+import sdlang;
 
 public class WriteToMapVoidFill : UndoableEvent {
 	ITileLayer target;
@@ -99,10 +101,12 @@ public class CreateTileLayerEvent : UndoableEvent {
 	int tY;
 	int mX;
 	int mY;
+	int pri;
 	string name;
 	string file;
 	string res;
 	bool embed;
+	Tag backup;
 
 	public this(MapDocument target, int tX, int tY, int mX, int mY, dstring name, string file, string res,
 			bool embed) {
@@ -121,9 +125,16 @@ public class CreateTileLayerEvent : UndoableEvent {
 		//this.imageReturnFunc = imageReturnFunc;
 	}
 	public void redo() {
-		import std.file : exists;
+		import std.file : exists, isFile;
+		import std.path : baseName;
 		import std.utf : toUTF8;
 		import PixelPerfectEngine.system.file;
+		import PixelPerfectEngine.system.etc : intToHex;
+		if (backup) {	//If a backup exists, then re-add that to the document, then return.
+			target.mainDoc.addNewLayer(pri, backup, creation);
+			target.outputWindow.addLayer(pri);
+			return;
+		}
 		try {
 			const int nextLayer = target.nextLayerNumber;
 
@@ -132,13 +143,13 @@ public class CreateTileLayerEvent : UndoableEvent {
 			//file == existing file AND embed
 			//file == existing file AND !embed
 			//file == nonexisting file
-			if ((file == "none" || file.length == 0) && embed) {	//create new instance for the map by embedding data into the SDLang file
+			if ((!exists(file) || !isFile(file)) && embed) {	//create new instance for the map by embedding data into the SDLang file
 				//selDoc.mainDoc.tld[nextLayer] = new
 				MappingElement[] me;
 				me.length = mX * mY;
 				creation.loadMapping(mX, mY, me);
 				target.mainDoc.addNewTileLayer(nextLayer, tX, tY, mX, mY, name, creation);
-				target.mainDoc.addEmbeddedTileData(nextLayer, saveMapToBase64(me).idup);
+				target.mainDoc.addEmbeddedMapData(nextLayer, me);
 			} else if (!exists(file)) {	//Create empty file
 				File f = File(file, "wb");
 				MappingElement[] me;
@@ -146,15 +157,15 @@ public class CreateTileLayerEvent : UndoableEvent {
 				creation.loadMapping(mX, mY, me);
 				target.mainDoc.addNewTileLayer(nextLayer, tX, tY, mX, mY, name, creation);
 				saveMapFile(MapDataHeader(mX, mY), me, f);
-				target.mainDoc.addTileDataFile(nextLayer, res);
+				target.mainDoc.addMapDataFile(nextLayer, res);
 			} else {	//load mapping, embed data into current file if needed
 				MapDataHeader mdh;
 				MappingElement[] me = loadMapFile(File(file), mdh);
 				creation.loadMapping(mdh.sizeX, mdh.sizeY, me);
 				if (embed)
-					target.mainDoc.addEmbeddedTileData(nextLayer, saveMapToBase64(me).idup);
+					target.mainDoc.addEmbeddedMapData(nextLayer, me);
 				else
-					target.mainDoc.addTileDataFile(nextLayer, res);
+					target.mainDoc.addMapDataFile(nextLayer, res);
 			}
 
 			//handle the following instances for materials:
@@ -191,16 +202,36 @@ public class CreateTileLayerEvent : UndoableEvent {
 						throw new Exception("Unsupported bitdepth!");
 
 				}
+				if (tilesheet.length == 0) throw new Exception("No tiles were imported!");
 				target.addTileSet(nextLayer, tilesheet);
+				target.mainDoc.addTileSourceFile(nextLayer, res);
+				//writeln(tilesheet.length);
+				//generate default names for the tiles
+				{
+					TileInfo[] idList;
+					string nameBase = baseName(res);
+					for (int id ; id < tilesheet.length ; id++) {
+						idList ~= TileInfo(cast(wchar)id, id, nameBase ~ "0x" ~ intToHex(id, 4));
+						//writeln(idList);
+					}
+					target.mainDoc.addTileInfo(nextLayer, idList, res);
+				}
+				writeln(target.mainDoc.layerData[nextLayer].toSDLString);
 			}
 			target.outputWindow.addLayer(nextLayer);
 			target.selectedLayer = nextLayer;
-
+			pri = nextLayer;
+			target.updateLayerList();
+			target.updateMaterialList();
 		} catch (Exception e) {
-
+			debug writeln(e);
 		}
 	}
 	public void undo() {
 		//Just remove the added layer from the layerlists
+		target.outputWindow.removeLayer(pri);
+		backup = target.mainDoc.removeLayer(pri);
+		target.updateLayerList();
+		target.updateMaterialList();
 	}
 }

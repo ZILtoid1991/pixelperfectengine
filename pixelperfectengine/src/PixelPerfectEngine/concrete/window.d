@@ -526,7 +526,7 @@ public class FileDialog : Window{
 		button_up.onMouseLClickRel = &up;
 		addElement(button_up);
 		button_drv = new Button("Drive"d,"drv",Coordinate(58, 154, 108, 174));
-		button_up.onMouseLClickRel = &changeDrive;
+		button_drv.onMouseLClickRel = &changeDrive;
 		addElement(button_drv);
 		button_ok = new Button(save ? "Save"d : "Load"d,"ok",Coordinate(112, 154, 162, 174));
 		button_ok.onMouseLClickRel = &fileEvent;
@@ -666,11 +666,12 @@ public class FileDialog : Window{
 				n = i;
 			}
 		}
-		string newdir;
+		/+string newdir;
 		for(int i ; i < n ; i++){
 			newdir ~= directory[i];
-		}
-		directory = newdir;
+		}+/
+		//directory = newdir;
+		directory = directory[0..n];
 		spanDir();
 
 	}
@@ -683,7 +684,7 @@ public class FileDialog : Window{
 			ListBoxItem[] items;
 			foreach(string drive; driveList){
 				pathList ~= drive;
-				items ~= new ListBoxItem([to!dstring(drive),"<DIR>","N/A"]);
+				items ~= new ListBoxItem([to!dstring(drive),"<DRIVE>"d,""d]);
 			}
 			lb.updateColumns(items);
 			lb.draw();

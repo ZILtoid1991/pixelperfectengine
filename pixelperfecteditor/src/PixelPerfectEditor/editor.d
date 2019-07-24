@@ -33,8 +33,8 @@ import PixelPerfectEngine.map.mapformat;
 //import newLayerDialog;
 import about;
 import editorEvents;
-import layerlist;
-import materialList;
+public import layerlist;
+public import materialList;
 import document;
 import rasterWindow;
 import newTileLayer;
@@ -96,7 +96,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 	public Label[] labels;
 	private int[] propTLW, propSLW, propSLEW;
 	public IEditor ie;
-	public bool layerList, materialList;
+	//public bool layerList, materialList;
+	public LayerList layerList;
+	public MaterialList materialList;
 
 	//public InputHandler ih;
 
@@ -109,12 +111,13 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		propSLW = [160, 320, 48, 64];
 		propSLEW = [160, 320, 40, 56];
 		WindowElement.popUpHandler = this;
+		//openLayerList;
 	}
 	private void onLayerListClose(){
-		layerList = false;
+		layerList = null;
 	}
 	private void onMaterialListClose(){
-		materialList = false;
+		materialList = null;
 	}
 	public void clearArea(WindowElement sender){
 
@@ -203,8 +206,20 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 			scrollC ~= we;
 		}
 	}
+	public void openLayerList() {
+		if(!layerList){
+			layerList = new LayerList(0, 16, &onLayerListClose);
+			addWindow(layerList);
+		}
+	}
+	public void openMaterialList() {
 
-
+		if(!materialList){
+			materialList = new MaterialList(0, 16 + 213, &onMaterialListClose);
+			//addWindow(new MaterialList(848 - 98, 16 + 213, &onMaterialListClose));
+			addWindow(materialList);
+		}
+	}
 	public void actionEvent(Event event){
 		switch(event.source){
 			case "exit":
@@ -222,14 +237,13 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 				w.relMove(30,30);
 				break;
 			case "layerList":
-				if(!layerList)
-					addWindow(new LayerList(848 - 98, 16, &onLayerListClose));
-				layerList = true;
+				openLayerList;
+					//addWindow(new LayerList(848 - 98, 16, &onLayerListClose));
+				//layerList = true;
 				break;
 			case "materialList":
-				if(!materialList)
-					addWindow(new MaterialList(848 - 98, 16 + 213, &onMaterialListClose));
-				materialList = true;
+				openMaterialList;
+				//materialList = true;
 				break;
 			default:
 				ie.passActionEvent(event);
@@ -519,6 +533,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		WindowElement.onDraw = &setRasterRefresh;
 		PopUpElement.onDraw = &setRasterRefresh;
 		Window.onDrawUpdate = &setRasterRefresh;
+		wh.openLayerList;
+		wh.openMaterialList;
 	}
 	/**
 	 * Opens a window to aks the user for the data on the new tile layer
@@ -567,7 +583,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void createNewDocument(dstring name, int rX, int rY, int pal){
 		import std.utf : toUTF8;
 		MapDocument md = new MapDocument(toUTF8(name), rX, rY);
-		Window w = new RasterWindow(rX, rY, rasters.palette.ptr, name, md);
+		RasterWindow w = new RasterWindow(rX, rY, rasters.palette.ptr, name, md);
+		md.outputWindow = w;
 		wh.addWindow(w);
 		documents[name] = md;
 		selDoc = md;

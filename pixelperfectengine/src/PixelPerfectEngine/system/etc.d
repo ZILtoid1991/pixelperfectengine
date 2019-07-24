@@ -22,8 +22,8 @@ public dstring[] stringArrayConv(string[] s) pure @safe{
 	return result;
 }
 ///Returns a hexadecimal string representation of the integer.
-string intToHex(int i, int format = 0) pure @safe{
-	string result;
+S intToHex(S = string)(int i, int format = 0) pure @safe{
+	S result;
 	do{
 		switch(i & 0x000F){
 			case 1: result ~='1'; break;
@@ -50,7 +50,7 @@ string intToHex(int i, int format = 0) pure @safe{
 			result ~= '0';
 		}
 	}
-	reverse(result.dup);
+	result = result.dup.reverse;
 	return result;
 }
 ///Returns a octal string representation of the integer.
@@ -74,7 +74,7 @@ string intToOct(int i, int format) pure @safe{
 			result ~= '0';
 		}
 	}
-	reverse(result.dup);
+	result = result.dup.reverse;
 	return result;
 }
 ///Parses a hexadecimal int represented as a string.

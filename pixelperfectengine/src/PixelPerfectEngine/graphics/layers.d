@@ -104,7 +104,15 @@ abstract class Layer {
 		}
 	}
 }
-
+/**
+ * Mostly used for internal communication.
+ */
+public enum LayerType {
+	NULL,
+	tile,
+	transformableTile,
+	sprite,
+}
 /**
  * Sets the rendering mode of the TileLayer.
  *

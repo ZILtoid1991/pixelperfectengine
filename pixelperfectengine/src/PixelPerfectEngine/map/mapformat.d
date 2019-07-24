@@ -17,11 +17,13 @@ public import PixelPerfectEngine.map.mapdata;
  * <br/>
  * Note on layer tags:
  * As of this version, additional tags within layers must have individual names. Subtags within a parent also need to have individual names.
+ * Namespaces are reserved for internal use (eg. file sources, objects).
  */
 public class MapFormat {
-	protected Tag[int] 	layerData;	///Layerdata stored as SDLang tags.
+	public Tag[int] 	layerData;	///Layerdata stored as SDLang tags.
 	protected Layer[int] layeroutput;	///Used to fast map and object data pullback in editors
 	protected Tag 		metadata;	///Stores metadata.
+	public TileInfo[][int]	tileDataFromExt;///Stores basic TileData that are loaded through extensions
 	/**
 	 * Creates new instance from scratch.
 	 */
@@ -37,12 +39,15 @@ public class MapFormat {
 	public this (string source) @trusted {
 		Tag root = parseSource(source);
 		//Just quickly go through the tags and sort them out
-		foreach (Tag t0 ; root.tags) {
+		foreach (Tag t0 ; root.all.tags) {
 			switch (t0.namespace) {
 				case "Layer":
 					const int priority = t0.expectTagValue!int("priority");
 					layerData[priority] = t0;
 					break;
+				/*case "Metadata":
+					metadata = t0;
+					break;*/
 				default:
 					if(t0.name == "Metadata"){
 						metadata = t0;
@@ -58,11 +63,133 @@ public class MapFormat {
 		return layeroutput.get(index, null);
 	}
 	/**
+	 * Returns all layer's basic information.
+	 */
+	public LayerInfo[] getLayerInfo() @trusted {
+		import std.algorithm.sorting : sort;
+		LayerInfo[] result;
+		foreach (Tag t ; layerData) {
+			result ~= LayerInfo(LayerInfo.parseLayerTypeString(t.name), t.values[1].get!int(), t.values[0].get!string());
+		}
+		result.sort;
+		return result;
+	}
+	/**
+	 * Returns a selected tile layer's all tile's basic information.
+	 * Mainly used to display information in editors.
+	 */
+	public TileInfo[] getTileInfo(int pri) @trusted {
+		import std.algorithm.sorting : sort;
+		TileInfo[] result;
+		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			//writeln(t0.toSDLString);
+			if (t0.name == "TileSource") {
+				Tag t1 = t0.getTag("Embed:TileInfo");
+				if (t1 !is null) {
+					foreach (Tag t2 ; t1.tags) {
+						result ~= TileInfo(cast(wchar)t2.values[0].get!int(), t2.values[1].get!int(), t2.values[2].get!string());
+					}
+				}
+
+			}
+		}
+		//writeln(result.length);
+		result ~= tileDataFromExt.get(pri, []);
+		result.sort;
+		return result;
+	}
+	/**
+	 * Adds TileInfo to a TileLayer.
+	 * Joins together multiple chunks with the same source identifier. (should be a path)
+	 */
+	public void addTileInfo(int pri, TileInfo[] list, string source, string dpkSource = null) @trusted {
+		if(list.length == 0) throw new Exception("Empty list!");
+		Tag t;
+		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			// Bug: Tag.getAttribute generates an out of memory bound error.
+			// Current solution: wait until it gets fixed.
+			if (t0.name == "TileSource" && t0.values[0] == source/+ && t.getAttribute!string("dataPakSrc", null) == dpkSource+/) {
+				t = t0.getTag("Embed:TileInfo", null);
+				if (t is null) t = new Tag(t0, "Embed", "TileInfo");
+				break;
+			}
+		}
+		//if (t is null) return;
+		foreach (item ; list) {
+			new Tag(t, null, null, [Value(cast(int)item.id), Value(item.num), Value(item.name)]);
+		}
+		//writeln(t.tags.length);
+		assert(t.tags.length == list.length);
+	}
+	///Ditto, but from preexisting Tag.
+	public void addTileInfo(int pri, Tag t, string source, string dpkSource = null) @trusted {
+		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t.getAttribute!string("dataPakSrc", null) == dpkSource) {
+				t0.add(t);
+				return;
+			}
+		}
+
+	}
+	/**
+	 * Adds a single TileInfo to a preexisting chunk on the layer.
+	 */
+	public void addSingleTileInfo(int pri, TileInfo item, string source, string dpkSource = null) {
+		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
+				Tag t1 = t0.getTag("Embed:TileInfo");
+				if (t1 !is null) {
+					new Tag (t1, null, null, [Value(cast(int)item.id), Value(item.num), Value(item.name)]);
+				}
+			}
+		}
+	}
+	///Ditto, but from preexiting Tag.
+	public void addSingleTileInfo(int pri, Tag t, string source) @trusted {
+		foreach (Tag t0 ; layerData[pri].namespaces["Embed"].tags) {
+			if (t0.name == "TileInfo" && t0.values.length >= 1 && t0.values[0].get!string() == source) {
+				t0.add(t);
+				return;
+			}
+		}
+	}
+	/**
+	 * Removes a single tile from a TileInfo chunk.
+	 * Returns a tag as a backup.
+	 * Returns null if source is not found.
+	 */
+	public Tag removeTileInfo(int pri, string source) @trusted {
+		foreach (Tag t0 ; layerData[pri].namespaces["Embed"].tags) {
+			if (t0.name == "TileInfo" && t0.values.length >= 1 && t0.values[0].get!string() == source) {
+				return t0.remove;
+			}
+		}
+		return null;
+	}
+	/**
+	 * Removes a given layer of any kind.
+	 * Returns the Tag of the layer as a backup.
+	 */
+	public Tag removeLayer(int pri) @trusted {
+		Tag backup = layerData[pri];
+		layeroutput.remove(pri);
+		layerData.remove(pri);
+		return backup;
+	}
+	/**
+	 * Adds a layer from external tag.
+	 */
+	public void addNewLayer(int pri, Tag t, Layer l) @trusted {
+		layeroutput[pri] = l;
+		layerData[pri] = t;
+	}
+	/**
 	 * Adds a new TileLayer to the document.
 	 */
 	public void addNewTileLayer(int pri, int tX, int tY, int mX, int mY, string name, TileLayer l) @trusted {
 		layeroutput[pri] = l;
-		layerData[pri] = new Tag(null, "Layer", "Tile", [Value(name), Value(tX), Value(tY), Value(mX), Value(mY)]);
+		layerData[pri] = new Tag(null, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), Value(mY)]);
+		//new Tag(null, null, "priority", [Value(pri)]);
 	}
 	/**
 	 * Adds a new tag to a layer.
@@ -135,47 +262,131 @@ public class MapFormat {
 		return layerData[pri].expectTag(name).remove;
 	}
 	/**
-	 * Adds an embedded TileData to a TileLayer.
+	 * Adds an embedded MapData to a TileLayer.
 	 */
-	public void addEmbeddedTileData(int pri, string base64Code) @trusted {
-		new Tag(layerData[pri], "embed", "tileData", [Value(base64Code)]);
+	public void addEmbeddedMapData(int pri, ubyte[] base64Code) @trusted {
+		new Tag(layerData[pri], "Embed", "MapData", [Value(base64Code)]);
+	}
+	///Ditto
+	public void addEmbeddedMapData(int pri, MappingElement[] me) @safe {
+		import PixelPerfectEngine.system.etc : reinterpretCast;
+		addEmbeddedMapData(pri, reinterpretCast!ubyte(me));
 	}
 	/**
 	 * Adds a TileData file to a TileLayer.
-	 * Filename must contain relative path, including datapak files.
+	 * Filename must contain relative path.
 	 */
-	public void addTileDataFile(int pri, string filename) @trusted {
-		new Tag(layerData[pri], "file", "tileData", [Value(filename)]);
+	public void addMapDataFile(int pri, string filename, string dpkSource = null) @trusted {
+		Attribute[] a;
+		if (dpkSource !is null) a ~= new Attribute("dpkSource", Value(dpkSource));
+		new Tag(layerData[pri], "File", "MapData", [Value(filename)], a);
 	}
+	/+///Ditto, but for files found in DataPak archives
+	public void addMapDataFile(int pri, string dataPakPath, string filename) @trusted {
+		new Tag(layerData[pri], "File", "MapData", [Value(dataPakPath), Value(filename)]);
+	}+/
 	/**
 	 * Removes embedded TileData from a TileLayer.
 	 * Returns a backup for undoing.
 	 */
-	public Tag removeEmbeddedTileData(int pri) @trusted {
-		return layerData[pri].expectTag("embed:tileData").remove;
+	public Tag removeEmbeddedMapData(int pri) @trusted {
+		return layerData[pri].expectTag("Embed:MapData").remove;
 	}
 	/**
 	 * Removes a TileData file from a TileLayer.
 	 * Returns a backup for undoing.
 	 */
-	public Tag removeTileDataFile(int pri) @trusted {
-		return layerData[pri].expectTag("file:tileData").remove;
+	public Tag removeMapDataFile(int pri) @trusted {
+		return layerData[pri].expectTag("File:MapData").remove;
 	}
 	/**
 	 * Pulls TileLayer data from the layer, and stores it in the preconfigured location.
+	 * Only works with uncompressed data due to the need of recompression.
 	 */
-	public void pullTileDataFromLayer(int pri) @trusted {
-
+	public void pullMapDataFromLayer(int pri) @trusted {
+		import PixelPerfectEngine.system.etc : reinterpretCast;
 		ITileLayer t = cast(ITileLayer)layeroutput[pri];
 		MappingElement[] mapping = t.getMapping;
-		if (layerData[pri].getTag("embed:tileData") !is null) {
-			layerData[pri].getTag("embed:tileData").values[0] = Value(saveMapToBase64(mapping).idup);
-		} else if (layerData[pri].getTag("file:tileData") !is null) {
-			string filename = layerData[pri].getTag("file:tileData").getValue!string();
+		if (layerData[pri].getTag("Embed:MapData") !is null) {
+			layerData[pri].getTag("Embed:MapData").values[0] = Value(reinterpretCast!ubyte(mapping));
+		} else if (layerData[pri].getTag("File:MapData") !is null) {
+			string filename = layerData[pri].getTag("File:MapData").getValue!string();
 			MapDataHeader mdh = MapDataHeader(layerData[pri].values[3].get!int, layerData[pri].values[4].get!int);
 			saveMapFile(mdh, mapping, File(filename, "wb"));
 		}
 
+	}
+	/**
+	 * Adds a tile source file to a TileLayer.
+	 */
+	public void addTileSourceFile(int pri, string filename, string dpkSource = null, int offset = 0) @trusted {
+		Attribute[] a;
+		if (dpkSource !is null) a ~= new Attribute("dataPakSrc", Value(dpkSource));
+		if (offset) a ~= new Attribute("offset", Value(offset));
+		new Tag(layerData[pri], "File", "TileSource", [Value(filename)], a);
+	}
+	/**
+	 * Removes a tile source.
+	 * Returns a backup copy.
+	 */
+	public Tag removeTileSourceFile(int pri, string filename, string dataPakPath = null) @trusted {
+		try {
+			auto namespace = layerData[pri].namespaces["File"];
+			foreach (t ; namespace.tags) {
+				if (t.name == "TileSource") {
+					if (dataPakPath) {
+						if (t.values[0] == dataPakPath && t.values[1] == filename)
+							return t.remove;
+					} else {
+						if (t.values[0] == filename)
+							return t.remove;
+					}
+				}
+			}
+		} catch (DOMRangeException e) {
+			debug writeln(e);
+		} catch (Exception e) {
+			debug writeln(e);
+		}
+		return null;
+	}
+	/**
+	 * Accesses tile source tags in documents for adding extra data (eg. tile names).
+	 */
+	public Tag getTileSourceTag(int pri, string filename, string dataPakPath = null) @trusted {
+		try {
+			auto namespace = layerData[pri].namespaces["File"];
+			foreach (t ; namespace.tags) {
+				if (t.name == "TileSource" && t.values[0] == filename && t.getAttribute!string("dataPakSrc", null) == dataPakPath) {
+					return t;
+				}
+			}
+		} catch (DOMRangeException e) {
+			debug writeln(e);
+		} catch (Exception e) {
+			debug writeln(e);
+		}
+		return null;
+	}
+	/**
+	 * Returns all tile sources for a given layer.
+	 * Intended to use with a loader.
+	 */
+	public Tag[] getAllTileSources (int pri) @trusted {
+		Tag[] result;
+		try {
+			auto namespace = layerData[pri].namespaces["file"];
+			foreach (t ; namespace.tags) {
+				if (t.name == "tileSource") {
+					result ~= t;
+				}
+			}
+		} catch (DOMRangeException e) {
+			debug writeln(e);
+		} catch (Exception e) {
+			debug writeln(e);
+		}
+		return result;
 	}
 }
 /**
@@ -302,4 +513,63 @@ public class SpriteObject : MapObject {
 public Coordinate getCoordinate(Tag t) @trusted {
 	return Coordinate(t.expectAttribute!int("position:left"), t.expectAttribute!int("position:top"),
 			t.expectAttribute!int("position:right"), t.expectAttribute!int("position:bottom"));
+}
+/**
+ * Simple LayerInfo struct, mostly for internal communications.
+ */
+public struct LayerInfo {
+	LayerType	type;	///Type of layer
+	int			pri;	///Priority of layer
+	string		name;	///Name of layer
+	int opCmp (LayerInfo rhs) const pure @safe @nogc {
+		if (pri > rhs.pri)
+			return 1;
+		else if (pri < rhs.pri)
+			return -1;
+		else
+			return 0;
+	}
+	/+static int opCmp (LayerInfo lhs, LayerInfo rhs) pure @safe @nogc {
+		if (lhs.pri > rhs.pri)
+			return 1;
+		else if (lhs.pri < rhs.pri)
+			return -1;
+		else
+			return 0;
+	}+/
+	/**
+	 * Parses a string as a layer type
+	 */
+	static LayerType parseLayerTypeString (string s) pure @safe @nogc {
+		switch (s) {
+			case "tile", "Tile", "TILE":
+				return LayerType.tile;
+			case "sprite", "Sprite", "SPRITE":
+				return LayerType.sprite;
+			case "transformableTile", "TransformableTile", "TRANSFORMABLETILE":
+				return LayerType.transformableTile;
+			default:
+				return LayerType.NULL;
+		}
+	}
+}
+/**
+ * Simple TileInfo struct, mostly for internal communication and loading.
+ */
+public struct TileInfo {
+	wchar		id;		///ID of the tile in wchar format
+	int			num;	///Number of tile in the file
+	string		name;	///Name of the tile
+	int opCmp (TileInfo rhs) const pure @safe @nogc {
+		if (id > rhs.id)
+			return 1;
+		else if (id < rhs.id)
+			return -1;
+		else
+			return 0;
+	}
+	public string toString() const pure {
+		import std.conv : to;
+		return to!string(id) ~ ";" ~ to!string(num) ~ ";" ~ name;
+	}
 }

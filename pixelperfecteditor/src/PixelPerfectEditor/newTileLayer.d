@@ -69,6 +69,7 @@ public class NewTileLayerDialog : Window {
 		addElement(textBox_Name);
 		button_Create = new Button("Create"d, "button_Create", Coordinate(70, 221, 160, 239));
 		addElement(button_Create);
+		button_Create.onMouseLClickRel = &button_Create_onClick;
 	}
 	private void button_TSBrowse_onClick(Event ev){
 		parent.addWindow(new FileDialog("Import Tile Source"d, "fileDialog_TSBrowse", &fileDialog_TSBrowse_event,
@@ -110,7 +111,7 @@ public class NewTileLayerDialog : Window {
 			if(textBox_TS.getText != "" && textBox_TS.getText != "none")
 				tS = toUTF8(textBox_TS.getText);
 			dstring name = textBox_Name.getText;
-			editor.newTileLayer(tX, tY, mX, mY, name, tS, mS, checkBox_embed.value);
+			editor.newTileLayer(tX, tY, mX, mY, name, mS, tS, checkBox_embed.value);
 		}catch(Exception e){
 			parent.messageWindow("Error!", "Cannot parse data!");
 		}
