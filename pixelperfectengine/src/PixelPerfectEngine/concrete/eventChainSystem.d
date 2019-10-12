@@ -11,7 +11,7 @@ public interface UndoableEvent{
  * Implements an undoable event list with automatic handling of undo/redo commands
  */
 public class UndoableStack{
-	protected UndoableEvent[] events;
+	public UndoableEvent[] events;
 	protected size_t currentPos, currentCap, maxLength;
 
 	public this(size_t maxElements) @safe pure nothrow{
@@ -41,12 +41,18 @@ public class UndoableStack{
 	/**
 	 * Redos top event.
 	 */
-	public void redo(){
+	public void redo() {
 		if(currentPos >= 0){
 			if(events[currentPos]){
 				currentPos--;
 				events[currentPos].redo;
 			}
 		}
+	}
+	/**
+	 * Returns the length of the current stack
+	 */
+	public size_t length() {
+		return events.length;
 	}
 }

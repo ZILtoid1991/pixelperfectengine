@@ -28,7 +28,7 @@ public class RasterWindow : Window {
 	public this(int x, int y, Color* paletteShared, dstring documentName, MapDocument document){
 		trueOutput = new Bitmap32Bit(x + 2,y + 18);
 		rasterOutput = new Bitmap32Bit(x + 2, y + 18);
-		super(Coordinate(0, 0, x + 2, y + 18), documentName, ["settingsButtonA", "rightArrowA", "leftArrowA",
+		super(Coordinate(0, 0, x + 2, y + 18), documentName, ["paletteButtonA", "settingsButtonA", "rightArrowA", "leftArrowA",
 				"downArrowA", "upArrowA",]);
 		this.paletteShared = paletteShared;
 		this.documentName = documentName;
@@ -48,6 +48,7 @@ public class RasterWindow : Window {
 		if(y >= ss.drawParameters["WindowHeaderHeight"] && y < trueOutput.height - 1 && x > 0 && x < trueOutput.width - 1) {
 			y -= ss.drawParameters["WindowHeaderHeight"];
 			x--;
+
 			//Normal mode:
 			//left : drag layer ; right : menu ; middle : quick nav ; other buttons : user defined
 			//Selection mode:
@@ -70,6 +71,7 @@ public class RasterWindow : Window {
 			colorLookup(output.output.getPtr + (y * position.width), trueOutput.getPtr + (y * position.width), paletteShared,
 					position.width);
 		}
+		updateRaster();
 		/*if(drawHeaderOnly)
 			return;*/
 		//draw the borders. we do not need fills or drawing elements
@@ -88,17 +90,19 @@ public class RasterWindow : Window {
 	public void updateRaster() {
 		//update each layer individually
 		for(int i ; i < layerList.length ; i++){
-			document.mainDoc[layerList[i]].updateRaster(rasterOutput.getPtr, rasterX * 4, paletteLocal.ptr);
+			//document.mainDoc[layerList[i]].updateRaster(rasterOutput.getPtr, rasterX * 4, paletteLocal.ptr);
+			document.mainDoc[layerList[i]].updateRaster((trueOutput.getPtr + (17 * trueOutput.width) + 1), trueOutput.width * 4,
+					paletteLocal.ptr);
 		}
 		//copy the raster output to the target
-		Color* p0 = rasterOutput.getPtr, p1 = trueOutput.getPtr + (17 * trueOutput.width);
-		const int x = rasterOutput.width;
-		p1++;
-		for (int y ; y < rasterY; y++) {
+		//Color* p0 = rasterOutput.getPtr, p1 = trueOutput.getPtr + (17 * trueOutput.width);
+		//const int x = rasterOutput.width;
+		//p1++;
+		/*for (int y ; y < rasterY; y++) {
 			helperFunc(p0, p1, x);
 			p0 += x;
 			p1 += trueOutput.width;
-		}
+		}*/
 	}
 	/**
 	 * Adds a new layer then reorders the display list.

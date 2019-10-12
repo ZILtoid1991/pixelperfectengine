@@ -38,14 +38,14 @@ public Editor prg;
 int main(string[] args){
 	initialzeSDL();
 
-	/+if(args.length > 1){
+	if(args.length > 1){
 		if(args[1] == "--test"){
 			TileLayerTest prg = new TileLayerTest();
 			prg.whereTheMagicHappens;
-			writeln(prg.isRunning);
+			//writeln(prg.isRunning);
 			return 0;
 		}
-	}+/
+	}
 
 	prg = new Editor(args);
 	prg.whereTheMagicHappens;
@@ -80,9 +80,9 @@ class TileLayerTest : SystemEventListener, InputListener{
 	OutputScreen output;
 	Raster r;
 	TileLayer t;
-	TransformableTileLayer!(Bitmap16Bit,32,32) tt;
-	ABitmap[] tiles;
-	Bitmap16Bit dlangMan;
+	TransformableTileLayer!(Bitmap8Bit,16,16) tt;
+	Bitmap8Bit[] tiles;
+	Bitmap8Bit dlangMan;
 	SpriteLayer s;
 	//Bitmap16Bit[wchar] tiles;
 	InputHandler ih;
@@ -91,43 +91,44 @@ class TileLayerTest : SystemEventListener, InputListener{
 	this(){
 		theta = 0;
 		isRunning = true;
-		ExtendibleBitmap tileSource = new ExtendibleBitmap("../assets/tiletest.xmp");
-		ExtendibleBitmap spriteSource = new ExtendibleBitmap("../assets/collisionTest.xmp");
-		//t = new TileLayer(32,32, LayerRenderingMode.COPY);
-		tt = new TransformableTileLayer!(Bitmap16Bit,32,32)(LayerRenderingMode.COPY);
+		Image tileSource = loadImage(File("../assets/sci-fi-tileset.png"));
+		Image spriteSource = loadImage(File("../assets/d-man.tga"));
+		t = new TileLayer(16,16, LayerRenderingMode.COPY);
+		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(LayerRenderingMode.COPY);
 		s = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
 		//c = new CollisionDetector();
-		dlangMan = loadBitmapFromXMP!Bitmap16Bit(spriteSource,"DLangMan");
+		dlangMan = loadBitmapFromImage!Bitmap8Bit(spriteSource);
 		//CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
 		dlangMan.offsetIndexes(256,false);
-		s.addSprite(dlangMan,0,0,0);
+		s.addSprite(dlangMan, 0, 0, 0, 1);
 		//s.scaleSpriteHoriz(0,-1024);
 		//s.scaleSpriteVert(0,-1024);
-		for(int i = 1 ; i < 2 ; i++){
-			s.addSprite(dlangMan,i,uniform(-31,320),uniform(-31,240));
+		for(int i = 1 ; i < 10 ; i++){
+			s.addSprite(dlangMan, i, uniform(-31,320), uniform(-31,240), 1);
 		}
 		//s.collisionDetector[1] = c;
 		//c.source = s;
 		//c.addCollisionModel(cm,0);
 		//c.addCollisionModel(cm,1);
 		//c.addCollisionListener(this);
-		tiles.length = tileSource.bitmapID.length;
-		for(int i; i < tileSource.bitmapID.length; i++){
-			string hex = tileSource.bitmapID[i];
+		//tiles.length = tileSource.bitmapID.length;
+		tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
+		for(int i; i < tiles.length; i++){
+			//string hex = tileSource.bitmapID[i];
 			//writeln(hex[hex.length-4..hex.length]);
-			ABitmap ab = loadBitmapFromXMP!Bitmap16Bit(tileSource, hex);
-			tiles[i] = ab;
-			tt.addTile(ab, to!wchar(parseHex(hex[hex.length-4..hex.length])));
+			//ABitmap ab = loadBitmapFromXMP!Bitmap16Bit(tileSource, hex);
+			//tiles[i] = ab;
+			t.addTile(tiles[i], cast(wchar)i);
 		}
 		//wchar[] mapping;
 		MappingElement[] mapping;
-		mapping.length = 16*16;
+		mapping.length = 64*64;
 		//attrMapping.length = 256*256;
 		for(int i; i < mapping.length; i++){
 			//mapping[i] = to!wchar(uniform(0x0000,0x00AA));
-			int rnd = uniform(0,1024);
+			const int rnd = uniform(0,1024);
 			//attrMapping[i] = BitmapAttrib(rnd & 1 ? true : false, rnd & 2 ? true : false);
-			mapping[i] = MappingElement(to!wchar(uniform(0x0000,0x00AA)), BitmapAttrib(rnd & 1 ? true : false, rnd & 2 ? true : false));
+			mapping[i] = MappingElement(cast(wchar)(rnd & 63), BitmapAttrib(rnd & 1024 ? true : false, rnd & 512 ? true : false));
 		}
 		ih = new InputHandler();
 		ih.sel ~= this;
@@ -161,26 +162,32 @@ class TileLayerTest : SystemEventListener, InputListener{
 		ih.kb ~= KeyBinding(0, ScanCode.Q,0, "HM", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, ScanCode.W,0, "VM", Devicetype.KEYBOARD, KeyModifier.ANY);
 
-		tt.loadMapping(16,16,mapping);
-		tt.setWarpMode(true);
-		//tt.hBlankInterrupt = &ttlHBlankInterrupt;
+		t.loadMapping(64,64,mapping);
+		t.setWarpMode(false);
+
 		//t.setWrapMode(true);
 		//tt.D = -256;
 		output = new OutputScreen("TileLayer test", 1280,960);
 		r = new Raster(320,240,output);
 		output.setMainRaster(r);
-		loadPaletteFromXMP(tileSource, "default", r);
+		//loadPaletteFromXMP(tileSource, "default", r);
+
 		/*for(int y ; y < 240 ; y++){
 			for(int x ; x < 240 ; x++){
 				writeln('[',x,',',y,"] : ", t.transformFunc([x,y]));
 			}
 		}*/
-		r.addLayer(tt, 0);
+		r.addLayer(t, 0);
 		r.addLayer(s, 1);
-		r.palette ~= cast(Color[])spriteSource.getPalette("default");
-		r.palette[0].alpha = 255;
+		Color[] localPal = loadPaletteFromImage(tileSource);
+		localPal.length = 256;
+		r.palette ~= localPal;
+		localPal = loadPaletteFromImage(spriteSource);
+		localPal.length = 256;
+		r.palette ~= localPal;
+		//r.palette[0].alpha = 255;
 		r.palette[256].raw = 0;
-		writeln(tt);
+		//writeln(tt);
 		//r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);
 
@@ -196,10 +203,10 @@ class TileLayerTest : SystemEventListener, InputListener{
 			if(down) s.relMoveSprite(0,0,1);
 			if(left) s.relMoveSprite(0,-1,0);
 			if(right) s.relMoveSprite(0,1,0);
-			if(scrup) tt.relScroll(0,-1);
-			if(scrdown) tt.relScroll(0,1);
-			if(scrleft) tt.relScroll(-1,0);
-			if(scrright) tt.relScroll(1,0);
+			if(scrup) t.relScroll(0,-1);
+			if(scrdown) t.relScroll(0,1);
+			if(scrleft) t.relScroll(-1,0);
+			if(scrright) t.relScroll(1,0);
 			//t.relScroll(1,0);
 		}
 	}

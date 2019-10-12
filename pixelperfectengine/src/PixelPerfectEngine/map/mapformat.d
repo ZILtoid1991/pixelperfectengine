@@ -23,21 +23,24 @@ public class MapFormat {
 	public Tag[int] 	layerData;	///Layerdata stored as SDLang tags.
 	protected Layer[int] layeroutput;	///Used to fast map and object data pullback in editors
 	protected Tag 		metadata;	///Stores metadata.
+	protected Tag		root;		///Root tag for common information.
 	public TileInfo[][int]	tileDataFromExt;///Stores basic TileData that are loaded through extensions
 	/**
 	 * Creates new instance from scratch.
 	 */
 	public this (string name, int resX, int resY) @trusted {
-		metadata = new Tag(null, null, "Metadata");
+		root = new Tag("", "", null);
+		metadata = new Tag(root, null, "Metadata");
 		new Tag(metadata, null, "Name", [Value(name)]);
 		new Tag(metadata, null, "resX", [Value(resX)]);
 		new Tag(metadata, null, "resY", [Value(resY)]);
+
 	}
 	/**
 	 * Serializes itself from string.
 	 */
 	public this (string source) @trusted {
-		Tag root = parseSource(source);
+		root = parseSource(source);
 		//Just quickly go through the tags and sort them out
 		foreach (Tag t0 ; root.all.tags) {
 			switch (t0.namespace) {
@@ -106,9 +109,7 @@ public class MapFormat {
 		if(list.length == 0) throw new Exception("Empty list!");
 		Tag t;
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
-			// Bug: Tag.getAttribute generates an out of memory bound error.
-			// Current solution: wait until it gets fixed.
-			if (t0.name == "TileSource" && t0.values[0] == source/+ && t.getAttribute!string("dataPakSrc", null) == dpkSource+/) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
 				t = t0.getTag("Embed:TileInfo", null);
 				if (t is null) t = new Tag(t0, "Embed", "TileInfo");
 				break;
@@ -124,7 +125,7 @@ public class MapFormat {
 	///Ditto, but from preexisting Tag.
 	public void addTileInfo(int pri, Tag t, string source, string dpkSource = null) @trusted {
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t.getAttribute!string("dataPakSrc", null) == dpkSource) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
 				t0.add(t);
 				return;
 			}
@@ -188,7 +189,7 @@ public class MapFormat {
 	 */
 	public void addNewTileLayer(int pri, int tX, int tY, int mX, int mY, string name, TileLayer l) @trusted {
 		layeroutput[pri] = l;
-		layerData[pri] = new Tag(null, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), Value(mY)]);
+		layerData[pri] = new Tag(root, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), Value(mY)]);
 		//new Tag(null, null, "priority", [Value(pri)]);
 	}
 	/**
@@ -276,9 +277,9 @@ public class MapFormat {
 	 * Adds a TileData file to a TileLayer.
 	 * Filename must contain relative path.
 	 */
-	public void addMapDataFile(int pri, string filename, string dpkSource = null) @trusted {
+	public void addMapDataFile(int pri, string filename, string dataPakSrc = null) @trusted {
 		Attribute[] a;
-		if (dpkSource !is null) a ~= new Attribute("dpkSource", Value(dpkSource));
+		if (dataPakSrc !is null) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
 		new Tag(layerData[pri], "File", "MapData", [Value(filename)], a);
 	}
 	/+///Ditto, but for files found in DataPak archives
@@ -319,9 +320,9 @@ public class MapFormat {
 	/**
 	 * Adds a tile source file to a TileLayer.
 	 */
-	public void addTileSourceFile(int pri, string filename, string dpkSource = null, int offset = 0) @trusted {
+	public void addTileSourceFile(int pri, string filename, string dataPakSrc = null, int offset = 0) @trusted {
 		Attribute[] a;
-		if (dpkSource !is null) a ~= new Attribute("dataPakSrc", Value(dpkSource));
+		if (dataPakSrc !is null) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
 		if (offset) a ~= new Attribute("offset", Value(offset));
 		new Tag(layerData[pri], "File", "TileSource", [Value(filename)], a);
 	}
@@ -329,18 +330,12 @@ public class MapFormat {
 	 * Removes a tile source.
 	 * Returns a backup copy.
 	 */
-	public Tag removeTileSourceFile(int pri, string filename, string dataPakPath = null) @trusted {
+	public Tag removeTileSourceFile(int pri, string filename, string dataPakSrc = null) @trusted {
 		try {
 			auto namespace = layerData[pri].namespaces["File"];
 			foreach (t ; namespace.tags) {
-				if (t.name == "TileSource") {
-					if (dataPakPath) {
-						if (t.values[0] == dataPakPath && t.values[1] == filename)
-							return t.remove;
-					} else {
-						if (t.values[0] == filename)
-							return t.remove;
-					}
+				if (t.name == "TileSource" && t.values[0] == filename && t.getAttribute!string("dataPakSrc", null) == dataPakSrc) {
+					return t.remove;
 				}
 			}
 		} catch (DOMRangeException e) {
@@ -353,11 +348,11 @@ public class MapFormat {
 	/**
 	 * Accesses tile source tags in documents for adding extra data (eg. tile names).
 	 */
-	public Tag getTileSourceTag(int pri, string filename, string dataPakPath = null) @trusted {
+	public Tag getTileSourceTag(int pri, string filename, string dataPakSrc = null) @trusted {
 		try {
 			auto namespace = layerData[pri].namespaces["File"];
 			foreach (t ; namespace.tags) {
-				if (t.name == "TileSource" && t.values[0] == filename && t.getAttribute!string("dataPakSrc", null) == dataPakPath) {
+				if (t.name == "TileSource" && t.values[0] == filename && t.getAttribute!string("dataPakSrc", null) == dataPakSrc) {
 					return t;
 				}
 			}
@@ -387,6 +382,24 @@ public class MapFormat {
 			debug writeln(e);
 		}
 		return result;
+	}
+	/**
+	 * Adds a palette file source to the document.
+	 */
+	public void addPaletteFile (string filename, string dataPakSrc, int offset) @trusted {
+		Attribute[] a;
+		if (offset) a ~= new Attribute("offset", Value(offset));
+		if (dataPakSrc.length) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
+		new Tag(root, "File", "Palette", [Value(filename)], a);
+	}
+	/**
+	 * Adds an embedded palette to the document.
+	 */
+	public void addEmbeddedPalette (Color[] c, string name, int offset) @trusted {
+		import PixelPerfectEngine.system.etc : reinterpretCast;
+		Attribute[] a;
+		if (offset) a ~= new Attribute("offset", Value(offset));
+		new Tag(root, "Embed", "Palette", [Value(name), Value(reinterpretCast!ubyte(c))], a);
 	}
 }
 /**

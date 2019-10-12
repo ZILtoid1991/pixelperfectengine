@@ -189,35 +189,31 @@ public Color[] loadPaletteFromFile(string filename) {
 	switch(extension(filename)){
 		case ".tga", ".TGA":
 			TGA imageFile = TGA.load(f);
-			Color[] result;
-			ubyte[] src = imageFile.getPaletteData;
-			switch(imageFile.getPaletteBitdepth){
-				case 24:
-					for(ushort i; i < src.length; i+=3){
-						result ~= Color(255, src[i + 2], src[i + 1], src[i]);
-					}
-					break;
-				case 32:
-					for(ushort i; i < src.length; i+=4){
-						result ~= Color(src[i + 3], src[i + 2], src[i + 1], src[i]);
-					}
-					break;
-				default:
-					return [];
-			}
-			return result;
+			return loadPaletteFromImage(imageFile);
 		case ".png", ".PNG":
 			PNG imageFile = PNG.load(f);
-			return cast(Color[])(cast(void[])imageFile.getPaletteData);
+			return loadPaletteFromImage(imageFile);
 		default:
 			throw new Exception("Unsupported file format!");
 	}
 }
 /**
+ * Loads a palette from image.
+ */
+public Color[] loadPaletteFromImage (Image img) {
+	Color[] result;
+	result.reserve(img.palette.length);
+	for (ushort i ; i < img.palette.length ; i++) {
+		auto origin = img.palette[i];
+		result ~= Color(origin.a, origin.r, origin.g, origin.b);
+	}
+	return result;
+}
+/**
  * Gets a bitmap from the XMP file.
  * DEPRECATED! Recommended to use *.tga with devarea extensions or even *.png files.
  */
-T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
+deprecated T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
 	static if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof){
 		T result = new T(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID),null);
 		return result;

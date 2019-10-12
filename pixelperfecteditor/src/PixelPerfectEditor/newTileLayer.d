@@ -73,9 +73,10 @@ public class NewTileLayerDialog : Window {
 	}
 	private void button_TSBrowse_onClick(Event ev){
 		parent.addWindow(new FileDialog("Import Tile Source"d, "fileDialog_TSBrowse", &fileDialog_TSBrowse_event,
-				[FileDialog.FileAssociationDescriptor("PPE Map file", ["*.pmp"]),
-				FileDialog.FileAssociationDescriptor("TGA File", ["*.tga"]),
-				FileDialog.FileAssociationDescriptor("PNG file", ["*.png"])], "./"));
+				[FileDialog.FileAssociationDescriptor("All supported formats", ["*.pmp", "*.tga", "*.png"]),
+					FileDialog.FileAssociationDescriptor("PPE Map file", ["*.pmp"]),
+					FileDialog.FileAssociationDescriptor("TGA File", ["*.tga"]),
+					FileDialog.FileAssociationDescriptor("PNG file", ["*.png"])], "./"));
 	}
 	private void fileDialog_TSBrowse_event(Event ev){
 		textBox_TS.setText(toUTF32(ev.getFullPath));

@@ -167,6 +167,11 @@ public struct MappingElement{
 		this.tileID = tileID;
 		this.attributes = attributes;
 	}
+	public string toString() const {
+		import std.conv : to;
+		return "[tileID:" ~ to!string(cast(int)tileID) ~ "; attributes:" ~ attributes.toString ~ "; paletteSel:" ~
+				to!string(paletteSel) ~ "]";
+	}
 }
 
 /**
@@ -209,14 +214,21 @@ public class TileLayer : Layer, ITileLayer{
 			}
 		}
 	}
-	protected int tileX, tileY, mX, mY;
-	protected int totalX, totalY;
-	protected MappingElement[] mapping;
+	protected int tileX;	///Tile width
+	protected int tileY;	///Tile height
+	protected int mX;		///Map width
+	protected int mY;		///Map height
+	protected int totalX;	///Total width of the tilelayer in pixels
+	protected int totalY;	///Total height of the tilelayer in pixels
+	protected MappingElement[] mapping;///Contains the mapping data
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
 	protected Color[] src;		///Local buffer
-	protected BinarySearchTree!(wchar, DisplayListItem) displayList;
+	protected BinarySearchTree!(wchar, DisplayListItem) displayList;	///displaylist using a BST to allow skipping elements
 	protected bool warpMode;
+	///Emulates horizontal blanking interrupt effects, like per-line scrolling.
+	///line no -1 indicates that no lines have been drawn yet.
+	public @nogc  void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;
 	///Constructor. tX , tY : Set the size of the tiles on the layer.
 	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
 		tileX=tX;
@@ -271,116 +283,91 @@ public class TileLayer : Layer, ITileLayer{
 	}
 	///Returns which tile is at the given pixel
 	@nogc public MappingElement tileByPixel(int x, int y){
+		if(!warpMode && (x < 0 || y < 0)) return MappingElement(0xFFFF);
 		x /= tileX;
 		y /= tileY;
 		if(warpMode){
 			x %= mX;
 			y %= mY;
 		}
-		if(x >= mX || y >= mY || x < 0 || y < 0) return MappingElement(0xFFFF);
+		if(x >= mX || y >= mY) return MappingElement(0xFFFF);
 		return mapping[x + y*mX];
 	}
 
 	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette){
-		//import core.stdc.stdio;
-		int y = sY < 0 && !warpMode ? sY * -1 : 0;
-		int sY0 = cast(int)(cast(uint)(sY) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
-		int offsetP = y*pitch;	// The offset of the line that is being written
-		const int offsetY = sY0 % tileY;		//Scroll offset upwards
-		const int offsetY0 = (sY + rasterY) % tileY;
-		const int offsetXA = sX%tileX;	// tile offset of the first column
-		//for( ; y < rasterY ; y+=tileY){
-		while(y < rasterY){
-			//int offsetY = tileX * ((y + sY)%tileY);
-			const int offsetYA = !y ? offsetY : 0;	//top offset for first tile, 0 otherwise
-			const int offsetYB = y + tileY > rasterY ? offsetY0 : tileY;	//bottom offset of last tile, equals tileY otherwise
-			uint x = (cast(uint)(sY) & 0b0111_1111_1111_1111_1111_1111_1111_1111);
-			const int targetX = totalX - sX > rasterX && !warpMode ? rasterX : rasterX - (totalX - sX);
-			void *p0 = (workpad + (x*Color.sizeof) + offsetP);
-			while(x < targetX){
-				MappingElement currentTile = tileByPixel(x+sX,y+sY);
-				int tileXtarget = x + tileX < rasterX ? tileX : tileX - ((x + tileX) - rasterX) ;	// the length of the displayed tile
-				int xp = (offsetXA != 0 && x == 0) ? offsetXA : 0;	// offset of the first column
-				tileXtarget -= xp;	// length of the first tile
-				if(currentTile.tileID != 0xFFFF){ // skip if tile is null
-					//BitmapAttrib tileAttrib = tileAttributeByPixel(x+sX,y+sY);
-					const DisplayListItem d = displayList[currentTile.tileID];	// pointer to the current tile's pixeldata
-					int tileYOffset = tileY;
-					tileYOffset *= currentTile.attributes.vertMirror ? -1 : 1;	//vertical mirroring
-					//int pitchOffset = pitch * threads.length;
-					void* p1 = p0;
-					switch(d.wordLength){
-						case 4:
-							ubyte* c = cast(ubyte*)d.pixelDataPtr;
-							c += currentTile.attributes.vertMirror ? ((tileY - offsetYA - 1) * tileX)>>1 : (offsetYA * tileX)>>1;
-							for(int y0 = offsetYA ; y0 < offsetYB ; y0++){
-								main4BitColorLookupFunction(c, cast(uint*)src.ptr, cast(uint*)(palette + (currentTile.paletteSel<<4)), tileX,
-										x & 1);
+		int sX0 = sX, sY0 = sY;
+		if (hBlankInterrupt !is null)
+			hBlankInterrupt(-1, sX0, sY0);
+
+		for (int line  ; line < rasterY ; line++) {
+			if (hBlankInterrupt !is null)
+				hBlankInterrupt(line, sX0, sY0);
+			if ((sY0 >= 0 && sY0 < totalY) || warpMode) {
+				int sXAbs = warpMode ? sX0 & int.max : sX0, sYAbs = sY0 & int.max;
+				const sizediff_t offsetP = line * pitch;	// The offset of the line that is being written
+				void* w0 = workpad + offsetP;
+				const int offsetY = sYAbs % tileY;		//Offset of the current line of the tiles in this line
+				const int offsetX0 = tileX - ((sXAbs + rasterX) % tileX);		//Scroll offset of the rightmost column
+				const int offsetX = (sXAbs & int.max) % tileX;		//Scroll offset of the leftmost column
+				int tileXLength = offsetX ? tileX - offsetX : tileX;
+				for (int col ; col < rasterX ; ) {
+					const MappingElement currentTile = tileByPixel(sXAbs, sYAbs);
+					if (currentTile.tileID != 0xFFFF) {
+						const DisplayListItem tileInfo = displayList[currentTile.tileID];
+						const int offsetX1 = col ? 0 : offsetX;
+						const int offsetY0 = currentTile.attributes.vertMirror ? tileY - offsetY : offsetY;
+						if (col + tileXLength > rasterX) {
+							tileXLength -= offsetX0;
+						}
+						final switch (tileInfo.wordLength) {
+							case 4:
+								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + (offsetX1 + (offsetY0 * tileX)>>>1);
+								main4BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + (currentTile.paletteSel<<4),
+										tileXLength, offsetX1 & 1);
 								if(currentTile.attributes.horizMirror){//Horizontal mirroring
 									flipHorizontal(cast(uint*)src.ptr, tileX);
 								}
-								mainRenderingFunction(cast(uint*)src.ptr + xp, cast(uint*)p1, tileXtarget);
-								c += tileYOffset>>>1;
-								p1 += pitch;
-							}
-							break;
-						case 8:
-							ubyte* c = cast(ubyte*)d.pixelDataPtr;
-							c += currentTile.attributes.vertMirror ? (tileY - offsetYA - 1) * tileX : offsetYA * tileX;
-							for(int y0 = offsetYA ; y0 < offsetYB ; y0++){
-								main8BitColorLookupFunction(c, cast(uint*)src.ptr, cast(uint*)(palette + (currentTile.paletteSel<<4)), tileX);
+								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength);
+								break;
+							case 8:
+								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
+								main8BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + (currentTile.paletteSel<<8), tileXLength);
 								if(currentTile.attributes.horizMirror){//Horizontal mirroring
 									flipHorizontal(cast(uint*)src.ptr, tileX);
 								}
-								mainRenderingFunction(cast(uint*)src.ptr + xp, cast(uint*)p1, tileXtarget);
-								c += tileYOffset;
-								p1 += pitch;
-							}
-							break;
-						case 16:
-							ushort* c = cast(ushort*)d.pixelDataPtr;
-							c += currentTile.attributes.vertMirror ? (tileY - offsetYA - 1) * tileX : offsetYA * tileX;
-							for(int y0 = offsetYA ; y0 < offsetYB ; y0++){
-								mainColorLookupFunction(c, cast(uint*)src.ptr, cast(uint*)palette, tileX);
+								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength);
+								break;
+							case 16:
+								ushort* tileSrc = cast(ushort*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
+								mainColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette), tileXLength);
 								if(currentTile.attributes.horizMirror){//Horizontal mirroring
 									flipHorizontal(cast(uint*)src.ptr, tileX);
 								}
-								mainRenderingFunction(cast(uint*)src.ptr + xp, cast(uint*)p1, tileXtarget);
-								c += tileYOffset;
-								p1 += pitch;
-							}
-							break;
-						case 32:
-							Color* c = cast(Color*)d.pixelDataPtr;
-							c += currentTile.attributes.vertMirror ? (tileY - offsetYA - 1) * tileX : offsetYA * tileX;
-							for(int y0 = offsetYA ; y0 < offsetYB ; y0++){
-								if(currentTile.attributes.horizMirror){//Horizontal mirroring
-									copy32bit(cast(uint*)c, cast(uint*)src.ptr, tileX);
+								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength);
+								break;
+							case 32:
+								Color* tileSrc = cast(Color*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
+								if(!currentTile.attributes.horizMirror) {
+									mainRenderingFunction(cast(uint*)tileSrc,cast(uint*)w0,tileXLength);
+								} else {
+									CPUblit.composing.copy32bit(cast(uint*)tileSrc, cast(uint*)src, tileXLength);
 									flipHorizontal(cast(uint*)src.ptr, tileX);
-									mainRenderingFunction(cast(uint*)src.ptr + xp, cast(uint*)p1, tileXtarget);
-								}else{
-									mainRenderingFunction(cast(uint*)(c + xp), cast(uint*)p1, tileXtarget);
+									mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength);
 								}
-								c += tileYOffset;
-								p1 += pitch;
-							}
-							break;
-						default:
-							break;
+								break;
+
+						}
+
 					}
+					sXAbs += tileXLength;
+					col += tileXLength;
+					w0 += tileXLength<<2;
 
+					tileXLength = tileX;
 				}
-				p0 += tileXtarget * Color.sizeof;
-				x+=tileXtarget;
 			}
-			offsetP	+= !y ? pitch * (tileY - offsetY) : pitch * tileY;
-			/*if(y + tileY > y) y += tileY - offsetY0;
-			else if(y) y += tileY;
-			else y += (tileY - offsetY);*/
-			y += !y ? (tileY - offsetY) : tileY;
+			sY0++;
 		}
-
-
 	}
 	public MappingElement[] getMapping(){
 		return mapping;
@@ -938,7 +925,7 @@ public class SpriteLayer : Layer, ISpriteLayer{
 			this.width = sprite.width;
 			this.height = sprite.height;
 			this.priority = priority;
-			//this.attributes = attributes;
+			this.paletteSel = paletteSel;
 			this.scaleVert = scaleVert;
 			this.scaleHoriz = scaleHoriz;
 			slice = Coordinate(0,0,sprite.width,sprite.height);
@@ -1290,7 +1277,7 @@ public class SpriteLayer : Layer, ISpriteLayer{
 					case 4:
 						ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
 						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-							horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel << 4), scalelength, offsetXA & 1,
+							horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<4), scalelength, offsetXA & 1,
 									i.scaleHoriz);
 							prevOffset += offsetAmount;
 							for(; offset < prevOffset; offset += scaleVertAbs){
@@ -1305,7 +1292,7 @@ public class SpriteLayer : Layer, ISpriteLayer{
 					case 8:
 						ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-							horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel << 8), scalelength, i.scaleHoriz);
+							horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel<<8), scalelength, i.scaleHoriz);
 							prevOffset += 1024;
 							for(; offset < prevOffset; offset += scaleVertAbs){
 								y++;

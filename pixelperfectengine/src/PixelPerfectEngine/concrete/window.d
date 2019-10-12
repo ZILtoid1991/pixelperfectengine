@@ -696,7 +696,7 @@ public class FileDialog : Window{
 	/**
 	 * Creates an action event, then closes the window.
 	 */
-	private void fileEvent(Event ev){
+	private void fileEvent(Event ev) {
 		//wstring s = to!wstring(directory);
 		filename = to!string(tb.getText);
 		//al.actionEvent("file", EventType.FILEDIALOGEVENT, 0, s);
@@ -704,10 +704,11 @@ public class FileDialog : Window{
 			onFileselect(new Event(source, "", directory, filename, null, selectedType, EventType.FILEDIALOGEVENT));
 		parent.closeWindow(this);
 	}
-	private void event_fileSelector(Event ev){
+	private void event_fileSelector(Event ev) {
 		selectedType = ev.value;
+		spanDir();
 	}
-	private void button_type_onMouseLClickRel(Event ev){
+	private void button_type_onMouseLClickRel(Event ev) {
 		PopUpMenuElement[] e;
 		for(int i ; i < filetypes.length ; i++){
 			e ~= new PopUpMenuElement(filetypes[i].types[0],filetypes[i].description, filetypes[i].getTypesForSelector());
@@ -716,10 +717,10 @@ public class FileDialog : Window{
 		p.onMouseClick = &event_fileSelector;
 		parent.addPopUpElement(p);
 	}
-	private void button_close_onMouseLClickRel(Event ev){
+	private void button_close_onMouseLClickRel(Event ev) {
 		parent.closeWindow(this);
 	}
-	private void listBox_onItemSelect(Event ev){
+	private void listBox_onItemSelect(Event ev) {
 		try{
 			if(pathList.length == 0) return;
 			if(isDir(pathList[ev.value])){

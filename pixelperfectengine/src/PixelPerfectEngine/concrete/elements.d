@@ -1901,9 +1901,31 @@ public class ListBoxHeader{
 	}
 }
 /**
- * Defines an item in the row of a ListBox. Can be passed through the Event class
+ * Defines a single row of a ListBox. Can be passed through the Event class.
  */
- public class ListBoxItem{
+public class NewListBoxItem {
+
+}
+/**
+ * Defines a single cell in a NewListBoxItem.
+ */
+public struct ListBoxCell {
+	/**
+	 * Defines the currently held type of the cell.
+	 */
+	public enum TypeID : ubyte {
+		text,
+		decimalI,
+		decimalF,
+		hexadecimal,
+		bitmap,
+	}
+}
+/**
+ * Defines an item in the row of a ListBox. Can be passed through the Event class
+ * TO BE DEPRECATED.
+ */
+public class OldListBoxItem {
 	private dstring[] text;
 	private uint[] textInputType;	///If value or array is null, the ListBoxHeader's textInputType is referred
 	private Bitmap8Bit icon;	/// If used, replaces the texts in the column defined by the ListBoxHeader, otherwise defaults to the text.
@@ -1939,7 +1961,8 @@ public class ListBoxHeader{
 			result ~= ws;
 		return to!string(result);
 	}
- }
+}
+alias ListBoxItem = OldListBoxItem;
 /*
  * For use with ListBoxes and similar types. Currently left here for legacy purposes, being replaced with the classes ListBoxHeader and ListBoxElement
  *

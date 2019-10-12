@@ -6,6 +6,8 @@ public import PixelPerfectEngine.concrete.eventChainSystem;
 public import PixelPerfectEngine.graphics.layers;
 public import PixelPerfectEngine.map.mapformat;
 
+import PixelPerfectEngine.system.file;
+
 import std.stdio;
 import std.conv : to;
 import sdlang;
@@ -88,6 +90,10 @@ public class WriteToMapSingle : UndoableEvent {
 	public void redo() {
 		original = target.readMapping(x,y);
 		target.writeMapping(x,y,me);
+		debug {
+			import std.stdio : writeln;
+			writeln("Layer was written at position ", x, ";", y," with values ", me);
+		}
 	}
 	public void undo() {
 		target.writeMapping(x,y,original);
@@ -107,6 +113,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 	string res;
 	bool embed;
 	Tag backup;
+	Image tileSource;
 
 	public this(MapDocument target, int tX, int tY, int mX, int mY, dstring name, string file, string res,
 			bool embed) {
@@ -128,7 +135,6 @@ public class CreateTileLayerEvent : UndoableEvent {
 		import std.file : exists, isFile;
 		import std.path : baseName;
 		import std.utf : toUTF8;
-		import PixelPerfectEngine.system.file;
 		import PixelPerfectEngine.system.etc : intToHex;
 		if (backup) {	//If a backup exists, then re-add that to the document, then return.
 			target.mainDoc.addNewLayer(pri, backup, creation);
@@ -175,26 +181,26 @@ public class CreateTileLayerEvent : UndoableEvent {
 			//TODO: generate dummy tiles for nonexistent material
 			if (exists(res)) {
 				//load the resource file and test if it's the correct size (through an exception)
-				Image i = loadImage(File(res));
+				tileSource = loadImage(File(res));
 				ABitmap[] tilesheet;
-				switch (i.getBitdepth()) {
+				switch (tileSource.getBitdepth()) {
 					case 4:
-						Bitmap4Bit[] output = loadBitmapSheetFromImage!Bitmap4Bit(i, tX, tY);
+						Bitmap4Bit[] output = loadBitmapSheetFromImage!Bitmap4Bit(tileSource, tX, tY);
 						foreach(p; output)
 							tilesheet ~= p;
 						break;
 					case 8:
-						Bitmap8Bit[] output = loadBitmapSheetFromImage!Bitmap8Bit(i, tX, tY);
+						Bitmap8Bit[] output = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, tX, tY);
 						foreach(p; output)
 							tilesheet ~= p;
 						break;
 					case 16:
-						Bitmap16Bit[] output = loadBitmapSheetFromImage!Bitmap16Bit(i, tX, tY);
+						Bitmap16Bit[] output = loadBitmapSheetFromImage!Bitmap16Bit(tileSource, tX, tY);
 						foreach(p; output)
 							tilesheet ~= p;
 						break;
 					case 32:
-						Bitmap32Bit[] output = loadBitmapSheetFromImage!Bitmap32Bit(i, tX, tY);
+						Bitmap32Bit[] output = loadBitmapSheetFromImage!Bitmap32Bit(tileSource, tX, tY);
 						foreach(p; output)
 							tilesheet ~= p;
 						break;
@@ -216,7 +222,24 @@ public class CreateTileLayerEvent : UndoableEvent {
 					}
 					target.mainDoc.addTileInfo(nextLayer, idList, res);
 				}
-				writeln(target.mainDoc.layerData[nextLayer].toSDLString);
+				if (tileSource.isIndexed) {
+					Color[] palette;
+					/*foreach (color ; tileSource.palette) {
+						palette ~= Color(color.a, color.r, color.g, color.b);
+						debug writeln(color);
+					}*/
+					auto sourcePalette = tileSource.palette;
+					palette.reserve(sourcePalette.length);
+					for (ushort i ; i < sourcePalette.length ; i++){
+						const auto origC = sourcePalette[i];
+						const Color c = Color(origC.a, origC.r, origC.g, origC.b);
+						palette ~= c;
+					}
+					debug writeln(palette);
+					target.mainDoc.addPaletteFile(file, "", cast(int)target.outputWindow.palette.length);
+					target.outputWindow.palette = target.outputWindow.palette ~ palette;
+				}
+
 			}
 			target.outputWindow.addLayer(nextLayer);
 			target.selectedLayer = nextLayer;

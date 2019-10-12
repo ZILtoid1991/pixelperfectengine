@@ -1,6 +1,8 @@
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.map.mapformat;
 
+import app;
+
 import std.utf : toUTF32;
 
 /**
@@ -10,6 +12,7 @@ public class MaterialList : Window {
 	ListBox listBox_materials;
 	SmallButton[] buttons;
 	public void delegate() onClose;
+	protected TileInfo[] tiles;
 	protected static immutable dstring[] tileListHeaderS = ["ID"d, "Name"d];
 	protected static immutable dstring[] spriteListHeaderS = ["ID"d, "Name"d, "Dim"d];
 	protected static immutable int[] tileListHeaderW = [32, 120];
@@ -20,6 +23,7 @@ public class MaterialList : Window {
 		StyleSheet ss = getStyleSheet();
 		listBox_materials = new ListBox("listBox0", Coordinate(1, 17, 129, 218), [], new ListBoxHeader(tileListHeaderS.dup,
 				tileListHeaderW.dup));
+		listBox_materials.onItemSelect = &onItemSelect;
 		addElement(listBox_materials);
 		{
 			SmallButton sb = new SmallButton("trashButtonB", "trashButtonA", "trash", Coordinate(113, 234, 129, 250));
@@ -52,11 +56,21 @@ public class MaterialList : Window {
 	}
 	public void updateMaterialList(TileInfo[] list) @trusted {
 		import PixelPerfectEngine.system.etc : intToHex;
+		tiles = list;
 		ListBoxItem[] output;
 		foreach (item ; list) {
 			output ~= new ListBoxItem ([intToHex!dstring(item.id, 4) ~ "h", toUTF32(item.name)]);
 		}
 		listBox_materials.updateColumns(output, new ListBoxHeader(tileListHeaderS.dup, tileListHeaderW.dup));
+	}
+	private void vertMirror_onClick(Event ev) {
+		prg.selDoc.tileMaterial_FlipVertical();
+	}
+	private void horizMirror_onClick(Event ev) {
+		prg.selDoc.tileMaterial_FlipHorizontal();
+	}
+	private void onItemSelect(Event ev) {
+		prg.selDoc.tileMaterial_Select(tiles[ev.value].id);
 	}
 }
 /**

@@ -38,12 +38,13 @@ public class MapDocument {
 	 * Loads the document from disk.
 	 */
 	public this(string filename) @trusted {
-
+		events = new UndoableStack(20);
 	}
 	///New from scratch
 	public this(string docName, int resX, int resY) @trusted {
 		events = new UndoableStack(20);
 		mainDoc = new MapFormat(docName, resX, resY);
+		mode = EditMode.tilePlacement;
 	}
 	///Returns the next available layer number.
 	public int nextLayerNumber() @safe {
@@ -93,6 +94,7 @@ public class MapDocument {
 				}
 				break;
 			case EditMode.tilePlacement:
+
 				switch (button) {
 					case MouseButton.LEFT:
 						//Record the first cursor position upon mouse button press, then initialize either a single or zone write for the selected tile layer.
@@ -100,11 +102,12 @@ public class MapDocument {
 							prevMouseX = x;
 							prevMouseY = y;
 						} else {
+
 							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
-							x = (x + mainDoc[selectedLayer].getSX) / target.getTX;
-							y = (y + mainDoc[selectedLayer].getSY) / target.getTY;
-							prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTX;
-							prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTY;
+							x = (x - mainDoc[selectedLayer].getSX) / target.getTileWidth;
+							y = (y - mainDoc[selectedLayer].getSY) / target.getTileHeight;
+							prevMouseX = (prevMouseX - mainDoc[selectedLayer].getSX) / target.getTileWidth;
+							prevMouseY = (prevMouseY - mainDoc[selectedLayer].getSY) / target.getTileHeight;
 							Coordinate c;
 							if (x > prevMouseX){
 								c.left = prevMouseX;
@@ -122,27 +125,31 @@ public class MapDocument {
 							}
 
 							if (voidfill) {
-								if (c.width == 1 && c.height == 1) {
+								if (c.width == 0 && c.height == 0) {
 									if (target.readMapping(c.left, c.top).tileID == 0xFFFF)
-										target.writeMapping(c.left, c.top, selectedMappingElement);
+										events.addToTop(new WriteToMapSingle(target, c.left, c.top, selectedMappingElement));
+									/+	target.writeMapping(c.left, c.top, selectedMappingElement);+/
+
 								} else {
-									for (int y0 = c.top ; y0 <= c.bottom ; y0++){
+									/+for (int y0 = c.top ; y0 <= c.bottom ; y0++){
 										for (int x0 = c.left ; x0 <= c.right ; x0++) {
 											if (target.readMapping(x0, y0).tileID == 0xFFFF)
 												target.writeMapping(x0, y0, selectedMappingElement);
 										}
-									}
+									}+/
+									events.addToTop(new WriteToMapVoidFill(target, c, selectedMappingElement));
 								}
 							} else {
-								if (c.width == 1 && c.height == 1) {
-									target.writeMapping(c.left, c.top, selectedMappingElement);
+								if (c.width == 0 && c.height == 0) {
+									events.addToTop(new WriteToMapSingle(target, c.left, c.top, selectedMappingElement));
+
 								} else {
-									for (int y0 = c.top ; y0 <= c.bottom ; y0++){
-										for (int x0 = c.left ; x0 <= c.right ; x0++) {
-											target.writeMapping(x0, y0, selectedMappingElement);
-										}
-									}
+									events.addToTop(new WriteToMapOverwrite(target, c, selectedMappingElement));
 								}
+							}
+							debug {
+								import std.stdio : writeln;
+								writeln(events.events);
 							}
 						}
 						break;
@@ -161,6 +168,8 @@ public class MapDocument {
 					default:
 						break;
 				}
+				outputWindow.draw();
+				//outputWindow.updateRaster();
 				break;
 			case EditMode.spritePlacement:
 				break;
@@ -187,5 +196,22 @@ public class MapDocument {
 	public void onSelection () {
 		updateLayerList;
 		updateMaterialList;
+	}
+	public void tileMaterial_FlipHorizontal() {
+		selectedMappingElement.attributes.horizMirror = !selectedMappingElement.attributes.horizMirror;
+	}
+	public void tileMaterial_FlipVertical() {
+		selectedMappingElement.attributes.vertMirror = !selectedMappingElement.attributes.vertMirror;
+	}
+	public void tileMaterial_Select(wchar id) {
+		selectedMappingElement.tileID = id;
+		mode = EditMode.tilePlacement;
+
+	}
+	public void tileMaterial_PaletteUp() {
+		selectedMappingElement.paletteSel++;
+	}
+	public void tileMaterial_PaletteDown() {
+		selectedMappingElement.paletteSel--;
 	}
 }
