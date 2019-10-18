@@ -154,6 +154,8 @@ public interface ITileLayer{
 	@nogc public int getTY() pure;
 	/// Adds a tile.
 	public void addTile(ABitmap tile, wchar id);
+	/// Returns the tile.
+	public ABitmap getTile(wchar id);
 }
 /**
  * Universal Mapping element, that is stored on 32 bit.
@@ -270,15 +272,19 @@ public class TileLayer : Layer, ITileLayer{
 		totalY=mY*tileY;
 	}
 	///Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
-	public void addTile(ABitmap tile, wchar id){
-		if(tile.width==tileX && tile.height==tileY){
-			displayList[id]=DisplayListItem(id, tile);
+	public void addTile(ABitmap tile, wchar id) {
+		if(tile.width==tileX && tile.height==tileY) {
+			displayList[id] = DisplayListItem(id, tile);
 		}else{
 			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
 		}
 	}
+	///Returns a tile from the displaylist
+	public ABitmap getTile(wchar id) {
+		return displayList[id].tile;
+	}
 	///Removes the tile with the ID from the set.
-	public void removeTile(wchar id){
+	public void removeTile(wchar id) {
 		displayList.remove(id);
 	}
 	///Returns which tile is at the given pixel
@@ -409,12 +415,14 @@ public class TileLayer : Layer, ITileLayer{
  */
 public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int TileY = 8) : Layer, ITileLayer{
 		/*if(isPowerOf2(TileX) && isPowerOf2(TileY))*/
-	protected struct DisplayListItem{
-		void* pixelSrc;		///Used for quicker access to the Data
-		wchar ID;			///ID, mainly used as a padding
-		ushort reserved;	///Padding for 32 bit
-		this(wchar ID, BMPType tile){
+	protected struct DisplayListItem {
+		BMPType	tile;		///For reference counting
+		void* 	pixelSrc;	///Used for quicker access to the Data
+		wchar 	ID;			///ID, mainly used as a padding
+		ushort 	reserved;	///Padding for 32 bit
+		this (wchar ID, BMPType tile) {
 			this.ID = ID;
+			this.tile = tile;
 			pixelSrc = cast(void*)tile.getPtr();
 		}
 	}
@@ -817,6 +825,10 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		}else{
 			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
 		}
+	}
+	///Returns a tile from the displaylist
+	public ABitmap getTile(wchar id) {
+		return displayList[id].tile;
 	}
 	///Removes the tile with the ID from the set.
 	public void removeTile(wchar id){

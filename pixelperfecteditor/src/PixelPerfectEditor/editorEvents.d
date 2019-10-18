@@ -211,6 +211,10 @@ public class CreateTileLayerEvent : UndoableEvent {
 				if (tilesheet.length == 0) throw new Exception("No tiles were imported!");
 				target.addTileSet(nextLayer, tilesheet);
 				target.mainDoc.addTileSourceFile(nextLayer, res);
+				/+debug {
+					TileLayer tl = cast(TileLayer)target;
+					writeln(tl.displayList);
+				}+/
 				//writeln(tilesheet.length);
 				//generate default names for the tiles
 				{
