@@ -519,8 +519,8 @@ public class PCM32 : AbstractPPEFX{
 		}else{
 			float* y_nptr = cast(float*)y_n.ptr;
 			float* x_nptr = cast(float*)x_n.ptr;
-			for(int i = frameLength ; i >= 0 ; i--){
-				asm @nogc{
+			for(int i = cast(int)frameLength ; i >= 0 ; i--){
+				/+asm @nogc{
 					mov		ECX, 8;
 					//mov		ESI, iirFiltersPtr[EBP];
 					mov		EDI, y_nptr;
@@ -566,14 +566,15 @@ public class PCM32 : AbstractPPEFX{
 					jne		iirLoop;
 				}
 				x_nptr += 32;
-				y_nptr += 32;
+				y_nptr += 32;+/
 			}
 		}
 	}
 	public @nogc void refreshFilter(int ch, IIRFilterType type, float freq, float Q){
 
 	}
-	override public @nogc void render(float** inputBuffers, float** outputBuffers){
+	override public @nogc void render(float** inputBuffers, float** outputBuffers) { }
+	/+override public @nogc void render(float** inputBuffers, float** outputBuffers) {
 		float* mainL = outputBuffers[0], mainR = outputBuffers[1], auxL = outputBuffers[2], auxR = outputBuffers[3];
 		float* ch29 = inputBuffers[0], ch30 = inputBuffers[1], ch31 = inputBuffers[2], ch32 = inputBuffers[3];
 		for(int fr; fr < nOfFrames; fr++){
@@ -1430,7 +1431,7 @@ public class PCM32 : AbstractPPEFX{
 			calculateIIR();
 		}
 
-	}
+	}+/
 	protected @nogc void updateArppegiators(){
 		for(int ch; ch < 32; ch++){
 			if(channels[ch].arpMode != Channel.ArpMode.off){

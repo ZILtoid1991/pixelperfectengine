@@ -11,6 +11,7 @@ import CPUblit.colorlookup;
 import PixelPerfectEngine.system.inputHandler : MouseButton;
 
 import document;
+debug import std.stdio;
 
 /**
  * Implements a subraster using a window. Has the capability of skipping over individual layers.
@@ -48,13 +49,6 @@ public class RasterWindow : Window {
 		if(y >= ss.drawParameters["WindowHeaderHeight"] && y < trueOutput.height - 1 && x > 0 && x < trueOutput.width - 1) {
 			y -= ss.drawParameters["WindowHeaderHeight"];
 			x--;
-
-			//Normal mode:
-			//left : drag layer ; right : menu ; middle : quick nav ; other buttons : user defined
-			//Selection mode:
-			//left : select ; right : menu ; middle : quick nav ; other buttons : user defined
-			//TileLayer placement mode:
-			//left : placement ; right : menu ; middle : delete ; other buttons : user defined
 			document.passMouseEvent(x, y, state, button);
 		}else
 			super.passMouseEvent(x, y, state, button);
@@ -93,16 +87,11 @@ public class RasterWindow : Window {
 			//document.mainDoc[layerList[i]].updateRaster(rasterOutput.getPtr, rasterX * 4, paletteLocal.ptr);
 			document.mainDoc[layerList[i]].updateRaster((trueOutput.getPtr + (17 * trueOutput.width) + 1), trueOutput.width * 4,
 					paletteLocal.ptr);
+			debug writeln(i);
 		}
-		//copy the raster output to the target
-		//Color* p0 = rasterOutput.getPtr, p1 = trueOutput.getPtr + (17 * trueOutput.width);
-		//const int x = rasterOutput.width;
-		//p1++;
-		/*for (int y ; y < rasterY; y++) {
-			helperFunc(p0, p1, x);
-			p0 += x;
-			p1 += trueOutput.width;
-		}*/
+		for (int i = 16 ; i < trueOutput.height - 1 ; i++) {
+			helperFunc(trueOutput.getPtr + trueOutput.width * i, trueOutput.width);
+		}
 	}
 	/**
 	 * Adds a new layer then reorders the display list.
@@ -127,27 +116,27 @@ public class RasterWindow : Window {
 	/**
 	 * Copies and sets all alpha values to 255 to avoid transparency issues
 	 */
-	protected @nogc void helperFunc(void* src, void* dest, size_t length) pure{
+	protected @nogc void helperFunc(void* src, size_t length) pure{
 		import PixelPerfectEngine.system.platform;
 		static if(USE_INTEL_INTRINSICS){
 			import inteli.emmintrin;
 			immutable ubyte[16] ALPHA_255_VEC = [255,0,0,0,255,0,0,0,255,0,0,0,255,0,0,0];
 			while(length > 4){
-				_mm_storeu_si128(cast(__m128i*)dest, _mm_loadu_si128(cast(__m128i*)src) |
+				_mm_storeu_si128(cast(__m128i*)src, _mm_loadu_si128(cast(__m128i*)src) |
 						_mm_loadu_si128(cast(__m128i*)(cast(void*)ALPHA_255_VEC.ptr)));
 				src += 16;
-				dest += 16;
+				//dest += 16;
 				length -= 4;
 			}
 			while(length){
-				*cast(uint*)dest = *cast(uint*)src | 0xFF_00_00_00;
+				*cast(uint*)src = *cast(uint*)src | 0xFF_00_00_00;
 				src += 4;
-				dest += 4;
+				//dest += 4;
 				length--;
 			}
 		}else{
 			while(length){
-				*cast(uint*)dest = *cast(uint*)src | 0xFF_00_00_00;
+				*cast(uint*)src = *cast(uint*)src | 0xFF_00_00_00;
 				src += 4;
 				dest += 4;
 				length--;

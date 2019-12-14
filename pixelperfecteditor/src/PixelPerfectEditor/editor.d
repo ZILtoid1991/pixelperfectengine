@@ -439,7 +439,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
 		configFile = new ConfigurationProfile();
 
-		windowing = new SpriteLayer(LayerRenderingMode.COPY);
+		windowing = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
 		bitmapPreview = new SpriteLayer();
 
 		wh = new EditorWindowHandler(1696,960,848,480,windowing);

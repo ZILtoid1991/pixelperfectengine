@@ -92,7 +92,7 @@ public class WriteToMapSingle : UndoableEvent {
 		target.writeMapping(x,y,me);
 		debug {
 			import std.stdio : writeln;
-			writeln("Layer was written at position ", x, ";", y," with values ", me);
+			writeln("Layer was written at position ", x, ";", y," with values ", target.readMapping(x,y));
 		}
 	}
 	public void undo() {
@@ -119,6 +119,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 			bool embed) {
 		import std.utf : toUTF8;
 		creation = new TileLayer(tX, tY);
+		creation.setRenderingMode(LayerRenderingMode.COPY);
 		this.target = target;
 		//this.md = md;
 		this.tX = tX;
@@ -239,9 +240,9 @@ public class CreateTileLayerEvent : UndoableEvent {
 						const Color c = Color(origC.a, origC.r, origC.g, origC.b);
 						palette ~= c;
 					}
-					debug writeln(palette);
 					target.mainDoc.addPaletteFile(file, "", cast(int)target.outputWindow.palette.length);
 					target.outputWindow.palette = target.outputWindow.palette ~ palette;
+					debug writeln(target.outputWindow.palette);
 				}
 
 			}

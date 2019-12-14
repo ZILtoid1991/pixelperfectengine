@@ -60,6 +60,13 @@ public class MapFormat {
 		}
 	}
 	/**
+	 * Returns given metadata.
+	 */
+	public T getMetadata(T)(string name)
+			if (T.stringof == int.stringof || T.stringof == string.stringof) {
+		return metadata.getTagValue!T(name);
+	}
+	/**
 	 * Returns the requested layer
 	 */
 	public Layer opIndex(int index) @safe pure {
@@ -189,6 +196,7 @@ public class MapFormat {
 	 */
 	public void addNewTileLayer(int pri, int tX, int tY, int mX, int mY, string name, TileLayer l) @trusted {
 		layeroutput[pri] = l;
+		l.setRasterizer(getMetadata!int("resX"), getMetadata!int("resY"));
 		layerData[pri] = new Tag(root, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), Value(mY)]);
 		//new Tag(null, null, "priority", [Value(pri)]);
 	}

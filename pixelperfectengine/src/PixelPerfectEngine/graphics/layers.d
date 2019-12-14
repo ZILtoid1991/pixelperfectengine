@@ -28,13 +28,13 @@ version(LDC){
 }
 /// For generating a function out of a template
 @nogc void localBlt(uint* src, uint* dest, size_t length){
-	blitter(src, dest, length);
+	blitter!uint(src, dest, length);
 }
 /**
  * The basis of all layer classes, containing functions for rendering.
  */
 abstract class Layer {
-	protected @nogc void function(uint* src, uint* dest, size_t length) mainRenderingFunction;		///Used to get around some readability issues. (void* src, void* dest, int length)
+	protected @nogc void function(uint* src, uint* dest, size_t length) mainRenderingFunction;		///Used to implement changeable renderers for each layerd
 	protected @nogc void function(ushort* src, uint* dest, uint* palette, size_t length) mainColorLookupFunction;
 	//protected @nogc void function(uint* src, int length) mainHorizontalMirroringFunction;
 	protected @nogc void function(ubyte* src, uint* dest, uint* palette, size_t length) main8BitColorLookupFunction;
