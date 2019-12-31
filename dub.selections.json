@@ -3,19 +3,20 @@
 	"versions": {
 		"bindbc-loader": "0.2.1",
 		"bindbc-sdl": "0.13.0",
+		"bitleveld": "0.1.0-alpha",
 		"bmfont": "0.1.0",
-		"cpublit": "0.3.2",
+		"cpublit": "0.4.0-alpha",
 		"derelict-fi": "2.0.3",
 		"derelict-sdl2": "2.1.4",
 		"derelict-util": "2.0.6",
 		"dimage": "0.2.2",
-		"intel-intrinsics": "1.2.0",
+		"intel-intrinsics": "1.2.2",
 		"libinputvisitor": "1.2.2",
 		"libpcm": "0.2.2",
 		"sdlang-d": "0.10.5",
 		"std-experimental-xml": "0.1.7",
 		"stdx-allocator": "2.77.5",
-		"taggedalgebraic": "0.11.4",
+		"taggedalgebraic": "0.11.8",
 		"unit-threaded": "0.7.55",
 		"vfile": "0.1.2"
 	}

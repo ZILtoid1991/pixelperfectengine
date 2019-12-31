@@ -6,12 +6,12 @@ module PixelPerfectEngine.system.binarySearchTree;
  * Pixel Perfect Engine, system.transformFunctions module
  */
 
-import core.stdc.stdlib;
+import core.memory;
 import core.stdc.string;
 
 /**
  * Implements a mostly @nogc-able container format, with relatively fast access times.
- * Mostly based upon the AVT tree algorithm with small modifications, with the intent to replace D's default associative arrays for GC-free operations,
+ * Mostly based upon the AVT tree algorithm with small modifications, with the intent to replace D's default associative arrays for GC-pureFree operations,
  * and better speed (theoretical worst-case access times: aArray's = n, this' = log2(n)).
  * Tree traversal through D's Range capabilities.
  * TODO:
@@ -30,15 +30,19 @@ public struct BinarySearchTree(K, E){
 		E elem;				///Stores the element referred by this node
 		Node* left;			///lesser elements
 		Node* right;		///greater elements
-
-		@nogc this(K key, E elem, Node* left = null, Node* right = null){
+		/**
+		 * Creates a new instance of a BST node.
+		 */
+		this(K key, E elem, Node* left = null, Node* right = null) @nogc pure nothrow {
 			this.key = key;
 			this.elem = elem;
 			this.left = left;
 			this.right = right;
 		}
-
-		@nogc int opApply(int delegate(Node) @nogc dg){
+		/**
+		 * Used for by-depth tree traversal.
+		 */
+		@nogc int opApply(int delegate(Node) @nogc dg) {
 			if(left)
 				if(left.opApply(dg))
 					return 1;
@@ -49,13 +53,16 @@ public struct BinarySearchTree(K, E){
 					return 1;
 			return 0;
 		}
-		@nogc int opCmp(ref Node rhs){
+		/**
+		 * Compares two Nodes to each other.
+		 */
+		int opCmp(ref Node rhs) @nogc @safe pure nothrow {
 			return key - rhs.key;
 		}
 		/**
 		 * Returns the total height.
 		 */
-		@nogc @property size_t height(){
+		size_t height() @nogc pure nothrow {
 			if(left is null && right is null){
 				return 1;
 			}else{
@@ -96,11 +103,11 @@ public struct BinarySearchTree(K, E){
 		@nogc void dealloc(){
 			if(left){
 				left.dealloc;
-				free(left);
+				pureFree(left);
 			}
 			if(right){
 				right.dealloc;
-				free(right);
+				pureFree(right);
 			}
 		}
 		/**
@@ -124,57 +131,6 @@ public struct BinarySearchTree(K, E){
 	}
 	private Node* root;		///Points to the root element
 	private size_t nOfElements;			///Current number of elements
-	/+private size_t curr, currHeight;
-	private Node** traceF, traceR;	///Used for Range
-	private Node* pos;+/
-
-	/+/**
-	 * Returns true if the range have reached one of the endpoints.
-	 */
-	public @nogc bool empty(){
-		return nOfElements == curr;
-	}
-	/**
-	 * Returns the front element.
-	 */
-	public @nogc Node front(){
-		return *pos;
-	}
-	/**
-	 * Jumps to the next front element and returns it.
-	 */
-	public @nogc Node popFront(){
-		//if trace isn't allocated, then allocate it
-		if(traceF is null){
-			size_t height = root.height;
-			traceF = cast(Node**)malloc(size_t.sizeof * height);
-			while(--height){
-				traceF[height] = null;
-			}
-			traceF[0] = root;
-			//build up initial trace then return the smallest value
-			bool found;
-			while(!found){
-				if(traceF[currHeight].left !is null){
-					currHeight++;
-				}else{
-					pos = traceF[currHeight];
-					found = true;
-				}
-			}
-			return *pos;
-		}
-		//find the next smallest node
-		bool found;
-		K key = pos.key;
-		while(!found){
-			if(traceF[currHeight].key > pos.key){
-				found = true
-			}
-		}
-		curr++;
-		return *pos;
-	}+/
 	/**
 	 * Used for foreach iteration.
 	 */
@@ -184,7 +140,7 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Gets an element without allocation. Returns E.init if key not found.
 	 */
-	public @nogc E opIndex(K key){
+	public E opIndex(K key) @nogc pure nothrow {
 		bool found;
 		Node* crnt = root;
 		E result;
@@ -205,7 +161,7 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Gets the pointer of an element.
 	 */
-	public @nogc E* getPtr(K key){
+	public E* getPtr(K key) @nogc pure nothrow {
 		bool found;
 		Node* crnt = root;
 		E* result;
@@ -227,9 +183,9 @@ public struct BinarySearchTree(K, E){
 	 * Inserts a new element with some automatic optimization.
 	 * TODO: Make the optimization better.
 	 */
-	public @nogc E opIndexAssign(E value, K i){
+	public E opIndexAssign(E value, K i)  @nogc pure nothrow {
 		if(root is null){
-			root = cast(Node*)malloc(Node.sizeof);
+			root = cast(Node*)pureMalloc(Node.sizeof);
 			*root = Node(i,value);
 			nOfElements++;
 			return value;
@@ -243,10 +199,10 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Rebalances a tree.
 	 */
-	public @nogc void rebalanceTree(){
+	public void rebalanceTree() @nogc pure nothrow {
 		rebalanceTree(&root);
 	}
-	protected @nogc void rebalanceTree(Node** node){
+	protected void rebalanceTree(Node** node) @nogc pure nothrow {
 		if((*node).height > 1){
 			if((*node).bal > 1 || (*node).bal < -1){
 				optimize(node);
@@ -262,19 +218,19 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Returns the number of elements in the tree.
 	 */
-	public @nogc @property size_t length(){
+	public @property size_t length() @nogc pure nothrow {
 		return nOfElements;
 	}
 	/**
 	 * Inserts an item at the given point. Returns true if the height of the tree have been raised.
 	 */
-	protected @nogc bool insertAt(Node** node, K key, E val){
+	protected bool insertAt(Node** node, K key, E val) @nogc pure nothrow {
 		if(key == (*node).key){
 			(*node).elem = val;
 			return false;
 		}else if(key < (*node).key){
 			if((*node).left is null){
-				(*node).left = cast(Node*)malloc(Node.sizeof);
+				(*node).left = cast(Node*)pureMalloc(Node.sizeof);
 				*(*node).left = Node(key,val);
 				if((*node).right is null){
 					return true;
@@ -286,7 +242,7 @@ public struct BinarySearchTree(K, E){
 			}
 		}else{
 			if((*node).right is null){
-				(*node).right = cast(Node*)malloc(Node.sizeof);
+				(*node).right = cast(Node*)pureMalloc(Node.sizeof);
 				*(*node).right = Node(key,val);
 				if((*node).left is null){
 					return true;
@@ -301,14 +257,14 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Removes an element by key.
 	 */
-	public @nogc void remove(K key){
+	public void remove(K key) @nogc pure nothrow {
 		bool handside;
 		Node* crnt = root;
 		Node* prev;
 		while(crnt !is null){
 			if(crnt.key == key){
 				if(crnt.left is null && crnt.right is null){
-					free(crnt);
+					pureFree(crnt);
 					if(prev !is null){
 						if(handside)
 							prev.right = null;
@@ -328,7 +284,7 @@ public struct BinarySearchTree(K, E){
 						else
 							prev.left = crnt.right;
 					}
-					free(crnt);
+					pureFree(crnt);
 					crnt = null;
 					nOfElements--;
 				}else if(crnt.right is null){
@@ -340,7 +296,7 @@ public struct BinarySearchTree(K, E){
 						else
 							prev.left = crnt.left;
 					}
-					free(crnt);
+					pureFree(crnt);
 					crnt = null;
 					nOfElements--;
 				}else{
@@ -375,41 +331,25 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Rotates the subtree to the left by one.
 	 */
-	protected @nogc void rotateLeft(Node** node){
-		/*Node* temp = (*node).right;
-		(*node).right = temp.left;
-		temp.left = *node;
-		*node = temp;
-		(*node).bal = 0;
-		temp.bal = 0;*/
+	protected void rotateLeft(Node** node) @nogc pure nothrow {
 		Node* temp = *node;	//save current node
 		*node = temp.right;				//assign the first RHS to the root
 		temp.right = (*node).left;		//assign the new root's LHS to the saved node's RHS
 		(*node).left = temp;			//assign the saved node to the new root's LHS
-		//(*node).bal = 0;				//reset new root's balance
-		//temp.bal = 0;					//reset the new LHS's balance
 	}
 	/**
 	 * Rotates the subtree to the right by one.
 	 */
-	protected @nogc void rotateRight(Node** node){
-		/*Node* temp = (*node).left;
-		(*node).left = temp.right;
-		temp.right = *node;
-		*node = temp;
-		(*node).bal = 0;
-		temp.bal = 0;*/
+	protected void rotateRight(Node** node) @nogc pure nothrow {
 		Node* temp = *node;	//save current node
 		*node = temp.left;				//assign the first LHS to the root
 		temp.left = (*node).right;		//assign the new root's RHS to the saved node's LHS
 		(*node).right = temp;			//assign the saved node to the new root's RHS
-		//(*node).bal = 0;				//reset new root's balance
-		//temp.bal = 0;					//reset the new RHS's balance
 	}
 	/**
 	 * Rotates the subtree to the right then to the left.
 	 */
-	protected @nogc void rotateRightLeft(Node** node){
+	protected void rotateRightLeft(Node** node) @nogc pure nothrow {
 		Node* temp = (*node).right.left;	//save root.RHS.LHS
 		(*node).right.left = temp.right;			//assign temp.RHS to root.RHS.LHS
 		temp.right = (*node).right;					//assign root.RHS to temp.RHS
@@ -420,7 +360,7 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Rotates the subtree to the right then to the left.
 	 */
-	protected @nogc void rotateLeftRight(Node** node){
+	protected void rotateLeftRight(Node** node) @nogc pure nothrow {
 		Node* temp = (*node).left.right;	//save root.LHS.RHS
 		(*node).left.right = temp.left;				//assign temp.LHS to root.LHS.RHS
 		temp.left = (*node).left;					//assign root.LHS to temp.LHS
@@ -431,7 +371,7 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Optimizes a BinarySearchTree by distributing nodes evenly.
 	 */
-	protected @nogc void optimize(Node** node){
+	protected void optimize(Node** node) @nogc pure nothrow {
 		if((*node).bal >= 2){
 			if((*node).right.bal >= 1){
 				rotateLeft(node);
@@ -448,7 +388,7 @@ public struct BinarySearchTree(K, E){
 
 	}
 
-	public Node*[] collectNodes(Node* source){
+	public Node*[] collectNodes(Node* source) pure nothrow {
 		Node*[] result;
 		if(source !is null){
 			result ~= source;
@@ -462,7 +402,7 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Finds the smallest value from the root.
 	 */
-	public @nogc Node* findMin(){
+	public Node* findMin() @nogc pure nothrow {
 		bool found;
 		Node* result = root;
 		do{
@@ -476,7 +416,7 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Finds the smallest value from the given root.
 	 */
-	public @nogc Node* findMin(Node* from){
+	public Node* findMin(Node* from) @nogc pure nothrow {
 		bool found;
 		Node* result = from;
 		do{
@@ -490,7 +430,7 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Finds the largest value from the root.
 	 */
-	public @nogc Node* findMax(){
+	public Node* findMax() @nogc pure nothrow {
 		bool found;
 		Node* result = root;
 		do{
@@ -504,7 +444,7 @@ public struct BinarySearchTree(K, E){
 	/**
 	 * Finds the largest value from the given root.
 	 */
-	public @nogc Node* findMax(Node* from){
+	public Node* findMax(Node* from) @nogc pure nothrow {
 		bool found;
 		Node* result = from;
 		do{
@@ -536,18 +476,24 @@ public struct BinarySearchTree2(Elem){
 		Elem elem;
 		Node* left;
 		Node* right;
-		@nogc this(Elem elem, Node* left = null, Node* right = null){
+		/**
+		 * Creates a new BST node.
+		 */
+		this(Elem elem, Node* left = null, Node* right = null) @nogc pure nothrow {
 			this.elem = elem;
 			this.left = left;
 			this.right = right;
 		}
-		@nogc int opCmp(T)(ref T rhs){
+		/**
+		 * Compares two BST nodes.
+		 */
+		int opCmp(T)(ref T rhs) @nogc pure nothrow {
 			return this.elem.opCmp(rhs.elem);
 		}
 		/**
 		 * Returns the total height.
 		 */
-		@nogc @property size_t height(){
+		@property size_t height() @nogc pure nothrow {
 			if(left is null && right is null){
 				return 1;
 			}else{
@@ -568,7 +514,7 @@ public struct BinarySearchTree2(Elem){
 		/**
 		 * Returns the balance of the node. Minus if LHS is heavier, plus if RHS is heavier.
 		 */
-		@nogc @property sizediff_t bal(){
+		@property sizediff_t bal() @nogc pure nothrow {
 			if(left is null && right is null){
 				return 0;
 			}else{
@@ -609,7 +555,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Gets an element without allocation. Returns E.init if key not found.
 	 */
-	public @nogc Elem lookup(K)(K key){
+	public Elem lookup(K)(K key) @nogc pure nothrow {
 		bool found;
 		Node* crnt = root;
 		Elem result;
@@ -631,9 +577,9 @@ public struct BinarySearchTree2(Elem){
 	 * Inserts a new element with some automatic optimization.
 	 * TODO: Make the optimization better.
 	 */
-	public @nogc Elem add(Elem elem){
+	public Elem add(Elem elem) @nogc pure nothrow {
 		if(root is null){
-			root = cast(Node*)malloc(Node.sizeof);
+			root = cast(Node*)pureMalloc(Node.sizeof);
 			*root = Node(elem);
 			nOfElements++;
 			return elem;
@@ -647,10 +593,10 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Rebalances a tree.
 	 */
-	public @nogc void rebalanceTree(){
+	public void rebalanceTree() @nogc pure nothrow {
 		rebalanceTree(&root);
 	}
-	protected @nogc void rebalanceTree(Node** node){
+	protected void rebalanceTree(Node** node) @nogc pure nothrow {
 		if((*node).height > 1){
 			if((*node).bal > 1 || (*node).bal < -1){
 				optimize(node);
@@ -666,19 +612,19 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Returns the number of elements in the tree.
 	 */
-	public @nogc @property size_t length(){
+	public @property size_t length() @nogc pure nothrow {
 		return nOfElements;
 	}
 	/**
 	 * Inserts an item at the given point. Returns true if the height of the tree have been raised.
 	 */
-	protected @nogc bool insertAt(Node** node, Elem elem){
+	protected bool insertAt(Node** node, Elem elem) @nogc pure nothrow {
 		if(elem == (*node).elem){
 			(*node).elem = elem;
 			return false;
 		}else if(elem < (*node).elem){
 			if((*node).left is null){
-				(*node).left = cast(Node*)malloc(Node.sizeof);
+				(*node).left = cast(Node*)pureMalloc(Node.sizeof);
 				*(*node).left = Node(elem);
 				if((*node).right is null){
 					return true;
@@ -690,7 +636,7 @@ public struct BinarySearchTree2(Elem){
 			}
 		}else{
 			if((*node).right is null){
-				(*node).right = cast(Node*)malloc(Node.sizeof);
+				(*node).right = cast(Node*)pureMalloc(Node.sizeof);
 				*(*node).right = Node(elem);
 				if((*node).left is null){
 					return true;
@@ -705,14 +651,14 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Removes an element by key.
 	 */
-	public @nogc void remove(Elem elem){
+	public void remove(Elem elem) @nogc pure nothrow {
 		bool handside;
 		Node* crnt = root;
 		Node* prev;
 		while(crnt !is null){
 			if(crnt.elem == elem){
 				if(crnt.left is null && crnt.right is null){
-					free(crnt);
+					pureFree(crnt);
 					if(prev !is null){
 						if(handside)
 							prev.right = null;
@@ -732,7 +678,7 @@ public struct BinarySearchTree2(Elem){
 						else
 							prev.left = crnt.right;
 					}
-					free(crnt);
+					pureFree(crnt);
 					crnt = null;
 					nOfElements--;
 				}else if(crnt.right is null){
@@ -744,7 +690,7 @@ public struct BinarySearchTree2(Elem){
 						else
 							prev.left = crnt.left;
 					}
-					free(crnt);
+					pureFree(crnt);
 					crnt = null;
 					nOfElements--;
 				}else{
@@ -779,7 +725,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Rotates the subtree to the left by one.
 	 */
-	protected @nogc void rotateLeft(Node** node){
+	protected void rotateLeft(Node** node) @nogc pure nothrow {
 		Node* temp = *node;	//save current node
 		*node = temp.right;				//assign the first RHS to the root
 		temp.right = (*node).left;		//assign the new root's LHS to the saved node's RHS
@@ -788,7 +734,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Rotates the subtree to the right by one.
 	 */
-	protected @nogc void rotateRight(Node** node){
+	protected void rotateRight(Node** node) @nogc pure nothrow {
 		Node* temp = *node;	//save current node
 		*node = temp.left;				//assign the first LHS to the root
 		temp.left = (*node).right;		//assign the new root's RHS to the saved node's LHS
@@ -797,7 +743,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Rotates the subtree to the right then to the left.
 	 */
-	protected @nogc void rotateRightLeft(Node** node){
+	protected void rotateRightLeft(Node** node) @nogc pure nothrow {
 		Node* temp = (*node).right.left;	//save root.RHS.LHS
 		(*node).right.left = temp.right;			//assign temp.RHS to root.RHS.LHS
 		temp.right = (*node).right;					//assign root.RHS to temp.RHS
@@ -808,7 +754,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Rotates the subtree to the right then to the left.
 	 */
-	protected @nogc void rotateLeftRight(Node** node){
+	protected void rotateLeftRight(Node** node) @nogc pure nothrow {
 		Node* temp = (*node).left.right;	//save root.LHS.RHS
 		(*node).left.right = temp.left;				//assign temp.LHS to root.LHS.RHS
 		temp.left = (*node).left;					//assign root.LHS to temp.LHS
@@ -819,7 +765,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Optimizes a BinarySearchTree by distributing nodes evenly.
 	 */
-	protected @nogc void optimize(Node** node){
+	protected void optimize(Node** node) @nogc pure nothrow {
 		if((*node).bal >= 2){
 			if((*node).right.bal >= 1){
 				rotateLeft(node);
@@ -838,7 +784,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Finds the smallest value from the root.
 	 */
-	public @nogc Node* findMin(){
+	public Node* findMin() @nogc pure nothrow {
 		bool found;
 		Node* result = root;
 		do{
@@ -852,7 +798,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Finds the smallest value from the given root.
 	 */
-	public @nogc Node* findMin(Node* from){
+	public Node* findMin(Node* from) @nogc pure nothrow {
 		bool found;
 		Node* result = from;
 		do{
@@ -866,7 +812,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Finds the largest value from the root.
 	 */
-	public @nogc Node* findMax(){
+	public Node* findMax() @nogc pure nothrow {
 		bool found;
 		Node* result = root;
 		do{
@@ -880,7 +826,7 @@ public struct BinarySearchTree2(Elem){
 	/**
 	 * Finds the largest value from the given root.
 	 */
-	public @nogc Node* findMax(Node* from){
+	public Node* findMax(Node* from) @nogc pure nothrow {
 		bool found;
 		Node* result = from;
 		do{

@@ -91,7 +91,8 @@ class TileLayerTest : SystemEventListener, InputListener{
 	this(){
 		theta = 0;
 		isRunning = true;
-		Image tileSource = loadImage(File("../assets/sci-fi-tileset.png"));
+		Image tileSource = loadImage(File("../assets/sci-fi-tileset.tga"));
+		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
 		Image spriteSource = loadImage(File("../assets/d-man.tga"));
 		t = new TileLayer(16,16, LayerRenderingMode.COPY);
 		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(LayerRenderingMode.COPY);
@@ -113,6 +114,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 		//c.addCollisionListener(this);
 		//tiles.length = tileSource.bitmapID.length;
 		tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
+		//tiles = loadBitmapSheetFromFile!(Bitmap8Bit)("../assets/sci-fi-tileset.png", 16, 16);
 		for(int i; i < tiles.length; i++){
 			//string hex = tileSource.bitmapID[i];
 			//writeln(hex[hex.length-4..hex.length]);
@@ -129,6 +131,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 			const int rnd = uniform(0,1024);
 			//attrMapping[i] = BitmapAttrib(rnd & 1 ? true : false, rnd & 2 ? true : false);
 			mapping[i] = MappingElement(cast(wchar)(rnd & 63), BitmapAttrib(rnd & 1024 ? true : false, rnd & 512 ? true : false));
+			//mapping[i] = MappingElement(0x0, BitmapAttrib(false,false));
 		}
 		ih = new InputHandler();
 		ih.sel ~= this;

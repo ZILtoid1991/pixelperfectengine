@@ -90,10 +90,10 @@ public class WriteToMapSingle : UndoableEvent {
 	public void redo() {
 		original = target.readMapping(x,y);
 		target.writeMapping(x,y,me);
-		debug {
+		/*debug {
 			import std.stdio : writeln;
 			writeln("Layer was written at position ", x, ";", y," with values ", target.readMapping(x,y));
-		}
+		}*/
 	}
 	public void undo() {
 		target.writeMapping(x,y,original);

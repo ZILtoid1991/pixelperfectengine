@@ -5,6 +5,8 @@ Prerequirements:
 
 This document is not finished, although I plan to minimize changes that would break a lot of things.
 
+Extension: `.XMF` (Extendible Map Format)
+
 # Metadata
 
 * Has no namespace
@@ -61,13 +63,7 @@ As of version 1.0, TileLayers can have additional ancillary tags as long as they
 
 `Layer:Tile "Background 0" 0 32 32 256 256`
 
-`value[0]` is the name of the layer, `value[1]` and `value[2]` are horizontal and vertical tile sizes, `value[3]` and `value[4]` are horizontal and vertical map sizes
-
-### Priority
-
-`Priority -2`
-
-Higher priority means the higher the layer will displayed. The number can be negative and positive. This tag is mandatory!
+`value[0]` is the name of the layer, `value[2]` and `value[3]` are horizontal and vertical tile sizes, `value[4]` and `value[5]` are horizontal and vertical map sizes
 
 ### RenderingMode
 

@@ -3,7 +3,10 @@
  *
  * Pixel Perfect Engine, audio.pcm32 module
  */
-
+/*
+ * TODO: Outsource the Audio Plugins from the main engine.
+ */
+/+
 module PixelPerfectEngine.audio.pcm32;
 
 import PixelPerfectEngine.audio.common;
@@ -1761,3 +1764,4 @@ public class PCM32 : AbstractPPEFX{
 	}
 }
 
++/

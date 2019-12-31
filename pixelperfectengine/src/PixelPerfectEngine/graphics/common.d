@@ -13,7 +13,7 @@ module PixelPerfectEngine.graphics.common;
  */
 public struct Coordinate{
 	public int left, top, right, bottom;
-	@nogc this(int left, int top, int right, int bottom){
+	this(int left, int top, int right, int bottom) @safe pure nothrow @nogc {
 		this.left=left;
 		this.top=top;
 		this.right=right;
@@ -40,7 +40,7 @@ public struct Coordinate{
 	/**
 	 * Moves the box to the given position.
 	 */
-	public @nogc void move(int x, int y){
+	public void move(int x, int y) @nogc @safe nothrow pure {
 		right = x + width();
 		bottom = y + height();
 		left = x;
@@ -49,7 +49,7 @@ public struct Coordinate{
 	/**
 	 * Moves the box by the given values.
 	 */
-	public @nogc void relMove(int x, int y){
+	public void relMove(int x, int y) @nogc @safe nothrow pure{
 		left = left + x;
 		right = right + x;
 		top = top + y;

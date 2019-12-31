@@ -18,12 +18,12 @@ public struct BitmapAttrib{
 		bool, "horizMirror", 1,
 		bool, "vertMirror", 1,
 		ubyte, "priority", 6));
-	@nogc public this(bool horizMirror, bool vertMirror, ubyte priority = 0){
+	public this(bool horizMirror, bool vertMirror, ubyte priority = 0) @nogc nothrow @safe pure{
 		this.horizMirror = horizMirror;
 		this.vertMirror = vertMirror;
 		this.priority = priority;
 	}
-	string toString() const{
+	string toString() const @safe pure nothrow{
 		return "[horizMirror: " ~ horizMirror ~ " ; vertMirror: " ~ vertMirror ~ " ; priority: " ~ priority ~ "]";
 	}
 }
@@ -47,28 +47,31 @@ abstract class ABitmap{
 	public int height() pure @safe @property @nogc {
 		return iY;
 	}
+	/**
+	 * Marked to replacement for 0.10.0
+	 */
 	abstract AdvancedBitArray generateStandardCollisionModel();
 	/**
 	 * Returns the palette pointer.
 	 */
-	@nogc public Color* getPalettePtr() {
+	public Color* getPalettePtr() pure @trusted @property @nogc nothrow {
 		return palettePtr;
 	}
 	/**
 	 * Sets the palette pointer. Make sure that you set it to a valid memory location.
 	 * DEPRECATED!
 	 */
-	@nogc public void setPalettePtr(Color* p) {
+	public void setPalettePtr(Color* p) pure @safe @property @nogc nothrow {
 		palettePtr = p;
 	}
 	/**
 	 * Returns the wordlength of the type
 	 */
-	abstract @nogc @property string wordLengthByString();
+	abstract string wordLengthByString() pure @safe @property @nogc nothrow ;
 	/**
 	 * Clears the whole bitmap to a transparent color.
 	 */
-	abstract @nogc void clear();
+	abstract void clear() pure @safe @nogc nothrow;
 }
 /*
  * S: Wordlength by usage. Possible values:
@@ -94,30 +97,30 @@ alias Bitmap32Bit = Bitmap!("W",Color);
  * colorspaces via proper lookup tables.
  * Note for 4Bit bitmap: It's width needs to be an even number (for rendering simplicity), otherwise it'll cause an exception.
  */
-public class Bitmap(string S,T) : ABitmap{
+public class Bitmap(string S,T) : ABitmap {
 	T[] pixels;
 	static if(S != "HB" && S != "QB"){
 		/**
 		 * Resizes the bitmap.
 		 * NOTE: It's not for scaling.
 		 */
-		public void resize(int x, int y) @safe pure{
+		public void resize(int x, int y) @safe pure {
 			pixels.length=x*y;
 			iX = x;
 			iY = y;
 		}
 		///Returns the pixel at the given position.
-		@nogc public T readPixel(int x, int y) @safe pure{
+		@nogc public T readPixel(int x, int y) @safe pure {
 			return pixels[x+(iX*y)];
 		}
 		///Writes the pixel at the given position.
-		@nogc public void writePixel(int x, int y, T color) @safe pure{
+		@nogc public void writePixel(int x, int y, T color) @safe pure {
 			pixels[x+(iX*y)]=color;
 		}
 	}
 	static if(S == "HB"){
 		///Creates an empty bitmap. DEPRECATED!
-		this(int x, int y, Color* palettePtr){
+		this(int x, int y, Color* palettePtr) @safe pure {
 			if(x & 1)
 				x++;
 			iX=x;
@@ -295,10 +298,10 @@ public class Bitmap(string S,T) : ABitmap{
 			}
 		}
 	}
-	@nogc public T* getPtr() pure {
+	@nogc public T* getPtr() pure @trusted nothrow {
 		return pixels.ptr;
 	}
-	override @nogc @property string wordLengthByString() {
+	override @nogc @property string wordLengthByString() @safe {
 		return S;
 	}
 

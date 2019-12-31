@@ -37,16 +37,41 @@ public class MapFormat {
 
 	}
 	/**
-	 * Serializes itself from string.
+	 * Serializes itself from file.
 	 */
-	public this (string source) @trusted {
-		root = parseSource(source);
+	public this (string path) @trusted {
+		File f = File(path, "rb");
+		char[] source;
+		source.length = cast(size_t)f.size;
+		source = f.rawRead(source);
+		root = parseSource(cast(string)source);
 		//Just quickly go through the tags and sort them out
 		foreach (Tag t0 ; root.all.tags) {
 			switch (t0.namespace) {
 				case "Layer":
-					const int priority = t0.expectTagValue!int("priority");
+					const int priority = t0.values[1].get!int;
 					layerData[priority] = t0;
+					LayerRenderingMode lrd;
+					switch (t0.getTagValue!string("RenderingMode")) {
+						case "AlphaBlending":
+							lrd = LayerRenderingMode.ALPHA_BLENDING;
+							break;
+						case "Blitter":
+							lrd = LayerRenderingMode.BLITTER;
+							break;
+						case "Copy":
+							lrd = LayerRenderingMode.COPY;
+							break;
+						default:
+							break;
+					}
+					switch (t0.name) {
+						case "Tile":
+							layeroutput[priority] = new TileLayer(t0.values[2].get!int, t0.values[3].get!int, lrd);
+							break;
+						default:
+							break;
+					}
 					break;
 				/*case "Metadata":
 					metadata = t0;
@@ -58,6 +83,35 @@ public class MapFormat {
 					break;
 			}
 		}
+	}
+	/**
+	 * Loads tiles from disk to all layers.
+	 */
+	public void loadTiles () @trusted {
+		foreach (key, value ; layerData) {
+			Tag[] tileSource = getAllTileSources(key);
+			foreach (t0; tileSource) {
+
+			}
+		}
+	}
+	/**
+	 * Loads mapping data from disk to all layers.
+	 */
+	public void loadMappingData () @trusted {
+
+	}
+	/**
+	 * Saves the document to disc.
+	 */
+	public void save (string path) @trusted {
+		foreach(i; layerData.byKey){
+			if(layerData[i].name == "Tile")
+				pullMapDataFromLayer (i);
+		}
+		string output = root.toSDLString();
+		File f = File(path, "wb+");
+		f.write(output);
 	}
 	/**
 	 * Returns given metadata.

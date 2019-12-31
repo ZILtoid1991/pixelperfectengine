@@ -95,7 +95,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 	//private ListBoxColumn[] layerListE;
 	public Label[] labels;
 	private int[] propTLW, propSLW, propSLEW;
-	public IEditor ie;
+	public Editor ie;
 	//public bool layerList, materialList;
 	public LayerList layerList;
 	public MaterialList materialList;
@@ -344,10 +344,13 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			case "xmpTool":
 				break;
 			case "load":
+				onLoad;
 				break;
 			case "save":
+				onSave;
 				break;
 			case "saveAs":
+				onSaveAs;
 				break;
 			default:
 				break;
@@ -356,13 +359,14 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void keyReleased(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){}
 	public void passActionEvent(Event e){
 		switch(e.source){
+			case "save":
+				onSave();
+				break;
 			case "saveas":
-				FileDialog fd = new FileDialog("Save document as","docSave",&actionEvent,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.xmf"])],".\\",true);
-				wh.addWindow(fd);
+				onSaveAs();
 				break;
 			case "load":
-				FileDialog fd = new FileDialog("Load document","docLoad",&actionEvent,[FileDialog.FileAssociationDescriptor("PPE map file", ["*.xmf"])],".\\",false);
-				wh.addWindow(fd);
+				onLoad();
 				break;
 			case "newLayer":
 				//NewLayerDialog nld = new NewLayerDialog(this);
@@ -375,24 +379,32 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			default: break;
 		}
 	}
-	/*public void actionEvent(string source, int type, int value, wstring message){
-
-
-		if(source == "file"){
-
+	public void onLoad () {
+		FileDialog fd = new FileDialog("Load document","docLoad",&onLoadDialog,[FileDialog.FileAssociationDescriptor(
+			"PPE map file", ["*.xmf"])],".\\",false);
+		wh.addWindow(fd);
+	}
+	public void onLoadDialog (Event event) {
+		selDoc = new MapDocument(event.getFullPath);
+		
+	}
+	public void onSave () {
+		if (selDoc.filename) {
+			selDoc.mainDoc.save(selDoc.filename);
+		} else {
+			onSaveAs();
 		}
 	}
-	public void actionEvent(string source, string subSource, int type, int value, wstring message){
-		switch(subSource){
-			case "exitdialog":
-				if(source == "Yes"){
-					onexit = true;
-				}
-				break;
-			default: break;
-		}
-	}*/
-	public void actionEvent(Event event){
+	public void onSaveAs () {
+		FileDialog fd = new FileDialog("Save document as","docSave",&onSaveDialog,[FileDialog.FileAssociationDescriptor(
+			"PPE map file", ["*.xmf"])],".\\",true);
+		wh.addWindow(fd);
+	}
+	public void onSaveDialog (Event event) {
+		selDoc.filename = event.getFullPath();
+		selDoc.mainDoc.save(selDoc.filename);
+	}
+	public void actionEvent(Event event) {
 
 		switch(event.subsource){
 			case "exitdialog":
@@ -561,7 +573,9 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			input.test();
 
 			rasters.refresh();
-
+			if (selDoc) {
+				selDoc.contScrollLayer();
+			}
 		}
 		configFile.store();
 	}

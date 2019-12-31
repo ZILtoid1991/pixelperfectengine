@@ -30,14 +30,18 @@ public class MapDocument {
 	int					selectedLayer;	///Indicates the currently selected layer
 	RasterWindow		outputWindow;	///Window used to output the screen data
 	EditMode			mode;			///Mose event mode selector
+	string				filename;		///Null if not yet saved
 	protected int		prevMouseX;		///Previous mouse X position
 	protected int		prevMouseY;		///Previous mouse Y position
+	protected int		sXAmount;
+	protected int		sYAmount;
 	protected MappingElement	selectedMappingElement;	///Currently selected mapping element to write, including mirroring properties, palette selection, and priority attributes
 	protected bool		voidfill;		///If true, tilePlacement overrides only transparent (0xFFFF) tiles.
 	/**
 	 * Loads the document from disk.
 	 */
 	public this(string filename) @trusted {
+		mainDoc = new MapFormat(filename);
 		events = new UndoableStack(20);
 	}
 	///New from scratch
@@ -128,15 +132,7 @@ public class MapDocument {
 								if (c.width == 0 && c.height == 0) {
 									if (target.readMapping(c.left, c.top).tileID == 0xFFFF)
 										events.addToTop(new WriteToMapSingle(target, c.left, c.top, selectedMappingElement));
-									/+	target.writeMapping(c.left, c.top, selectedMappingElement);+/
-
 								} else {
-									/+for (int y0 = c.top ; y0 <= c.bottom ; y0++){
-										for (int x0 = c.left ; x0 <= c.right ; x0++) {
-											if (target.readMapping(x0, y0).tileID == 0xFFFF)
-												target.writeMapping(x0, y0, selectedMappingElement);
-										}
-									}+/
 									events.addToTop(new WriteToMapVoidFill(target, c, selectedMappingElement));
 								}
 							} else {
@@ -147,10 +143,6 @@ public class MapDocument {
 									events.addToTop(new WriteToMapOverwrite(target, c, selectedMappingElement));
 								}
 							}
-							debug {
-								import std.stdio : writeln;
-								writeln(events.events);
-							}
 						}
 						break;
 					case MouseButton.MID:
@@ -159,7 +151,31 @@ public class MapDocument {
 							prevMouseX = x;
 							prevMouseY = y;
 						} else {
-
+							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
+							x = (x - mainDoc[selectedLayer].getSX) / target.getTileWidth;
+							y = (y - mainDoc[selectedLayer].getSY) / target.getTileHeight;
+							prevMouseX = (prevMouseX - mainDoc[selectedLayer].getSX) / target.getTileWidth;
+							prevMouseY = (prevMouseY - mainDoc[selectedLayer].getSY) / target.getTileHeight;
+							Coordinate c;
+							if (x > prevMouseX){
+								c.left = prevMouseX;
+								c.right = x;
+							} else {
+								c.left = x;
+								c.right = prevMouseX;
+							}
+							if (y > prevMouseY){
+								c.top = prevMouseY;
+								c.bottom = y;
+							} else {
+								c.top = y;
+								c.bottom = prevMouseY;
+							}
+							if (c.width == 0 && c.height == 0) {
+								events.addToTop(new WriteToMapSingle(target, c.left, c.top, MappingElement(0xFFFF)));
+							} else {
+								events.addToTop(new WriteToMapOverwrite(target, c, MappingElement(0xFFFF)));
+							}
 						}
 						break;
 					case MouseButton.RIGHT:
@@ -177,6 +193,34 @@ public class MapDocument {
 				break;
 		}
 	}
+	/**
+	 * Scrolls the selected layer by a given amount.
+	 */
+	public void scrollSelectedLayer (int x, int y) {
+		if (mainDoc[selectedLayer] !is null) {
+			mainDoc[selectedLayer].relScroll(x, y);
+		}
+	}
+	/**
+	 * Sets the continuous scroll amounts.
+	 */
+	public void setContScroll (int x, int y) {
+		sXAmount = x;
+		sYAmount = y;
+	}
+	/**
+	 * Scrolls the selected layer by the amount set.
+	 * Should be called for every frame.
+	 */
+	public void contScrollLayer () {
+		if(sXAmount || sYAmount){
+			scrollSelectedLayer (sXAmount, sYAmount);
+			outputWindow.updateRaster();
+		}
+	}
+	/**
+	 * Updates the material list for the selected layer.
+	 */
 	public void updateMaterialList () {
 		if (mainDoc[selectedLayer] !is null) {
 			if (prg.wh.materialList !is null) {
@@ -186,6 +230,9 @@ public class MapDocument {
 			}
 		}
 	}
+	/**
+	 * Updates the layers for this document.
+	 */
 	public void updateLayerList () {
 		if (prg.wh.layerList !is null) {
 			LayerInfo[] list = mainDoc.getLayerInfo;

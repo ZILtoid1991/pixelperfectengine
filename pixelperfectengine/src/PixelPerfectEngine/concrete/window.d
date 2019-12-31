@@ -222,14 +222,15 @@ public class Window : ElementContainer{
 	 * an extra button was clicked, also tests for the header, which creates a drag event for moving the window.
 	 */
 	public void passMouseEvent(int x, int y, int state, ubyte button){
-		if(state == ButtonState.PRESSED){
-			if(getStyleSheet.getImage("closeButtonA").width > x && getStyleSheet.getImage("closeButtonA").height > y && button == MouseButton.LEFT){
+		if (state == ButtonState.PRESSED) {
+			if (getStyleSheet.getImage("closeButtonA").width > x && getStyleSheet.getImage("closeButtonA").height > y && 
+					button == MouseButton.LEFT) {
 				close();
 				return;
-			}else if(getStyleSheet.getImage("closeButtonA").height > y){
-				if(y > position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length)){
-					y -= position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length);
-					extraButtonEvent(y / getStyleSheet.getImage("closeButtonA").width, button, state);
+			} else if (getStyleSheet.getImage("closeButtonA").height > y) {
+				if(x > position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length)){
+					x -= position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length);
+					extraButtonEvent(x / getStyleSheet.getImage("closeButtonA").width, button, state);
 					return;
 				}
 				parent.moveUpdate(this);
@@ -247,9 +248,13 @@ public class Window : ElementContainer{
 				}
 			}
 		}else{
-			if(draggedElement){
+			if (draggedElement) {
 				draggedElement.onClick(x - draggedElement.getPosition().left, y - draggedElement.getPosition().top, state, button);
 				draggedElement = null;
+			} else if (x > position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length)) {
+				x -= position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length);
+				extraButtonEvent(x / getStyleSheet.getImage("closeButtonA").width, button, state);
+				return;
 			}
 		}
 	}
