@@ -26,22 +26,32 @@ public class MaterialList : Window {
 		listBox_materials.onItemSelect = &onItemSelect;
 		addElement(listBox_materials);
 		{
-			SmallButton sb = new SmallButton("trashButtonB", "trashButtonA", "trash", Coordinate(113, 234, 129, 250));
+			SmallButton sb = new SmallButton("removeMaterialB", "removeMaterialA", "rem", Coordinate(113, 234, 129, 250));
 			//sb.onMouseLClickRel = &button_trash_onClick;
 			buttons ~= sb;
 		}
 		{
-			SmallButton sb = new SmallButton("blankButtonB", "blankButtonA", "horizMirror", Coordinate(1, 218, 17, 234));
+			SmallButton sb = new SmallButton("addMaterialB", "addMaterialA", "add", Coordinate(113, 218, 129, 234));
 			//sb.onMouseLClickRel = &button_trash_onClick;
 			buttons ~= sb;
 		}
 		{
-			SmallButton sb = new SmallButton("blankButtonB", "blankButtonA", "vertMirror", Coordinate(17, 218, 33, 234));
+			SmallButton sb = new SmallButton("horizMirrorB", "horizMirrorA", "horizMirror", Coordinate(1, 218, 17, 234));
+			sb.onMouseLClickRel = &horizMirror_onClick;
+			buttons ~= sb;
+		}
+		{
+			SmallButton sb = new SmallButton("vertMirrorB", "vertMirrorA", "vertMirror", Coordinate(17, 218, 33, 234));
+			sb.onMouseLClickRel = &vertMirror_onClick;
+			buttons ~= sb;
+		}
+		{
+			SmallButton sb = new SmallButton("paletteUpB", "paletteUpA", "palUp", Coordinate(1, 234, 17, 250));
 			//sb.onMouseLClickRel = &button_trash_onClick;
 			buttons ~= sb;
 		}
 		{
-			SmallButton sb = new SmallButton("blankButtonB", "blankButtonA", "addMat", Coordinate(1, 234, 17, 250));
+			SmallButton sb = new SmallButton("paletteDownB", "paletteDownA", "palDown", Coordinate(17, 234, 33, 250));
 			//sb.onMouseLClickRel = &button_trash_onClick;
 			buttons ~= sb;
 		}
@@ -64,10 +74,36 @@ public class MaterialList : Window {
 		listBox_materials.updateColumns(output, new ListBoxHeader(tileListHeaderS.dup, tileListHeaderW.dup));
 	}
 	private void vertMirror_onClick(Event ev) {
-		prg.selDoc.tileMaterial_FlipVertical();
+		SmallButton sender = cast(SmallButton)ev.sender;
+		if(sender.iconPressed == "vertMirrorB") {
+			prg.selDoc.tileMaterial_FlipVertical(true);
+			sender.iconPressed = "vertMirrorA";
+			sender.iconUnpressed = "vertMirrorB";
+		} else {
+			prg.selDoc.tileMaterial_FlipVertical(false);
+			sender.iconPressed = "vertMirrorB";
+			sender.iconUnpressed = "vertMirrorA";
+		}
+		sender.draw();
 	}
 	private void horizMirror_onClick(Event ev) {
-		prg.selDoc.tileMaterial_FlipHorizontal();
+		SmallButton sender = cast(SmallButton)ev.sender;
+		if(sender.iconPressed == "horizMirrorB") {
+			prg.selDoc.tileMaterial_FlipHorizontal(true);
+			sender.iconPressed = "horizMirrorA";
+			sender.iconUnpressed = "horizMirrorB";
+		} else {
+			prg.selDoc.tileMaterial_FlipHorizontal(false);
+			sender.iconPressed = "horizMirrorB";
+			sender.iconUnpressed = "horizMirrorA";
+		}
+		sender.draw();
+	}
+	private void palUp_onClick(Event ev) {
+
+	}
+	private void palDown_onClick(Event ev) {
+		
 	}
 	private void onItemSelect(Event ev) {
 		prg.selDoc.tileMaterial_Select(tiles[ev.value].id);

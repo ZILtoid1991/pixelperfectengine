@@ -5,6 +5,7 @@
  */
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.graphics.layers;
+import PixelPerfectEngine.graphics.raster : PaletteContainer;
 import CPUblit.composing;
 import CPUblit.draw;
 import CPUblit.colorlookup;
@@ -16,7 +17,7 @@ debug import std.stdio;
 /**
  * Implements a subraster using a window. Has the capability of skipping over individual layers.
  */
-public class RasterWindow : Window {
+public class RasterWindow : Window, PaletteContainer {
 	protected Bitmap32Bit trueOutput, rasterOutput;
 	protected Color[] paletteLocal;
 	protected Color* paletteShared;
@@ -30,6 +31,8 @@ public class RasterWindow : Window {
 	 * Creates a new RasterWindow.
 	 */
 	public this(int x, int y, Color* paletteShared, dstring documentName, MapDocument document){
+		rasterX = x;
+		rasterY = y;
 		trueOutput = new Bitmap32Bit(x + 2,y + 18);
 		rasterOutput = new Bitmap32Bit(x + 2, y + 18);
 		super(Coordinate(0, 0, x + 2, y + 18), documentName, ["paletteButtonA", "settingsButtonA", "rightArrowA",
@@ -101,12 +104,12 @@ public class RasterWindow : Window {
 				trueOutput.writePixel (x, y, Color(0,0,0,0));
 			}
 		}
+		//debug writeln(paletteLocal);
 		//update each layer individually
 		for(int i ; i < layerList.length ; i++){
 			//document.mainDoc[layerList[i]].updateRaster(rasterOutput.getPtr, rasterX * 4, paletteLocal.ptr);
 			document.mainDoc[layerList[i]].updateRaster((trueOutput.getPtr + (17 * trueOutput.width) + 1), trueOutput.width * 4,
 					paletteLocal.ptr);
-			//debug writeln(i);
 		}
 		for (int i = 16 ; i < trueOutput.height - 1 ; i++) {
 			helperFunc(trueOutput.getPtr + trueOutput.width * i, trueOutput.width);
@@ -175,8 +178,7 @@ public class RasterWindow : Window {
 	/**
 	 * Implements the scroll buttons and the palette edit button.
 	 */
-	public override void extraButtonEvent(int num, ubyte button, int state){
-		debug writeln(num,";",button,";",state);
+	public override void extraButtonEvent (int num, ubyte button, int state) {
 		if (state == ButtonState.RELEASED) {
 			document.setContScroll(0,0);
 		} else {
@@ -200,6 +202,26 @@ public class RasterWindow : Window {
 				default:
 					break;
 			}
+		}
+	}
+	
+	public Color getIndex (ushort index) @safe pure nothrow @nogc {
+		return paletteLocal[index];
+	}
+	
+	public Color setIndex (ushort index, Color val) @safe pure nothrow @nogc {
+		return paletteLocal[index] = val;
+	}
+	
+	public Color[] addPaletteChunk(Color[] paletteChunk) @safe pure {
+		assert(paletteChunk.length);
+		return paletteLocal ~= paletteChunk;
+	}
+
+	public void loadLayers () {
+		foreach (key; document.mainDoc.layeroutput.byKey) {
+			document.mainDoc.layeroutput[key].setRasterizer(rasterX, rasterY);
+			addLayer(key);
 		}
 	}
 }

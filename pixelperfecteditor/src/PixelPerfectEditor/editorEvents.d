@@ -178,7 +178,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 			//handle the following instances for materials:
 			//res == image file
 			//TODO: check if material resource file has any embedded resource data
-			//TODO: enable importing from SDLang map files (*.ppm)
+			//TODO: enable importing from SDLang map files (*.xmf)
 			//TODO: generate dummy tiles for nonexistent material
 			if (exists(res)) {
 				//load the resource file and test if it's the correct size (through an exception)

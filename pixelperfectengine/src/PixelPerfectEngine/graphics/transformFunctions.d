@@ -35,7 +35,7 @@ static if(USE_INTEL_INTRINSICS) import inteli.emmintrin;
  */
 public @nogc int[2] transformFunctionInt(short[2] xy, short[4] ABCD, short[2] x0y0, short[2] sXsY) pure nothrow @trusted {
 //public @nogc int[2] transformFunctionInt(short[4] xy, short[4] ABCD, short[4] x0y0, short[4] sXsY){
-	version(DMD){
+	/+version(X86){
 		int[2] result;
 		void subfunc() pure nothrow @nogc @system {
 			asm @nogc pure nothrow{
@@ -61,7 +61,7 @@ public @nogc int[2] transformFunctionInt(short[2] xy, short[4] ABCD, short[2] x0
 		}
 		
 		return [result[0] + x0y0[0], result[1] + x0y0[1]];
-	} else static if (USE_INTEL_INTRINSICS) {
+	} else+/ static if (USE_INTEL_INTRINSICS) {
 		__m128i result;
 		short8 xy_, sXsY_, x0y0_, ABCD_;
 		xy_[0] = xy[0];

@@ -45,7 +45,7 @@ public interface IEditor{
 	//public void newLayer();
 	public void xmpToolkit();
 	public void passActionEvent(Event e);
-	public void createNewDocument(dstring name, int rX, int rY, int pal);
+	public void createNewDocument(dstring name, int rX, int rY);
 	//public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority);
 }
 
@@ -69,7 +69,7 @@ public class NewDocumentDialog : Window{
 		textBoxes ~= new TextBox("","name",Coordinate(81,20,200,39));
 		textBoxes ~= new TextBox("","rX",Coordinate(121,40,200,59));
 		textBoxes ~= new TextBox("","rY",Coordinate(121,60,200,79));
-		textBoxes ~= new TextBox("","pal",Coordinate(121,80,200,99));
+		//textBoxes ~= new TextBox("","pal",Coordinate(121,80,200,99));
 		addElement(buttons[0], EventProperties.MOUSE);
 		foreach(WindowElement we; labels){
 			addElement(we, EventProperties.MOUSE);
@@ -82,7 +82,7 @@ public class NewDocumentDialog : Window{
 	}
 
 	public void buttonOn_onMouseLClickRel(Event event){
-		ie.createNewDocument(textBoxes[0].getText(), to!int(textBoxes[1].getText()), to!int(textBoxes[2].getText()), to!int(textBoxes[3].getText()));
+		ie.createNewDocument(textBoxes[0].getText(), to!int(textBoxes[1].getText()), to!int(textBoxes[2].getText()));
 
 		parent.closeWindow(this);
 	}
@@ -229,7 +229,6 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 				ie.newDocument;
 				break;
 			case "xmpTool":
-				ie.xmpToolkit();
 				break;
 			case "about":
 				Window w = new AboutWindow();
@@ -290,10 +289,6 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public OutputScreen[] ow;
 	public Raster rasters;
 	public InputHandler input;
-	public TileLayer[int] backgroundLayers;
-	//public TileLayer8Bit[int] backgroundLayers8;
-	//public TileLayer32Bit[int] backgroundLayers32;
-	public Layer[int] layers;
 	public wchar selectedTile;
 	public BitmapAttrib selectedTileAttrib;
 	public int selectedLayer;
@@ -362,7 +357,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			case "save":
 				onSave();
 				break;
-			case "saveas":
+			case "saveAs":
 				onSaveAs();
 				break;
 			case "load":
@@ -385,7 +380,24 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		wh.addWindow(fd);
 	}
 	public void onLoadDialog (Event event) {
-		selDoc = new MapDocument(event.getFullPath);
+		import std.utf : toUTF32;
+		try {
+			selDoc = new MapDocument(event.getFullPath);
+			dstring name = toUTF32(selDoc.mainDoc.getName);
+			RasterWindow w = new RasterWindow(selDoc.mainDoc.getHorizontalResolution, selDoc.mainDoc.getVerticalResolution, 
+					rasters.palette.ptr, name, selDoc);
+			selDoc.outputWindow = w;
+			wh.addWindow(w);
+			documents[name] = selDoc;
+			selDoc.updateLayerList();
+			selDoc.updateMaterialList();
+			selDoc.mainDoc.loadTiles(w);
+			selDoc.mainDoc.loadMappingData();
+			w.loadLayers();
+			w.updateRaster();
+		} catch (Exception e) {
+			debug writeln(e);
+		}
 		
 	}
 	public void onSave () {
@@ -401,7 +413,12 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		wh.addWindow(fd);
 	}
 	public void onSaveDialog (Event event) {
+		import std.path : extension;
+		import std.ascii : toLower;
 		selDoc.filename = event.getFullPath();
+		if(extension(selDoc.filename) != ".xmf"){
+			selDoc.filename ~= ".xmf";
+		}
 		selDoc.mainDoc.save(selDoc.filename);
 	}
 	public void actionEvent(Event event) {
@@ -434,18 +451,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void xmpToolkit(){
 		//wh.addWindow(new ConverterDialog(input,bitmapPreview));
 	}
-	/*public void placeObject(int x, int y){
-		if(backgroundLayers.get(selectedLayer, null) !is null){
-			int sX = backgroundLayers[selectedLayer].getSX(), sY = backgroundLayers[selectedLayer].getSY();
-			sX += x;
-			sY += y;
-			sX /= backgroundLayers[selectedLayer].getTileWidth();
-			sY /= backgroundLayers[selectedLayer].getTileHeight();
-			if(sX >= 0 && sY >= 0){
-				backgroundLayers[selectedLayer].writeMapping(sX, sY, selectedTile);
-			}
-		}
-	}*/
+	
 	public this(string[] args){
 		pm = PlacementMode.OVERWRITE;
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
@@ -479,25 +485,25 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			WindowElement.styleSheet.setImage(customGUIElems[14], "blankButtonA");
 			WindowElement.styleSheet.setImage(customGUIElems[15], "blankButtonB");
 		}
-		/+{
-			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE2.tga");
-			WindowElement.styleSheet.setImage(customGUIElems[0], "");
-			WindowElement.styleSheet.setImage(customGUIElems[1], "");
-			WindowElement.styleSheet.setImage(customGUIElems[2], "");
-			WindowElement.styleSheet.setImage(customGUIElems[3], "");
-			WindowElement.styleSheet.setImage(customGUIElems[4], "");
-			WindowElement.styleSheet.setImage(customGUIElems[5], "");
-			WindowElement.styleSheet.setImage(customGUIElems[6], "");
-			WindowElement.styleSheet.setImage(customGUIElems[7], "");
-			WindowElement.styleSheet.setImage(customGUIElems[8], "");
-			WindowElement.styleSheet.setImage(customGUIElems[9], "");
-			WindowElement.styleSheet.setImage(customGUIElems[10], "");
-			WindowElement.styleSheet.setImage(customGUIElems[11], "");
-			WindowElement.styleSheet.setImage(customGUIElems[12], "");
-			WindowElement.styleSheet.setImage(customGUIElems[13], "");
-			WindowElement.styleSheet.setImage(customGUIElems[14], "");
-			WindowElement.styleSheet.setImage(customGUIElems[15], "");
-		}+/
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE4.tga", 16, 16);
+			WindowElement.styleSheet.setImage(customGUIElems[0], "addMaterialA");
+			WindowElement.styleSheet.setImage(customGUIElems[1], "addMaterialB");
+			WindowElement.styleSheet.setImage(customGUIElems[2], "removeMaterialA");
+			WindowElement.styleSheet.setImage(customGUIElems[3], "removeMaterialB");
+			WindowElement.styleSheet.setImage(customGUIElems[4], "horizMirrorA");
+			WindowElement.styleSheet.setImage(customGUIElems[5], "horizMirrorB");
+			WindowElement.styleSheet.setImage(customGUIElems[6], "vertMirrorA");
+			WindowElement.styleSheet.setImage(customGUIElems[7], "vertMirrorB");
+			//WindowElement.styleSheet.setImage(customGUIElems[8], "");
+			//WindowElement.styleSheet.setImage(customGUIElems[9], "");
+			//WindowElement.styleSheet.setImage(customGUIElems[10], "");
+			//WindowElement.styleSheet.setImage(customGUIElems[11], "");
+			WindowElement.styleSheet.setImage(customGUIElems[12], "paletteDownA");
+			WindowElement.styleSheet.setImage(customGUIElems[13], "paletteDownB");
+			WindowElement.styleSheet.setImage(customGUIElems[14], "paletteUpA");
+			WindowElement.styleSheet.setImage(customGUIElems[15], "paletteUpB");
+		}
 		{
 			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE3.tga", 16, 16);
 			WindowElement.styleSheet.setImage(customGUIElems[0], "trashButtonA");
@@ -594,7 +600,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		ndd.ie = this;
 		wh.addWindow(ndd);
 	}
-	public void createNewDocument(dstring name, int rX, int rY, int pal){
+	public void createNewDocument(dstring name, int rX, int rY){
 		import std.utf : toUTF8;
 		MapDocument md = new MapDocument(toUTF8(name), rX, rY);
 		RasterWindow w = new RasterWindow(rX, rY, rasters.palette.ptr, name, md);

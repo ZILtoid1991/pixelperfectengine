@@ -91,17 +91,14 @@ abstract class Layer {
 	}
 	/// Override this to enable output to the raster
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
-	///Standard algorithm for horizontal mirroring
-	///Will be deprecated in later versions and instead external functions will be used.
-	protected void flipHorizontal(uint* src, int length) @nogc pure nothrow {
-		uint s;
-		uint* dest = src + length;
-		for(int i ; i < length ; i++){
-			s = *src;
-			*src = *dest;
-			*dest = s;
-			src++;
-			dest--;
+	///Standard algorithm for horizontal mirroring, used for tile mirroring
+	protected void flipHorizontal(T)(T[] target) @nogc pure nothrow {
+		sizediff_t j = target.length - 1;
+		for(sizediff_t i ; i < target.length>>1 ; i++){
+			const T s = target[i];
+			target[i] = target[j];
+			target[j] = s;
+			j--;
 		}
 	}
 }
@@ -257,7 +254,8 @@ public class TileLayer : Layer, ITileLayer{
 	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
 	@nogc public void writeMapping(int x, int y, MappingElement w){
-		mapping[x+(mX*y)]=w;
+		if(x >= 0 && y >= 0 && x < mX && y < mY)
+			mapping[x+(mX*y)]=w;
 	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
 	/*@nogc public void writeTileAttribute(int x, int y, BitmapAttrib ba){
@@ -322,7 +320,7 @@ public class TileLayer : Layer, ITileLayer{
 					if (currentTile.tileID != 0xFFFF) {
 						const DisplayListItem tileInfo = displayList[currentTile.tileID];
 						const int offsetX1 = col ? 0 : offsetX;
-						const int offsetY0 = currentTile.attributes.vertMirror ? tileY - offsetY : offsetY;
+						const int offsetY0 = currentTile.attributes.vertMirror ? tileY - offsetY - 1 : offsetY;
 						if (col + tileXLength > rasterX) {
 							tileXLength -= offsetX0;
 						}
@@ -332,7 +330,7 @@ public class TileLayer : Layer, ITileLayer{
 								main4BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + (currentTile.paletteSel<<4),
 										tileXLength, offsetX1 & 1);
 								if(currentTile.attributes.horizMirror){//Horizontal mirroring
-									flipHorizontal(cast(uint*)src.ptr, tileX);
+									flipHorizontal(src);
 								}
 								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength);
 								break;
@@ -340,7 +338,7 @@ public class TileLayer : Layer, ITileLayer{
 								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
 								main8BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + (currentTile.paletteSel<<8), tileXLength);
 								if(currentTile.attributes.horizMirror){//Horizontal mirroring
-									flipHorizontal(cast(uint*)src.ptr, tileX);
+									flipHorizontal(src);
 								}
 								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength);
 								break;
@@ -348,7 +346,7 @@ public class TileLayer : Layer, ITileLayer{
 								ushort* tileSrc = cast(ushort*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
 								mainColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette), tileXLength);
 								if(currentTile.attributes.horizMirror){//Horizontal mirroring
-									flipHorizontal(cast(uint*)src.ptr, tileX);
+									flipHorizontal(src);
 								}
 								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength);
 								break;
@@ -358,7 +356,7 @@ public class TileLayer : Layer, ITileLayer{
 									mainRenderingFunction(cast(uint*)tileSrc,cast(uint*)w0,tileXLength);
 								} else {
 									CPUblit.composing.copy32bit(cast(uint*)tileSrc, cast(uint*)src, tileXLength);
-									flipHorizontal(cast(uint*)src.ptr, tileX);
+									flipHorizontal(src);
 									mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength);
 								}
 								break;
@@ -427,7 +425,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 			}
 			this.ID = ID;
 			this.tile = tile;
-
+			_systemWrapper;
 		}
 	}
 	protected BinarySearchTree!(wchar, DisplayListItem) displayList;
@@ -470,7 +468,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	protected MappingElement[] mapping;
 	version(LDC){
 		protected int4 _tileAmpersand;
-		protected static short8 _increment;
+		protected short8 _increment;
 	}
 	alias HBIDelegate = @nogc void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y);
 	/**
@@ -488,10 +486,12 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		_tileAmpersand = [TileX - 1, TileY - 1, TileX - 1, TileY - 1];
 		setRenderingMode(renderMode);
 		needsUpdate = true;
+		static if (USE_INTEL_INTRINSICS)
+			for(int i ; i < 8 ; i+=2)
+				_increment[i] = 2;
 	}
-	static this(){
-		for(int i ; i < 8 ; i+=2)
-			_increment[i] = 2;
+	shared this(){
+		
 	}
 	override public void setRasterizer(int rX,int rY) {
 		super.setRasterizer(rX,rY);
@@ -676,8 +676,13 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	}
 	///Returns which tile is at the given pixel
 	@nogc public MappingElement tileByPixel(int x, int y){
-		int[2] xy = transformFunctionInt([cast(short)x,cast(short)y],transformPoints,tpOrigin,[cast(short)sX,cast(short)sY]);
-		return tileByPixelWithoutTransform(xy[0],xy[1]);
+		static if (USE_INTEL_INTRINSICS) {
+			return MappingElement.init;
+		} else {
+			int[2] xy = transformFunctionInt([cast(short)x,cast(short)y],transformPoints,tpOrigin,[cast(short)sX,cast(short)sY]);
+			return tileByPixelWithoutTransform(xy[0],xy[1]);
+		}
+		
 	}
 	///Returns which tile is at the given pixel
 	@nogc protected MappingElement tileByPixelWithoutTransform(int x, int y) @safe pure nothrow{

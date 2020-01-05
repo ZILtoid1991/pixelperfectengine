@@ -38,10 +38,14 @@ public Editor prg;
 int main(string[] args){
 	initialzeSDL();
 
-	if(args.length > 1){
-		if(args[1] == "--test"){
-			TileLayerTest prg = new TileLayerTest();
-			prg.whereTheMagicHappens;
+	if (args.length > 1) {
+		if (args[1] == "--test") {
+			bool testTransformableTileLayer;
+			if (args.length > 2) 
+				if (args[2] == "transform")
+					testTransformableTileLayer = true;
+			TileLayerTest lprg = new TileLayerTest(testTransformableTileLayer);
+			lprg.whereTheMagicHappens;
 			//writeln(prg.isRunning);
 			return 0;
 		}
@@ -88,7 +92,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 	InputHandler ih;
 	float theta;
 	//CollisionDetector c;
-	this(){
+	this(bool testTransformableTileLayer = false){
 		theta = 0;
 		isRunning = true;
 		Image tileSource = loadImage(File("../assets/sci-fi-tileset.tga"));
@@ -115,13 +119,16 @@ class TileLayerTest : SystemEventListener, InputListener{
 		//tiles.length = tileSource.bitmapID.length;
 		tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
 		//tiles = loadBitmapSheetFromFile!(Bitmap8Bit)("../assets/sci-fi-tileset.png", 16, 16);
-		for(int i; i < tiles.length; i++){
-			//string hex = tileSource.bitmapID[i];
-			//writeln(hex[hex.length-4..hex.length]);
-			//ABitmap ab = loadBitmapFromXMP!Bitmap16Bit(tileSource, hex);
-			//tiles[i] = ab;
-			t.addTile(tiles[i], cast(wchar)i);
+		if (testTransformableTileLayer) {
+			for (int i; i < tiles.length; i++) {
+				tt.addTile(tiles[i], cast(wchar)i);
+			}
+		} else {
+			for (int i; i < tiles.length; i++) {
+				t.addTile(tiles[i], cast(wchar)i);
+			}
 		}
+		
 		//wchar[] mapping;
 		MappingElement[] mapping;
 		mapping.length = 64*64;
@@ -164,10 +171,13 @@ class TileLayerTest : SystemEventListener, InputListener{
 		ih.kb ~= KeyBinding(0, ScanCode.n4,0, "sH-", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, ScanCode.Q,0, "HM", Devicetype.KEYBOARD, KeyModifier.ANY);
 		ih.kb ~= KeyBinding(0, ScanCode.W,0, "VM", Devicetype.KEYBOARD, KeyModifier.ANY);
-
-		t.loadMapping(64,64,mapping);
-		t.setWarpMode(false);
-
+		if (testTransformableTileLayer) {
+			tt.loadMapping(64,64,mapping);
+			tt.setWarpMode(false);
+		} else {
+			t.loadMapping(64,64,mapping);
+			t.setWarpMode(false);
+		}
 		//t.setWrapMode(true);
 		//tt.D = -256;
 		output = new OutputScreen("TileLayer test", 1280,960);
@@ -180,14 +190,15 @@ class TileLayerTest : SystemEventListener, InputListener{
 				writeln('[',x,',',y,"] : ", t.transformFunc([x,y]));
 			}
 		}*/
-		r.addLayer(t, 0);
+		if (testTransformableTileLayer) r.addLayer(tt, 0);
+		else r.addLayer(t, 0);
 		r.addLayer(s, 1);
 		Color[] localPal = loadPaletteFromImage(tileSource);
 		localPal.length = 256;
-		r.palette ~= localPal;
+		r.palette = r.palette ~ localPal;
 		localPal = loadPaletteFromImage(spriteSource);
 		localPal.length = 256;
-		r.palette ~= localPal;
+		r.palette = r.palette ~ localPal;
 		//r.palette[0].alpha = 255;
 		r.palette[256].raw = 0;
 		//writeln(tt);

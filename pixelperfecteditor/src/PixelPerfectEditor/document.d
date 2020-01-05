@@ -41,7 +41,7 @@ public class MapDocument {
 	 * Loads the document from disk.
 	 */
 	public this(string filename) @trusted {
-		mainDoc = new MapFormat(filename);
+		mainDoc = new MapFormat(File(filename));
 		events = new UndoableStack(20);
 	}
 	///New from scratch
@@ -53,14 +53,11 @@ public class MapDocument {
 	///Returns the next available layer number.
 	public int nextLayerNumber() @safe {
 		int result = selectedLayer;
-		bool found;
 		do {
 			if (mainDoc[result] is null)
-				found = true;
-			else
-				result++;
-		} while (!found);
-		return result;
+				return result;
+			result++;
+		} while (true);
 	}
 	///Puts the loaded tiles onto a TileLayer
 	public void addTileSet(int layer, ABitmap[ushort] tiles) @trusted {
@@ -108,8 +105,8 @@ public class MapDocument {
 						} else {
 
 							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
-							x = (x - mainDoc[selectedLayer].getSX) / target.getTileWidth;
-							y = (y - mainDoc[selectedLayer].getSY) / target.getTileHeight;
+							x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
+							y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
 							prevMouseX = (prevMouseX - mainDoc[selectedLayer].getSX) / target.getTileWidth;
 							prevMouseY = (prevMouseY - mainDoc[selectedLayer].getSY) / target.getTileHeight;
 							Coordinate c;
@@ -244,11 +241,11 @@ public class MapDocument {
 		updateLayerList;
 		updateMaterialList;
 	}
-	public void tileMaterial_FlipHorizontal() {
-		selectedMappingElement.attributes.horizMirror = !selectedMappingElement.attributes.horizMirror;
+	public void tileMaterial_FlipHorizontal(bool pos) {
+		selectedMappingElement.attributes.horizMirror = pos;
 	}
-	public void tileMaterial_FlipVertical() {
-		selectedMappingElement.attributes.vertMirror = !selectedMappingElement.attributes.vertMirror;
+	public void tileMaterial_FlipVertical(bool pos) {
+		selectedMappingElement.attributes.vertMirror = pos;
 	}
 	public void tileMaterial_Select(wchar id) {
 		selectedMappingElement.tileID = id;

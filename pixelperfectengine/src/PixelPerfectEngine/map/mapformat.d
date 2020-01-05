@@ -7,6 +7,7 @@ module PixelPerfectEngine.map.mapformat;
 import sdlang;
 
 import PixelPerfectEngine.graphics.layers;
+import PixelPerfectEngine.graphics.raster : PaletteContainer;
 import std.stdio;
 public import PixelPerfectEngine.map.mapdata;
 
@@ -21,7 +22,7 @@ public import PixelPerfectEngine.map.mapdata;
  */
 public class MapFormat {
 	public Tag[int] 	layerData;	///Layerdata stored as SDLang tags.
-	protected Layer[int] layeroutput;	///Used to fast map and object data pullback in editors
+	public Layer[int]	layeroutput;	///Used to fast map and object data pullback in editors
 	protected Tag 		metadata;	///Stores metadata.
 	protected Tag		root;		///Root tag for common information.
 	public TileInfo[][int]	tileDataFromExt;///Stores basic TileData that are loaded through extensions
@@ -29,21 +30,20 @@ public class MapFormat {
 	 * Creates new instance from scratch.
 	 */
 	public this (string name, int resX, int resY) @trusted {
-		root = new Tag("", "", null);
+		root = new Tag();
 		metadata = new Tag(root, null, "Metadata");
+		new Tag(metadata, null, "Version", [Value(1), Value(0)]);
 		new Tag(metadata, null, "Name", [Value(name)]);
-		new Tag(metadata, null, "resX", [Value(resX)]);
-		new Tag(metadata, null, "resY", [Value(resY)]);
-
+		new Tag(metadata, null, "Resolution", [Value(resX), Value(resY)]);
 	}
 	/**
 	 * Serializes itself from file.
 	 */
-	public this (string path) @trusted {
-		File f = File(path, "rb");
+	public this (F)(F file) @trusted {
+		//File f = File(path, "rb");
 		char[] source;
-		source.length = cast(size_t)f.size;
-		source = f.rawRead(source);
+		source.length = cast(size_t)file.size;
+		source = file.rawRead(source);
 		root = parseSource(cast(string)source);
 		//Just quickly go through the tags and sort them out
 		foreach (Tag t0 ; root.all.tags) {
@@ -70,7 +70,7 @@ public class MapFormat {
 							layeroutput[priority] = new TileLayer(t0.values[2].get!int, t0.values[3].get!int, lrd);
 							break;
 						default:
-							break;
+							throw new Exception("Unsupported layer format");
 					}
 					break;
 				/*case "Metadata":
@@ -83,15 +83,57 @@ public class MapFormat {
 					break;
 			}
 		}
+		//assert(layerData.length == layeroutput.length);
 	}
 	/**
-	 * Loads tiles from disk to all layers.
+	 * Loads tiles from disk to all layers. Also loads the palette.
+	 * TODO: Add dpk support
 	 */
-	public void loadTiles () @trusted {
+	public void loadTiles (PaletteContainer paletteTarget) @trusted {
+		import PixelPerfectEngine.system.file;
 		foreach (key, value ; layerData) {
+			if (value.name != "Tile") continue;
 			Tag[] tileSource = getAllTileSources(key);
 			foreach (t0; tileSource) {
-
+				string path = t0.getValue!string();
+				Image i = loadImage(File(path, "rb"));
+				void helperFunc(T)(T[] bitmaps, Tag source) {
+					TileLayer tl = cast(TileLayer)layeroutput[key];
+					Tag tileInfo = source.getTag("Embed:TileInfo", null);
+					if(tileInfo !is null)
+						foreach (t1 ; tileInfo.tags) {
+							tl.addTile(bitmaps[t1.values[0].get!int()], cast(wchar)t1.values[1].get!int());
+						}
+				}
+				switch(i.getBitdepth){
+					case 4:
+						Bitmap4Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap4Bit)(i, value.values[2].get!int(), 
+								value.values[3].get!int());
+						helperFunc(bitmaps, t0);
+						break;
+					case 8:
+						Bitmap8Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap8Bit)(i, value.values[2].get!int(), 
+								value.values[3].get!int());
+						helperFunc(bitmaps, t0);
+						break;
+					case 16:
+						Bitmap16Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap16Bit)(i, value.values[2].get!int(), 
+								value.values[3].get!int());
+						helperFunc(bitmaps, t0);
+						break;
+					case 32:
+						Bitmap32Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap32Bit)(i, value.values[2].get!int(), 
+								value.values[3].get!int());
+						helperFunc(bitmaps, t0);
+						break;
+					default:
+						throw new Exception("Unsupported image bitdepth");
+						
+				}
+				if (paletteTarget !is null && isPaletteFileExists(path)) {
+					paletteTarget.addPaletteChunk(loadPaletteFromImage(i));
+				}
+				//debug writeln(paletteTarget.palette);
 			}
 		}
 	}
@@ -99,17 +141,33 @@ public class MapFormat {
 	 * Loads mapping data from disk to all layers.
 	 */
 	public void loadMappingData () @trusted {
+		import PixelPerfectEngine.system.etc : reinterpretCast;
+		foreach (key, value ; layerData) {
+			Tag t0 = value.getTag("Embed:MapData");
+			if (t0 !is null) {
+				TileLayer tl = cast(TileLayer)layeroutput[key];
+				//writeln(t0.getValue!(ubyte[])());
+				tl.loadMapping(value.values[4].get!int(), value.values[5].get!int(), 
+						reinterpretCast!MappingElement(t0.getValue!(ubyte[])()));
+				
+				continue;
+			}
+			/+t0 = value.getTag("File:MapData");
+			if (t0 !is null) {
 
+			}+/
+		}
 	}
 	/**
 	 * Saves the document to disc.
 	 */
 	public void save (string path) @trusted {
+		debug writeln(root.tags);
 		foreach(i; layerData.byKey){
 			if(layerData[i].name == "Tile")
 				pullMapDataFromLayer (i);
 		}
-		string output = root.toSDLString();
+		string output = root.toSDLDocument();
 		File f = File(path, "wb+");
 		f.write(output);
 	}
@@ -172,7 +230,10 @@ public class MapFormat {
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
 			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
 				t = t0.getTag("Embed:TileInfo", null);
-				if (t is null) t = new Tag(t0, "Embed", "TileInfo");
+				if (t is null) { 
+					t = new Tag(t0, "Embed", "TileInfo");
+					//t0.add(t);
+				}
 				break;
 			}
 		}
@@ -236,7 +297,7 @@ public class MapFormat {
 		Tag backup = layerData[pri];
 		layeroutput.remove(pri);
 		layerData.remove(pri);
-		return backup;
+		return backup.remove;
 	}
 	/**
 	 * Adds a layer from external tag.
@@ -244,6 +305,7 @@ public class MapFormat {
 	public void addNewLayer(int pri, Tag t, Layer l) @trusted {
 		layeroutput[pri] = l;
 		layerData[pri] = t;
+		root.add(t);
 	}
 	/**
 	 * Adds a new TileLayer to the document.
@@ -252,6 +314,8 @@ public class MapFormat {
 		layeroutput[pri] = l;
 		l.setRasterizer(getMetadata!int("resX"), getMetadata!int("resY"));
 		layerData[pri] = new Tag(root, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), Value(mY)]);
+		new Tag(layerData[pri], null, "RenderingMode", [Value("Copy")]);
+		//root.add(layerData[pri]);
 		//new Tag(null, null, "priority", [Value(pri)]);
 	}
 	/**
@@ -328,7 +392,7 @@ public class MapFormat {
 	 * Adds an embedded MapData to a TileLayer.
 	 */
 	public void addEmbeddedMapData(int pri, ubyte[] base64Code) @trusted {
-		new Tag(layerData[pri], "Embed", "MapData", [Value(base64Code)]);
+		layerData[pri].add(new Tag("Embed", "MapData", [Value(base64Code)]));
 	}
 	///Ditto
 	public void addEmbeddedMapData(int pri, MappingElement[] me) @safe {
@@ -342,7 +406,7 @@ public class MapFormat {
 	public void addMapDataFile(int pri, string filename, string dataPakSrc = null) @trusted {
 		Attribute[] a;
 		if (dataPakSrc !is null) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
-		new Tag(layerData[pri], "File", "MapData", [Value(filename)], a);
+		layerData[pri].add(new Tag("File", "MapData", [Value(filename)], a));
 	}
 	/+///Ditto, but for files found in DataPak archives
 	public void addMapDataFile(int pri, string dataPakPath, string filename) @trusted {
@@ -386,7 +450,7 @@ public class MapFormat {
 		Attribute[] a;
 		if (dataPakSrc !is null) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
 		if (offset) a ~= new Attribute("offset", Value(offset));
-		new Tag(layerData[pri], "File", "TileSource", [Value(filename)], a);
+		new Tag(layerData[pri],"File", "TileSource", [Value(filename)], a);
 	}
 	/**
 	 * Removes a tile source.
@@ -432,9 +496,9 @@ public class MapFormat {
 	public Tag[] getAllTileSources (int pri) @trusted {
 		Tag[] result;
 		try {
-			auto namespace = layerData[pri].namespaces["file"];
+			auto namespace = layerData[pri].namespaces["File"];
 			foreach (t ; namespace.tags) {
-				if (t.name == "tileSource") {
+				if (t.name == "TileSource") {
 					result ~= t;
 				}
 			}
@@ -448,20 +512,50 @@ public class MapFormat {
 	/**
 	 * Adds a palette file source to the document.
 	 */
-	public void addPaletteFile (string filename, string dataPakSrc, int offset) @trusted {
+	public Tag addPaletteFile (string filename, string dataPakSrc, int offset) @trusted {
 		Attribute[] a;
 		if (offset) a ~= new Attribute("offset", Value(offset));
 		if (dataPakSrc.length) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
-		new Tag(root, "File", "Palette", [Value(filename)], a);
+		return new Tag(root,"File", "Palette", [Value(filename)], a);
 	}
 	/**
 	 * Adds an embedded palette to the document.
 	 */
-	public void addEmbeddedPalette (Color[] c, string name, int offset) @trusted {
+	public Tag addEmbeddedPalette (Color[] c, string name, int offset) @trusted {
 		import PixelPerfectEngine.system.etc : reinterpretCast;
 		Attribute[] a;
 		if (offset) a ~= new Attribute("offset", Value(offset));
-		new Tag(root, "Embed", "Palette", [Value(name), Value(reinterpretCast!ubyte(c))], a);
+		return new Tag(root, "Embed", "Palette", [Value(name), Value(reinterpretCast!ubyte(c))], a);
+	}
+	/**
+	 * Returns whether the given palette file source exists.
+	 */
+	public bool isPaletteFileExists (string filename/+, string dataPakSrc = ""+/) @trusted {
+		foreach (t0 ; root.all.tags) {
+			if (t0.getFullName.toString == "File:Palette") {
+				if (t0.getValue!string() == filename /+&& t0.getAttribute!string("dataPakSrc", "") == dataPakSrc+/) 
+					return true;
+			}
+		}
+		return false;
+	}
+	/**
+	 * Returns the name of the map from metadata.
+	 */
+	public string getName () @trusted {
+		return metadata.getTagValue!string("Name");
+	}
+	/**
+	 * Returns the horizontal resolution.
+	 */
+	public int getHorizontalResolution () @trusted {
+		return metadata.getTag("Resolution").values[0].get!int();
+	}
+	/**
+	 * Returns the vertical resolution.
+	 */
+	public int getVerticalResolution () @trusted {
+		return metadata.getTag("Resolution").values[1].get!int();
 	}
 }
 /**

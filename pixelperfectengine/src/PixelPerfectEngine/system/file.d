@@ -201,13 +201,16 @@ public Color[] loadPaletteFromFile(string filename) {
  * Loads a palette from image.
  */
 public Color[] loadPaletteFromImage (Image img) {
-	Color[] result;
-	result.reserve(img.palette.length);
-	for (ushort i ; i < img.palette.length ; i++) {
-		auto origin = img.palette[i];
-		result ~= Color(origin.a, origin.r, origin.g, origin.b);
+	Color[] palette;
+	auto sourcePalette = img.palette;
+	palette.reserve(sourcePalette.length);
+	for (ushort i ; i < sourcePalette.length ; i++){
+		const auto origC = sourcePalette[i];
+		const Color c = Color(origC.a, origC.r, origC.g, origC.b);
+		palette ~= c;
 	}
-	return result;
+	assert (palette.length == sourcePalette.length);
+	return palette;
 }
 /**
  * Gets a bitmap from the XMP file.

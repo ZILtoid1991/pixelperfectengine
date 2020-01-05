@@ -220,11 +220,11 @@ public class Button : WindowElement{
 }
 
 public class SmallButton : WindowElement{
-	private string iconPressed, iconUnpressed;
+	public string iconPressed, iconUnpressed;
 	private bool isPressed;
 	public bool enableRightButtonClick;
 	public bool enableMiddleButtonClick;
-	public int brushPressed, brushNormal;
+	//public int brushPressed, brushNormal;
 
 	public this(string iconPressed, string iconUnpressed, string source, Coordinate coordinates){
 		position = coordinates;
@@ -234,7 +234,7 @@ public class SmallButton : WindowElement{
 		this.iconPressed = iconPressed;
 		this.iconUnpressed = iconUnpressed;
 		output = new BitmapDrawer(coordinates.width, coordinates.height);
-		brushPressed = 1;
+		//brushPressed = 1;
 		//draw();
 	}
 	public override void draw(){

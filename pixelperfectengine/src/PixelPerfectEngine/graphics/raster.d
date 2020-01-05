@@ -24,9 +24,16 @@ public interface RefreshListener{
 public interface IRaster{
     public SDL_Texture* getOutput();
 }
+public interface PaletteContainer {
+	public @property Color[] palette(Color[] val) @safe pure;
+	public @property Color[] palette() @safe pure;
+	public Color getIndex(ushort index) @safe pure nothrow @nogc;
+	public Color setIndex(ushort index, Color val) @safe pure nothrow @nogc;
+	public Color[] addPaletteChunk(Color[] paletteChunk) @safe pure;
+}
 
 ///Handles multiple layers onto one framebuffer.
-public class Raster : IRaster{
+public class Raster : IRaster, PaletteContainer{
     private ushort rX, rY;		///Stores screen resolution. Set overscan resolutions at OutputWindow
     //public SDL_Surface* workpad;
 	public SDL_Texture*[] frameBuffer;
@@ -35,7 +42,7 @@ public class Raster : IRaster{
 	/**
 	 * Color format is ARGB, with each index having their own transparency.
 	 */
-    public Color[] palette;
+    protected Color[] _palette;
     private Layer[int] layerList;	///Stores the layers by their priorities.
 	private int[] layerPriorityHandler, threads;
     private bool r;
@@ -69,6 +76,21 @@ public class Raster : IRaster{
 		oW.setMainRaster(this);
 		addRefreshListener(oW);
 	}
+	public @property Color[] palette(Color[] val) @safe pure {
+		return _palette = val;
+	}
+	public @property Color[] palette() @safe pure {
+		return _palette;
+	}
+	public Color getIndex(ushort index) @safe pure nothrow @nogc {
+		return _palette[index];
+	}
+	public Color setIndex(ushort index, Color val) @safe pure nothrow @nogc {
+		return _palette[index] = val;
+	}
+	public Color[] addPaletteChunk(Color[] paletteChunk) @safe pure {
+		return _palette ~= paletteChunk;
+	}
 	/**
 	 * Returns the current FPS count.
 	 */
@@ -98,12 +120,14 @@ public class Raster : IRaster{
         rL ~= r;
     }
 	///Edits the given color index.
+	///Will be set deprecated in 0.10.0
 	public void editColor(ushort c, Color val){
-		palette[c] = val;
+		_palette[c] = val;
 	}
 	///Sets the number of colors.
+	///Will be set deprecated in 0.10.0
 	public void setupPalette(int i){
-		palette.length = i;
+		_palette.length = i;
 	}
     ///Replaces the layer at the given number.
     public void replaceLayer(Layer l, int i){
