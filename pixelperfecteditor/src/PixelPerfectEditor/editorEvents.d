@@ -23,8 +23,8 @@ public class WriteToMapVoidFill : UndoableEvent {
 		this.me = me;
 	}
 	public void redo() {
-		for(int y = area.top ; y < area.bottom ; y++){
-			for(int x = area.left ; x < area.right ; x++){
+		for(int y = area.top ; y <= area.bottom ; y++){
+			for(int x = area.left ; x <= area.right ; x++){
 				if(target.readMapping(x,y).tileID != 0xFFFF){
 					mask[area.width * y + x] = 0xFF;
 					target.writeMapping(x,y,me);
@@ -33,8 +33,8 @@ public class WriteToMapVoidFill : UndoableEvent {
 		}
 	}
 	public void undo() {
-		for(int y = area.top ; y < area.bottom ; y++){
-			for(int x = area.left ; x < area.right ; x++){
+		for(int y = area.top ; y <= area.bottom ; y++){
+			for(int x = area.left ; x <= area.right ; x++){
 				if(mask[area.width * y + x] == 0xFF){
 					target.writeMapping(x,y,MappingElement(0xFFFF));
 				}
@@ -52,22 +52,21 @@ public class WriteToMapOverwrite : UndoableEvent {
 		this.target = target;
 		this.area = area;
 		this.me = me;
-		original.length = area.area;
+		//original.length = (area.width + 1) * (area.height + 1);
 	}
 	public void redo() {
-		size_t pos;
-		for(int y = area.top ; y < area.bottom ; y++){
-			for(int x = area.left ; x < area.right ; x++){
-				original[pos] = target.readMapping(x,y);
+		//size_t pos;
+		for(int y = area.top ; y <= area.bottom ; y++){
+			for(int x = area.left ; x <= area.right ; x++){
+				original ~= target.readMapping(x,y);
 				target.writeMapping(x,y,me);
-				pos++;
 			}
 		}
 	}
 	public void undo() {
 		size_t pos;
-		for(int y = area.top ; y < area.bottom ; y++){
-			for(int x = area.left ; x < area.right ; x++){
+		for(int y = area.top ; y <= area.bottom ; y++){
+			for(int x = area.left ; x <= area.right ; x++){
 				target.writeMapping(x,y,original[pos]);
 				pos++;
 			}
@@ -164,15 +163,16 @@ public class CreateTileLayerEvent : UndoableEvent {
 				creation.loadMapping(mX, mY, me);
 				target.mainDoc.addNewTileLayer(nextLayer, tX, tY, mX, mY, name, creation);
 				saveMapFile(MapDataHeader(mX, mY), me, f);
-				target.mainDoc.addMapDataFile(nextLayer, res);
+				target.mainDoc.addMapDataFile(nextLayer, file);
 			} else {	//load mapping, embed data into current file if needed
 				MapDataHeader mdh;
 				MappingElement[] me = loadMapFile(File(file), mdh);
 				creation.loadMapping(mdh.sizeX, mdh.sizeY, me);
+				target.mainDoc.addNewTileLayer(nextLayer, tX, tY, mX, mY, name, creation);
 				if (embed)
 					target.mainDoc.addEmbeddedMapData(nextLayer, me);
 				else
-					target.mainDoc.addMapDataFile(nextLayer, res);
+					target.mainDoc.addMapDataFile(nextLayer, file);
 			}
 
 			//handle the following instances for materials:
@@ -212,12 +212,6 @@ public class CreateTileLayerEvent : UndoableEvent {
 				if (tilesheet.length == 0) throw new Exception("No tiles were imported!");
 				target.addTileSet(nextLayer, tilesheet);
 				target.mainDoc.addTileSourceFile(nextLayer, res);
-				/+debug {
-					TileLayer tl = cast(TileLayer)target;
-					writeln(tl.displayList);
-				}+/
-				//writeln(tilesheet.length);
-				//generate default names for the tiles
 				{
 					TileInfo[] idList;
 					string nameBase = baseName(res);
@@ -240,9 +234,9 @@ public class CreateTileLayerEvent : UndoableEvent {
 						const Color c = Color(origC.a, origC.r, origC.g, origC.b);
 						palette ~= c;
 					}
-					target.mainDoc.addPaletteFile(file, "", cast(int)target.outputWindow.palette.length);
+					target.mainDoc.addPaletteFile(res, "", cast(int)target.outputWindow.palette.length);
 					target.outputWindow.palette = target.outputWindow.palette ~ palette;
-					debug writeln(target.outputWindow.palette);
+					//debug writeln(target.outputWindow.palette);
 				}
 
 			}
@@ -252,7 +246,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 			target.updateLayerList();
 			target.updateMaterialList();
 		} catch (Exception e) {
-			debug writeln(e);
+			writeln(e);
 		}
 	}
 	public void undo() {

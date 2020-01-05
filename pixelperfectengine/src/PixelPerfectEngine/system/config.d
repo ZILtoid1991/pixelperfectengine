@@ -101,7 +101,8 @@ public class ConfigurationProfile{
 										foreach(Tag t2; t1.tags){
 											if(t2.name is null){
 												uint scanCode = t2.getAttribute!int("keyCode", keyNameDict.decode(t2.getAttribute!string("keyName")));
-												keyBindingList ~= KeyBinding(stringToKeymod(t2.getAttribute!string("keyMod","NONE;")), scanCode, devicenumber, t2.expectValue!string(), Devicetype.KEYBOARD, stringToKeymod(t2.getAttribute!string("keyMod","ALL;")));
+												keyBindingList ~= KeyBinding(stringToKeymod(t2.getAttribute!string("keyMod","NONE;")), scanCode, 
+														devicenumber, t2.expectValue!string(), Devicetype.KEYBOARD, stringToKeymod(t2.getAttribute!string("keyMod","ALL;")));
 											}
 										}
 										break;
@@ -130,8 +131,10 @@ public class ConfigurationProfile{
 											}else if(t2.name == "enableForceFeedback"){
 												device.enableForceFeedback = t2.getValue!bool(true);
 											}else if(t2.name == "axisDeadzone"){
-												device.axisDeadZonePlus[t2.getAttribute!int("axisNumber", joyAxisNameDict.decode(t2.getAttribute!string("axisName")))] = t2.expectAttribute!int("plus");
-												device.axisDeadZoneMinus[t2.getAttribute!int("axisNumber", joyAxisNameDict.decode(t2.getAttribute!string("axisName")))] = t2.expectAttribute!int("minus");
+												device.axisDeadZonePlus[t2.getAttribute!int("axisNumber", joyAxisNameDict.decode
+														(t2.getAttribute!string("axisName")))] = t2.expectAttribute!int("plus");
+												device.axisDeadZoneMinus[t2.getAttribute!int("axisNumber", joyAxisNameDict.decode
+														(t2.getAttribute!string("axisName")))] = t2.expectAttribute!int("minus");
 											}
 										}
 										break;
@@ -197,19 +200,22 @@ public class ConfigurationProfile{
 						}else{
 							key = new Attribute(null, "keyName", Value(s));
 						}
-						new Tag(t2_0, null, null, [Value(k.ID)], [key, new Attribute(null, "keyMod", Value(keymodToString(k.keymod))), new Attribute(null, "keyModIgnore", Value(keymodToString(k.keymodIgnore)))]);
+						new Tag(t2_0, null, null, [Value(k.ID)], [key, new Attribute(null, "keyMod", Value(keymodToString(k.keymod))), 
+								new Attribute(null, "keyModIgnore", Value(keymodToString(k.keymodIgnore)))]);
 					}
 				}
 			}else if(idd.type == Devicetype.JOYSTICK){
 				foreach(KeyBinding k; keyBindingList){
 					if(k.devicetype == idd.type && k.devicenumber == idd.deviceNumber){
-						new Tag(t2_0, null, null, [Value(k.ID)], [new Attribute(null, "keyCode", Value(to!int(k.scancode))), new Attribute(null, "keyMod", Value(joymodifierStrings[k.keymod]))]);
+						new Tag(t2_0, null, null, [Value(k.ID)], [new Attribute(null, "keyCode", Value(to!int(k.scancode))), new 
+								Attribute(null, "keyMod", Value(joymodifierStrings[k.keymod]))]);
 
 					}
 				}
 				new Tag(t2_0, null, "enableForceFeedback", [Value(idd.enableForceFeedback)]);
 				foreach(int i; idd.axisDeadZonePlus.byKey){
-					new Tag(t2_0, null, "axisDeadzone", null, [new Attribute(null, "axisNumber", Value(i) ), new Attribute(null, "plus", Value(idd.axisDeadZonePlus[i]) ), new Attribute(null, "minus", Value(idd.axisDeadZoneMinus[i]) )]);
+					new Tag(t2_0, null, "axisDeadzone", null, [new Attribute(null, "axisNumber", Value(i) ), new Attribute(null, 
+							"plus", Value(idd.axisDeadZonePlus[i]) ), new Attribute(null, "minus", Value(idd.axisDeadZoneMinus[i]) )]);
 				}
 			}else if(idd.type == Devicetype.MOUSE){
 				foreach(KeyBinding k; keyBindingList){
@@ -228,9 +234,10 @@ public class ConfigurationProfile{
 	}
 
 	public ushort stringToKeymod(string s){
-		if(s == "NONE;")	return KeyModifier.NONE;
-		if(s == "ANY;")		return KeyModifier.ANY;
-		string[] values = csvParser(s, ';');
+		import std.algorithm.iteration : splitter;
+		if(s == "NONE")	return KeyModifier.NONE;
+		if(s == "ANY")		return KeyModifier.ANY;
+		auto values = s.splitter(';');
 		int result;
 		foreach(t ; values){
 			result += keymodifierStrings[t];
@@ -240,9 +247,9 @@ public class ConfigurationProfile{
 
 	public string keymodToString(ushort keymod){
 		if(keymod == KeyModifier.NONE)
-			return "NONE;";
+			return "NONE";
 		if(keymod == KeyModifier.ANY)
-			return "ANY;";
+			return "ANY";
 		string result;
 		if(keymod & KeyModifier.LSHIFT){
 			result ~= "LSHIFT;";
@@ -280,7 +287,7 @@ public class ConfigurationProfile{
 		if(keymod & KeyModifier.RESERVED){
 			result ~= "RESERVED;";
 		}
-		return result;
+		return result[0..$-1];
 	}
 
 	public string joymodToString(ushort s){

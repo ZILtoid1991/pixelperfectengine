@@ -107,8 +107,8 @@ public class MapDocument {
 							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
 							x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
 							y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-							prevMouseX = (prevMouseX - mainDoc[selectedLayer].getSX) / target.getTileWidth;
-							prevMouseY = (prevMouseY - mainDoc[selectedLayer].getSY) / target.getTileHeight;
+							prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTileWidth;
+							prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTileHeight;
 							Coordinate c;
 							if (x > prevMouseX){
 								c.left = prevMouseX;
@@ -149,10 +149,10 @@ public class MapDocument {
 							prevMouseY = y;
 						} else {
 							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
-							x = (x - mainDoc[selectedLayer].getSX) / target.getTileWidth;
-							y = (y - mainDoc[selectedLayer].getSY) / target.getTileHeight;
-							prevMouseX = (prevMouseX - mainDoc[selectedLayer].getSX) / target.getTileWidth;
-							prevMouseY = (prevMouseY - mainDoc[selectedLayer].getSY) / target.getTileHeight;
+							x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
+							y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
+							prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTileWidth;
+							prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTileHeight;
 							Coordinate c;
 							if (x > prevMouseX){
 								c.left = prevMouseX;

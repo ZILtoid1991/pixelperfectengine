@@ -148,14 +148,17 @@ public class MapFormat {
 				TileLayer tl = cast(TileLayer)layeroutput[key];
 				//writeln(t0.getValue!(ubyte[])());
 				tl.loadMapping(value.values[4].get!int(), value.values[5].get!int(), 
-						reinterpretCast!MappingElement(t0.getValue!(ubyte[])()));
+						reinterpretCast!MappingElement(t0.expectValue!(ubyte[])()));
 				
 				continue;
 			}
-			/+t0 = value.getTag("File:MapData");
+			t0 = value.getTag("File:MapData");
 			if (t0 !is null) {
-
-			}+/
+				TileLayer tl = cast(TileLayer)layeroutput[key];
+				MapDataHeader mdf;
+				File mapfile = File(t0.expectValue!string());
+				tl.loadMapping(value.values[4].get!int(), value.values[5].get!int(), loadMapFile(mapfile, mdf));
+			}
 		}
 	}
 	/**
@@ -227,19 +230,21 @@ public class MapFormat {
 	public void addTileInfo(int pri, TileInfo[] list, string source, string dpkSource = null) @trusted {
 		if(list.length == 0) throw new Exception("Empty list!");
 		Tag t;
-		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
-				t = t0.getTag("Embed:TileInfo", null);
-				if (t is null) { 
-					t = new Tag(t0, "Embed", "TileInfo");
-					//t0.add(t);
+		try{
+			foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+				if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
+					t = t0.getTag("Embed:TileInfo", null);
+					if (t is null) { 
+						t = new Tag(t0, "Embed", "TileInfo");
+					}
+					break;
 				}
-				break;
 			}
-		}
-		//if (t is null) return;
-		foreach (item ; list) {
-			new Tag(t, null, null, [Value(cast(int)item.id), Value(item.num), Value(item.name)]);
+			foreach (item ; list) {
+				new Tag(t, null, null, [Value(cast(int)item.id), Value(item.num), Value(item.name)]);
+			}
+		} catch (Exception e) {
+			debug writeln (e);
 		}
 		//writeln(t.tags.length);
 		assert(t.tags.length == list.length);
@@ -312,7 +317,7 @@ public class MapFormat {
 	 */
 	public void addNewTileLayer(int pri, int tX, int tY, int mX, int mY, string name, TileLayer l) @trusted {
 		layeroutput[pri] = l;
-		l.setRasterizer(getMetadata!int("resX"), getMetadata!int("resY"));
+		l.setRasterizer(getHorizontalResolution, getVerticalResolution);
 		layerData[pri] = new Tag(root, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), Value(mY)]);
 		new Tag(layerData[pri], null, "RenderingMode", [Value("Copy")]);
 		//root.add(layerData[pri]);

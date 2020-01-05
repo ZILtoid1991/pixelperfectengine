@@ -299,13 +299,13 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public EditorWindowHandler wh;
 	public EffectLayer selectionLayer;
 	//public ForceFeedbackHandler ffb;
-	private uint[5] framecounter;
+	//private uint[5] framecounter;
 	public char[40] windowTitle;
 	public ConfigurationProfile configFile;
 	private int mouseX, mouseY;
 	private Coordinate selection, selectedTiles;
 	public PlacementMode pm;
-	public UndoableStack undoStack;
+	//public UndoableStack undoStack;
 	public PaletteManager palman;
 	public MapDocument[dstring] documents;
 	public MapDocument selDoc;
@@ -347,6 +347,12 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			case "saveAs":
 				onSaveAs;
 				break;
+			case "undo":
+				onUndo;
+				break;
+			case "redo":
+				onRedo;
+				break;
 			default:
 				break;
 		}
@@ -371,7 +377,25 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				//TileLayerEditor tle = new TileLayerEditor(this);
 				//wh.addWindow(tle);
 				break;
+			case "undo":
+				onUndo();
+				break;
+			case "redo":
+				onRedo();
+				break;
 			default: break;
+		}
+	}
+	public void onUndo () {
+		if(selDoc !is null){
+			selDoc.events.undo;
+			selDoc.outputWindow.updateRaster;
+		}
+	}
+	public void onRedo () {
+		if(selDoc !is null){
+			selDoc.events.redo;
+			selDoc.outputWindow.updateRaster;
 		}
 	}
 	public void onLoad () {
@@ -583,7 +607,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				selDoc.contScrollLayer();
 			}
 		}
-		configFile.store();
+		//configFile.store();
 	}
 	public void onExit(){
 
