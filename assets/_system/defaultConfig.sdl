@@ -30,8 +30,7 @@ video {
 input {
   /*
    * device:
-   * type: Possible values: "keyboard", "joystick", "mouse", "touchscreen"
-   * (unimplemented)
+   * type: Possible values: "keyboard", "joystick", "mouse", "touchscreen"(unimplemented)
    * name: Name of the device, might be absent.
    * devNum: Device ID.
    */
@@ -47,11 +46,11 @@ input {
      * DPad, or an axis.
      * keyModIgnore: Determines what modifier keys should it ignore.
      */
-    "copy" keyName="c" keyMod="LCTRL;" keyModIgnore="NONE;"
-    "cut" keyName="x" keyMod="LCTRL;" keyModIgnore="NONE;"
-    "paste" keyName="v" keyMod="LCTRL;" keyModIgnore="NONE;"
-    "undo" keyName="z" keyMod="LCTRL;" keyModIgnore="NONE;"
-    "save" keyName="s" keyMod="LCTRL;" keyModIgnore="NONE;"
+    "copy" keyName="c" keyMod="LCTRL" keyModIgnore="NUM;CAPS"
+		"cut" keyName="x" keyMod="LCTRL" keyModIgnore="NUM;CAPS"
+		"paste" keyName="v" keyMod="LCTRL" keyModIgnore="NUM;CAPS"
+		"undo" keyName="z" keyMod="LCTRL" keyModIgnore="NUM;CAPS"
+		"save" keyName="s" keyMod="LCTRL" keyModIgnore="NUM;CAPS"
     /*
      * Other tags:
      *
