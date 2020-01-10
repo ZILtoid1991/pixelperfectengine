@@ -182,10 +182,11 @@ public class InputHandler : TextInputHandler{
 			}
 			switch(event.type){
 				case SDL_KEYDOWN:
-
+					ushort km = keyModConv(event.key.keysym.mod);
 					if(!tiEnable){
 						foreach(k; kb){
-							if(event.key.keysym.scancode == k.scancode && ((event.key.keysym.mod | k.keymodIgnore) == (k.keymod | k.keymodIgnore)) && k.devicetype == Devicetype.KEYBOARD){
+							if(event.key.keysym.scancode == k.scancode && ((km | k.keymodIgnore) == 
+									(k.keymod | k.keymodIgnore)) && k.devicetype == Devicetype.KEYBOARD){
 								invokeKeyPressed(k.ID, event.key.timestamp, 0, Devicetype.KEYBOARD);
 							}
 						}
@@ -397,32 +398,6 @@ public class InputHandler : TextInputHandler{
 		tiEnable = false;
 		tiSelect = null;
 	}
-	/*public void addTextInputListener(TextInputListener til){
-		//tl[] ~= til;
-	}
-	public void removeTextInputListener(TextInputListener tl){
-		//tl.remove(ID);
-
-	}*/
-	/*
-	 * Converts between SDL and PPE key modificators.
-	 * PPE native key modificator layout:
-	 * bit 0: Left Shift
-	 * bit 1: Right Shift
-	 * bit 2: Any Shift
-	 * bit 3: Left Control
-	 * bit 4: Right Control
-	 * bit 5: Any Control
-	 * bit 6: Left Alt
-	 * bit 7: Right Alt
-	 * bit 8: Any Alt
-	 * bit 9: Left OSKey
-	 * bit 10: Right OSKey
-	 * bit 11: Any OSKey
-	 * bit 12: NumLock
-	 * bit 13: CapsLock
-	 * bit 14:
-	 */
 }
 
 
@@ -435,7 +410,7 @@ public struct KeyBinding{
 	public uint devicetype;		///The type of the device.
 	public ushort keymod, keymodIgnore;		///Keymod sets the modifierkeys required to activate the event, keymodIgnore sets the keys that are ignored during event polling.
 	public string ID;		///ID of the event
-	this(ushort keymod, uint scancode, uint devicenumber, string ID, uint devicetype, ushort keymodIgnore = KeyModifier.ANY){
+	this(ushort keymod, uint scancode, uint devicenumber, string ID, uint devicetype, ushort keymodIgnore = KeyModifier.All){
 		this.keymod = keymod;
 		this.scancode = scancode;
 		this.devicenumber = devicenumber;
@@ -473,6 +448,8 @@ public struct KeyBinding{
 		s ~= to!string(scancode);
 		s ~= " Keymod: ";
 		s ~= to!string(keymod);
+		s ~= " KeymodIgnore:";
+		s ~= to!string(keymodIgnore);
 		s ~= " Devicetype: ";
 		s ~= to!string(devicetype);
 		s ~= " Devicenumber: ";
@@ -551,8 +528,8 @@ public enum TextInputType : uint{
 	DISABLE		= 65536, ///For use in listboxes
 }
 
-/// Standard key modifiers to avoid public SDL imports and to allow alternative library backends.
-public enum KeyModifier : ushort{
+/// Key modifiers used by the SDL backend
+/+public enum BackendKeyModifier : ushort{
 	NONE 		= 0x0000,	//0b0000_0000_0000_0000
 	LSHIFT 		= 0x0001,	//0b0000_0000_0000_0001
 	RSHIFT 		= 0x0002,	//0b0000_0000_0000_0010
@@ -572,6 +549,34 @@ public enum KeyModifier : ushort{
 	MODE 		= 0x4000,	//0b0100_0000_0000_0000
 	RESERVED 	= 0x8000,	//0b1000_0000_0000_0000
 	ANY			= 0xFFFF
+}+/
+/// Key modifiers used by the engine
+public enum KeyModifier : ushort {
+	None		= 0x0000,
+	Shift		= 0x0001,
+	Ctrl		= 0x0002,
+	Alt			= 0x0004,
+	GUI			= 0x0008,
+	NumLock		= 0x0010,
+	CapsLock	= 0x0020,
+	ScrollLock	= 0x0040,
+	Mode		= 0x0100,
+	All			= 0xFFFF,
+}
+/**
+ * Converts key modifier codes from SDL to the engine's own
+ */
+public ushort keyModConv(ushort input) /+@nogc pure nothrow @safe+/ {
+	ushort result;
+	if (input & KMOD_SHIFT) result |= KeyModifier.Shift;
+	if (input & KMOD_CTRL) result |= KeyModifier.Ctrl;
+	if (input & KMOD_ALT) result |= KeyModifier.Alt;
+	if (input & KMOD_GUI) result |= KeyModifier.GUI;
+	if (input & KMOD_NUM) result |= KeyModifier.NumLock;
+	if (input & KMOD_CAPS) result |= KeyModifier.CapsLock;
+	if (input & KMOD_MODE) result |= KeyModifier.Mode;
+	//debug writeln(input,';',result);
+	return result;
 }
 public enum JoyModifier : ushort{
 	BUTTONS		= 0x0000,

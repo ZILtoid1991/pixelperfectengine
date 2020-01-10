@@ -321,6 +321,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		setRasterRefresh;
 	}
 	public void keyPressed(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){
+		//debug writeln(ID);
 		switch(ID){
 			case "nextLayer":
 				break;
@@ -556,6 +557,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		input.il ~= this;
 		input.sel ~= this;
 		input.kb ~= KeyBinding(0, SDL_SCANCODE_ESCAPE, 0, "sysesc", Devicetype.KEYBOARD);
+		input.kb ~= configFile.keyBindingList;
+		//debug writeln(input.kb);
 		WindowElement.inputHandler = input;
 		//wh.ih = input;
 		//ffb = new ForceFeedbackHandler(input);
@@ -607,7 +610,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				selDoc.contScrollLayer();
 			}
 		}
-		//configFile.store();
+		configFile.store();
 	}
 	public void onExit(){
 

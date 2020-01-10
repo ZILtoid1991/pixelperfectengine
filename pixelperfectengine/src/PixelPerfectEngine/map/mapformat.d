@@ -443,7 +443,7 @@ public class MapFormat {
 			layerData[pri].getTag("Embed:MapData").values[0] = Value(reinterpretCast!ubyte(mapping));
 		} else if (layerData[pri].getTag("File:MapData") !is null) {
 			string filename = layerData[pri].getTag("File:MapData").getValue!string();
-			MapDataHeader mdh = MapDataHeader(layerData[pri].values[3].get!int, layerData[pri].values[4].get!int);
+			MapDataHeader mdh = MapDataHeader(layerData[pri].values[4].get!int, layerData[pri].values[5].get!int);
 			saveMapFile(mdh, mapping, File(filename, "wb"));
 		}
 

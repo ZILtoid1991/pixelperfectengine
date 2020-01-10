@@ -70,12 +70,13 @@ public void saveMapFile(F = File)(MapDataHeader header, MappingElement[] map, F 
  */
 public MappingElement[] loadMapFile(F = File)(F file, ref MapDataHeader header){
 	ubyte[] readbuffer;
+	MappingElement[] result;
 	readbuffer.length = MapDataHeader.sizeof;
 	readbuffer = file.rawRead(readbuffer);
 	header = reinterpretGet!MapDataHeader(readbuffer);
-	readbuffer.length = header.sizeX * header.sizeY * MappingElement.sizeof;
-	readbuffer = file.rawRead(readbuffer);
-	return reinterpretCast!MappingElement(readbuffer);
+	result.length = header.sizeX * header.sizeY;
+	result = file.rawRead(result);
+	return result;
 }
 
 /**

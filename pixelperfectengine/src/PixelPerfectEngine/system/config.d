@@ -54,9 +54,9 @@ public class ConfigurationProfile{
 
 	static this(){
 		keymodifierStrings =
-				["NONE"	: 0x0000, "LSHIFT": 0x0001, "RSHIFT": 0x0002, "LCTRL": 0x0040, "RCTRL": 0x0080, "CTRL": 0x0020,
-						"LALT": 0x0100, "RALT": 0x0200 , "LGUI": 0x0400, "RGUI": 0x0800, "NUM": 0x1000, "CAPS": 0x2000, "MODE": 0x4000,
-						"RESERVED": 0x8000, "ANY": 0xFFFF];
+				["none"	: KeyModifier.None, "Shift": KeyModifier.Shift, "Ctrl": KeyModifier.Ctrl, "Alt": KeyModifier.Alt, 
+						"GUI": KeyModifier.GUI, "NumLock": KeyModifier.NumLock, "CapsLock": KeyModifier.CapsLock, "Mode": KeyModifier.Mode,
+						"ScrollLock": KeyModifier.ScrollLock, "All": KeyModifier.All];
 		joymodifierStrings = [0x0000: "buttons",0x0004: "dpad",0x0008: "axis"];
 		devicetypeStrings = [Devicetype.JOYSTICK: "joystick", Devicetype.KEYBOARD: "keyboard", Devicetype.MOUSE: "mouse",
 				Devicetype.TOUCHSCREEN: "touchscreen" ];
@@ -101,8 +101,10 @@ public class ConfigurationProfile{
 										foreach(Tag t2; t1.tags){
 											if(t2.name is null){
 												uint scanCode = t2.getAttribute!int("keyCode", keyNameDict.decode(t2.getAttribute!string("keyName")));
-												keyBindingList ~= KeyBinding(stringToKeymod(t2.getAttribute!string("keyMod","NONE;")), scanCode, 
-														devicenumber, t2.expectValue!string(), Devicetype.KEYBOARD, stringToKeymod(t2.getAttribute!string("keyMod","ALL;")));
+												KeyBinding keyBinding = KeyBinding(stringToKeymod(t2.getAttribute!string("keyMod","NONE")), scanCode, 
+														devicenumber, t2.expectValue!string(), Devicetype.KEYBOARD, stringToKeymod(t2.getAttribute!string
+														("keyModIgnore","ALL")));
+												keyBindingList ~= keyBinding;
 											}
 										}
 										break;
@@ -142,7 +144,7 @@ public class ConfigurationProfile{
 										device = InputDeviceData(devicenumber, Devicetype.MOUSE, name);
 										foreach(Tag t2; t1.tags){
 											if(t2.name is null){
-												uint scanCode = t2.getAttribute!int("keyCode");
+												const uint scanCode = t2.getAttribute!int("keyCode");
 												keyBindingList ~= KeyBinding(0, scanCode, devicenumber, t2.expectValue!string(), Devicetype.MOUSE);
 											}
 										}
@@ -189,7 +191,8 @@ public class ConfigurationProfile{
 		Tag t2 = new Tag(root, null, "input");
 		foreach(InputDeviceData idd; inputDevices){
 			string devType = devicetypeStrings[idd.type];
-			Tag t2_0 = new Tag(t2, null, "device", null, [new Attribute(null, "name",Value(idd.name)), new Attribute(null, "type", Value(devType)), new Attribute(null, "devNum", Value(idd.deviceNumber))]);
+			Tag t2_0 = new Tag(t2, null, "device", null, [new Attribute(null, "name",Value(idd.name)), new Attribute(null, 
+					"type", Value(devType)), new Attribute(null, "devNum", Value(idd.deviceNumber))]);
 			if(idd.type == Devicetype.KEYBOARD){
 				foreach(KeyBinding k; keyBindingList){
 					if(k.devicetype == idd.type && k.devicenumber == idd.deviceNumber){
@@ -235,57 +238,45 @@ public class ConfigurationProfile{
 
 	public ushort stringToKeymod(string s){
 		import std.algorithm.iteration : splitter;
-		if(s == "NONE")	return KeyModifier.NONE;
-		if(s == "ANY")		return KeyModifier.ANY;
+		if(s == "None")	return KeyModifier.None;
+		if(s == "All")		return KeyModifier.All;
 		auto values = s.splitter(';');
-		int result;
+		ushort result;
 		foreach(t ; values){
-			result += keymodifierStrings[t];
+			result |= keymodifierStrings.get(t,0);
 		}
-		return to!ushort(result);
+		return result;
 	}
 
 	public string keymodToString(ushort keymod){
-		if(keymod == KeyModifier.NONE)
-			return "NONE";
-		if(keymod == KeyModifier.ANY)
-			return "ANY";
+		if(keymod == KeyModifier.None)
+			return "None";
+		if(keymod == KeyModifier.All)
+			return "All";
 		string result;
-		if(keymod & KeyModifier.LSHIFT){
-			result ~= "LSHIFT;";
+		if(keymod & KeyModifier.Shift){
+			result ~= "Shift;";
 		}
-		if(keymod & KeyModifier.RSHIFT){
-			result ~= "RSHIFT;";
+		if(keymod & KeyModifier.Ctrl){
+			result ~= "Ctrl;";
 		}
-		if(keymod & KeyModifier.LCTRL){
-			result ~= "LCTRL;";
+		if(keymod & KeyModifier.Alt){
+			result ~= "Alt;";
 		}
-		if(keymod & KeyModifier.RCTRL){
-			result ~= "RCTRL;";
+		if(keymod & KeyModifier.GUI){
+			result ~= "GUI;";
 		}
-		if(keymod & KeyModifier.LALT){
-			result ~= "LALT;";
+		if(keymod & KeyModifier.NumLock){
+			result ~= "NumLock;";
 		}
-		if(keymod & KeyModifier.RALT){
-			result ~= "RALT;";
+		if(keymod & KeyModifier.CapsLock){
+			result ~= "CapsLock;";
 		}
-		if(keymod & KeyModifier.LGUI){
-			result ~= "LGUI;";
+		if(keymod & KeyModifier.Mode){
+			result ~= "Mode;";
 		}
-		if(keymod & KeyModifier.RGUI){
-			result ~= "RGUI;";
-		}
-		if(keymod & KeyModifier.NUM){
-			result ~= "NUM;";
-		}
-		if(keymod & KeyModifier.CAPS){
-			result ~= "CAPS;";
-		}
-		if(keymod & KeyModifier.MODE){
-			result ~= "MODE;";
-		}
-		if(keymod & KeyModifier.RESERVED){
-			result ~= "RESERVED;";
+		if(keymod & KeyModifier.ScrollLock){
+			result ~= "ScrollLock;";
 		}
 		return result[0..$-1];
 	}
@@ -320,7 +311,12 @@ public class ConfigurationProfile{
 		return to!string(videoModes[n].w) ~ "x" ~ to!string(videoModes[n].h) ~ "@" ~ to!string(videoModes[n].refresh_rate) ~ "Hz";
 	}
 	public static void setVaultPath(const char* developer, const char* application){
-		vaultPath = to!string(SDL_GetPrefPath(developer, application));
+		debug {
+			vaultPath = "../_debug/";
+		} else {
+
+			vaultPath = to!string(SDL_GetPrefPath(developer, application));
+		}
 	}
 	public static string getVaultPath(){
 		return vaultPath;

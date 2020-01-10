@@ -264,6 +264,7 @@ public class TileLayer : Layer, ITileLayer{
 	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
 	///x*y=map.length
 	public void loadMapping(int x, int y, MappingElement[] mapping){
+		assert (x * y == mapping.length);
 		mX=x;
 		mY=y;
 		this.mapping = mapping;
