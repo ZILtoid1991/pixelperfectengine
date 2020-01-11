@@ -560,13 +560,14 @@ public enum KeyModifier : ushort {
 	NumLock		= 0x0010,
 	CapsLock	= 0x0020,
 	ScrollLock	= 0x0040,
+	LockKeys	= NumLock | CapsLock | ScrollLock,
 	Mode		= 0x0100,
 	All			= 0xFFFF,
 }
 /**
  * Converts key modifier codes from SDL to the engine's own
  */
-public ushort keyModConv(ushort input) /+@nogc pure nothrow @safe+/ {
+public ushort keyModConv(ushort input) @nogc pure nothrow @safe {
 	ushort result;
 	if (input & KMOD_SHIFT) result |= KeyModifier.Shift;
 	if (input & KMOD_CTRL) result |= KeyModifier.Ctrl;

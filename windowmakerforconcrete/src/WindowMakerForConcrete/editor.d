@@ -190,8 +190,8 @@ public class Editor : SystemEventListener, InputListener{
 		inputH.sel ~= this;
 		inputH.il ~= this;
 		inputH.ml ~= ewh;
-		inputH.kb ~= KeyBinding(KeyModifier.LCTRL, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LOCKKEYIGNORE);
-		inputH.kb ~= KeyBinding(KeyModifier.LCTRL | KeyModifier.LSHIFT, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, KeyModifier.LOCKKEYIGNORE);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl | KeyModifier.Shift, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		PopUpElement.inputhandler = inputH;
 		WindowElement.inputHandler = inputH;
 		ewh.initGUI();

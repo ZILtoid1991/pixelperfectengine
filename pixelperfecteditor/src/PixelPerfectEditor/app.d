@@ -95,7 +95,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 	this(bool testTransformableTileLayer = false){
 		theta = 0;
 		isRunning = true;
-		Image tileSource = loadImage(File("../assets/sci-fi-tileset.tga"));
+		Image tileSource = loadImage(File("../assets/sci-fi-tileset.png"));
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
 		Image spriteSource = loadImage(File("../assets/d-man.tga"));
 		t = new TileLayer(16,16, LayerRenderingMode.COPY);
