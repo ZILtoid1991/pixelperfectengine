@@ -1,4 +1,4 @@
-# Pixel Perfect Engine ver 0.9.4-beta
+# Pixel Perfect Engine ver 0.10-alpha
 
 2D retro graphics engine written in D by László Szerémi (laszloszeremi@outlook.com, https://twitter.com/ziltoid1991, https://www.patreon.com/ShapeshiftingLizard, https://ko-fi.com/D1D45NEN).
 
@@ -31,6 +31,7 @@ dependency "pixelperfectengine" version="*"
 * Error handling isn't fully realized, so a lot of errors might happen. You can help me by reporting errors, testing on various systems (I only have access for an old Athlon64 X2 at the moment with relatively high-cost of upgrade).
 * Upscaled sprites have a rather jerky, odd behavior when they're being partly obscured. This will be fixed, do not plan with it on the long run for a wacky effect.
 * Upscaled sprites wider than 2048 pixels will cause some serious memory leakage issues.
+* Sometimes sprites don't appear with the new system when placed in a well viewable place. Currently it can be fixed with a simple `s.relmove(nOfSprite, 0, 0)`.
 
 # Future plans:
 
