@@ -7,7 +7,7 @@ module PixelPerfectEngine.collision.boxCollision;
  */
 
 import PixelPerfectEngine.graphics.common;
-import PixelPerfectEngine.system.binarySearchTree;
+//import PixelPerfectEngine.system.binarySearchTree;
 import PixelPerfectEngine.collision;
 
 /**

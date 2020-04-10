@@ -4,12 +4,12 @@
  * Pixel Perfect Engine, concrete.interfaces module
  */
 
-module PixelperfectEngine.concrete.interfaces;
+module PixelPerfectEngine.concrete.interfaces;
 
 public import PixelPerfectEngine.graphics.fontsets;
 public import PixelPerfectEngine.graphics.bitmap;
 public import PixelPerfectEngine.graphics.common;
-public import PixelPerfectEngine.concrete.text;
+public import PixelPerfectEngine.graphics.text;
 
 /**
  * Radio button interface. Can be used to implement radio button style behavior on almost any component that implements this interface.
@@ -28,7 +28,7 @@ public interface IRadioButton {
 	 * True: Pressed.
 	 * False: Unpressed.
 	 */
-	public void state() @safe @property const;
+	public bool state() @safe @property const;
 	/**
 	 * Sets the group of the radio button.
 	 */
@@ -60,32 +60,20 @@ public interface IRadioButtonGroup {
  */
 public interface Canvas {
 	///Draws a line.
-	public void drawLine(int x0, int y0, int x1, int y1, ubyte color, int lineWidth = 1) @trusted;
+	public void drawLine(int x0, int y0, int x1, int y1, ubyte color, int lineWidth = 1) @trusted pure;
 	///Draws an empty rectangle
-	public void drawRectangle(int x0, int y0, int x1, int y1, ubyte color, int lineWidth = 1) @trusted;
-	///Draws a filled rectangle
-	public void drawFilledRectange(int x0, int y0, int x1, int y1, ubyte color, int lineWidth = 1) @trusted;
+	public void drawRectangle(int x0, int y0, int x1, int y1, ubyte color, int lineWidth = 1) @trusted pure;
+	///Draws a filled rectangle with a specified color
+	public void drawFilledRectangle(Coordinate pos, ubyte color) @trusted pure;
+	///Draws a filled rectangle with a specified pattern
+	public void drawFilledRectangle(Coordinate pos, Bitmap8Bit pattern) @trusted pure;
 	///Fills an area with the specified color
-	public void fill(int x0, int y0, ubyte color, ubyte background = 0) @trusted;
-	///Draws a text with the specified data. Can be multiline.
-	public void drawText(int x0, int y0, Fontset!Bitmap8Bit font, dstring text, ubyte color) @trusted;
-	///Draws a fully formatted text. Can be multiline.
-	public void drawText(int x0, int y0, Text!Bitmap8Bit text) @trusted;
-	///Draws a text within the given area with the specified data. Can be multiline.
-	public void drawText(Coordinate c, Fontset!Bitmap8Bit font, dstring text, ubyte color) @trusted;
-	///Draws a fully formatted text within the specified area. Can be multiline.
-	public void drawText(Coordinate c, Text!Bitmap8Bit text) @trusted;
-	///Draws a text with the specified data and offset from the upper-left corner. Can be multiline.
-	public void drawText(int x0, int y0, int sliceX, int sliceY, Fontset!Bitmap8Bit font, dstring text, ubyte color)
-			@trusted;
-	///Draws a fully formatted text with offset from the upper-left corner. Can be multiline.
-	public void drawText(int x0, int y0, int sliceX, int sliceY, Text!Bitmap8Bit text) @trusted;
-	public void drawText(Coordinate c, int sliceX, int sliceY, Fontset!Bitmap8Bit font, dstring text, ubyte color)
-			@trusted;
-	public void drawText(Coordinate c, int sliceX, int sliceY, Text!Bitmap8Bit text) @trusted;
-	public void bitBLiT(int x0, int y0, ABitmap source) @trusted;
-	public void bitBLiT(int x0, int y0, int x1, int y1, ABitmap source) @trusted;
-	public void bitBLiT(int x0, int y0, Coordinate slice, ABitmap source) @trusted;
-	public void xorBLiT(int x0, int y0, int x1, int y1, ubyte color) @trusted;
-	public void xorBLiT(int x0, int y0, ABitmap source) @trusted;
+	public void fill(int x0, int y0, ubyte color, ubyte background = 0) @trusted pure;
+	///Draws a single line text within the given prelimiter
+	public void drawSingleLineText(Coordinate pos, Text text, int offset = 0) @trusted;
+	public void bitBLT(int x0, int y0, ABitmap source) @trusted;
+	public void bitBLT(int x0, int y0, int x1, int y1, ABitmap source) @trusted;
+	public void bitBLT(int x0, int y0, Coordinate slice, ABitmap source) @trusted;
+	public void xorBLT(int x0, int y0, int x1, int y1, ubyte color) @trusted;
+	public void xorBLT(int x0, int y0, ABitmap source) @trusted;
 }

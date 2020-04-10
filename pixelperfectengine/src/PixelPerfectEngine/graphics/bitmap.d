@@ -38,13 +38,13 @@ abstract class ABitmap{
 	/**
 	 * Returns the width of the bitmap.
 	 */
-	public int width() pure @safe @property @nogc {
+	public int width() pure @safe @property @nogc nothrow {
 		return iX;
 	}
 	/**
 	 * Returns the height of the bitmap.
 	 */
-	public int height() pure @safe @property @nogc {
+	public int height() pure @safe @property @nogc nothrow {
 		return iY;
 	}
 	/**
@@ -266,7 +266,7 @@ public class Bitmap(string S,T) : ABitmap {
 		}
 	}
 	static if(S == "W"){
-		override public AdvancedBitArray generateStandardCollisionModel(){
+		override public AdvancedBitArray generateStandardCollisionModel(){	//REMOVE BY 0.10.0!
 			AdvancedBitArray result = new AdvancedBitArray(iX * iY);
 			for(int i ; i < iX * iY ; i++){
 				Color pixel = readPixel(i, 0);
@@ -282,7 +282,7 @@ public class Bitmap(string S,T) : ABitmap {
 			}
 		}
 	}else{
-		override public AdvancedBitArray generateStandardCollisionModel(){
+		override public AdvancedBitArray generateStandardCollisionModel(){	//REMOVE BY 0.10.0!
 			AdvancedBitArray result = new AdvancedBitArray(iX * iY);
 			for(int i ; i < iX * iY ; i++){
 				T pixel = readPixel(i, 0);

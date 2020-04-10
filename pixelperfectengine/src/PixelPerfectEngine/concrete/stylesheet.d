@@ -49,12 +49,12 @@ public class StyleSheet{
 	Color(0xFF,0x00,0xFF,0xFF),		//Turquiose
 	Color(0xFF,0xFF,0xFF,0xFF),		//White
 	];
-	private Fontset!Bitmap8Bit[string] font;		///Fonts stored here.
-	private ubyte[string] color;		///Colors are identified by strings.
-	private Bitmap8Bit[string] images;		///For icons, pattern fills, etc...
-	public int[string] drawParameters;		///Draw parameters are used for border thickness, padding, etc...
-	public string[string] fontTypes;		///Font type descriptions for various kind of components
-
+	protected Fontset!Bitmap8Bit[string] 		font;		///Fonts stored here. 
+	protected CharacterFormattingInfo!Bitmap8Bit[string]	_chrFormat; ///Character formatting
+	protected ubyte[string]						color;		///Colors are identified by strings.
+	protected Bitmap8Bit[string]					images;		///For icons, pattern fills, etc...
+	public int[string]							drawParameters;		///Draw parameters are used for border thickness, padding, etc...
+	public string[string]						fontTypes;	///Font type descriptions for various kind of components. WILL BE DEPRECATED!
 	/**
 	 * Creates a default stylesheet.
 	 */
@@ -85,6 +85,7 @@ public class StyleSheet{
 		drawParameters["PopUpMenuHorizPadding"] = 4;
 		drawParameters["PopUpMenuVertPadding"] = 1;
 		drawParameters["PopUpMenuMinTextSpace"] = 8;
+		drawParameters["ButtonPaddingHoriz"] = 8;
 
 		drawParameters["MenuBarHorizPadding"] = 4;
 		drawParameters["MenuBarVertPadding"] = 2;
@@ -92,29 +93,46 @@ public class StyleSheet{
 		drawParameters["ListBoxRowHeight"] = 16;
 		drawParameters["TextSpacingTop"] = 1;
 		drawParameters["TextSpacingBottom"] = 1;
+		drawParameters["TextSpacingSides"] = 2;
 		drawParameters["WindowLeftPadding"] = 5;
 		drawParameters["WindowRightPadding"] = 5;
 		drawParameters["WindowTopPadding"] = 20;
 		drawParameters["WindowBottomPadding"] = 5;
 		drawParameters["ComponentHeight"] = 20;
 		drawParameters["WindowHeaderHeight"] = 16;
+		drawParameters["WHPaddingTop"] = 1;
 	}
-	public void addFontset(Fontset!Bitmap8Bit f, string style){
+	/**
+	 * Adds a fontset to the stylesheet.
+	 */
+	public void addFontset(Fontset!Bitmap8Bit f, string style) {
 		font[style] = f;
 	}
-	public Fontset!Bitmap8Bit getFontset(string style){
+	public Fontset!Bitmap8Bit getFontset(string style) {
 		return font.get(fontTypes.get(style, style), font[fontTypes["default"]]);
 	}
-	public void setColor(ubyte c, string colorName){
+	public void addChrFormatting(CharacterFormattingInfo!Bitmap8Bit frmt, string type) {
+		_chrFormat[type] = frmt;
+	}
+	/**
+	 * Duplicates character formatting for multiple labels.
+	 */
+	public void duplicateChrFormatting(string src, string dest) {
+		_chrFormat[dest] = _chrFormat[src];
+	}
+	public CharacterFormattingInfo!Bitmap8Bit getChrFormatting(string type) {
+		return _chrFormat.get(type, _chrFormat["default"]);
+	}
+	public void setColor(ubyte c, string colorName) {
 		color[colorName] = c;
 	}
-	public ubyte getColor(string colorName){
+	public ubyte getColor(string colorName) {
 		return color[colorName];
 	}
-	public void setImage(Bitmap8Bit bitmap, string name){
+	public void setImage(Bitmap8Bit bitmap, string name) {
 		images[name] = bitmap;
 	}
-	public Bitmap8Bit getImage(string name){
+	public Bitmap8Bit getImage(string name) {
 		return images.get(name, null);
 	}
 }

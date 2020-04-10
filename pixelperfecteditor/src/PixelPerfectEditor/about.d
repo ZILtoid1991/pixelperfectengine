@@ -4,7 +4,7 @@ import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.graphics.common;
 import PixelPerfectEngine.system.systemUtility;
 
-immutable dstring verInfo = "0.9.4"d;
+immutable dstring verInfo = "0.10.0"d;
 
 public class AboutWindow : Window {
 	Label label1;
@@ -26,14 +26,14 @@ public class AboutWindow : Window {
 		label7 = new Label("Rendering method: "d ~ renderInfo, "label7", Coordinate(5, 140, 300, 160));
 		buttonClose = new Button("Close"d, "buttonClose", Coordinate(231, 160, 300, 180));
 		buttonClose.onMouseLClickRel = &buttonClose_onMouseLClickRel;
-		addElement(buttonClose, EventProperties.MOUSE);
-		addElement(label1, 0);
-		addElement(label2, 0);
-		addElement(label3, 0);
-		addElement(label4, 0);
-		addElement(label5, 0);
-		addElement(label6, 0);
-		addElement(label7, 0);
+		addElement(buttonClose);
+		addElement(label1);
+		addElement(label2);
+		addElement(label3);
+		addElement(label4);
+		addElement(label5);
+		addElement(label6);
+		addElement(label7);
 	}
 	private void buttonClose_onMouseLClickRel(Event ev) {
 		close();

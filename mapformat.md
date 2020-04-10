@@ -98,7 +98,13 @@ Specifies data that is embedded within this file. These can be: Mapping data, na
 
 `embed:tiledata`
 
+Stores embedded tiledata.
 
+## Mapdata
+
+`embed:mapdata`
+
+Stores embedded mapdata encoded in BASE64.
 
 # Namespace 'Object'
 

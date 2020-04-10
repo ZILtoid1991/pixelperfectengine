@@ -70,26 +70,26 @@ public class NewDocumentDialog : Window{
 		textBoxes ~= new TextBox("","rX",Coordinate(121,40,200,59));
 		textBoxes ~= new TextBox("","rY",Coordinate(121,60,200,79));
 		//textBoxes ~= new TextBox("","pal",Coordinate(121,80,200,99));
-		addElement(buttons[0], EventProperties.MOUSE);
+		addElement(buttons[0]);
 		foreach(WindowElement we; labels){
-			addElement(we, EventProperties.MOUSE);
+			addElement(we);
 		}
 		foreach(TextBox we; textBoxes){
 			//we.addTextInputHandler(inputhandler);
-			addElement(we, EventProperties.MOUSE);
+			addElement(we);
 		}
 		buttons[0].onMouseLClickRel = &buttonOn_onMouseLClickRel;
 	}
 
 	public void buttonOn_onMouseLClickRel(Event event){
-		ie.createNewDocument(textBoxes[0].getText(), to!int(textBoxes[1].getText()), to!int(textBoxes[2].getText()));
+		ie.createNewDocument(textBoxes[0].getText().text, to!int(textBoxes[1].getText().text), to!int(textBoxes[2].getText().text));
 
 		parent.closeWindow(this);
 	}
 }
 
 public class EditorWindowHandler : WindowHandler, ElementContainer{
-	private WindowElement[] elements, mouseC, keyboardC, scrollC;
+	private WindowElement[] elements;
 	//private ListBox layerList, prop;
 	//private ListBoxColumn[] propTL, propSL, propSLE;
 	//private ListBoxColumn[] layerListE;
@@ -123,65 +123,73 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 
 	}
 	public void initGUI(){
+		Text pt(dstring text) {
+			return new Text(text, WindowElement.styleSheet.getChrFormatting("popUpMenu"));
+		}
+		Text st(dstring text) {
+			return new Text(text, WindowElement.styleSheet.getChrFormatting("popUpMenuSecondary"));
+		}
+		Text mt(dstring text) {
+			return new Text(text, WindowElement.styleSheet.getChrFormatting("menuBar"));
+		}
 		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
 
 		PopUpMenuElement[] menuElements;
-		menuElements ~= new PopUpMenuElement("file", "FILE");
+		menuElements ~= new PopUpMenuElement("file", mt("FILE"));
 
 		menuElements[0].setLength(7);
-		menuElements[0][0] = new PopUpMenuElement("new", "New PPE map", "Ctrl + N");
-		menuElements[0][1] = new PopUpMenuElement("newTemp", "New PPE map from template", "Ctrl + Shift + N");
-		menuElements[0][2] = new PopUpMenuElement("load", "Load PPE map", "Ctrl + L");
-		menuElements[0][3] = new PopUpMenuElement("save", "Save PPE map", "Ctrl + S");
-		menuElements[0][4] = new PopUpMenuElement("saveAs", "Save PPE map as", "Ctrl + Shift + S");
-		menuElements[0][5] = new PopUpMenuElement("saveTemp", "Save PPE map as template", "Ctrl + Shift + T");
-		menuElements[0][6] = new PopUpMenuElement("exit", "Exit application", "Alt + F4");
+		menuElements[0][0] = new PopUpMenuElement("new", pt("New PPE map"));
+		menuElements[0][1] = new PopUpMenuElement("newTemp", pt("New PPE map from template"));
+		menuElements[0][2] = new PopUpMenuElement("load", pt("Load PPE map"));
+		menuElements[0][3] = new PopUpMenuElement("save", pt("Save PPE map"));
+		menuElements[0][4] = new PopUpMenuElement("saveAs", pt("Save PPE map as"));
+		menuElements[0][5] = new PopUpMenuElement("saveTemp", pt("Save PPE map as template"));
+		menuElements[0][6] = new PopUpMenuElement("exit", pt("Exit application"), st("Alt + F4"));
 
-		menuElements ~= new PopUpMenuElement("edit", "EDIT");
+		menuElements ~= new PopUpMenuElement("edit", mt("EDIT"));
 
 		menuElements[1].setLength(7);
-		menuElements[1][0] = new PopUpMenuElement("undo", "Undo", "Ctrl + Z");
-		menuElements[1][1] = new PopUpMenuElement("redo", "Redo", "Ctrl + Shift + Z");
-		menuElements[1][2] = new PopUpMenuElement("copy", "Copy", "Ctrl + C");
-		menuElements[1][3] = new PopUpMenuElement("cut", "Cut", "Ctrl + X");
-		menuElements[1][4] = new PopUpMenuElement("paste", "Paste", "Ctrl + V");
-		menuElements[1][5] = new PopUpMenuElement("editorSetup", "Editor Settings");
-		menuElements[1][6] = new PopUpMenuElement("docSetup", "Document Settings");
+		menuElements[1][0] = new PopUpMenuElement("undo", pt("Undo"));
+		menuElements[1][1] = new PopUpMenuElement("redo", pt("Redo"));
+		menuElements[1][2] = new PopUpMenuElement("copy", pt("Copy"));
+		menuElements[1][3] = new PopUpMenuElement("cut", pt("Cut"));
+		menuElements[1][4] = new PopUpMenuElement("paste", pt("Paste"));
+		menuElements[1][5] = new PopUpMenuElement("editorSetup", pt("Editor settings"));
+		menuElements[1][6] = new PopUpMenuElement("docSetup", pt("Document settings"));
 
-		menuElements ~= new PopUpMenuElement("view", "VIEW");
+		menuElements ~= new PopUpMenuElement("view", mt("VIEW"));
 
 		menuElements[2].setLength(2);
-		menuElements[2][0] = new PopUpMenuElement("layerList", "Layers", "Alt + L");
-		menuElements[2][1] = new PopUpMenuElement("materialList", "Materials", "Alt + M");
+		menuElements[2][0] = new PopUpMenuElement("layerList", pt("Layers"));
+		menuElements[2][1] = new PopUpMenuElement("materialList", pt("Materials"));
 		//menuElements[2][2] = new PopUpMenuElement("layerTools", "Layer tools", "Alt + T");
 
-		menuElements ~= new PopUpMenuElement("layers", "LAYERS");
+		menuElements ~= new PopUpMenuElement("layers", mt("LAYERS"));
 
 		menuElements[3].setLength(4);
-		menuElements[3][0] = new PopUpMenuElement("newLayer", "New layer", "Alt + N");
-		menuElements[3][1] = new PopUpMenuElement("delLayer", "Delete layer", "Alt + Del");
-		menuElements[3][2] = new PopUpMenuElement("impLayer", "Import layer", "Alt + Shift + I");
-		menuElements[3][3] = new PopUpMenuElement("layerSrc", "Layer resources", "Alt + R");
+		menuElements[3][0] = new PopUpMenuElement("newLayer", pt("New layer"));
+		menuElements[3][1] = new PopUpMenuElement("delLayer", pt("Delete layer"));
+		menuElements[3][2] = new PopUpMenuElement("impLayer", pt("Import layer"));
+		menuElements[3][3] = new PopUpMenuElement("layerSrc", pt("Layer resources"));
 
-		menuElements ~= new PopUpMenuElement("tools", "TOOLS");
+		menuElements ~= new PopUpMenuElement("tools", mt("TOOLS"));
 
 		menuElements[4].setLength(2);
-		menuElements[4][0] = new PopUpMenuElement("xmpTool", "XMP Toolkit", "Alt + X");
-		menuElements[4][1] = new PopUpMenuElement("mapXMLEdit", "Edit map as XML", "Ctrl + Alt + X");
-		//menuElements[4][2] = new PopUpMenuElement("bmfontimport", "Import BMFont File");
+		menuElements[4][0] = new PopUpMenuElement("tgaTool", pt("TGA Toolkit"));
+		menuElements[4][1] = new PopUpMenuElement("bmfontTool", pt("BMFont Toolkit"));
 
-		menuElements ~= new PopUpMenuElement("help", "HELP");
+		menuElements ~= new PopUpMenuElement("help", mt("HELP"));
 
 		menuElements[5].setLength(2);
-		menuElements[5][0] = new PopUpMenuElement("helpFile", "Content", "F1");
-		menuElements[5][1] = new PopUpMenuElement("about", "About");
+		menuElements[5][0] = new PopUpMenuElement("helpFile", pt("Content"));
+		menuElements[5][1] = new PopUpMenuElement("about", pt("About"));
 
 
 		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,848,16),menuElements);
-		addElement(mb, EventProperties.MOUSE);
+		addElement(mb);
 		mb.onMouseLClickPre = &actionEvent;
 		foreach(WindowElement we; labels){
-			addElement(we, 0);
+			addElement(we);
 		}
 		foreach(WindowElement we; elements){
 			we.draw();
@@ -192,19 +200,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		return defaultStyle;
 	}
 
-	public void addElement(WindowElement we, int eventProperties){
+	public void addElement(WindowElement we){
 		elements ~= we;
 		we.elementContainer = this;
-		//we.al ~= this;
-		if((eventProperties & EventProperties.KEYBOARD) == EventProperties.KEYBOARD){
-			keyboardC ~= we;
-		}
-		if((eventProperties & EventProperties.MOUSE) == EventProperties.MOUSE){
-			mouseC ~= we;
-		}
-		if((eventProperties & EventProperties.SCROLL) == EventProperties.SCROLL){
-			scrollC ~= we;
-		}
 	}
 	public void openLayerList() {
 		if(!layerList){
@@ -255,7 +253,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 	}
 
 	override public void passMouseEvent(int x,int y,int state,ubyte button) {
-		foreach(WindowElement e; mouseC){
+		foreach(WindowElement e; elements){
 			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
 				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state, button);
 				return;
@@ -263,7 +261,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		}
 	}
 	public override void passScrollEvent(int wX, int wY, int x, int y){
-		foreach(WindowElement e; scrollC){
+		foreach(WindowElement e; elements){
 			if(e.getPosition().left < wX && e.getPosition().right > wX && e.getPosition().top < wX && e.getPosition().bottom > wY){
 
 				e.onScroll(y, x, wX, wY);
@@ -580,6 +578,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		Window.onDrawUpdate = &setRasterRefresh;
 		wh.openLayerList;
 		wh.openMaterialList;
+		//writeln(windowing.getDisplayListItem(65536));
+		windowing.relMoveSprite(65536, 0, 0);
 	}
 	/**
 	 * Opens a window to aks the user for the data on the new tile layer

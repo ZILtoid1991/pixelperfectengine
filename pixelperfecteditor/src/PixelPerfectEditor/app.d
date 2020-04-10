@@ -27,7 +27,7 @@ import PixelPerfectEngine.system.inputHandler;
 import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.config;
-import PixelPerfectEngine.system.binarySearchTree;
+//import PixelPerfectEngine.system.binarySearchTree;
 import PixelPerfectEngine.system.common;
 
 public import editor;
@@ -58,27 +58,6 @@ int main(string[] args){
 	return 0;
 }
 
-void testBinarySearchTrees(int nOfElements, int nOfTimes){
-	for(int i; i < nOfTimes; i++){
-		writeln("start test no.",i);
-		BinarySearchTree!(int,int) sequ, rand;
-		//sequential element test
-		for(int j; j < nOfElements; j++){
-			sequ[j] = j;
-		}
-		writeln(sequ);
-		//randomized element test
-		for(int j; j < nOfElements; j++){
-			int k = uniform(short.min,short.max);
-			rand[k] = k;
-		}
-		writeln(rand);
-		//rand.optimize();
-		//writeln(rand);
-	}
-	readln();
-}
-
 class TileLayerTest : SystemEventListener, InputListener{
 	bool isRunning, up, down, left, right, scrup, scrdown, scrleft, scrright;
 	OutputScreen output;
@@ -98,18 +77,25 @@ class TileLayerTest : SystemEventListener, InputListener{
 		Image tileSource = loadImage(File("../assets/sci-fi-tileset.png"));
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
 		Image spriteSource = loadImage(File("../assets/d-man.tga"));
+		output = new OutputScreen("TileLayer test", 1280,960);
+		r = new Raster(320,240,output);
+		output.setMainRaster(r);
 		t = new TileLayer(16,16, LayerRenderingMode.COPY);
 		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(LayerRenderingMode.COPY);
 		s = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
+		if (testTransformableTileLayer) r.addLayer(tt, 0);
+		else r.addLayer(t, 0);
+		r.addLayer(s, 1);
 		//c = new CollisionDetector();
 		dlangMan = loadBitmapFromImage!Bitmap8Bit(spriteSource);
 		//CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
 		dlangMan.offsetIndexes(256,false);
-		s.addSprite(dlangMan, 0, 0, 0, 1);
+		s.addSprite(dlangMan, 65, 0, 0, 1);
 		//s.scaleSpriteHoriz(0,-1024);
 		//s.scaleSpriteVert(0,-1024);
 		for(int i = 1 ; i < 10 ; i++){
-			s.addSprite(dlangMan, i, uniform(-31,320), uniform(-31,240), 1);
+			const bool check = s.addSprite(dlangMan, i, uniform(0,320), uniform(0,240), 1);
+			//assert(check, "DisplayList Error!");
 		}
 		//s.collisionDetector[1] = c;
 		//c.source = s;
@@ -180,9 +166,6 @@ class TileLayerTest : SystemEventListener, InputListener{
 		}
 		//t.setWrapMode(true);
 		//tt.D = -256;
-		output = new OutputScreen("TileLayer test", 1280,960);
-		r = new Raster(320,240,output);
-		output.setMainRaster(r);
 		//loadPaletteFromXMP(tileSource, "default", r);
 
 		/*for(int y ; y < 240 ; y++){
@@ -190,9 +173,6 @@ class TileLayerTest : SystemEventListener, InputListener{
 				writeln('[',x,',',y,"] : ", t.transformFunc([x,y]));
 			}
 		}*/
-		if (testTransformableTileLayer) r.addLayer(tt, 0);
-		else r.addLayer(t, 0);
-		r.addLayer(s, 1);
 		Color[] localPal = loadPaletteFromImage(tileSource);
 		localPal.length = 256;
 		r.palette = r.palette ~ localPal;
@@ -213,10 +193,10 @@ class TileLayerTest : SystemEventListener, InputListener{
 		while(isRunning){
 			r.refresh();
 			ih.test();
-			if(up) s.relMoveSprite(0,0,-1);
-			if(down) s.relMoveSprite(0,0,1);
-			if(left) s.relMoveSprite(0,-1,0);
-			if(right) s.relMoveSprite(0,1,0);
+			if(up) s.relMoveSprite(65,0,-1);
+			if(down) s.relMoveSprite(65,0,1);
+			if(left) s.relMoveSprite(65,-1,0);
+			if(right) s.relMoveSprite(65,1,0);
 			if(scrup) t.relScroll(0,-1);
 			if(scrdown) t.relScroll(0,1);
 			if(scrleft) t.relScroll(-1,0);
@@ -260,40 +240,40 @@ class TileLayerTest : SystemEventListener, InputListener{
 			case "y0+": tt.y_0 = cast(short)(tt.y_0 + 1); break;
 			case "y0-": tt.y_0 = cast(short)(tt.y_0 - 1); break;
 			case "sH-":
-				if(s.readSpriteAttribute!("scaleHoriz", int)(0) == 16){
+				if(s.getScaleSpriteHoriz(0) == 16){
 					s.scaleSpriteHoriz(0,-16);
 					return;
 				}
-				s.scaleSpriteHoriz(0,s.readSpriteAttribute!("scaleHoriz", int)(0) - 16);
-				writeln(s.readSpriteAttribute!("scaleHoriz", int)(0));
+				s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) - 16);
+				//writeln(s.getScaleSpriteHoriz(0));
 				break;
 			case "sH+":
-				if(s.readSpriteAttribute!("scaleHoriz", int)(0) == -16){
+				if(s.getScaleSpriteHoriz(0) == -16){
 					s.scaleSpriteHoriz(0,16);
 					return;
 				}
-				s.scaleSpriteHoriz(0,s.readSpriteAttribute!("scaleHoriz", int)(0) + 16);
-				writeln(s.readSpriteAttribute!("scaleHoriz", int)(0));
+				s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) + 16);
+				//writeln(s.getScaleSpriteHoriz(0));
 				break;
 			case "sV-":
-				if(s.readSpriteAttribute!("scaleVert", int)(0) == 16){
+				if(s.getScaleSpriteVert(0) == 16){
 					s.scaleSpriteVert(0,-16);
 					return;
 				}
-				s.scaleSpriteVert(0,s.readSpriteAttribute!("scaleVert", int)(0) - 16);
+				s.scaleSpriteVert(0,s.getScaleSpriteVert(0) - 16);
 				break;
 			case "sV+":
-				if(s.readSpriteAttribute!("scaleVert", int)(0) == -16){
+				if(s.getScaleSpriteVert(0) == -16){
 					s.scaleSpriteVert(0,16);
 					return;
 				}
-				s.scaleSpriteVert(0,s.readSpriteAttribute!("scaleVert", int)(0) + 16);
+				s.scaleSpriteVert(0,s.getScaleSpriteVert(0) + 16);
 				break;
 			case "HM":
-				s.scaleSpriteHoriz(0,s.readSpriteAttribute!("scaleHoriz", int)(0) * -1);
+				s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) * -1);
 				break;
 			case "VM":
-				s.scaleSpriteVert(0,s.readSpriteAttribute!("scaleVert", int)(0) * -1);
+				s.scaleSpriteVert(0,s.getScaleSpriteVert(0) * -1);
 				break;
 			case "theta+":
 				theta += 1;

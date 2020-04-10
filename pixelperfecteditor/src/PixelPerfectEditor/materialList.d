@@ -61,7 +61,7 @@ public class MaterialList : Window {
 			buttons ~= sb;
 		}
 		foreach (sb ; buttons) {
-			addElement(sb, EventProperties.MOUSE);
+			addElement(sb);
 		}
 	}
 	public void updateMaterialList(TileInfo[] list) @trusted {

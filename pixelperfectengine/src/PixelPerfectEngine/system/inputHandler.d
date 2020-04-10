@@ -480,8 +480,7 @@ public interface MouseListener{
 public interface TextInputListener{
 	public void textInputEvent(uint timestamp, uint windowID, dstring text);
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0);
-	//public void textSelectionEvent(uint timestamp, uint window, int action);
-	//public void textClipboardEvent(uint timestamp, uint window, wstring text);
+	//public void textInputBegin();
 	public void dropTextInput();
 }
 

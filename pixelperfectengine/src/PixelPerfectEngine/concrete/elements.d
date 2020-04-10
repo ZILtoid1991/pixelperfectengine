@@ -7,9 +7,11 @@
 module PixelPerfectEngine.concrete.elements;
 
 import PixelPerfectEngine.graphics.bitmap;
+public import PixelPerfectEngine.graphics.text;
 public import PixelPerfectEngine.graphics.draw;
 import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.inputHandler;
+import PixelPerfectEngine.concrete.interfaces;
 import std.algorithm;
 import std.stdio;
 import std.conv;
@@ -20,7 +22,7 @@ import PixelPerfectEngine.concrete.stylesheet;
  */
 abstract class WindowElement{
 	//public ActionListener[] al;
-	protected dstring text;
+	protected Text text;
 	protected string source;
 	///DO NOT MODIFY IT EXTERNALLY! Contains the position of the element.
 	public Coordinate position;
@@ -29,7 +31,7 @@ abstract class WindowElement{
 	///Points to the container for two-way communication
 	public ElementContainer elementContainer;
 	public StyleSheet customStyle;
-	protected bool state;
+	protected bool _enabled;
 
 	public static InputHandler inputHandler;	///Common input handler, must be set upon program initialization
 	public static PopUpHandler popUpHandler;	///Common pop-up handler
@@ -45,25 +47,34 @@ abstract class WindowElement{
 	public void delegate(Event ev) onMouseLClickPre;	///Called on left mouseclick pressed
 	public void delegate(Event ev) onMouseRClickPre;	///Called on right mouseclick pressed
 	public void delegate(Event ev) onMouseMClickPre;	///Called on middle mouseclick pressed
-
-	public void onClick(int offsetX, int offsetY, int state, ubyte button){
-
-	}
-	public void onDrag(int x, int y, int relX, int relY, ubyte button){
-
-	}
-
-	public void onScroll(int x, int y, int wX, int wY){
+	/**
+	 * Empty function that is called on click events.
+	 * Should be overridden in derived elements needing mouse click event handling.
+	 */
+	public void onClick(int offsetX, int offsetY, int state, ubyte button) {
 
 	}
+	/**
+	 * Empty function that is called on drag events.
+	 * Should be overridden in derived elements needing mouse drag event handling.
+	 */
+	public void onDrag(int x, int y, int relX, int relY, ubyte button) {
 
-	@property @nogc @safe nothrow public int getX(){
+	}
+	/**
+	 * Empty function that is called on scroll events.
+	 * Should be overridden in derived elements needing mouse scroll event handling.
+	 */
+	public void onScroll(int x, int y, int wX, int wY) {
+
+	}
+	deprecated @property @nogc @safe nothrow public int getX() {
 		return position.width;
 	}
-	@property @nogc @safe nothrow public int getY(){
+	deprecated @property @nogc @safe nothrow public int getY() {
 		return position.height;
 	}
-	@property @nogc @safe nothrow public Coordinate getPosition(){
+	@property @nogc @safe nothrow public Coordinate getPosition() {
 		return position;
 	}
 	/**
@@ -71,53 +82,51 @@ abstract class WindowElement{
 	 */
 	public abstract void draw();
 
-	/+protected void invokeActionEvent(int type, int value, wstring message = ""){
-		foreach(ActionListener a; al){
-			if(a)
-				a.actionEvent(new Event(source, null, null, null, text, value, type));
-		}
-	}
-
-	protected void invokeActionEvent(Event e) {
-		foreach(ActionListener a; al){
-			if(a)
-				a.actionEvent(e);
-		}
-	}+/
-	/*private Bitmap16Bit getBrush(int style){
-		return altStyleBrush.get(style, elementContainer.getStyleBrush(style));
-	}*/
-	public @nogc dstring getText(){
+	
+	public @nogc Text getText(){
 		return text;
 	}
-	public void setText(dstring s){
+	public dstring getTextDString() {
+		return text.toDString();
+	}
+	public void setText(Text s) {
 		text = s;
 		elementContainer.clearArea(this);
 		draw();
-
 	}
-
-	public StyleSheet getAvailableStyleSheet(){
+	public void setText(dstring s) {
+		text.text = s;
+		text.next = null;
+		elementContainer.clearArea(this);
+		draw();
+	}
+	/**
+	 * Returns the next available StyleSheet.
+	 */
+	public StyleSheet getAvailableStyleSheet() {
 		if(customStyle !is null){
 			return customStyle;
+		}
+		if(elementContainer !is null){
+			
 		}
 		return styleSheet;
 	}
 
-	public void setCustomStyle(StyleSheet s){
+	public void setCustomStyle(StyleSheet s) {
 		customStyle = s;
 	}
 	/**
-	 * Enables (b = true) or disables (b = false) the element. All element is enabled by default.
+	 * Returns whether the element is enabled or not.
 	 */
-	@nogc public void setState(bool b){
-		state = !b;
+	public @property bool enabled() @nogc @safe const pure nothrow {
+		return enabled;
 	}
 	/**
-	 * Gets the state of the element.
+	 * Sets whether the element is enabled or not.
 	 */
-	@nogc public bool getState(){
-		return !state;
+	public @property bool enabled(bool _enabled) @nogc @safe pure nothrow {
+		return this._enabled = _enabled;
 	}
 	/**
 	 * Returns the source string.
@@ -127,11 +136,14 @@ abstract class WindowElement{
 	}
 }
 
-public class Button : WindowElement{
+public class Button : WindowElement {
 	private bool isPressed;
 	public bool enableRightButtonClick;
 	public bool enableMiddleButtonClick;
-	public this(dstring text, string source, Coordinate coordinates){
+	public this(dstring text, string source, Coordinate coordinates) {
+		this(new Text(text,getAvailableStyleSheet.getChrFormatting("button")), source, coordinates);
+	}
+	public this(Text text, string source, Coordinate coordinates) {
 		position = coordinates;
 		//sizeX = coordinates.width();
 		//sizeY = coordinates.height();
@@ -141,7 +153,7 @@ public class Button : WindowElement{
 		//brushPressed = 1;
 		//draw();
 	}
-	public override void draw(){
+	public override void draw() {
 		if(output.output.width != position.width || output.output.height != position.height)
 			output = new BitmapDrawer(position.width(), position.height());
 		if(isPressed){
@@ -158,8 +170,12 @@ public class Button : WindowElement{
 			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
 		}
 
-		output.drawColorText(position.width/2, position.height/2, text, getAvailableStyleSheet().getFontset("default"),
-				getAvailableStyleSheet().getColor("normaltext"), FontFormat.HorizCentered | FontFormat.VertCentered);
+		/+output.drawColorText(position.width/2, position.height/2, text, getAvailableStyleSheet().getFontset("default"),
+				getAvailableStyleSheet().getColor("normaltext"), FontFormat.HorizCentered | FontFormat.VertCentered);+/
+		const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2) ,position.width,
+				position.height - textPadding);
+		output.drawSingleLineText(textPos, text);
 		elementContainer.drawUpdate(this);
 		if(onDraw !is null){
 			onDraw();
@@ -303,18 +319,25 @@ public class SmallButton : WindowElement{
 	}
 }
 
-public class Label : WindowElement{
-	public this(dstring text, string source, Coordinate coordinates){
+public class Label : WindowElement {
+	public this(dstring text, string source, Coordinate coordinates) {
+		this(new Text(text, getAvailableStyleSheet().getChrFormatting("label")), source, coordinates);
+	}
+	public this(Text text, string source, Coordinate coordinates) {
 		position = coordinates;
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(coordinates.width, coordinates.height);
 		//draw();
 	}
-	public override void draw(){
-		output = new BitmapDrawer(position.width, position.height);
-		output.drawColorText(0, 0, text, getAvailableStyleSheet().getFontset("default"),
-				getAvailableStyleSheet().getColor("normaltext"), 0);
+	public override void draw() {
+		//output = new BitmapDrawer(position.width, position.height);
+		/+output.drawColorText(0, 0, text, getAvailableStyleSheet().getFontset("default"),
+				getAvailableStyleSheet().getColor("normaltext"), 0);+/
+		const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2), position.width, 
+				position.height - textPadding);
+		output.drawSingleLineText(textPos, text);
 		elementContainer.drawUpdate(this);
 		if(onDraw !is null){
 			onDraw();
@@ -324,7 +347,7 @@ public class Label : WindowElement{
 		if(state == ButtonState.PRESSED)
 			invokeActionEvent(EventType.CLICK, 0);
 	}*/
-	public override void setText(dstring s) {
+	public override void setText(Text s) {
 		output.destroy();
 		output = new BitmapDrawer(position.width, position.height);
 		super.setText(s);
@@ -366,13 +389,17 @@ public class Label : WindowElement{
 }
 
 public class TextBox : WindowElement, TextInputListener{
-	private bool enableEdit, insert;
-	private uint pos;
+	protected bool enableEdit, insert;
+	protected size_t pos;
+	protected int horizTextOffset, select;
+	protected Text oldText;
 	//public int brush, textpos;
 	//public TextInputHandler tih;
 	public void delegate(Event ev) onTextInput;
-
-	public this(dstring text, string source, Coordinate coordinates){
+	public this(dstring text, string source, Coordinate coordinates) {
+		this(new Text(text, getAvailableStyleSheet().getChrFormatting("textBox")), source, coordinates);
+	}
+	public this(Text text, string source, Coordinate coordinates) {
 		position = coordinates;
 		this.text = text;
 		this.source = source;
@@ -381,15 +408,6 @@ public class TextBox : WindowElement, TextInputListener{
 		//insert = true;
 		//draw();
 	}
-
-	~this(){
-		//inputHandler.removeTextInputListener(source);
-	}
-	public deprecated void addTextInputHandler(TextInputHandler t){	/** DEPRECATED. Will be removed soon in favor of static input handlers. */
-		/*tih = t;*/
-		//inputHandler.addTextInputListener(source, this);
-	}
-
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
@@ -426,6 +444,7 @@ public class TextBox : WindowElement, TextInputListener{
 			//invokeActionEvent(EventType.READYFORTEXTINPUT, 0);
 			enableEdit = true;
 			inputHandler.startTextInput(this);
+			oldText = new Text(text);
 			draw();
 		}
 	}
@@ -434,129 +453,134 @@ public class TextBox : WindowElement, TextInputListener{
 			output = new BitmapDrawer(position.width, position.height);
 		output.drawFilledRectangle(0, position.width - 1, 0, position.height - 1, getAvailableStyleSheet().getColor("window"));
 		output.drawRectangle(0, position.width - 1, 0, position.height - 1, getAvailableStyleSheet().getColor("windowascent"));
-
+		const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+		Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2) ,
+				position.width,position.height - textPadding);
+		
+		const int y = text.font.getSize;
+		//if(x > textPos.width ) xOffset = horizTextOffset;
 		//draw cursor
-		if(enableEdit){
-			const int x = getAvailableStyleSheet().getFontset("default").getTextLength(text[0..pos]) ,
-					y = getAvailableStyleSheet().getFontset("default").getSize;
+		if(enableEdit) {
+			const int x0 = text.getWidth(0,pos) + textPadding - horizTextOffset;
 			if(!insert){
-				output.drawLine(x + 2, x + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
+				output.drawLine(x0, x0, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
 			}else{
-				const int x0 = pos == text.length ? x + getAvailableStyleSheet().getFontset("default").chars[' '].xadvance :
-						getAvailableStyleSheet().getFontset("default").getTextLength(text[0..pos + 1]);
-				output.drawFilledRectangle(x + 2, x0 + 2, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
+				const int x1 = pos == text.charLength ? text.font.chars(' ').xadvance :
+						text.getWidth(pos,pos + 1);
+				output.drawFilledRectangle(x0, x1 + x0, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
 			}
 		}
 
-		output.drawColorText(2, 2, text, getAvailableStyleSheet().getFontset("default"),
-				getAvailableStyleSheet().getColor("normaltext"), 0);
+		
+		output.drawSingleLineText(textPos, text, horizTextOffset);
 		elementContainer.drawUpdate(this);
 		if(onDraw !is null){
 			onDraw();
 		}
 	}
 
-	private void deleteCharacter(int n){
-		//text = remove(text, i);
-		dstring newtext;
-		for(int i; i < text.length; i++){
-			if(i != n - 1){
-				newtext ~= text[i];
-			}
-		}
-		text = newtext;
+	private void deleteCharacter(size_t n){
+		text.removeChar(n);
 	}
 	public void textInputEvent(uint timestamp, uint windowID, dstring text){
 
-		int j = pos;
-		dstring newtext;
-		for(int i ; i < pos ; i++){
-			newtext ~= this.text[i];
+		for(int j ; j < text.length ; j++){
+			this.text.insertChar(pos++, text[j]);
 		}
-		for(int i ; i < 32 ; i++){
-			if(text[i] == 0){
-				break;
-			}
-			else{
-				newtext ~= text[i];
-				pos++;
-				if(insert){
-					j++;
-				}
-			}
+		//this.text.text = newtext;
+		const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
+				position.width,position.height - textPadding);
+		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, pos);
+		if(x > textPos.width) {
+			 if(pos == text.text.length) {
+				horizTextOffset = x - textPos.width;
+			 } else if(cursorPixelPos < horizTextOffset) { //Test for whether the cursor would fall out from the current text area
+				horizTextOffset = cursorPixelPos;
+			 } else if(cursorPixelPos > horizTextOffset + textPos.width) {
+				horizTextOffset = horizTextOffset + textPos.width;
+			 }
 		}
-		for( ; j < this.text.length ; j++){
-			newtext ~= this.text[j];
-		}
-		this.text = newtext;
 		draw();
 	}
 
 	public void dropTextInput(){
 		enableEdit = false;
+		horizTextOffset = 0;
 		//inputHandler.stopTextInput(source);
 		draw();
 		//invokeActionEvent(EventType.TEXTINPUT, 0, text);
-		if(onTextInput !is null)
-			onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT, null, this));
+		/+if(onTextInput !is null)
+			onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT, null, this));+/
 	}
 
 
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
-		if(key == TextInputKey.ESCAPE || key == TextInputKey.ENTER){
-			enableEdit = false;
-			inputHandler.stopTextInput(this);
-			draw();
-			//invokeActionEvent(EventType.TEXTINPUT, 0, text);
-			if(onTextInput !is null){
-				onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT, null, this));
-			}
-		}else if(key == TextInputKey.BACKSPACE){
-			if(pos > 0){
-				deleteCharacter(pos);
-				pos--;
+		switch(key) {
+			case TextInputKey.ENTER:
+				enableEdit = false;
+				inputHandler.stopTextInput(this);
 				draw();
-			}
-			/*if(pos > 0){
-			 if(pos == text.length){
-			 text.length--;
-			 pos--;
-
-			 }
-			 }*/
-		}else if(key == TextInputKey.DELETE){
-			deleteCharacter(pos + 1);
-			draw();
-		}else if(key == TextInputKey.CURSORLEFT){
-			if(pos > 0){
-				--pos;
+				if(onTextInput !is null)
+					onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT, null, this));
+				break;
+			case TextInputKey.ESCAPE:
+				enableEdit = false;
+				inputHandler.stopTextInput(this);
+				text = oldText;
 				draw();
-			}
-		}else if(key == TextInputKey.CURSORRIGHT){
-			if(pos < text.length){
-				++pos;
+				break;
+			case TextInputKey.BACKSPACE:
+				if(pos > 0){
+					deleteCharacter(pos);
+					pos--;
+					draw();
+				}
+				break;
+			case TextInputKey.DELETE:
+				deleteCharacter(pos + 1);
 				draw();
-			}
-		}else if(key == TextInputKey.INSERT){
-			insert = !insert;
-			draw();
-		}else if(key == TextInputKey.HOME){
-			pos = 0;
-			draw();
-		}else if(key == TextInputKey.END){
-			pos = cast(uint)text.length;
-			draw();
+				break;
+			case TextInputKey.CURSORLEFT:
+				if(pos > 0){
+					--pos;
+					draw();
+				}
+				break;
+			case TextInputKey.CURSORRIGHT:
+				if(pos < text.charLength){
+					++pos;
+					draw();
+				}
+				break;
+			case TextInputKey.HOME:
+				pos = 0;
+				draw();
+				break;
+			case TextInputKey.END:
+				pos = text.charLength;
+				draw();
+				break;
+			case TextInputKey.INSERT:
+				insert = !insert;
+				draw();
+				break;
+			default:
+				break;
 		}
 	}
 }
-
+alias ListBox = OldListBox;
+alias ListBoxHeader = OldListBoxHeader;
+alias ListBoxItem = OldListBoxItem;
 /**
  * Displays multiple columns of data, also provides general text input.
+ * DEPRECATED! WILL BE REMOVED SOON!
  */
-public class ListBox : WindowElement, ElementContainer{
+public class OldListBox : WindowElement, ElementContainer{
 	//public ListBoxColumn[] columns;
-	public ListBoxHeader header;
-	public ListBoxItem[] items;
+	public OldListBoxHeader header;
+	public OldListBoxItem[] items;
 	public int[] columnWidth;
 	public int selection, brushHeader, brush, fontHeader;
 	public ushort selectionColor;
@@ -571,12 +595,12 @@ public class ListBox : WindowElement, ElementContainer{
 	public void delegate(Event ev) onItemSelect;
 	public void delegate(Event ev) onScrolling;
 
-	public this(string source, Coordinate coordinates, ListBoxItem[] items, ListBoxHeader header, int rowHeight,
+	public this(string source, Coordinate coordinates, OldListBoxItem[] items, OldListBoxHeader header, int rowHeight,
 			bool enableTextInput = false){
 		this(source, coordinates, items, header, enableTextInput);
 	}
 
-	public this(string source,Coordinate coordinates,ListBoxItem[] items,ListBoxHeader header,bool enableTextInput=false){
+	public this(string source,Coordinate coordinates,OldListBoxItem[] items,OldListBoxHeader header,bool enableTextInput=false){
 		position = coordinates;
 		this.source = source;
 		//this.rowHeight = rowHeight;
@@ -600,7 +624,7 @@ public class ListBox : WindowElement, ElementContainer{
 	}
 
 	private void textInput(Event ev){
-		items[selection].setText(selectedColumn, ev.text);
+		items[selection].setText(selectedColumn, ev.text.text);
 		//invokeActionEvent(new Event(source, null, null, null, event.text, selection,EventType.TEXTINPUT, items[selection]));
 		if(onTextInput !is null){
 			onTextInput(new Event(source, null, null, null, ev.text, selection,EventType.TEXTINPUT, items[selection], this));
@@ -635,7 +659,7 @@ public class ListBox : WindowElement, ElementContainer{
 	/**
 	 * Updates the columns with the given data.
 	 */
-	public void updateColumns(ListBoxItem[] items){
+	public void updateColumns(OldListBoxItem[] items){
 		this.items = items;
 		updateColumns();
 		draw();
@@ -643,7 +667,7 @@ public class ListBox : WindowElement, ElementContainer{
 	/**
 	 * Updates the columns with the given data and header.
 	 */
-	public void updateColumns(ListBoxItem[] items, ListBoxHeader header){
+	public void updateColumns(OldListBoxItem[] items, OldListBoxHeader header){
 		this.items = items;
 		this.header = header;
 		updateColumns();
@@ -678,12 +702,12 @@ public class ListBox : WindowElement, ElementContainer{
 				position.width() - 16, position.height()));
 		this.vSlider.onScrolling = &scrollVert;
 		this.vSlider.elementContainer = this;
-		sliderX = vSlider.getX();
+		sliderX = vSlider.position.width;
 
 
 		this.hSlider.onScrolling = &scrollHoriz;
 		this.hSlider.elementContainer = this;
-		sliderY = hSlider.getY();
+		sliderY = hSlider.position.height;
 		bodyDrawn = false;
 	}
 
@@ -830,7 +854,7 @@ public class ListBox : WindowElement, ElementContainer{
 
 							if(selectedColumn != -1){
 								if(items[selection].getTextInputType(selectedColumn) != TextInputType.DISABLE){
-									text = items[selection].getText(selectedColumn);
+									text = new Text(items[selection].getText(selectedColumn), getAvailableStyleSheet.getChrFormatting("default_LJ"));
 									//invokeActionEvent(EventType.READYFORTEXTINPUT,selectedColumn);
 									PopUpTextInput p = new PopUpTextInput("textInput",text,Coordinate(0,0,header.getColumnWidth(selectedColumn),20));
 									p.onTextInput = &textInput;
@@ -910,36 +934,63 @@ public class ListBox : WindowElement, ElementContainer{
 	}
 }
 /**
+ * Defines the header of a ListBox, if any.
+ * Contains its own drawing routines.
+ */
+public class NewListBoxHeader {
+	public Text[]	columnText;		///Descriptions of columns
+}
+/**
+ * The new ListBoxItem.
+ * Contains its own drawing routines. Can be updated for text input.
+ */
+public class NewListBoxItem {
+	public Text[]	cells;			///Defines text cells as Text objects
+	/**
+	 * Draws the given item to the position
+	 */
+	public void draw(int horizOffset, ref int y, BitmapDrawer output) {
+
+	}
+}
+/**
  * A simple toggle button.
  */
 public class CheckBox : WindowElement{
-	public int iconChecked, iconUnchecked;
-	private bool checked;
-	public int[] brush;
+	protected bool		checked;
+	public string		iconChecked = "checkBoxB";		///Sets the icon for checked positions
+	public string		iconUnchecked = "checkBoxA";	///Sets the icon for unchecked positions
 	public void delegate(Event ev) onToggle;
 
-	public this(dstring text, string source, Coordinate coordinates, bool checked = false){
+	public this(Text text, string source, Coordinate coordinates, bool checked = false) {
 		position = coordinates;
 		this.text = text;
 		this.source = source;
-		brush ~= 2;
-		brush ~= 3;
 		output = new BitmapDrawer(position.width, position.height);
 		this.checked = checked;
 		//draw();
 	}
-
-	public override void draw(){
+	///Ditto
+	public this(dstring text, string source, Coordinate coordinates, bool checked = false) {
+		this(new Text(text, getAvailableStyleSheet().getChrFormatting("checkBox")), source, coordinates, checked);
+	}
+	public override void draw() {
 		if(output.output.width != position.width || output.output.height != position.height)
 			output = new BitmapDrawer(position.width, position.height);
-		output.drawRectangle(getAvailableStyleSheet().getImage("checkBoxA").width, output.output.width - 1, 0,
+		output.drawRectangle(getAvailableStyleSheet().getImage(iconUnchecked).width, output.output.width - 1, 0,
 				output.output.height - 1, 0x0);
-		output.drawColorText(getAvailableStyleSheet().getImage("checkBoxA").width, 0, text,
-				getAvailableStyleSheet().getFontset("default"), getAvailableStyleSheet().getColor("normaltext"), 0);
+		if(text) {
+			const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+			const Coordinate textPos = Coordinate(textPadding +	getAvailableStyleSheet().getImage(iconUnchecked).width,
+					(position.height / 2) - (text.font.size / 2), position.width, position.height - textPadding);
+			output.drawSingleLineText(textPos, text);
+		}
+		/+output.drawColorText(getAvailableStyleSheet().getImage("checkBoxA").width, 0, text,
+				getAvailableStyleSheet().getFontset("default"), getAvailableStyleSheet().getColor("normaltext"), 0);+/
 		if(checked){
-			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage("checkBoxB"));
+			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconChecked));
 		}else{
-			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage("checkBoxA"));
+			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconUnchecked));
 		}
 		elementContainer.drawUpdate(this);
 		if(onDraw !is null){
@@ -1006,9 +1057,54 @@ public class CheckBox : WindowElement{
 	}
 }
 /**
- * Radio buttons, for selecting from multiple options.
+ * Implements a single radio button.
+ * Needs to be grouped to used.
  */
-public class RadioButtonGroup : WindowElement{
+public class NewRadioButton : WindowElement, IRadioButton {
+	protected IRadioButtonGroup			group;		///The group which this object belongs to.
+	protected bool						_state;		///The state of the RadioButton
+	public string		iconLatched = "radioButtonB";		///Sets the icon for latched positions
+	public string		iconUnlatched = "radioButtonA";	///Sets the icon for unlatched positions
+
+	override public void draw() {
+		
+	}
+	/**
+	 * If the radio button is pressed, then it sets to unpressed. Does nothing otherwise.
+	 */
+	public void latchOff() @trusted {
+		_state = false;
+		draw();
+	}
+	/**
+	 * Sets the radio button into its pressed state.
+	 */
+	public void latchOn() @trusted {
+		_state = true;
+		draw();
+	}
+	/**
+	 * Returns the current state of the radio button.
+	 * True: Pressed.
+	 * False: Unpressed.
+	 */
+	public bool state() @safe @property const {
+		return _state;
+	}
+	/**
+	 * Sets the group of the radio button.
+	 */
+	public void setGroup(IRadioButtonGroup group) @safe @property {
+		this.group = group;
+
+	}
+	
+}
+/**
+ * Radio buttons, for selecting from multiple options.
+ * DEPRECATED! USE CLASS `RadioButton` INSTEAD!
+ */
+public class RadioButtonGroup : WindowElement {
 	public int iconChecked, iconUnchecked;
 	private int bposition, rowHeight, buttonpos;
 	public dstring[] options;
@@ -1016,7 +1112,7 @@ public class RadioButtonGroup : WindowElement{
 	public ushort border, background;
 	public void delegate(Event ev) onToggle;
 
-	public this(dstring text, string source, Coordinate coordinates, dstring[] options, int rowHeight, int buttonpos){
+	public this(Text text, string source, Coordinate coordinates, dstring[] options, int rowHeight, int buttonpos){
 		this.position = coordinates;
 		this.text = text;
 		this.source = source;
@@ -1033,7 +1129,7 @@ public class RadioButtonGroup : WindowElement{
 		if(output.output.width != position.width || output.output.height != position.height)
 			output = new BitmapDrawer(position.width, position.height);
 		output.drawRectangle(0, position.width-1, 0, position.height-1, getAvailableStyleSheet().getColor("windowascent"));
-		output.drawColorText(16,0,text, getAvailableStyleSheet().getFontset("default"),
+		output.drawColorText(16,0,text.text, getAvailableStyleSheet().getFontset("default"),
 				getAvailableStyleSheet().getColor("normaltext"),1);
 		for(int i; i < options.length; i++){
 
@@ -1361,7 +1457,7 @@ public class HSlider : Slider{
 /**
  * Menubar containing menus in a tree-like structure.
  */
-public class MenuBar: WindowElement{
+public class MenuBar : WindowElement{
 	private PopUpMenuElement[] menus;
 	//private wstring[] menuNames;
 	private int[] menuWidths;
@@ -1373,6 +1469,7 @@ public class MenuBar: WindowElement{
 		//this.popUpHandler = popUpHandler;
 		this.menus = menus;
 		select = -1;
+		menuWidths = [0];
 	}
 	public override void draw() {
 		StyleSheet ss = getAvailableStyleSheet();
@@ -1381,23 +1478,25 @@ public class MenuBar: WindowElement{
 			usedWidth = 1;
 			output = new BitmapDrawer(position.width(),position.height());
 			foreach(m ; menus){
+				usedWidth += m.text.getWidth() + (ss.drawParameters["MenuBarHorizPadding"] * 2);
 				menuWidths ~= usedWidth;
-				usedWidth += f.getTextLength(m.text) + (ss.drawParameters["MenuBarHorizPadding"] * 2);
-
+				
+				//writeln(m.text.getWidth());
 			}
 			output.drawFilledRectangle(0, position.width(), 0, position.height(), ss.getColor("window"));
+			assert(menuWidths.length == menus.length + 1);
 		}else{
 			output.drawFilledRectangle(0, usedWidth, 0, position.height(), ss.getColor("window"));
 		}
 		if(select != -1){
 
 		}
-		int x = ss.drawParameters["MenuBarHorizPadding"] + 1;
-		foreach(m ; menus){
-			output.drawColorText(x, ss.drawParameters["MenuBarVertPadding"],m.text,f,ss.getColor("normaltext"),0);
-			x += f.getTextLength(m.text) + ss.drawParameters["MenuBarHorizPadding"];
-			//output.drawLine(x, x, 0, position.height() - 1, ss.getColor("MenuBarSeparatorColor"));
+		int x;
+		foreach(size_t i, m ; menus){
 			x += ss.drawParameters["MenuBarHorizPadding"];
+			//const int xAdv = m.text.getWidth();
+			output.drawSingleLineText(Coordinate(menuWidths[i],position.top,menuWidths[i + 1],position.bottom), m.text);
+			x += ss.drawParameters["MenuBarHorizPadding"];			
 		}
 		output.drawLine(0, 0, 0, position.height()-1, ss.getColor("windowascent"));
 		output.drawLine(0, position.width()-1, 0, 0, ss.getColor("windowascent"));
@@ -1470,11 +1569,11 @@ public abstract class PopUpElement{
 	public BitmapDrawer output;
 	public static InputHandler inputhandler;
 	public static StyleSheet styleSheet;
-	public Coordinate coordinates;
+	public Coordinate position;
 	public StyleSheet customStyle;
 	protected PopUpHandler parent;
 	protected string source;
-	protected dstring text;
+	protected Text text;
 	/*public void delegate(Event ev) onMouseLClickRel;
 	public void delegate(Event ev) onMouseRClickRel;
 	public void delegate(Event ev) onMouseMClickRel;
@@ -1528,33 +1627,39 @@ public class PopUpMenu : PopUpElement{
 	//private string[] sources;
 
 	//private uint[int] hotkeyCodes;
-	protected Bitmap8Bit[int] icons;
-	protected int minwidth, width, height, iconWidth, select;
+	//protected Bitmap8Bit[int] icons;
+	protected int width, height, select;
 	PopUpMenuElement[] elements;
-
-	public this(PopUpMenuElement[] elements, string source, int iconWidth = 0){
+	/**
+	 * Creates a single PopUpMenu.
+	 */
+	public this(PopUpMenuElement[] elements, string source){
 		this.elements = elements;
 		this.source = source;
-		this. iconWidth = iconWidth;
+		//this. iconWidth = iconWidth;
 		select = -1;
 	}
 	public override void draw(){
 		StyleSheet ss = getStyleSheet();
 		if(output is null){
 
-			minwidth = (ss.drawParameters["PopUpMenuVertPadding"] * 2) + ss.drawParameters["PopUpMenuMinTextSpace"] + iconWidth;
-			width = minwidth;
+			//minwidth = (ss.drawParameters["PopUpMenuVertPadding"] * 2);
+			//int width;
 			foreach(e; elements){
-				const int newwidth = ss.getFontset("default").getTextLength(e.text~e.secondaryText) + iconWidth;
+				int newwidth = e.text.getWidth();// + (e is null) ? 0 : e.secondaryText.getWidth();
+				if(e.secondaryText !is null) newwidth += e.secondaryText.getWidth() + ss.drawParameters["PopUpMenuMinTextSpace"];
+				//assert(newwidth);
+				//writeln(e.text.getWidth());
 				if(newwidth > width){
 					width = newwidth;
+					//writeln(width);
 				}
 				height += ss.getFontset("default").getSize() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 			}
-			width += (ss.drawParameters["PopUpMenuHorizPadding"] * 2) + ss.drawParameters["PopUpMenuMinTextSpace"];
+			width += (ss.drawParameters["PopUpMenuHorizPadding"] * 2);
 			height += ss.drawParameters["PopUpMenuVertPadding"] * 2;
+			position = Coordinate(0, 0, width, height);
 			output = new BitmapDrawer(width, height);
-			coordinates = Coordinate(0, 0, width, height);
 		}
 		output.drawFilledRectangle(0,width - 1,0,height - 1,ss.getColor("window"));
 
@@ -1568,15 +1673,23 @@ public class PopUpMenu : PopUpElement{
 		int y = 1 + ss.drawParameters["PopUpMenuVertPadding"];
 		foreach(e; elements){
 			if(e.secondaryText !is null){
-				output.drawColorText(width - ss.drawParameters["PopUpMenuHorizPadding"] - 1, y, e.secondaryText,
-						ss.getFontset("default"), ss.getColor("PopUpMenuSecondaryTextColor"), FontFormat.RightJustified);
+				/+output.drawColorText(width - ss.drawParameters["PopUpMenuHorizPadding"] - 1, y, e.secondaryText,
+						ss.getFontset("default"), ss.getColor("PopUpMenuSecondaryTextColor"), FontFormat.RightJustified);+/
+				//const int textLength = e.secondaryText.getWidth;
+				const Coordinate textPos = Coordinate(ss.drawParameters["PopUpMenuHorizPadding"], y,
+						position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.secondaryText.font.getSize());
+				output.drawSingleLineText(textPos, e.secondaryText);
 			}
-			output.drawColorText(ss.drawParameters["PopUpMenuHorizPadding"] + iconWidth, y, e.text, ss.getFontset("default"),
-					ss.getColor("normaltext"), 0);
+			/+output.drawColorText(ss.drawParameters["PopUpMenuHorizPadding"] + iconWidth, y, e.text, ss.getFontset("default"),
+					ss.getColor("normaltext"), 0);+/
+			//const int textLength = e.text.getWidth;
+			const Coordinate textPos = Coordinate(ss.drawParameters["PopUpMenuHorizPadding"], y,
+					position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.text.font.getSize());
+			output.drawSingleLineText(textPos, e.text);
 			if(e.getIcon() !is null){
 				output.insertBitmap(ss.drawParameters["PopUpMenuHorizPadding"], y, e.getIcon());
 			}
-			y += ss.getFontset("default").getSize() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
+			y += e.text.font.getSize() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 		}
 
 		//output.drawRectangle(1,1,height-1,width-1,ss.getColor("windowascent"));
@@ -1591,10 +1704,10 @@ public class PopUpMenu : PopUpElement{
 	public override void onClick(int offsetX, int offsetY, int type = 0){
 		offsetY /= height / elements.length;
 		if(elements[offsetY].source == "\\submenu\\"){
-			PopUpMenu m = new PopUpMenu(elements[offsetY].subElements, this.source, elements[offsetY].iconWidth);
+			PopUpMenu m = new PopUpMenu(elements[offsetY].subElements, this.source);
 			m.onMouseClick = onMouseClick;
 			//parent.getAbsolutePosition()
-			parent.addPopUpElement(m, coordinates.left + width, coordinates.top + offsetY * cast(int)(height / elements.length));
+			parent.addPopUpElement(m, position.left + width, position.top + offsetY * cast(int)(height / elements.length));
 			//parent.closePopUp(this);
 		}else{
 			//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
@@ -1626,42 +1739,39 @@ public class PopUpMenu : PopUpElement{
 */
 public class PopUpMenuElement{
 	public string source;
-	public dstring text, secondaryText;
-	protected Bitmap8Bit icon;
+	public Text text, secondaryText;
+	//protected Bitmap8Bit icon;
 	private PopUpMenuElement[] subElements;
 	private ushort keymod;
 	private int keycode;
 	public int iconWidth;
 
-	public this(string source, dstring text, dstring secondaryText = null, Bitmap8Bit icon = null, int iconWidth = 0){
+	/+public this(string source, Text text, Text secondaryText = null){
 		this.source = source;
 		this.text = text;
 		this.secondaryText = secondaryText;
-		this.icon = icon;
-		this.iconWidth = iconWidth;
-	}
-	public this(string source, dstring text, dstring secondaryText, PopUpMenuElement[] subElements){
-		this.source = source;
-		this.text = text;
-		this.secondaryText = secondaryText;
-		this.subElements = subElements;
-		/+this.icon = icon;
-		this.iconWidth = iconWidth;+/
-	}
-	public this(string source, dstring text, dstring secondaryText, PopUpMenuElement[] subElements, Bitmap8Bit icon = null,
-			int iconWidth = 0){
+		//this.iconWidth = iconWidth;
+	}+/
+	/+public this(string source, dstring text, dstring secondaryText = "", PopUpMenuElement[] subElements) {
+		this(source, new Text(text, getStyle));
+	}+/
+	public this(string source, Text text, Text secondaryText = null, PopUpMenuElement[] subElements = []){
 		this.source = source;
 		this.text = text;
 		this.secondaryText = secondaryText;
 		this.subElements = subElements;
-		/+this.icon = icon;
-		this.iconWidth = iconWidth;+/
 	}
+	/+public this(string source, Text text, Text secondaryText, PopUpMenuElement[] subElements){
+		this.source = source;
+		this.text = text;
+		this.secondaryText = secondaryText;
+		this.subElements = subElements;
+	}+/
 	public Bitmap8Bit getIcon(){
-		return icon;
+		return text.icon;
 	}
 	public void setIcon(Bitmap8Bit icon){
-		this.icon = icon;
+		text.icon = icon;
 	}
 	public PopUpMenuElement[] getSubElements(){
 		return subElements;
@@ -1695,21 +1805,22 @@ public class PopUpMenuElement{
  */
 public class PopUpTextInput : PopUpElement, TextInputListener{
 	protected bool enableEdit, insert;
-	protected int textPos;
+	protected size_t cursorPos;
+	protected int horizTextOffset, select;
 	public void delegate(Event ev) onTextInput;
 
-	public this(string source, dstring text, Coordinate coordinates){
+	public this(string source, Text text, Coordinate position){
 		this.source = source;
 		this.text = text;
-		this.coordinates = coordinates;
+		this.position = position;
 		enableEdit = true;
-		output = new BitmapDrawer(coordinates.width, coordinates.height);
+		output = new BitmapDrawer(position.width, position.height);
 		inputhandler.startTextInput(this);
 	}
 	public override void draw(){
-		output.drawFilledRectangle(0, coordinates.width - 1, 0, coordinates.height - 1, getStyleSheet().getColor("window"));
-		output.drawRectangle(0, coordinates.width - 1, 0, coordinates.height - 1, getStyleSheet().getColor("windowascent"));
-
+		output.drawFilledRectangle(0, position.width - 1, 0, position.height - 1, getStyleSheet().getColor("window"));
+		output.drawRectangle(0, position.width - 1, 0, position.height - 1, getStyleSheet().getColor("windowascent"));
+		/+
 		//draw cursor
 		if(enableEdit){
 			const int x = getStyleSheet().getFontset("default").getTextLength(text[0..textPos]) ,
@@ -1717,8 +1828,8 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 			if(!insert){
 				output.drawLine(x + 2, x + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
 			}else{
-				const int x0 = textPos == text.length ? x + getStyleSheet().getFontset("default").chars[' '].xadvance :
-						getStyleSheet().getFontset("default").getTextLength(text[0..textPos + 1]);
+				const int x0 = cursorPos == text.length ? x + getStyleSheet().getFontset("default").chars(' ').xadvance :
+						getStyleSheet().getFontset("default").getTextLength(text[0..cursorPos + 1]);
 				output.drawFilledRectangle(x + 2, x0 + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
 			}
 		}
@@ -1727,40 +1838,29 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 
 		if(onDraw !is null){
 			onDraw();
-		}
+		}+/
 	}
 	private void deleteCharacter(int n){
-		//text = remove(text, i);
-		dstring newtext;
-		for(int i; i < text.length; i++){
-			if(i != n - 1){
-				newtext ~= text[i];
-			}
-		}
-		text = newtext;
+		text.removeChar(n);
 	}
 	public void textInputEvent(uint timestamp, uint windowID, dstring text){
-		int j = textPos;
-		dstring newtext;
-		for(int i ; i < textPos ; i++){
-			newtext ~= this.text[i];
+		for(int j ; j < text.length ; j++){
+			this.text.insertChar(cursorPos++, text[j]);
 		}
-		for(int i ; i < 32 ; i++){
-			if(text[i] == 0){
-				break;
-			}
-			else{
-				newtext ~= text[i];
-				textPos++;
-				if(insert){
-					j++;
-				}
-			}
+		const int textPadding = getStyleSheet().drawParameters["horizTextPadding"];
+		//this.text.text = newtext;
+		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
+				position.width,position.height - textPadding);
+		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, cursorPos);
+		if(x > textPos.width) {
+			 if(cursorPos == text.text.length) {
+				horizTextOffset = x - textPos.width;
+			 } else if(cursorPixelPos < horizTextOffset) { //Test for whether the cursor would fall out from the current text area
+				horizTextOffset = cursorPixelPos;
+			 } else if(cursorPixelPos > horizTextOffset + textPos.width) {
+				horizTextOffset = horizTextOffset + textPos.width;
+			 }
 		}
-		for( ; j < this.text.length ; j++){
-			newtext ~= this.text[j];
-		}
-		this.text = newtext;
 		draw();
 	}
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
@@ -1774,28 +1874,28 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 				inputhandler.stopTextInput(this);
 				//invokeActionEvent(new Event(source, null, null, null, text, text.length, EventType.TEXTINPUT));
 				if(onTextInput !is null)
-					onTextInput(new Event(source, null, null, null, text, cast(int)text.length, EventType.TEXTINPUT, null, this));
+					onTextInput(new Event(source, null, null, null, text, cast(int)text.charLength, EventType.TEXTINPUT, null, this));
 				break;
 			case TextInputKey.BACKSPACE:
-				if(textPos > 0){
-					deleteCharacter(textPos);
-					textPos--;
+				if(cursorPos > 0){
+					deleteCharacter(cursorPos);
+					cursorPos--;
 					draw();
 				}
 				break;
 			case TextInputKey.DELETE:
-				deleteCharacter(textPos + 1);
+				deleteCharacter(cursorPos + 1);
 				draw();
 				break;
 			case TextInputKey.CURSORLEFT:
-				if(textPos > 0){
-					--textPos;
+				if(cursorPos > 0){
+					--cursorPos;
 					draw();
 				}
 				break;
 			case TextInputKey.CURSORRIGHT:
-				if(textPos < text.length){
-					++textPos;
+				if(cursorPos < text.charLength){
+					++cursorPos;
 					draw();
 				}
 				break;
@@ -1804,11 +1904,11 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 				draw();
 				break;
 			case TextInputKey.HOME:
-				textPos = 0;
+				cursorPos = 0;
 				draw();
 				break;
 			case TextInputKey.END:
-				textPos = cast(int)text.length;
+				cursorPos = text.charLength;
 				draw();
 				break;
 			default:
@@ -1837,8 +1937,9 @@ public interface PopUpHandler : StyleSheetContainer{
 
 /**
  * Defines the header of a ListBox.
+ * DEPRECATED! WILL BE REMOVED SOON!
  */
-public class ListBoxHeader{
+public class OldListBoxHeader{
 	private dstring[] text;
 	private int[] width;
 	private uint[] textInputType;
@@ -1901,29 +2002,8 @@ public class ListBoxHeader{
 	}
 }
 /**
- * Defines a single row of a ListBox. Can be passed through the Event class.
- */
-public class NewListBoxItem {
-
-}
-/**
- * Defines a single cell in a NewListBoxItem.
- */
-public struct ListBoxCell {
-	/**
-	 * Defines the currently held type of the cell.
-	 */
-	public enum TypeID : ubyte {
-		text,
-		decimalI,
-		decimalF,
-		hexadecimal,
-		bitmap,
-	}
-}
-/**
  * Defines an item in the row of a ListBox. Can be passed through the Event class
- * TO BE DEPRECATED.
+ * DEPRECATED! WILL BE REMOVED SOON!
  */
 public class OldListBoxItem {
 	private dstring[] text;
@@ -1962,38 +2042,19 @@ public class OldListBoxItem {
 		return to!string(result);
 	}
 }
-alias ListBoxItem = OldListBoxItem;
-/*
- * For use with ListBoxes and similar types. Currently left here for legacy purposes, being replaced with the classes ListBoxHeader and ListBoxElement
- *
-public struct ListBoxColumn{
-	public wstring header;
-	public wstring[] elements;
-
-	this(wstring header, wstring[] elements){
-		this.header = header;
-		this.elements = elements;
-	}
-
-	/
-	public void removeByNumber(int i){
-		elements = remove(elements, i);
-	}
-}*/
-
 /**
  * Defines an action event in the concrete GUI.
  */
 public class Event{
 	public string source, subsource, path, filename;
-	public dstring text;
+	public Text text;
 	public int value, type;
 	public Object aux;
 	public Object sender;
 	/**
 	 *If a field is unneeded, leave it blank by setting it to null.
 	 */
-	this(string source, string subsource, string path, string filename, dstring textinput, int value, int type,
+	this(string source, string subsource, string path, string filename, Text textinput, int value, int type,
 			Object aux = null, Object sender = null){
 		this.source = source;
 		this.subsource = subsource;
@@ -2012,27 +2073,36 @@ public class Event{
 		return path ~ filename;
 	}
 }
-
-/+public interface ActionListener{
+/**
+ * Implements the 
+ */
+public interface ElementContainer : StyleSheetContainer {
 	/**
-	 * Invoked mostly by WindowElements, Dialogs, and PopUpElements. Used to run the code and pass the eventdata.
+	 * Returns the absolute position of the element.
 	 */
-	public void actionEvent(Event event);
-}+/
-
-public interface ElementContainer : StyleSheetContainer{
 	public Coordinate getAbsolutePosition(WindowElement sender);
+	/**
+	 * Clears the area of the element.
+	 */
 	public void clearArea(WindowElement sender);
 }
-
-public interface StyleSheetContainer{
+/**
+ * Implemented by any object that can store stylesheets.
+ */
+public interface StyleSheetContainer {
+	/**
+	 * Returns the stylesheet stored by the object.
+	 */
 	public StyleSheet getStyleSheet();
+	/**
+	 * Updates the draw surface of the window where the Element is placed.
+	 */
 	public void drawUpdate(WindowElement sender);
 }
 /**
  * TODO: Use this for implement tabbing and etc.
  */
-public interface Focusable{
+public interface Focusable {
 	public void focusGiven();
 	public void focusLost();
 	public void tabPressed(bool reverse);

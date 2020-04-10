@@ -67,7 +67,7 @@ string intToOct(int i, int format) pure @safe{
 			case 7: result ~='7'; break;
 			default: result ~='0'; break;
 		}
-		i = i / 8;
+		i = i >>> 3;
 	}while(i > 0);
 	if(result.length < format){
 		for(size_t j = result.length ; j < format ; j++){
@@ -141,7 +141,7 @@ bool isInteger(S)(S s) pure @safe{
 /**
  * Returns true if x is power of two.
  */
-public @nogc bool isPowerOf2(T = uint)(T x) pure @safe{
+public bool isPowerOf2(T = uint)(T x) pure @safe @nogc nothrow{
 	return x && ((x & (x - 1U)) == 0U);
 }
 
@@ -149,7 +149,7 @@ public @nogc bool isPowerOf2(T = uint)(T x) pure @safe{
  * From "Hackers Delight"
  * val remains unchanged if it is already a power of 2.
  */
-public @nogc T nextPow2(T)(T val) pure @safe{
+public T nextPow2(T)(T val) pure @safe @nogc nothrow{
 	val--;
 	val |= val >> 16;
 	val |= val >> 8;
@@ -160,6 +160,7 @@ public @nogc T nextPow2(T)(T val) pure @safe{
 }
 /**
  * Safely converts an array to a type.
+ * NOTE: by 0.10.0, an external library will replace this.
  */
 public T reinterpretGet(T, S)(S[] source) pure @trusted {
 	T _reinterpretGet() pure @system {
@@ -172,6 +173,7 @@ public T reinterpretGet(T, S)(S[] source) pure @trusted {
 }
 /**
  * Safely converts the type of an array.
+ * NOTE: by 0.10.0, an external library will replace this.
  */
 public T[] reinterpretCast(T, S)(S[] source) pure @trusted {
 	T[] _reinterpretCast() pure @system {
@@ -184,6 +186,7 @@ public T[] reinterpretCast(T, S)(S[] source) pure @trusted {
 }
 /**
  * Safely converts a single instance into a bytestream.
+ * NOTE: by 0.10.0, an external library will replace this.
  */
 public T[] toStream(T = ubyte, S)(S source) pure @trusted {
 	T[] _toStream() pure @system {
@@ -193,4 +196,14 @@ public T[] toStream(T = ubyte, S)(S source) pure @trusted {
 		return _toStream();
 	else
 		throw new Exception("Reinterpretation error!");
+}
+/**
+ * Checks whether object `o` have implemented the given interface.
+ * Checks are done on the basis of name strings.
+ */
+public bool isInterface(string I)(Object o) pure @safe nothrow {
+	foreach(Interface i; o.classinfo.interfaces) {
+		if(i.classinfo.name == I) return true;
+	}
+	return false;
 }

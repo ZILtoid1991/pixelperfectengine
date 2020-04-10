@@ -73,7 +73,7 @@ public void INIT_CONCRETE(WindowHandler wh){
 	import std.stdio;
 	Fontset!Bitmap8Bit defaultFont = new Fontset!Bitmap8Bit(File("../system/OpenSans-reg-14.fnt"), "../system/");
 	Fontset!Bitmap8Bit fixedWidthFont = new Fontset!Bitmap8Bit(File("../system/scp-14-reg.fnt"), "../system/");
-
+	alias ChrFormat = CharacterFormattingInfo!Bitmap8Bit;
 	Bitmap8Bit[] ssOrigin = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE0.tga", 16, 16);
 	StyleSheet ss = new StyleSheet();
 	ss.setImage(ssOrigin[0],"closeButtonA");
@@ -96,6 +96,20 @@ public void INIT_CONCRETE(WindowHandler wh){
 	ss.setImage(ssOrigin[15],"rightArrowB");
 	ss.addFontset(defaultFont, "default");
 	ss.addFontset(fixedWidthFont, "fixedWidth");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.leftJustify, 0, 0),"default");
+	ss.duplicateChrFormatting("default", "windowHeader");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x10, FormattingFlags.leftJustify, 0, 0),"windowHeaderInactive");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.centerJustify, 0, 0),"defaultCJ");
+	ss.duplicateChrFormatting("defaultCJ", "button");
+	ss.duplicateChrFormatting("default", "textBox");
+	ss.duplicateChrFormatting("default", "label");
+	ss.duplicateChrFormatting("default", "checkBox");
+	ss.duplicateChrFormatting("default", "listBox");
+	ss.duplicateChrFormatting("default", "radioButton");
+	ss.duplicateChrFormatting("defaultCJ", "menuBar");
+	ss.duplicateChrFormatting("default", "popUpMenu");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x14, FormattingFlags.rightJustify, 0, 0),"popUpMenuSecondary");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.rightJustify, 0, 0),"defaultRJ");
 	wh.defaultStyle = ss;
 	Window.defaultStyle = ss;
 	WindowElement.styleSheet = ss;

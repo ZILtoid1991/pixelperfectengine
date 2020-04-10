@@ -2,9 +2,10 @@
 	"fileVersion": 1,
 	"versions": {
 		"bindbc-loader": "0.2.1",
-		"bindbc-sdl": "0.13.0",
+		"bindbc-sdl": "0.16.0",
 		"bitleveld": "0.1.0-alpha",
 		"bmfont": "0.1.0",
+		"collections-d": "0.1.0",
 		"cpublit": "0.4.0-alpha",
 		"derelict-fi": "2.0.3",
 		"derelict-sdl2": "2.1.4",
@@ -17,7 +18,7 @@
 		"sdlang-d": "0.10.5",
 		"std-experimental-xml": "0.1.7",
 		"stdx-allocator": "2.77.5",
-		"taggedalgebraic": "0.11.8",
+		"taggedalgebraic": "0.11.11",
 		"unit-threaded": "0.7.55",
 		"vfile": "0.1.2"
 	}

@@ -93,25 +93,24 @@ public class NewTileLayerDialog : Window {
 	private void checkTextBoxInput(Event ev){
 		import PixelPerfectEngine.system.etc : isInteger;
 		WindowElement we = cast(WindowElement)ev.sender;
-		if(!isInteger(we.getText)){
+		if(!isInteger(we.getText.text)){
 			parent.messageWindow("Input error!", "Not a numeric value!");
-
 			we.setText("0");
 		}
 	}
 	private void button_Create_onClick(Event ev){
 		try{
-			const int mX = to!int(textBox_MX.getText);
-			const int mY = to!int(textBox_MY.getText);
-			const int tX = to!int(textBox_TX.getText);
-			const int tY = to!int(textBox_TY.getText);
+			const int mX = to!int(textBox_MX.getText.text);
+			const int mY = to!int(textBox_MY.getText.text);
+			const int tX = to!int(textBox_TX.getText.text);
+			const int tY = to!int(textBox_TY.getText.text);
 			string mS;
-			if(textBox_MS.getText != "" && textBox_MS.getText != "none")
-				mS = toUTF8(textBox_MS.getText);
+			if(textBox_MS.getText.text != "" && textBox_MS.getText.text != "none")
+				mS = toUTF8(textBox_MS.getText.text);
 			string tS;
-			if(textBox_TS.getText != "" && textBox_TS.getText != "none")
-				tS = toUTF8(textBox_TS.getText);
-			dstring name = textBox_Name.getText;
+			if(textBox_TS.getText.text != "" && textBox_TS.getText.text != "none")
+				tS = toUTF8(textBox_TS.getText.text);
+			dstring name = textBox_Name.getText.text;
 			editor.newTileLayer(tX, tY, mX, mY, name, mS, tS, checkBox_embed.value);
 		}catch(Exception e){
 			parent.messageWindow("Error!", "Cannot parse data!");

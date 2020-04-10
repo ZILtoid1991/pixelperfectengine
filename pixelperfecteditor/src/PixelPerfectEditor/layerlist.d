@@ -19,7 +19,7 @@ public class LayerList : Window {
 		//StyleSheet ss = getStyleSheet();
 		listBox_layers = new ListBox("listBox0", Coordinate(1, 17, 129, 180), [], new ListBoxHeader(["Pri"d ,"Type"d, "Name"d],
 				[24, 24, 96]));
-		addElement(listBox_layers, EventProperties.MOUSE);
+		addElement(listBox_layers);
 		{
 			SmallButton sb = new SmallButton("trashButtonB", "trashButtonA", "trash", Coordinate(113, 196, 129, 212));
 			sb.onMouseLClickRel = &button_trash_onClick;
@@ -71,7 +71,7 @@ public class LayerList : Window {
 			buttons ~= sb;
 		}
 		foreach(sb ; buttons){
-			addElement(sb, EventProperties.MOUSE);
+			addElement(sb);
 		}
 		//CheckBox_Visible = new CheckBox("Visible"d, "CheckBox0", Coordinate(1, 180, 97, 196));
 	}

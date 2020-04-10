@@ -10,7 +10,7 @@ import PixelPerfectEngine.system.advBitArray;
 
 import PixelPerfectEngine.graphics.common;
 import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.system.binarySearchTree;
+//import PixelPerfectEngine.system.binarySearchTree;
 import PixelPerfectEngine.collision;
 import PixelPerfectEngine.collision.boxCollision;
 

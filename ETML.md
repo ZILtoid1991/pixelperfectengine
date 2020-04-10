@@ -17,6 +17,10 @@ Note: `u` and `s` (and `o`) can be formatted with attributes
 * `lines` (possible values: `normal`, `dotted`, `wavy`, `wavySoft`, `stripes`),
 * and `perWord` (possible values: `true`, `false`).
 
+Note: `p` can be formatted with attributes
+* `paragraphSpace` (numeric values)
+* `rowHeight` (numeric values)
+
 ## Tags special to ETML
 
 * `<o></o>`
@@ -38,3 +42,7 @@ Inserts a tabulator at the given position.
 * `</ image src="jeffrey">`
 
 Inserts an image at the current position.
+
+* `<text id="64"></text>`
+
+Used for containing multiple textchunks in a single file.

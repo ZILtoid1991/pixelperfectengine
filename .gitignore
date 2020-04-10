@@ -9,6 +9,7 @@ __dummy.html
 *.pdb
 *.old
 system/
+lang/
 pixelperfecteditor/bin/
 pixelperfectengine/lib/
 test.*
