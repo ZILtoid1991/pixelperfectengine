@@ -55,6 +55,7 @@ public class StyleSheet{
 	protected Bitmap8Bit[string]					images;		///For icons, pattern fills, etc...
 	public int[string]							drawParameters;		///Draw parameters are used for border thickness, padding, etc...
 	public string[string]						fontTypes;	///Font type descriptions for various kind of components. WILL BE DEPRECATED!
+	
 	/**
 	 * Creates a default stylesheet.
 	 */
@@ -81,11 +82,14 @@ public class StyleSheet{
 		color["white"] = 0x0001;
 		color["PopUpMenuSecondaryTextColor"] = 0x001B;
 		color["MenuBarSeparatorColor"] = 0x001F;
+		color["PanelBorder"] = 0x0004;
 
 		drawParameters["PopUpMenuHorizPadding"] = 4;
 		drawParameters["PopUpMenuVertPadding"] = 1;
 		drawParameters["PopUpMenuMinTextSpace"] = 8;
 		drawParameters["ButtonPaddingHoriz"] = 8;
+		drawParameters["PanelTitleFirstCharOffset"] = 16;
+		drawParameters["PanelPadding"] = 4;
 
 		drawParameters["MenuBarHorizPadding"] = 4;
 		drawParameters["MenuBarVertPadding"] = 2;

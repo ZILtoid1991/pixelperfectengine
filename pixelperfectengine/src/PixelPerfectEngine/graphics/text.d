@@ -166,7 +166,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Returns the used font type
 	 */
 	public Fontset!BitmapType font() @safe @nogc pure nothrow {
-		return formatting.fontType;
+		return formatting.font;
 	}
 }
 alias Text = TextTempl!Bitmap8Bit;

@@ -108,6 +108,7 @@ public void INIT_CONCRETE(WindowHandler wh){
 	ss.duplicateChrFormatting("default", "radioButton");
 	ss.duplicateChrFormatting("defaultCJ", "menuBar");
 	ss.duplicateChrFormatting("default", "popUpMenu");
+	ss.duplicateChrFormatting("default", "panel");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x14, FormattingFlags.rightJustify, 0, 0),"popUpMenuSecondary");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.rightJustify, 0, 0),"defaultRJ");
 	wh.defaultStyle = ss;

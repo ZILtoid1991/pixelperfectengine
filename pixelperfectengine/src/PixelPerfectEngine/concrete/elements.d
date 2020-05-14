@@ -16,7 +16,15 @@ import std.algorithm;
 import std.stdio;
 import std.conv;
 import PixelPerfectEngine.concrete.stylesheet;
-
+import collections.linkedlist;
+/**
+ * Definies values about whether a WindowElement is enabled or not.
+ */
+public enum ElementState : ubyte {
+	Enabled				=	0,	///Means the element is enabled.
+	DisabledWOGray		=	1,	///Disabled without grayout, should be only used by elements contained within
+	Disabled			=	2,	///Means the element is disabled
+}
 /**
  * All Window elements inherit from this class. Provides basic interfacing with containers.
  */
@@ -31,7 +39,7 @@ abstract class WindowElement{
 	///Points to the container for two-way communication
 	public ElementContainer elementContainer;
 	public StyleSheet customStyle;
-	protected bool _enabled;
+	protected ElementState _state;
 
 	public static InputHandler inputHandler;	///Common input handler, must be set upon program initialization
 	public static PopUpHandler popUpHandler;	///Common pop-up handler
@@ -119,14 +127,14 @@ abstract class WindowElement{
 	/**
 	 * Returns whether the element is enabled or not.
 	 */
-	public @property bool enabled() @nogc @safe const pure nothrow {
-		return enabled;
+	public @property ElementState state() @nogc @safe const pure nothrow {
+		return _state;
 	}
 	/**
 	 * Sets whether the element is enabled or not.
 	 */
-	public @property bool enabled(bool _enabled) @nogc @safe pure nothrow {
-		return this._enabled = _enabled;
+	public @property ElementState state(ElementState _state) @nogc @safe pure nothrow {
+		return this._state = _state;
 	}
 	/**
 	 * Returns the source string.
@@ -145,13 +153,9 @@ public class Button : WindowElement {
 	}
 	public this(Text text, string source, Coordinate coordinates) {
 		position = coordinates;
-		//sizeX = coordinates.width();
-		//sizeY = coordinates.height();
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(coordinates.width, coordinates.height);
-		//brushPressed = 1;
-		//draw();
 	}
 	public override void draw() {
 		if(output.output.width != position.width || output.output.height != position.height)
@@ -235,11 +239,11 @@ public class Button : WindowElement {
 	}
 }
 
-public class SmallButton : WindowElement{
-	public string iconPressed, iconUnpressed;
-	private bool isPressed;
-	public bool enableRightButtonClick;
-	public bool enableMiddleButtonClick;
+public class SmallButton : WindowElement {
+	public string			iconPressed, iconUnpressed;
+	private bool			_isPressed;
+	//protected IRadioButtonGroup		radioButtonGroup;	//If set, the element works like a radio button
+
 	//public int brushPressed, brushNormal;
 
 	public this(string iconPressed, string iconUnpressed, string source, Coordinate coordinates){
@@ -255,7 +259,7 @@ public class SmallButton : WindowElement{
 	}
 	public override void draw(){
 		output.drawFilledRectangle(0, position.width()-1, 0,position.height()-1, 0);
-		if(isPressed){
+		if(_isPressed){
 			output.insertBitmap(0,0,getAvailableStyleSheet().getImage(iconPressed));
 		}else{
 			output.insertBitmap(0,0,getAvailableStyleSheet().getImage(iconUnpressed));
@@ -266,57 +270,48 @@ public class SmallButton : WindowElement{
 		}
 	}
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
-		if(button == MouseButton.RIGHT && enableRightButtonClick){
-			if(state == ButtonState.PRESSED){
-				isPressed = true;
-				draw();
-				//invokeActionEvent(EventType.CLICK, -1);
-				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				isPressed = false;
-				draw();
-				//invokeActionEvent(EventType.CLICK, 0);
-				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else if(button == MouseButton.MID && enableMiddleButtonClick){
-			if(state == ButtonState.PRESSED){
-				isPressed = true;
-				draw();
-				//invokeActionEvent(EventType.CLICK, -1);
-				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				isPressed = false;
-				draw();
-				//invokeActionEvent(EventType.CLICK, 0);
-				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
+		if(state == ButtonState.PRESSED){
+			switch(button){
+				case MouseButton.LEFT:
+					_isPressed = true;
+					draw();
+					if(onMouseLClickPre !is null)
+						onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				case MouseButton.RIGHT:
+					if(onMouseRClickPre !is null)
+						onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				case MouseButton.MID:
+					if(onMouseMClickPre !is null)
+						onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				default: break;
 			}
 		}else{
-			if(state == ButtonState.PRESSED){
-				isPressed = true;
-				draw();
-				//invokeActionEvent(EventType.CLICK, -1);
-				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				isPressed = false;
-				draw();
-				//invokeActionEvent(EventType.CLICK, 0);
-				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
+			switch(button){
+				case MouseButton.LEFT:
+					_isPressed = false;
+					draw();
+					if(onMouseLClickRel !is null)
+						onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				case MouseButton.RIGHT:
+					if(onMouseRClickRel !is null)
+						onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				case MouseButton.MID:
+					if(onMouseMClickRel !is null)
+						onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				default: break;
 			}
 		}
+		
 
 	}
+	
+	
 }
 
 public class Label : WindowElement {
@@ -457,7 +452,7 @@ public class TextBox : WindowElement, TextInputListener{
 		Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2) ,
 				position.width,position.height - textPadding);
 		
-		const int y = text.font.getSize;
+		const int y = text.font.size;
 		//if(x > textPos.width ) xOffset = horizTextOffset;
 		//draw cursor
 		if(enableEdit) {
@@ -956,7 +951,7 @@ public class NewListBoxItem {
 /**
  * A simple toggle button.
  */
-public class CheckBox : WindowElement{
+public class CheckBox : WindowElement, ICheckBox{
 	protected bool		checked;
 	public string		iconChecked = "checkBoxB";		///Sets the icon for checked positions
 	public string		iconUnchecked = "checkBoxA";	///Sets the icon for unchecked positions
@@ -999,11 +994,6 @@ public class CheckBox : WindowElement{
 	}
 
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
-		/*if(state == ButtonState.PRESSED && button == MouseButton.LEFT){
-			checked = !checked;
-			draw();
-			invokeActionEvent(EventType.CHECKBOX, checked);
-		}*/
 		if(button == MouseButton.RIGHT){
 			if(state == ButtonState.PRESSED){
 				if(onMouseRClickPre !is null){
@@ -1043,44 +1033,133 @@ public class CheckBox : WindowElement{
 	}
 	/**
 	 * Returns the current value (whether it's checked or not) as a boolean.
+	 * DEPRECATED!
 	 */
 	public @nogc @property bool value(){
 		return checked;
 	}
 	/**
 	 * Sets the new value (whether it's checked or not) as a boolean.
+	 * DEPRECATED!
 	 */
 	public @property bool value(bool b){
 		checked = b;
 		draw();
 		return checked;
 	}
+	
+	public @property bool isChecked() @safe pure @nogc nothrow const {
+		return checked;
+	}
+	
+	public bool check() @trusted {
+		checked = true;
+		draw();
+		return checked;
+	}
+	
+	public bool unCheck() @trusted {
+		checked = false;
+		draw();
+		return checked;
+	}
+	
 }
 /**
  * Implements a single radio button.
  * Needs to be grouped to used.
+ * Equality is checked by comparing `source`, so give each RadioButton a different source value.
  */
-public class NewRadioButton : WindowElement, IRadioButton {
-	protected IRadioButtonGroup			group;		///The group which this object belongs to.
-	protected bool						_state;		///The state of the RadioButton
-	public string		iconLatched = "radioButtonB";		///Sets the icon for latched positions
-	public string		iconUnlatched = "radioButtonA";	///Sets the icon for unlatched positions
-
+public class RadioButton : WindowElement, IRadioButton {
+	protected IRadioButtonGroup		group;		///The group which this object belongs to.
+	protected bool					_isLatched;		///The state of the RadioButton
+	public string					iconLatched = "radioButtonB";		///Sets the icon for latched positions
+	public string					iconUnlatched = "radioButtonA";	///Sets the icon for unlatched positions
+	public this(Text text, string source, Coordinate coordinates, IRadioButtonGroup group = null) {
+		position = coordinates;
+		this.text = text;
+		this.source = source;
+		output = new BitmapDrawer(position.width, position.height);
+		this.group = group;
+		//draw();
+	}
+	///Ditto
+	public this(dstring text, string source, Coordinate coordinates, IRadioButtonGroup group = null) {
+		this(new Text(text, getAvailableStyleSheet().getChrFormatting("checkBox")), source, coordinates, group);
+	}
 	override public void draw() {
-		
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width, position.height);
+		output.drawRectangle(getAvailableStyleSheet().getImage(iconUnlatched).width, output.output.width - 1, 0,
+				output.output.height - 1, 0x0);
+		if(text) {
+			const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+			const Coordinate textPos = Coordinate(textPadding +	getAvailableStyleSheet().getImage(iconUnlatched).width,
+					(position.height / 2) - (text.font.size / 2), position.width, position.height - textPadding);
+			output.drawSingleLineText(textPos, text);
+		}
+		/+output.drawColorText(getAvailableStyleSheet().getImage("checkBoxA").width, 0, text,
+				getAvailableStyleSheet().getFontset("default"), getAvailableStyleSheet().getColor("normaltext"), 0);+/
+		if(_state) {
+			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconLatched));
+		} else {
+			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconUnlatched));
+		}
+		elementContainer.drawUpdate(this);
+		if(onDraw !is null) {
+			onDraw();
+		}
+	}
+	public override void onClick(int offsetX, int offsetY, int state, ubyte button) {
+		if(state == ButtonState.PRESSED){
+			switch(button){
+				case MouseButton.LEFT:
+					if(onMouseLClickPre !is null)
+						onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				case MouseButton.RIGHT:
+					if(onMouseRClickPre !is null)
+						onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				case MouseButton.MID:
+					if(onMouseMClickPre !is null)
+						onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				default: break;
+			}
+		}else{
+			switch(button){
+				case MouseButton.LEFT:
+					if(group !is null) {
+						group.latch(this);
+					}
+					if(onMouseLClickRel !is null)
+						onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				case MouseButton.RIGHT:
+					if(onMouseRClickRel !is null)
+						onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				case MouseButton.MID:
+					if(onMouseMClickRel !is null)
+						onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+					break;
+				default: break;
+			}
+		}
 	}
 	/**
 	 * If the radio button is pressed, then it sets to unpressed. Does nothing otherwise.
 	 */
 	public void latchOff() @trusted {
-		_state = false;
+		_isLatched = false;
 		draw();
 	}
 	/**
 	 * Sets the radio button into its pressed state.
 	 */
 	public void latchOn() @trusted {
-		_state = true;
+		_isLatched = true;
 		draw();
 	}
 	/**
@@ -1088,8 +1167,8 @@ public class NewRadioButton : WindowElement, IRadioButton {
 	 * True: Pressed.
 	 * False: Unpressed.
 	 */
-	public bool state() @safe @property const {
-		return _state;
+	public @property bool isLatched() @nogc @safe pure nothrow const {
+		return _isLatched;
 	}
 	/**
 	 * Sets the group of the radio button.
@@ -1098,13 +1177,55 @@ public class NewRadioButton : WindowElement, IRadioButton {
 		this.group = group;
 
 	}
-	
+	public bool equals(IRadioButton rhs) @safe pure @nogc nothrow const {
+		WindowElement we = cast(WindowElement)rhs;
+		return source == we.source;
+	}
+}
+/**
+ * Radio Button Group implementation.
+ * Can send events via it's delegates.
+ */
+public class RadioButtonGroup : IRadioButtonGroup {
+	alias RadioButtonSet = LinkedList!(IRadioButton, false, "a.equals(b)");
+	protected RadioButtonSet radioButtons;
+	/**
+	 * Creates a new group with some starting elements from a compatible range.
+	 */
+	public this(R)(R range) @safe {
+		foreach (key; range) {
+			radioButtons.put(key);
+		}
+	}
+	/**
+	 * Adds a new RadioButton to the group.
+	 */
+	public void add(IRadioButton rg) @safe {
+		radioButtons.put(rg);
+		rg.setGroup(this);
+	}
+	/**
+	 * Removes the given RadioButton from the group.
+	 */
+	public void remove(IRadioButton rg) @safe {
+		radioButtons.removeByElem(rg);
+		rg.setGroup(null);
+	}
+	/**
+	 * Latches the group.
+	 */
+	public void latch(IRadioButton sender) @safe {
+		foreach(elem; radioButtons) {
+			elem.latchOff;
+		}
+		sender.latchOn;
+	}
 }
 /**
  * Radio buttons, for selecting from multiple options.
  * DEPRECATED! USE CLASS `RadioButton` INSTEAD!
  */
-public class RadioButtonGroup : WindowElement {
+public deprecated class OldRadioButtonGroup : WindowElement {
 	public int iconChecked, iconUnchecked;
 	private int bposition, rowHeight, buttonpos;
 	public dstring[] options;
@@ -1455,9 +1576,57 @@ public class HSlider : Slider{
 
 }
 /**
+ * Panel for grouping elements.
+ * Does not directly handle elements, instead relies on blitter transparency. However, can handle
+ * the state of the elements.
+ */
+public class Panel : WindowElement {
+	///This element can optionally handle the state of others put onto it.
+	///Make sure this panel has higher priority than the others.
+	public WindowElement[] connectedElems;
+	/**
+	 * Default CTOR
+	 */
+	public this(Text text, string source, Coordinate coordinates) {
+		position = coordinates;
+		this.text = text;
+		this.source = source;
+		output = new BitmapDrawer(coordinates.width, coordinates.height);
+	}
+	///Ditto
+	public this(dstring text, string source, Coordinate position) {
+		this(new Text(text, getAvailableStyleSheet().getChrFormatting("panel")), source, position);
+	}
+	public override void draw() {
+		StyleSheet ss = getAvailableStyleSheet();
+		//Draw the title
+		output.drawSingleLineText(Coordinate(ss.drawParameters["PanelTitleFirstCharOffset"], 0,
+				position.width, text.font.size), text);
+		//Draw the borders
+		output.drawLine(ss.drawParameters["PanelPadding"], ss.drawParameters["PanelPadding"] + 
+				ss.drawParameters["PanelTitleFirstCharOffset"], ss.drawParameters["PanelPadding"], 
+				ss.drawParameters["PanelPadding"], ss.getColor("PanelBorder"));
+		output.drawLine(ss.drawParameters["PanelPadding"] + ss.drawParameters["PanelTitleFirstCharOffset"], 
+				position.width - ss.drawParameters["PanelPadding"], ss.drawParameters["PanelPadding"],
+				ss.drawParameters["PanelPadding"], ss.getColor("PanelBorder"));
+		output.drawLine(ss.drawParameters["PanelPadding"], position.width - ss.drawParameters["PanelPadding"], 
+				position.height - ss.drawParameters["PanelPadding"], position.height - ss.drawParameters["PanelPadding"], 
+				ss.getColor("PanelBorder"));
+		output.drawLine(ss.drawParameters["PanelPadding"], ss.drawParameters["PanelPadding"], 
+				ss.drawParameters["PanelPadding"], position.height - ss.drawParameters["PanelPadding"], 
+				ss.getColor("PanelBorder"));
+		output.drawLine(position.width - ss.drawParameters["PanelPadding"], position.width - ss.drawParameters["PanelPadding"], 
+				ss.drawParameters["PanelPadding"], position.height - ss.drawParameters["PanelPadding"], 
+				ss.getColor("PanelBorder"));
+		if(_state != ElementState.Enabled) {
+
+		}
+	}
+}
+/**
  * Menubar containing menus in a tree-like structure.
  */
-public class MenuBar : WindowElement{
+public class MenuBar : WindowElement {
 	private PopUpMenuElement[] menus;
 	//private wstring[] menuNames;
 	private int[] menuWidths;
@@ -1654,7 +1823,7 @@ public class PopUpMenu : PopUpElement{
 					width = newwidth;
 					//writeln(width);
 				}
-				height += ss.getFontset("default").getSize() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
+				height += e.text.font.size + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 			}
 			width += (ss.drawParameters["PopUpMenuHorizPadding"] * 2);
 			height += ss.drawParameters["PopUpMenuVertPadding"] * 2;
@@ -1677,19 +1846,19 @@ public class PopUpMenu : PopUpElement{
 						ss.getFontset("default"), ss.getColor("PopUpMenuSecondaryTextColor"), FontFormat.RightJustified);+/
 				//const int textLength = e.secondaryText.getWidth;
 				const Coordinate textPos = Coordinate(ss.drawParameters["PopUpMenuHorizPadding"], y,
-						position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.secondaryText.font.getSize());
+						position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.secondaryText.font.size);
 				output.drawSingleLineText(textPos, e.secondaryText);
 			}
 			/+output.drawColorText(ss.drawParameters["PopUpMenuHorizPadding"] + iconWidth, y, e.text, ss.getFontset("default"),
 					ss.getColor("normaltext"), 0);+/
 			//const int textLength = e.text.getWidth;
 			const Coordinate textPos = Coordinate(ss.drawParameters["PopUpMenuHorizPadding"], y,
-					position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.text.font.getSize());
+					position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.text.font.size);
 			output.drawSingleLineText(textPos, e.text);
 			if(e.getIcon() !is null){
 				output.insertBitmap(ss.drawParameters["PopUpMenuHorizPadding"], y, e.getIcon());
 			}
-			y += e.text.font.getSize() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
+			y += e.text.font.size + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 		}
 
 		//output.drawRectangle(1,1,height-1,width-1,ss.getColor("windowascent"));
@@ -1840,7 +2009,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 			onDraw();
 		}+/
 	}
-	private void deleteCharacter(int n){
+	private void deleteCharacter(size_t n){
 		text.removeChar(n);
 	}
 	public void textInputEvent(uint timestamp, uint windowID, dstring text){

@@ -12,6 +12,17 @@ public import PixelPerfectEngine.graphics.common;
 public import PixelPerfectEngine.graphics.text;
 
 /**
+ * Checkbox interface.
+ */
+public interface ICheckBox {
+	///Returns whether the object is checked.
+	public @property bool isChecked() @safe pure @nogc nothrow const;
+	///Sets the object to checked position and returns the new state.
+	public bool check() @trusted;
+	///Sets the object to unchecked position and returns the new state.
+	public bool unCheck() @trusted;
+}
+/**
  * Radio button interface. Can be used to implement radio button style behavior on almost any component that implements this interface.
  */
 public interface IRadioButton {
@@ -28,11 +39,14 @@ public interface IRadioButton {
 	 * True: Pressed.
 	 * False: Unpressed.
 	 */
-	public bool state() @safe @property const;
+	public bool isLatched() @safe @property const;
 	/**
 	 * Sets the group of the radio button.
 	 */
 	public void setGroup(IRadioButtonGroup group) @safe @property;
+
+	public bool equals(IRadioButton rhs) @safe pure @nogc nothrow const;
+	
 }
 /**
  * Implements the basis of a radio button group.

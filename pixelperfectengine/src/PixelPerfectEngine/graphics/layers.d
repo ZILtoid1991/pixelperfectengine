@@ -216,6 +216,11 @@ public class TileLayer : Layer, ITileLayer{
 				throw new TileFormatException("Bitmap format not supported!");
 			}
 		}
+		string toString() const {
+			import std.conv : to;
+			string result = to!string(cast(ushort)ID) ~ " ; " ~ to!string(pixelDataPtr) ~ " ; " ~ to!string(wordLength);
+			return result;
+		}
 	}
 	protected int tileX;	///Tile width
 	protected int tileY;	///Tile height
@@ -432,6 +437,11 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 			this.ID = ID;
 			this.tile = tile;
 			_systemWrapper;
+		}
+		string toString() const {
+			import std.conv : to;
+			string result = to!string(cast(ushort)ID) ~ " ; " ~ to!string(pixelSrc);
+			return result;
 		}
 	}
 	alias DisplayList = TreeMap!(wchar, DisplayListItem, true);

@@ -26,35 +26,35 @@ S intToHex(S = string)(int i, int format = 0) pure @safe{
 	S result;
 	do{
 		switch(i & 0x000F){
-			case 1: result ~='1'; break;
-			case 2: result ~='2'; break;
-			case 3: result ~='3'; break;
-			case 4: result ~='4'; break;
-			case 5: result ~='5'; break;
-			case 6: result ~='6'; break;
-			case 7: result ~='7'; break;
-			case 8: result ~='8'; break;
-			case 9: result ~='9'; break;
-			case 10: result ~='A'; break;
-			case 11: result ~='B'; break;
-			case 12: result ~='C'; break;
-			case 13: result ~='D'; break;
-			case 14: result ~='E'; break;
-			case 15: result ~='F'; break;
-			default: result ~='0'; break;
+			case 1: result = '1' ~ result; break;
+			case 2: result = '2' ~ result; break;
+			case 3: result = '3' ~ result; break;
+			case 4: result = '4' ~ result; break;
+			case 5: result = '5' ~ result; break;
+			case 6: result = '6' ~ result; break;
+			case 7: result = '7' ~ result; break;
+			case 8: result = '8' ~ result; break;
+			case 9: result = '9' ~ result; break;
+			case 10: result = 'A' ~ result; break;
+			case 11: result = 'B' ~ result; break;
+			case 12: result = 'C' ~ result; break;
+			case 13: result = 'D' ~ result; break;
+			case 14: result = 'E' ~ result; break;
+			case 15: result = 'F' ~ result; break;
+			default: result = '0' ~ result; break;
 		}
 		i = i >>> 4;
 	}while(i > 0);
 	if(result.length < format){
 		for(size_t j = result.length ; j < format ; j++){
-			result ~= '0';
+			result = '0' ~ result;
 		}
 	}
-	result = result.dup.reverse;
+	//result = result.dup.reverse;
 	return result;
 }
 ///Returns a octal string representation of the integer.
-string intToOct(int i, int format) pure @safe{
+/+string intToOct(int i, int format) pure @safe{
 	string result;
 	do{
 		switch(i & 0x0007){
@@ -76,7 +76,7 @@ string intToOct(int i, int format) pure @safe{
 	}
 	result = result.dup.reverse;
 	return result;
-}
+}+/
 ///Parses a hexadecimal int represented as a string.
 int parseHex(string s) pure @safe{
 

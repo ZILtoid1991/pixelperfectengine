@@ -406,7 +406,7 @@ public class DefaultDialog : Window{
 		
 		this.source = source;
 		int x1, x2, y1 = 20, y2 = getStyleSheet.drawParameters["TextSpacingTop"] + getStyleSheet.drawParameters["TextSpacingBottom"]
-								+ options[0].font().getSize();
+								+ options[0].font.size;
 		//Label msg = new Label(message[0], "null", Coordinate(5, 20, size.width()-5, 40));
 		//addElement(msg, EventProperties.MOUSE);
 
@@ -784,9 +784,9 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	 */
 	public void messageWindow(dstring title, dstring message, int width = 256){
 		StyleSheet ss = getStyleSheet();
-		dstring[] formattedMessage = ss.getFontset(ss.fontTypes["Label"]).breakTextIntoMultipleLines(message, width -
+		dstring[] formattedMessage = ss.getChrFormatting("label").font.breakTextIntoMultipleLines(message, width -
 				ss.drawParameters["WindowLeftPadding"] - ss.drawParameters["WindowRightPadding"]);
-		int height = cast(int)(formattedMessage.length * (ss.getFontset(ss.fontTypes["Label"]).getSize() +
+		int height = cast(int)(formattedMessage.length * (ss.getChrFormatting("label").font.size +
 				ss.drawParameters["TextSpacingTop"] + ss.drawParameters["TextSpacingBottom"]));
 		height += ss.drawParameters["WindowTopPadding"] + ss.drawParameters["WindowBottomPadding"] +
 				ss.drawParameters["ComponentHeight"];

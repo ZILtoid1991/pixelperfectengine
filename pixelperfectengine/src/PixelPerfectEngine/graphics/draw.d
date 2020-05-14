@@ -227,7 +227,7 @@ public class BitmapDrawer{
 		if(style & FontFormat.HorizCentered)
 			x = x - (length / 2);
 		if(style & FontFormat.VertCentered)
-			y -= fontset.getSize() / 2;
+			y -= fontset.size / 2;
 		foreach(dchar c ; text){
 			const Font.Char chinfo = fontset.chars(c);
 			const Coordinate letterSlice = Coordinate(chinfo.x, chinfo.y, chinfo.x + chinfo.width, chinfo.y + chinfo.height);
@@ -242,7 +242,7 @@ public class BitmapDrawer{
 		if(style & FontFormat.HorizCentered)
 			x = x - (length / 2);
 		if(style & FontFormat.VertCentered)
-			y -= fontset.getSize() / 2;
+			y -= fontset.size / 2;
 		if(style & FontFormat.RightJustified)
 			x -= length;
 		//int fontheight = fontset.getSize();
