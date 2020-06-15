@@ -9,7 +9,7 @@ module PixelPerfectEngine.graphics.text;
 public import PixelPerfectEngine.graphics.fontsets;
 public import PixelPerfectEngine.graphics.bitmap;
 
-import xml = std.xml;
+import xml = undead.xml;
 import std.utf : toUTF32, toUTF8;
 import std.conv : to;
 import std.algorithm : countUntil;
@@ -91,8 +91,8 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		void _removeChar() @safe pure {
 			if(pos == 0) {
 				text = text[1..$];
-			} else if(pos == text.length - 1) {
-				text = text[0..($ - 1)];
+			} else if(pos + 1 == text.length) {
+				if(text.length) text.length = text.length - 1;
 			} else {
 				text = text[0..pos] ~ text[(pos + 1)..$];
 			}
@@ -180,7 +180,7 @@ alias Text = TextTempl!Bitmap8Bit;
  * * <text> chunks are mandatory with ID.
  * * Currently line formatting (understrike, etc.) is not supported, and every line uses default formatting.
  */
-public class TextParser(BitmapType = Bitmap8Bit)
+public class TextParserTempl(BitmapType = Bitmap8Bit)
 		/+if((typeof(BitmapType) is Bitmap8Bit || typeof(BitmapType) is Bitmap16Bit ||
 		typeof(BitmapType) is Bitmap32Bit) && (typeof(StringType) is string || typeof(StringType) is dstring))+/ {
 	//private Text!BitmapType	 		current;	///Current element
@@ -384,9 +384,4 @@ public class XMLTextParsingException : Exception {
 	@nogc @safe pure nothrow this(string msg, Throwable nextInChain, string file = __FILE__, size_t line = __LINE__) {
 		super(msg, file, line, nextInChain);
 	}
-}
-
-unittest {
-	TextParser!Bitmap8Bit test;
-
 }

@@ -44,9 +44,17 @@ public interface IRadioButton {
 	 * Sets the group of the radio button.
 	 */
 	public void setGroup(IRadioButtonGroup group) @safe @property;
-
+	/**
+	 * Workaround the stupid issue of object.opEquals having to be `@system inpure throw`.
+	 * The @gc would be fine still.
+	 *
+	 * Hey DLang foundation! Don't be cowards and commit to some meaningful changes!
+	 */
 	public bool equals(IRadioButton rhs) @safe pure @nogc nothrow const;
-	
+	/**
+	 * Returns the assigned value of the radio button.
+	 */
+	public string value() @property @safe @nogc pure nothrow const;
 }
 /**
  * Implements the basis of a radio button group.

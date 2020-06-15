@@ -1,4 +1,6 @@
 module PixelPerfectEngine.concrete.eventChainSystem;
+
+import collections.linkedlist;
 /**
  * Defines an undoable event.
  */
@@ -11,31 +13,33 @@ public interface UndoableEvent{
  * Implements an undoable event list with automatic handling of undo/redo commands
  */
 public class UndoableStack{
-	public UndoableEvent[] events;
+	alias EventStack = LinkedList!(UndoableEvent);
+	protected EventStack events;
 	protected size_t currentPos, currentCap, maxLength;
 
 	public this(size_t maxElements) @safe pure nothrow{
 		maxLength = maxElements;
-		events.length = maxElements;
+		//events.length = maxElements;
 	}
 	/**
 	 * Adds an event to the top of the stack. If there are any undone events, they'll be lost. Bottom event is always lost.
 	 */
 	public void addToTop(UndoableEvent e){
-		events = e ~ events[currentPos..$-1];
-		events.length = maxLength;
+		while(currentPos) {
+			events.remove(0);
+			currentPos--;
+		}
+		events.insertAt(e, 0);
 		e.redo;
-		currentPos = 0;
+		while(events.length > maxLength) events.remove(maxLength);
 	}
 	/**
 	 * Undos top event.
 	 */
 	public void undo(){
 		if(currentPos < events.length){
-			if(events[currentPos]){
-				events[currentPos].undo;
-				currentPos++;
-			}
+			events[currentPos].undo;
+			currentPos++;
 		}
 	}
 	/**
@@ -43,10 +47,8 @@ public class UndoableStack{
 	 */
 	public void redo() {
 		if(currentPos >= 0){
-			if(events[currentPos]){
-				currentPos--;
-				events[currentPos].redo;
-			}
+			currentPos--;
+			events[currentPos].redo;
 		}
 	}
 	/**

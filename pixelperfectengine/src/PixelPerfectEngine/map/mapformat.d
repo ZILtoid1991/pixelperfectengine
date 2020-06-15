@@ -200,6 +200,12 @@ public class MapFormat {
 		return result;
 	}
 	/**
+	 * Alters a tile layer data.
+	 */
+	public void alterTileLayerInfo(T)(int layerNum, int dataNum, T value) @trusted {
+		layerData[layerNum].values[dataNum] = Value(value);
+	}
+	/**
 	 * Returns a selected tile layer's all tile's basic information.
 	 * Mainly used to display information in editors.
 	 */
@@ -320,8 +326,6 @@ public class MapFormat {
 		l.setRasterizer(getHorizontalResolution, getVerticalResolution);
 		layerData[pri] = new Tag(root, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), Value(mY)]);
 		new Tag(layerData[pri], null, "RenderingMode", [Value("Copy")]);
-		//root.add(layerData[pri]);
-		//new Tag(null, null, "priority", [Value(pri)]);
 	}
 	/**
 	 * Adds a new tag to a layer.
@@ -703,14 +707,6 @@ public struct LayerInfo {
 		else
 			return 0;
 	}
-	/+static int opCmp (LayerInfo lhs, LayerInfo rhs) pure @safe @nogc {
-		if (lhs.pri > rhs.pri)
-			return 1;
-		else if (lhs.pri < rhs.pri)
-			return -1;
-		else
-			return 0;
-	}+/
 	/**
 	 * Parses a string as a layer type
 	 */

@@ -247,7 +247,9 @@ public class InputHandler : TextInputHandler{
 				case SDL_TEXTINPUT:
 					if(tiEnable){
 						import std.utf : toUTF32;
-						tiSelect.textInputEvent(event.text.timestamp, event.text.windowID, toUTF32(event.text.text.idup));
+						import std.string : fromStringz;
+						dstring eventText = toUTF32(fromStringz(event.text.text.ptr));
+						tiSelect.textInputEvent(event.text.timestamp, event.text.windowID, eventText);
 					}
 					break;
 				case SDL_JOYBUTTONDOWN:

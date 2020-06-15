@@ -20,6 +20,7 @@ public class LayerList : Window {
 		listBox_layers = new ListBox("listBox0", Coordinate(1, 17, 129, 180), [], new ListBoxHeader(["Pri"d ,"Type"d, "Name"d],
 				[24, 24, 96]));
 		addElement(listBox_layers);
+		listBox_layers.onItemSelect = &listBox_layers_onItemSelect;
 		{
 			SmallButton sb = new SmallButton("trashButtonB", "trashButtonA", "trash", Coordinate(113, 196, 129, 212));
 			sb.onMouseLClickRel = &button_trash_onClick;
@@ -76,7 +77,11 @@ public class LayerList : Window {
 		//CheckBox_Visible = new CheckBox("Visible"d, "CheckBox0", Coordinate(1, 180, 97, 196));
 	}
 	private void listBox_layers_onItemSelect(Event ev){
-
+		if (prg.selDoc !is null) {
+			ListBoxItem lbi = cast(ListBoxItem)ev.aux;
+			const int selectedLayer = to!int(lbi.getText(0));
+			prg.selDoc.selectedLayer = selectedLayer;
+		}
 	}
 	private void button_trash_onClick(Event ev){
 

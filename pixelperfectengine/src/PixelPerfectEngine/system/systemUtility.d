@@ -98,7 +98,7 @@ public void INIT_CONCRETE(WindowHandler wh){
 	ss.addFontset(fixedWidthFont, "fixedWidth");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.leftJustify, 0, 0),"default");
 	ss.duplicateChrFormatting("default", "windowHeader");
-	ss.addChrFormatting(new ChrFormat(defaultFont, 0x10, FormattingFlags.leftJustify, 0, 0),"windowHeaderInactive");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x17, FormattingFlags.leftJustify, 0, 0),"windowHeaderInactive");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.centerJustify, 0, 0),"defaultCJ");
 	ss.duplicateChrFormatting("defaultCJ", "button");
 	ss.duplicateChrFormatting("default", "textBox");

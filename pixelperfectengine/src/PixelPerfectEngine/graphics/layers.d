@@ -30,18 +30,18 @@ version(LDC){
 	import inteli.emmintrin;
 }
 /// For generating a function out of a template
-@nogc void localBlt(uint* src, uint* dest, size_t length){
+@nogc pure nothrow void localBlt(uint* src, uint* dest, size_t length){
 	blitter!uint(src, dest, length);
 }
 /**
  * The basis of all layer classes, containing functions for rendering.
  */
 abstract class Layer {
-	protected @nogc void function(uint* src, uint* dest, size_t length) mainRenderingFunction;		///Used to implement changeable renderers for each layerd
-	protected @nogc void function(ushort* src, uint* dest, uint* palette, size_t length) mainColorLookupFunction;
+	protected @nogc pure nothrow void function(uint* src, uint* dest, size_t length) mainRenderingFunction;		///Used to implement changeable renderers for each layerd
+	protected @nogc pure nothrow void function(ushort* src, uint* dest, uint* palette, size_t length) mainColorLookupFunction;
 	//protected @nogc void function(uint* src, int length) mainHorizontalMirroringFunction;
-	protected @nogc void function(ubyte* src, uint* dest, uint* palette, size_t length) main8BitColorLookupFunction;
-	protected @nogc void function(ubyte* src, uint* dest, uint* palette, size_t length, int offset) 
+	protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length) main8BitColorLookupFunction;
+	protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length, int offset) 
 			main4BitColorLookupFunction;
 	protected LayerRenderingMode renderMode;
 
@@ -96,12 +96,12 @@ abstract class Layer {
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
 	///Standard algorithm for horizontal mirroring, used for tile mirroring
 	protected void flipHorizontal(T)(T[] target) @nogc pure nothrow {
-		sizediff_t j = target.length - 1;
-		for(sizediff_t i ; i < target.length>>1 ; i++){
+		//sizediff_t j = target.length - 1;
+		for(sizediff_t i, j = target.length-1 ; i < j ; i++, j--){
 			const T s = target[i];
 			target[i] = target[j];
 			target[j] = s;
-			j--;
+			//j--;
 		}
 	}
 }
@@ -115,7 +115,7 @@ public enum LayerType {
 	sprite,
 }
 /**
- * Sets the rendering mode of the TileLayer.
+ * Sets the rendering mode of the Layer.
  *
  * COPY is the fastest, but overrides any kind of transparency keying. It directly writes into the framebuffer. Should only be used for certain applications, like bottom layers.
  * BLITTER uses a custom BitBlT algorithm for the SSE2 instruction set. Automatically generates the copying mask depending on the alpha-value. Any alpha-value that's non-zero will cause a non-transparent pixel, and all zeros are completely transparent. Gradual transparency in not avaliable.
@@ -130,7 +130,7 @@ public enum LayerRenderingMode{
  * Tile interface, defines common functions.
  */
 public interface ITileLayer{
-	public MappingElement[] getMapping();
+	public MappingElement[] getMapping() @nogc @safe pure nothrow;
 	/// Reads the mapping element from the given area.
 	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow;
 	/// Writes the given element into the mapping at the given location.

@@ -71,7 +71,7 @@ public class StyleSheet{
 		color["WHAascent"] = 0x0007;
 		color["WHAdescent"] = 0x0008;
 		color["WHTextActive"] = 0x001F;
-		color["WHTextInactive"] = 0x0010;
+		color["WHTextInactive"] = 0x0017;
 		color["WHAtop"] = 0x0009;
 		color["blue"] = 0x000A;
 		color["darkblue"] = 0x000B;

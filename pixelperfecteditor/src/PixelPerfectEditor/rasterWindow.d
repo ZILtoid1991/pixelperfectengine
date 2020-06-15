@@ -112,7 +112,7 @@ public class RasterWindow : Window, PaletteContainer {
 					paletteLocal.ptr);
 		}
 		for (int i = 16 ; i < trueOutput.height - 1 ; i++) {
-			helperFunc(trueOutput.getPtr + trueOutput.width * i, trueOutput.width);
+			helperFunc(trueOutput.getPtr + 1 + trueOutput.width * i, trueOutput.width - 2);
 		}
 	}
 	/**

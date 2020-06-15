@@ -527,13 +527,13 @@ public class TextBox : WindowElement, TextInputListener{
 				break;
 			case TextInputKey.BACKSPACE:
 				if(pos > 0){
-					deleteCharacter(pos);
+					deleteCharacter(pos - 1);
 					pos--;
 					draw();
 				}
 				break;
 			case TextInputKey.DELETE:
-				deleteCharacter(pos + 1);
+				deleteCharacter(pos);
 				draw();
 				break;
 			case TextInputKey.CURSORLEFT:
@@ -1080,12 +1080,18 @@ public class RadioButton : WindowElement, IRadioButton {
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(position.width, position.height);
-		this.group = group;
-		//draw();
+		group.add(this);
 	}
 	///Ditto
 	public this(dstring text, string source, Coordinate coordinates, IRadioButtonGroup group = null) {
 		this(new Text(text, getAvailableStyleSheet().getChrFormatting("checkBox")), source, coordinates, group);
+	}
+	///Ditto
+	public this(string source, Coordinate coordinates, IRadioButtonGroup group = null) {
+		position = coordinates;
+		this.source = source;
+		output = new BitmapDrawer(position.width, position.height);
+		group.add(this);
 	}
 	override public void draw() {
 		if(output.output.width != position.width || output.output.height != position.height)
@@ -1100,7 +1106,7 @@ public class RadioButton : WindowElement, IRadioButton {
 		}
 		/+output.drawColorText(getAvailableStyleSheet().getImage("checkBoxA").width, 0, text,
 				getAvailableStyleSheet().getFontset("default"), getAvailableStyleSheet().getColor("normaltext"), 0);+/
-		if(_state) {
+		if(_isLatched) {
 			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconLatched));
 		} else {
 			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconUnlatched));
@@ -1114,6 +1120,9 @@ public class RadioButton : WindowElement, IRadioButton {
 		if(state == ButtonState.PRESSED){
 			switch(button){
 				case MouseButton.LEFT:
+					if(group !is null) {
+						group.latch(this);
+					}
 					if(onMouseLClickPre !is null)
 						onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 					break;
@@ -1130,9 +1139,6 @@ public class RadioButton : WindowElement, IRadioButton {
 		}else{
 			switch(button){
 				case MouseButton.LEFT:
-					if(group !is null) {
-						group.latch(this);
-					}
 					if(onMouseLClickRel !is null)
 						onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
 					break;
@@ -1152,15 +1158,19 @@ public class RadioButton : WindowElement, IRadioButton {
 	 * If the radio button is pressed, then it sets to unpressed. Does nothing otherwise.
 	 */
 	public void latchOff() @trusted {
-		_isLatched = false;
-		draw();
+		if(_isLatched) {
+			_isLatched = false;
+			draw();
+		}
 	}
 	/**
 	 * Sets the radio button into its pressed state.
 	 */
 	public void latchOn() @trusted {
-		_isLatched = true;
-		draw();
+		if(!_isLatched) {
+			_isLatched = true;
+			draw();
+		}
 	}
 	/**
 	 * Returns the current state of the radio button.
@@ -1175,11 +1185,13 @@ public class RadioButton : WindowElement, IRadioButton {
 	 */
 	public void setGroup(IRadioButtonGroup group) @safe @property {
 		this.group = group;
-
 	}
 	public bool equals(IRadioButton rhs) @safe pure @nogc nothrow const {
 		WindowElement we = cast(WindowElement)rhs;
 		return source == we.source;
+	}
+	public string value() @property @safe @nogc pure nothrow const {
+		return source;
 	}
 }
 /**
@@ -1189,6 +1201,12 @@ public class RadioButton : WindowElement, IRadioButton {
 public class RadioButtonGroup : IRadioButtonGroup {
 	alias RadioButtonSet = LinkedList!(IRadioButton, false, "a.equals(b)");
 	protected RadioButtonSet radioButtons;
+	protected IRadioButton latchedButton;
+	protected size_t _value;
+	///Empty ctor
+	public this() @safe pure nothrow @nogc {
+		
+	}
 	/**
 	 * Creates a new group with some starting elements from a compatible range.
 	 */
@@ -1215,10 +1233,18 @@ public class RadioButtonGroup : IRadioButtonGroup {
 	 * Latches the group.
 	 */
 	public void latch(IRadioButton sender) @safe {
+		latchedButton = sender;
 		foreach(elem; radioButtons) {
 			elem.latchOff;
 		}
 		sender.latchOn;
+	}
+	/**
+	 * Returns the value of this group.
+	 */
+	public @property string value() const @nogc @safe pure nothrow {
+		if(latchedButton !is null) return latchedButton.value;
+		else return null;
 	}
 }
 /**
@@ -2172,7 +2198,7 @@ public class OldListBoxHeader{
 }
 /**
  * Defines an item in the row of a ListBox. Can be passed through the Event class
- * DEPRECATED! WILL BE REMOVED SOON!
+ * DEPRECATED! WILL BE REMOVED by v0.11.0!
  */
 public class OldListBoxItem {
 	private dstring[] text;

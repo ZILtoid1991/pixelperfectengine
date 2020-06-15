@@ -42,11 +42,8 @@ import newTileLayer;
 public interface IEditor{
 	public void onExit();
 	public void newDocument();
-	//public void newLayer();
-	public void xmpToolkit();
 	public void passActionEvent(Event e);
 	public void createNewDocument(dstring name, int rX, int rY);
-	//public void createNewLayer(string name, int type, int tX, int tY, int mX, int mY, int priority);
 }
 
 public class NewDocumentDialog : Window{
@@ -166,11 +163,12 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 
 		menuElements ~= new PopUpMenuElement("layers", mt("LAYERS"));
 
-		menuElements[3].setLength(4);
+		menuElements[3].setLength(5);
 		menuElements[3][0] = new PopUpMenuElement("newLayer", pt("New layer"));
 		menuElements[3][1] = new PopUpMenuElement("delLayer", pt("Delete layer"));
 		menuElements[3][2] = new PopUpMenuElement("impLayer", pt("Import layer"));
 		menuElements[3][3] = new PopUpMenuElement("layerSrc", pt("Layer resources"));
+		menuElements[3][4] = new PopUpMenuElement("resizeLayer", pt("Resize layer"));
 
 		menuElements ~= new PopUpMenuElement("tools", mt("TOOLS"));
 
@@ -226,8 +224,6 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 			case "new":
 				ie.newDocument;
 				break;
-			case "xmpTool":
-				break;
 			case "about":
 				Window w = new AboutWindow();
 				addWindow(w);
@@ -235,12 +231,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 				break;
 			case "layerList":
 				openLayerList;
-					//addWindow(new LayerList(848 - 98, 16, &onLayerListClose));
-				//layerList = true;
 				break;
 			case "materialList":
 				openMaterialList;
-				//materialList = true;
 				break;
 			default:
 				ie.passActionEvent(event);
@@ -334,8 +327,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			case "scrollRight":
 				break;
 			case "quit":
-				break;
-			case "xmpTool":
+				onExit;
 				break;
 			case "load":
 				onLoad;
@@ -369,12 +361,14 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				onLoad();
 				break;
 			case "newLayer":
-				//NewLayerDialog nld = new NewLayerDialog(this);
-				//wh.addWindow(nld);
+				initNewTileLayer();
 				break;
 			case "layerTools":
 				//TileLayerEditor tle = new TileLayerEditor(this);
 				//wh.addWindow(tle);
+				break;
+			case "resizeLayer":
+				initResizeLayer();
 				break;
 			case "undo":
 				onUndo();
@@ -471,8 +465,11 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void onQuit(){onExit();}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
-	public void xmpToolkit(){
-		//wh.addWindow(new ConverterDialog(input,bitmapPreview));
+	public void initResizeLayer() {
+		import resizeMap;
+		if (selDoc !is null) {
+			wh.addWindow(new ResizeMap(selDoc));
+		}
 	}
 	
 	public this(string[] args){

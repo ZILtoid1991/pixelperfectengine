@@ -257,3 +257,61 @@ public class CreateTileLayerEvent : UndoableEvent {
 		target.updateMaterialList();
 	}
 }
+public class ResizeTileMapEvent : UndoableEvent {
+	MappingElement[] backup, destMap;
+	int mX, mY, offsetX, offsetY, newX, newY;
+	MapDocument targetDoc;
+	int layer;
+	bool patternRepeat;
+	this(int[6] params, MapDocument targetDoc, int layer, bool patternRepeat) {
+		mX = params[0];
+		mY = params[1];
+		offsetX = params[2];
+		offsetY = params[3];
+		newX = params[4];
+		newY = params[5];
+		this.targetDoc = targetDoc;
+		this.layer = layer;
+		this.patternRepeat = patternRepeat;
+	}
+	public void redo() {
+		//backup current layer data
+		ITileLayer targetLayer = cast(ITileLayer)targetDoc.mainDoc.layeroutput[layer];
+		backup = targetLayer.getMapping();
+		destMap.length = newX * newY;
+		//writeln(destMap.length);
+		if(patternRepeat) {
+			int sX = offsetX % mX, sY = offsetY % mY;
+			for (int iY ; iY < newY ; iY++) {
+				for (int iX ; iX < newX ; iX++) {
+					destMap[iX + (iY * newX)] = backup[sX + (sY * mX)];
+					sX++;
+					if (sX >= mX) sX = 0;
+				}
+				sY++;
+				if (sY >= mY) sY = 0;
+			}
+		} else {
+			for (int iY ; iY < mY ; iY++) {
+				//Do a boundscheck, if falls outside of it do nothing. If inside, copy.
+				if (iY + offsetY < newY && iY + offsetY >= 0) {
+					for (int iX ; iX < mX ; iX++) {
+						//Do a boundscheck, if falls outside of it do nothing. If inside, copy.
+						if (iX + offsetX < newX && iX + offsetX >= 0) {
+							destMap[iX + offsetX + ((iY + offsetY) * newY)] = backup[iX + (iY * mY)];
+						} else if (iX + offsetX >= newX) break;
+					}
+				} else if (iY + offsetY >= newY) break;
+			}
+		}
+		targetLayer.loadMapping(newX, newY, destMap);
+		targetDoc.mainDoc.alterTileLayerInfo(layer, 4, newX);
+		targetDoc.mainDoc.alterTileLayerInfo(layer, 5, newY);
+	}
+	public void undo() {
+		ITileLayer targetLayer = cast(ITileLayer)targetDoc.mainDoc.layeroutput[layer];
+		targetLayer.loadMapping(mX, mY, backup);
+		targetDoc.mainDoc.alterTileLayerInfo(layer, 4, mX);
+		targetDoc.mainDoc.alterTileLayerInfo(layer, 5, mY);
+	}
+}
