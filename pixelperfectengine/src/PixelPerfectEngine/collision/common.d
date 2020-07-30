@@ -1,0 +1,76 @@
+module PixelPerfectEngine.collision.common;
+
+/*
+ * Copyright (C) 2015-2020, by Laszlo Szeremi under the Boost license.
+ *
+ * Pixel Perfect Engine, collision.common module.
+ */
+
+public import PixelPerfectEngine.graphics.common;
+public import PixelPerfectEngine.graphics.bitmap;
+public import PixelPerfectEngine.graphics.layers : MappingElement;
+import collections.treemap;
+
+/**
+ * Defines a shape for collision detection.
+ */
+public class CollisionShape {
+	Coordinate		position;	///Position of the shape in the 2D space.
+	Bitmap1bit		shape;		///The shape defined by a 1 bit bitmap. Null if custom shape isn't needed
+	int				id;			///Identifier number.
+	///default CTOR
+	public this(Coordinate position, Bitmap1bit shape, int id) @nogc @safe pure nothrow {
+		this.position = position;
+		this.shape = shape;
+		this.id = id;
+	}
+}
+alias ObjectMap = TreeMap!(int, CollisionShape);
+/**
+ * Contains information about an object collision event.
+ */
+public class ObjectCollisionEvent {
+	/**
+	 * Defines types of object collisions that can happen
+	 */
+	public enum Type : ubyte {
+		None,
+		BoxOverlap,
+		BoxEdge,
+		ShapeOverlap,
+	}
+	CollisionShape	a;			///The object that was tested against other objects
+	CollisionShape	b;			///The object that was found colliding with other objects
+	int				contextID;	///The context of the collision (e.g. tester ID)
+	Coordinate		overlap;	///Overlapping area of the collision
+	Type			type;		///Type of the object collision
+	///default CTOR
+	public this(CollisionShape a, CollisionShape b, int contextID, Coordinate overlap, Type type) 
+			@nogc @safe pure nothrow {
+		this.a = a;
+		this.b = b;
+		this.contextID = contextID;
+		this.overlap = overlap;
+		this.type = type;
+	}
+}
+/**
+ * Contains information about an object to TileLayer collision event.
+ * Custom Bitmap shapes won't be used.
+ */
+public class TileCollisionEvent {
+	/**
+	 * Defines individual tile collisions.
+	 */
+	public struct CollisionContext {
+		Coordinate			position;	///Position of the tile
+		MappingElement		data;		///Data of the mapping element read out from the layer
+	}
+	CollisionShape		a;			///Source object
+	int					contextID;	///The context of the collision (e.g. layer number)
+	CollisionContext[]	overlap;	///All overlapping collisions
+	CollisionContext[]	topEdge;	///Top edge collisions if any
+	CollisionContext[]	bottomEdge;	///Bottom edge collisions if any
+	CollisionContext[]	leftEdge;	///Left edge collisions if any
+	CollisionContext[]	rightEdge;	///Right edge collisions if any
+}

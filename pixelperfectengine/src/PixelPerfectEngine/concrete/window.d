@@ -185,6 +185,11 @@ public class Window : ElementContainer {
 		headerUpdate = true;
 		drawHeader();
 	}
+	public void setTitle(dstring s) @trusted {
+		title.text = s;
+		headerUpdate = true;
+		drawHeader();
+	}
 	public Text getTitle() @safe @nogc pure nothrow {
 		return title;
 	}

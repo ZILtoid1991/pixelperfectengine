@@ -28,7 +28,7 @@ public class PlacementEvent : UndoableEvent{
 	public void redo(){
 		try{
 			wserializer.addElement(type, name, element.position);
-			dwtarget.addElement(element, 0);
+			dwtarget.addElement(element);
 			editorTarget.elements[name] = element;
 		}catch(Exception e){
 			writeln(e);
@@ -60,7 +60,7 @@ public class DeleteEvent : UndoableEvent{
 	public void undo(){
 		try{
 			wserializer.addElement(backup);
-			dwtarget.addElement(element, 0);
+			dwtarget.addElement(element);
 			editorTarget.elements[name] = element;
 		}catch(Exception e){
 			writeln(e);
@@ -89,7 +89,7 @@ public class TextEditEvent : AttributeEditEvent{
 	private dstring oldText, newText;
 	public this(dstring newText, string targetName){
 		this.newText = newText;
-		this.oldText = editorTarget.elements[targetName].getText;
+		this.oldText = editorTarget.elements[targetName].getText.text;
 		super([Value(toUTF8(newText))], "text", targetName);
 	}
 	public override void redo(){
@@ -148,7 +148,7 @@ public class WindowRetitleEvent : WindowAttributeEditEvent{
 	public this(dstring title){
 		newTitle = title;
 		super("title", [Value(toUTF8(title))]);
-		oldTitle = dwtarget.getTitle();
+		oldTitle = dwtarget.getTitle().text;
 	}
 	public override void redo(){
 		dwtarget.setTitle(newTitle);

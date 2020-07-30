@@ -5,7 +5,7 @@ module PixelPerfectEngine.system.systemUtility;
  * Pixel Perfect Engine, system.systemUtility module
  */
 
-public immutable dstring engineVer = "0.9.4";	///Defines engine version
+public immutable dstring engineVer = "0.10.0";	///Defines engine version
 public immutable dstring sdlVer = "2.0.5";		///Defines SDL version
 version(X86){
 	public immutable dstring sysInfo = "x86";	///Defines what CPU architecture the software is being built for.
@@ -60,14 +60,14 @@ version(X86){
 
 	import PixelPerfectEngine.concrete.window;
 	import PixelPerfectEngine.system.file;
-	import PixelPerfectEngine.extbmp.extbmp;
+	//import PixelPerfectEngine.extbmp.extbmp;
 /**
  * Loads the defaults for Concrete.
  */
 public void INIT_CONCRETE(WindowHandler wh){
 	import PixelPerfectEngine.concrete.window;
 	import PixelPerfectEngine.system.file;
-	import PixelPerfectEngine.extbmp.extbmp;
+	//import PixelPerfectEngine.extbmp.extbmp;
 	import PixelPerfectEngine.graphics.fontsets;
 	import PixelPerfectEngine.graphics.bitmap;
 	import std.stdio;

@@ -8,6 +8,7 @@ module PixelPerfectEngine.system.advBitArray;
 import std.stdio;
 /**
 * Mainly intended for collision detection, can be used for other purposes too.
+* DEPRECATED! Poorly designed, so better preexisting solutions will replace it.
 */
 public class AdvancedBitArray{
 	private static const ubyte[8] maskData = [0b11111110,0b11111101,0b11111011,0b11110111,0b11101111,0b11011111,0b10111111,0b01111111];

@@ -193,7 +193,15 @@ public class TileLayer : Layer, ITileLayer{
 		//Color* palettePtr;		///points to the palette if present
 		wchar ID;				///ID, mainly as a padding to 32 bit alignment
 		ubyte wordLength;		///to avoid calling the more costly classinfo
-		ubyte reserved;		///currently unused
+		/**
+		 * Sets the maximum accessable color amount by the bitmap.
+		 * By default, for 4 bit bitmaps, it's 4, and it enables 256 * 16 color palettes.
+		 * This limitation is due to the way how the MappingElement struct works.
+		 * 8 bit bitmaps can assess the full 256 * 256 palette space.
+		 * Lower values can be described to avoid wasting palettes space in cases when the
+		 * bitmaps wouldn't use their full capability.
+		 */
+		ubyte paletteSh;		
 		///Default ctor
 		this(wchar ID, ABitmap tile) pure @safe{
 			//palettePtr = tile.getPalettePtr();
@@ -202,9 +210,11 @@ public class TileLayer : Layer, ITileLayer{
 			this.tile=tile;
 			if(typeid(tile) is typeid(Bitmap4Bit)){
 				wordLength = 4;
+				paletteSh = 4;
 				pixelDataPtr = (cast(Bitmap4Bit)(tile)).getPtr;
 			}else if(typeid(tile) is typeid(Bitmap8Bit)){
 				wordLength = 8;
+				paletteSh = 8;
 				pixelDataPtr = (cast(Bitmap8Bit)(tile)).getPtr;
 			}else if(typeid(tile) is typeid(Bitmap16Bit)){
 				wordLength = 16;
@@ -222,22 +232,34 @@ public class TileLayer : Layer, ITileLayer{
 			return result;
 		}
 	}
-	protected int tileX;	///Tile width
-	protected int tileY;	///Tile height
-	protected int mX;		///Map width
-	protected int mY;		///Map height
-	protected int totalX;	///Total width of the tilelayer in pixels
-	protected int totalY;	///Total height of the tilelayer in pixels
+	protected int			tileX;	///Tile width
+	protected int			tileY;	///Tile height
+	protected int			mX;		///Map width
+	protected int			mY;		///Map height
+	protected int			totalX;	///Total width of the tilelayer in pixels
+	protected int			totalY;	///Total height of the tilelayer in pixels
 	protected MappingElement[] mapping;///Contains the mapping data
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
-	protected Color[] src;		///Local buffer
+	protected Color[] 		src;		///Local buffer
 	alias DisplayList = TreeMap!(wchar, DisplayListItem, true);
 	protected DisplayList displayList;	///displaylist using a BST to allow skipping elements
-	protected bool warpMode;
+	/**
+	 * Enables the TileLayer to access other parts of the palette if needed.
+	 * Does not effect 16 bit bitmaps, but effects all 4 and 8 bit bitmap
+	 * within the layer, so use with caution to avoid memory leakages.
+	 */
+	public ushort			paletteOffset;
+	/**
+	 * If false, the content of the layer is shown only once.
+	 * If true, warping is enabled, and the content is shown as a repeating pattern.
+	 * There might be some artifacting at the zero point if the tile and map sizes aren't 
+	 * based on the power of two.
+	 */
+	public bool 			warpMode;
 	///Emulates horizontal blanking interrupt effects, like per-line scrolling.
 	///line no -1 indicates that no lines have been drawn yet.
-	public @nogc  void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;
+	public @nogc void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;
 	///Constructor. tX , tY : Set the size of the tiles on the layer.
 	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
 		tileX=tX;
@@ -246,7 +268,8 @@ public class TileLayer : Layer, ITileLayer{
 		src.length = tileX;
 	}
 	/// Warpmode: if enabled, the layer will be turned into an "infinite" mode.
-	public void setWarpMode(bool w){
+	/// DEPRECATED!!! WILL BE REMOVED FROM VERSION 0.11 ONWARDS!
+	public deprecated void setWarpMode(bool w){
 		warpMode = w;
 	}
 	///Gets the the ID of the given element from the mapping. x , y : Position.
@@ -337,8 +360,8 @@ public class TileLayer : Layer, ITileLayer{
 						final switch (tileInfo.wordLength) {
 							case 4:
 								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + (offsetX1 + (offsetY0 * tileX)>>>1);
-								main4BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + (currentTile.paletteSel<<4),
-										tileXLength, offsetX1 & 1);
+								main4BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + 
+										(currentTile.paletteSel<<tileInfo.paletteSh) + paletteOffset, tileXLength, offsetX1 & 1);
 								if(currentTile.attributes.horizMirror){//Horizontal mirroring
 									flipHorizontal(src);
 								}
@@ -346,8 +369,8 @@ public class TileLayer : Layer, ITileLayer{
 								break;
 							case 8:
 								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
-								main8BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + (currentTile.paletteSel<<8), 
-										tileXLength);
+								main8BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + 
+										(currentTile.paletteSel<<tileInfo.paletteSh) + paletteOffset, tileXLength);
 								if(currentTile.attributes.horizMirror){//Horizontal mirroring
 									flipHorizontal(src);
 								}
@@ -936,10 +959,19 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		int scaleVert;				/// Vertical scaling
 		int priority;				/// Used for automatic sorting and identification.
 		/**
-		 * Selects the palette of the sprite (Bitmap4Bit: 4096X16 color palettes; Bitmap8Bit: 256X256 color palettes)
+		 * Selects the palette of the sprite.
+		 * Amount of accessable color depends on the palette access shifting value. A value of 8 enables 
+		 * 256 * 256 color palettes, and a value of 4 enables 4096 * 16 color palettes.
+		 * `paletteSh` can be set lower than what the bitmap is capable of storing at its maximum, this
+		 * can enable the packing of more palettes within the main one, e.g. a `paletteSh` value of 7
+		 * means 512 * 128 color palettes, while the bitmaps are still stored in the 8 bit "chunky" mode
+		 * instead of 7 bit planar that would require way more processing power. However this doesn't 
+		 * limit the bitmap's ability to access 256 colors, and this can result in memory leakage if
+		 * the end developer isn't careful enough.
 		 */
 		ushort paletteSel;
 		ubyte wordLength;			/// Determines the word length of a sprite in a much quicker way than getting classinfo.
+		ubyte paletteSh;			/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
 		/**
 		 * Creates a display list item with palette selector.
 		 */
@@ -955,9 +987,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			slice = Coordinate(0,0,sprite.width,sprite.height);
 			if(typeid(sprite) is typeid(Bitmap4Bit)){
 				wordLength = 4;
+				paletteSh = 4;
 				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
 			}else if(typeid(sprite) is typeid(Bitmap8Bit)){
 				wordLength = 8;
+				paletteSh = 8;
 				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
 			}else if(typeid(sprite) is typeid(Bitmap16Bit)){
 				wordLength = 16;
@@ -990,9 +1024,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			this.slice = slice;
 			if(typeid(sprite) is typeid(Bitmap4Bit)){
 				wordLength = 4;
+				paletteSh = 4;
 				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
 			}else if(typeid(sprite) is typeid(Bitmap8Bit)){
 				wordLength = 8;
+				paletteSh = 8;
 				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
 			}else if(typeid(sprite) is typeid(Bitmap16Bit)){
 				wordLength = 16;
@@ -1082,21 +1118,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				&& (sprt.position.right > sX && sprt.position.bottom > sY && 
 				sprt.position.left < sX + rasterX && sprt.position.top < sY + rasterY)) {
 			displayedSprites.put(sprt.priority);
-			/+debug {
-				import std.stdio : writeln;
-				try {
-					writeln(displayedSprites.arrayOf);
-				} catch(Exception e) {}
-			}+/
 			return true;
 		} else {
 			displayedSprites.removeByElem(sprt.priority);
-			/+debug {
-				import std.stdio : writeln;
-				try {
-					writeln(displayedSprites.arrayOf);
-				} catch(Exception e) {}
-			}+/
 			return false;
 		}
 	}
@@ -1252,6 +1276,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		return allSprites[n].scaleVert;
 	}
 	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette){
+		/*
+		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack.
+		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches.
+		 */
 		foreach (priority ; displayedSprites) {
 		//foreach(i ; displayList){
 			DisplayListItem i = allSprites[priority];
@@ -1262,88 +1290,89 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			/+if((i.position.right > sX && i.position.bottom > sY) && (i.position.left < sX + rasterX && i.position.top < sY +
 					rasterY)){+/
 			//if((right > sX && left < sX + rasterX) && (bottom > sY && top < sY + rasterY) && i.slice.width && i.slice.height){
-				int offsetXA = sX > left ? sX - left : 0;//Left hand side offset, zero if not obscured
-				const int offsetXB = sX + rasterX < right ? right - rasterX : 0; //Right hand side offset, zero if not obscured
-				const int offsetYA = sY > top ? sY - top : 0;		//top offset of sprite, zero if not obscured
-				const int offsetYB = sY + rasterY < bottom ? bottom - rasterY : 0;	//bottom offset of sprite, zero if not obscured
-				//const int offsetYB0 = cast(int)scaleNearestLength(offsetYB, i.scaleVert);
-				const int sizeX = i.slice.width();		//total displayed width
-				const int offsetX = left - sX;
-				const int length = sizeX - offsetXA - offsetXB;
-				//int lengthY = i.slice.height - offsetYA - offsetYB;
-				//const int lfour = length * 4;
-				const int offsetY = sY < top ? (top-sY)*pitch : 0;	//used if top portion of the sprite is off-screen
-				//offset = i.scaleVert % 1024;
-				const int scaleVertAbs = i.scaleVert * (i.scaleVert < 0 ? -1 : 1);	//absolute value of vertical offset, used in various calculations
-				//int offset, prevOffset;
-				const int offsetAmount = scaleVertAbs <= 1024 ? 1024 : scaleVertAbs;	//used to limit the amount of re-rendering every line
-				//offset = offsetYA<<10;
-				const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));	//amount of skipped lines (I think) TODO: remove floating-point arithmetic
-				const int sizeXOffset = i.width * (i.scaleVert < 0 ? -1 : 1);
-				int prevOffset = offsetYA0 * offsetAmount;		//
-				int offset = offsetYA0 * scaleVertAbs;
-				const size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB); //determines offset based on mirroring
-				const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
-				void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-				switch(i.wordLength){
-					case 4:
-						ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
-						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-							horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<4), scalelength, offsetXA & 1,
-									i.scaleHoriz);
-							prevOffset += offsetAmount;
-							for(; offset < prevOffset; offset += scaleVertAbs){
-								y++;
-								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
-								dest += pitch;
-							}
-							p0 += sizeXOffset >>> 1;
+			int offsetXA = sX > left ? sX - left : 0;//Left hand side offset, zero if not obscured
+			const int offsetXB = sX + rasterX < right ? right - rasterX : 0; //Right hand side offset, zero if not obscured
+			const int offsetYA = sY > top ? sY - top : 0;		//top offset of sprite, zero if not obscured
+			const int offsetYB = sY + rasterY < bottom ? bottom - rasterY : 0;	//bottom offset of sprite, zero if not obscured
+			//const int offsetYB0 = cast(int)scaleNearestLength(offsetYB, i.scaleVert);
+			const int sizeX = i.slice.width();		//total displayed width
+			const int offsetX = left - sX;
+			const int length = sizeX - offsetXA - offsetXB;
+			//int lengthY = i.slice.height - offsetYA - offsetYB;
+			//const int lfour = length * 4;
+			const int offsetY = sY < top ? (top-sY)*pitch : 0;	//used if top portion of the sprite is off-screen
+			//offset = i.scaleVert % 1024;
+			const int scaleVertAbs = i.scaleVert * (i.scaleVert < 0 ? -1 : 1);	//absolute value of vertical scaling, used in various calculations
+			//int offset, prevOffset;
+			const int offsetAmount = scaleVertAbs <= 1024 ? 1024 : scaleVertAbs;	//used to limit the amount of re-rendering every line
+			//offset = offsetYA<<10;
+			const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));	//amount of skipped lines (I think) TODO: remove floating-point arithmetic
+			const int sizeXOffset = i.width * (i.scaleVert < 0 ? -1 : 1);
+			int prevOffset = offsetYA0 * offsetAmount;		//
+			int offset = offsetYA0 * scaleVertAbs;
+			const size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB); //determines offset based on mirroring
+			// HACK: as I couldn't figure out a better method yet I decided to scale a whole line, which has a lot of problems
+			const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
+			void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
+			switch(i.wordLength){
+				case 4:
+					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
+					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+						horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
+								i.scaleHoriz);
+						prevOffset += offsetAmount;
+						for(; offset < prevOffset; offset += scaleVertAbs){
+							y++;
+							mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+							dest += pitch;
 						}
-						//}
-						break;
-					case 8:
-						ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-							horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel<<8), scalelength, i.scaleHoriz);
-							prevOffset += 1024;
-							for(; offset < prevOffset; offset += scaleVertAbs){
-								y++;
-								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
-								dest += pitch;
-							}
-							p0 += sizeXOffset;
+						p0 += sizeXOffset >>> 1;
+					}
+					//}
+					break;
+				case 8:
+					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
+					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+						horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, i.scaleHoriz);
+						prevOffset += 1024;
+						for(; offset < prevOffset; offset += scaleVertAbs){
+							y++;
+							mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+							dest += pitch;
 						}
-						break;
-					case 16:
-						ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-							horizontalScaleNearestAndCLU(p0, src.ptr, palette, scalelength, i.scaleHoriz);
-							prevOffset += 1024;
-							for(; offset < prevOffset; offset += scaleVertAbs){
-								y++;
-								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
-								dest += pitch;
-							}
-							p0 += sizeXOffset;
+						p0 += sizeXOffset;
+					}
+					break;
+				case 16:
+					ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
+					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+						horizontalScaleNearestAndCLU(p0, src.ptr, palette, scalelength, i.scaleHoriz);
+						prevOffset += 1024;
+						for(; offset < prevOffset; offset += scaleVertAbs){
+							y++;
+							mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+							dest += pitch;
 						}
-						break;
-					case 32:
-						Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-						for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-							horizontalScaleNearest(p0, src.ptr, scalelength, i.scaleHoriz);
-							prevOffset += 1024;
-							for(; offset < prevOffset; offset += scaleVertAbs){
-								y++;
-								mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
-								dest += pitch;
-							}
-							p0 += sizeXOffset;
+						p0 += sizeXOffset;
+					}
+					break;
+				case 32:
+					Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
+					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+						horizontalScaleNearest(p0, src.ptr, scalelength, i.scaleHoriz);
+						prevOffset += 1024;
+						for(; offset < prevOffset; offset += scaleVertAbs){
+							y++;
+							mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+							dest += pitch;
 						}
-						//}
-						break;
-					default:
-						break;
-				}
+						p0 += sizeXOffset;
+					}
+					//}
+					break;
+				default:
+					break;
+			}
 
 			//}
 		}

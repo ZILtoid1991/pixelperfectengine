@@ -1,13 +1,15 @@
 /*
  * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
  *
- * Pixel Perfect Engine, graphics.bitmap module
+ * pixel Perfect Engine, graphics.bitmap module
  */
 
 module PixelPerfectEngine.graphics.bitmap;
 import std.bitmanip;
 import PixelPerfectEngine.system.exc;
-public import PixelPerfectEngine.system.advBitArray;
+import bitleveld.reinterpret;
+
+//public import pixelPerfectEngine.system.advBitArray;
 public import PixelPerfectEngine.graphics.common;
 
 /**
@@ -33,24 +35,20 @@ public struct BitmapAttrib{
  */
 abstract class ABitmap{
 	private Color* palettePtr;		///Set this to either a portion of the master palette or to a self-defined place. Not used in 32 bit bitmaps. DEPRECATED!
-    private int iX;
-    private int iY;
+    private int _width;
+    private int _height;
 	/**
 	 * Returns the width of the bitmap.
 	 */
 	public int width() pure @safe @property @nogc nothrow {
-		return iX;
+		return _width;
 	}
 	/**
 	 * Returns the height of the bitmap.
 	 */
 	public int height() pure @safe @property @nogc nothrow {
-		return iY;
+		return _height;
 	}
-	/**
-	 * Marked to replacement for 0.10.0
-	 */
-	abstract AdvancedBitArray generateStandardCollisionModel();
 	/**
 	 * Returns the palette pointer.
 	 */
@@ -75,18 +73,19 @@ abstract class ABitmap{
 }
 /*
  * S: Wordlength by usage. Possible values:
- * - b: bit (for collision shapes) (currently unimplemented)
+ * - b: bit (for collision shapes)
  * - QB: QuarterByte or 2Bit (currently unimplemented)
  * - HB: HalfByte or 4Bit
  * - B: Byte or 8Bit
  * - HW: HalfWord or 16Bit
  * - W: Word or 32Bit
  * T: Type. Possible values:
- * - bool: 1Bit (for collision shapes) (currently unimplemented)
+ * - size_t: used for bitarrays
  * - ubyte: 8Bit or under
  * - ushort: 16Bit
  * - Color: 32Bit
  */
+alias Bitmap1bit = Bitmap!("b",size_t);
 alias Bitmap4Bit = Bitmap!("HB",ubyte);
 alias Bitmap8Bit = Bitmap!("B",ubyte);
 alias Bitmap16Bit = Bitmap!("HW",ushort);
@@ -98,33 +97,70 @@ alias Bitmap32Bit = Bitmap!("W",Color);
  * Note for 4Bit bitmap: It's width needs to be an even number (for rendering simplicity), otherwise it'll cause an exception.
  */
 public class Bitmap(string S,T) : ABitmap {
-	T[] pixels;
-	static if(S != "HB" && S != "QB"){
+	static if (S == "b") { 
+		BitArray 			pixelAccess;
+		protected size_t 	pitch;	///Total length of a line in bits
+		bool				invertHoriz;	///Horizontal invertion for reading and writing
+		bool				invertVert;		///Vertical invertion for reading anr writing
+	}
+	T[] 					pixels;
+	static if(S != "HB" && S != "QB" && S != "b"){
+		/**
+		 * Unified CTOR to create empty bitmap.
+		 */
+		public this(int w, int h) @safe pure {
+			_width = w;
+			_height = h;
+			pixels.length = w * h;
+		}
+		/**
+		 * Unified CTOR tor create bitmap from preexisting data.
+		 */
+		public this(T[] src, int w, int h) @safe pure {
+			_width = w;
+			_height = h;
+			pixels = src;
+			if(pixels.length != w * h)
+				throw new BitmapFormatException("Bitmap size mismatch!");
+		}
 		/**
 		 * Resizes the bitmap.
 		 * NOTE: It's not for scaling.
 		 */
 		public void resize(int x, int y) @safe pure {
 			pixels.length=x*y;
-			iX = x;
-			iY = y;
+			_width = x;
+			_height = y;
 		}
 		///Returns the pixel at the given position.
 		@nogc public T readPixel(int x, int y) @safe pure {
-			return pixels[x+(iX*y)];
+			return pixels[x+(_width*y)];
 		}
 		///Writes the pixel at the given position.
 		@nogc public void writePixel(int x, int y, T color) @safe pure {
-			pixels[x+(iX*y)]=color;
+			pixels[x+(_width*y)]=color;
 		}
-	}
-	static if(S == "HB"){
+		/**
+		 * Returns a 2D slice (window) of the bitmap.
+		 */
+		public Bitmap!(S,T) window(int iX0, int iY0, int iX1, int iY1) @safe pure {
+			T[] workpad;
+			const size_t localWidth = (iX1 - iX0), localHeight = (iY1 - iY0);
+			workpad.length  = localWidth * localHeight;
+			for (int y ; y < localHeight ; y++) {
+				for (int x ; x < localWidth ; x++) {
+					workpad[x = (y * localWidth)] = pixels[iX0 + x + ((y + iY0) * _width)];
+				}
+			}
+			return new Bitmap!(S,T)(workpad, localWidth, localHeight);
+		}
+	} else static if(S == "HB"){
 		///Creates an empty bitmap. DEPRECATED!
 		this(int x, int y, Color* palettePtr) @safe pure {
 			if(x & 1)
 				x++;
-			iX=x;
-			iY=y;
+			_width=x;
+			_height=y;
 			pixels.length=(x*y)/2;
 			this.palettePtr = palettePtr;
 		}
@@ -132,8 +168,8 @@ public class Bitmap(string S,T) : ABitmap {
 		this(ubyte[] p, int x, int y, Color* palettePtr){
 			if (p.length/2 < x * y || x & 1)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX=x;
-			iY=y;
+			_width=x;
+			_height=y;
 			pixels=p;
 			this.palettePtr = palettePtr;
 		}
@@ -141,8 +177,8 @@ public class Bitmap(string S,T) : ABitmap {
 		this(int x, int y) @safe pure{
 			if(x & 1)
 				x++;
-			iX=x;
-			iY=y;
+			_width=x;
+			_height=y;
 			pixels.length=(x*y)/2;
 			//this.palettePtr = palettePtr;
 		}
@@ -150,110 +186,86 @@ public class Bitmap(string S,T) : ABitmap {
 		this(ubyte[] p, int x, int y) @safe pure{
 			if (p.length/2 < x * y || x & 1)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX=x;
-			iY=y;
+			_width=x;
+			_height=y;
 			pixels=p;
 			//this.palettePtr = palettePtr;
 		}
 		///Returns the pixel at the given position.
 		@nogc public ubyte readPixel(int x, int y) @safe pure{
 			if(x & 1)
-				return pixels[x>>1+(iX*y)] & 0x0F;
+				return pixels[x>>1+(_width*y)] & 0x0F;
 			else
-				return (pixels[x>>1+(iX*y)])>>4;
+				return (pixels[x>>1+(_width*y)])>>4;
 		}
 		///Writes the pixel at the given position.
-	    @nogc public void writePixel(int x, int y, ubyte color) @safe pure{
+	    @nogc public void writePixel(int x, int y, ubyte color) @safe pure {
 			if(x & 1){
-				pixels[x+(iX*y)]&= 0xF0;
-				pixels[x+(iX*y)]|= color;
+				pixels[x+(_width*y)]&= 0xF0;
+				pixels[x+(_width*y)]|= color;
 			}else{
-				pixels[x+(iX*y)]&= 0x0F;
-				pixels[x+(iX*y)]|= color<<4;
+				pixels[x+(_width*y)]&= 0x0F;
+				pixels[x+(_width*y)]|= color<<4;
 			}
 		}
+		
 		///Resizes the array behind the bitmap.
-		public void resize(int x,int y) @safe pure{
+		public void resize(int x,int y) @safe pure {
 			if(x & 1)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			pixels.length=x*y;
-			iX = x;
-			iY = y;
+			_width = x;
+			_height = y;
 		}
 
-	}else static if(S == "B"){
-		///Creates an empty bitmap. DEPRECATED!
-		this(int x, int y, Color* palettePtr){
-			if(x < 0 || y < 0)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX=x;
-			iY=y;
-			pixels.length=x*y;
-			this.palettePtr = palettePtr;
+	} else static if(S == "b") {
+		/**
+		 * CTOR for 1 bit bitmaps with no preexisting source.
+		 */
+		public this(int w, int h) @trusted pure {
+			_width = w;
+			_height = h;
+			pitch = w + (size_t.sizeof * 8 - (w % (size_t.sizeof * 8)));
+			pixels.length = pitch / (size_t.sizeof * 8);
+			pixelAccess = BitArray(pixels, pitch * height);
 		}
-		///Creates a bitmap from an array. DEPRECATED!
-		this(ubyte[] p, int x, int y, Color* palettePtr){
-			if (p.length < x * y)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX=x;
-			iY=y;
-			pixels=p;
-			this.palettePtr = palettePtr;
+		/**
+		 * CTOR to convert 8bit aligned bitmaps to 32/64bit ones.
+		 */
+		public this(ubyte[] src, int w, int h) @trusted pure {
+			_width = w;
+			_height = h;
+			pitch = w + (size_t.sizeof * 8 - (w % (size_t.sizeof * 8)));
+			const size_t pitch0 = w + (8 - (w % 8));
+			const size_t len = pitch / (size_t.sizeof * 8), len0 = pitch0 / 8;
+			for (size_t i ; i < len0 * h; i+= len0) {
+				ubyte[] workpad = src[i..i+len0];
+				workpad.length = len;
+				pixels ~= reinterpretCast!size_t(workpad);
+			}
+			pixelAccess = BitArray(pixels, pitch * height);
 		}
-		///Creates an empty bitmap.
-		this(int x, int y) @safe pure{
-			if(x < 0 || y < 0)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX=x;
-			iY=y;
-			pixels.length=x*y;
-			//this.palettePtr = palettePtr;
+		/**
+		 * CTOR for 1 bit bitmaps with a preexisting source.
+		 * Alignment and padding is for size_t (32 and 64 bit, on their respected systems)
+		 */
+		public this(size_t[] src, int w, int h) @trusted pure {
+			_width = w;
+			_height = h;
+			pitch = w + (size_t.sizeof * 8 - (w % (size_t.sizeof * 8)));
+			pixels = src;
+			pixelAccess = BitArray(pixels, pitch * height);
 		}
-		///Creates a bitmap from an array.
-		this(ubyte[] p, int x, int y) @safe pure{
-			if (p.length < x * y)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX=x;
-			iY=y;
-			pixels=p;
-			//this.palettePtr = palettePtr;
+		///Returns the pixel at the given position.
+		@nogc public bool readPixel(int x, int y) @trusted pure {
+			return pixelAccess[(invertHoriz ? _width - x : x) + ((invertVert ? _height - y : y) * pitch)];
 		}
-	}else static if(S == "HW"){
-		///Creates an empty bitmap.
-		this(int x, int y) @safe pure{
-			if(x < 0 || y < 0)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX=x;
-			iY=y;
-			pixels.length=x*y;
+		///Writes the pixel at the given position.
+	    @nogc public bool writePixel(int x, int y, bool val) @trusted pure {
+			return pixelAccess[(invertHoriz ? _width - x : x) + ((invertVert ? _height - y : y) * pitch)] = val;
 		}
-		///Creates a bitmap from an array.
-		this(ushort[] p, int x, int y) @safe pure{
-			if (p.length < x * y)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX=x;
-			iY=y;
-			pixels=p;
-		}
-	}else static if(S == "W"){
-		///Creates an empty bitmap.
-		public this(int x, int y) @safe pure{
-			if(x < 0 || y < 0)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX = x;
-			iY = y;
-			pixels.length = x * y;
-		}
-		///Creates a bitmap from an array.
-		public this(Color[] p, int x, int y) @safe pure{
-			if (p.length < x * y)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			iX = x;
-			iY = y;
-			this.pixels = p;
-		}
-	}else static assert("Template argument \"" ~ bitmapType ~ "\" not supported!");
-	static if(S == "B" || S == "HW"){
+	}
+	static if(S == "B" || S == "HW") {
 		/**
 		 * Offsets all indexes in the bitmap by a certain value. Keeps zeroth index (usually for transparency) if needed. Useful when converting bitmaps.
 		 */
@@ -266,33 +278,29 @@ public class Bitmap(string S,T) : ABitmap {
 		}
 	}
 	static if(S == "W"){
-		override public AdvancedBitArray generateStandardCollisionModel(){	//REMOVE BY 0.10.0!
-			AdvancedBitArray result = new AdvancedBitArray(iX * iY);
-			for(int i ; i < iX * iY ; i++){
-				Color pixel = readPixel(i, 0);
-				if(pixel.alpha != 0){
-					result[i] = true;
-				}
-			}
-			return result;
+		/**
+		 * Generates a basic collision shape using
+		 */
+		public Bitmap1bit getBasicCollisionShape() @safe pure {
+			return null;
 		}
-		override @nogc void clear(){
+		override void clear() @nogc @safe pure nothrow {
 			for(int i ; i < pixels.length ; i++){
 				pixels[i] = Color(0x0);
 			}
 		}
 	}else{
-		override public AdvancedBitArray generateStandardCollisionModel(){	//REMOVE BY 0.10.0!
-			AdvancedBitArray result = new AdvancedBitArray(iX * iY);
-			for(int i ; i < iX * iY ; i++){
-				T pixel = readPixel(i, 0);
+		/+override public AdvancedBitArray generateStandardCollisionModel(){	//REMOVE BY 0.10.0!
+			AdvancedBitArray result = new AdvancedBitArray(_width * _height);
+			for(int i ; i < _width * _height ; i++){
+				T pixel = readpixel(i, 0);
 				if(pixel != 0){
 					result[i] = true;
 				}
 			}
 			return result;
-		}
-		override @nogc void clear(){
+		}+/
+		override void clear() @nogc @safe pure nothrow {
 			for(int i ; i < pixels.length ; i++){
 				pixels[i] = 0;
 			}

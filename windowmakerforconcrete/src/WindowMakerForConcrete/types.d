@@ -15,7 +15,7 @@ public enum ElementType{
 	SmallButton,
 	TextBox,
 	ListBox,
-	RadioButtonGroup,
+	RadioButton,
 	CheckBox,
 	HSlider,
 	VSlider,

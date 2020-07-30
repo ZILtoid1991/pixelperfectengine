@@ -46,15 +46,12 @@ int main(string[] args){
 					testTransformableTileLayer = true;
 			TileLayerTest lprg = new TileLayerTest(testTransformableTileLayer);
 			lprg.whereTheMagicHappens;
-			//writeln(prg.isRunning);
 			return 0;
 		}
 	}
 
 	prg = new Editor(args);
 	prg.whereTheMagicHappens;
-
-	//testBinarySearchTrees(11, 1);
 	return 0;
 }
 
@@ -63,14 +60,13 @@ class TileLayerTest : SystemEventListener, InputListener{
 	OutputScreen output;
 	Raster r;
 	TileLayer t;
+	TileLayer text;
 	TransformableTileLayer!(Bitmap8Bit,16,16) tt;
 	Bitmap8Bit[] tiles;
 	Bitmap8Bit dlangMan;
 	SpriteLayer s;
-	//Bitmap16Bit[wchar] tiles;
 	InputHandler ih;
 	float theta;
-	//CollisionDetector c;
 	this(bool testTransformableTileLayer = false){
 		theta = 0;
 		isRunning = true;

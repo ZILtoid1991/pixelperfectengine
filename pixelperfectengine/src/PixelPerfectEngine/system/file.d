@@ -17,7 +17,7 @@ import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.fontsets;
 
-import PixelPerfectEngine.extbmp.extbmp;
+//import PixelPerfectEngine.extbmp.extbmp;
 
 public import dimage.base;
 import dimage.tga;
@@ -211,79 +211,6 @@ public Color[] loadPaletteFromImage (Image img) {
 	}
 	assert (palette.length == sourcePalette.length);
 	return palette;
-}
-/**
- * Gets a bitmap from the XMP file.
- * DEPRECATED! Recommended to use *.tga with devarea extensions or even *.png files.
- */
-deprecated T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID){
-	static if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof){
-		T result = new T(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID),null);
-		return result;
-	}else static if(T.stringof == Bitmap16Bit.stringof){
-		T result;// = new T(cast(ushort[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-		switch(xmp.bitdepth[xmp.searchForID(ID)]){
-			case "16bit":
-				result = new T(cast(ushort[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-				break;
-			case "8bit":
-				ushort[] subresult;
-				ubyte[] input = cast(ubyte[])xmp.getBitmap(ID);
-				subresult.length = input.length;
-				for(int i ; i < subresult.length ; i++){
-					subresult[i] = input[i];
-				}
-				result = new T(subresult,xmp.getXsize(ID),xmp.getYsize(ID));
-				break;
-			case "4bit":
-				ushort[] subresult;
-				ubyte[] input = cast(ubyte[])xmp.getBitmap(ID);
-				subresult.length = input.length;
-				for(int i ; i < subresult.length ; i++){
-					if(i & 1)
-						subresult[i] = input[i>>1]>>4;
-					else
-						subresult[i] = input[i>>1]&0b0000_1111;
-				}
-				result = new T(subresult,xmp.getXsize(ID),xmp.getYsize(ID));
-				break;
-			/*case "1bit":
-
-				break;*/
-			default:
-				throw new FileAccessException("Bitdepth error!");
-		}
-
-		return result;
-	}else static if(T.stringof == Bitmap32Bit.stringof){
-		T result = new T(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-		return result;
-	}else static if(T.stringof == ABitmap.stringof){
-
-		switch(xmp.bitdepth[xmp.searchForID(ID)]){
-			case "4bit":
-				return new Bitmap4Bit(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-			case "8bit":
-				return new Bitmap8Bit(cast(ubyte[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-			case "16bit":
-				return new Bitmap16Bit(cast(ushort[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-			case "32bit":
-				return new Bitmap32Bit(cast(Color[])xmp.getBitmap(ID),xmp.getXsize(ID),xmp.getYsize(ID));
-			default:
-				return null;
-
-		}
-
-	}else static assert("Template argument \'" ~ T.stringof ~ "\' not supported in function \'T loadBitmapFromXMP(T)(ExtendibleBitmap xmp, string ID)\'");
-}
-/**
- * Loads a palette from an XMP file.
- * Deprecated!
- */
-public void loadPaletteFromXMP(ExtendibleBitmap xmp, string ID, Raster target, int offset = 0){
-	target.palette = cast(Color[])xmp.getPalette(ID);
-
-
 }
 
 /**

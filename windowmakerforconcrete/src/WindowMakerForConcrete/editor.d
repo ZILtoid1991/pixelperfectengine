@@ -36,50 +36,59 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 
 	}
 	public void initGUI(){
+		Text pt(dstring text) {
+			return new Text(text, WindowElement.styleSheet.getChrFormatting("popUpMenu"));
+		}
+		Text st(dstring text) {
+			return new Text(text, WindowElement.styleSheet.getChrFormatting("popUpMenuSecondary"));
+		}
+		Text mt(dstring text) {
+			return new Text(text, WindowElement.styleSheet.getChrFormatting("menuBar"));
+		}
 		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
 
 		PopUpMenuElement[] menuElements;
-		menuElements ~= new PopUpMenuElement("file", "FILE");
+		menuElements ~= new PopUpMenuElement("file", mt("FILE"));
 
-		menuElements[0] ~= new PopUpMenuElement("new", "New window", "Ctrl + N");
-		menuElements[0] ~= new PopUpMenuElement("load", "Load window", "Ctrl + L");
-		menuElements[0] ~= new PopUpMenuElement("save", "Save window", "Ctrl + S");
-		menuElements[0] ~= new PopUpMenuElement("saveAs", "Save window as", "Ctrl + Shift + S");
-		menuElements[0] ~= new PopUpMenuElement("Export", "Export window as D code", "Ctrl + Shift + X");
-		menuElements[0] ~= new PopUpMenuElement("exit", "Exit application", "Alt + F4");
+		menuElements[0] ~= new PopUpMenuElement("new", pt("New window"), st("Ctrl + N"));
+		menuElements[0] ~= new PopUpMenuElement("load", pt("Load window"), st("Ctrl + L"));
+		menuElements[0] ~= new PopUpMenuElement("save", pt("Save window"), st("Ctrl + S"));
+		menuElements[0] ~= new PopUpMenuElement("saveAs", pt("Save window as"), st("Ctrl + Shift + S"));
+		menuElements[0] ~= new PopUpMenuElement("Export", pt("Export window as D code"), st("Ctrl + Shift + X"));
+		menuElements[0] ~= new PopUpMenuElement("exit", pt("Exit application"), st("Alt + F4"));
 
-		menuElements ~= new PopUpMenuElement("edit", "EDIT");
+		menuElements ~= new PopUpMenuElement("edit", mt("EDIT"));
 
-		menuElements[1] ~= new PopUpMenuElement("undo", "Undo", "Ctrl + Z");
-		menuElements[1] ~= new PopUpMenuElement("redo", "Redo", "Ctrl + Shift + Z");
-		menuElements[1] ~= new PopUpMenuElement("copy", "Copy", "Ctrl + C");
-		menuElements[1] ~= new PopUpMenuElement("cut", "Cut", "Ctrl + X");
-		menuElements[1] ~= new PopUpMenuElement("paste", "Paste", "Ctrl + V");
+		menuElements[1] ~= new PopUpMenuElement("undo", pt("Undo"), st("Ctrl + Z"));
+		menuElements[1] ~= new PopUpMenuElement("redo", pt("Redo"), st("Ctrl + Shift + Z"));
+		menuElements[1] ~= new PopUpMenuElement("copy", pt("Copy"), st("Ctrl + C"));
+		menuElements[1] ~= new PopUpMenuElement("cut", pt("Cut"), st("Ctrl + X"));
+		menuElements[1] ~= new PopUpMenuElement("paste", pt("Paste"), st("Ctrl + V"));
 
-		menuElements ~= new PopUpMenuElement("elements", "ELEMENTS");
+		menuElements ~= new PopUpMenuElement("elements", mt("ELEMENTS"));
 
-		menuElements[2] ~= new PopUpMenuElement("Label", "Label", "Ctrl + F1");
-		menuElements[2] ~= new PopUpMenuElement("Button", "Button", "Ctrl + F2");
-		menuElements[2] ~= new PopUpMenuElement("TextBox", "TextBox", "Ctrl + F3");
-		menuElements[2] ~= new PopUpMenuElement("ListBox", "ListBox", "Ctrl + F4");
-		menuElements[2] ~= new PopUpMenuElement("CheckBox", "CheckBox", "Ctrl + F5");
-		menuElements[2] ~= new PopUpMenuElement("RadioButtonGroup", "RadioButtonGroup", "Ctrl + F6");
-		menuElements[2] ~= new PopUpMenuElement("MenuBar", "MenuBar", "Ctrl + F7");
-		menuElements[2] ~= new PopUpMenuElement("HSlider", "HSlider", "Ctrl + F3");
-		menuElements[2] ~= new PopUpMenuElement("VSlider", "VSlider", "Ctrl + F3");
+		menuElements[2] ~= new PopUpMenuElement("Label", pt("Label"), st("Ctrl + F1"));
+		menuElements[2] ~= new PopUpMenuElement("Button", pt("Button"), st("Ctrl + F2"));
+		menuElements[2] ~= new PopUpMenuElement("TextBox", pt("TextBox"), st("Ctrl + F3"));
+		menuElements[2] ~= new PopUpMenuElement("ListBox", pt("ListBox"), st("Ctrl + F4"));
+		menuElements[2] ~= new PopUpMenuElement("CheckBox", pt("CheckBox"), st("Ctrl + F5"));
+		menuElements[2] ~= new PopUpMenuElement("RadioButton", pt("RadioButton"), st("Ctrl + F6"));
+		//menuElements[2] ~= new PopUpMenuElement("MenuBar", pt("MenuBar"), st("Ctrl + F7"));
+		menuElements[2] ~= new PopUpMenuElement("HSlider", pt("HSlider"), st("Ctrl + F8"));
+		menuElements[2] ~= new PopUpMenuElement("VSlider", pt("VSlider"), st("Ctrl + F9"));
 
-		menuElements ~= new PopUpMenuElement("help", "HELP");
+		menuElements ~= new PopUpMenuElement("help", mt("HELP"));
 
-		menuElements[3] ~= new PopUpMenuElement("helpFile", "Content", "F1");
-		menuElements[3] ~= new PopUpMenuElement("about", "About");
+		menuElements[3] ~= new PopUpMenuElement("helpFile", pt("Content"));
+		menuElements[3] ~= new PopUpMenuElement("about", pt("About"));
 
 		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,rasterX - 1,16),menuElements);
-		addElement(mb, EventProperties.MOUSE);
+		addElement(mb);
 
 		objectList = new ListBox("objectList", Coordinate(644,20,rasterX - 5,238), [], new ListBoxHeader(["Type"d,"Name"d],[128,128]),16);
 		propList = new ListBox("propList", Coordinate(644,242,rasterX - 5,477), [], new ListBoxHeader(["Prop"d,"Val"d],[128,256]),16,true);
-		addElement(objectList, EventProperties.MOUSE | EventProperties.SCROLL);
-		addElement(propList, EventProperties.MOUSE | EventProperties.SCROLL);
+		addElement(objectList);
+		addElement(propList);
 
 		foreach(WindowElement we; elements){
 			we.draw();
@@ -91,19 +100,9 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		return defaultStyle;
 	}
 
-	public void addElement(WindowElement we, int eventProperties){
+	public void addElement(WindowElement we){
 		elements ~= we;
 		we.elementContainer = this;
-		//we.al ~= this;
-		if((eventProperties & EventProperties.KEYBOARD) == EventProperties.KEYBOARD){
-			keyboardC ~= we;
-		}
-		if((eventProperties & EventProperties.MOUSE) == EventProperties.MOUSE){
-			mouseC ~= we;
-		}
-		if((eventProperties & EventProperties.SCROLL) == EventProperties.SCROLL){
-			scrollC ~= we;
-		}
 	}
 
 	public override void drawUpdate(WindowElement sender){
@@ -111,7 +110,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 	}
 
 	override public void passMouseEvent(int x,int y,int state,ubyte button) {
-		foreach(WindowElement e; mouseC){
+		foreach(WindowElement e; elements){
 			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
 				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state, button);
 				return;
@@ -119,7 +118,7 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 		}
 	}
 	public override void passScrollEvent(int wX, int wY, int x, int y){
-		foreach(WindowElement e; scrollC){
+		foreach(WindowElement e; elements){
 			if(e.getPosition().left < wX && e.getPosition().right > wX && e.getPosition().top < wX && e.getPosition().bottom > wY){
 
 				e.onScroll(y, x, wX, wY);
@@ -211,7 +210,7 @@ public class Editor : SystemEventListener, InputListener{
 		nameBases[ElementType.SmallButton] = "smallButton";
 		nameBases[ElementType.TextBox] = "textBox";
 		nameBases[ElementType.ListBox] = "listBox";
-		nameBases[ElementType.RadioButtonGroup] = "radioButtonGroup";
+		nameBases[ElementType.RadioButton] = "radioButton";
 		nameBases[ElementType.CheckBox] = "checkBox";
 		nameBases[ElementType.HSlider] = "hSlider";
 		nameBases[ElementType.VSlider] = "vSlider";
@@ -248,16 +247,16 @@ public class Editor : SystemEventListener, InputListener{
 		if(selection == "window"){
 			switch(lbi.getText(0)){
 				case "name":
-					eventStack.addToTop(new WindowRenameEvent(conv.to!string(ev.text)));
+					eventStack.addToTop(new WindowRenameEvent(conv.to!string(ev.text.text)));
 					return;
 				case "title":
-					eventStack.addToTop(new WindowRetitleEvent(ev.text));
+					eventStack.addToTop(new WindowRetitleEvent(ev.text.text));
 					return;
 				case "size:x":
-					eventStack.addToTop(new WindowWidthChangeEvent(conv.to!int(ev.text)));
+					eventStack.addToTop(new WindowWidthChangeEvent(conv.to!int(ev.text.text)));
 					return;
 				case "size:y":
-					eventStack.addToTop(new WindowHeightChangeEvent(conv.to!int(ev.text)));
+					eventStack.addToTop(new WindowHeightChangeEvent(conv.to!int(ev.text.text)));
 					return;
 				default:
 					return;
@@ -265,14 +264,14 @@ public class Editor : SystemEventListener, InputListener{
 		}else{
 			switch(lbi.getText(0)){
 				case "text":
-					eventStack.addToTop(new TextEditEvent(ev.text, selection));
+					eventStack.addToTop(new TextEditEvent(ev.text.text, selection));
 					return;
 				case "name":
-					eventStack.addToTop(new RenameEvent(selection, conv.to!string(ev.text)));
+					eventStack.addToTop(new RenameEvent(selection, conv.to!string(ev.text.text)));
 					selection = conv.to!string(ev.text);
 					return;
 				case "position":
-					dstring[] src = csvParser(ev.text, ';');
+					dstring[] src = csvParser(ev.text.text, ';');
 					if(src.length == 4){
 						Coordinate c;
 						foreach(s; src){
@@ -291,7 +290,7 @@ public class Editor : SystemEventListener, InputListener{
 					}
 					return;
 				case "source":
-					eventStack.addToTop(new SourceEditEvent(selection, conv.to!string(ev.text)));
+					eventStack.addToTop(new SourceEditEvent(selection, conv.to!string(ev.text.text)));
 					return;
 				default:
 					return;
@@ -342,14 +341,14 @@ public class Editor : SystemEventListener, InputListener{
 						s = getNextName("CheckBox");
 						we = new CheckBox(conv.to!dstring(s),s,c);
 						break;
-					case ElementType.RadioButtonGroup:
-						s = getNextName("radioButtonGroup");
-						we = new RadioButtonGroup(conv.to!dstring(s),s,c,["opt0", "opt1"],16,0);
+					case ElementType.RadioButton:
+						s = getNextName("radioButton");
+						we = new RadioButton(conv.to!dstring(s),s,c);
 						break;
-					case ElementType.MenuBar:
+					/+case ElementType.MenuBar:
 						s = getNextName("menuBar");
-						we = new MenuBar(s,c,[new PopUpMenuElement("menu0","menu0")]);
-						break;
+						we = new MenuBar(s,c,[new PopUpMenuElement("menu0","menu0")]);+/
+						//break;
 					case ElementType.HSlider:
 						s = getNextName("hSlider");
 						we = new HSlider(16,1,s,c);
@@ -493,8 +492,8 @@ public class Editor : SystemEventListener, InputListener{
 			case "CheckBox":
 				typeSel = ElementType.CheckBox;
 				break;
-			case "RadioButtonGroup":
-				typeSel = ElementType.RadioButtonGroup;
+			case "RadioButton":
+				typeSel = ElementType.RadioButton;
 				break;
 			case "MenuBar":
 				typeSel = ElementType.MenuBar;

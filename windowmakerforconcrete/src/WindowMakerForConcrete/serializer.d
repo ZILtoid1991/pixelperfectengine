@@ -54,25 +54,25 @@ public class WindowSerializer{
 					WindowElement we = new Label(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.expectValue!string()] = we;
-					dw.addElement(we,0);
+					dw.addElement(we);
 					break;
 				case "Button":
 					WindowElement we = new Button(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.expectValue!string()] = we;
-					dw.addElement(we,0);
+					dw.addElement(we);
 					break;
 				case "TextBox":
 					WindowElement we = new TextBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.expectValue!string()] = we;
-					dw.addElement(we,0);
+					dw.addElement(we);
 					break;
 				case "CheckBox":
 					WindowElement we = new CheckBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.expectValue!string()] = we;
-					dw.addElement(we,0);
+					dw.addElement(we);
 					break;
 				case "ListBox":
 					int[] columnWidths;
@@ -84,9 +84,9 @@ public class WindowSerializer{
 					WindowElement we = new ListBox(t0.expectTagValue!string("source"), parseCoordinate(t0.expectTag("position")), [],
 							new ListBoxHeader(columnTexts, columnWidths));
 					e.elements[t0.expectValue!string()] = we;
-					dw.addElement(we,0);
+					dw.addElement(we);
 					break;
-				case "RadioButtonGroup":
+				/+case "RadioButtonGroup":
 					dstring[] options;
 					Value[] vals = t0.expectTag("options").values;
 					foreach(v; vals){
@@ -96,6 +96,12 @@ public class WindowSerializer{
 							parseCoordinate(t0.expectTag("position")), options, 16, 0);
 					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we,0);
+					break;+/
+				case "RadioButton":
+					WindowElement we = new RadioButton(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+							parseCoordinate(t0.expectTag("position")));
+					e.elements[t0.expectValue!string()] = we;
+					dw.addElement(we);
 					break;
 				case "Window":
 					dw.setTitle(toUTF32(t0.expectTagValue!string("title")));
@@ -115,11 +121,11 @@ public class WindowSerializer{
 				typeDefs ~= "\t" ~ t0.name ~ " " ~ t0.getValue!string() ~ ";\n";
 			}
 			switch(t0.getFullName.toString){
-				case "Button", "Label", "TextBox", "CheckBox":
+				case "Button", "Label", "TextBox", "CheckBox", "RadioButton":
 					elementCtors ~= "new " ~ t0.getFullName.toString ~ "(\"" ~ t0.getTagValue!string("text") ~ "\"d, \"" ~
 							t0.getTagValue!string("source") ~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
-				case "RadioButtonGroup":
+				/+case "RadioButton":
 					string options = "[";
 					foreach(v; t0.getTagValues("options")){
 						options ~= "\"" ~ v.get!string() ~ "\"d, ";
@@ -127,9 +133,9 @@ public class WindowSerializer{
 					if(options != "[")
 						options.length -= 2;
 					options ~= "]";
-					elementCtors ~= "\t\tnew RadioButtonGroup(\"" ~ t0.getTagValue!string("text") ~ "\"d, \"" ~ t0.getTagValue!string("source")
-							~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "), " ~ options ~ ",16,0);\n";
-					break;
+					elementCtors ~= "\t\tnew RadioButton(\"" ~ t0.getTagValue!string("text") ~ "\"d, \"" ~ t0.getTagValue!string("source")
+							~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));";
+					break;+/
 				case "HSlider", "VSlider":
 					elementCtors ~= "\t\tnew " ~ t0.getFullName.toString ~ "(\"" ~ conv.to!string(t0.getTagValue!int("maxValue")) ~
 							", " ~ conv.to!string(t0.getTagValue!int("barLength")) ~ ", " ~ t0.getTagValue!string("source") ~
@@ -260,10 +266,9 @@ public class WindowSerializer{
 				new Tag(t2, null, null, [Value("col0"), Value(40)]);
 				new Tag(t2, null, null, [Value("col1"), Value(40)]);
 				break;
-			case ElementType.RadioButtonGroup:
-				t1 = new Tag(root, null, "RadioButtonGroup", [Value(name)]);
+			case ElementType.RadioButton:
+				t1 = new Tag(root, null, "RadioButton", [Value(name)]);
 				new Tag(t1, null, "text", [Value(name)]);
-				new Tag(t1, null, "options", [Value("opt0"), Value("opt1")]);
 				break;
 			case ElementType.CheckBox:
 				t1 = new Tag(root, null, "CheckBox", [Value(name)]);
