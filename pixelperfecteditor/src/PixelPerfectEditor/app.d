@@ -31,7 +31,7 @@ import PixelPerfectEngine.system.config;
 import PixelPerfectEngine.system.common;
 
 public import editor;
-import PixelPerfectEngine.extbmp.extbmp;
+//import PixelPerfectEngine.extbmp.extbmp;
 
 public Editor prg;
 
@@ -155,10 +155,10 @@ class TileLayerTest : SystemEventListener, InputListener{
 		ih.kb ~= KeyBinding(0, ScanCode.W,0, "VM", Devicetype.KEYBOARD, KeyModifier.All);
 		if (testTransformableTileLayer) {
 			tt.loadMapping(64,64,mapping);
-			tt.setWarpMode(false);
+			tt.warpMode = false;
 		} else {
 			t.loadMapping(64,64,mapping);
-			t.setWarpMode(false);
+			t.warpMode = false;
 		}
 		//t.setWrapMode(true);
 		//tt.D = -256;
@@ -193,10 +193,16 @@ class TileLayerTest : SystemEventListener, InputListener{
 			if(down) s.relMoveSprite(65,0,1);
 			if(left) s.relMoveSprite(65,-1,0);
 			if(right) s.relMoveSprite(65,1,0);
+			
 			if(scrup) t.relScroll(0,-1);
 			if(scrdown) t.relScroll(0,1);
 			if(scrleft) t.relScroll(-1,0);
 			if(scrright) t.relScroll(1,0);
+			if(scrup) tt.relScroll(0,-1);
+			if(scrdown) tt.relScroll(0,1);
+			if(scrleft) tt.relScroll(-1,0);
+			if(scrright) tt.relScroll(1,0);
+			
 			//t.relScroll(1,0);
 		}
 	}

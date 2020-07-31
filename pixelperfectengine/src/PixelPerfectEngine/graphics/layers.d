@@ -130,6 +130,8 @@ public enum LayerRenderingMode{
  * Tile interface, defines common functions.
  */
 public interface ITileLayer{
+	/// Retrieves the mapping from the tile layer.
+	/// Can be used to retrieve data, e.g. for editors, saving game states
 	public MappingElement[] getMapping() @nogc @safe pure nothrow;
 	/// Reads the mapping element from the given area.
 	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow;
@@ -157,6 +159,18 @@ public interface ITileLayer{
 	public void addTile(ABitmap tile, wchar id) pure;
 	/// Returns the tile.
 	public ABitmap getTile(wchar id) @nogc @safe pure nothrow;
+}
+/**
+ * Sets the WarpMode for any tile layer.
+ */
+public enum WarpMode : ubyte {
+	/// Content shown only once.
+	Off,
+	/// Content is repeated on the layer.
+	/// NOTE: If the layer supports and currently uses non power of two tile and map sizes, then there might be some artifacting if such a feature is used.
+	On,
+	/// Out of bounds areas repeat tile 0x0000. Tile 0xFFFF is still reserved as transparency.
+	TileRepeat
 }
 /**
  * Universal Mapping element, that is stored on 32 bit.
@@ -484,7 +498,13 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 
 	}else static assert(false,"Template parameter " ~ BMPType.mangleof ~ " not supported by TransformableTileLayer!");
 	protected bool needsUpdate;			///Set to true if backbuffer needs an update
-	protected bool warpMode;			///Repeats the whole layer if set to true
+	public bool warpMode;			///Repeats the whole layer if set to true
+	/**
+	 * Sets the palette offset value for 4 and 8 bit bitmaps.
+	 * If an indexed bitmap doesn't use all available (4: 16, 8:256) colors, then the offset can be lowered below the bit numbers
+	 * of the bitmaps.
+	 */
+	protected ubyte _paletteOffset;
 	protected int mX, mY;				///"Inherited" from TileLayer
 	static if(TileX == 8)
 		protected immutable int shiftX = 3;
@@ -526,13 +546,15 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		_tileAmpersand = [TileX - 1, TileY - 1, TileX - 1, TileY - 1];
 		setRenderingMode(renderMode);
 		needsUpdate = true;
+		static if (BMPType.mangleof == Bitmap4Bit.mangleof) _paletteOffset = 4;
+		else static if (BMPType.mangleof == Bitmap8Bit.mangleof) _paletteOffset = 8;
 		static if (USE_INTEL_INTRINSICS)
 			for(int i ; i < 8 ; i+=2)
 				_increment[i] = 2;
 	}
-	shared this(){
-		
-	}
+
+
+	
 	override public void setRasterizer(int rX,int rY) {
 		super.setRasterizer(rX,rY);
 		backbuffer = new Bitmap32Bit(rX, rY);
@@ -673,9 +695,9 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 							xy[1] = xy[1] & (TileY - 1);
 							const int totalOffset = xy[0] + xy[1] * TileX;
 							static if(BMPType.mangleof == Bitmap4Bit.mangleof){
-								src[x] = (totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | currentTile.paletteSel<<4;
+								src[x] = (totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | currentTile.paletteSel<<_paletteOffset;
 							}else static if(BMPType.mangleof == Bitmap8Bit.mangleof ){
-								src[x] = tsrc[totalOffset] | currentTile.paletteSel<<8;
+								src[x] = tsrc[totalOffset] | currentTile.paletteSel<<_paletteOffset;
 							}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
 								src[x] = tsrc[totalOffset];
 							}else{
@@ -692,13 +714,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 						}
 					}
 				}
-				
-				//else static assert(false, "Compiler not supported");
-
-				/*static if(BMPType.mangleof == Bitmap8Bit.mangleof){
-					main8BitColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palettePtr, rasterX);
-					dest += rasterX;
-				}else*/ static if(BMPType.mangleof == Bitmap4Bit.mangleof || BMPType.mangleof == Bitmap8Bit.mangleof || BMPType.mangleof == Bitmap16Bit.mangleof){
+				static if(BMPType.mangleof == Bitmap4Bit.mangleof || BMPType.mangleof == Bitmap8Bit.mangleof || 
+						BMPType.mangleof == Bitmap16Bit.mangleof){
 					mainColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palette, rasterX);
 					dest += rasterX;
 				}
@@ -715,7 +732,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 
 	}
 	///Returns which tile is at the given pixel
-	@nogc public MappingElement tileByPixel(int x, int y){
+	@nogc public MappingElement tileByPixel(int x, int y) @safe pure nothrow {
 		static if (USE_INTEL_INTRINSICS) {
 			return MappingElement.init;
 		} else {
@@ -725,7 +742,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		
 	}
 	///Returns which tile is at the given pixel
-	@nogc protected MappingElement tileByPixelWithoutTransform(int x, int y) @safe pure nothrow{
+	@nogc protected MappingElement tileByPixelWithoutTransform(int x, int y) @safe pure nothrow {
 		x >>>= shiftX;
 		y >>>= shiftY;
 		if(warpMode){
@@ -852,7 +869,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		return totalY;
 	}
 	/// Warpmode: if enabled, the layer will be turned into an "infinite" mode.
-	public void setWarpMode(bool w){
+	/// DEPRECATED! WILL BE REMOVED BY v0.11.0
+	deprecated public void setWarpMode(bool w){
 		warpMode = w;
 	}
 	///Gets the the ID of the given element from the mapping. x , y : Position.

@@ -3,7 +3,7 @@ import PixelPerfectEngine.concrete.elements;
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.graphics.common;
 import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.extbmp.extbmp;
+//import PixelPerfectEngine.extbmp.extbmp;
 import PixelPerfectEngine.system.etc;
 /+
 public class PaletteEditor : Window, ActionListener{
