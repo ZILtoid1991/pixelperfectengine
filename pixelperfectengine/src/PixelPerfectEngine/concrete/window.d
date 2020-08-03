@@ -896,7 +896,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 			}
 			//removeAllPopUps();
 			removeTopPopUp();
-			}else{
+			} else {
 				moveX = x;
 				moveY = y;
 				for(int i ; i < windows.length ; i++){

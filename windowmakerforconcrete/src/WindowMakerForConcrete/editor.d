@@ -10,6 +10,7 @@ import PixelPerfectEngine.system.etc : csvParser, isInteger;
 import PixelPerfectEngine.graphics.layers;
 import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.outputScreen;
+import std.bitmanip : bitfields;
 
 import conv = std.conv;
 import stdio = std.stdio;
@@ -141,7 +142,7 @@ public class DummyWindow : Window{
 	override public void passMouseEvent(int x,int y,int state,ubyte button) {
 		//super.passMouseEvent(x,y,state,button);
 		if(button == MouseButton.LEFT){
-			ed.placementEvent(x,y,state);
+			ed.clickEvent(x,y,state);
 		}else if(button == MouseButton.RIGHT){
 			foreach(we; elements){
 				Coordinate c = we.position;
@@ -156,22 +157,36 @@ public class DummyWindow : Window{
 	override public void close() {
 	//super.close;
 	}
+	override public void passMouseMotionEvent(int x, int y, int relX, int relY, ubyte button) {
 
+	}
+	override public void passMouseDragEvent(int x, int y, int relX, int relY, ubyte button) {
+		ed.dragEvent(x, y, relX, relY, button);
+	}
 }
 
 public class Editor : SystemEventListener, InputListener{
 	EditorWindowHandler ewh;
-	DummyWindow dw;
-	SpriteLayer sprtL;
-	Raster mainRaster;
-	OutputScreen outScrn;
-	InputHandler inputH;
-	bool onExit, undoPressed, redoPressed;
-	int x0, y0;
-	ElementType typeSel;
-	UndoableStack eventStack;
+	DummyWindow 		dw;
+	SpriteLayer			sprtL;
+	Raster				mainRaster;
+	OutputScreen		outScrn;
+	InputHandler		inputH;
+	EditMode			mode;
+	mixin(bitfields!(
+		bool, "onExit", 1,
+		bool, "undoPressed", 1,
+		bool, "redoPressed", 1,
+		bool, "delPressed", 1,
+		bool, "moveElemMode", 1,
+		ubyte, "", 3,
+	));
+	Coordinate			moveElemOrig;
+	int					x0, y0;
+	ElementType			typeSel;
+	UndoableStack		eventStack;
 	WindowElement[string] elements;
-	string selection;
+	string				selection;
 
 	static string[ElementType] nameBases;
 	public this(){
@@ -190,7 +205,10 @@ public class Editor : SystemEventListener, InputListener{
 		inputH.il ~= this;
 		inputH.ml ~= ewh;
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl | KeyModifier.Shift, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl | KeyModifier.Shift, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, 
+				KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(0, ScanCode.DELETE, 0, "del", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(0, ScanCode.ESCAPE, 0, "sysesc", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		PopUpElement.inputhandler = inputH;
 		WindowElement.inputHandler = inputH;
 		ewh.initGUI();
@@ -223,6 +241,7 @@ public class Editor : SystemEventListener, InputListener{
 		}
 	}
 	public void onObjectListSelect(Event ev){
+		deinitElemMove;
 		ListBoxItem lbi = cast(ListBoxItem)ev.aux;
 		if(lbi.getText(0) != "window"){
 			selection = conv.to!string(lbi.getText(1));
@@ -297,9 +316,9 @@ public class Editor : SystemEventListener, InputListener{
 			}
 		}
 	}
-	public void placementEvent(int x, int y, int state){
-		if(typeSel != ElementType.NULL){
-			if(state == ButtonState.PRESSED){
+	public void clickEvent(int x, int y, int state){
+		if(typeSel != ElementType.NULL) {
+			if(state == ButtonState.PRESSED) {
 				x0 = x;
 				y0 = y;
 			}else{
@@ -364,6 +383,24 @@ public class Editor : SystemEventListener, InputListener{
 				typeSel = ElementType.NULL;
 				//updateElementList;
 			}
+		} else {
+			if (state == ButtonState.PRESSED) {
+				if(!moveElemMode) initElemMove;
+				//stdio.writeln("element move mode is ", moveElemMode);
+			} else {
+				finalizeElemMove;
+			}
+		}
+	}
+	public void dragEvent(int x, int y, int relX, int relY, ubyte button) {
+		if (moveElemMode) {
+			const Coordinate temp = elements[selection].position;
+			if(temp.left + relX < 0) relX -= temp.left + relX;
+			if(temp.right + relX >= dw.position.width) relX -= (temp.right + relX) - dw.position.width;
+			if(temp.top + relY < 0) relY -= temp.top + relY;
+			if(temp.bottom + relY >= dw.position.height) relY -= (temp.bottom + relY) - dw.position.height;
+			elements[selection].position.relMove(relX, relY);
+			dw.draw();
 		}
 	}
 
@@ -508,6 +545,28 @@ public class Editor : SystemEventListener, InputListener{
 				break;
 		}
 	}
+	public void delElement() {
+		if(selection != "window")
+			eventStack.addToTop(new DeleteEvent(elements[selection], selection));
+	}
+	public void initElemMove() {
+		if(selection != "window") {
+			moveElemMode = true;
+			moveElemOrig = elements[selection].position;
+		}
+	}
+	public void deinitElemMove() {
+		if(moveElemMode) {
+			moveElemMode = false;
+			elements[selection].position = moveElemOrig;
+		}
+	}
+	public void finalizeElemMove() {
+		moveElemMode = false;
+		Coordinate newPos = elements[selection].position;
+		elements[selection].position = moveElemOrig;
+		eventStack.addToTop(new MoveElemEvent(newPos, selection));
+	}
 	public void whereTheMagicHappens(){
 		while(!onExit){
 			mainRaster.refresh();
@@ -519,31 +578,46 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
-	public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
+	public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype) {
 		switch(ID){
 			case "undo":
-				if(!undoPressed){
+				if (!undoPressed) {
 					undoPressed = true;
 					eventStack.undo;
 				}
 				break;
 			case "redo":
-				if(!redoPressed){
+				if (!redoPressed) {
 					redoPressed = true;
 					eventStack.redo;
 				}
+				break;
+			case "del":
+				if (!delPressed) {
+					delPressed = true;
+					const string prevSelection = selection;
+					selection = "window";
+					eventStack.addToTop(new DeleteEvent(elements[prevSelection], prevSelection));
+				}
+				break;
+			case "sysesc":
+				deinitElemMove;
+				typeSel = ElementType.NULL;
 				break;
 			default:
 				break;
 		}
 	}
-	public void keyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype){
+	public void keyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype) {
 		switch(ID){
 			case "undo":
 				undoPressed = false;
 				break;
 			case "redo":
 				redoPressed = false;
+				break;
+			case "del":
+				delPressed = false;
 				break;
 			default:
 				break;

@@ -1,6 +1,6 @@
 module types;
 
-public enum ValueType{
+public enum ValueType {
 	String,
 	StringArray,
 	WString,
@@ -8,7 +8,7 @@ public enum ValueType{
 	Int,
 	Bool,
 }
-public enum ElementType{
+public enum ElementType {
 	NULL,
 	Label,
 	Button,
@@ -20,4 +20,9 @@ public enum ElementType{
 	HSlider,
 	VSlider,
 	MenuBar,
+}
+public enum EditMode {
+	Default,
+	Placement,
+	Move,
 }

@@ -11,6 +11,8 @@ import sdlang;
 public import PixelPerfectEngine.concrete.eventChainSystem;
 import PixelPerfectEngine.concrete.elements;
 
+import sdlang.token : Value;
+
 public static DummyWindow dwtarget;
 public static WindowSerializer wserializer;
 public static Editor editorTarget;
@@ -207,7 +209,7 @@ public class WindowHeightChangeEvent : WindowAttributeEditEvent{
 	}
 }
 
-public class RenameEvent : UndoableEvent{
+public class RenameEvent : UndoableEvent {
 	private string oldName, newName;
 	public this(string oldName, string newName){
 		this.oldName = oldName;
@@ -224,5 +226,25 @@ public class RenameEvent : UndoableEvent{
 		editorTarget.elements[oldName] = editorTarget.elements[newName];
 		editorTarget.elements.remove(newName);
 		editorTarget.updateElementList;
+	}
+}
+
+public class MoveElemEvent : UndoableEvent {
+	private Coordinate oldPos, newPos;
+	private string target;
+	public this(Coordinate newPos, string target){
+		this.newPos = newPos;
+		this.target = target;
+	}
+	public void redo(){
+		wserializer.editValue(target, "position", [Value(newPos.left), Value(newPos.top), Value(newPos.right), 
+				Value(newPos.bottom)]);
+		oldPos = editorTarget.elements[target].position;
+		editorTarget.elements[target].position = newPos;
+	}
+	public void undo(){
+		wserializer.editValue(target, "position", [Value(oldPos.left), Value(oldPos.top), Value(oldPos.right), 
+				Value(oldPos.bottom)]);
+		editorTarget.elements[target].position = oldPos;
 	}
 }

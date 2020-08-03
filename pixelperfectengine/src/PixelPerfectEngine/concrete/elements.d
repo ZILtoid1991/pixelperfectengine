@@ -446,8 +446,10 @@ public class TextBox : WindowElement, TextInputListener{
 	public override void draw(){
 		if(output.output.width != position.width || output.output.height != position.height)
 			output = new BitmapDrawer(position.width, position.height);
-		output.drawFilledRectangle(0, position.width - 1, 0, position.height - 1, getAvailableStyleSheet().getColor("window"));
-		output.drawRectangle(0, position.width - 1, 0, position.height - 1, getAvailableStyleSheet().getColor("windowascent"));
+		output.drawFilledRectangle(0, position.width - 1, 0, position.height - 1, 
+				getAvailableStyleSheet().getColor("window"));
+		output.drawRectangle(0, position.width - 1, 0, position.height - 1, 
+				getAvailableStyleSheet().getColor("windowascent"));
 		const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
 		Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2) ,
 				position.width,position.height - textPadding);
@@ -482,7 +484,6 @@ public class TextBox : WindowElement, TextInputListener{
 		for(int j ; j < text.length ; j++){
 			this.text.insertChar(pos++, text[j]);
 		}
-		//this.text.text = newtext;
 		const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
 		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
 				position.width,position.height - textPadding);
@@ -2015,25 +2016,30 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 	public override void draw(){
 		output.drawFilledRectangle(0, position.width - 1, 0, position.height - 1, getStyleSheet().getColor("window"));
 		output.drawRectangle(0, position.width - 1, 0, position.height - 1, getStyleSheet().getColor("windowascent"));
-		/+
+		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
+		Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2) ,
+				position.width,position.height - textPadding);
+		
+		const int y = text.font.size;
+		//if(x > textPos.width ) xOffset = horizTextOffset;
 		//draw cursor
-		if(enableEdit){
-			const int x = getStyleSheet().getFontset("default").getTextLength(text[0..textPos]) ,
-					y = getStyleSheet().getFontset("default").getSize;
+		if(enableEdit) {
+			const int x0 = text.getWidth(0,cursorPos) + textPadding - horizTextOffset;
 			if(!insert){
-				output.drawLine(x + 2, x + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
+				output.drawLine(x0, x0, 2, 2 + y, getStyleSheet().getColor("selection"));
 			}else{
-				const int x0 = cursorPos == text.length ? x + getStyleSheet().getFontset("default").chars(' ').xadvance :
-						getStyleSheet().getFontset("default").getTextLength(text[0..cursorPos + 1]);
-				output.drawFilledRectangle(x + 2, x0 + 2, 2, 2 + y, getStyleSheet().getColor("selection"));
+				const int x1 = cursorPos == text.charLength ? text.font.chars(' ').xadvance :
+						text.getWidth(cursorPos,cursorPos + 1);
+				output.drawFilledRectangle(x0, x1 + x0, 2, 2 + y, getStyleSheet().getColor("selection"));
 			}
 		}
 
-		output.drawColorText(2, 2, text, getStyleSheet().getFontset("default"), getStyleSheet().getColor("normaltext"), 0);
-
+		
+		output.drawSingleLineText(textPos, text, horizTextOffset);
+		//parent.drawUpdate(this);
 		if(onDraw !is null){
 			onDraw();
-		}+/
+		}
 	}
 	private void deleteCharacter(size_t n){
 		text.removeChar(n);
@@ -2042,8 +2048,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 		for(int j ; j < text.length ; j++){
 			this.text.insertChar(cursorPos++, text[j]);
 		}
-		const int textPadding = getStyleSheet().drawParameters["horizTextPadding"];
-		//this.text.text = newtext;
+		const int textPadding = getStyleSheet().drawParameters["TextSpacingSides"];
 		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
 				position.width,position.height - textPadding);
 		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, cursorPos);
@@ -2062,8 +2067,6 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 		switch(key){
 			case TextInputKey.ESCAPE:
 				inputhandler.stopTextInput(this);
-				/*draw();
-				invokeActionEvent(EventType.TEXTINPUT, 0, text);*/
 				break;
 			case TextInputKey.ENTER:
 				inputhandler.stopTextInput(this);
@@ -2073,13 +2076,13 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 				break;
 			case TextInputKey.BACKSPACE:
 				if(cursorPos > 0){
-					deleteCharacter(cursorPos);
+					deleteCharacter(cursorPos - 1);
 					cursorPos--;
 					draw();
 				}
 				break;
 			case TextInputKey.DELETE:
-				deleteCharacter(cursorPos + 1);
+				deleteCharacter(cursorPos);
 				draw();
 				break;
 			case TextInputKey.CURSORLEFT:
