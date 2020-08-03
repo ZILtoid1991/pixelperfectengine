@@ -241,10 +241,12 @@ public class MoveElemEvent : UndoableEvent {
 				Value(newPos.bottom)]);
 		oldPos = editorTarget.elements[target].position;
 		editorTarget.elements[target].position = newPos;
+		dwtarget.draw();
 	}
 	public void undo(){
 		wserializer.editValue(target, "position", [Value(oldPos.left), Value(oldPos.top), Value(oldPos.right), 
 				Value(oldPos.bottom)]);
 		editorTarget.elements[target].position = oldPos;
+		dwtarget.draw();
 	}
 }

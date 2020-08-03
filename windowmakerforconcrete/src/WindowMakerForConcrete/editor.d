@@ -559,6 +559,7 @@ public class Editor : SystemEventListener, InputListener{
 		if(moveElemMode) {
 			moveElemMode = false;
 			elements[selection].position = moveElemOrig;
+			dw.draw();
 		}
 	}
 	public void finalizeElemMove() {
