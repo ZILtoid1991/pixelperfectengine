@@ -2,8 +2,8 @@ module document;
 
 import PixelPerfectEngine.map.mapdata;
 import PixelPerfectEngine.map.mapformat;
-import editorEvents;
-import rasterWindow;
+import editorevents;
+import windows.rasterwindow;
 import PixelPerfectEngine.concrete.eventChainSystem;
 import PixelPerfectEngine.graphics.common : Color, Coordinate;
 import PixelPerfectEngine.graphics.bitmap;
@@ -95,93 +95,94 @@ public class MapDocument {
 				}
 				break;
 			case EditMode.tilePlacement:
-
-				switch (button) {
-					case MouseButton.LEFT:
-						//Record the first cursor position upon mouse button press, then initialize either a single or zone write for the selected tile layer.
-						if (state == ButtonState.PRESSED) {
-							prevMouseX = x;
-							prevMouseY = y;
-						} else {
-
-							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
-							x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
-							y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-							prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTileWidth;
-							prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-							Coordinate c;
-							if (x > prevMouseX){
-								c.left = prevMouseX;
-								c.right = x;
+				if(mainDoc.layeroutput.length) {
+					switch (button) {
+						case MouseButton.LEFT:
+							//Record the first cursor position upon mouse button press, then initialize either a single or zone write for the selected tile layer.
+							if (state == ButtonState.PRESSED) {
+								prevMouseX = x;
+								prevMouseY = y;
 							} else {
-								c.left = x;
-								c.right = prevMouseX;
-							}
-							if (y > prevMouseY){
-								c.top = prevMouseY;
-								c.bottom = y;
-							} else {
-								c.top = y;
-								c.bottom = prevMouseY;
-							}
+								ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
+								x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
+								y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
+								prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTileWidth;
+								prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTileHeight;
+								Coordinate c;
+								
+								if (x > prevMouseX){
+									c.left = prevMouseX;
+									c.right = x;
+								} else {
+									c.left = x;
+									c.right = prevMouseX;
+								}
+								if (y > prevMouseY){
+									c.top = prevMouseY;
+									c.bottom = y;
+								} else {
+									c.top = y;
+									c.bottom = prevMouseY;
+								}
 
-							if (voidfill) {
-								if (c.width == 0 && c.height == 0) {
-									if (target.readMapping(c.left, c.top).tileID == 0xFFFF)
+								if (voidfill) {
+									if (c.width == 0 && c.height == 0) {
+										if (target.readMapping(c.left, c.top).tileID == 0xFFFF)
+											events.addToTop(new WriteToMapSingle(target, c.left, c.top, selectedMappingElement));
+									} else {
+										events.addToTop(new WriteToMapVoidFill(target, c, selectedMappingElement));
+									}
+								} else {
+									if (c.width == 0 && c.height == 0) {
 										events.addToTop(new WriteToMapSingle(target, c.left, c.top, selectedMappingElement));
-								} else {
-									events.addToTop(new WriteToMapVoidFill(target, c, selectedMappingElement));
-								}
-							} else {
-								if (c.width == 0 && c.height == 0) {
-									events.addToTop(new WriteToMapSingle(target, c.left, c.top, selectedMappingElement));
 
-								} else {
-									events.addToTop(new WriteToMapOverwrite(target, c, selectedMappingElement));
+									} else {
+										events.addToTop(new WriteToMapOverwrite(target, c, selectedMappingElement));
+									}
 								}
 							}
-						}
-						break;
-					case MouseButton.MID:
-						//Record the first cursor position upon mouse button press, then initialize either a single or zone delete for the selected tile layer.
-						if (state == ButtonState.PRESSED) {
-							prevMouseX = x;
-							prevMouseY = y;
-						} else {
-							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
-							x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
-							y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-							prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTileWidth;
-							prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-							Coordinate c;
-							if (x > prevMouseX){
-								c.left = prevMouseX;
-								c.right = x;
+							break;
+						case MouseButton.MID:
+							//Record the first cursor position upon mouse button press, then initialize either a single or zone delete for the selected tile layer.
+							if (state == ButtonState.PRESSED) {
+								prevMouseX = x;
+								prevMouseY = y;
 							} else {
-								c.left = x;
-								c.right = prevMouseX;
+								ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
+								x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
+								y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
+								prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTileWidth;
+								prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTileHeight;
+								Coordinate c;
+								if (x > prevMouseX){
+									c.left = prevMouseX;
+									c.right = x;
+								} else {
+									c.left = x;
+									c.right = prevMouseX;
+								}
+								if (y > prevMouseY){
+									c.top = prevMouseY;
+									c.bottom = y;
+								} else {
+									c.top = y;
+									c.bottom = prevMouseY;
+								}
+								if (c.width == 0 && c.height == 0) {
+									events.addToTop(new WriteToMapSingle(target, c.left, c.top, MappingElement(0xFFFF)));
+								} else {
+									events.addToTop(new WriteToMapOverwrite(target, c, MappingElement(0xFFFF)));
+								}
 							}
-							if (y > prevMouseY){
-								c.top = prevMouseY;
-								c.bottom = y;
-							} else {
-								c.top = y;
-								c.bottom = prevMouseY;
-							}
-							if (c.width == 0 && c.height == 0) {
-								events.addToTop(new WriteToMapSingle(target, c.left, c.top, MappingElement(0xFFFF)));
-							} else {
-								events.addToTop(new WriteToMapOverwrite(target, c, MappingElement(0xFFFF)));
-							}
-						}
-						break;
-					case MouseButton.RIGHT:
-						//Open quick menu with basic edit options and ability of toggling both vertically and horizontally.
-						break;
-					default:
-						break;
+							break;
+						case MouseButton.RIGHT:
+							//Open quick menu with basic edit options and ability of toggling both vertically and horizontally.
+							break;
+						default:
+							break;
+					}
+					outputWindow.draw();
 				}
-				outputWindow.draw();
 				//outputWindow.updateRaster();
 				break;
 			case EditMode.spritePlacement:

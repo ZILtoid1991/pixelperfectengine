@@ -74,14 +74,14 @@ public class WindowSerializer{
 					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
 					break;
-				case "ListBox":
+				case "OldListBox":
 					int[] columnWidths;
 					dstring[] columnTexts;
 					foreach(t1; t0.expectTag("header").tags){
 						columnTexts ~= toUTF32(t1.values[0].get!string);
 						columnWidths ~= t1.values[1].get!int;
 					}
-					WindowElement we = new ListBox(t0.expectTagValue!string("source"), parseCoordinate(t0.expectTag("position")), [],
+					WindowElement we = new OldListBox(t0.expectTagValue!string("source"), parseCoordinate(t0.expectTag("position")), [],
 							new ListBoxHeader(columnTexts, columnWidths));
 					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
@@ -141,7 +141,7 @@ public class WindowSerializer{
 							", " ~ conv.to!string(t0.getTagValue!int("barLength")) ~ ", " ~ t0.getTagValue!string("source") ~
 							"\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
-				case "ListBox":
+				case "OldListBox":
 					string headerCtorA = "new ListBoxHeader([", headerCtorB = "], [";
 					foreach(t1; t0.expectTag("header").tags){
 						headerCtorA ~= "\"" ~ t1.values[0].get!string ~ "\"d, ";
@@ -149,7 +149,7 @@ public class WindowSerializer{
 					}
 					headerCtorA.length -= 2;
 					headerCtorB.length -= 2;
-					elementCtors ~= "\t\tnew ListBox(\"" ~ t0.getTagValue!string("source")
+					elementCtors ~= "\t\tnew OldListBox(\"" ~ t0.getTagValue!string("source")
 							~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "), [], " ~
 							headerCtorA ~ headerCtorB ~ "]));\n";
 					break;
@@ -261,7 +261,7 @@ public class WindowSerializer{
 				new Tag(t1, null, "text", [Value(name)]);
 				break;
 			case ElementType.ListBox:
-				t1 = new Tag(root, null, "ListBox", [Value(name)]);
+				t1 = new Tag(root, null, "OldListBox", [Value(name)]);
 				Tag t2 = new Tag(t1, null, "header");
 				new Tag(t2, null, null, [Value("col0"), Value(40)]);
 				new Tag(t2, null, null, [Value("col1"), Value(40)]);

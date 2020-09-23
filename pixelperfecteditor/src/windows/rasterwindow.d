@@ -1,3 +1,5 @@
+module windows.rasterwindow;
+
 /*
  * rasterWindow.d
  *
@@ -49,16 +51,61 @@ public class RasterWindow : Window, PaletteContainer {
 		return trueOutput;
 	}
 	/**
-	 * Sets the raster's palette to the given value.
+	 * Returns the palette of the object.
 	 */
-	public @property Color[] palette(Color[] val) @safe pure {
-		return paletteLocal = val;
+	public @property Color[] palette() @safe pure nothrow @nogc {
+		return paletteLocal;
+	}
+	///Returns the given palette index.
+	public Color getPaletteIndex(ushort index) @safe pure nothrow @nogc const {
+		return paletteLocal[index];
+	}
+	///Sets the given palette index to the given value.
+	public Color setPaletteIndex(ushort index, Color value) @safe pure nothrow @nogc {
+		return paletteLocal[index] = value;
 	}
 	/**
-	 * Returns the current raster palette.
+	 * Adds a palette chunk to the end of the main palette.
 	 */
-	public @property Color[] palette() @safe pure {
+	public Color[] addPaletteChunk(Color[] paletteChunk) @safe {
+		return paletteLocal ~= paletteChunk;
+	}
+	/**
+	 * Loads a palette into the object.
+	 * Returns the new palette of the object.
+	 */
+	public Color[] loadPalette(Color[] palette) @safe {
+		return paletteLocal = palette;
+	}
+	/**
+	 * Loads a palette chunk into the object.
+	 * The offset determines where the palette should be loaded.
+	 * If it points to an existing place, the indices after that will be overwritten until the whole palette will be copied.
+	 * If it points to the end or after it, then the palette will be made longer, and will pad with values #00000000 if needed.
+	 * Returns the new palette of the object.
+	 */
+	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @safe {
+		if (paletteLocal.length < offset + paletteChunk.length) {
+			paletteLocal.length = paletteLocal.length + (offset - paletteLocal.length) + paletteChunk.length;
+		}
+		debug writeln(paletteLocal.length);
+		assert(paletteLocal.length >= offset + paletteChunk.length, "Palette error!");
+		for (int i ; i < paletteChunk.length ; i++) {
+			debug writeln(i);
+			paletteLocal[i + offset] = paletteChunk[i];
+		}
 		return paletteLocal;
+	}
+	/**
+	 * Clears an area of the palette with zeroes.
+	 * Returns the original area.
+	 */
+	public Color[] clearPaletteChunk(ushort lenght, ushort offset) @safe {
+		Color[] backup = paletteLocal[offset..offset + lenght].dup;
+		for (int i = offset ; i < offset + lenght ; i++) {
+			paletteLocal[i] = Color(0);
+		}
+		return backup;
 	}
 	public override void passMouseEvent(int x, int y, int state, ubyte button) {
 		StyleSheet ss = getStyleSheet;
@@ -87,12 +134,12 @@ public class RasterWindow : Window, PaletteContainer {
 		//draw the borders. we do not need fills or drawing elements
 		uint* ptr = cast(uint*)trueOutput.getPtr;
 		StyleSheet ss = getStyleSheet;
-		drawLine!uint(0, 16, 0, position.height - 1, paletteShared[ss.getColor("windowascent")].raw, ptr, trueOutput.width);
-		drawLine!uint(0, 16, position.width - 1, 16, paletteShared[ss.getColor("windowascent")].raw, ptr, trueOutput.width);
+		drawLine!uint(0, 16, 0, position.height - 1, paletteShared[ss.getColor("windowascent")].base, ptr, trueOutput.width);
+		drawLine!uint(0, 16, position.width - 1, 16, paletteShared[ss.getColor("windowascent")].base, ptr, trueOutput.width);
 		drawLine!uint(position.width - 1, 16, position.width - 1, position.height - 1,
-				paletteShared[ss.getColor("windowdescent")].raw, ptr, trueOutput.width);
+				paletteShared[ss.getColor("windowdescent")].base, ptr, trueOutput.width);
 		drawLine!uint(0, position.height - 1, position.width - 1, position.height - 1,
-				paletteShared[ss.getColor("windowdescent")].raw, ptr, trueOutput.width);
+				paletteShared[ss.getColor("windowdescent")].base, ptr, trueOutput.width);
 	}
 	/**
 	 * Updates the raster of the window.
@@ -205,18 +252,9 @@ public class RasterWindow : Window, PaletteContainer {
 		}
 	}
 	
-	public Color getIndex (ushort index) @safe pure nothrow @nogc {
-		return paletteLocal[index];
-	}
 	
-	public Color setIndex (ushort index, Color val) @safe pure nothrow @nogc {
-		return paletteLocal[index] = val;
-	}
+
 	
-	public Color[] addPaletteChunk(Color[] paletteChunk) @safe pure {
-		assert(paletteChunk.length);
-		return paletteLocal ~= paletteChunk;
-	}
 
 	public void loadLayers () {
 		foreach (key; document.mainDoc.layeroutput.byKey) {

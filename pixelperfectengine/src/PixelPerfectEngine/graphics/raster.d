@@ -24,12 +24,41 @@ public interface RefreshListener{
 public interface IRaster{
     public SDL_Texture* getOutput();
 }
+/**
+ * Defines palette handling functions.
+ * It provides various functions for safe palette handling.
+ */
 public interface PaletteContainer {
-	public @property Color[] palette(Color[] val) @safe pure;
-	public @property Color[] palette() @safe pure;
-	public Color getIndex(ushort index) @safe pure nothrow @nogc;
-	public Color setIndex(ushort index, Color val) @safe pure nothrow @nogc;
-	public Color[] addPaletteChunk(Color[] paletteChunk) @safe pure;
+	/**
+	 * Returns the palette of the object.
+	 */
+	public @property Color[] palette() @safe pure nothrow @nogc;
+	///Returns the given palette index.
+	public Color getPaletteIndex(ushort index) @safe pure nothrow @nogc const;
+	///Sets the given palette index to the given value.
+	public Color setPaletteIndex(ushort index, Color value) @safe pure nothrow @nogc;
+	/**
+	 * Adds a palette chunk to the end of the main palette.
+	 */
+	public Color[] addPaletteChunk(Color[] paletteChunk) @safe;
+	/**
+	 * Loads a palette into the object.
+	 * Returns the new palette of the object.
+	 */
+	public Color[] loadPalette(Color[] palette) @safe;
+	/**
+	 * Loads a palette chunk into the object.
+	 * The offset determines where the palette should be loaded.
+	 * If it points to an existing place, the indices after that will be overwritten until the whole palette will be copied.
+	 * If it points to the end or after it, then the palette will be made longer, and will pad with values #00000000 if needed.
+	 * Returns the new palette of the object.
+	 */
+	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @safe;
+	/**
+	 * Clears an area of the palette with zeroes.
+	 * Returns the original area.
+	 */
+	public Color[] clearPaletteChunk(ushort lenght, ushort offset) @safe;
 }
 
 ///Handles multiple layers onto one framebuffer.
@@ -37,8 +66,8 @@ public class Raster : IRaster, PaletteContainer{
     private ushort rX, rY;		///Stores screen resolution. Set overscan resolutions at OutputWindow
     //public SDL_Surface* workpad;
 	public SDL_Texture*[] frameBuffer;
-	public void*[] fbData;
-	public int[] fbPitch;
+	public void* fbData;
+	public int fbPitch;
 	/**
 	 * Color format is ARGB, with each index having their own transparency.
 	 */
@@ -46,7 +75,10 @@ public class Raster : IRaster, PaletteContainer{
     private Layer[int] layerList;	///Stores the layers by their priorities.
 	private int[] layerPriorityHandler, threads;
     private bool r;
-	private int[2] doubleBufferRegisters;
+	protected ubyte nOfBuffers;		///Number of framebuffers, 2 for double buffering.
+	protected ubyte updatedBuffer;	///Framebuffer currently being updated
+	protected ubyte displayedBuffer;///Framebuffer currently being displayed
+	//private int[2] doubleBufferRegisters;
     private RefreshListener[] rL;
 	private MonoTime frameTime, frameTime_1;
 	private Duration delta_frameTime;
@@ -54,59 +86,88 @@ public class Raster : IRaster, PaletteContainer{
 	//public Bitmap16Bit[2] frameBuffer;
 
     ///Default constructor. x and y : represent the resolution of the raster.
-    public this(ushort x, ushort y, OutputScreen oW, size_t paletteLength = 65536){
+    public this(ushort x, ushort y, OutputScreen oW, size_t paletteLength, ubyte buffers = 2){
         //workpad = SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
 		//this.threads = threads;
-		assert(paletteLength <= 65536);
+		assert(paletteLength <= 65_536);
+		_palette.length = paletteLength;
 		SDL_Renderer* renderer = oW.renderer;
         rX=x;
         rY=y;
-		/*frameBuffer[0] = new Bitmap16Bit(x,y);
-		frameBuffer[1] = new Bitmap16Bit(x,y);*/
-		/*frameBuffer ~= SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-		frameBuffer ~= SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);*/
-		frameBuffer ~= SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRX8888, SDL_TEXTUREACCESS_STREAMING, x, y);
-		frameBuffer ~= SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRX8888, SDL_TEXTUREACCESS_STREAMING, x, y);
-		fbData ~= null;
-		fbData ~= null;
-		fbPitch ~= 0;
-		fbPitch ~= 0;
-		doubleBufferRegisters[0] = 1;
-		doubleBufferRegisters[1] = 0;
+		nOfBuffers = buffers;
+		for (int i ; i < buffers ; i++)
+			frameBuffer ~= SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRX8888, SDL_TEXTUREACCESS_STREAMING, x, y);
+		/+doubleBufferRegisters[0] = 1;
+		doubleBufferRegisters[1] = 0;+/
 		oW.setMainRaster(this);
 		addRefreshListener(oW);
 	}
-	public @property Color[] palette(Color[] val) @safe pure {
-		return _palette = val;
-	}
-	public @property Color[] palette() @safe pure {
+	/**
+	 * Returns a copy of the palette of the object.
+	 */
+	public @property Color[] palette() @safe pure nothrow @nogc {
 		return _palette;
 	}
-	public Color getIndex(ushort index) @safe pure nothrow @nogc {
+	public Color getPaletteIndex(ushort index) @safe pure nothrow @nogc const {
 		return _palette[index];
 	}
-	public Color setIndex(ushort index, Color val) @safe pure nothrow @nogc {
+	public Color setPaletteIndex(ushort index, Color val) @safe pure nothrow @nogc {
 		return _palette[index] = val;
 	}
-	public Color[] addPaletteChunk(Color[] paletteChunk) @safe pure {
+	/**
+	 * Loads a palette into the object.
+	 * Returns the new palette of the object.
+	 */
+	public Color[] loadPalette(Color[] palette) @safe {
+		return _palette = palette;
+	}
+	/**
+	 * Adds a palette chunk to the end of the main palette.
+	 */
+	public Color[] addPaletteChunk(Color[] paletteChunk) @safe {
 		return _palette ~= paletteChunk;
+	}
+	/**
+	 * Loads a palette chunk into the object.
+	 * The offset determines where the palette should be loaded.
+	 * If it points to an existing place, the indices after that will be overwritten until the whole palette will be copied.
+	 * If it points to the end or after it, then the palette will be made longer, and will pad with values #00000000 if needed.
+	 * Returns the new palette of the object.
+	 */
+	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @safe {
+		if (paletteChunk.length + offset < _palette.length) 
+			_palette.length += (offset - _palette.length) + paletteChunk.length;
+		for (int i = offset, j ; j < paletteChunk.length ; i++, j++) 
+			_palette[i] = paletteChunk[j];
+		return _palette;
+	}
+	/**
+	 * Clears an area of the palette with zeroes.
+	 * Returns the original area.
+	 */
+	public Color[] clearPaletteChunk(ushort lenght, ushort offset) @safe {
+		Color[] backup = _palette[offset..offset + lenght].dup;
+		for (int i = offset ; i < offset + lenght ; i++) {
+			_palette[i] = Color(0);
+		}
+		return backup;
 	}
 	/**
 	 * Returns the current FPS count.
 	 */
-	public @nogc @property real fps(){
+	public @property real fps() @safe @nogc pure nothrow const {
 		return framesPerSecond;
 	}
 	/**
 	 * Returns the current average FPS count.
 	 */
-	public @nogc @property real avgfps(){
+	public @property real avgfps() @safe @nogc pure nothrow const {
 		return avgFPS;
 	}
 	/**
 	 * Resets the avgFPS to zero.
 	 */
-	public @nogc void resetAvgfps(){
+	public void resetAvgfps() @safe @nogc pure nothrow {
 		avgFPS = 0;
 	}
 	~this(){
@@ -160,22 +221,17 @@ public class Raster : IRaster, PaletteContainer{
     public void refresh(){
 
         r = true;
-		//this.clearFramebuffer();
-		if(doubleBufferRegisters[0] == 0){
-			doubleBufferRegisters[0] = 1;
-			doubleBufferRegisters[1] = 0;
-		}else{
-			doubleBufferRegisters[0] = 0;
-			doubleBufferRegisters[1] = 1;
-		}
+		
+		updatedBuffer++;
+		if(updatedBuffer >= nOfBuffers) updatedBuffer = 0;
 
-		SDL_LockTexture(frameBuffer[doubleBufferRegisters[0]], null, &fbData[doubleBufferRegisters[0]], &fbPitch[doubleBufferRegisters[0]]);
+		SDL_LockTexture(frameBuffer[updatedBuffer], null, &fbData, &fbPitch);
 
 		for(int i ; i < layerPriorityHandler.length ; i++){
-			layerList[layerPriorityHandler[i]].updateRaster(fbData[doubleBufferRegisters[0]], fbPitch[doubleBufferRegisters[0]], palette.ptr);
+			layerList[i].updateRaster(fbData, fbPitch, palette.ptr);
 		}
 
-		SDL_UnlockTexture(frameBuffer[doubleBufferRegisters[0]]);
+		SDL_UnlockTexture(frameBuffer[updatedBuffer]);
         r = false;
 
         foreach(r; rL){
@@ -185,7 +241,7 @@ public class Raster : IRaster, PaletteContainer{
 		frameTime_1 = frameTime;
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
 		delta_frameTime = frameTime_1 - frameTime;
-		real delta_frameTime0 = to!real(delta_frameTime.total!"hnsecs"());
+		const real delta_frameTime0 = to!real(delta_frameTime.total!"hnsecs"());
 		framesPerSecond = framesPerSecond + 1 / (delta_frameTime0 / 10000);
 		if(avgFPS)
 			avgFPS = (avgFPS + framesPerSecond) / 2;
@@ -195,10 +251,11 @@ public class Raster : IRaster, PaletteContainer{
 
 
     ///Returns the workpad.
-    public SDL_Texture* getOutput(){
-		if(fbData[0] !is null)
-			return frameBuffer[0];
-		return frameBuffer[1];
+    public SDL_Texture* getOutput() @nogc @safe pure nothrow {
+		if (displayedBuffer == updatedBuffer) displayedBuffer++;
+		if (displayedBuffer >= nOfBuffers) displayedBuffer = 0;
+		return frameBuffer[displayedBuffer++];
+		//return frameBuffer[0];
     }
 
 

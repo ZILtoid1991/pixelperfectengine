@@ -161,7 +161,14 @@ public class DummyWindow : Window{
 
 	}
 	override public void passMouseDragEvent(int x, int y, int relX, int relY, ubyte button) {
+		x -= position.left;
+		y -= position.top;
 		ed.dragEvent(x, y, relX, relY, button);
+	}
+	public void drawSelection(Coordinate box) {
+		draw();
+		//stdio.writeln(box);
+		output.drawRectangle(box.left, box.right, box.top, box.bottom, 17);
 	}
 }
 
@@ -179,7 +186,8 @@ public class Editor : SystemEventListener, InputListener{
 		bool, "redoPressed", 1,
 		bool, "delPressed", 1,
 		bool, "moveElemMode", 1,
-		ubyte, "", 3,
+		bool, "resizeMode", 1,
+		ubyte, "", 2,
 	));
 	Coordinate			moveElemOrig;
 	int					x0, y0;
@@ -209,6 +217,14 @@ public class Editor : SystemEventListener, InputListener{
 				KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(0, ScanCode.DELETE, 0, "del", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(0, ScanCode.ESCAPE, 0, "sysesc", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F1, 0, "Label", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F2, 0, "Button", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F3, 0, "TextBox", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F4, 0, "ListBox", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F5, 0, "CheckBox", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F6, 0, "RadioButton", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F8, 0, "HSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F9, 0, "VSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		PopUpElement.inputhandler = inputH;
 		WindowElement.inputHandler = inputH;
 		ewh.initGUI();
@@ -385,10 +401,18 @@ public class Editor : SystemEventListener, InputListener{
 			}
 		} else {
 			if (state == ButtonState.PRESSED) {
-				if(!moveElemMode) initElemMove;
-				//stdio.writeln("element move mode is ", moveElemMode);
+				if(!moveElemMode && elements.get(selection, null)) {
+					if (elements[selection].position.isBetween(x,y)) {
+						initElemMove;
+						
+					} else if (elements[selection].position.right <= x + 1 && elements[selection].position.bottom <= y + 1) {
+						initElemResize;
+						
+					}
+				}
 			} else {
 				finalizeElemMove;
+				finalizeElemResize;
 			}
 		}
 	}
@@ -401,6 +425,12 @@ public class Editor : SystemEventListener, InputListener{
 			if(temp.bottom + relY >= dw.position.height) relY -= (temp.bottom + relY) - dw.position.height;
 			elements[selection].position.relMove(relX, relY);
 			dw.draw();
+		} else if (resizeMode) {
+			x0 = x;
+			y0 = y;
+			dw.drawSelection(Coordinate(elements[selection].position.left, elements[selection].position.top, x0, y0));
+		} else if (typeSel != ElementType.NULL) {
+			dw.drawSelection(Coordinate(x0, y0, x, y));
 		}
 	}
 
@@ -546,11 +576,11 @@ public class Editor : SystemEventListener, InputListener{
 		}
 	}
 	public void delElement() {
-		if(selection != "window")
+		if(selection != "window" && selection.length)
 			eventStack.addToTop(new DeleteEvent(elements[selection], selection));
 	}
 	public void initElemMove() {
-		if(selection != "window") {
+		if(selection != "window" && selection.length) {
 			moveElemMode = true;
 			moveElemOrig = elements[selection].position;
 		}
@@ -563,10 +593,40 @@ public class Editor : SystemEventListener, InputListener{
 		}
 	}
 	public void finalizeElemMove() {
-		moveElemMode = false;
-		Coordinate newPos = elements[selection].position;
-		elements[selection].position = moveElemOrig;
-		eventStack.addToTop(new MoveElemEvent(newPos, selection));
+		if(moveElemMode) {
+			moveElemMode = false;
+			Coordinate newPos = elements[selection].position;
+			elements[selection].position = moveElemOrig;
+			eventStack.addToTop(new MoveElemEvent(newPos, selection));
+		}
+	}
+	public void initElemResize() {
+		if(selection == "window") {
+			
+			
+		} else if(selection.length) {
+			resizeMode = true;
+		}
+	}
+	public void deinitElemResize() {
+		if(resizeMode) {
+			resizeMode = false;
+		}
+	}
+	public void finalizeElemResize() {
+		if(resizeMode) {
+			resizeMode = false;
+			if(selection == "window") {
+
+			} else if (selection.length) {
+				if (x0 <= elements[selection].position.left || y0 <= elements[selection].position.top) {
+					ewh.messageWindow("Resize error!", "Out of bound resizing!");
+				} else {
+					const Coordinate newPos = Coordinate(elements[selection].position.left, elements[selection].position.top, x0, y0);
+					eventStack.addToTop(new MoveElemEvent(newPos, selection));
+				}
+			}
+		}
 	}
 	public void whereTheMagicHappens(){
 		while(!onExit){
@@ -582,28 +642,47 @@ public class Editor : SystemEventListener, InputListener{
 	public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype) {
 		switch(ID){
 			case "undo":
-				if (!undoPressed) {
-					undoPressed = true;
-					eventStack.undo;
-				}
+				eventStack.undo;
 				break;
 			case "redo":
-				if (!redoPressed) {
-					redoPressed = true;
-					eventStack.redo;
-				}
+				eventStack.redo;
 				break;
 			case "del":
-				if (!delPressed) {
-					delPressed = true;
-					const string prevSelection = selection;
-					selection = "window";
-					eventStack.addToTop(new DeleteEvent(elements[prevSelection], prevSelection));
-				}
+				const string prevSelection = selection;
+				selection = "window";
+				eventStack.addToTop(new DeleteEvent(elements[prevSelection], prevSelection));
 				break;
 			case "sysesc":
 				deinitElemMove;
+				deinitElemResize;
 				typeSel = ElementType.NULL;
+				break;
+			case "Label":
+				typeSel = ElementType.Label;
+				break;
+			case "Button":
+				typeSel = ElementType.Button;
+				break;
+			case "TextBox":
+				typeSel = ElementType.TextBox;
+				break;
+			case "ListBox":
+				typeSel = ElementType.ListBox;
+				break;
+			case "CheckBox":
+				typeSel = ElementType.CheckBox;
+				break;
+			case "RadioButton":
+				typeSel = ElementType.RadioButton;
+				break;
+			case "MenuBar":
+				typeSel = ElementType.MenuBar;
+				break;
+			case "HSlider":
+				typeSel = ElementType.HSlider;
+				break;
+			case "VSlider":
+				typeSel = ElementType.VSlider;
 				break;
 			default:
 				break;
@@ -611,15 +690,7 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void keyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype) {
 		switch(ID){
-			case "undo":
-				undoPressed = false;
-				break;
-			case "redo":
-				redoPressed = false;
-				break;
-			case "del":
-				delPressed = false;
-				break;
+			
 			default:
 				break;
 		}

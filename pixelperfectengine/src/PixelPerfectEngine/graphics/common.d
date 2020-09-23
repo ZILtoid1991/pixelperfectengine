@@ -8,6 +8,8 @@ module PixelPerfectEngine.graphics.common;
 
 //public import CPUblit.colorspaces;
 
+import dimage.types : ARGB8888BE;
+
 /**
  * Represents a box on a 2D field.
  */
@@ -22,19 +24,19 @@ public struct Coordinate{
 	/**
 	 * Returns the width of the represented box.
 	 */
-	public @property @nogc @safe nothrow pure int width() const{
+	public @property @nogc @safe nothrow pure int width() const {
 		return right-left;
 	}
 	/**
 	 * Returns the height of the represented box.
 	 */
-	public @property @nogc @safe nothrow pure int height() const{
+	public @property @nogc @safe nothrow pure int height() const {
 		return bottom-top;
 	}
 	/**
 	 * Returns the area of the represented box.
 	 */
-	public @property @nogc @safe nothrow pure size_t area() const{
+	public @property @nogc @safe nothrow pure size_t area() const {
 		return width * height;
 	}
 	/**
@@ -49,11 +51,17 @@ public struct Coordinate{
 	/**
 	 * Moves the box by the given values.
 	 */
-	public void relMove(int x, int y) @nogc @safe nothrow pure{
+	public void relMove(int x, int y) @nogc @safe nothrow pure {
 		left = left + x;
 		right = right + x;
 		top = top + y;
 		bottom = bottom + y;
+	}
+	/**
+	 * Returns true if the given point is between the coordinates.
+	 */
+	public bool isBetween(int x, int y) @nogc @safe pure nothrow const {
+		return (x >= left && x <= right && y >= top && y <= bottom);
 	}
 	/**
 	 * Returns a string with the coordinates that is useful for debugging
@@ -69,6 +77,7 @@ public struct Coordinate{
 }
 /**
  * Defines polygons for sprite transformation (eg. scaling, rotation).
+ * Most likely will be removed due to lack of use.
  */
 public struct Quad{
 	public int midX, midY;		///Defines the midpoint to reduce the need for precision. Corners are referenced to this point
@@ -77,6 +86,8 @@ public struct Quad{
 	public float cornerCX, cornerCY, cornerCZ;	///Lower-left corner mapping
 	public float cornerDX, cornerDY, cornerDZ;	///Lower-right corner mapping
 }
+alias Color = ARGB8888BE;
+/+
 /**
  * Various representations of color with various accessibility modes.
  * Probably will be replaced with a struct from either CPUBLiT or dimage.
@@ -164,5 +175,5 @@ public struct Color{
 		import PixelPerfectEngine.system.etc;
 		return "0x" ~ intToHex(raw, 8);
 	}
-}
+}+/
 //alias Pixel32Bit Color;

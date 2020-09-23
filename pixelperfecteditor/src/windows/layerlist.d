@@ -1,4 +1,4 @@
-module layerlist;
+module windows.layerlist;
 
 import PixelPerfectEngine.concrete.window;
 import app;

@@ -953,12 +953,13 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 
 	}
 	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
+		import std.math : ceil;
 		//coordinate conversion
 		double xR = to!double(rasterX) / to!double(screenX) , yR = to!double(rasterY) / to!double(screenY);
 		x = to!int(x * xR);
 		y = to!int(y * yR);
-		relX = to!int(relX * xR);
-		relY = to!int(relY * yR);
+		relX = to!int(ceil(relX * xR));
+		relY = to!int(ceil(relY * yR));
 		//passing mouseMovementEvent onto PopUps
 		if(numOfPopUpElements < 0){
 			PopUpElement p = popUpElements[popUpElements.length - 1];

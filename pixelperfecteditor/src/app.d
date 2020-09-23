@@ -74,7 +74,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
 		Image spriteSource = loadImage(File("../assets/d-man.tga"));
 		output = new OutputScreen("TileLayer test", 1280,960);
-		r = new Raster(320,240,output);
+		r = new Raster(320,240,output,0);
 		output.setMainRaster(r);
 		t = new TileLayer(16,16, LayerRenderingMode.COPY);
 		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(LayerRenderingMode.COPY);
@@ -171,12 +171,12 @@ class TileLayerTest : SystemEventListener, InputListener{
 		}*/
 		Color[] localPal = loadPaletteFromImage(tileSource);
 		localPal.length = 256;
-		r.palette = r.palette ~ localPal;
+		r.addPaletteChunk(localPal);
 		localPal = loadPaletteFromImage(spriteSource);
 		localPal.length = 256;
-		r.palette = r.palette ~ localPal;
+		r.addPaletteChunk(localPal);
 		//r.palette[0].alpha = 255;
-		r.palette[256].raw = 0;
+		r.palette[256].base = 0;
 		//writeln(tt);
 		//r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);

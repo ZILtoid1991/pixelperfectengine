@@ -30,14 +30,14 @@ import PixelPerfectEngine.concrete.eventChainSystem;
 import PixelPerfectEngine.map.mapformat;
 
 //import converterdialog;
-//import newLayerDialog;
-import about;
-import editorEvents;
-public import layerlist;
-public import materialList;
+import windows.resizemap;
+import windows.about;
+import editorevents;
+public import windows.layerlist;
+public import windows.materiallist;
 import document;
-import rasterWindow;
-import newTileLayer;
+import windows.rasterwindow;
+import windows.newtilelayer;
 
 public interface IEditor{
 	public void onExit();
@@ -62,7 +62,7 @@ public class NewDocumentDialog : Window{
 		labels ~= new Label("Name:","",Coordinate(5,20,80,39));
 		labels ~= new Label("RasterX:","",Coordinate(5,40,80,59));
 		labels ~= new Label("RasterY:","",Coordinate(5,60,80,79));
-		labels ~= new Label("N. of colors:","",Coordinate(5,80,120,99));
+		//labels ~= new Label("N. of colors:","",Coordinate(5,80,120,99));
 		textBoxes ~= new TextBox("","name",Coordinate(81,20,200,39));
 		textBoxes ~= new TextBox("","rX",Coordinate(121,40,200,59));
 		textBoxes ~= new TextBox("","rY",Coordinate(121,60,200,79));
@@ -466,7 +466,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
 	public void initResizeLayer() {
-		import resizeMap;
+		//import resizeMap;
 		if (selDoc !is null) {
 			wh.addWindow(new ResizeMap(selDoc));
 		}
@@ -562,13 +562,13 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		//OutputWindow.setDriver("software");
 		ow ~= new OutputScreen("Pixel Perfect Editor", 1696, 960);
 
-		rasters = new Raster(848, 480, ow[0], 0);
+		rasters = new Raster(848, 480, ow[0], 0, 2);
 		ow[0].setMainRaster(rasters);
 		rasters.addLayer(windowing, 0);
 		rasters.addLayer(bitmapPreview, 1);
 		//ISSUE: Copying the palette from StyleSheet.defaultPaletteForGUI doesn't work
 		//SOLUTION: Load the palette from a file
-		rasters.palette = loadPaletteFromFile("../system/concreteGUIE1.tga");
+		rasters.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
 		//rasters[0].addRefreshListener(ow[0],0);
 		WindowElement.onDraw = &setRasterRefresh;
 		PopUpElement.onDraw = &setRasterRefresh;
@@ -579,10 +579,21 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		windowing.relMoveSprite(65536, 0, 0);
 	}
 	/**
-	 * Opens a window to aks the user for the data on the new tile layer
+	 * Opens a window to ask the user for the data on the new tile layer
 	 */
 	public void initNewTileLayer(){
 		wh.addWindow(new NewTileLayerDialog(this));
+	}
+	/**
+	 * Opens a window to ask the user for input on materials to be added
+	 */
+	public void initAddMaterials() {
+		import windows.addtiles;
+		if(selDoc){
+			ITileLayer itl = cast(ITileLayer)selDoc.mainDoc.layeroutput[selDoc.selectedLayer];
+			const int tileX = itl.getTileWidth, tileY = itl.getTileHeight;
+			wh.addWindow(new AddTiles(this, tileX, tileY));
+		}
 	}
 	/**
 	 * Creates a new tile layer with the given data.
@@ -591,8 +602,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	 * existing file, then that file will be loaded. If null, then the map data will be embedded as a BASE64 chunk.
 	 * tmplt: Optional field. Specifies the initial tile source data from a map file alongside with the name of the layer
 	 */
-	public void newTileLayer(int tX, int tY, int mX, int mY, dstring name, string file, string tmplt, bool embed) {
-		selDoc.events.addToTop(new CreateTileLayerEvent(selDoc, tX, tY, mX, mY, name, file, tmplt, embed));
+	public void newTileLayer(int tX, int tY, int mX, int mY, dstring name, string file, bool embed) {
+		selDoc.events.addToTop(new CreateTileLayerEvent(selDoc, tX, tY, mX, mY, name, file, embed));
 	}
 	public void setRasterRefresh(){
 		rasterRefresh = true;

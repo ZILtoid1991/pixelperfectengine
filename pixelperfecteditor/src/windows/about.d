@@ -1,4 +1,4 @@
-module about;
+module windows.about;
 
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.graphics.common;

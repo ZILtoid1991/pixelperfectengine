@@ -56,19 +56,19 @@ public T loadBitmapFromImage(T)(Image img) @trusted
 	static if(T.stringof == Bitmap4Bit.stringof){
 		if(img.getBitdepth != 4)
 			throw new BitmapFormatException("Bitdepth mismatch exception!");
-		return new Bitmap4Bit(img.getImageData, img.width, img.height);
+		return new Bitmap4Bit(img.imageData.raw, img.width, img.height);
 	}else static if(T.stringof == Bitmap8Bit.stringof){
 		if(img.getBitdepth != 8)
 			throw new BitmapFormatException("Bitdepth mismatch exception!");
-		return new Bitmap8Bit(img.getImageData, img.width, img.height);
+		return new Bitmap8Bit(img.imageData.raw, img.width, img.height);
 	}else static if(T.stringof == Bitmap16Bit.stringof){
 		if(img.getBitdepth != 16)
 			throw new BitmapFormatException("Bitdepth mismatch exception!");
-		return new Bitmap16Bit(reinterpretCast!ushort(img.getImageData), img.width, img.height);
+		return new Bitmap16Bit(reinterpretCast!ushort(img.imageData.raw), img.width, img.height);
 	}else static if(T.stringof == Bitmap32Bit.stringof){
 		if(img.getBitdepth != 32)
 			throw new BitmapFormatException("Bitdepth mismatch exception!");
-		return new Bitmap32Bit(reinterpretCast!Color(img.getImageData), img.width, img.height);
+		return new Bitmap32Bit(reinterpretCast!Color(img.imageData.raw), img.width, img.height);
 	}
 
 }
@@ -90,30 +90,30 @@ public T loadBitmapFromFile(T)(string filename)
 			static if(T.stringof == Bitmap4Bit.stringof){
 				if(imageFile.getBitdepth != 4)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap4Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+				return new Bitmap4Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
 			}else static if(T.stringof == Bitmap8Bit.stringof){
 				if(imageFile.getBitdepth != 8)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap8Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+				return new Bitmap8Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
 			}else static if(T.stringof == Bitmap16Bit.stringof){
 				if(imageFile.getBitdepth != 16)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap16Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+				return new Bitmap16Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
 			}else static if(T.stringof == Bitmap32Bit.stringof){
 				if(imageFile.getBitdepth != 32)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap32Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+				return new Bitmap32Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
 			}
 		case ".png", ".PNG":
 			PNG imageFile = PNG.load!File(f);
 			static if(T.stringof == Bitmap8Bit.stringof){
 				if(imageFile.getBitdepth != 8)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap8Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+				return new Bitmap8Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
 			}else static if(T.stringof == Bitmap32Bit.stringof){
 				if(imageFile.getBitdepth != 32)
 					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap32Bit(imageFile.getImageData, imageFile.width, imageFile.height);
+				return new Bitmap32Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
 			}
 		default:
 			throw new Exception("Unsupported file format!");
@@ -202,14 +202,16 @@ public Color[] loadPaletteFromFile(string filename) {
  */
 public Color[] loadPaletteFromImage (Image img) {
 	Color[] palette;
-	auto sourcePalette = img.palette;
-	palette.reserve(sourcePalette.length);
-	for (ushort i ; i < sourcePalette.length ; i++){
-		const auto origC = sourcePalette[i];
-		const Color c = Color(origC.a, origC.r, origC.g, origC.b);
-		palette ~= c;
+	IPalette sourcePalette = img.palette.convTo(PixelFormat.ARGB8888 | PixelFormat.BigEndian);
+	palette = reinterpretCast!Color(sourcePalette.raw);
+
+	assert(palette.length == sourcePalette.length, "Palette lenght import mismatch!");
+	if(!(img.palette.paletteFormat & PixelFormat.ValidAlpha)){
+		palette[0].a = 0x0;
+		for(int i = 1; i < palette.length; i++) {
+			palette[i].a = 0xFF;
+		}
 	}
-	assert (palette.length == sourcePalette.length);
 	return palette;
 }
 

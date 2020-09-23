@@ -7,6 +7,17 @@ This document is not finished, although I plan to minimize changes that would br
 
 Extension: `.XMF` (Extendible Map Format)
 
+Naming conventions:
+
+* PascalCase for tags and namespaces.
+* camelCase for attributes.
+* Use of namespaces in attributes should be avoided.
+
+Conventions with value vs. attribute usage:
+
+* Values are used for mandatory values.
+* Attributes are used for optional values.
+
 # Metadata
 
 * Has no namespace
@@ -75,12 +86,9 @@ Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Bl
 
 Contains data related to sprite layers.
 
-As of version 1.0, SpriteLAyers can have additional ancillary tags as long as they don't have a collision with others within a single layer. Within all those tags, there can be even more child tags with the same rule. Namespaces are restricted to internal use.
+As of version 1.0, SpriteLayers can have additional ancillary tags as long as they don't have a collision with others within a single layer. Within all those tags, there can be even more child tags with the same rule. Namespaces are restricted to internal use.
 
 `Layer:Sprite "Playfield A" 1`
-
-`value[0]` is the name of the layer.
-
 
 ### RenderingMode
 
@@ -90,21 +98,99 @@ Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Bl
 
 # Namespace 'Embed'
 
-* Position constraints: Within the tag of any layer, with no preferrence of order.
+* Position constraints: Within the tag of any layer and sometimes other tags, with no preferrence of order.
 
 Specifies data that is embedded within this file. These can be: Mapping data, names and IDs of individual tiles, scripting files, etc.
 
-## Tiledata
+## TileData
 
-`embed:tiledata`
+`Embed:TileData`
 
-Stores embedded tiledata.
+Stores embedded tiledata. Should be within a `File:TileSource` tag.
 
-## Mapdata
+Has a single kind of nameless tag in the given format:
 
-`embed:mapdata`
+`2 2 "sci-fi-tileset.tga0x0002"`
+
+Explanations for values in order:
+
+1) The ID of the tile. Must be between 0 and 65535.
+2) Determines which tile is requested from the sheet in left-to-right top-to-bottom order.
+3) The name of the tile.
+
+## MapData
+
+`Embed:MapData []`
 
 Stores embedded mapdata encoded in BASE64.
+
+## Palette
+
+`Embed:Palette [] offset=768`
+
+Stores palette embedded as BASE64 code. Can have the attribute `offset`, which determines where the palette should be loaded in the raster.
+
+## Script
+
+`Embed:Script [] lang="dbasic"`
+
+Stores a script for a layer or an object.
+
+# Namespace 'File'
+
+Defines external file sources for the map.
+
+Tags in the `File` namespace can have the `dataPakSrc` attribute, which specifies the datapak file the file is in.
+
+## MapData
+
+`File:MapData 64.map`
+
+Determines where the map file of the layer can be found. Must be part of a `Layer:Tile` tag.
+
+## TileSource
+
+`File:TileSource "../assets/sci-fi-tileset.tga"`
+
+Specifies the bitmap file that contains the tiles. Must be part of a `Layer:Tile` tag. Can contain the `Embed:TileInfo` tag if the file doesn't have some extension to contain the tileinfo.
+
+## SpriteSource
+
+`File:SpriteSource 32 "../assets/dlangman.tga" name="dlangman" horizOffset=0 vertOffset=0 width=32 height=32` or `File:SpriteSource 32 "../assets/sprites.tga" name="dlangman" sprite="dlangman"` if file has sprite sheet or tile extensions.
+
+Specifies the bitmap for a sprite. 1st value contains the material ID, 2nd value contains the filename. The `name` attribute names the sprite. If the file doesn't have sprite sheet or tile extensions, then the attributes `horizOffset`, `vertOffset`, `width`, and `height` can specify such things; otherwise `sprite` attribute can be used with a name. 
+
+## SpriteSheet
+
+`File:SpriteSheet "../assets/sprites.tga"`
+
+Imports a whole spritesheet. If the target file doesn't have sprite or tile extensions, then this tag must have child tag(s) to describe the sprites, also can be used to override the file's own extension.
+
+### SheetData
+
+`SheetData id=56 name="Spritesheet"`
+
+The `id` attribute sets the ID of the sheet (otherwise it's zero), the `name` sets the name of the spritesheet. Can be left out if needed.
+
+The tag must have at least one unnamed child tag to describe sprites.
+
+`32 16 16 32 32 displayOffsetX=-8 displayOffsetY=2 name="dlangman"`
+
+Value notation:
+
+1) Sprite ID. Must be unique.
+2) X position where the sprite begins.
+3) Y position where the sprite begins.
+4) Width of the sprite.
+5) Height of the sprite.
+
+Attributes `displayOffsetX` and `displayOffsetY` set the offset of the sprites when being displayed. `name` sets the name of the sprite, otherwise a generated name sill be used in the editor.
+
+## Script
+
+`File:Script "../script/something" lang="qscript"`
+
+Specifies a script for a layer or object.
 
 # Namespace 'Object'
 
@@ -118,7 +204,7 @@ Ancilliary tags are currently handled differently than in layers, meaning that m
 
 ## Box
 
-`Object:Box "nameOfObject" 15 position:left=22 position:top=22 position:right=32 position:bottom=30`
+`Object:Box "nameOfObject" 15 left=22 top=22 right=32 bottom=30`
 
 Defines a box object. Can be used for various purposes, e.g. event markdown, clipping on tile layers towards sprites, etc.
 
@@ -126,6 +212,4 @@ Defines a box object. Can be used for various purposes, e.g. event markdown, cli
 
 `Object:Sprite "playerObject" 0 0 x=200 y=200 scaleHoriz=1024 scaleVert=1024`
 
-Defines a sprite object. Only can be used
-
-# Namespace 'File'
+Defines a sprite object. Only can be used on sprite layers.

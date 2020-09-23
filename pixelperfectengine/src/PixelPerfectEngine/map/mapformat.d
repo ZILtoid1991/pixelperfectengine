@@ -12,7 +12,7 @@ import std.stdio;
 public import PixelPerfectEngine.map.mapdata;
 
 /**
- * Serializes/deserializes PPE map data in SDLang format.
+ * Serializes/deserializes XMF map data in SDLang format.
  * Each layer can contain objects (eg. for marking events, clipping, or sprites if applicable), tilemapping (not for SpriteLayers), embedded
  * data such as tilemapping or scripts, and so on.
  * <br/>
@@ -212,17 +212,22 @@ public class MapFormat {
 	public TileInfo[] getTileInfo(int pri) @trusted {
 		import std.algorithm.sorting : sort;
 		TileInfo[] result;
-		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
-			//writeln(t0.toSDLString);
-			if (t0.name == "TileSource") {
-				Tag t1 = t0.getTag("Embed:TileInfo");
-				if (t1 !is null) {
-					foreach (Tag t2 ; t1.tags) {
-						result ~= TileInfo(cast(wchar)t2.values[0].get!int(), t2.values[1].get!int(), t2.values[2].get!string());
+		try {
+			foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+				//writeln(t0.toSDLString);
+				if (t0.name == "TileSource") {
+					Tag t1 = t0.getTag("Embed:TileInfo");
+					if (t1 !is null) {
+						foreach (Tag t2 ; t1.tags) {
+							result ~= TileInfo(cast(wchar)t2.values[0].get!int(), t2.values[1].get!int(), t2.values[2].get!string());
+						}
 					}
 				}
-
 			}
+		} catch (DOMRangeException e) {	///Just means there's no File namespace within the tag. Should be OK.
+			debug writeln(e);
+		} catch (Exception e) {
+			debug writeln(e);
 		}
 		//writeln(result.length);
 		result ~= tileDataFromExt.get(pri, []);
@@ -634,9 +639,9 @@ public class BoxObject : MapObject {
 	 * Serializes the object into an SDL tag
 	 */
 	public override Tag serialize () @trusted {
-		return new Tag("Object", "Box", [Value(name), Value(pID)], [new Attribute("position","left",Value(position.left)),
-				new Attribute("position","top",Value(position.top)), new Attribute("position","right",Value(position.right)),
-				new Attribute("position","bottom",Value(position.bottom))], ancillaryTags);
+		return new Tag("Object", "Box", [Value(name), Value(pID)], [new Attribute(null,"left",Value(position.left)),
+				new Attribute(null,"top",Value(position.top)), new Attribute(null,"right",Value(position.right)),
+				new Attribute(null,"bottom",Value(position.bottom))], ancillaryTags);
 	}
 }
 /**
@@ -710,13 +715,15 @@ public struct LayerInfo {
 	/**
 	 * Parses a string as a layer type
 	 */
-	static LayerType parseLayerTypeString (string s) pure @safe @nogc {
+	static LayerType parseLayerTypeString (string s) pure @safe {
+		import std.uni : toLower;
+		s = toLower(s);
 		switch (s) {
-			case "tile", "Tile", "TILE":
+			case "tile":
 				return LayerType.tile;
-			case "sprite", "Sprite", "SPRITE":
+			case "sprite":
 				return LayerType.sprite;
-			case "transformableTile", "TransformableTile", "TRANSFORMABLETILE":
+			case "transformabletile":
 				return LayerType.transformableTile;
 			default:
 				return LayerType.NULL;

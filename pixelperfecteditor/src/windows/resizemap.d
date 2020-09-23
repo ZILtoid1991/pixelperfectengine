@@ -1,3 +1,5 @@
+module windows.resizemap;
+
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.graphics.common;
 import PixelPerfectEngine.map.mapformat;
@@ -93,7 +95,7 @@ public class ResizeMap : Window {
 		}
 	}
 	private void button_ok_onClick(Event e) {
-		import editorEvents : ResizeTileMapEvent;
+		import editorevents : ResizeTileMapEvent;
 		int calcMValue(int offset, int oldSize, int newSize) @safe pure nothrow @nogc {
 			return offset + (newSize/2 - oldSize/2);
 		}

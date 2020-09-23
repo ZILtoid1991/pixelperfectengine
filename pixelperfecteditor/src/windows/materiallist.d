@@ -1,3 +1,5 @@
+module windows.materiallist;
+
 import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.map.mapformat;
 
@@ -32,7 +34,7 @@ public class MaterialList : Window {
 		}
 		{
 			SmallButton sb = new SmallButton("addMaterialB", "addMaterialA", "add", Coordinate(113, 218, 129, 234));
-			//sb.onMouseLClickRel = &button_trash_onClick;
+			sb.onMouseLClickRel = &button_addMaterial_onClick;
 			buttons ~= sb;
 		}
 		{
@@ -98,6 +100,9 @@ public class MaterialList : Window {
 			sender.iconUnpressed = "horizMirrorA";
 		}
 		sender.draw();
+	}
+	private void button_addMaterial_onClick(Event ev) {
+		prg.initAddMaterials;
 	}
 	private void palUp_onClick(Event ev) {
 

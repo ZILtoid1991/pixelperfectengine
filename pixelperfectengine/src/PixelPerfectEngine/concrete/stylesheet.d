@@ -49,10 +49,10 @@ public class StyleSheet{
 	Color(0xFF,0x00,0xFF,0xFF),		//Turquiose
 	Color(0xFF,0xFF,0xFF,0xFF),		//White
 	];
-	protected Fontset!Bitmap8Bit[string] 		font;		///Fonts stored here. 
-	protected CharacterFormattingInfo!Bitmap8Bit[string]	_chrFormat; ///Character formatting
-	protected ubyte[string]						color;		///Colors are identified by strings.
-	protected Bitmap8Bit[string]					images;		///For icons, pattern fills, etc...
+	public Fontset!Bitmap8Bit[string] 		font;		///Fonts stored here. 
+	public CharacterFormattingInfo!Bitmap8Bit[string]	_chrFormat; ///Character formatting
+	public ubyte[string]						color;		///Colors are identified by strings.
+	public Bitmap8Bit[string]					images;		///For icons, pattern fills, etc...
 	public int[string]							drawParameters;		///Draw parameters are used for border thickness, padding, etc...
 	public string[string]						fontTypes;	///Font type descriptions for various kind of components. WILL BE DEPRECATED!
 	

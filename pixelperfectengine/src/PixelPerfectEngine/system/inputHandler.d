@@ -307,9 +307,6 @@ public class InputHandler : TextInputHandler{
 						joyButtons ~= SDL_JoystickNumButtons(joysticks[i]);
 						joyAxes ~= SDL_JoystickNumAxes(joysticks[i]);
 						joyHats ~= SDL_JoystickNumHats(joysticks[i]);
-						/*writeln("Buttons: ", SDL_JoystickNumButtons(joysticks[i]));
-				 writeln("Axes: ", SDL_JoystickNumAxes(joysticks[i]));
-				 writeln("Hats: ", SDL_JoystickNumHats(joysticks[i]));*/
 					}
 					invokeControllerAddedEvent(i);
 					break;
@@ -482,7 +479,6 @@ public interface MouseListener{
 public interface TextInputListener{
 	public void textInputEvent(uint timestamp, uint windowID, dstring text);
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0);
-	//public void textInputBegin();
 	public void dropTextInput();
 }
 
@@ -529,7 +525,7 @@ public enum TextInputType : uint{
 	DISABLE		= 65536, ///For use in listboxes
 }
 
-/// Key modifiers used by the SDL backend
+// Key modifiers used by the SDL backend
 /+public enum BackendKeyModifier : ushort{
 	NONE 		= 0x0000,	//0b0000_0000_0000_0000
 	LSHIFT 		= 0x0001,	//0b0000_0000_0000_0001
@@ -577,7 +573,6 @@ public ushort keyModConv(ushort input) @nogc pure nothrow @safe {
 	if (input & KMOD_NUM) result |= KeyModifier.NumLock;
 	if (input & KMOD_CAPS) result |= KeyModifier.CapsLock;
 	if (input & KMOD_MODE) result |= KeyModifier.Mode;
-	//debug writeln(input,';',result);
 	return result;
 }
 public enum JoyModifier : ushort{

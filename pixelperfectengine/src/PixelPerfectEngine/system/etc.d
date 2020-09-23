@@ -54,18 +54,18 @@ S intToHex(S = string)(int i, int format = 0) pure @safe{
 	return result;
 }
 ///Returns a octal string representation of the integer.
-/+string intToOct(int i, int format) pure @safe{
+S intToOct(S = string)(int i, int format) pure @safe{
 	string result;
 	do{
 		switch(i & 0x0007){
-			case 1: result ~='1'; break;
-			case 2: result ~='2'; break;
-			case 3: result ~='3'; break;
-			case 4: result ~='4'; break;
-			case 5: result ~='5'; break;
-			case 6: result ~='6'; break;
-			case 7: result ~='7'; break;
-			default: result ~='0'; break;
+			case 1: result = '1' ~ result; break;
+			case 2: result = '2' ~ result; break;
+			case 3: result = '3' ~ result; break;
+			case 4: result = '4' ~ result; break;
+			case 5: result = '5' ~ result; break;
+			case 6: result = '6' ~ result; break;
+			case 7: result = '7' ~ result; break;
+			default: result = '0' ~ result; break;
 		}
 		i = i >>> 3;
 	}while(i > 0);
@@ -74,33 +74,88 @@ S intToHex(S = string)(int i, int format = 0) pure @safe{
 			result ~= '0';
 		}
 	}
-	result = result.dup.reverse;
+	//result = result.dup.reverse;
 	return result;
-}+/
+}
 ///Parses a hexadecimal int represented as a string.
-int parseHex(string s) pure @safe{
-
+///Ignores characters that are not hexanumeric.
+int parseHex(S)(S s) pure @safe{
 	int result;
 	for(int i ; i < s.length; i++){
-		result *= 16;
 		switch(s[i]){
-			case '0': break;
-			case '1': result += 1; break;
-			case '2': result += 2; break;
-			case '3': result += 3; break;
-			case '4': result += 4; break;
-			case '5': result += 5; break;
-			case '6': result += 6; break;
-			case '7': result += 7; break;
-			case '8': result += 8; break;
+			case '0': result *= 16; break;
+			case '1': result += 1; result *= 16; break;
+			case '2': result += 2; result *= 16; break;
+			case '3': result += 3; result *= 16; break;
+			case '4': result += 4; result *= 16; break;
+			case '5': result += 5; result *= 16; break;
+			case '6': result += 6; result *= 16; break;
+			case '7': result += 7; result *= 16; break;
+			case '8': result += 8; result *= 16; break;
+			case '9': result += 9; result *= 16; break;
+			case 'a','A': result += 10; result *= 16; break;
+			case 'b','B': result += 11; result *= 16; break;
+			case 'c','C': result += 12; result *= 16; break;
+			case 'd','D': result += 13; result *= 16; break;
+			case 'e','E': result += 14; result *= 16; break;
+			case 'f','F': result += 15; result *= 16; break;
+			default: break;
+		}
+	}
+	return result;
+}
+///Parses a octal int represented as a string.
+///Ignores characters that are not octal.
+int parseOct(S)(S s) pure @safe{
+	int result;
+	for(int i ; i < s.length; i++){
+		
+		switch(s[i]){
+			case '0': result *= 8; break;
+			case '1': result += 1; result *= 8; break;
+			case '2': result += 2; result *= 8; break;
+			case '3': result += 3; result *= 8; break;
+			case '4': result += 4; result *= 8; break;
+			case '5': result += 5; result *= 8; break;
+			case '6': result += 6; result *= 8; break;
+			case '7': result += 7; result *= 8; break;
+			/+case '8': result += 8; break;
 			case '9': result += 9; break;
 			case 'a','A': result += 10; break;
 			case 'b','B': result += 11; break;
 			case 'c','C': result += 12; break;
 			case 'd','D': result += 13; break;
 			case 'e','E': result += 14; break;
-			case 'f','F': result += 15; break;
-			default: throw new Exception("String cannot be parsed!");
+			case 'f','F': result += 15; break;+/
+			default: break;
+		}
+	}
+	return result;
+}
+///Parses a decimal int represented as a string.
+///Ignores characters that are not decimal.
+int parseDec(S)(S s) pure @safe{
+	int result;
+	for(int i ; i < s.length; i++){
+		
+		switch(s[i]){
+			case '0': result *= 10; break;
+			case '1': result += 1; result *= 10; break;
+			case '2': result += 2; result *= 10; break;
+			case '3': result += 3; result *= 10; break;
+			case '4': result += 4; result *= 10; break;
+			case '5': result += 5; result *= 10; break;
+			case '6': result += 6; result *= 10; break;
+			case '7': result += 7; result *= 10; break;
+			case '8': result += 8; result *= 10; break;
+			case '9': result += 9; result *= 10; break;
+			/+case 'a','A': result += 10; break;
+			case 'b','B': result += 11; break;
+			case 'c','C': result += 12; break;
+			case 'd','D': result += 13; break;
+			case 'e','E': result += 14; break;
+			case 'f','F': result += 15; break;+/
+			default: break;
 		}
 	}
 	return result;
