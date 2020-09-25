@@ -16,28 +16,29 @@ public class WriteToMapVoidFill : UndoableEvent {
 	ITileLayer target;
 	Coordinate area;
 	MappingElement me;
-	ubyte[] mask;
+	MappingElement[] original;
 	public this(ITileLayer target, Coordinate area, MappingElement me){
 		this.target = target;
 		this.area = area;
 		this.me = me;
+		//mask.length = area.area;
 	}
 	public void redo() {
 		for(int y = area.top ; y <= area.bottom ; y++){
 			for(int x = area.left ; x <= area.right ; x++){
-				if(target.readMapping(x,y).tileID != 0xFFFF){
-					mask[area.width * y + x] = 0xFF;
+				MappingElement o = target.readMapping(x,y);
+				original ~= o;
+				if (o.tileID == 0xFFFF)
 					target.writeMapping(x,y,me);
-				}
 			}
 		}
 	}
 	public void undo() {
+		size_t pos;
 		for(int y = area.top ; y <= area.bottom ; y++){
 			for(int x = area.left ; x <= area.right ; x++){
-				if(mask[area.width * y + x] == 0xFF){
-					target.writeMapping(x,y,MappingElement(0xFFFF));
-				}
+				target.writeMapping(x,y,original[pos]);
+				pos++;
 			}
 		}
 	}
@@ -55,7 +56,6 @@ public class WriteToMapOverwrite : UndoableEvent {
 		//original.length = (area.width + 1) * (area.height + 1);
 	}
 	public void redo() {
-		//size_t pos;
 		for(int y = area.top ; y <= area.bottom ; y++){
 			for(int x = area.left ; x <= area.right ; x++){
 				original ~= target.readMapping(x,y);
@@ -343,7 +343,7 @@ public class AddTileSheetEvent : UndoableEvent {
 			assert(importedPalette.length);
 			const ushort offset = cast(ushort)(paletteOffset << paletteShift);
 			targetDoc.outputWindow.loadPaletteChunk(importedPalette, offset);
-			targetDoc.mainDoc.addPaletteFile(fileName, "", paletteOffset);
+			targetDoc.mainDoc.addPaletteFile(fileName, "", paletteOffset << paletteShift, paletteShift);
 		}
 		if (backup is null) {
 			//TODO: check if material resource file has any embedded resource data
@@ -381,7 +381,7 @@ public class AddTileSheetEvent : UndoableEvent {
 			}
 			if (tilesheet.length == 0) throw new Exception("No tiles were imported!");
 			targetDoc.addTileSet(layer, tilesheet);
-			targetDoc.mainDoc.addTileSourceFile(layer, fileName);
+			targetDoc.mainDoc.addTileSourceFile(layer, fileName, null, 0);
 			{
 				TileInfo[] idList;
 				for (int id ; id < tilesheet.length ; id++) {
@@ -403,10 +403,10 @@ public class AddTileSheetEvent : UndoableEvent {
 							break;
 					}
 					tilename ~= afterName;
-					idList ~= TileInfo(cast(wchar)id, id, tilename);
+					idList ~= TileInfo(cast(wchar)id, cast(ushort)paletteShift, id, tilename);
 					//writeln(idList);
 				}
-				targetDoc.mainDoc.addTileInfo(layer, idList, fileName);
+				targetDoc.mainDoc.addTileInfo(layer, idList, fileName, null);
 			}
 			/+if (source.isIndexed) {
 				Color[] palette;

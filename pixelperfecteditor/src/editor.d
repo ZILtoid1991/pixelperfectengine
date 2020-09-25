@@ -515,8 +515,8 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			WindowElement.styleSheet.setImage(customGUIElems[5], "horizMirrorB");
 			WindowElement.styleSheet.setImage(customGUIElems[6], "vertMirrorA");
 			WindowElement.styleSheet.setImage(customGUIElems[7], "vertMirrorB");
-			//WindowElement.styleSheet.setImage(customGUIElems[8], "");
-			//WindowElement.styleSheet.setImage(customGUIElems[9], "");
+			WindowElement.styleSheet.setImage(customGUIElems[8], "ovrwrtInsA");
+			WindowElement.styleSheet.setImage(customGUIElems[9], "ovrwrtInsB");
 			//WindowElement.styleSheet.setImage(customGUIElems[10], "");
 			//WindowElement.styleSheet.setImage(customGUIElems[11], "");
 			WindowElement.styleSheet.setImage(customGUIElems[12], "paletteDownA");

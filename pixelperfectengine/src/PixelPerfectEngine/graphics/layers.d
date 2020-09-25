@@ -156,7 +156,7 @@ public interface ITileLayer{
 	/// Returns the total height of the tile layer.
 	public int getTY() @nogc @safe pure nothrow;
 	/// Adds a tile.
-	public void addTile(ABitmap tile, wchar id) pure;
+	public void addTile(ABitmap tile, wchar id, ubyte paletteSh = 0) pure;
 	/// Returns the tile.
 	public ABitmap getTile(wchar id) @nogc @safe pure nothrow;
 }
@@ -217,18 +217,18 @@ public class TileLayer : Layer, ITileLayer{
 		 */
 		ubyte paletteSh;		
 		///Default ctor
-		this(wchar ID, ABitmap tile) pure @safe{
+		this(wchar ID, ABitmap tile, ubyte paletteSh = 0) pure @safe{
 			//palettePtr = tile.getPalettePtr();
 			//this.paletteSel = paletteSel;
 			this.ID = ID;
 			this.tile=tile;
 			if(typeid(tile) is typeid(Bitmap4Bit)){
 				wordLength = 4;
-				paletteSh = 4;
+				this.paletteSh = paletteSh ? paletteSh : 4;
 				pixelDataPtr = (cast(Bitmap4Bit)(tile)).getPtr;
 			}else if(typeid(tile) is typeid(Bitmap8Bit)){
 				wordLength = 8;
-				paletteSh = 8;
+				this.paletteSh = paletteSh ? paletteSh : 8;
 				pixelDataPtr = (cast(Bitmap8Bit)(tile)).getPtr;
 			}else if(typeid(tile) is typeid(Bitmap16Bit)){
 				wordLength = 16;
@@ -318,9 +318,9 @@ public class TileLayer : Layer, ITileLayer{
 		totalY=mY*tileY;
 	}
 	///Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
-	public void addTile(ABitmap tile, wchar id) {
+	public void addTile(ABitmap tile, wchar id, ubyte paletteSh = 0) {
 		if(tile.width==tileX && tile.height==tileY) {
-			displayList[id] = DisplayListItem(id, tile);
+			displayList[id] = DisplayListItem(id, tile, paletteSh);
 		}else{
 			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
 		}
@@ -455,6 +455,7 @@ public class TileLayer : Layer, ITileLayer{
  * Restrictions compared to standard TileLayer:
  * <ul>
  * <li>Tiles must have any of the following sizes: 8, 16, 32, 64; since this layer needs to do modulo computations for each pixel.</li>
+ * <li>In future versions, map sizes for this layer will be restricted to power of two sizes to make things faster</li>
  * <li>Maximum layer size in pixels are restricted to 65536*65536 due to architectural limitations. Accelerated versions might raise
  * this limitation.</li>
  * </ul>
@@ -465,14 +466,26 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	protected struct DisplayListItem {
 		BMPType	tile;		///For reference counting
 		void* 	pixelSrc;	///Used for quicker access to the Data
-		wchar 	ID;			///ID, mainly used as a padding
-		ushort 	reserved;	///Padding for 32 bit
-		this (wchar ID, BMPType tile) pure @trusted @nogc nothrow {
+		wchar 	ID;			///ID, mainly used as a padding and secondary identification
+		/**
+		 * Sets the maximum accessable color amount by the bitmap.
+		 * By default, for 4 bit bitmaps, it's 4, and it enables 256 * 16 color palettes.
+		 * This limitation is due to the way how the MappingElement struct works.
+		 * 8 bit bitmaps can assess the full 256 * 256 palette space.
+		 * Lower values can be described to avoid wasting palettes space in cases when the
+		 * bitmaps wouldn't use their full capability.
+		 * Not used with 16 bit indexed and 32 bit direct color bitmaps.
+		 */
+		ubyte	palShift;
+		ubyte 	reserved;	///Padding for 32 bit
+		this (wchar ID, BMPType tile, ubyte paletteSh = 0) pure @trusted @nogc nothrow {
 			void _systemWrapper() pure @system @nogc nothrow {
 				pixelSrc = cast(void*)tile.getPtr();
 			}
 			this.ID = ID;
 			this.tile = tile;
+			static if (BMPType.mangleof == Bitmap4Bit.mangleof) this.palShift = paletteSh ? paletteSh : 4;
+			else static if (BMPType.mangleof == Bitmap8Bit.mangleof) this.palShift = paletteSh ? paletteSh : 8;
 			_systemWrapper;
 		}
 		string toString() const {
@@ -497,14 +510,9 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
 
 	}else static assert(false,"Template parameter " ~ BMPType.mangleof ~ " not supported by TransformableTileLayer!");
+	//TO DO: Replace these with a single 32 bit value
 	protected bool needsUpdate;			///Set to true if backbuffer needs an update
 	public bool warpMode;			///Repeats the whole layer if set to true
-	/**
-	 * Sets the palette offset value for 4 and 8 bit bitmaps.
-	 * If an indexed bitmap doesn't use all available (4: 16, 8:256) colors, then the offset can be lowered below the bit numbers
-	 * of the bitmaps.
-	 */
-	protected ubyte _paletteOffset;
 	protected int mX, mY;				///"Inherited" from TileLayer
 	static if(TileX == 8)
 		protected immutable int shiftX = 3;
@@ -530,7 +538,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		protected int4 _tileAmpersand;
 		protected short8 _increment;
 	}
-	alias HBIDelegate = @nogc void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y);
+	alias HBIDelegate = @nogc nothrow void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y);
 	/**
 	 * Called before each line being redrawn. Can modify global values for each lines.
 	 */
@@ -546,8 +554,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		_tileAmpersand = [TileX - 1, TileY - 1, TileX - 1, TileY - 1];
 		setRenderingMode(renderMode);
 		needsUpdate = true;
-		static if (BMPType.mangleof == Bitmap4Bit.mangleof) _paletteOffset = 4;
-		else static if (BMPType.mangleof == Bitmap8Bit.mangleof) _paletteOffset = 8;
+		//static if (BMPType.mangleof == Bitmap4Bit.mangleof) _paletteOffset = 4;
+		//else static if (BMPType.mangleof == Bitmap8Bit.mangleof) _paletteOffset = 8;
 		static if (USE_INTEL_INTRINSICS)
 			for(int i ; i < 8 ; i+=2)
 				_increment[i] = 2;
@@ -622,9 +630,10 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 							xy[1] = xy[1] & (TileY - 1);
 							const int totalOffset = xy[0] + xy[1] * TileX;
 							static if(BMPType.mangleof == Bitmap4Bit.mangleof){
-								src[x] = (totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | currentTile0.paletteSel<<4;
+								src[x] = cast(ushort)((totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | 
+										currentTile0.paletteSel<<d.palShift);
 							}else static if(BMPType.mangleof == Bitmap8Bit.mangleof ){
-								src[x] = tsrc[totalOffset] | currentTile0.paletteSel<<8;
+								src[x] = cast(ushort)(tsrc[totalOffset] | currentTile0.paletteSel<<d.palShift);
 							}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
 								src[x] = tsrc[totalOffset];
 							}else{
@@ -655,9 +664,10 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 							xy[3] = xy[3] & (TileY - 1);
 							const int totalOffset = xy[2] + xy[3] * TileX;
 							static if(BMPType.mangleof == Bitmap4Bit.mangleof){
-								src[x] = (totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | currentTile1.paletteSel<<4;
+								src[x] = cast(ushort)((totalOffset & 1 ? tsrc[totalOffset>>1]>>4 : tsrc[totalOffset>>1] & 0x0F) | 
+										currentTile1.paletteSel<<d.palShift);
 							} else static if(BMPType.mangleof == Bitmap8Bit.mangleof ) {
-								src[x] = tsrc[totalOffset] | currentTile1.paletteSel<<8;
+								src[x] = cast(ushort)(tsrc[totalOffset] | currentTile1.paletteSel<<d.palShift);
 							} else static if(BMPType.mangleof == Bitmap16Bit.mangleof) {
 								src[x] = tsrc[totalOffset];
 							} else {
@@ -886,15 +896,15 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		return mapping[x+(mX*y)];
 	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
-	@nogc public void writeMapping(int x, int y, MappingElement w){
+	@nogc public void writeMapping(int x, int y, MappingElement w) {
 		mapping[x+(mX*y)]=w;
 	}
-	public void addTile(ABitmap tile, wchar id){
+	public void addTile(ABitmap tile, wchar id, ubyte paletteSh = 0) {
 		if(typeid(tile) !is typeid(BMPType)){
 			throw new TileFormatException("Incorrect type of tile!");
 		}
 		if(tile.width == TileX && tile.height == TileY){
-			displayList[id]=DisplayListItem(id, cast(BMPType)tile);
+			displayList[id] = DisplayListItem(id, cast(BMPType)tile, paletteSh);
 		}else{
 			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
 		}

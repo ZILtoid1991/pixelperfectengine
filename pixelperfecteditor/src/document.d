@@ -36,7 +36,7 @@ public class MapDocument {
 	protected int		sXAmount;
 	protected int		sYAmount;
 	protected MappingElement	selectedMappingElement;	///Currently selected mapping element to write, including mirroring properties, palette selection, and priority attributes
-	protected bool		voidfill;		///If true, tilePlacement overrides only transparent (0xFFFF) tiles.
+	public bool			voidfill;		///If true, tilePlacement overrides only transparent (0xFFFF) tiles.
 	/**
 	 * Loads the document from disk.
 	 */
@@ -253,10 +253,12 @@ public class MapDocument {
 		mode = EditMode.tilePlacement;
 
 	}
-	public void tileMaterial_PaletteUp() {
+	public ushort tileMaterial_PaletteUp() {
 		selectedMappingElement.paletteSel++;
+		return selectedMappingElement.paletteSel;
 	}
-	public void tileMaterial_PaletteDown() {
+	public ushort tileMaterial_PaletteDown() {
 		selectedMappingElement.paletteSel--;
+		return selectedMappingElement.paletteSel;
 	}
 }

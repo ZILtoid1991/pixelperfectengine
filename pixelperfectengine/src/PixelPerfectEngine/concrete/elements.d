@@ -338,14 +338,16 @@ public class Label : WindowElement {
 			onDraw();
 		}
 	}
-	/*public override void onClick(int offsetX, int offsetY, int state, ubyte button){
-		if(state == ButtonState.PRESSED)
-			invokeActionEvent(EventType.CLICK, 0);
-	}*/
+	public override void setText(dstring s) {
+		output.destroy();
+		output = new BitmapDrawer(position.width, position.height);
+		super.setText(s);
+	}
 	public override void setText(Text s) {
 		output.destroy();
 		output = new BitmapDrawer(position.width, position.height);
 		super.setText(s);
+		//draw();
 	}
 	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
 		if(button == MouseButton.RIGHT){
@@ -957,7 +959,7 @@ public class CheckBox : WindowElement, ICheckBox{
 	public string		iconChecked = "checkBoxB";		///Sets the icon for checked positions
 	public string		iconUnchecked = "checkBoxA";	///Sets the icon for unchecked positions
 	public void delegate(Event ev) onToggle;
-
+	///CTOR for checkbox with text
 	public this(Text text, string source, Coordinate coordinates, bool checked = false) {
 		position = coordinates;
 		this.text = text;
@@ -969,6 +971,15 @@ public class CheckBox : WindowElement, ICheckBox{
 	///Ditto
 	public this(dstring text, string source, Coordinate coordinates, bool checked = false) {
 		this(new Text(text, getAvailableStyleSheet().getChrFormatting("checkBox")), source, coordinates, checked);
+	}
+	///CTOR for small button version
+	public this(string iconChecked, string iconUnchecked, string source, Coordinate coordinates, bool checked = false) {
+		position = coordinates;
+		this.iconChecked = iconChecked;
+		this.iconUnchecked = iconUnchecked;
+		this.source = source;
+		output = new BitmapDrawer(position.width, position.height);
+		this.checked = checked;
 	}
 	public override void draw() {
 		if(output.output.width != position.width || output.output.height != position.height)

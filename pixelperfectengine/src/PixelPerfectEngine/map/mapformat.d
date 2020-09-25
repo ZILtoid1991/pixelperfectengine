@@ -131,7 +131,7 @@ public class MapFormat {
 						
 				}
 				if (paletteTarget !is null && isPaletteFileExists(path)) {
-					paletteTarget.addPaletteChunk(loadPaletteFromImage(i));
+					paletteTarget.loadPaletteChunk(loadPaletteFromImage(i), cast(ushort)t0.getAttribute!int("offset", 0));
 				}
 				//debug writeln(paletteTarget.palette);
 			}
@@ -217,9 +217,10 @@ public class MapFormat {
 				//writeln(t0.toSDLString);
 				if (t0.name == "TileSource") {
 					Tag t1 = t0.getTag("Embed:TileInfo");
+					ushort palShift = cast(ushort)t0.getAttribute!int("palShift", 0);
 					if (t1 !is null) {
 						foreach (Tag t2 ; t1.tags) {
-							result ~= TileInfo(cast(wchar)t2.values[0].get!int(), t2.values[1].get!int(), t2.values[2].get!string());
+							result ~= TileInfo(cast(wchar)t2.values[0].get!int(), palShift, t2.values[1].get!int(), t2.values[2].get!string());
 						}
 					}
 				}
@@ -460,10 +461,10 @@ public class MapFormat {
 	/**
 	 * Adds a tile source file to a TileLayer.
 	 */
-	public void addTileSourceFile(int pri, string filename, string dataPakSrc = null, int offset = 0) @trusted {
+	public void addTileSourceFile(int pri, string filename, string dataPakSrc = null, int palShift = 0) @trusted {
 		Attribute[] a;
 		if (dataPakSrc !is null) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
-		if (offset) a ~= new Attribute("offset", Value(offset));
+		if (palShift) a ~= new Attribute("palShift", Value(palShift));
 		new Tag(layerData[pri],"File", "TileSource", [Value(filename)], a);
 	}
 	/**
@@ -526,9 +527,10 @@ public class MapFormat {
 	/**
 	 * Adds a palette file source to the document.
 	 */
-	public Tag addPaletteFile (string filename, string dataPakSrc, int offset) @trusted {
+	public Tag addPaletteFile (string filename, string dataPakSrc, int offset, int palShift) @trusted {
 		Attribute[] a;
 		if (offset) a ~= new Attribute("offset", Value(offset));
+		if (palShift) a ~= new Attribute("palShift", Value(palShift));
 		if (dataPakSrc.length) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
 		return new Tag(root,"File", "Palette", [Value(filename)], a);
 	}
@@ -544,10 +546,10 @@ public class MapFormat {
 	/**
 	 * Returns whether the given palette file source exists.
 	 */
-	public bool isPaletteFileExists (string filename/+, string dataPakSrc = ""+/) @trusted {
+	public bool isPaletteFileExists (string filename, string dataPakSrc = null) @trusted {
 		foreach (t0 ; root.all.tags) {
 			if (t0.getFullName.toString == "File:Palette") {
-				if (t0.getValue!string() == filename /+&& t0.getAttribute!string("dataPakSrc", "") == dataPakSrc+/) 
+				if (t0.getValue!string() == filename && t0.getAttribute!string("dataPakSrc", null) == dataPakSrc) 
 					return true;
 			}
 		}
@@ -735,6 +737,7 @@ public struct LayerInfo {
  */
 public struct TileInfo {
 	wchar		id;		///ID of the tile in wchar format
+	ushort		palShift;	///palShift offset of the tile
 	int			num;	///Number of tile in the file
 	string		name;	///Name of the tile
 	int opCmp (TileInfo rhs) const pure @safe @nogc {

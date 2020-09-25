@@ -144,15 +144,21 @@ Tags in the `File` namespace can have the `dataPakSrc` attribute, which specifie
 
 ## MapData
 
-`File:MapData 64.map`
+`File:MapData "64.map"`
 
 Determines where the map file of the layer can be found. Must be part of a `Layer:Tile` tag.
 
+## Palette
+
+`File:Palette "../assets/sci-fi-tileset.tga" palShift=5 offset=32`
+
+Specifies the bitmap file that contains a palette needs to be loaded. Attribute `palShift` limits the size of the palette to avoid overwriting a previously loaded palette that comes after it, `offset` sets where the palette should be stored on the raster.
+
 ## TileSource
 
-`File:TileSource "../assets/sci-fi-tileset.tga"`
+`File:TileSource "../assets/sci-fi-tileset.tga" palShift=5`
 
-Specifies the bitmap file that contains the tiles. Must be part of a `Layer:Tile` tag. Can contain the `Embed:TileInfo` tag if the file doesn't have some extension to contain the tileinfo.
+Specifies the bitmap file that contains the tiles. Must be part of a `Layer:Tile` tag. Can contain the `Embed:TileInfo` tag if the file doesn't have some extension to contain the tileinfo. Attribute `palShift` sets the amount of palette shift for all imports from that file.
 
 ## SpriteSource
 

@@ -88,10 +88,8 @@ public class RasterWindow : Window, PaletteContainer {
 		if (paletteLocal.length < offset + paletteChunk.length) {
 			paletteLocal.length = paletteLocal.length + (offset - paletteLocal.length) + paletteChunk.length;
 		}
-		debug writeln(paletteLocal.length);
 		assert(paletteLocal.length >= offset + paletteChunk.length, "Palette error!");
 		for (int i ; i < paletteChunk.length ; i++) {
-			debug writeln(i);
 			paletteLocal[i + offset] = paletteChunk[i];
 		}
 		return paletteLocal;
