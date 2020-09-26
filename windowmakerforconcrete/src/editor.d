@@ -199,14 +199,15 @@ public class Editor : SystemEventListener, InputListener{
 	static string[ElementType] nameBases;
 	public this(){
 		import PixelPerfectEngine.system.systemUtility;
+		import PixelPerfectEngine.system.file;
 		sprtL = new SpriteLayer(LayerRenderingMode.COPY);
 		outScrn = new OutputScreen("WindowMaker for PPE/Concrete",1696,960);
-		mainRaster = new Raster(848,480,outScrn);
+		mainRaster = new Raster(848,480,outScrn,0);
 		mainRaster.addLayer(sprtL,0);
 		typeSel = ElementType.NULL;
 
 		ewh = new EditorWindowHandler(1696,960,848,480,sprtL, this);
-		mainRaster.palette = StyleSheet.defaultpaletteforGUI;
+		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
 		INIT_CONCRETE(ewh);
 		inputH = new InputHandler();
 		inputH.sel ~= this;
