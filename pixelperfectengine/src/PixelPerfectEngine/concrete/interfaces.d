@@ -74,28 +74,44 @@ public interface IRadioButtonGroup {
 	public void latch(IRadioButton sender) @safe;
 }
 /**
- * IMPORTANT: This will replace the current drawing methods by version 1.0.0
- * The older method of using multiple BitmapDrawer class will be removed by that point.
- * </br>
  * Implements the frontend of a drawable canvas, primarily for GUI elements.
- * Mostly limited to 256 colors, certain methods (eg. blitting) might enable more.
+ * Used to avoid using individual bitmaps for each elements.
+ * Colors are mostly limited to 256 by the `ubyte` type. However certain window types will enable more.
  */
 public interface Canvas {
 	///Draws a line.
-	public void drawLine(int x0, int y0, int x1, int y1, ubyte color, int lineWidth = 1) @trusted pure;
-	///Draws an empty rectangle
-	public void drawRectangle(int x0, int y0, int x1, int y1, ubyte color, int lineWidth = 1) @trusted pure;
-	///Draws a filled rectangle with a specified color
-	public void drawFilledRectangle(Coordinate pos, ubyte color) @trusted pure;
-	///Draws a filled rectangle with a specified pattern
-	public void drawFilledRectangle(Coordinate pos, Bitmap8Bit pattern) @trusted pure;
-	///Fills an area with the specified color
-	public void fill(int x0, int y0, ubyte color, ubyte background = 0) @trusted pure;
-	///Draws a single line text within the given prelimiter
-	public void drawSingleLineText(Coordinate pos, Text text, int offset = 0) @trusted;
-	public void bitBLT(int x0, int y0, ABitmap source) @trusted;
-	public void bitBLT(int x0, int y0, int x1, int y1, ABitmap source) @trusted;
-	public void bitBLT(int x0, int y0, Coordinate slice, ABitmap source) @trusted;
-	public void xorBLT(int x0, int y0, int x1, int y1, ubyte color) @trusted;
-	public void xorBLT(int x0, int y0, ABitmap source) @trusted;
+	public void drawLine(Point from, Point to, ubyte color) @trusted pure;
+	///Draws a line pattern.
+	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted pure;
+	///Draws an empty rectangle.
+	public void drawBox(Coordinate target, ubyte color) @trusted pure;
+	///Draws an empty rectangle with line patterns.
+	public void drawBoxPattern(Coordinate target, ubyte[] pattern) @trusted pure;
+	///Draws a filled rectangle with a specified color,
+	public void drawFilledBox(Coordinate target, ubyte color) @trusted pure;
+	///Pastes a bitmap to the given point using blitter, which threats color #0 as transparency.
+	public void bitBLT(Point target, ABitmap source) @trusted pure;
+	///Pastes a slice of a bitmap to the given point using blitter, which threats color #0 as transparency.
+	public void bitBLT(Point target, ABitmap source, Coordinate slice) @trusted pure;
+	///Pastes a repeated bitmap pattern over the specified area.
+	public void bitBLTPattern(Coordinate target, ABitmap pattern) @trusted pure;
+	///XOR blits a repeated bitmap pattern over the specified area.
+	public void xorBitBLT(Coordinate target, ABitmap pattern) @trusted pure;
+	///XOR blits a color index over a specified area.
+	public void xorBitBLT(Coordinate target, ubyte color) @trusted pure;
+	///Fills an area with the specified color.
+	public void fill(Point target, ubyte color, ubyte background = 0) @trusted pure;
+	///Draws a single line text within the given prelimiter.
+	public void drawTextSL(Coordinate pos, Text text, Point offset) @trusted pure;
+	///Draws a multi line text within the given prelimiter.
+	public void drawTextML(Coordinate pos, Text text, Point offset) @trusted pure;
+}
+/**
+ * TODO: Use this for implement tabbing and etc.
+ */
+public interface Focusable {
+	///Called when an object receives focus.
+	public void focusGiven();
+	///Called when an object loses focus.
+	public void focusLost();
 }

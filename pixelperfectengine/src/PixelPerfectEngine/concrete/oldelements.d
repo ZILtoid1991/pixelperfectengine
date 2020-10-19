@@ -4,7 +4,7 @@
  * Pixel Perfect Engine, concrete.elements module
  */
 
-module PixelPerfectEngine.concrete.elements;
+module PixelPerfectEngine.concrete.oldelements;
 
 import PixelPerfectEngine.graphics.bitmap;
 public import PixelPerfectEngine.graphics.text;
@@ -2308,14 +2308,7 @@ public interface StyleSheetContainer {
 	 */
 	public void drawUpdate(WindowElement sender);
 }
-/**
- * TODO: Use this for implement tabbing and etc.
- */
-public interface Focusable {
-	public void focusGiven();
-	public void focusLost();
-	public void tabPressed(bool reverse);
-}
+
 
 public enum EventType{
 	CLICK 				= 0,

@@ -11,9 +11,22 @@ module PixelPerfectEngine.graphics.common;
 import dimage.types : ARGB8888BE;
 
 /**
+ * Represents a single point on a 2D field.
+ */
+public struct Point {
+	public int x, y;
+	/**
+	 * Moves the point by the given amount
+	 */
+	public void relMove (int rX, int rY) @safe @nogc pure nothrow {
+		x += rX;
+		y += rY;
+	}
+}
+/**
  * Represents a box on a 2D field.
  */
-public struct Coordinate{
+public struct Coordinate {
 	public int left, top, right, bottom;
 	this(int left, int top, int right, int bottom) @safe pure nothrow @nogc {
 		this.left=left;
