@@ -4,7 +4,7 @@
  * Pixel Perfect Engine, concrete.stylesheet module
  */
 
-module PixelPerfectEngine.concrete.stylesheet;
+module PixelPerfectEngine.concrete.types.stylesheet;
 
 import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.fontsets;

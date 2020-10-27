@@ -11,6 +11,8 @@ public import PixelPerfectEngine.graphics.bitmap;
 public import PixelPerfectEngine.graphics.common;
 public import PixelPerfectEngine.graphics.text;
 
+public import PixelPerfectEngine.system.input.types;
+
 /**
  * Checkbox interface.
  */
@@ -102,9 +104,11 @@ public interface Canvas {
 	///Fills an area with the specified color.
 	public void fill(Point target, ubyte color, ubyte background = 0) @trusted pure;
 	///Draws a single line text within the given prelimiter.
-	public void drawTextSL(Coordinate pos, Text text, Point offset) @trusted pure;
+	public void drawTextSL(Coordinate target, Text text, Point offset) @trusted pure;
 	///Draws a multi line text within the given prelimiter.
-	public void drawTextML(Coordinate pos, Text text, Point offset) @trusted pure;
+	public void drawTextML(Coordinate target, Text text, Point offset) @trusted pure;
+	///Clears the area within the target
+	public void clearArea(Coordinate target) @trusted pure;
 }
 /**
  * TODO: Use this for implement tabbing and etc.
@@ -114,4 +118,57 @@ public interface Focusable {
 	public void focusGiven();
 	///Called when an object loses focus.
 	public void focusLost();
+}
+/**
+ * Implements the 
+ */
+public interface ElementContainer : StyleSheetContainer, Canvas {
+	/**
+	 * Returns the absolute position of the element.
+	 */
+	public Coordinate getAbsolutePosition(WindowElement sender);
+	/**
+	 * Clears the area of the element.
+	 */
+	public void clearArea(WindowElement sender);
+}
+/**
+ * Implemented by any object that can store stylesheets.
+ */
+public interface StyleSheetContainer {
+	/**
+	 * Returns the stylesheet stored by the object.
+	 */
+	public StyleSheet getStyleSheet();
+}
+/**
+ * Implements mouse event passing.
+ */
+public interface MouseEventReceptor {
+	///Passes mouse click event
+	public void passMCE(MouseEventCommons mec, MouseClickEvent mce);
+	///Passes mouse move event
+	public void passMME(MouseEventCommons mec, MouseMotionEvent mme);
+	///Passes mouse scroll event
+	public void passMWE(MouseEventCommons mec, MouseWheelEvent mwe);
+}
+/**
+ * Implements identification of small buttons.
+ */
+public interface ISmallButton {
+	///Returns true if element is in small button capable and is the supplied height.
+	public bool isSmallButtonHeight(int height);
+}
+/**
+ * Defines functions for pop up handling.
+ */
+public interface PopUpHandler : StyleSheetContainer{
+	public void addPopUpElement(PopUpElement p);
+	public void addPopUpElement(PopUpElement p, int x, int y);
+	public void endPopUpSession(PopUpElement p);
+	public void closePopUp(PopUpElement p);
+	//public Coordinate getAbsolutePosition(PopUpElement sender);
+	//public void drawUpdate(PopUpElement sender);
+	//public StyleSheet getDefaultStyleSheet();
+
 }

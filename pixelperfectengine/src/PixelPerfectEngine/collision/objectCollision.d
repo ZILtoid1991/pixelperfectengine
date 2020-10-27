@@ -38,11 +38,13 @@ public class ObjectCollisionDetector {
 		testSingle(objectID, objects[objectID]);
 	}
 	///Ditto
-	protected void testSingle(int iA, CollisionShape shA) {
+	protected void testSingle(int iA, ref CollisionShape shA) {
 		foreach (int iB, ref CollisionShape shB; objects) {
 			if (iA != iB) {
 				ObjectCollisionEvent event = testCollision(shA, shB);
 				if (event! is null) {
+					event.idA = iA;
+					event.idB = iB;
 					objectToObjectCollision(event);
 				}
 			}
@@ -51,7 +53,7 @@ public class ObjectCollisionDetector {
 	/**
 	 * Tests two objects. Calls cl if collision have happened, with the appropriate values.
 	 */
-	protected ObjectCollisionEvent testCollision(CollisionShape shA, CollisionShape shB) @safe pure {
+	protected ObjectCollisionEvent testCollision(ref CollisionShape shA, ref CollisionShape shB) @safe pure {
 		if (shA.position.bottom < shB.position.top || shA.position.top > shB.position.bottom || 
 				shA.position.right < shB.position.left || shA.position.left > shB.position.right){
 			//test if edge collision have happened with side edges
