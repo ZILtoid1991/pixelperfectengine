@@ -1,38 +1,58 @@
 module PixelPerfectEngine.concrete.elements.radiobutton;
+
+public import PixelPerfectEngine.concrete.elements.base;
+import collections.linkedlist;
+
 /**
  * Implements a single radio button.
  * Needs to be grouped to used.
  * Equality is checked by comparing `source`, so give each RadioButton a different source value.
  */
-public class RadioButton : WindowElement, IRadioButton {
+public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 	protected IRadioButtonGroup		group;		///The group which this object belongs to.
-	protected bool					_isLatched;		///The state of the RadioButton
+	//protected bool					_isLatched;		///The state of the RadioButton
 	public string					iconLatched = "radioButtonB";		///Sets the icon for latched positions
 	public string					iconUnlatched = "radioButtonA";	///Sets the icon for unlatched positions
-	public this(Text text, string source, Coordinate coordinates, IRadioButtonGroup group = null) {
+	public this(Text text, string source, Box coordinates, IRadioButtonGroup group = null) {
 		position = coordinates;
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(position.width, position.height);
-		group.add(this);
+		if (group) group.add(this);
 	}
 	///Ditto
-	public this(dstring text, string source, Coordinate coordinates, IRadioButtonGroup group = null) {
+	public this(dstring text, string source, Box coordinates, IRadioButtonGroup group = null) {
 		this(new Text(text, getAvailableStyleSheet().getChrFormatting("checkBox")), source, coordinates, group);
 	}
 	///Ditto
-	public this(string source, Coordinate coordinates, IRadioButtonGroup group = null) {
+	public this(string iconLatched, string iconUnlatched, string source, Box coordinates, IRadioButtonGroup group = null) {
 		position = coordinates;
+		this.iconLatched = iconLatched;
+		this.iconUnlatched = iconUnlatched;
 		this.source = source;
 		output = new BitmapDrawer(position.width, position.height);
 		group.add(this);
 	}
 	override public void draw() {
-		if(output.output.width != position.width || output.output.height != position.height)
-			output = new BitmapDrawer(position.width, position.height);
-		output.drawRectangle(getAvailableStyleSheet().getImage(iconUnlatched).width, output.output.width - 1, 0,
-				output.output.height - 1, 0x0);
-		if(text) {
+		parent.clearArea(position);
+		StyleSheet ss = getStyleSheet();
+		Bitmap8Bit icon = isChecked ? ss.getImage(iconLatched) : ss.getImage(iconUnlatched);
+		parent.bitBLT(Coordinate.cornerUL, icon);
+		if (text) {
+			Box textPos = position;
+			textPos.left += icon.width + getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+			parent.drawTextSL(textPos, text, Point.init);
+		}
+
+		if (isFocused) {
+			const int textPadding = ss.drawParameters["horizTextPadding"];
+			parent.drawBoxPattern(position - textPadding, ss.pattern["blackDottedLine"]);
+		}
+
+		if (state == ElementState.Disabled) {
+			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
+		}
+		/+if(text) {
 			const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
 			const Coordinate textPos = Coordinate(textPadding +	getAvailableStyleSheet().getImage(iconUnlatched).width,
 					(position.height / 2) - (text.font.size / 2), position.width, position.height - textPadding);
@@ -48,72 +68,32 @@ public class RadioButton : WindowElement, IRadioButton {
 		elementContainer.drawUpdate(this);
 		if(onDraw !is null) {
 			onDraw();
-		}
+		}+/
 	}
-	public override void onClick(int offsetX, int offsetY, int state, ubyte button) {
-		if(state == ButtonState.PRESSED){
-			switch(button){
-				case MouseButton.LEFT:
-					if(group !is null) {
-						group.latch(this);
-					}
-					if(onMouseLClickPre !is null)
-						onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-					break;
-				case MouseButton.RIGHT:
-					if(onMouseRClickPre !is null)
-						onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-					break;
-				case MouseButton.MID:
-					if(onMouseMClickPre !is null)
-						onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-					break;
-				default: break;
-			}
-		}else{
-			switch(button){
-				case MouseButton.LEFT:
-					if(onMouseLClickRel !is null)
-						onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-					break;
-				case MouseButton.RIGHT:
-					if(onMouseRClickRel !is null)
-						onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-					break;
-				case MouseButton.MID:
-					if(onMouseMClickRel !is null)
-						onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-					break;
-				default: break;
-			}
-		}
+
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (mce.button == MouseButton.Left, mce.state == ButtonState.Pressed) group.latch(this);
+		super.passMCE(mec, mce);
 	}
 	/**
 	 * If the radio button is pressed, then it sets to unpressed. Does nothing otherwise.
 	 */
 	public void latchOff() @trusted {
-		if(_isLatched) {
-			_isLatched = false;
-			draw();
+		if (isChecked) {
+			flags &= ~IS_CHECKED;
+			draw();	
 		}
 	}
 	/**
 	 * Sets the radio button into its pressed state.
 	 */
 	public void latchOn() @trusted {
-		if(!_isLatched) {
-			_isLatched = true;
+		if (!ischecked) {
+			flags |= IS_CHECKED;
 			draw();
 		}
 	}
-	/**
-	 * Returns the current state of the radio button.
-	 * True: Pressed.
-	 * False: Unpressed.
-	 */
-	public @property bool isLatched() @nogc @safe pure nothrow const {
-		return _isLatched;
-	}
+	
 	/**
 	 * Sets the group of the radio button.
 	 */
@@ -126,6 +106,11 @@ public class RadioButton : WindowElement, IRadioButton {
 	}
 	public string value() @property @safe @nogc pure nothrow const {
 		return source;
+	}
+	public bool isSmallButtonHeight(int height) {
+		if (text) return false;
+		else if (position.width == height && position.height == height) return true;
+		else return false;
 	}
 }
 
@@ -181,4 +166,5 @@ public class RadioButtonGroup : IRadioButtonGroup {
 		if(latchedButton !is null) return latchedButton.value;
 		else return null;
 	}
+	
 }

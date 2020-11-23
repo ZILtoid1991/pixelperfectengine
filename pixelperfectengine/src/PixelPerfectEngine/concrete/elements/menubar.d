@@ -1,5 +1,8 @@
 module PixelPerfectEngine.concrete.elements.menubar;
 
+public import PixelPerfectEngine.concrete.elements.base;
+public import PixelPerfectEngine.concrete.popup;
+
 /**
  * Menubar containing menus in a tree-like structure.
  */
@@ -15,11 +18,29 @@ public class MenuBar : WindowElement {
 		//this.popUpHandler = popUpHandler;
 		this.menus = menus;
 		select = -1;
-		menuWidths = [0];
+		menuWidths.length = menus.length + 1;
+		menuWidths[0] = position.left;
+		for (size_t i ; i < menus.length ; i++) {
+			menuWidths[i + 1] = menuWidths[i] + menus[i].text.getWidth;
+		}
 	}
 	public override void draw() {
 		StyleSheet ss = getAvailableStyleSheet();
-		Fontset!Bitmap8Bit f = ss.getFontset("default");
+		with (parent) {
+			drawFilledBox(position, ss.getColor("window"));
+			drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowAscent"));
+			drawLine(position.cornerUL, position.cornerLL, ss.getColor("windowAscent"));
+			drawLine(position.cornerLL, position.cornerLR, ss.getColor("windowDescent"));
+			drawLine(position.cornerUR, position.cornerLR, ss.getColor("windowDescent"));
+		}
+		if (select > -1) {
+			parent.drawFilledBox(Box(menuWidths[select], position.top + 1, menuWidths[select + 1], position.bottom - 1), 
+					ss.getColor("selection"));
+		}
+		foreach (size_t i, PopUpMenuElement menuItem ; menus) {
+			parent.drawTextSL(Box(menuWidths[i], position.top, menuWidths[i+1], position.bottom), menuItem.text, Point(0,0));
+		}
+		/+Fontset!Bitmap8Bit f = ss.getFontset("default");
 		if (output is null){
 			usedWidth = 1;
 			output = new BitmapDrawer(position.width(),position.height());
@@ -51,59 +72,13 @@ public class MenuBar : WindowElement {
 		elementContainer.drawUpdate(this);
 		if(onDraw !is null){
 			onDraw();
-		}
+		}+/
 	}
 	private void redirectIncomingEvents(Event ev){
 		if(onMouseLClickPre !is null){
 			onMouseLClickPre(ev);
 		}
 	}
-	override public void onClick(int offsetX,int offsetY,int state,ubyte button){
-		if(button == MouseButton.RIGHT){
-			if(state == ButtonState.PRESSED){
-				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else if(button == MouseButton.MID){
-			if(state == ButtonState.PRESSED){
-				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else{
-			if(state == ButtonState.PRESSED){
-				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}
-
-		if(offsetX < usedWidth && button == MouseButton.LEFT && state == ButtonState.PRESSED){
-			for(int i = cast(int)menuWidths.length - 1 ; i >= 0 ; i--){
-				if(menuWidths[i] < offsetX){
-					PopUpMenu p = new PopUpMenu(menus[i].getSubElements(), menus[i].source);
-					//p.al = al;
-					p.onMouseClick = onMouseLClickPre;//&redirectIncomingEvents;
-					Coordinate c = elementContainer.getAbsolutePosition(this);
-					popUpHandler.addPopUpElement(p, c.left + menuWidths[i], position.height());
-					return;
-				}
-			}
-		}
-
-	}
+	
 
 }

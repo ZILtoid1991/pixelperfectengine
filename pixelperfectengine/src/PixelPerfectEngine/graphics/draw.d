@@ -29,82 +29,100 @@ public class BitmapDrawer{
 		output = new Bitmap8Bit(x, y);
 
 	}
-	///Draws a single line.
-	public void drawLine(int xa, int xb, int ya, int yb, ubyte color) pure {
+	///Draws a single line. DEPRECATED!
+	deprecated public void drawLine(int xa, int xb, int ya, int yb, ubyte color) pure {
 		draw.drawLine(xa, ya, xb, yb, color, output.getPtr(), output.width);
 	}
-	///Draws a line using a brush.
-	public void drawLine(int xa, int xb, int ya, int yb, Bitmap8Bit brush) pure {
-		if(xa == xb){
-
-			if(ya < yb){
-				for(int j ; j < (yb - ya) ; j++){
-					insertBitmap(xa, ya + j, brush);
-				}
-			}else{
-				for(int j ; j > (yb - ya) ; j--){
-					insertBitmap(xa, ya + j, brush);
-				}
-			}
-			xa++;
-			xb++;
-
-		}else if(ya == yb){
-
-			if(xa > xb){
-				for(int j ; j < (xa - xb) ; j++){
-					insertBitmap(xa + j, ya, brush);
-				}
-			}else{
-				for(int j ; j > (xa - xb) ; j--){
-					insertBitmap(xa + j, ya, brush);
-				}
-			}
-			ya++;
-			yb++;
-
-		}else{
-			if(xa < xb){
-				if(ya < yb){
-					int xy = to!int(sqrt(to!double((xb - xa) * (xb - xa)) + ((yb - ya) * (yb - ya))));
-
-					for(int j ; j < xb - xa ; j++){
-						int y = to!int(sqrt(to!double(xy * xy) - ((xa + j)*(xa + j))));
-						insertBitmap(xa + j, ya + y, brush);
-					}
-
-				}else{
-					int xy = to!int(sqrt(to!double((xb - xa) * (xb - xa)) + ((ya - yb) * (ya - yb))));
-
-					for(int j ; j < xb - xa ; j++){
-						int y = to!int(sqrt(to!double(xy * xy) - ((xa + j)*(xa + j))));
-						insertBitmap(xa + j, ya - y, brush);
-					}
-
-				}
-			}else{
-				if(ya < yb){
-					int xy = to!int(sqrt(to!double((xa - xb) * (xa - xb)) + ((yb - ya) * (yb - ya))));
-
-					for(int j ; j > xb - xa ; j--){
-						int y = to!int(sqrt(to!double(xy * xy) - ((xa + j)*(xa + j))));
-						insertBitmap(xa + j, ya + y, brush);
-					}
-
-				}else{
-					int xy = to!int(sqrt(to!double((xa - xb) * (xa - xb)) + ((ya - yb) * (ya - yb))));
-
-					for(int j ; j > xb - xa ; j--){
-						int y = to!int(sqrt(to!double(xy * xy) - ((xa + j)*(xa + j))));
-						insertBitmap(xa + j, ya - y, brush);
-					}
-
-				}
+	///Draws a single line.
+	public void drawLine(Point from, Point to, ubyte color) pure {
+		draw.drawLine(from.x, from.y, to.x, to.y, color, output.getPtr(), output.width);
+	}
+	///Draws a line with a pattern.
+	public void drawLinePattern(Point from, Point to, ubyte[] pattern) pure {
+		draw.drawLinePattern(from.x, from.y, to.x, to.y, pattern, output.getPtr(), output.width);
+	}
+	///Draws a box.
+	public void drawBox(Coordinate target, ubyte color) pure {
+		draw.drawLine(target.left, target.top, target.right, target.top, color, output.getPtr(), output.width);
+		draw.drawLine(target.left, target.top, target.left, target.bottom, color, output.getPtr(), output.width);
+		draw.drawLine(target.left, target.bottom, target.right, target.bottom, color, output.getPtr(), output.width);
+		draw.drawLine(target.right, target.top, target.right, target.bottom, color, output.getPtr(), output.width);
+	}
+	///Draws a box with line pattern.
+	public void drawBox(Coordinate target, ubyte[] pattern) pure {
+		draw.drawLinePattern(target.left, target.top, target.right, target.top, pattern, output.getPtr(), output.width);
+		draw.drawLinePattern(target.left, target.top, target.left, target.bottom, pattern, output.getPtr(), output.width);
+		draw.drawLinePattern(target.left, target.bottom, target.right, target.bottom, pattern, output.getPtr(), output.width);
+		draw.drawLinePattern(target.right, target.top, target.right, target.bottom, pattern, output.getPtr(), output.width);
+	}
+	///Draws a filled box.
+	public void drawFilledBox(Coordinate target, ubyte color) pure {
+		draw.drawFilledRectangle(target.left, target.top, target.right, target.bottom, color, output.getPtr(), output.width);
+	}
+	///Copies a bitmap to the canvas using 0th index transparency.
+	public void bitBLT(Point target, Bitmap8Bit source) pure {
+		ubyte* src = source.getPtr;
+		ubyte* dest = output.getPtr + (output.width * target.y) + target.x;
+		for (int y ; y < source.height ; y++){
+			compose.blitter(src, dest, source.width);
+			src += source.width;
+			dest += output.width;
+		}
+	}
+	///Copies a bitmap slice to the canvas using 0th index transparency.
+	public void bitBLT(Point target, Bitmap8Bit source, Coordinate slice) pure {
+		ubyte* src = source.getPtr + (source.width * slice.top) + slice.left;
+		ubyte* dest = output.getPtr + (output.width * target.y) + target.x;
+		for (int y ; y < slice.height ; y++){
+			compose.blitter(src, dest, slice.width);
+			src += source.width;
+			dest += output.width;
+		}
+	}
+	///Fills the area with a pattern.
+	public void bitBLTPattern(Coordinate pos, Bitmap8Bit pattern) pure {
+		const int targetX = pos.width / pattern.width;
+		const int targetX0 = pos.width % pattern.width;
+		const int targetY = pos.height / pattern.height;
+		const int targetY0 = pos.height % pattern.height;
+		for(int y ; y < targetY ; y++) {
+			for(int x ; x < targetX; x++) 
+				bitBLT(Point(pos.left + (x * pattern.width), pos.top + (y * pattern.height)), pattern);
+			if(targetX0) 
+				bitBLT(Point(pos.left + (pattern.width * targetX), pos.top + (y * pattern.height)), pattern,
+						Coordinate(0, 0, targetX0, pattern.height));
+		}
+		if(targetY0) {
+			for(int x ; x < targetX; x++) 
+				bitBLT(Point(pos.left + (x * pattern.width), pos.top + (targetY * pattern.height)), pattern,
+						Coordinate(0, 0, pattern.width, targetY0));
+			if(targetX0) 
+				bitBLT(Point(pos.left + (pattern.width * targetX), pos.top + (targetY * pattern.height)), pattern,
+						Coordinate(0, 0, targetX0, targetY0));
+		}
+	}
+	///XOR blits a repeated bitmap pattern over the specified area.
+	public void xorBitBLT(Coordinate target, Bitmap8Bit pattern) pure {
+		import CPUblit.composing.specblt;
+		ubyte* dest = output.getPtr + target.left + (target.top * output.width);
+		for (int y ; y < target.height ; y++) {
+			for (int x ; x < target.width ; x += pattern.width) {
+				const size_t l = x + pattern.width <= target.width ? pattern.width : target.width - pattern.width;
+				const size_t lineNum = (y % pattern.height);
+				xorBlitter(pattern.getPtr + pattern.width * lineNum, dest + output.width * y, l);
 			}
 		}
 	}
-	///Inserts a bitmap using blitter.
-	public void insertBitmap(int x, int y, Bitmap8Bit bitmap) pure {
+	///XOR blits a color index over a specified area.
+	public void xorBitBLT(Coordinate target, ubyte color) pure {
+		import CPUblit.composing.specblt;
+		ubyte* dest = output.getPtr + target.left + (target.top * output.width);
+		for (int y ; y < target.height ; y++) {
+			xorBlitter(dest + output.width * y, target.width, color);
+		}
+	}
+	///Inserts a bitmap using blitter. DEPRECATED
+	deprecated public void insertBitmap(int x, int y, Bitmap8Bit bitmap) pure {
 		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
 		pdest += x + output.width * y;
 		int length = bitmap.width;
@@ -153,15 +171,15 @@ public class BitmapDrawer{
 			pdest += output.width;
 		}
 	}
-	///Draws a rectangle.
-	public void drawRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
+	///Draws a rectangle. DEPRECATED!
+	deprecated public void drawRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
 		drawLine(xa, xa, ya, yb, color);
 		drawLine(xb, xb, ya, yb, color);
 		drawLine(xa, xb, ya, ya, color);
 		drawLine(xa, xb, yb, yb, color);
 	}
 
-	public void drawRectangle(int xa, int xb, int ya, int yb, Bitmap8Bit brush) pure {
+	deprecated public void drawRectangle(int xa, int xb, int ya, int yb, Bitmap8Bit brush) pure {
 		xa = xa + brush.width;
 		ya = ya + brush.height;
 		xb = xb - brush.width;
@@ -171,49 +189,11 @@ public class BitmapDrawer{
 		drawLine(xa, xb, ya, ya, brush);
 		drawLine(xa, xb, yb, yb, brush);
 	}
-	///Draws a filled rectangle.
-	public void drawFilledRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
+	///Draws a filled rectangle. DEPRECATED!
+	deprecated public void drawFilledRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
 		draw.drawFilledRectangle(xa, ya, xb, yb, color, output.getPtr(), output.width);
 	}
-	///Fills the area with a pattern.
-	public void patternFill(Coordinate pos, Bitmap8Bit pattern) pure {
-		const int targetX = pos.width / pattern.width;
-		const int targetX0 = pos.width % pattern.width;
-		const int targetY = pos.height / pattern.height;
-		const int targetY0 = pos.height % pattern.height;
-		for(int y ; y < targetY ; y++) {
-			for(int x ; x < targetX; x++) 
-				insertBitmap(pos.left + (x * pattern.width), pos.top + (y * pattern.height), pattern);
-			if(targetX0) 
-				insertBitmapSlice(pos.left + (pattern.width * targetX), pos.top + (y * pattern.height), pattern,
-						Coordinate(0, 0, targetX0, pattern.height));
-		}
-		if(targetY0) {
-			for(int x ; x < targetX; x++) 
-				insertBitmapSlice(pos.left + (x * pattern.width), pos.top + (targetY * pattern.height), pattern,
-						Coordinate(0, 0, pattern.width, targetY0));
-			if(targetX0) 
-				insertBitmapSlice(pos.left + (pattern.width * targetX), pos.top + (targetY * pattern.height), pattern,
-						Coordinate(0, 0, targetX0, targetY0));
-		}
-	}
-	///Draws texts. (deprecated, will be removed after Version 0.10.0)
-	/+public deprecated void drawText(int x, int y, wstring text, Bitmap8Bit[wchar] fontSet, int style = 0){
-		int length;
-		for(int i ; i < text.length ; i++){
-			length += fontSet[text[i]].width;
-		}
-		//writeln(text);
-		if(style == 0){
-			x = x - (length / 2);
-			y -= fontSet['a'].height / 2;
-		}
-		foreach(wchar c ; text){
-
-			insertBitmap(x, y, fontSet[c]);
-			x = x + fontSet[c].width;
-		}
-	}+/
+	
 	///Draws text to the given point.
 	public void drawText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, uint style = 0) pure {
 		const int length = fontset.getTextLength(text);

@@ -23,7 +23,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
     public static InputHandler inputHandler;	///Common input handler, must be set upon program initialization for text input, etc.
     ///Contains the position of the element.
     ///Should be only modified with functions to ensure consistency.
-	protected Coordinate	position;
+	protected Box			position;
     ///Points to the container for two-way communication
 	public ElementContainer	parent;
 	///Contains the text of the element if any.
@@ -99,10 +99,10 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	 * Updates the output. Every subclass must override it.
 	 */
 	public abstract void draw();
-	public Coordinate getPosition() {
+	public Box getPosition() {
 		return position;
 	}
-	public Coordinate setPosition(Coordinate position) {
+	public Box setPosition(Box position) {
 		this.position = position;
 		draw;
 		return position;
@@ -149,27 +149,89 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		}
 		return null;
 	}
-	
+	///Called when an object receives focus.
 	public void focusGiven() {
 		flags |= IS_FOCUSED;
 		draw;
 	}
-	
+	///Called when an object loses focus.
 	public void focusLost() {
 		flags &= ~IS_FOCUSED;
 		draw;
 	}
-	
-	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+	///Cycles the focus on a single element.
+	///Returns -1 if end is reached, or the number of remaining elements that
+	///are cycleable in the direction.
+	public int cycleFocus(int direction) {
+		return -1;
+	}
+	///Passes key events to the focused element when not in text editing mode.
+	public void passKey(uint keyCode, ubyte mod) {
 		
+	}
+	/**
+	 * Returns whether the element is focused
+	 */
+	public @property bool isFocused() @nogc @safe pure nothrow const {
+		return flags & IS_FOCUSED;
+	}
+	/**
+	 * Returns whether the element is pressed
+	 */
+	public @property bool isPressed() @nogc @safe pure nothrow const {
+		return flags & IS_PRESSED;
+	}
+	/**
+	 * Returns whether the element is checked
+	 */
+	public @property bool isChecked() @nogc @safe pure nothrow const {
+		return flags & IS_CHECKED;
+	}
+	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (mce.state == ButtonState.Pressed) {
+			if (mce.button == MouseButton.Left) flags |= IS_PRESSED;
+			if (!(flags & ENABLE_MOUSE_PRESS)) return;
+		} else if (mce.button == MouseButton.Left) {
+			flags &= ~IS_PRESSED;
+		}
+		MouseEvent me = new MouseEvent(this, EventType.MouseClick, SourceType.WindowElement);
+		me.mec = mec;
+		me.mce = mce;
+		switch (mce.button) {
+			case MouseButton.Left:
+				if (onMouseLClick !is null)
+					onMouseLClick(me);
+				break;
+			case MouseButton.Right:
+				if (onMouseRClick !is null)
+					onMouseRClick(me);
+				break;
+			case MouseButton.Mid:
+				if (onMouseMClick !is null)
+					onMouseMClick(me);
+				break;
+			default:
+				break;
+		}
+		draw;
 	}
 	
 	public void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
-		
+		if (onMouseMove !is null) {
+			MouseEvent me = new MouseEvent(this, EventType.MouseMotion, SourceType.WindowElement);
+			me.mme = mme;
+			me.mec = mec;
+			onMouseMove(me);
+		}
 	}
 	
 	public void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
-		
+		if (onMouseScroll !is null) {
+			MouseEvent me = new MouseEvent(this, EventType.MouseScroll, SourceType.WindowElement);
+			me.mec = mec;
+			me.mwe = mwe;
+			onMouseScroll(me);
+		}
 	}
 	
 }

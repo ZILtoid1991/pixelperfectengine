@@ -1,9 +1,11 @@
 module PixelPerfectEngine.concrete.popup.popuptextinput;
 
+public import PixelPerfectEngine.concrete.popup.base;
+
 /**
  * Text input in pop-up fashion.
  */
-public class PopUpTextInput : PopUpElement, TextInputListener{
+public class PopUpTextInput : PopUpElement, TextInputListener {
 	protected bool enableEdit, insert;
 	protected size_t cursorPos;
 	protected int horizTextOffset, select;
@@ -18,8 +20,10 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 		inputhandler.startTextInput(this);
 	}
 	public override void draw(){
-		output.drawFilledRectangle(0, position.width - 1, 0, position.height - 1, getStyleSheet().getColor("window"));
-		output.drawRectangle(0, position.width - 1, 0, position.height - 1, getStyleSheet().getColor("windowascent"));
+		StyleSheet ss = getStyleSheet();
+		const Box mainPos = box(0,0,position.width - 1, position.height - 1);
+		output.drawFilledBox(mainPos, ss.getColor("window"));
+		output.drawBox(mainPos, ss.getColor("windowascent"));
 		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
 		Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2) ,
 				position.width,position.height - textPadding);
@@ -67,6 +71,18 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 		}
 		draw();
 	}
+	/**
+     * Passes text editing events to the target, alongside with a window ID and a timestamp.
+     */
+	public void textEditingEvent(uint timestamp, uint windowID, dstring text, int start, int length) {
+		for (int i ; i < length ; i++) {
+			this.text.overwriteChar(start + i, text[i]);
+		}
+		cursorPos = start + length;
+	}
+	/**
+     * Passes text input key events to the target, e.g. cursor keys.
+     */
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
 		switch(key){
 			case TextInputKey.ESCAPE:
@@ -120,8 +136,8 @@ public class PopUpTextInput : PopUpElement, TextInputListener{
 	}
 	public void dropTextInput(){
 		parent.endPopUpSession();
-		//inputHandler.stopTextInput(source);
-		/*draw();
-		invokeActionEvent(EventType.TEXTINPUT, 0, text);*/
+		
+	}
+	public void initTextInput() {
 	}
 }

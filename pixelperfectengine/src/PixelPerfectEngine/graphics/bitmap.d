@@ -315,15 +315,16 @@ public class Bitmap(string S,T) : ABitmap {
 
 }
 
-
 /**
- * Bypasses the transparency on color no.0, no.1 is set to red.
+ * Defines Bitmap types
  */
-/*static const Color[16] errorPalette;
-
-public ABitmap generateDummyBitmap(int x, int y, wchar c){
-	Color* p = errorPalette.ptr;
-	Bitmap4Bit result = new Bitmap4Bit(x, y, p);
-
-	return result;
-}*/
+public enum BitmapTypes : ubyte {
+	Undefined,			///Can be used for error checking, e.g. if a tile was initialized or not
+	Bmp1Bit,
+	Bmp2Bit,
+	Bmp4Bit,
+	Bmp8Bit,
+	Bmp16Bit,
+	Bmp32Bit,
+	Planar,
+}

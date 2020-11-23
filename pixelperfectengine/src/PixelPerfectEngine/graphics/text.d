@@ -120,6 +120,20 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		} else return dchar.init;
 	}
 	/**
+	 * Overwrites a character at the given position.
+	 * Returns the original character if within bound, or or dchar.init if position points to a place where it
+	 * cannot be inserted easily.
+	 */
+	public dchar overwriteChar(size_t pos, dchar c) @nogc @safe pure nothrow {
+		if(pos <= text.length) {
+			const dchar orig = text[pos];
+			text[pos] = c;
+			return orig;
+		} else if(next) {
+			return next.overwriteChar(pos - text.length, c);
+		} else return dchar.init;
+	}
+	/**
 	 * Returns a character from the given position.
 	 */
 	public dchar getChar(size_t pos) @safe pure {

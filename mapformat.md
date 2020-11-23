@@ -80,7 +80,7 @@ As of version 1.0, TileLayers can have additional ancillary tags as long as they
 
 `RenderingMode "AlphaBlending"`
 
-Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", "Subtract", "Multiply", "Diff", "Screen", "ABAdd", "ABSub", "ABMult", "ABDiff", "ABScrn", "AND", "OR", "XOR".
+Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", "Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".
 
 ## Sprite
 
@@ -94,7 +94,7 @@ As of version 1.0, SpriteLayers can have additional ancillary tags as long as th
 
 `RenderingMode "AlphaBlending"`
 
-Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", "Subtract", "Multiply", "Diff", "Screen", "ABAdd", "ABSub", "ABMult", "ABDiff", "ABScrn", "AND", "OR", "XOR". Current engine version only supports the first three values.
+Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", "Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".
 
 # Namespace 'Embed'
 
@@ -210,12 +210,37 @@ Ancilliary tags are currently handled differently than in layers, meaning that m
 
 ## Box
 
-`Object:Box "nameOfObject" 15 left=22 top=22 right=32 bottom=30`
+`Object:Box "nameOfObject" 15 22 22 32 30`
 
 Defines a box object. Can be used for various purposes, e.g. event markdown, clipping on tile layers towards sprites, etc.
 
+Value notation:
+
+1) The name of the object.
+2) Unique ID that belongs to the object.
+3) Left.
+4) Top,
+5) Right,
+6) and Bottom coordinates of the object.
+
 ## Sprite
 
-`Object:Sprite "playerObject" 0 0 x=200 y=200 scaleHoriz=1024 scaleVert=1024`
+`Object:Sprite "playerObject" 0 0 200 200 scaleHoriz=1024 scaleVert=1024 masterAlpha=250`
 
 Defines a sprite object. Only can be used on sprite layers.
+
+Value notation:
+
+1) The name of the object.
+2) Unique sprite ID with priority in mind.
+3) Sprite source identificator.
+4) X coordinate.
+5) Y coordinate.
+
+`scaleHoriz` and `scaleVert` sets the horizontal and vertical scaling values with 1024 (1.0) being the default one. `masterAlpha` sets the master alpha value for rendering to the raster.
+
+### RenderingMode
+
+`RenderingMode "AlphaBlending"`
+
+Sets the rendering mode of the sprite. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", "Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".

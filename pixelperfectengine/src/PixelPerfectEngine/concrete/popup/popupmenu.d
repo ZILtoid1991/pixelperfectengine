@@ -5,7 +5,7 @@ import PixelPerfectEngine.concrete.popup.base;
 /**
  * To create drop-down lists, menu bars, etc.
  */
-public class PopUpMenu : PopUpElement{
+public class PopUpMenu : PopUpElement {
 	//private wstring[] texts;
 	//private string[] sources;
 
@@ -13,6 +13,7 @@ public class PopUpMenu : PopUpElement{
 	//protected Bitmap8Bit[int] icons;
 	protected int width, height, select;
 	PopUpMenuElement[] elements;
+	public void delegate(MenuEvent ev) onMenuSelect;
 	/**
 	 * Creates a single PopUpMenu.
 	 */
@@ -84,33 +85,34 @@ public class PopUpMenu : PopUpElement{
 			onDraw();
 		}
 	}
-	public override void onClick(int offsetX, int offsetY, int type = 0){
-		offsetY /= height / elements.length;
-		if(elements[offsetY].source == "\\submenu\\"){
-			PopUpMenu m = new PopUpMenu(elements[offsetY].subElements, this.source);
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		
+		mce.y /= height / elements.length;
+		if(elements[mce.y].source == "\\submenu\\"){
+			PopUpMenu m = new PopUpMenu(elements[mce.y].subElements, this.source);
 			m.onMouseClick = onMouseClick;
 			//parent.getAbsolutePosition()
-			parent.addPopUpElement(m, position.left + width, position.top + offsetY * cast(int)(height / elements.length));
+			parent.addPopUpElement(m, position.left + width, position.top + mce.y * cast(int)(height / elements.length));
 			//parent.closePopUp(this);
 		}else{
 			//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
-			if(onMouseClick !is null)
-				onMouseClick(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK, null, this));
+			if(onMenuSelect !is null)
+				onMenuSelect(new MenuEvent(this, SourceType.PopUpElement, elements[mce.y].text, mce.y, elements[mce.y].source));
 			parent.endPopUpSession();
 			//parent.closePopUp(this);
 		}
 
 	}
-	public override void onMouseMovement(int x , int y) {
-		if(x == -1){
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if(mme.x == -1){
 			if(select != -1){
 				select = -1;
 				draw;
 			}
 		}else{
-			y /= height / elements.length;
-			if(y < elements.length){
-				select = y;
+			mme.y /= height / elements.length;
+			if(mme.y < elements.length){
+				select = mme.y;
 			}
 			draw();
 		}

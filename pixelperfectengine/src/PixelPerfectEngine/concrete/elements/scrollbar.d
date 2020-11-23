@@ -1,22 +1,52 @@
 module PixelPerfectEngine.concrete.elements.scrollbar;
 
-abstract class Slider : WindowElement{
+public import PixelPerfectEngine.concrete.elements.base;
 
-	public int value, maxValue, barLength;
+abstract class Slider : WindowElement{
+	protected static enum 	PLUS_PRESSED = 1<<9;
+	protected static enum 	MINUS_PRESSED = 1<<10;
+	protected int _value, _maxValue, _barLength;
 	public void delegate(Event ev) onScrolling;
 
 	/**
-	 * Returns the slider position. If barLenght > 1, then it returns the lower value.
+	 * Returns the slider position.
 	 */
-	public @nogc @property int sliderPosition(){
-		return value;
+	public @property int value() @nogc @safe pure nothrow const {
+		return _value;
 	}
-	public @property int sliderPosition(int newval){
-		if(newval < maxValue){
-			value = newval;
-			draw();
-		}
-		return value;
+	/**
+	 * Sets the slider position, and redraws the slider.
+	 * Returns the new slider position.
+	 */
+	public @property int value(int val) {
+		if (val < _maxValue) _value = val;
+		else _value = _maxValue;
+		draw();
+		return _value;
+	}
+	/**
+	 * Returns the maximum value of the slider.
+	 */
+	public @property int maxValue() @nogc @safe pure nothrow const {
+		return _maxValue;
+	}
+	/**
+	 * Sets the new maximum value and bar lenght of the slider.
+	 * Position is kept or lowered if maximum is reached.
+	 */
+	public @property int maxValue(int val) {
+		const int iconSize = position.width < position.height ? position.width : position.height;
+		const int length = position.width > position.height ? position.width : position.height;
+		_maxValue = val;
+		if (_value > _maxValue) _value = _maxValue;
+		_barLength = (length - iconSize * 2) / _maxValue;
+		return _maxValue;
+	}
+	/**
+	 * Returns the length of the scrollbar.
+	 */
+	public @property int barLength() @nogc @safe pure nothrow const {
+		return _barLength;
 	}
 }
 /**
@@ -27,233 +57,158 @@ public class VSlider : Slider{
 
 	//private int value, maxValue, barLength;
 
-	public this(int maxValue, int barLenght, string source, Coordinate coordinates){
-		position = coordinates;
-		//this.text = text;
+	public this(int maxValue, string source, Box position){
+		this.position = position;
 		this.source = source;
-		this.maxValue = maxValue;
-		this.barLength = barLenght;
-		output = new BitmapDrawer(position.width, position.height);
-		brush ~= 6;
-		brush ~= 8;
-		//brush ~= 10;
-		//draw();
+		_maxValue = maxValue;
+		_barLength = (position.height - position.width * 2) / _maxValue;
 	}
 	public override void draw(){
+		StyleSheet ss = getStyleSheet();
 		//draw background
-		//Bitmap16Bit sliderStyle = elementContainer.getStyleBrush(brush[2]);
-		//ushort backgroundColor = sliderStyle.readPixel(0,0), sliderColor = sliderStyle.readPixel(1,0);
-		if(output.output.width != position.width || output.output.height != position.height)
-			output = new BitmapDrawer(position.width, position.height);
-		output.drawFilledRectangle(0, position.width , 0, position.height , getAvailableStyleSheet.getColor("windowinactive"));
-		//draw upper arrow
-		output.insertBitmap(0,0,getAvailableStyleSheet.getImage("upArrowA"));
-		//draw lower arrow
-		output.insertBitmap(0, position.height - getAvailableStyleSheet.getImage("downArrowA").height,getAvailableStyleSheet.getImage("downArrowA"));
+		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
-		if(maxValue > barLength){
-			double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA")).height*2, unitlength = sliderlength/maxValue;
-			double sliderpos = unitlength * value, bl = unitlength * barLength;
-			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("upArrowA").height, posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("upArrowA").height;
-
-			output.drawFilledRectangle(0,position.width,posA, posB, getAvailableStyleSheet.getColor("windowascent"));
+		const int travelLength = position.height - position.width * 2 - _barLength;
+		Box slider;
+		slider.left = position.left;
+		slider.right = position.right;
+		slider.top = (travelLength / value) - (_barLength / 2);
+		slider.bottom = (travelLength / value) + (_barLength / 2);
+		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
+		if (isFocused) {
+			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
 		}
-		elementContainer.drawUpdate(this);
-		if(onDraw !is null){
-			onDraw();
+		//draw buttons
+		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage["ButtonUpB"] : ss.getImage["ButtonUpA"]);
+		Point lower = position.cornerLL;
+		lower.y -= position.width;
+		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage["ButtonDownB"] : ss.getImage["ButtonDownA"]);
+		if (state == ElementState.Disabled) {
+			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
 	}
-
-
-	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
-		if(button == MouseButton.RIGHT){
-			if(state == ButtonState.PRESSED){
-				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (mce.button == MouseButton.Left) {
+			if (mce.y < position.width) {
+				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
+					if (_value > 0) _value--;
+					flags |= MINUS_PRESSED;
+				} else if (flags & MINUS_PRESSED && mce.state == ButtonState.Released) {
+					flags &= ~MINUS_PRESSED;
 				}
-			}else{
-				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+			} else if (mce.y >= position.height - position.width) {
+				if (!(flags & PLUS_PRESSED) && mce.state == ButtonState.Pressed) {
+					if (_value < _maxValue) _value++;
+					flags |= PLUS_PRESSED;
+				} else if (flags & PLUS_PRESSED && mce.state == ButtonState.Released) {
+					flags &= ~PLUS_PRESSED;
+				}
+			} else {
+				import std.math : nearbyint;
+				const double newVal = mce.y - position.width - (_barLength / 2);
+				if (newVal >= 0) {
+					const int travelLength = position.height - position.width * 2 - _barLength;
+					_value = nearbyint(travelLength / newVal);
+					if (_value > _maxValue) _value = _maxValue;
 				}
 			}
-		}else if(button == MouseButton.MID){
-			if(state == ButtonState.PRESSED){
-				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else{
-			if(state == ButtonState.PRESSED){
-				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-				if(offsetY <= getAvailableStyleSheet.getImage("upArrowA").height){
-					if(value != 0) value--;
-				}else if(position.height-getAvailableStyleSheet.getImage("upArrowA").height <= offsetY){
-					if(value < maxValue - barLength) value++;
-				}else{
-					offsetY -= getAvailableStyleSheet.getImage("upArrowA").height;
-					double sliderlength = position.height() - (getAvailableStyleSheet.getImage("upArrowA").height*2), unitlength = sliderlength/maxValue;
-					int v = to!int(offsetY / unitlength);
-					//value = ((sizeY - (elementContainer.getStyleBrush(brush[1]).getY() * 2)) - offsetY) * (value / maxValue);
-					if(v < maxValue - barLength) value = v;
-					else value = maxValue - barLength;
-
-				}
-				draw();
-				if(onScrolling !is null){
-					onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
-				}
-			}else{
-				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}
-
+		} 
+		super.passMCE(mec, mce);
 	}
-	public override void onScroll(int x, int y, int wX, int wY){
-
-		if(x == 1){
-			if(value != 0) value--;
-		}else if(x == -1){
-			if(value < maxValue - barLength) value++;
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (isPressed && mme.buttonState == 1 << MouseButton.Left) {
+			_value += mme.relY;
+			if (_value <= 0 ) _value = 0;
+			else if (_value >= _maxValue) _value = _maxValue;
+			draw;
 		}
-		draw();
-		if(onScrolling !is null){
-			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
-		}
+		super.passMME(mec, mme);
 	}
-	override public void onDrag(int x,int y,int relX,int relY,ubyte button) {
-		value+=relY;
-		if(value >= maxValue - barLength)
-			value = maxValue;
-		else if(value < 0)
-			value = 0;
-		draw();
-		if(onScrolling !is null){
-			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
-		}
-
+	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		_value += mwe.y;
+		if (_value <= 0 ) _value = 0;
+		else if (_value >= _maxValue) _value = _maxValue;
+		draw;
+		super.passMWE(mec, mwe);
 	}
+	
 }
 /**
  * Horizontal slider.
  */
 public class HSlider : Slider{
-	public this(int maxValue, int barLenght, string source, Coordinate coordinates){
-		position = coordinates;
-		//this.text = text;
+	public this(int maxValue, string source, Box position){
+		this.position = position;
 		this.source = source;
-		this.maxValue = maxValue;
-		this.barLength = barLenght;
-
-		output = new BitmapDrawer(position.width, position.height);
-		brush ~= 14;
-		brush ~= 16;
-		//brush ~= 10;
-		//draw();
+		_maxValue = maxValue;
+		_barLength = (position.height - position.width * 2) / _maxValue;
 	}
 	public override void draw(){
+		StyleSheet ss = getStyleSheet();
 		//draw background
-		//Bitmap16Bit sliderStyle = elementContainer.getStyleBrush(brush[2]);
-		//ushort backgroundColor = sliderStyle.readPixel(0,0), sliderColor = sliderStyle.readPixel(1,0);
-		if(output.output.width != position.width || output.output.height != position.height)
-			output = new BitmapDrawer(position.width, position.height);
-		output.drawFilledRectangle(0, position.width , 0, position.height , getAvailableStyleSheet().getColor("windowinactive"));
-		//draw left arrow
-		output.insertBitmap(0,0,getAvailableStyleSheet.getImage("leftArrowA"));
-		//draw right arrow
-		output.insertBitmap(position.width - getAvailableStyleSheet.getImage("rightArrowA").width,0,getAvailableStyleSheet.getImage("rightArrowA"));
+		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
-		if(maxValue > barLength){
-			double sliderlength = position.width() - (getAvailableStyleSheet.getImage("rightArrowA").width*2), unitlength = sliderlength/maxValue;
-			double sliderpos = unitlength * value, bl = unitlength * barLength;
-
-			int posA = to!int(sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").height, posB = to!int(bl + sliderpos) + getAvailableStyleSheet.getImage("rightArrowA").height;
-
-			output.drawFilledRectangle(posA, posB, 0, position.height(),getAvailableStyleSheet().getColor("windowascent"));
+		const int travelLength = position.height - position.width * 2 - _barLength;
+		Box slider;
+		slider.top = position.top;
+		slider.bottom = position.bottom;
+		slider.left = (travelLength / value) - (_barLength / 2);
+		slider.right = (travelLength / value) + (_barLength / 2);
+		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
+		if (isFocused) {
+			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
 		}
-		elementContainer.drawUpdate(this);
-		if(onDraw !is null){
-			onDraw();
+		//draw buttons
+		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage["ButtonUpB"] : ss.getImage["ButtonUpA"]);
+		Point lower = position.cornerLL;
+		lower.y -= position.width;
+		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage["ButtonDownB"] : ss.getImage["ButtonDownA"]);
+		if (state == ElementState.Disabled) {
+			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
 	}
-	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
-		if(button == MouseButton.RIGHT){
-			if(state == ButtonState.PRESSED){
-				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (mce.button == MouseButton.Left) {
+			if (mce.x < position.height) {
+				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
+					if (_value > 0) _value--;
+					flags |= MINUS_PRESSED;
+				} else if (flags & MINUS_PRESSED && mce.state == ButtonState.Released) {
+					flags &= ~MINUS_PRESSED;
 				}
-			}else{
-				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
+			} else if (mce.y >= position.width - position.height) {
+				if (!(flags & PLUS_PRESSED) && mce.state == ButtonState.Pressed) {
+					if (_value < _maxValue) _value++;
+					flags |= PLUS_PRESSED;
+				} else if (flags & PLUS_PRESSED && mce.state == ButtonState.Released) {
+					flags &= ~PLUS_PRESSED;
+				}
+			} else {
+				import std.math : nearbyint;
+				const double newVal = mce.y - position.height - (_barLength / 2);
+				if (newVal >= 0) {
+					const int travelLength = position.width - position.height * 2 - _barLength;
+					_value = nearbyint(travelLength / newVal);
+					if (_value > _maxValue) _value = _maxValue;
 				}
 			}
-		}else if(button == MouseButton.MID){
-			if(state == ButtonState.PRESSED){
-				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else{
-			if(state == ButtonState.PRESSED){
-				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-				if(offsetX <= getAvailableStyleSheet.getImage("rightArrowA").width){
-					if(value != 0) value--;
-				}
-				else if(position.width-getAvailableStyleSheet.getImage("rightArrowA").width <= offsetX){
-					if(value < maxValue - barLength) value++;
-				}
-				else{
-					offsetX -= getAvailableStyleSheet.getImage("rightArrowA").width;
-					double sliderlength = position.width() - (elementContainer.getStyleSheet.getImage("rightArrowA").width*2), unitlength = sliderlength/maxValue;
-					int v = to!int(offsetX / unitlength);
-					if(v < maxValue - barLength) value = v;
-					else value = maxValue - barLength;
-				}
-				draw();
-				if(onScrolling !is null){
-					onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
-				}
-			}else{
-				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}
+		} 
+		super.passMCE(mec, mce);
 	}
-	public override void onScroll(int x, int y, int wX, int wY){
-		if(y == -1){
-			if(value != 0) value--;
-		}else if(y == 1){
-			if(value < maxValue - barLength) value++;
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (isPressed && mme.buttonState == 1 << MouseButton.Left) {
+			_value += mme.relX;
+			if (_value <= 0 ) _value = 0;
+			else if (_value >= _maxValue) _value = _maxValue;
+			draw;
 		}
-		draw();
-		if(onScrolling.ptr){
-			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
-		}
+		super.passMME(mec, mme);
 	}
-	override public void onDrag(int x,int y,int relX,int relY,ubyte button) {
-		value+=relX;
-		if(value >= maxValue - barLength)
-			value = maxValue;
-		else if(value < 0)
-			value = 0;
-		draw();
-		if(onScrolling.ptr){
-			onScrolling(new Event(source, null, null, null, null, value, EventType.SLIDER, null, this));
-		}
+	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		_value += mwe.x;
+		if (_value <= 0 ) _value = 0;
+		else if (_value >= _maxValue) _value = _maxValue;
+		draw;
+		super.passMWE(mec, mwe);
 	}
-
 }

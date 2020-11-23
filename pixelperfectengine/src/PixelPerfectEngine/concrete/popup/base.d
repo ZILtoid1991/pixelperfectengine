@@ -2,11 +2,12 @@ module PixelPerfectEngine.concrete.popup.base;
 
 public import PixelPerfectEngine.concrete.interfaces;
 public import PixelPerfectEngine.concrete.types;
+import PixelPerfectEngine.graphics.draw;
 
 /**
  * For creating pop-up elements like menus.
  */
-public abstract class PopUpElement{
+public abstract class PopUpElement : MouseEventReceptor {
 	//public ActionListener[] al;
 	protected BitmapDrawer output;
 	public static InputHandler inputhandler;
@@ -59,4 +60,17 @@ public abstract class PopUpElement{
 	public ABitmap getOutput() @safe{
 		return output.output;
 	}
+	
+	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		
+	}
+	
+	public void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		
+	}
+	
+	public void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		
+	}
+	
 }

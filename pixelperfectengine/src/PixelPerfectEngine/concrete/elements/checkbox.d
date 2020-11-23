@@ -1,13 +1,14 @@
 module PixelPerfectEngine.concrete.elements.checkbox;
 
+public import PixelPerfectEngine.concrete.elements.base;
+
 /**
  * A simple toggle button.
  */
-public class CheckBox : WindowElement, ICheckBox{
-	protected bool		checked;
+public class CheckBox : WindowElement, ISmallButton {
 	public string		iconChecked = "checkBoxB";		///Sets the icon for checked positions
 	public string		iconUnchecked = "checkBoxA";	///Sets the icon for unchecked positions
-	public void delegate(Event ev) onToggle;
+	public EventDeleg onToggle;
 	///CTOR for checkbox with text
 	public this(Text text, string source, Coordinate coordinates, bool checked = false) {
 		position = coordinates;
@@ -31,98 +32,72 @@ public class CheckBox : WindowElement, ICheckBox{
 		this.checked = checked;
 	}
 	public override void draw() {
-		if(output.output.width != position.width || output.output.height != position.height)
-			output = new BitmapDrawer(position.width, position.height);
-		output.drawRectangle(getAvailableStyleSheet().getImage(iconUnchecked).width, output.output.width - 1, 0,
-				output.output.height - 1, 0x0);
-		if(text) {
-			const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
-			const Coordinate textPos = Coordinate(textPadding +	getAvailableStyleSheet().getImage(iconUnchecked).width,
-					(position.height / 2) - (text.font.size / 2), position.width, position.height - textPadding);
-			output.drawSingleLineText(textPos, text);
-		}
+		parent.clearArea(position);
+		StyleSheet ss = getStyleSheet;
 		/+output.drawColorText(getAvailableStyleSheet().getImage("checkBoxA").width, 0, text,
 				getAvailableStyleSheet().getFontset("default"), getAvailableStyleSheet().getColor("normaltext"), 0);+/
-		if(checked){
-			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconChecked));
-		}else{
-			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconUnchecked));
+		Bitmap8Bit icon = isChecked ? ss.getImage(iconChecked) : ss.getImage(iconUnchecked);
+		
+		parent.bitBLT(Point(0, 0), icon);
+		
+		if (text) {
+			Coordinate textPos = position;
+			textPos.left += ss.getImage(iconChecked).width + getAvailableStyleSheet.drawParameters["TextSpacingSides"];;
+			parent.drawTextSL(textPos, text, Point(0, 0));
 		}
-		elementContainer.drawUpdate(this);
-		if(onDraw !is null){
-			onDraw();
+		if (isFocused) {
+			const int textPadding = ss.drawParameters["horizTextPadding"];
+			parent.drawBoxPattern(position - textPadding, ss.pattern["blackDottedLine"]);
 		}
-	}
-
-	public override void onClick(int offsetX, int offsetY, int state, ubyte button){
-		if(button == MouseButton.RIGHT){
-			if(state == ButtonState.PRESSED){
-				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else if(button == MouseButton.MID){
-			if(state == ButtonState.PRESSED){
-				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else{
-			if(state == ButtonState.PRESSED){
-				checked = !checked;
-				draw();
-				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-				if(onToggle !is null){
-					onToggle(new Event(source, null, null, null, null, checked ? 1 : 0, EventType.CHECKBOX, null, this));
-				}
-			}else{
-				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
+		if (state == ElementState.Disabled) {
+			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
 	}
 	/**
 	 * Returns the current value (whether it's checked or not) as a boolean.
 	 * DEPRECATED!
 	 */
-	public @nogc @property bool value(){
+	public deprecated @nogc @property bool value(){
 		return checked;
 	}
 	/**
 	 * Sets the new value (whether it's checked or not) as a boolean.
 	 * DEPRECATED!
 	 */
-	public @property bool value(bool b){
-		checked = b;
-		draw();
-		return checked;
+	public deprecated @property bool value(bool b){
+		if (b) check;
+		else unCheck;
 	}
 	
-	public @property bool isChecked() @safe pure @nogc nothrow const {
-		return checked;
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		const int width = getStyleSheet().getImage(iconChecked).width;
+		if (mce.button == MouseButton.Left && mce.state == ButtonState.Pressed && mce.x < width) {
+			if (isChecked) {
+				unCheck;
+			} else {
+				check;
+			}
+			if (onToggle !is null) {
+				onToggle(new Event(this, EventType.Toggle, SourceType.WindowElement));
+			}
+		}
+		super.passMCE(mec, mce);
 	}
-	
+
 	public bool check() @trusted {
-		checked = true;
+		flags |= IS_CHECKED;
 		draw();
-		return checked;
+		return isChecked;
 	}
 	
 	public bool unCheck() @trusted {
-		checked = false;
+		flags &= ~IS_CHECKED;
 		draw();
-		return checked;
+		return isChecked;
 	}
-	
+	public bool isSmallButtonHeight(int height) {
+		if (text) return false;
+		else if (position.width == height && position.height == height) return true;
+		else return false;
+	}
 }

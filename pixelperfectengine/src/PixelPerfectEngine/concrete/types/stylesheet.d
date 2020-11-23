@@ -52,6 +52,7 @@ public class StyleSheet{
 	public Fontset!Bitmap8Bit[string] 		font;		///Fonts stored here. 
 	public CharacterFormattingInfo!Bitmap8Bit[string]	_chrFormat; ///Character formatting
 	public ubyte[string]						color;		///Colors are identified by strings.
+	public ubyte[][string]						pattern;	///Stores line patterns.
 	public Bitmap8Bit[string]					images;		///For icons, pattern fills, etc...
 	public int[string]							drawParameters;		///Draw parameters are used for border thickness, padding, etc...
 	public string[string]						fontTypes;	///Font type descriptions for various kind of components. WILL BE DEPRECATED!
@@ -82,7 +83,9 @@ public class StyleSheet{
 		color["white"] = 0x0001;
 		color["PopUpMenuSecondaryTextColor"] = 0x001B;
 		color["MenuBarSeparatorColor"] = 0x001F;
-		color["PanelBorder"] = 0x0004;
+		color["PanelBorder"] = 0x0010;
+		color["SliderBackground"] = 0x0004;
+		color["SliderColor"] = 0x0003;
 
 		drawParameters["PopUpMenuHorizPadding"] = 4;
 		drawParameters["PopUpMenuVertPadding"] = 1;
@@ -105,6 +108,8 @@ public class StyleSheet{
 		drawParameters["ComponentHeight"] = 20;
 		drawParameters["WindowHeaderHeight"] = 16;
 		drawParameters["WHPaddingTop"] = 1;
+
+		pattern["blackDottedLine"] = [0x00, 0x10];
 	}
 	/**
 	 * Adds a fontset to the stylesheet.

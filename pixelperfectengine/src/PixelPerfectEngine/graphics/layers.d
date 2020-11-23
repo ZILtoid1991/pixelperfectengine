@@ -12,7 +12,7 @@ import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.platform;
 
 import std.parallelism;
-//import std.container.rbtree;
+import std.bitmanip : bitfields;
 //import system.etc;
 import PixelPerfectEngine.system.exc;
 //import std.algorithm;
@@ -37,13 +37,13 @@ version(LDC){
  * The basis of all layer classes, containing functions for rendering.
  */
 abstract class Layer {
-	protected @nogc pure nothrow void function(uint* src, uint* dest, size_t length) mainRenderingFunction;		///Used to implement changeable renderers for each layerd
+	protected @nogc pure nothrow void function(uint* src, uint* dest, size_t length) mainRenderingFunction;		///Used to implement changeable renderers for each layers
 	protected @nogc pure nothrow void function(ushort* src, uint* dest, uint* palette, size_t length) mainColorLookupFunction;
 	//protected @nogc void function(uint* src, int length) mainHorizontalMirroringFunction;
 	protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length) main8BitColorLookupFunction;
 	protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length, int offset) 
 			main4BitColorLookupFunction;
-	protected LayerRenderingMode renderMode;
+	protected RenderingMode renderMode;
 
 	// scrolling position
 	protected int sX, sY, rasterX, rasterY;
@@ -56,14 +56,14 @@ abstract class Layer {
 
 	}
 	///Sets the rendering mode
-	public void setRenderingMode(LayerRenderingMode mode) @nogc @safe pure nothrow {
+	public void setRenderingMode(RenderingMode mode) @nogc @safe pure nothrow {
 		renderMode = mode;
 		switch(mode){
-			case LayerRenderingMode.ALPHA_BLENDING:
+			case RenderingMode.AlphaBlending:
 				//mainRenderingFunction = &alphaBlend;
 				mainRenderingFunction = &alphaBlend32bit;
 				break;
-			case LayerRenderingMode.BLITTER:
+			case RenderingMode.Blitter:
 				mainRenderingFunction = &localBlt;
 				break;
 			default:
@@ -109,22 +109,29 @@ abstract class Layer {
  * Mostly used for internal communication.
  */
 public enum LayerType {
-	NULL,
-	tile,
-	transformableTile,
-	sprite,
+	init,
+	Tile,
+	TransformableTile,
+	Sprite,
+	Effects,
 }
 /**
- * Sets the rendering mode of the Layer.
- *
- * COPY is the fastest, but overrides any kind of transparency keying. It directly writes into the framebuffer. Should only be used for certain applications, like bottom layers.
- * BLITTER uses a custom BitBlT algorithm for the SSE2 instruction set. Automatically generates the copying mask depending on the alpha-value. Any alpha-value that's non-zero will cause a non-transparent pixel, and all zeros are completely transparent. Gradual transparency in not avaliable.
- * ALPHA_BLENDING uses SSE2 for alpha blending. The slowest (although speed loss might be minimal due to memory access limitation), but allows gradual transparencies.
+ * Defines how the layer or sprite will be rendered.
+ * See each value's documentation individually for more information on each mode.
  */
-public enum LayerRenderingMode{
-	COPY,			///the fastest, but overrides any kind of transparency keying. It directly writes into the framebuffer. Should only be used for certain applications, like bottom layers.
-	BLITTER,		///uses a custom BitBlT algorithm for the SSE2 instruction set. Automatically generates the copying mask depending on the alpha-value. Any alpha-value that's non-zero will cause a non-transparent pixel, and all zeros are completely transparent. Gradual transparency in not avaliable.
-	ALPHA_BLENDING	///uses SSE2 for alpha blending. The slowest (although speed loss might be minimal due to memory access limitation), but allows gradual transparencies.
+enum RenderingMode : ubyte {
+	init,			///Rendering mode is not set
+	Copy,			///Copies the pixels without any transparencies. The fastest as it only reads once. Best use is either GUI or lowest-layer.
+	Blitter,		///Copies the pixels to the target using simple transparency. No effect from master-alpha values. Can be faster on less memory-bound machines.
+	AlphaBlending,	///Blends the source onto the target, using both per-pixel alpha and master alpha. 
+	Multiply,		///Multiplies pixel channel values, then stores it in the destination.
+	Screen,			///Composes the source to the destination using the following formula: 1 - (1 - dest) * (1 - src)
+	Add,			///Adds with saturation the source to the destination. Alpha determines how much of the source's other channels is used.
+	Subtract,		///Subtracts with saturation the source from the destination. Alpha determines how much of the source's other channels is used.
+	Diff,			///Subtracts with saturation the destination from the source, then stores it in the destination. Alpha determines how much of the source's other channels is used.
+	AND,			///Logically ANDs the source to the destination. Alpha value is ignored.
+	OR,				///Logically ORs the source to the destination. Alpha value is ignored.
+	XOR,			///Logically XORs the source to the destination. Alpha value is ignored.
 }
 /**
  * Tile interface, defines common functions.
@@ -275,7 +282,7 @@ public class TileLayer : Layer, ITileLayer{
 	///line no -1 indicates that no lines have been drawn yet.
 	public @nogc void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;
 	///Constructor. tX , tY : Set the size of the tiles on the layer.
-	this(int tX, int tY, LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
+	this(int tX, int tY, RenderingMode renderMode = RenderingMode.AlphaBlending){
 		tileX=tX;
 		tileY=tY;
 		setRenderingMode(renderMode);
@@ -544,7 +551,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	 */
 	public HBIDelegate hBlankInterrupt;
 
-	this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING){
+	this(RenderingMode renderMode = RenderingMode.AlphaBlending){
 		A = 256;
 		B = 0;
 		C = 0;
@@ -977,15 +984,24 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	/**
 	 * Helps to determine the displaying properties and order of sprites.
 	 */
-	public struct DisplayListItem{
-		Coordinate position;		/// Stores the position relative to the origin point. Actual display position is determined by the scroll positions.
-		Coordinate slice;			/// To compensate for the lack of scanline interrupt capabilities, this enables chopping off parts of a sprite.
-		void* pixelData;			/// Points to the pixel data.
-		int width;					/// Width of the sprite
-		int height;					/// Height of the sprite
-		int scaleHoriz;				/// Horizontal scaling
-		int scaleVert;				/// Vertical scaling
-		int priority;				/// Used for automatic sorting and identification.
+	public struct DisplayListItem {
+		Box		position;			/// Stores the position relative to the origin point. Actual display position is determined by the scroll positions.
+		Box		slice;				/// To compensate for the lack of scanline interrupt capabilities, this enables chopping off parts of a sprite.
+		void*	pixelData;			/// Points to the pixel data.
+		/**
+		 * From version 0.10.0 onwards, each sprites can have their own rendering function set up to
+		 * allow different effect on a single layer.
+		 * If not specified otherwise, the layer's main rendering function will be used instead.
+		 * Custom rendering functions can be written by the user, it requires knowledge of writing
+		 * pixel shader-like functions using fixed-point arithmetics. Use of vector optimizatons
+		 * techniques (SSE2, AVX, NEON, etc) are needed for optimal performance.
+		 */
+		@nogc pure nothrow void function(uint* src, uint* dest, size_t length, ubyte value) renderFunc;
+		int		width;				/// Width of the sprite
+		int		height;				/// Height of the sprite
+		int		scaleHoriz;			/// Horizontal scaling
+		int		scaleVert;			/// Vertical scaling
+		int		priority;			/// Used for automatic sorting and identification.
 		/**
 		 * Selects the palette of the sprite.
 		 * Amount of accessable color depends on the palette access shifting value. A value of 8 enables 
@@ -997,9 +1013,13 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		 * limit the bitmap's ability to access 256 colors, and this can result in memory leakage if
 		 * the end developer isn't careful enough.
 		 */
-		ushort paletteSel;
-		ubyte wordLength;			/// Determines the word length of a sprite in a much quicker way than getting classinfo.
-		ubyte paletteSh;			/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
+		ushort	paletteSel;
+		ubyte	flags;				/// Flags packed into a single byte (bitmapType, paletteSh)
+		ubyte	masterAlpha;		/// Sets the master alpha value of the sprite, e.g. opacity
+		//ubyte wordLength;			/// Determines the word length of a sprite in a much quicker way than getting classinfo.
+		//ubyte paletteSh;			/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
+		static enum ubyte	PALETTESH_MASK = 0x0F;	/// Mask for paletteSh
+		static enum ubyte	BMPTYPE_MASK = 0x80;	/// Mask for bmpType
 		/**
 		 * Creates a display list item with palette selector.
 		 */
@@ -1014,18 +1034,18 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			this.scaleHoriz = scaleHoriz;
 			slice = Coordinate(0,0,sprite.width,sprite.height);
 			if(typeid(sprite) is typeid(Bitmap4Bit)){
-				wordLength = 4;
+				bmpType = BitmapTypes.Bmp4Bit;
 				paletteSh = 4;
 				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
 			}else if(typeid(sprite) is typeid(Bitmap8Bit)){
-				wordLength = 8;
+				bmpType = BitmapTypes.Bmp8Bit;
 				paletteSh = 8;
 				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
 			}else if(typeid(sprite) is typeid(Bitmap16Bit)){
-				wordLength = 16;
+				bmpType = BitmapTypes.Bmp16Bit;
 				pixelData = (cast(Bitmap16Bit)(sprite)).getPtr;
 			}else if(typeid(sprite) is typeid(Bitmap32Bit)){
-				wordLength = 32;
+				bmpType = BitmapTypes.Bmp32Bit;
 				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
 			}
 		}
@@ -1065,6 +1085,24 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				wordLength = 32;
 				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
 			}
+		}
+		/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
+		@property ubyte paletteSh() @safe @nogc pure nothrow const {
+			return flags & PALETTESH_MASK;
+		}
+		/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
+		@property ubyte paletteSh(ubyte val) @safe @nogc pure nothrow {
+			flags |= val & PALETTESH_MASK;
+			return flags & PALETTESH_MASK;
+		}
+		/// Defines the type of bitmap the sprite is using. This method is much faster and simpler than checking the class type of the bitmap.
+		@property BitmapTypes bmpType() @safe @nogc pure nothrow const {
+			return (flags & BMPTYPE_MASK) >>> 4;
+		}
+		/// Defines the type of bitmap the sprite is using. This method is much faster and simpler than checking the class type of the bitmap.
+		@property BitmapTypes bmpType(BitmapTypes val) @safe @nogc pure nothrow {
+			flags |= val << 4;
+			return (flags & BMPTYPE_MASK) >>> 4;
 		}
 		/**
 		 * Resets the slice to its original position.
@@ -1115,6 +1153,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		@nogc bool opEquals(in int pri) const pure @safe nothrow {
 			return priority == pri;
 		}
+		
 		string toString() const {
 			return "{Position: " ~ position.toString ~ ";\nDisplayed portion: " ~ slice.toString ~";\nPriority: " ~
 				conv.to!string(priority) ~ "; PixelData: " ~ conv.to!string(pixelData) ~ 
@@ -1129,7 +1168,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected Color[2048]		src;				///Local buffer for scaling
 	//size_t[8] prevSize;
 	///Default ctor
-	public this(LayerRenderingMode renderMode = LayerRenderingMode.ALPHA_BLENDING) @nogc nothrow @safe {
+	public this(RenderingMode renderMode = RenderingMode.AlphaBlending) @nogc nothrow @safe {
 		setRenderingMode(renderMode);
 		//src[0].length = 1024;
 	}
@@ -1303,7 +1342,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public int getScaleSpriteVert(int n) @nogc @trusted pure nothrow {
 		return allSprites[n].scaleVert;
 	}
-	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette){
+	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {
 		/*
 		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack.
 		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches.
@@ -1342,8 +1381,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			// HACK: as I couldn't figure out a better method yet I decided to scale a whole line, which has a lot of problems
 			const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
 			void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
-			switch(i.wordLength){
-				case 4:
+			final switch (i.bmpType) with (BitmapTypes) {
+				case Bmp4Bit:
 					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
 						horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
@@ -1351,54 +1390,54 @@ public class SpriteLayer : Layer, ISpriteLayer {
 						prevOffset += offsetAmount;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
-							mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
 						p0 += sizeXOffset >>> 1;
 					}
 					//}
 					break;
-				case 8:
+				case Bmp8Bit:
 					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
 						horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, i.scaleHoriz);
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
-							mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
 						p0 += sizeXOffset;
 					}
 					break;
-				case 16:
+				case Bmp16Bit:
 					ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
 						horizontalScaleNearestAndCLU(p0, src.ptr, palette, scalelength, i.scaleHoriz);
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
-							mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
 						p0 += sizeXOffset;
 					}
 					break;
-				case 32:
+				case Bmp32Bit:
 					Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
 						horizontalScaleNearest(p0, src.ptr, scalelength, i.scaleHoriz);
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
-							mainRenderingFunction(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length);
+							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
 						p0 += sizeXOffset;
 					}
 					//}
 					break;
-				default:
+				case Undefined, Bmp1Bit, Bmp2Bit:
 					break;
 			}
 
@@ -1412,117 +1451,25 @@ public class SpriteLayer : Layer, ISpriteLayer {
 /**
  * Puts various effects on the framebuffer (XOR blitter, etc).
  */
-public class EffectLayer : Layer{
+public class EffectLayer : Layer {
 	/**
-	 * Stores various commands for effects
+	 * Defines an effect command.
 	 */
-	public class EffectLayerCommand{
-		public CommandType command;
-		public Coordinate[] coordinates;
-		public Color[] colors;
-		public ushort[] indexedColors;
-		public int[] values;
-		public this(CommandType command, Coordinate[] coordinates, Color[] colors, int[] values = null){
-			this.command = command;
-			this.coordinates = coordinates;
-			this.indexedColors = null;
-			this.colors = colors;
-			this.values = values;
-		}
-		public this(CommandType command, Coordinate[] coordinates, ushort[] indexedColors, int[] values = null){
-			this.command = command;
-			this.coordinates = coordinates;
-			this.indexedColors = indexedColors;
-			this.colors = null;
-			this.values = values;
-		}
+	public struct Command {
+
 	}
-	public enum CommandType : ubyte{
-		/// Does nothing, placeholder command.
-		NONE			=	0,
-		/**
-		 * Does a XOR blitter line. Parameters:
-		 * coordinate[0]: Begins the line from the top-left corner until the right corner. Bottom value is discarded.
-		 * color[0]: The 32 bit colorvector.
-		 */
-		XORBLITTERLINE	=	1,
-		/**
-		 * Does a XOR blitter box. Parameters:
-		 * coordinate[0]: The coordinates where the box should be drawn.
-		 * color[0]: The 32 bit colorvector.
-		 */
-		XORBLITTERBOX	=	2,
-		/**
-		 * Offsets a line by a given value. Parameters:
-		 * coordinate[0]: Begins the line from the top-left corner until the right corner. Bottom value is discarded.
-		 * value[0]: The amount which the line will be offsetted.
-		 *
-		 * NOTE: Be careful with this operation, if the algorithm has to write out from the screen, it'll cause a MemoryAccessViolationError.
-		 * Overscanning will enable to write outside of it as well as offsetting otherwise off-screen elements onto the screen.
-		 */
-		LINEOFFSET		=	3
-	}
-	private EffectLayerCommand[int] commandList;
-	private int[] commandListPriorities;
+	/**
+	 * Stores effect commands.
+	 * Must be user managed.
+	 */
+	public Command[] commandList;
 	public this(){
 
 	}
-	/**
-	 * Adds a new command with the specified values.
-	 */
-	public void addCommand(int priority, EffectLayerCommand command){
-		import std.algorithm.sorting;
-		commandList[priority] = command;
-		commandListPriorities ~= priority;
-		commandListPriorities.sort();
-	}
-	/**
-	 * Removes a command at the specified priority.
-	 */
-	public void removeCommand(int priority){
-		commandList.remove(priority);
-		int[] newCommandListPriorities;
-		for(int i ; i < commandListPriorities.length ; i++){
-			if(commandListPriorities[i] != priority){
-				newCommandListPriorities ~= commandListPriorities[i];
-			}
-		}
-		commandListPriorities = newCommandListPriorities;
-	}
+	
 
 	override public void updateRaster(void* workpad,int pitch,Color* palette) {
-		/*foreach(int i; commandListPriorities){
-			switch(commandList[i].command){
-				case CommandType.XORBLITTERLINE:
-					int offset = (commandList[i].coordinates[0].top * pitch) + commandList[i].coordinates[0].left;
-					if(commandList[i].indexedColors is null){
-						xorBlitter(workpad + offset,commandList[i].colors[0],commandList[i].coordinates[0].width());
-					}else{
-						xorBlitter(workpad + offset,palette[commandList[i].indexedColors[0]],commandList[i].coordinates[0].width());
-					}
-					break;
-				case CommandType.XORBLITTERBOX:
-					int offset = (commandList[i].coordinates[0].top * pitch) + commandList[i].coordinates[0].left;
-					if(commandList[i].indexedColors is null){
-						for(int y = commandList[i].coordinates[0].top; y < commandList[i].coordinates[0].bottom; y++){
-							xorBlitter(workpad + offset,commandList[i].colors[0],commandList[i].coordinates[0].width());
-							offset += pitch;
-						}
-					}else{
-						for(int y = commandList[i].coordinates[0].top; y < commandList[i].coordinates[0].bottom; y++){
-							xorBlitter(workpad + offset,commandList[i].colors[0],commandList[i].coordinates[0].width());
-							offset += pitch;
-						}
-					}
-					break;
-				case CommandType.LINEOFFSET:
-					int offset = (commandList[i].coordinates[0].top * pitch) + commandList[i].coordinates[0].left;
-					copyRegion(workpad + offset, workpad + offset + commandList[i].values[0], commandList[i].coordinates[0].width());
-					break;
-				default:
-					break;
-			}
-		}*/
+		
 	}
 
 }

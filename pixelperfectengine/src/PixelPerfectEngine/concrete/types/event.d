@@ -46,7 +46,7 @@ public class MouseEvent : Event {
 /**
  * Defines a file event (save, open, etc.)
  */
-public class FileEvent {
+public class FileEvent : Event {
 	string		path;		///The path where the file is found or being written to.
 	string		filename;	///The name of the target file.
 	string		extension;	///The selected file extension.
@@ -59,6 +59,21 @@ public class FileEvent {
 	}
 }
 /**
+ * Defines a menu event.
+ */
+public class MenuEvent : Event {
+	Text		text;		///Text of the selected menu item.
+	size_t		itemNum;	///Number of the selected item.
+	string		itemSource;	///Source ID of the menu item.
+	///Default CTOR
+	this (Object sender, SourceType srcType, Text text, size_t itemNum, string itemSource) {
+		super(sender, EventType.Menu, srcType);
+		this.text = text;
+		this.itemNum = itemNum;
+		this.itemSource = itemSource;
+	}
+}
+/**
  * Defines event types.
  * Mouse events and file events have data that can be accessed via extra fields in an inherited class.
  * Selection uses the aux field.
@@ -68,6 +83,7 @@ public enum EventType {
 	MouseMotion,
 	MouseClick,
 	MouseScroll,
+	Menu,
 	TextInput,
 	File,
 	Selection,

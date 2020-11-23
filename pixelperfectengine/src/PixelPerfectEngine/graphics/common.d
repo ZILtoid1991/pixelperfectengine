@@ -26,7 +26,7 @@ public struct Point {
 /**
  * Represents a box on a 2D field.
  */
-public struct Coordinate {
+public struct Box {
 	public int left, top, right, bottom;
 	this(int left, int top, int right, int bottom) @safe pure nothrow @nogc {
 		this.left=left;
@@ -77,6 +77,34 @@ public struct Coordinate {
 		return (x >= left && x <= right && y >= top && y <= bottom);
 	}
 	/**
+	 * Operator overloading for scalar values.
+	 * `-`: Adds to left and top, substracts from right and bottom.
+	 * `+`: Subtracts from left and top, adds to right and bottom.
+	 */
+	public Box opBinary(string op)(const int rhs) @nogc @safe pure nothrow const {
+		static if (op == "-") {
+			return Coordinate(left + rhs, top + rhs, right - rhs, bottom - rhs);
+		} else static if (op == "+") {
+			return Coordinate(left - rhs, top - rhs, right + rhs, bottom + rhs);
+		} else static assert(0, "Unsupported operator!");
+	}
+	///Returns the upper-left corner.
+	public @property Point cornerUL() @nogc @safe pure nothrow const {
+		return Point(left, top);
+	}
+	///Returns the upper-right corner.
+	public @property Point cornerUR() @nogc @safe pure nothrow const {
+		return Point(right, top);
+	}
+	///Returns the lowew-left corner.
+	public @property Point cornerLL() @nogc @safe pure nothrow const {
+		return Point(left, bottom);
+	}
+	///Returns the lower-right corner.
+	public @property Point cornerLR() @nogc @safe pure nothrow const {
+		return Point(right, bottom);
+	}
+	/**
 	 * Returns a string with the coordinates that is useful for debugging
 	 */
 	public string toString() const{
@@ -88,6 +116,7 @@ public struct Coordinate {
 				" Bottom: " ~ to!string(bottom) ~ " Width: " ~ to!string(width()) ~ " Height: " ~ to!string(height());
 	}
 }
+alias Coordinate = Box;
 /**
  * Defines polygons for sprite transformation (eg. scaling, rotation).
  * Most likely will be removed due to lack of use.

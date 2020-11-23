@@ -11,9 +11,12 @@ public import PixelPerfectEngine.graphics.bitmap;
 public import PixelPerfectEngine.graphics.common;
 public import PixelPerfectEngine.graphics.text;
 
+public import PixelPerfectEngine.concrete.elements.base;
+public import PixelPerfectEngine.concrete.popup.base;
+
 public import PixelPerfectEngine.system.input.types;
 
-/**
+/+/**
  * Checkbox interface.
  */
 public interface ICheckBox {
@@ -23,7 +26,7 @@ public interface ICheckBox {
 	public bool check() @trusted;
 	///Sets the object to unchecked position and returns the new state.
 	public bool unCheck() @trusted;
-}
+}+/
 /**
  * Radio button interface. Can be used to implement radio button style behavior on almost any component that implements this interface.
  */
@@ -36,12 +39,6 @@ public interface IRadioButton {
 	 * Sets the radio button into its pressed state.
 	 */
 	public void latchOn() @trusted;
-	/**
-	 * Returns the current state of the radio button.
-	 * True: Pressed.
-	 * False: Unpressed.
-	 */
-	public bool isLatched() @safe @property const;
 	/**
 	 * Sets the group of the radio button.
 	 */
@@ -86,29 +83,29 @@ public interface Canvas {
 	///Draws a line pattern.
 	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted pure;
 	///Draws an empty rectangle.
-	public void drawBox(Coordinate target, ubyte color) @trusted pure;
+	public void drawBox(Box target, ubyte color) @trusted pure;
 	///Draws an empty rectangle with line patterns.
-	public void drawBoxPattern(Coordinate target, ubyte[] pattern) @trusted pure;
+	public void drawBoxPattern(Box target, ubyte[] pattern) @trusted pure;
 	///Draws a filled rectangle with a specified color,
-	public void drawFilledBox(Coordinate target, ubyte color) @trusted pure;
+	public void drawFilledBox(Box target, ubyte color) @trusted pure;
 	///Pastes a bitmap to the given point using blitter, which threats color #0 as transparency.
 	public void bitBLT(Point target, ABitmap source) @trusted pure;
 	///Pastes a slice of a bitmap to the given point using blitter, which threats color #0 as transparency.
-	public void bitBLT(Point target, ABitmap source, Coordinate slice) @trusted pure;
+	public void bitBLT(Point target, ABitmap source, Box slice) @trusted pure;
 	///Pastes a repeated bitmap pattern over the specified area.
-	public void bitBLTPattern(Coordinate target, ABitmap pattern) @trusted pure;
+	public void bitBLTPattern(Box target, ABitmap pattern) @trusted pure;
 	///XOR blits a repeated bitmap pattern over the specified area.
-	public void xorBitBLT(Coordinate target, ABitmap pattern) @trusted pure;
+	public void xorBitBLT(Box target, ABitmap pattern) @trusted pure;
 	///XOR blits a color index over a specified area.
-	public void xorBitBLT(Coordinate target, ubyte color) @trusted pure;
+	public void xorBitBLT(Box target, ubyte color) @trusted pure;
 	///Fills an area with the specified color.
 	public void fill(Point target, ubyte color, ubyte background = 0) @trusted pure;
 	///Draws a single line text within the given prelimiter.
-	public void drawTextSL(Coordinate target, Text text, Point offset) @trusted pure;
+	public void drawTextSL(Box target, Text text, Point offset) @trusted pure;
 	///Draws a multi line text within the given prelimiter.
-	public void drawTextML(Coordinate target, Text text, Point offset) @trusted pure;
+	public void drawTextML(Box target, Text text, Point offset) @trusted pure;
 	///Clears the area within the target
-	public void clearArea(Coordinate target) @trusted pure;
+	public void clearArea(Box target) @trusted pure;
 }
 /**
  * TODO: Use this for implement tabbing and etc.
@@ -118,6 +115,12 @@ public interface Focusable {
 	public void focusGiven();
 	///Called when an object loses focus.
 	public void focusLost();
+	///Cycles the focus on a single element.
+	///Returns -1 if end is reached, or the number of remaining elements that
+	///are cycleable in the direction.
+	public int cycleFocus(int direction);
+	///Passes key events to the focused element when not in text editing mode.
+	public void passKey(uint keyCode, ubyte mod);
 }
 /**
  * Implements the 
@@ -126,7 +129,7 @@ public interface ElementContainer : StyleSheetContainer, Canvas {
 	/**
 	 * Returns the absolute position of the element.
 	 */
-	public Coordinate getAbsolutePosition(WindowElement sender);
+	public Box getAbsolutePosition(WindowElement sender);
 	/**
 	 * Clears the area of the element.
 	 */
