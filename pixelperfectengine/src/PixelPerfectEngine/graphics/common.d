@@ -76,6 +76,10 @@ public struct Box {
 	public bool isBetween(int x, int y) @nogc @safe pure nothrow const {
 		return (x >= left && x <= right && y >= top && y <= bottom);
 	}
+	///Ditto
+	public bool isBetween(Point p) @nogc @safe pure nothrow const {
+		return (p.x >= left && p.x <= right && p.y >= top && p.y <= bottom);
+	}
 	/**
 	 * Operator overloading for scalar values.
 	 * `-`: Adds to left and top, substracts from right and bottom.

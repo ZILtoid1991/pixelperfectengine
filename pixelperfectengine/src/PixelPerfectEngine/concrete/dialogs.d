@@ -1,6 +1,7 @@
 module PixelPerfectEngine.concrete.dialogs;
 
 public import PixelPerfectEngine.concrete.window;
+import PixelPerfectEngine.concrete.elements;
 
 /**
  * Standard text input form for various applications.
@@ -153,7 +154,7 @@ public class FileDialog : Window{
 	private string source;
 	private string[] pathList, driveList;
 	private string directory, filename;
-	private ListBox lb;
+	//private ListBox lb;
 	private TextBox tb;
 
 	private bool save;

@@ -141,13 +141,9 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	 * Returns the next available StyleSheet.
 	 */
 	public StyleSheet getStyleSheet() {
-		if(customStyle !is null){
-			return customStyle;
-		}
-		if(parent !is null){
-			return parent.getStyleSheet();
-		}
-		return null;
+		if(customStyle !is null) return customStyle;
+		else if(parent !is null) return parent.getStyleSheet();
+		else return globalDefaultStyle;
 	}
 	///Called when an object receives focus.
 	public void focusGiven() {
@@ -155,7 +151,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		draw;
 	}
 	///Called when an object loses focus.
-	public void focusLost() {
+	public void focusTaken() {
 		flags &= ~IS_FOCUSED;
 		draw;
 	}
@@ -188,6 +184,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		return flags & IS_CHECKED;
 	}
 	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		parent.requestFocus(this);
 		if (mce.state == ButtonState.Pressed) {
 			if (mce.button == MouseButton.Left) flags |= IS_PRESSED;
 			if (!(flags & ENABLE_MOUSE_PRESS)) return;

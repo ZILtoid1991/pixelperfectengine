@@ -1,7 +1,7 @@
 module PixelPerfectEngine.system.dictionary;
 
 /*
- * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
+ * Copyright (C) 2015-2020, by Laszlo Szeremi under the Boost license.
  *
  * Pixel Perfect Engine, dictionary module
  */
@@ -13,20 +13,19 @@ import std.stdio;
 public class Dictionary{
 	private string[int] encodeTable;
 	private int[string] decodeTable;
-	/// Uses the tag names as the decode table.
-	public this(string filename){
-		
+	/// Uses tag values (string, int) to generate the dictionary
+	public this(Tag root){
 		try{
-			Tag root = parseFile(filename);
+			//Tag root = parseFile(filename);
 			foreach(Tag t; root.tags){
-				string s = t.name();
+				string s = t.expectValue!string();
 				int i = t.expectValue!int();
 				encodeTable[i] = s;
 				decodeTable[s] = i;
 			}
 		}
 		catch(ParseException e){
-			//writeln(e.msg);
+			debug writeln(e.msg);
 		}
 	}
 	/// Returns the first value from the encodeTable, where decodeTable[i] == input

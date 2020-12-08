@@ -3,38 +3,53 @@ module PixelPerfectEngine.concrete.windowhandler;
 public import PixelPerfectEngine.concrete.interfaces;
 public import PixelPerfectEngine.concrete.window;
 public import PixelPerfectEngine.concrete.types;
+public import PixelPerfectEngine.concrete.popup;
+
+public import PixelPerfectEngine.system.input.interfaces;
+
+public import PixelPerfectEngine.graphics.layers : ISpriteLayer;
+
+import collections.linkedlist;
+import PixelPerfectEngine.system.etc : cmpObjPtr;
 
 /**
  * Handles windows as well as PopUpElements.
  */
-public class WindowHandler : InputListener, MouseListener, IWindowHandler{
-	private Window[] windows;
-	private PopUpElement[] popUpElements;
+public class WindowHandler : InputListener, MouseListener {
+	alias WindowSet = LinkedList!(Window, false, "cmpObjPtr(a, b)");
+	alias PopUpSet = LinkedList!(PopUpElement, false, "cmpObjPtr(a, b)");
+	protected WindowSet windows;
+	protected PopUpSet popUpElements;
 	private int numOfPopUpElements;
 	//private int[] priorities;
-	public int screenX, screenY, rasterX, rasterY, moveX, moveY, mouseX, mouseY;
+	protected int screenWidth, screenHeight, rasterWidth, rasterHeight, moveX, moveY, mouseX, mouseY;
 	//public Bitmap16Bit[wchar] basicFont, altFont, alarmFont;
+	///Sets the default style for the windowhandler.
+	///If null, the global default will be used instead.
 	public StyleSheet defaultStyle;
 	//public Bitmap16Bit[int] styleBrush;
 	private ABitmap background;
 	private ISpriteLayer spriteLayer;
-	private bool moveState, dragEventState;
-	private Window windowToMove, dragEventDest;
+	private Window windowToMove;
 	private PopUpElement dragEventDestPopUp;
-	private ubyte lastMouseButton;
-
-	public this(int sx, int sy, int rx, int ry,ISpriteLayer sl){
-		screenX = sx;
-		screenY = sy;
-		rasterX = rx;
-		rasterY = ry;
+	//private ubyte lastMouseButton;
+	/**
+	 * Default CTOR.
+	 * sW and sH set the screen width and height.
+	 * rW and rH set the raster width and height.
+	 * ISpriteLayer sets the SpriteLayer, that will display the windows and popups as sprites.
+	 */
+	public this(int sW, int sH, int rW, int rH,ISpriteLayer sl) {
+		screenWidth = sW;
+		screenHeight = sH;
+		rasterWidth = rW;
+		rasterHeight = rH;
 		spriteLayer = sl;
 	}
 
 	public void addWindow(Window w){
 		windows ~= w;
 		w.addParent(this);
-		//priorities ~= 666;
 		w.draw();
 		setWindowToTop(w);
 	}
@@ -54,38 +69,29 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		Text title0 = new Text(title, ss.getChrFormatting("windowHeader"));
 		//addWindow(new DefaultDialog(c, null, title0, formattedMessage));
 	}
+	/**
+	 * Adds a background.
+	 */
 	public void addBackground(ABitmap b){
 		background = b;
 		spriteLayer.addSprite(background, 65_536, 0, 0);
 	}
-
-	private int whichWindow(Window w){
-		for(int i ; i < windows.length ; i++){
-			if(windows[i] == w){
-				return i;
-			}
-		}
-		return -1;
+	/**
+	 * Returns the window priority or -1 if the window can't be found.
+	 */
+	private sizediff_t whichWindow(Window w) @safe nothrow {
+		try
+			windows.which(w);
+		catch (Exception e)
+			return -1;
 	}
 	/**
 	 * Sets sender to be top priority.
 	 */
-	public void setWindowToTop(Window sender){
-		import std.algorithm.mutation : remove;
-		import std.array : insertInPlace;
-		for(size_t s; s < windows.length; s++){
-			if(windows[s] == sender){
-				windows[0].active = false;
-				windows[0].draw(true);
-				Window ww = windows[s];
-				windows = windows.remove(s);
-				ww.active = true;
-				ww.draw(true);
-				insertInPlace(windows, 0, ww);
-				updateSpriteOrder();
-				return;
-			}
-		}
+	public void setWindowToTop(Window sender) @safe nothrow {
+		sizediff_t pri = windows.which(sender);
+		windows.setAsFirst(pri);
+		updateSpriteOrder();
 	}
 
 	private void updateSpriteOrder(){
@@ -126,16 +132,16 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 		moveState = true;
 		windowToMove = sender;
 	}
-	public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
+	/+public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
 
 	}
 	public void keyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype){
 
-	}
-	public void mouseButtonEvent(uint which, uint timestamp, uint windowID, ubyte button, ubyte state, ubyte clicks, int x, int y){
+	}+/
+	/+public void mouseButtonEvent(uint which, uint timestamp, uint windowID, ubyte button, ubyte state, ubyte clicks, int x, int y){
 
 		//converting the dimensions
-		double xR = to!double(rasterX) / to!double(screenX) , yR = to!double(rasterY) / to!double(screenY);
+		double xR = to!double(rasterWidth) / to!double(screenWidth) , yR = to!double(rasterHeight) / to!double(screenHeight);
 		x = to!int(x * xR);
 		y = to!int(y * yR);
 		mouseX = x;
@@ -188,8 +194,8 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 				passMouseEvent(x,y,state,button);
 			}
 		}
-	}
-	public void passMouseEvent(int x, int y, int state, ubyte button){
+	}+/
+	/+public void passMouseEvent(int x, int y, int state, ubyte button){
 
 	}
 	public void passMouseDragEvent(int x, int y, int relX, int relY, ubyte button){
@@ -197,7 +203,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	public void passMouseMotionEvent(int x, int y, int relX, int relY, ubyte button){
 	}
 	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){
-		double xR = to!double(rasterX) / to!double(screenX) , yR = to!double(rasterY) / to!double(screenY);
+		double xR = to!double(rasterWidth) / to!double(screenWidth) , yR = to!double(rasterHeight) / to!double(screenHeight);
 		wX = to!int(wX * xR);
 		wY = to!int(wY * yR);
 		if(windows.length != 0)
@@ -210,7 +216,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
 		import std.math : ceil;
 		//coordinate conversion
-		double xR = to!double(rasterX) / to!double(screenX) , yR = to!double(rasterY) / to!double(screenY);
+		double xR = to!double(rasterWidth) / to!double(screenWidth) , yR = to!double(rasterHeight) / to!double(screenHeight);
 		x = to!int(x * xR);
 		y = to!int(y * yR);
 		relX = to!int(ceil(relX * xR));
@@ -235,7 +241,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 				windows[0].passMouseMotionEvent(x, y, relX, relY, lastMouseButton);
 			}
 		}
-	}
+	}+/
 	public void moveWindow(int x, int y, Window w){
 		spriteLayer.relMoveSprite(whichWindow(w), x, y);
 
@@ -305,7 +311,7 @@ public class WindowHandler : InputListener, MouseListener, IWindowHandler{
 	}*/
 }
 
-public interface IWindowHandler : PopUpHandler {
+/+public interface IWindowHandler : PopUpHandler {
 	//public Bitmap16Bit[wchar] getFontSet(int style);
 	public StyleSheet getStyleSheet();
 	public void closeWindow(Window sender);
@@ -317,4 +323,4 @@ public interface IWindowHandler : PopUpHandler {
 	public void relMoveWindow(int x, int y, Window w);
 	public void drawUpdate(Window sender);
 	public void messageWindow(dstring title, dstring message, int width = 256);
-}
+}+/

@@ -25,43 +25,59 @@ import std.file;
 import std.path;
 import std.datetime;
 
+import collections.linkedlist;
+
 /**
  * Basic window. All other windows are inherited from this class.
  */
-public class Window : ElementContainer {
-	protected WindowElement[] 		elements;		///Stores all window elements here
+public class Window : ElementContainer, Focusable, MouseEventReceptor {
+	alias FocusableSet = LinkedList!(Focusable, false, "cmpObjPtr(a, b)");
+	alias WESet = LinkedList!(WindowElement, false, "cmpObjPtr(a, b)");
+	alias SBSet = LinkedList!(ISmallButton, false, "cmpObjPtr(a, b)");
+	alias CWSet = LinkedList!(Window, false, "cmpObjPtr(a, b)");
+	protected FocusableSet			focusables;		///All focusable objects belonging to the window
+	protected WESet			 		elements;		///Stores all window elements here
 	protected Text					title;			///Title of the window
-	protected WindowElement 		draggedElement;	///Used for drag events
-	public IWindowHandler 			parent;			///The handler of the window
+	protected WindowElement 		lastMouseEventTarget;	///Used for mouse move and wheel events
+	protected sizediff_t			focusedElement; ///The index of the currently focused element, or -1 if none
+	public WindowHandler 			handler;		///The handler of the window
 	//public Bitmap16Bit[int] altStyleBrush;
 	protected BitmapDrawer 			output;			///Graphics output of the window
 	//public int header;//, sizeX, sizeY;
 	protected int 					moveX, moveY;	///Relative x and y coordinates for drag events
-	protected bool 					fullUpdate;		///True if window needs full redraw
-	protected bool 					isActive;		///True if window is currently active
-	protected bool 					headerUpdate;	///True if needs header update
-	protected string[] 				extraButtons;	///Contains the icons of the extra buttons. Might be replaced with a WindowElement in the future
-	public Coordinate 				position;		///Position of the window
+	protected uint					flags;			///Stores various flags
+	protected static enum IS_ACTIVE = 1 << 0;
+	protected static enum NEEDS_FULL_UPDATE = 1 << 1;
+	protected static enum HEADER_UPDATE = 1 << 2;
+	protected static enum IS_MOVED = 1 << 3;
+	protected static enum IS_RESIZED = 1 << 4;
+	protected static enum IS_RESIZED_L = 1 << 5;
+	protected static enum IS_RESIZED_T = 1 << 6;
+	protected static enum IS_RESIZED_B = 1 << 7;
+	protected static enum IS_RESIZED_R = 1 << 8;
+	protected static enum IS_RESIZABLE_BY_MOUSE = 1 << 9;
+	//protected bool 					fullUpdate;		///True if window needs full redraw
+	//protected bool 					isActive;		///True if window is currently active
+	//protected bool 					headerUpdate;	///True if needs header update
+	protected Point					lastMousePos;	///Stores the last mouse position.
+	protected SBSet					smallButtons;	///Contains the icons of the extra buttons. Might be replaced with a WindowElement in the future
+	protected Box	 				position;		///Position of the window
 	public StyleSheet 				customStyle;	///Custom stylesheet for this window
-	public static StyleSheet 		defaultStyle;	///The default stylesheet for all windows
+	protected CWSet					children;		///Stores child windows
+	protected Window				parent;			///Stores reference to the parent
 	public static void delegate() 	onDrawUpdate;	///Called if not null after every draw update
 	/**
 	 * Standard constructor. "size" sets both the initial position and the size of the window.
-	 * Extra buttons are handled from the StyleSheet, currently unimplemented.
 	 */
-	public this(Coordinate size, Text title, string[] extraButtons = [], StyleSheet customStyle = null) {
+	public this(Box size, Text title, ISmallButton[] smallButtons = [], StyleSheet customStyle = null) {
 		position = size;
 		output = new BitmapDrawer(position.width(), position.height());
 		this.title = title;
 		this.customStyle = customStyle;
-		//sizeX = position.width();
-		//sizeY = position.height();
-		//style = 0;
-		//closeButton = 2;
-		this.extraButtons = extraButtons;
+		this.smallButtons = SBSet(smallButtons);
 	}
 	///Ditto
-	public this(Coordinate size, dstring title, string[] extraButtons = [], StyleSheet customStyle = null) {
+	public this(Box size, dstring title, ISmallButton[] smallButtons = [], StyleSheet customStyle = null) {
 		this.customStyle = customStyle;
 		this(size, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), extraButtons, customStyle);
 	}
@@ -69,28 +85,20 @@ public class Window : ElementContainer {
 	 * If the current window doesn't contain a custom StyleSheet, it gets from it's parent.
 	 */
 	public StyleSheet getStyleSheet() {
-		if(customStyle is null) {
-			if(parent is null) {
-				return defaultStyle;
-			} else {
-				return parent.getStyleSheet();
-			}
+		if (customStyle is null) {
+			if (parent is null) return globalDefaultStyle;
+			else return parent.getStyleSheet();
 		} else {
 			return customStyle;
 		}
 	}
 	/**
-	 * Updates the output of the elements.
-	 */
-	public void drawUpdate(WindowElement sender) {
-		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
-	}
-	/**
 	 * Adds an element to the window.
 	 */
 	public void addElement(WindowElement we) {
-		elements ~= we;
 		we.elementContainer = this;
+		elements.put(we);
+		focusables.put(we);
 		we.draw();
 	}
 	/**
@@ -173,26 +181,39 @@ public class Window : ElementContainer {
 			output.drawSingleLineText(textPos, title);
 		}
 	}
-	///
+	///Returns true if the window is focused
 	public @property bool active() @safe @nogc pure nothrow {
-		return isActive;
+		return flags & IS_ACTIVE;
 	}
-	///
-	public @property bool active(bool val) @safe @nogc pure nothrow {
-		if(val != isActive)
-			headerUpdate = true;
-		return isActive = val;
+	///Sets the IS_ACTIVE flag to the given value
+	protected @property bool active(bool val) @safe @nogc pure nothrow {
+		if (val) flags |= IS_ACTIVE;
+		else flags &= ~IS_ACTIVE;
+		return active();
 	}
+	///Returns whether the window is moved or not
+	public @property bool isMoved() @safe @nogc pure nothrow {
+		return flags & IS_MOVED;
+	}
+	///Sets whether the window is moved or not
+	public @property bool isMoved(bool val) @safe @nogc pure nothrow {
+		if (val) flags |= IS_MOVED;
+		else flags &= ~IS_MOVED;
+		return isMoved();
+	}
+	///Sets the title of the window
 	public void setTitle(Text s) @trusted {
 		title = s;
 		headerUpdate = true;
 		drawHeader();
 	}
+	///Ditto
 	public void setTitle(dstring s) @trusted {
 		title.text = s;
 		headerUpdate = true;
 		drawHeader();
 	}
+	///Returns the title of the window
 	public Text getTitle() @safe @nogc pure nothrow {
 		return title;
 	}
@@ -238,101 +259,46 @@ public class Window : ElementContainer {
 		}
 	}
 	/**
-	 * Passes a mouseDragEvent if the user clicked on an element, held down the button, and moved the mouse.
-	 */
-	public void passMouseDragEvent(int x, int y, int relX, int relY, ubyte button){
-		if(draggedElement){
-			draggedElement.onDrag(x, y, relX, relY, button);
-		}
-	}
-	/**
-	 * Passes a mouseMotionEvent if the user moved the mouse.
-	 */
-	public void passMouseMotionEvent(int x, int y, int relX, int relY, ubyte button){
-
-	}
-	/**
 	 * Closes the window by calling the WindowHandler's closeWindow function.
 	 */
-	public void close(){
+	public void close() {
 		parent.closeWindow(this);
 	}
-	/**
-	 * Passes the scroll event to the element where the mouse pointer currently stands.
-	 */
-	public void passScrollEvent(int wX, int wY, int x, int y){
-		foreach(WindowElement e; elements){
-			if(e.getPosition().left < wX && e.getPosition().right > wX && e.getPosition().top < wX && e.getPosition().bottom > wY){
-
-				e.onScroll(x, y, wX, wY);
-				return;
-			}
-		}
-	}
-	/**
-	 * Called if an extra button was pressed.
-	 */
-	public void extraButtonEvent(int num, ubyte button, int state){
-
-	}
-	/**
-	 * Passes a keyboard event.
-	 */
-	public void passKeyboardEvent(wchar c, int type, int x, int y){
-
+	///Initializes close. Parameter `Event ev` is only as a placeholder for delegate compatibility.
+	public void onClose(Event ev) {
+		close;
 	}
 	/**
 	 * Adds a WindowHandler to the window.
 	 */
-	public void addParent(IWindowHandler wh){
-		parent = wh;
+	public void addHandler(IWindowHandler wh) {
+		handler = wh;
 	}
-	public void getFocus(){
-
-	}
-	public void dropFocus(){
-
-	}
+	
 	public Coordinate getAbsolutePosition(WindowElement sender){
 		return Coordinate(sender.position.left + position.left, sender.position.top + position.top, sender.position.right + 
 				position.right, sender.position.bottom + position.bottom);
 	}
 	/**
-	* Moves the window to the exact location.
-	*/
-	public void move(int x, int y){
-		parent.moveWindow(x, y, this);
+	 * Moves the window to the exact location.
+	 */
+	public void move(const int x, const int y) {
 		position.move(x,y);
+		handler.moveWindow(x, y, this);
 	}
 	/**
-	* Moves the window by the given values.
-	*/
-	public void relMove(int x, int y){
-		parent.relMoveWindow(x, y, this);
+	 * Moves the window by the given values.
+	 */
+	public void relMove(const int x, const int y) {
 		position.relMove(x,y);
-	}
-	/**
-	 * Sets the height of the window, also issues a redraw.
-	 */
-	public void setHeight(int y){
-		position.bottom = position.top + y;
-		draw();
-		parent.refreshWindow(this);
-	}
-	/**
-	 * Sets the width of the window, also issues a redraw.
-	 */
-	public void setWidth(int x){
-		position.right = position.left + x;
-		draw();
-		parent.refreshWindow(this);
+		handler.relMoveWindow(x, y, this);
 	}
 	/**
 	 * Sets the size of the window, also issues a redraw.
 	 */
-	public void setSize(int x, int y){
-		position.right = position.left + x;
-		position.bottom = position.top + y;
+	public void resize(const int width, const int height) {
+		position.right = position.left + width;
+		position.bottom = position.top + height;
 		draw();
 		parent.refreshWindow(this);
 	}
@@ -344,12 +310,44 @@ public class Window : ElementContainer {
 		return output.output;
 	}
 	/**
-	 * Clears the background where the element is being drawn.
+	 * Gives focus to the windowelement requesting it.
 	 */
-	public void clearArea(WindowElement sender){
-		Coordinate c = sender.position;
-		output.drawFilledRectangle(c.left, c.right, c.top, c.bottom, getStyleSheet.getColor("window"));
+	public void requestFocus(WindowElement sender) {
+		try {
+			focusables[focusedElement].focusTaken();
+			Focusable f = cast(Focusable)(sender);
+			focusedElement = focusables.which(f);
+			focusables[focusedElement].focusGiven();
+		} catch (Exception e) {
+			debug writeln(e);
+		}
 	}
+	/**
+	 * Adds a child window to the current window.
+	 */
+	public void addChildWindow(Window w) {
+		children.put(w);
+		w.parent = this;
+		children.setAsFirst(children.length);
+		handler.addWindow(w);
+	}
+	/**
+	 * Removes a child window from the current window.
+	 */
+	public void removeChildWindow(Window w) {
+		if (children.removeByElem(w)) {
+			w.parent = null;
+			handler.removeWindow(w);
+		}
+		
+	}
+	/**
+	 * Returns the child windows.
+	 */
+	public CWSet getChildWindows() {
+		return children;
+	}
+	//Implementation of the `Canvas` interface starts here.
 	///Draws a line.
 	public void drawLine(Point from, Point to, ubyte color) @trusted pure {
 		output.drawLine(from, to, color);
@@ -405,6 +403,91 @@ public class Window : ElementContainer {
 	///Clears the area within the target
 	public void clearArea(Coordinate target) @trusted pure {
 		output.drawBox(target, getStyleSheet.getColor("window"));
+	}
+	//Implementation of the `Focusable` interface:
+	///Called when an object receives focus.
+	public void focusGiven() {
+		active = true;
+		draw;
+	}
+	///Called when an object loses focus.
+	public void focusTaken() {
+		if (focusedElement != -1) {
+			focusables[focusedElement].focusLost;
+			focusedElement = -1;
+		}
+		active = false;
+		draw;
+	}
+	///Cycles the focus on a single element.
+	///Returns -1 if end is reached, or the number of remaining elements that
+	///are cycleable in the direction.
+	public int cycleFocus(int direction) {
+		if (focusedElement < focusables.length && focusedElement >= 0) {
+			if (focusables[focusedElement].cycleFocus(direction) == -1) {
+				focusables[focusedElement].focusLost;
+				focusedElement += direction;
+				focusables[focusedElement].focusGiven;
+			}
+		} else if (focusedElement == -1) {
+			focusedElement = 0;
+			focusables[focusedElement].focusGiven;
+		} else return -1;
+		if (direction > 1) return cast(int)(focusables.length - focusedElement);
+		else return cast(int)focusedElement;
+	}
+	///Passes key events to the focused element when not in text editing mode.
+	public void passKey(uint keyCode, ubyte mod) {
+		if (focusedElement != -1) {
+			focusables[focusedElement].passKey(keyCode, mod);
+		}
+	}
+	//Implementation of `MouseEventReceptor` interface starts here
+	///Passes mouse click event
+	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		lastMousePos = Point(mce.x - position.left, mce.y - position.top);
+		foreach (WindowElement we; elements) {
+			if (we.getPosition.isBetween(lastMousePos)) {
+				lastMouseEventTarget = we;
+				mce.x = lastMousePos.x;
+				mce.y = lastMousePos.y;
+				we.passMCE(mec, mce);
+				return;
+			}
+		}
+		StyleSheet ss = getStyleSheet();
+		
+		if (mce.y < ss.drawParameters["windowHeaderHeight"]) {
+			isMoved = true;
+		}
+		lastMouseEventTarget = null;
+	}
+	///Passes mouse move event
+	public void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		lastMousePos = Point(mme.x - position.left, mme.y - position.top);
+		if (isMoved) { 
+			relMove(mme.relX, mme.relY);
+		} else if (lastMouseEventTarget) {
+			mme.x = lastMousePos.x;
+			mme.y = lastMousePos.y;
+			lastMouseEventTarget.passMME(mec, mme);
+		} else {
+			foreach (WindowElement we; elements) {
+				if (we.getPosition.isBetween(lastMousePos)) {
+					lastMouseEventTarget = we;
+					mme.x = lastMousePos.x;
+					mme.y = lastMousePos.y;
+					we.passMME(mec, mme);
+					return;
+				}
+			}
+		}
+	}
+	///Passes mouse scroll event
+	public void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		if (lastMouseEventTarget) {
+			lastMouseEventTarget.passMWE(mec, mwe);
+		}
 	}
 }
 

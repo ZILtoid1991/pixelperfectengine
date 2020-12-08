@@ -26,18 +26,22 @@ import conv = std.conv;
 import collections.sortedlist;
 import collections.treemap;
 
-version(LDC){
-	import inteli.emmintrin;
-}
-/// For generating a function out of a template
-@nogc pure nothrow void localBlt(uint* src, uint* dest, size_t length){
+
+import inteli.emmintrin;
+
+/// For generating a blitter function with value modifier
+@nogc pure nothrow void localBlt(uint* src, uint* dest, size_t length, ubyte value) {
 	blitter!uint(src, dest, length);
+}
+/// For generating a copy function with value modifier
+@nogc pure nothrow void localCpy(uint* src, uint* dest, size_t length, ubyte value) {
+	copy!uint(src, dest, length);
 }
 /**
  * The basis of all layer classes, containing functions for rendering.
  */
 abstract class Layer {
-	protected @nogc pure nothrow void function(uint* src, uint* dest, size_t length) mainRenderingFunction;		///Used to implement changeable renderers for each layers
+	protected @nogc pure nothrow void function(uint* src, uint* dest, size_t length, ubyte value) mainRenderingFunction;		///Used to implement changeable renderers for each layers
 	protected @nogc pure nothrow void function(ushort* src, uint* dest, uint* palette, size_t length) mainColorLookupFunction;
 	//protected @nogc void function(uint* src, int length) mainHorizontalMirroringFunction;
 	protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length) main8BitColorLookupFunction;
@@ -938,20 +942,24 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
  *General SpriteLayer interface.
  */
 public interface ISpriteLayer{
+	///Clears all sprite from the layer.
+	public void clear() @safe pure nothrow;
 	///Removes the sprite with the given ID.
-	public void removeSprite(int n) @safe nothrow;
+	public void removeSprite(int n) @safe pure nothrow;
 	///Moves the sprite to the given location.
-	public void moveSprite(int n, int x, int y) @safe nothrow;
+	public void moveSprite(int n, int x, int y) @safe pure nothrow;
 	///Relatively moves the sprite by the given values.
-	public void relMoveSprite(int n, int x, int y) @safe nothrow;
+	public void relMoveSprite(int n, int x, int y) @safe pure nothrow;
 	///Gets the coordinate of the sprite.
 	public Coordinate getSpriteCoordinate(int n) @nogc @safe pure nothrow;
 	///Adds a sprite to the layer.
-	public bool addSprite(ABitmap s, int n, Coordinate c, ushort paletteSel = 0, int scaleHoriz = 1024, 
+	public void addSprite(ABitmap s, int n, Coordinate c, ushort paletteSel = 0, int scaleHoriz = 1024, 
 			int scaleVert = 1024) @safe pure nothrow;
 	///Adds a sprite to the layer.
-	public bool addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
+	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
 			int scaleVert = 1024) @safe pure nothrow;
+	///Sets the rendering function for the sprite (defaults to the layer's rendering function)
+	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe pure nothrow;
 	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
 	public void replaceSprite(ABitmap s, int n) @safe pure nothrow;
 	///Replaces the sprite and moves to the given position.
@@ -1097,12 +1105,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		}
 		/// Defines the type of bitmap the sprite is using. This method is much faster and simpler than checking the class type of the bitmap.
 		@property BitmapTypes bmpType() @safe @nogc pure nothrow const {
-			return (flags & BMPTYPE_MASK) >>> 4;
+			return cast(BitmapTypes)((flags & BMPTYPE_MASK) >>> 4);
 		}
 		/// Defines the type of bitmap the sprite is using. This method is much faster and simpler than checking the class type of the bitmap.
 		@property BitmapTypes bmpType(BitmapTypes val) @safe @nogc pure nothrow {
-			flags |= val << 4;
-			return (flags & BMPTYPE_MASK) >>> 4;
+			flags |= cast(ubyte)val << 4;
+			return bmpType;
 		}
 		/**
 		 * Resets the slice to its original position.
@@ -1180,7 +1188,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	}
 	///Ditto.
 	protected bool checkSprite(DisplayListItem sprt) @safe pure nothrow {
-		assert(sprt.wordLength != 0 && sprt.pixelData, "DisplayList error!");
+		assert(sprt.bmpType != BitmapTypes.Undefined && sprt.pixelData, "DisplayList error!");
 		if(sprt.slice.width && sprt.slice.height 
 				&& (sprt.position.right > sX && sprt.position.bottom > sY && 
 				sprt.position.left < sX + rasterX && sprt.position.top < sY + rasterY)) {
@@ -1236,16 +1244,20 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	/**
 	 * Adds a sprite to the layer.
 	 */
-	public bool addSprite(ABitmap s, int n, Coordinate c, ushort paletteSel = 0, int scaleHoriz = 1024, 
+	public void addSprite(ABitmap s, int n, Box c, ushort paletteSel = 0, int scaleHoriz = 1024, 
 				int scaleVert = 1024) @safe pure nothrow {
-		allSprites[n] = DisplayListItem(c, s, n, paletteSel, scaleHoriz, scaleVert);
-		return checkSprite(allSprites[n]);
+		synchronized {
+			allSprites[n] = DisplayListItem(c, s, n, paletteSel, scaleHoriz, scaleVert);
+			checkSprite(allSprites[n]);
+		}
 	}
 	///Ditto
-	public bool addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
+	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
 			int scaleVert = 1024) @safe pure nothrow {
-		allSprites[n] = DisplayListItem(Coordinate(x, y, s.width + x, s.height + y), s, n, paletteSel, scaleHoriz, scaleVert);
-		return checkSprite(allSprites[n]);
+		synchronized {
+			allSprites[n] = DisplayListItem(Box(x, y, s.width + x, s.height + y), s, n, paletteSel, scaleHoriz, scaleVert);
+			checkSprite(allSprites[n]);
+		}
 	}
 	/**
 	 * Replaces the bitmap of the given sprite.
@@ -1437,7 +1449,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					}
 					//}
 					break;
-				case Undefined, Bmp1Bit, Bmp2Bit:
+				case Undefined, Bmp1Bit, Bmp2Bit, Planar:
 					break;
 			}
 

@@ -262,3 +262,21 @@ public bool isInterface(string I)(Object o) pure @safe nothrow {
 	}
 	return false;
 }
+/**
+ * Compares object pointers to detect duplicates.
+ */
+package bool cmpObjPtr(Object a, Object b) @nogc @trusted pure nothrow {
+	bool _cmp() @nogc @system pure nothrow {
+		return cast(void*)a == cast(void*)b;
+	}
+	return _cmp();
+}
+/**
+ * Clamps a value between of two.
+ */
+pragma(inline, true)
+T clamp(T)(ref T input, const T min, const T max) @nogc @safe pure nothrow {
+	if (input >= max) input = max;
+	else if (input <= min) input = min;
+	return input;
+}

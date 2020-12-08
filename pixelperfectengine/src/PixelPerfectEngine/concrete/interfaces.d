@@ -114,7 +114,7 @@ public interface Focusable {
 	///Called when an object receives focus.
 	public void focusGiven();
 	///Called when an object loses focus.
-	public void focusLost();
+	public void focusTaken();
 	///Cycles the focus on a single element.
 	///Returns -1 if end is reached, or the number of remaining elements that
 	///are cycleable in the direction.
@@ -133,7 +133,7 @@ public interface ElementContainer : StyleSheetContainer, Canvas {
 	/**
 	 * Clears the area of the element.
 	 */
-	public void clearArea(WindowElement sender);
+	public void requestFocus(WindowElement sender);
 }
 /**
  * Implemented by any object that can store stylesheets.

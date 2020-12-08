@@ -146,3 +146,6 @@ public class StyleSheet{
 	}
 }
 
+///Stores a global, default stylesheet.
+///Must be initialized alongside with the GUI.
+public shared StyleSheet globalDefaultStyle;
