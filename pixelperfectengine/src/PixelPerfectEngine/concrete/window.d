@@ -82,6 +82,23 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		this(size, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), extraButtons, customStyle);
 	}
 	/**
+	 * Returns the window's position.
+	 */
+	public Box getPosition() @nogc @safe pure nothrow const {
+		return position;
+	}
+	/**
+	 * Sets the new position for the window.
+	 */
+	public Box setPosition(Box newPos) {
+		position = newPos;
+		if (output.output.width != position.width || output.output.height != position.height) {
+			output = new BitmapDrawer(position.width, position.height);
+			draw();
+		}
+		return position;
+	}
+	/**
 	 * If the current window doesn't contain a custom StyleSheet, it gets from it's parent.
 	 */
 	public StyleSheet getStyleSheet() {
@@ -271,7 +288,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	/**
 	 * Adds a WindowHandler to the window.
 	 */
-	public void addHandler(IWindowHandler wh) {
+	public void addHandler(WindowHandler wh) {
 		handler = wh;
 	}
 	
@@ -321,6 +338,12 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		} catch (Exception e) {
 			debug writeln(e);
 		}
+	}
+	/**
+	 * Sets the cursor to the given type on request.
+	 */
+	public void requestCursor(CursorType type) {
+		handler.setCursor(type);
 	}
 	/**
 	 * Adds a child window to the current window.

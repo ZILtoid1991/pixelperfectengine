@@ -131,9 +131,13 @@ public interface ElementContainer : StyleSheetContainer, Canvas {
 	 */
 	public Box getAbsolutePosition(WindowElement sender);
 	/**
-	 * Clears the area of the element.
+	 * Gives focus to the element if applicable
 	 */
 	public void requestFocus(WindowElement sender);
+	/**
+	 * Sets the cursor to the given type on request.
+	 */
+	public void requestCursor(CursorType type);
 }
 /**
  * Implemented by any object that can store stylesheets.

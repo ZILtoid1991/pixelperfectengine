@@ -21,8 +21,8 @@ subPackage {
 	name "pixelperfecteditor"
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"
-	targetPath "./bin/"
-	lflags "/PDB:.\\bin\\pixelperfectengine_pixelperfecteditor.pdb" platform="windows"
+	targetPath "./bin-$ARCH-$PLATFORM/"
+	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_pixelperfecteditor.pdb" platform="windows"
 	sourcePaths "./pixelperfecteditor/src/"
 	importPaths "./pixelperfecteditor/src/"
 }
@@ -30,8 +30,8 @@ subPackage {
 	name "windowmakerforconcrete"
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"
-	targetPath "./bin/"
-	lflags "/PDB:.\\bin\\pixelperfectengine_windowmakerforconcrete.pdb" platform="windows"
+	targetPath "./bin-$ARCH-$PLATFORM/"
+	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_windowmakerforconcrete.pdb" platform="windows"
 	sourcePaths "./windowmakerforconcrete/src/"
 	importPaths "./windowmakerforconcrete/src/"
 }

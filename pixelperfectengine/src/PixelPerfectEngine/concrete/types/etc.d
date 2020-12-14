@@ -2,8 +2,9 @@ module PixelPerfectEngine.concrete.types.etc;
 
 /**
  * Defines various cursor types.
+ * Should be compatible with the SDL cursor types.
  */
-public enum Cursortypes {
+public enum CursorType {
     Arrow,
     IBeam,
     Wait,

@@ -1288,6 +1288,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		displayedSprites.removeByElem(n);
 		allSprites.remove(n);
 	}
+	///Clears all sprite from the layer.
+	public void clear() @safe pure nothrow {
+		displayedSprites = OnScreenList.init;
+		allSprites = DisplayList.init;
+	}
 	/**
 	 * Moves a sprite to the given position.
 	 */

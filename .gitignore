@@ -8,7 +8,6 @@ __dummy.html
 *.ps1
 *.pdb
 *.old
-system/
 lang/
 pixelperfecteditor/bin/
 pixelperfectengine/lib/

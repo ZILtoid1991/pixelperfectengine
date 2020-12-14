@@ -68,7 +68,7 @@ public class TextBox : WindowElement, TextInputListener{
 		}
 	}+/
 	///Called when an object loses focus.
-	public override void focusLost() {
+	public void focusLost() {
 		flags &= ~IS_FOCUSED;
 		dropTextInput();
 		inputHandler.stopTextInput();
