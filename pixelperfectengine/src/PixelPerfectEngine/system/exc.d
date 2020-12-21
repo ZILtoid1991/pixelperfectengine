@@ -60,6 +60,12 @@ public class MapFileException : Exception{
 	}
 }
 
+public class MapFormatException : Exception {
+	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
+		super(msg, file, line, next);
+	}
+}
+
 public class SpriteLayerException : Exception{
 	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);

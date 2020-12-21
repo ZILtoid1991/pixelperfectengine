@@ -150,5 +150,10 @@ public class Panel : WindowElement, ElementContainer {
 	public void clearArea(Coordinate target) @trusted pure {
 		parent.clearArea(target);
 	}
-	
+	/**
+	 * Sets the cursor to the given type on request.
+	 */
+	public void requestCursor(CursorType type) {
+		parent.requestCursor(type);
+	}
 }

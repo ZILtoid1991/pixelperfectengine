@@ -3,7 +3,7 @@
  *
  * Pixel Perfect Engine, graphics.layers module
  */
-module PixelPerfectEngine.graphics.layers;
+module PixelPerfectEngine.graphics.oldlayers;
 
 public import PixelPerfectEngine.graphics.bitmap;
 public import PixelPerfectEngine.graphics.common;
@@ -20,6 +20,7 @@ import bindbc.sdl;
 import core.stdc.stdlib;
 //import std.range;
 import CPUblit.composing;
+import CPUblit.composing.specblt : xorBlitter;
 import CPUblit.colorlookup;
 import CPUblit.transform;
 import conv = std.conv;
@@ -28,7 +29,7 @@ import collections.treemap;
 
 
 import inteli.emmintrin;
-
+alias RenderFunc = @nogc pure nothrow void function(uint* src, uint* dest, size_t length, ubyte value);
 /// For generating a blitter function with value modifier
 @nogc pure nothrow void localBlt(uint* src, uint* dest, size_t length, ubyte value) {
 	blitter!uint(src, dest, length);
@@ -37,11 +38,15 @@ import inteli.emmintrin;
 @nogc pure nothrow void localCpy(uint* src, uint* dest, size_t length, ubyte value) {
 	copy!uint(src, dest, length);
 }
+/// For generating a XOR blitter function with value modifier
+@nogc pure nothrow void localCpy(uint* src, uint* dest, size_t length, ubyte value) {
+	xorBlitter!uint(src, dest, length);
+}
 /**
  * The basis of all layer classes, containing functions for rendering.
  */
 abstract class Layer {
-	protected @nogc pure nothrow void function(uint* src, uint* dest, size_t length, ubyte value) mainRenderingFunction;		///Used to implement changeable renderers for each layers
+	protected RenderFunc mainRenderingFunction;		///Used to implement changeable renderers for each layers
 	protected @nogc pure nothrow void function(ushort* src, uint* dest, uint* palette, size_t length) mainColorLookupFunction;
 	//protected @nogc void function(uint* src, int length) mainHorizontalMirroringFunction;
 	protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length) main8BitColorLookupFunction;
@@ -62,17 +67,7 @@ abstract class Layer {
 	///Sets the rendering mode
 	public void setRenderingMode(RenderingMode mode) @nogc @safe pure nothrow {
 		renderMode = mode;
-		switch(mode){
-			case RenderingMode.AlphaBlending:
-				//mainRenderingFunction = &alphaBlend;
-				mainRenderingFunction = &alphaBlend32bit;
-				break;
-			case RenderingMode.Blitter:
-				mainRenderingFunction = &localBlt;
-				break;
-			default:
-				mainRenderingFunction = &copy32bit;
-		}
+		mainRenderingFunction = getRenderingFunc(mode);
 		mainColorLookupFunction = &colorLookup!(ushort,uint);
 		//mainHorizontalMirroringFunction = &flipHorizontal;
 		main8BitColorLookupFunction = &colorLookup!(ubyte,uint);
@@ -127,15 +122,62 @@ enum RenderingMode : ubyte {
 	init,			///Rendering mode is not set
 	Copy,			///Copies the pixels without any transparencies. The fastest as it only reads once. Best use is either GUI or lowest-layer.
 	Blitter,		///Copies the pixels to the target using simple transparency. No effect from master-alpha values. Can be faster on less memory-bound machines.
-	AlphaBlending,	///Blends the source onto the target, using both per-pixel alpha and master alpha. 
+	AlphaBlend,		///Blends the source onto the target, using both per-pixel alpha and master alpha. 
 	Multiply,		///Multiplies pixel channel values, then stores it in the destination.
+	MultiplyBl,		///Multiply with alpha used as a blend between the original and target value.
 	Screen,			///Composes the source to the destination using the following formula: 1 - (1 - dest) * (1 - src)
-	Add,			///Adds with saturation the source to the destination. Alpha determines how much of the source's other channels is used.
-	Subtract,		///Subtracts with saturation the source from the destination. Alpha determines how much of the source's other channels is used.
-	Diff,			///Subtracts with saturation the destination from the source, then stores it in the destination. Alpha determines how much of the source's other channels is used.
+	ScreenBl,		///Screen with alpha used as a blend between the original and target value.
+	Add,			///Adds with saturation the source to the destination.
+	AddBl,			///Add with alpha used as a blend between the original and target value.
+	Subtract,		///Subtracts with saturation the source from the destination.
+	SubtractBl,		///Subtracts with saturation the source from the destination. Alpha determines how much of the source's other channels is used.
+	Diff,			///Calculates the difference between the source and destination.
+	DiffBl,			///Calculates the difference between the source and destination. Alpha determines how much of the source's other channels is used.
 	AND,			///Logically ANDs the source to the destination. Alpha value is ignored.
 	OR,				///Logically ORs the source to the destination. Alpha value is ignored.
 	XOR,			///Logically XORs the source to the destination. Alpha value is ignored.
+}
+
+/**
+ * Returns the rendering function that belongs to the enumeration value.
+ */
+public RenderFunc getRenderingFunc (RenderingMode mode) @nogc @safe pure nothrow {
+	final switch (mode) with (RenderingMode) {
+		case init:
+			return null;
+		case Copy:
+			return &localCpy;
+		case Blitter:
+			return &localBlt;
+		case AlphaBlend:
+			return &alphaBlend32bitMV!(ubyte);
+		case Multiply:
+			return &mult32BitMV!(ubyte);
+		case MultiplyBl:
+			return &mult32BitMVBl!(ubyte);
+		case Screen:
+			return null;
+		case ScreenBl:
+			return null;
+		case Add:
+			return &add32BitMV!(false, ubyte);
+		case AddBl:
+			return &add32BitMV!(true, ubyte);
+		case Subtract:
+			return &sub32BitMV!(false, ubyte);
+		case SubtractBl:
+			return &sub32BitMV!(true, ubyte);
+		case Diff:
+			return &diff32BitMV!(ubyte);
+		case DiffBl:
+			return &diff32BitMVBl!(ubyte);
+		case AND:
+			return null;
+		case OR:
+			return null;
+		case XOR:
+
+	}
 }
 /**
  * Tile interface, defines common functions.
@@ -286,7 +328,7 @@ public class TileLayer : Layer, ITileLayer{
 	///line no -1 indicates that no lines have been drawn yet.
 	public @nogc void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;
 	///Constructor. tX , tY : Set the size of the tiles on the layer.
-	this(int tX, int tY, RenderingMode renderMode = RenderingMode.AlphaBlending){
+	this(int tX, int tY, RenderingMode renderMode = RenderingMode.AlphaBlend){
 		tileX=tX;
 		tileY=tY;
 		setRenderingMode(renderMode);
@@ -1176,7 +1218,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected Color[2048]		src;				///Local buffer for scaling
 	//size_t[8] prevSize;
 	///Default ctor
-	public this(RenderingMode renderMode = RenderingMode.AlphaBlending) @nogc nothrow @safe {
+	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) @nogc nothrow @safe {
 		setRenderingMode(renderMode);
 		//src[0].length = 1024;
 	}
@@ -1247,7 +1289,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public void addSprite(ABitmap s, int n, Box c, ushort paletteSel = 0, int scaleHoriz = 1024, 
 				int scaleVert = 1024) @safe pure nothrow {
 		synchronized {
-			allSprites[n] = DisplayListItem(c, s, n, paletteSel, scaleHoriz, scaleVert);
+			DisplayListItem d = DisplayListItem(c, s, n, paletteSel, scaleHoriz, scaleVert);
+			d.renderFunc = mainRenderingFunction;
+			allSprites[n] = d;
 			checkSprite(allSprites[n]);
 		}
 	}
@@ -1255,7 +1299,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
 			int scaleVert = 1024) @safe pure nothrow {
 		synchronized {
-			allSprites[n] = DisplayListItem(Box(x, y, s.width + x, s.height + y), s, n, paletteSel, scaleHoriz, scaleVert);
+			DisplayListItem d = DisplayListItem(Box(x, y, s.width + x, s.height + y), s, n, paletteSel, scaleHoriz, scaleVert);
+			d.renderFunc = mainRenderingFunction;
+			allSprites[n] = d;
 			checkSprite(allSprites[n]);
 		}
 	}
@@ -1309,7 +1355,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		sprt.position.relMove(x, y);
 		checkSprite(*sprt);
 	}
-
+	///Sets the rendering function for the sprite (defaults to the layer's rendering function)
+	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe pure nothrow {
+		DisplayListItem* sprt = allSprites.ptrOf(n);
+	}
 	public @nogc Coordinate getSpriteCoordinate(int n) @safe pure nothrow {
 		return allSprites[n].position;
 	}

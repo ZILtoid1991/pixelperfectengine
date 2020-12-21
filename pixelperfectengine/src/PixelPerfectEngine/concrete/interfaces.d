@@ -86,7 +86,7 @@ public interface Canvas {
 	public void drawBox(Box target, ubyte color) @trusted pure;
 	///Draws an empty rectangle with line patterns.
 	public void drawBoxPattern(Box target, ubyte[] pattern) @trusted pure;
-	///Draws a filled rectangle with a specified color,
+	///Draws a filled rectangle with a specified color.
 	public void drawFilledBox(Box target, ubyte color) @trusted pure;
 	///Pastes a bitmap to the given point using blitter, which threats color #0 as transparency.
 	public void bitBLT(Point target, ABitmap source) @trusted pure;

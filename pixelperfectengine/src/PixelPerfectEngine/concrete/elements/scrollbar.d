@@ -2,7 +2,7 @@ module PixelPerfectEngine.concrete.elements.scrollbar;
 
 public import PixelPerfectEngine.concrete.elements.base;
 
-abstract class Slider : WindowElement{
+abstract class ScrollBar : WindowElement{
 	protected static enum 	PLUS_PRESSED = 1<<9;
 	protected static enum 	MINUS_PRESSED = 1<<10;
 	protected int _value, _maxValue, _barLength;
@@ -50,9 +50,9 @@ abstract class Slider : WindowElement{
 	}
 }
 /**
- * Vertical slider.
+ * Vertical scroll bar.
  */
-public class VSlider : Slider{
+public class VertScrollBar : ScrollBar {
 	//public int[] brush;
 
 	//private int value, maxValue, barLength;
@@ -134,9 +134,9 @@ public class VSlider : Slider{
 	
 }
 /**
- * Horizontal slider.
+ * Horizontal scrollbar.
  */
-public class HSlider : Slider{
+public class HorizScrollBar : ScrollBar {
 	public this(int maxValue, string source, Box position){
 		this.position = position;
 		this.source = source;

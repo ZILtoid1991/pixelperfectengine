@@ -2,6 +2,7 @@ module PixelPerfectEngine.concrete.dialogs;
 
 public import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.concrete.elements;
+import core.time;
 
 /**
  * Standard text input form for various applications.
@@ -122,11 +123,11 @@ public class DefaultDialog : Window{
  * File dialog window for opening files.
  * Returns the selected filetype as an int value of the position of the types that were handled to the ctor.
  */
-public class FileDialog : Window{
+public class FileDialog : Window {
 	/**
 	 * Defines file association descriptions
 	 */
-	public struct FileAssociationDescriptor{
+	public struct FileAssociationDescriptor {
 		public dstring description;		/// Describes the file type. Eg. "PPE map files"
 		public string[] types;			/// The extensions associated with a given file format. Eg. ["*.htm","*.html"]. First is preferred one at saving, if no filetype is described when typing.
 		/**
