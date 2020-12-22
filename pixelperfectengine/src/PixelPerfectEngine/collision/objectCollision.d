@@ -22,26 +22,26 @@ public class ObjectCollisionDetector {
 	 * The delegate where the events will be passed.
 	 * Must be set up before using the collision detector.
 	 */
-	@safe void delegate(ObjectCollisionEvent event)			objectToObjectCollision;
+	void delegate(ObjectCollisionEvent event)			objectToObjectCollision;
 	/**
 	 * Tests all shapes against each other
 	 */
 	public void testAll() {
 		foreach (int iA, ref CollisionShape shA; objects) {
-			testSingle(iA, shA);
+			testSingle(iA, &shA);
 		}
 	}
 	/**
 	 * Tests a single shape against the others
 	 */
 	public void testSingle(int objectID) {
-		testSingle(objectID, objects[objectID]);
+		testSingle(objectID, objects.ptrOf(objectID));
 	}
 	///Ditto
-	protected void testSingle(int iA, ref CollisionShape shA) {
+	protected void testSingle(int iA, CollisionShape* shA) {
 		foreach (int iB, ref CollisionShape shB; objects) {
 			if (iA != iB) {
-				ObjectCollisionEvent event = testCollision(shA, shB);
+				ObjectCollisionEvent event = testCollision(shA, &shB);
 				if (event! is null) {
 					event.idA = iA;
 					event.idB = iB;
@@ -53,7 +53,7 @@ public class ObjectCollisionDetector {
 	/**
 	 * Tests two objects. Calls cl if collision have happened, with the appropriate values.
 	 */
-	protected ObjectCollisionEvent testCollision(ref CollisionShape shA, ref CollisionShape shB) @safe pure {
+	protected ObjectCollisionEvent testCollision(CollisionShape* shA, CollisionShape* shB) pure {
 		if (shA.position.bottom < shB.position.top || shA.position.top > shB.position.bottom || 
 				shA.position.right < shB.position.left || shA.position.left > shB.position.right){
 			//test if edge collision have happened with side edges

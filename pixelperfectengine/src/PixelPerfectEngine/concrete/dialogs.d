@@ -2,7 +2,7 @@ module PixelPerfectEngine.concrete.dialogs;
 
 public import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.concrete.elements;
-import core.time;
+import std.datetime;
 
 /**
  * Standard text input form for various applications.

@@ -21,7 +21,7 @@ public struct CollisionShape {
 	public this(Coordinate position, Bitmap1bit shape) @nogc @safe pure nothrow {
 		this.position = position;
 		this.shape = shape;
-		this.id = id;
+		//this.id = id;
 	}
 }
 alias ObjectMap = TreeMap!(int, CollisionShape);
@@ -46,10 +46,10 @@ public class ObjectCollisionEvent {
 	Coordinate		overlap;	///Overlapping area of the collision
 	Type			type;		///Type of the object collision
 	///default CTOR
-	public this(CollisionShape* a, CollisionShape* b, int contextID, Coordinate overlap, Type type) 
+	public this(CollisionShape* shA, CollisionShape* shB, int contextID, Coordinate overlap, Type type) 
 			@nogc @safe pure nothrow {
-		this.a = a;
-		this.b = b;
+		this.shA = shA;
+		this.shB = shB;
 		this.contextID = contextID;
 		this.overlap = overlap;
 		this.type = type;

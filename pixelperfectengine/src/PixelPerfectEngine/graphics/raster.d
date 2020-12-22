@@ -131,7 +131,7 @@ public class Raster : IRaster, PaletteContainer{
 	 * Loads a palette chunk into the object.
 	 * The offset determines where the palette should be loaded.
 	 * If it points to an existing place, the indices after that will be overwritten until the whole palette will be copied.
-	 * If it points to the end or after it, then the palette will be made longer, and will pad with values #00000000 if needed.
+	 * If it points to the end or after it, then the palette will be made longer, and will pad with values 0x00_00_00_00 if needed.
 	 * Returns the new palette of the object.
 	 */
 	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @safe {
