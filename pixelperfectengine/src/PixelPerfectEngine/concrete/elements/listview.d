@@ -3,7 +3,7 @@ module PixelPerfectEngine.concrete.elements.listview;
 import PixelPerfectEngine.concrete.elements.base;
 import PixelPerfectEngine.concrete.elements.scrollbar;
 
-import PixelPerfectEngine.system.etc : clamp;
+import PixelPerfectEngine.system.etc : clamp, min;
 
 /**
  * Defines a single item in the listview.
@@ -108,7 +108,7 @@ public class ListViewItem {
 	 */
 	public Field[]		fields;
 	///Height of this item.
-	protected int		height;
+	public int			height;
 	/**
 	 * Creates a list view item from texts.
 	 */
@@ -146,9 +146,19 @@ public class ListViewItem {
 	 * Draws the ListViewItem. Draw parameters are supplied via a nested class found in ListView.
 	 */
 	public void draw(ListView parent) {
-		for (int i = offsetC ; i <= targetC ; i++) {
-
+		StyleSheet ss = parent.drawParams.ss;
+		Box target = parent.drawParams.target;
+		Box t = Box(target.left, target.top, target.left, target.bottom);
+		Point offset = Point(parent.drawParams.offsetP, parent.drawParams.offsetFR);
+		for (int i = parent.drawParams.offsetC ; i <= parent.drawParams.targetC ; i++) {
+			t.right = min(t.left + parent.drawParams.columnWidths[i], target.right);
+			parent.drawTextSL(t.pad(ss.drawParameters["ListViewColPadding"], ss.drawParameters["ListViewRowPadding"]), fields[i],
+					offset);
+			t.left = t.right;
+			offset.x = 0;
 		}
+		parent.drawParams.target.relMove(0, height);
+		parent.drawParams.offsetFR = 0;
 	}
 }
 /**
@@ -167,9 +177,29 @@ public class ListViewHeader : ListViewItem {
 	 * Draws the header. Draw parameters are supplied via a nested class found in ListView.
 	 */
 	public override void draw(ListView parent) {
+		if (!height) return;
+		StyleSheet ss = parent.drawParams.ss;
+		Box target = parent.drawParams.target;
+		Box t = Box(target.left, target.top, target.left, target.bottom);
+		Point offset = Point(parent.drawParams.offsetP, 0);
 		for (int i = parent.drawParams.offsetC ; i <= parent.drawParams.targetC ; i++) {
-
+			t.right = min(t.left + parent.drawParams.columnWidths[i], target.right);
+			if (!offset.x) {
+				parent.drawLine(t.cornerUL, t.cornerLL, ss.getColor("windowascent"));
+			}
+			if (t.left + parent.drawParams.columnWidths[i] < target.right) {
+				parent.drawLine(t.cornerUR, t.cornerLR, ss.getColor("windowdescent"));
+			}
+			with (parent) {
+				drawLine(t.cornerUL, t.cornerUR, ss.getColor("windowascent"));
+				drawLine(t.cornerLL, t.cornerLR, ss.getColor("windowdescent"));
+				drawTextSL(t.pad(ss.drawParameters["ListViewColPadding"], ss.drawParameters["ListViewRowPadding"]), fields[i],
+						offset);
+			}
+			t.left = t.right;
+			offset.x = 0;
 		}
+		parent.drawParams.target.relMove(0, height);
 	}
 }
 /**
@@ -188,21 +218,18 @@ public class ListView : WindowElement, ElementContainer {
 		const int				targetC;
 		///Offset in pixels for the first column
 		const int				offsetP;
-		///Last column offset
-		const int				targetP;
 		///Offset of the first row. Should be set to zero after the first row has been drawn.
 		int						offsetFR;
 		///The prelimiter where the item should be drawn.
 		Box						target;
 		///CTOR
-		this (StyleSheet ss, int[] columnWidths, const int offsetC, const int targetC, const int offsetP, const int targetP,
+		this (StyleSheet ss, int[] columnWidths, const int offsetC, const int targetC, const int offsetP, 
 				int offsetFR) @safe @nogc pure nothrow {
 			this.ss = ss;
 			this.columnWidths = columnWidths;
 			this.offsetC = offsetC;
 			this.targetC = targetC;
 			this.offsetP = offsetP;
-			this.targetP = targetP;
 			this.offsetFR = offsetFR;
 		}
 	}
@@ -212,34 +239,223 @@ public class ListView : WindowElement, ElementContainer {
 	///Accessed in a safe manner to ensure it's being updated on the output raster.
 	protected ListViewHeader	_header;
 	///Entries in the ListView.
-	///Accessed in a safe manner to ensure it's being updated on the output raster.
+	///Accessed in a safe manner to ensure it's being updated on the output raster and that the number of columns match.
 	protected ListViewItem[]	entries;
-	protected int				totalHeight;	///Total height of the scrollable field.
+	protected int				selection;		///Selected item's number, or -1 if none selected.
 	///Holds shared draw parameters that are used when the element is being drawn.
 	///Should be set to null otherwise.
 	public DrawParameters		drawParams;
+	///Standard CTOR
+	public this(ListViewHeader header, ListViewItem[] entries, string source, Box position) {
+		_header = header;
+		this.entries = entries;
+		this.source = source;
+		this.position = position;
+		recalculateTotalSizes();
+	}
 	/**
 	 * Accesses data entries in a safe manner.
 	 */
-	public ref ListViewItem opIndex(size_t index) {
+	public ListViewItem opIndex(size_t index) @nogc @safe pure nothrow {
 		return entries[index];
+		/+scope(exit) {
+			assert(entries[index].length == _header.length, "Column number mismatch error!");
+		}+/
 	}
-	
+	/**
+	 * Accesses data entries in a safe manner.
+	 */
+	public ListViewItem opIndexAssign(ListViewItem value, size_t index) @safe pure {
+		if (value.length == header.length) {
+			if (entries.length == index) {
+				entries ~= value;
+			} else {
+				entries[index] = value;
+			}
+		} else throw new Exception("Column number mismatch!");
+		return value;
+	}
+	/**
+	 * Allows to append a single element to the entry list.
+	 */
+	public ListViewItem opOpAssign(string op)(ListViewItem value) {
+		static if (op == "~" || op == "+") {
+			if (value.length == header.length) {
+				entries ~= value;
+			} else throw new Exception("Column number mismatch!");
+		} else static assert (0, "Unsupported operator!");
+		return this;
+	}
+	/**
+	 * Allows to append multiple elements to the entry list.
+	 */
+	public ListViewItem opOpAssign(string op)(ListViewItem[] value) {
+		static if (op == "~" || op == "+") {
+			if (value.length == header.length) {
+				entries ~= value;
+			} else throw new Exception("Column number mismatch!");
+		} else static assert (0, "Unsupported operator!");
+		return this;
+	}
 	override public void draw() {
+		StyleSheet ss = getStyleSheet;
+		parent.clearArea(position);
+		parent.drawBox(position, ss.getColor("windowascent"));
+		Point upper = Point(0, position.top + _header.height);
+		Point lower = Point(0, position.bottom);
 		{	///Calculate first column stuff
-			int offsetP = horizSlider.value();
-			int offsetC;
-			for (; _header.columnWidths[OffsetC] < offsetP ; offsetC++) {
-				offsetP -= _header.columnWidths[offsetC];
+			int offsetP, offsetC, targetC, targetP;
+			if (horizSlider) { 
+				offsetP = horizSlider.value();
+				//int offsetC;
+				for (; _header.columnWidths[OffsetC] < offsetP ; offsetC++) {
+					offsetP -= _header.columnWidths[offsetC];
+				}
+				///Calculate last column number
+				//int targetC;
+				targetP = horizSlider.value() + position.width;
+				for (; _header.columnWidths[targetC] < targetP ; targetC++) {
+					targetP -= _header.columnWidths[targetC];
+				}
+				//targetP = _header.columnWidths[targetC] - targetP;
+				lower.y -= horizSlider.getPosition().height;
+			} else {
+				targetC = cast(int)_header.columnWidths.length - 1;
 			}
-			///Calculate last column number
-			int targetC;
-			int targetP = horizSlider.value() + position.width;
-			for (; _header.columnWidths[targetC] < targetP ; targetC++) {
-				targetP -= _header.columnWidths[targetC];
+			drawParams = new DrawParameters(ss, _header.columnWidths, offsetC, targetC, offsetP, 0);
+		}
+		
+		drawParams.target = Box(position.left, position.top, position.right, position.top + _header.height);
+		
+		if (vertSlider) {
+			drawParams.target.right -= vertSlider.getPosition.width;
+
+		}
+		
+		_header.draw(this);
+		/+Point upper = Point(drawParams.columnWidths[drawParams.offsetC] + position.left, position.top + _header.height);
+		Point lower = Point(upper.x, position.bottom);+/
+		int firstRow, lastRow;
+		if (vertSlider) {
+			int pixelsTotal = vertSlider.value();
+			for (; entries[firstRow].height < pixelsTotal ; firstRow++) {
+				pixelsTotal -= entries[firstRow].height;
 			}
-			targetP = _header.columnWidths[targetC] - targetP;
-			drawParams = new DrawParameters(getStyleSheet, _header.columnWidths, offsetC, targetC, offsetP, targetP, 0);
+			drawParams.offsetFR = entries[firstRow].height - pixelsTotal;
+			pixelsTotal += position.height;
+			pixelsTotal -= _header.height;
+			if (horizSlider) pixelsTotal -= horizSlider.getPosition().height;
+			lastRow = firstRow;
+			for (; entries[lastRow].height < pixelsTotal ; lastRow++) {
+				pixelsTotal -= entries[lastRow].height;
+			}
+		} else {
+			lastRow = cast(int)entries.length - 1;
+		}
+		
+		for (int i = firstRow ; i <= lastRow ; i++) {
+			if (ss.getColor("ListViewHSep") && i != lastRow) {
+				parent.drawLine(drawParams.target.cornerLL, drawParams.target.cornerLR, ss.getColor("ListViewHSep"));
+			}
+			if (selection == i) {
+				parent.drawFilledBox(drawParams.target, ss.getColor("selection"));
+			}
+			entries[i].draw(this);	
+		}
+
+		if (ss.getColor("ListViewVSep")) {
+			for (int i = drawParams.offsetC ; i <= drawParams.targetC ; i++) {
+				upper.x = drawParams.columnWidths[i];
+				lower.x = drawParams.columnWidths[i];
+				parent.drawLine(upper, lower, ss.getColor("ListViewVSep"));
+			}
+		}
+		horizSlider.draw;
+		vertSlider.draw;
+
+		drawParams = null;
+	}
+	/**
+	 * Returns the number of the selected item.
+	 */
+	public @property int value() @nogc @safe pure nothrow const {
+		return selection;
+	}
+	/**
+	 * Sets the selected item and then does a redraw.
+	 */
+	public int value(int val) {
+		selection = val;
+		draw;
+		return selection;
+	}
+	/**
+	 * Sets a new header, also able to supply new entries.
+	 */
+	public void setHeader(ListViewHeader header, ListViewItem[] entries) {
+		_header = header;
+		foreach (ListViewItem key; entries) {
+			assert(key.length == header.length);
+		}
+		this.entries = entries;
+		refresh();
+		draw();
+	}
+	/**
+	 * Removes an item from the entries.
+	 * Returns the removed entry.
+	 */
+	public ListViewItem removeEntry(size_t index) {
+		import std.algorithm.mutation : remove;
+		ListViewItem result = entries[index];
+		entries = entries.remove(index);
+		return result;
+	}
+	/**
+	 * Refreshes the list view.
+	 * Must be called every time when adding new items was finished.
+	 */
+	public void refresh() {
+		selection = -1;
+		recalculateTotalSizes;
+	}
+	/**
+	 * Recalculates the total width and height of the list view's field, also generates scrollbars if needed.
+	 */
+	protected void recalculateTotalSizes() {
+		int totalWidth, totalHeight;
+		foreach (i ; _header.columnWidths) {
+			totalWidth += i;
+		}
+		foreach (ListViewItem key; entries) {
+			totalHeight += key.height;
+		}
+		totalHeight += _header.height;
+		StyleSheet ss = getStyleSheet();
+		bool needsVSB, needsHSB;
+		if (totalWidth > position.width) 
+			needsHSB = true;
+		if (totalHeight > position.height)
+			needsVSB = true;
+		if (needsVSB && totalWidth > position.width - ss.drawParameters["VertScrollBarSize"])
+			needsHSB = true;
+		if (needsHSB && totalHeight > position.height - ss.drawParameters["HorizScrollBarSize"])
+			needsVSB = true;
+		totalHeight -= _header.height;
+		if (needsVSB && !vertSlider) {
+			const int maxvalue = needsHSB ? totalHeight - position.height - ss.drawParameters["HorizScrollBarSize"] : 
+					totalHeight - position.height;
+			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"], 
+					needsHSB ? position.right - ss.drawParameters["HorizScrollBarSize"] : position.right,
+					position.bottom);
+			vertSlider = new VertScrollBar(maxvalue, source ~ "VSB", target);
+		}
+		if (needsHSB){
+			const int maxvalue = needsVSB ? totalWidth - position.width - ss.drawParameters["VertScrollBarSize"] : 
+					totalWidth - position.width;
+			const Box target = Box(position.right - ss.drawParameters["HorizScrollBarSize"], position.top, 
+					position.right, needsVSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] : position.bottom);
+			horizSlider = new HorizScrollBar(maxvalue, source ~ "VSB", target);
 		}
 	}
 	/**

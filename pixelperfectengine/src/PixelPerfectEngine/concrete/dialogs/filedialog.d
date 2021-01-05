@@ -1,124 +1,11 @@
-module PixelPerfectEngine.concrete.dialogs;
+module PixelPerfectEngine.concrete.dialogs.filedialog;
 
 public import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.concrete.elements;
 import std.datetime;
+import std.conv : to;
+import std.file;
 
-/**
- * Standard text input form for various applications.
- */
-public class TextInputDialog : Window{
-	//public ActionListener[] al;
-	private TextBox textInput;
-	private string source;
-	public void function(Text text) textOutput;
-	/**
-	 * Creates a TextInputDialog. Auto-sizing version is not implemented yet.
-	 */
-	public this(Coordinate size, string source, Text title, Text message, Text text = null, Text okBtnText = null, 
-			StyleSheet customStyle = null) {
-		super(size, title, null, customStyle);
-		Label msg = new Label(message, "null", Coordinate(8, 20, size.width()-8, 39));
-		addElement(msg);
-
-		textInput = new TextBox(text, "textInput", Coordinate(8, 40, size.width()-8, 59));
-		addElement(textInput);
-		if(okBtnText is null) okBtnText = new Text("Close", getStyleSheet().getChrFormatting("defaultCJ"));
-
-		Button ok = new Button(okBtnText, "ok", Coordinate(size.width()-48, 65, size.width()-8, 84));
-		ok.onMouseLClickRel = &button_onClick;
-		addElement(ok);
-		this.source = source;
-	}
-	///Ditto
-	public this(Coordinate size, string source, dstring title, dstring message, dstring text = "", dstring okBtnText = "", 
-			StyleSheet customStyle = null) {
-		this.customStyle = customStyle;
-		this(size, source, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), 
-				new Text(message, getStyleSheet().getChrFormatting("windowHeader")), 
-				text.length ? new Text(text, getStyleSheet().getChrFormatting("label")) : null,
-				okBtnText.length ? new Text(okBtnText, getStyleSheet().getChrFormatting("button")) : null,
-				customStyle);
-	}
-	///Called when the "ok" button is pressed
-	protected void button_onClick(Event ev){
-		if(textOutput !is null){
-			textOutput(textInput.getText);
-		}
-
-		close();
-
-	}
-}
-/**
- * Default dialog for simple messageboxes.
- */
-public class DefaultDialog : Window{
-	private string source;
-	public void delegate(Event ev) output;
-
-	public this(Coordinate size, string source, Text title, Text[] message, Text[] options = [],
-			string[] values = ["close"], StyleSheet customStyle = null) {
-		super(size, title, null, customStyle);
-		//generate text
-		if(options.length == 0)
-			options ~= new Text("Ok", getStyleSheet().getChrFormatting("button"));
-		
-		this.source = source;
-		int x1, x2, y1 = 20, y2 = getStyleSheet.drawParameters["TextSpacingTop"] + getStyleSheet.drawParameters["TextSpacingBottom"]
-								+ options[0].font.size;
-		//Label msg = new Label(message[0], "null", Coordinate(5, 20, size.width()-5, 40));
-		//addElement(msg, EventProperties.MOUSE);
-
-		//generate buttons
-
-		x1 = size.width() - 10;
-		Button[] buttons;
-		int button1 = size.height - getStyleSheet.drawParameters["WindowBottomPadding"];
-		int button2 = button1 - getStyleSheet.drawParameters["ComponentHeight"];
-		
-		
-		for(int i; i < options.length; i++) {
-			x2 = x1 - (options[i].getWidth + getStyleSheet.drawParameters["ButtonPaddingHoriz"]);
-			buttons ~= new Button(options[i], values[i], Coordinate(x2, button2, x1, button1));
-			buttons[i].onMouseLClickRel = &actionEvent;
-			addElement(buttons[i]);
-			x1 = x2;
-		}
-		//add labels
-		for(int i; i < message.length; i++) {
-			Label msg = new Label(message[i], "null", Coordinate(getStyleSheet.drawParameters["WindowLeftPadding"],
-								y1, size.width()-getStyleSheet.drawParameters["WindowRightPadding"], y1 + y2));
-			addElement(msg);
-			y1 += y2;
-		}
-	}
-	///Ditto
-	public this(Coordinate size, string source, dstring title, dstring[] message, dstring[] options = ["Close"],
-			string[] values = ["close"], StyleSheet customStyle = null) {
-		this.customStyle = customStyle;
-		Text[] opt_2;
-		opt_2.reserve(options.length);
-		foreach (dstring key; options) 
-			opt_2 ~= new Text(key, getStyleSheet().getChrFormatting("button"));
-		
-		Text[] msg_2;
-		msg_2.reserve(message.length);
-		foreach (dstring key; message)
-			msg_2 ~= new Text(key, getStyleSheet().getChrFormatting("label"));
-		this(size, source, new Text(title, getStyleSheet().getChrFormatting("windowHeader")),msg_2,opt_2,values,customStyle);
-	}
-	public void actionEvent(Event ev){
-		if(ev.source == "close"){
-			close();
-		}else{
-			if(output !is null){
-				ev.subsource = source;
-				output(ev);
-			}
-		}
-	}
-}
 /**
  * File dialog window for opening files.
  * Returns the selected filetype as an int value of the position of the types that were handled to the ctor.
@@ -155,7 +42,7 @@ public class FileDialog : Window {
 	private string source;
 	private string[] pathList, driveList;
 	private string directory, filename;
-	//private ListBox lb;
+	private ListView lb;
 	private TextBox tb;
 
 	private bool save;
@@ -184,20 +71,20 @@ public class FileDialog : Window {
 		directory = startDir;
 		auto btnFrmt = getStyleSheet().getChrFormatting("button");
 		button_up = new Button(new Text(buttonTexts[0], btnFrmt),"up",Coordinate(4, 154, 54, 174));
-		button_up.onMouseLClickRel = &up;
+		button_up.onMouseLClick = &up;
 		addElement(button_up);
 		button_drv = new Button(new Text(buttonTexts[1], btnFrmt),"drv",Coordinate(58, 154, 108, 174));
-		button_drv.onMouseLClickRel = &changeDrive;
+		button_drv.onMouseLClick = &changeDrive;
 		addElement(button_drv);
 		button_ok = new Button(new Text((save ? buttonTexts[2] : buttonTexts[3]), btnFrmt),"ok",
 				Coordinate(112, 154, 162, 174));
-		button_ok.onMouseLClickRel = &fileEvent;
+		button_ok.onMouseLClick = &fileEvent;
 		addElement(button_ok);
 		button_close = new Button(new Text(buttonTexts[4], btnFrmt),"close",Coordinate(166, 154, 216, 174));
-		button_close.onMouseLClickRel = &button_close_onMouseLClickRel;
+		button_close.onMouseLClick = &button_close_onMouseLClickRel;
 		addElement(button_close);
 		button_type = new Button(new Text(buttonTexts[5], btnFrmt),"type",Coordinate(166, 130, 216, 150));
-		button_type.onMouseLClickRel = &button_type_onMouseLClickRel;
+		button_type.onMouseLClick = &button_type_onMouseLClickRel;
 		addElement(button_type);
 		//generate textbox
 		tb = new TextBox(new Text(to!dstring(filename), getStyleSheet().getChrFormatting("textBox")), "filename", 
@@ -207,10 +94,10 @@ public class FileDialog : Window {
 
 
 		//Date format: yyyy-mm-dd hh:mm:ss
-		lb = new ListBox("lb", Coordinate(4, 20, 216, 126),null, new ListBoxHeader(["Name", "Type", "Date"], [160, 40, 176]),
+		/+lb = new ListBox("lb", Coordinate(4, 20, 216, 126),null, new ListBoxHeader(["Name", "Type", "Date"], [160, 40, 176]),
 				15);
 		lb.onItemSelect = &listBox_onItemSelect;
-		addElement(lb);
+		addElement(lb);+/
 		spanDir();
 		//scrollC ~= lb;
 		//lb.onItemSelect = &actionEvent;

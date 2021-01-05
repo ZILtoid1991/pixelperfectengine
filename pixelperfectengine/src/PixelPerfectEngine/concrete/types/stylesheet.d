@@ -86,6 +86,8 @@ public class StyleSheet{
 		color["PanelBorder"] = 0x0010;
 		color["SliderBackground"] = 0x0004;
 		color["SliderColor"] = 0x0003;
+		color["ListViewVSep"] = 0x0000;
+		color["ListViewHSep"] = 0x0000;
 
 		drawParameters["PopUpMenuHorizPadding"] = 4;
 		drawParameters["PopUpMenuVertPadding"] = 1;
@@ -108,6 +110,8 @@ public class StyleSheet{
 		drawParameters["ComponentHeight"] = 20;
 		drawParameters["WindowHeaderHeight"] = 16;
 		drawParameters["WHPaddingTop"] = 1;
+		drawParameters["HorizScrollBarSize"] = 16;
+		drawParameters["VertScrollBarSize"] = 16;
 
 		pattern["blackDottedLine"] = [0x00, 0x10];
 	}

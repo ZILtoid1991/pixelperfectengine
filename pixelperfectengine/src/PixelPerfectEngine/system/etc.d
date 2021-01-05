@@ -280,3 +280,17 @@ T clamp(T)(ref T input, const T min, const T max) @nogc @safe pure nothrow {
 	else if (input <= min) input = min;
 	return input;
 }
+/**
+ * Returns the lesser of two values.
+ */
+pragma(inline, true)
+T min(T)(T a, T b) @nogc @safe pure nothrow {
+	return a < b ? a : b;
+}
+/**
+ * Returns the greater of two values.
+ */
+pragma(inline, true)
+T max(T)(T a, T b) @nogc @safe pure nothrow {
+	return a > b ? a : b;
+}

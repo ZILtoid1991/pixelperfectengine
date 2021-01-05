@@ -6,11 +6,11 @@ public class Button : WindowElement {
 	private bool isPressed;
 	public bool enableRightButtonClick;
 	public bool enableMiddleButtonClick;
-	public this(dstring text, string source, Coordinate coordinates) {
-		this(new Text(text,getAvailableStyleSheet.getChrFormatting("button")), source, coordinates);
+	public this(dstring text, string source, Box position) {
+		this(new Text(text,getAvailableStyleSheet.getChrFormatting("button")), source, position);
 	}
-	public this(Text text, string source, Coordinate coordinates) {
-		position = coordinates;
+	public this(Text text, string source, Box position) {
+		this.position = position;
 		this.text = text;
 		this.source = source;
 		output = new BitmapDrawer(coordinates.width, coordinates.height);

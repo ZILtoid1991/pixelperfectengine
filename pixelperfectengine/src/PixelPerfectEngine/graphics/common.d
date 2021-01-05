@@ -108,6 +108,10 @@ public struct Box {
 	public @property Point cornerLR() @nogc @safe pure nothrow const {
 		return Point(right, bottom);
 	}
+	///Pads the edges of the given box by the given amounts and returns a new Box.
+	public Box pad(const int horiz, const int vert) @nogc @safe pure nothrow const {
+		return Coordinate(left + horiz, top + vert, right - horiz, bottom - vert);
+	}
 	/**
 	 * Returns a string with the coordinates that is useful for debugging
 	 */
