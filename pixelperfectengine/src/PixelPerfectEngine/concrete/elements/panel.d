@@ -2,7 +2,7 @@ module PixelPerfectEngine.concrete.elements.panel;
 
 import PixelPerfectEngine.concrete.elements.base;
 
-import PixelPerfectEngine.system.etc : clamp;
+import PixelPerfectEngine.system.etc : clamp, cmpObjPtr;
 
 import collections.linkedlist;
 
@@ -13,7 +13,7 @@ import collections.linkedlist;
  * the state of the elements.
  */
 public class Panel : WindowElement, ElementContainer {
-	alias WESet = LinkedList!(WindowElement, false, "cmpObjPtr(a, b)");
+	alias WESet = LinkedList!(WindowElement, false, "a is b");
 	protected WESet subElems;			///Contains all elements within the panel
 	protected sizediff_t focusedElem;				///Index of the currently focused element
 	/**
@@ -23,14 +23,13 @@ public class Panel : WindowElement, ElementContainer {
 		position = coordinates;
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(coordinates.width, coordinates.height);
 	}
 	///Ditto
 	public this(dstring text, string source, Coordinate position) {
-		this(new Text(text, getAvailableStyleSheet().getChrFormatting("panel")), source, position);
+		this(new Text(text, getStyleSheet().getChrFormatting("panel")), source, position);
 	}
 	public override void draw() {
-		foreach (WindowElement key; subElems) {
+		foreach (key; subElems) {
 			key.draw;
 		}
 		StyleSheet ss = getStyleSheet();
@@ -81,73 +80,70 @@ public class Panel : WindowElement, ElementContainer {
 			return -1;
 		} else {
 			if (subElems.length) {
-				const int result = subElems[focusedElem].cycleFocus;
+				const int result = subElems[focusedElem].cycleFocus(direction);
 				if (result == -1) {
 					subElems[focusedElem].focusTaken();
 					focusedElem += direction;
 					subElems[focusedElem].focusGiven();
 				}
 			}
-			return direction > 1 ? cast(int)(subElems.length - focusedElem) : focusedElem;
+			return direction > 1 ? cast(int)(subElems.length - focusedElem) : cast(int)focusedElem;
 		}
 	}
-	public void clearArea(WindowElement sender) {
-		parent.clearArena(sender);
-	}
 	
-	public void drawLine(Point from, Point to, ubyte color) @trusted pure {
+	public void drawLine(Point from, Point to, ubyte color) @trusted {
 		parent.drawLine(from, to, color);
 	}
 	
-	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted pure {
+	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted {
 		parent.drawLinePattern(from, to, pattern);
 	}
 	
-	public void drawBox(Coordinate target, ubyte color) @trusted pure {
+	public void drawBox(Coordinate target, ubyte color) @trusted {
 		parent.drawBox(target, color);
 	}
 	
-	public void drawBoxPattern(Coordinate target, ubyte[] pattern) @trusted pure {
+	public void drawBoxPattern(Coordinate target, ubyte[] pattern) @trusted {
 		parent.drawBoxPattern(target, pattern);
 	}
 	
-	public void drawFilledBox(Coordinate target, ubyte color) @trusted pure {
+	public void drawFilledBox(Coordinate target, ubyte color) @trusted {
 		parent.drawFilledBox(target, color);
 	}
 	
-	public void bitBLT(Point target, ABitmap source) @trusted pure {
+	public void bitBLT(Point target, ABitmap source) @trusted {
 		parent.bitBLT(target, source);
 	}
 	
-	public void bitBLT(Point target, ABitmap source, Coordinate slice) @trusted pure {
+	public void bitBLT(Point target, ABitmap source, Coordinate slice) @trusted {
 		parent.bitBLT(target, source, slice);
 	}
 	
-	public void bitBLTPattern(Coordinate target, ABitmap pattern) @trusted pure {
+	public void bitBLTPattern(Coordinate target, ABitmap pattern) @trusted {
 		parent.bitBLTPattern(target, pattern);
 	}
 	
-	public void xorBitBLT(Coordinate target, ABitmap pattern) @trusted pure {
+	public void xorBitBLT(Coordinate target, ABitmap pattern) @trusted {
 		parent.xorBitBLT(target, pattern);
 	}
 	
-	public void xorBitBLT(Coordinate target, ubyte color) @trusted pure {
+	public void xorBitBLT(Coordinate target, ubyte color) @trusted {
 		parent.xorBitBLT(target, color);
 	}
 	
-	public void fill(Point target, ubyte color, ubyte background = 0) @trusted pure {
+	public void fill(Point target, ubyte color, ubyte background = 0) @trusted {
 		parent.fill(target, color, background);
 	}
 	
-	public void drawTextSL(Coordinate target, Text text, Point offset) @trusted pure {
+	public void drawTextSL(Coordinate target, Text text, Point offset) @trusted {
 		parent.drawTextSL(target, text, offset);
 	}
 	
-	public void drawTextML(Coordinate target, Text text, Point offset) @trusted pure {
+	public void drawTextML(Coordinate target, Text text, Point offset) @trusted {
 		parent.drawTextML(target, text, offset);
 	}
 	
-	public void clearArea(Coordinate target) @trusted pure {
+	public void clearArea(Coordinate target) @trusted {
 		parent.clearArea(target);
 	}
 	/**

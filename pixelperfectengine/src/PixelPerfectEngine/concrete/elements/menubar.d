@@ -25,7 +25,7 @@ public class MenuBar : WindowElement {
 		}
 	}
 	public override void draw() {
-		StyleSheet ss = getAvailableStyleSheet();
+		StyleSheet ss = getStyleSheet();
 		with (parent) {
 			drawFilledBox(position, ss.getColor("window"));
 			drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowAscent"));
@@ -75,8 +75,8 @@ public class MenuBar : WindowElement {
 		}+/
 	}
 	private void redirectIncomingEvents(Event ev){
-		if(onMouseLClickPre !is null){
-			onMouseLClickPre(ev);
+		if(onMouseLClick !is null){
+			onMouseLClick(ev);
 		}
 	}
 	

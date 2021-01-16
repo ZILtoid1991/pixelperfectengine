@@ -265,7 +265,7 @@ public bool isInterface(string I)(Object o) pure @safe nothrow {
 /**
  * Compares object pointers to detect duplicates.
  */
-public bool cmpObjPtr(Object a, Object b) @nogc @trusted pure nothrow {
+public bool cmpObjPtr(O)(O a, O b) @nogc @trusted pure nothrow {
 	bool _cmp() @nogc @system pure nothrow {
 		return cast(void*)a == cast(void*)b;
 	}

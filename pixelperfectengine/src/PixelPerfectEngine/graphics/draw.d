@@ -12,6 +12,7 @@ import std.conv;
 
 import PixelPerfectEngine.graphics.bitmap;
 import compose = CPUblit.composing;
+import specblt = CPUblit.composing.specblt;
 import draw = CPUblit.draw;
 import bmfont;
 public import PixelPerfectEngine.graphics.fontsets;
@@ -138,7 +139,7 @@ public class BitmapDrawer{
 		pdest += x + output.width * y;
 		int length = bitmap.width;
 		for(int iy ; iy < bitmap.height ; iy++){
-			compose.textBlitter(psrc,pdest,length,color);
+			specblt.textBlitter(psrc,pdest,length,color);
 			psrc += length;
 			pdest += output.width;
 		}
@@ -166,7 +167,7 @@ public class BitmapDrawer{
 		psrc += slice.left + bmpWidth * slice.top;
 		//int length = slice.width;
 		for(int iy ; iy < slice.height ; iy++){
-			compose.textBlitter(psrc,pdest,slice.width,color);
+			specblt.textBlitter(psrc,pdest,slice.width,color);
 			psrc += bmpWidth;
 			pdest += output.width;
 		}
@@ -178,7 +179,7 @@ public class BitmapDrawer{
 		drawLine(xa, xb, ya, ya, color);
 		drawLine(xa, xb, yb, yb, color);
 	}
-
+	/+
 	deprecated public void drawRectangle(int xa, int xb, int ya, int yb, Bitmap8Bit brush) pure {
 		xa = xa + brush.width;
 		ya = ya + brush.height;
@@ -188,7 +189,7 @@ public class BitmapDrawer{
 		drawLine(xb, xb, ya, yb, brush);
 		drawLine(xa, xb, ya, ya, brush);
 		drawLine(xa, xb, yb, yb, brush);
-	}
+	}+/
 	///Draws a filled rectangle. DEPRECATED!
 	deprecated public void drawFilledRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
 		draw.drawFilledRectangle(xa, ya, xb, yb, color, output.getPtr(), output.width);
@@ -256,7 +257,7 @@ public class BitmapDrawer{
 	 * lineOffset specifies how much lines in pixels are skipped on the top.
 	 * Return value contains state flags on wheter certain portions of the text were out of bound.
 	 */
-	public uint drawSingleLineText(Coordinate pos, Text text, int offset = 0, int lineOffset = 0) {
+	public uint drawSingleLineText(Coordinate pos, Text text, int offset = 0, int lineOffset = 0) pure {
 		uint status;
 		const int textWidth = text.getWidth();
 		if(textWidth <= pos.width){

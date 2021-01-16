@@ -42,15 +42,15 @@ public class PopUpMenu : PopUpElement {
 			}
 			width += (ss.drawParameters["PopUpMenuHorizPadding"] * 2);
 			height += ss.drawParameters["PopUpMenuVertPadding"] * 2;
-			position = Coordinate(0, 0, width, height);
+			position = Box(0, 0, width, height);
 			output = new BitmapDrawer(width, height);
 		}
-		output.drawFilledRectangle(0,width - 1,0,height - 1,ss.getColor("window"));
+		output.drawFilledBox(position, ss.getColor("window"));//output.drawFilledRectangle(0,width - 1,0,height - 1,ss.getColor("window"));
 
 		if(select > -1){
 			int y0 = cast(int)((height / elements.length) * select);
 			int y1 = cast(int)((height / elements.length) + y0);
-			output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
+			output.drawFilledBox(Box(1, y0 + 1, position.width, y1 + 1), ss.getColor("selection")); //output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
 		}
 
 
@@ -77,10 +77,16 @@ public class PopUpMenu : PopUpElement {
 		}
 
 		//output.drawRectangle(1,1,height-1,width-1,ss.getColor("windowascent"));
-		output.drawLine(0,0,0,height-1,ss.getColor("windowascent"));
+		/+output.drawLine(0,0,0,height-1,ss.getColor("windowascent"));
 		output.drawLine(0,width-1,0,0,ss.getColor("windowascent"));
 		output.drawLine(0,width-1,height-1,height-1,ss.getColor("windowdescent"));
-		output.drawLine(width-1,width-1,0,height-1,ss.getColor("windowdescent"));
+		output.drawLine(width-1,width-1,0,height-1,ss.getColor("windowdescent"));+/
+		with (output) {
+			drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowascent"));
+			drawLine(position.cornerUL, position.cornerLL, ss.getColor("windowascent"));
+			drawLine(position.cornerLL, position.cornerLR, ss.getColor("windowdescent"));
+			drawLine(position.cornerUR, position.cornerLR, ss.getColor("windowdescent"));
+		}
 		if(onDraw !is null){
 			onDraw();
 		}
@@ -98,7 +104,7 @@ public class PopUpMenu : PopUpElement {
 			//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
 			if(onMenuSelect !is null)
 				onMenuSelect(new MenuEvent(this, SourceType.PopUpElement, elements[mce.y].text, mce.y, elements[mce.y].source));
-			parent.endPopUpSession();
+			parent.endPopUpSession(this);
 			//parent.closePopUp(this);
 		}
 

@@ -145,7 +145,7 @@ public class Bitmap(string S,T) : ABitmap {
 		 */
 		public Bitmap!(S,T) window(int iX0, int iY0, int iX1, int iY1) @safe pure {
 			T[] workpad;
-			const size_t localWidth = (iX1 - iX0), localHeight = (iY1 - iY0);
+			const int localWidth = (iX1 - iX0), localHeight = (iY1 - iY0);
 			workpad.length  = localWidth * localHeight;
 			for (int y ; y < localHeight ; y++) {
 				for (int x ; x < localWidth ; x++) {

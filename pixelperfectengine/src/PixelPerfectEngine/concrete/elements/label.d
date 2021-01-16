@@ -4,14 +4,12 @@ public import PixelPerfectEngine.concrete.elements.base;
 
 public class Label : WindowElement {
 	public this(dstring text, string source, Coordinate coordinates) {
-		this(new Text(text, getAvailableStyleSheet().getChrFormatting("label")), source, coordinates);
+		this(new Text(text, getStyleSheet().getChrFormatting("label")), source, coordinates);
 	}
 	public this(Text text, string source, Coordinate coordinates) {
 		position = coordinates;
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(coordinates.width, coordinates.height);
-		//draw();
 	}
 	public override void draw() {
 		StyleSheet ss = getStyleSheet();
@@ -26,5 +24,4 @@ public class Label : WindowElement {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
 	}
-	
 }

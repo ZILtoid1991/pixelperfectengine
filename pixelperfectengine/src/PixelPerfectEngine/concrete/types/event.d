@@ -23,6 +23,13 @@ public class Event {
 		this.type = type;
 		this.srcType = srcType;
 	}
+	///Ditto
+	this (Object sender, Object aux, EventType type, SourceType srcType) @nogc @safe pure nothrow {
+		this.sender = sender;
+		this.aux = aux;
+		this.type = type;
+		this.srcType = srcType;
+	}
 }
 /**
  * Defines a mouse event in the GUI.

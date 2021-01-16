@@ -79,33 +79,33 @@ public interface IRadioButtonGroup {
  */
 public interface Canvas {
 	///Draws a line.
-	public void drawLine(Point from, Point to, ubyte color) @trusted pure;
+	public void drawLine(Point from, Point to, ubyte color) @trusted;
 	///Draws a line pattern.
-	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted pure;
+	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted;
 	///Draws an empty rectangle.
-	public void drawBox(Box target, ubyte color) @trusted pure;
+	public void drawBox(Box target, ubyte color) @trusted;
 	///Draws an empty rectangle with line patterns.
-	public void drawBoxPattern(Box target, ubyte[] pattern) @trusted pure;
+	public void drawBoxPattern(Box target, ubyte[] pattern) @trusted;
 	///Draws a filled rectangle with a specified color.
-	public void drawFilledBox(Box target, ubyte color) @trusted pure;
+	public void drawFilledBox(Box target, ubyte color) @trusted;
 	///Pastes a bitmap to the given point using blitter, which threats color #0 as transparency.
-	public void bitBLT(Point target, ABitmap source) @trusted pure;
+	public void bitBLT(Point target, ABitmap source) @trusted;
 	///Pastes a slice of a bitmap to the given point using blitter, which threats color #0 as transparency.
-	public void bitBLT(Point target, ABitmap source, Box slice) @trusted pure;
+	public void bitBLT(Point target, ABitmap source, Box slice) @trusted;
 	///Pastes a repeated bitmap pattern over the specified area.
-	public void bitBLTPattern(Box target, ABitmap pattern) @trusted pure;
+	public void bitBLTPattern(Box target, ABitmap pattern) @trusted;
 	///XOR blits a repeated bitmap pattern over the specified area.
-	public void xorBitBLT(Box target, ABitmap pattern) @trusted pure;
+	public void xorBitBLT(Box target, ABitmap pattern) @trusted;
 	///XOR blits a color index over a specified area.
-	public void xorBitBLT(Box target, ubyte color) @trusted pure;
+	public void xorBitBLT(Box target, ubyte color) @trusted;
 	///Fills an area with the specified color.
-	public void fill(Point target, ubyte color, ubyte background = 0) @trusted pure;
+	public void fill(Point target, ubyte color, ubyte background = 0) @trusted;
 	///Draws a single line text within the given prelimiter.
-	public void drawTextSL(Box target, Text text, Point offset) @trusted pure;
+	public void drawTextSL(Box target, Text text, Point offset) @trusted;
 	///Draws a multi line text within the given prelimiter.
-	public void drawTextML(Box target, Text text, Point offset) @trusted pure;
+	public void drawTextML(Box target, Text text, Point offset) @trusted;
 	///Clears the area within the target
-	public void clearArea(Box target) @trusted pure;
+	public void clearArea(Box target) @trusted;
 }
 /**
  * TODO: Use this for implement tabbing and etc.
@@ -165,6 +165,10 @@ public interface MouseEventReceptor {
 public interface ISmallButton {
 	///Returns true if element is in small button capable and is the supplied height.
 	public bool isSmallButtonHeight(int height);
+	///Returns true if left side justified, false otherwise.
+	public bool isLeftSide() @nogc @safe pure nothrow const;
+	///Sets the small button to the left side if true.
+	public bool isLeftSide(bool val) @nogc @safe pure nothrow;
 }
 /**
  * Defines functions for pop up handling.

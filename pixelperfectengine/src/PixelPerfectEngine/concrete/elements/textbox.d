@@ -5,7 +5,7 @@ public import PixelPerfectEngine.concrete.elements.base;
 /**
  * Text input box
  */
-public class TextBox : WindowElement, TextInputListener{
+public class TextBox : WindowElement, TextInputListener {
 	//protected bool enableEdit, insert;
 	protected static enum	INSERT = 1<<9;
 	protected static enum	ENABLE_TEXT_EDIT = 1<<10;
@@ -16,13 +16,12 @@ public class TextBox : WindowElement, TextInputListener{
 	//public TextInputHandler tih;
 	public void delegate(Event ev) onTextInput;
 	public this(dstring text, string source, Coordinate coordinates) {
-		this(new Text(text, getAvailableStyleSheet().getChrFormatting("textBox")), source, coordinates);
+		this(new Text(text, getStyleSheet().getChrFormatting("textBox")), source, coordinates);
 	}
 	public this(Text text, string source, Coordinate coordinates) {
 		position = coordinates;
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(coordinates.width, coordinates.height);
 		//inputHandler.addTextInputListener(source, this);
 		//insert = true;
 		//draw();
@@ -75,43 +74,11 @@ public class TextBox : WindowElement, TextInputListener{
 		
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
-		if (!(flags & ENABLE_TEXT_EDIT)) inputHandler.startTextInput(this);
-		else {
-
-		}
+		if (!(flags & ENABLE_TEXT_EDIT)) inputHandler.startTextInput(this, false, position);
 		super.passMCE(mec, mce);
 	}
 	public override void draw(){
-		/+if(output.output.width != position.width || output.output.height != position.height)
-			output = new BitmapDrawer(position.width, position.height);
-		output.drawFilledRectangle(0, position.width - 1, 0, position.height - 1, 
-				getAvailableStyleSheet().getColor("window"));
-		output.drawRectangle(0, position.width - 1, 0, position.height - 1, 
-				getAvailableStyleSheet().getColor("windowascent"));
-		const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
-		Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2) ,
-				position.width,position.height - textPadding);
 		
-		const int y = text.font.size;
-		//if(x > textPos.width ) xOffset = horizTextOffset;
-		//draw cursor
-		if(enableEdit) {
-			const int x0 = text.getWidth(0,pos) + textPadding - horizTextOffset;
-			if(!insert){
-				output.drawLine(x0, x0, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
-			}else{
-				const int x1 = pos == text.charLength ? text.font.chars(' ').xadvance :
-						text.getWidth(pos,pos + 1);
-				output.drawFilledRectangle(x0, x1 + x0, 2, 2 + y, getAvailableStyleSheet().getColor("selection"));
-			}
-		}
-
-		
-		output.drawSingleLineText(textPos, text, horizTextOffset);
-		elementContainer.drawUpdate(this);
-		if(onDraw !is null){
-			onDraw();
-		}+/
 		StyleSheet ss = getStyleSheet();
 		const int textPadding = ss.drawParameters["TextSpacingSides"];
 		with (parent) {
@@ -160,16 +127,21 @@ public class TextBox : WindowElement, TextInputListener{
 		text.removeChar(n);
 	}
 	public void textInputEvent(uint timestamp, uint windowID, dstring text){
-
-		for(int j ; j < text.length ; j++){
-			this.text.insertChar(pos++, text[j]);
+		if (flags & INSERT) {
+			for(int j ; j < text.length ; j++){
+				this.text.overwriteChar(cursorPos++, text[j]);
+			}
+		} else {
+			for(int j ; j < text.length ; j++){
+				this.text.insertChar(cursorPos++, text[j]);
+			}
 		}
-		const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
 		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
 				position.width,position.height - textPadding);
-		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, pos);
+		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, cursorPos);
 		if(x > textPos.width) {
-			 if(pos == text.text.length) {
+			 if(cursorPos == this.text.text.length) {
 				horizTextOffset = x - textPos.width;
 			 } else if(cursorPixelPos < horizTextOffset) { //Test for whether the cursor would fall out from the current text area
 				horizTextOffset = cursorPixelPos;
@@ -198,50 +170,51 @@ public class TextBox : WindowElement, TextInputListener{
 
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
 		switch(key) {
-			case TextInputKey.ENTER:
-				inputHandler.stopTextInput(this);
+			case TextInputKey.Enter:
+				inputHandler.stopTextInput();
 				if(onTextInput !is null)
-					onTextInput(new Event(source, null, null, null, text, 0, EventType.TEXTINPUT, null, this));
+					onTextInput(new Event(this, text, EventType.TextInput, SourceType.WindowElement));
+					//onTextInput(new Event(source, null, null, null, text, 0, EventType.T, null, this));
 				break;
-			case TextInputKey.ESCAPE:
+			case TextInputKey.Escape:
 				text = oldText;
-				inputHandler.stopTextInput(this);
+				inputHandler.stopTextInput();
 				
 
 				break;
-			case TextInputKey.BACKSPACE:
-				if(pos > 0){
-					deleteCharacter(pos - 1);
-					pos--;
+			case TextInputKey.Backspace:
+				if(cursorPos > 0){
+					deleteCharacter(cursorPos - 1);
+					cursorPos--;
 					draw();
 				}
 				break;
-			case TextInputKey.DELETE:
-				deleteCharacter(pos);
+			case TextInputKey.Delete:
+				deleteCharacter(cursorPos);
 				draw();
 				break;
-			case TextInputKey.CURSORLEFT:
-				if(pos > 0){
-					--pos;
+			case TextInputKey.CursorLeft:
+				if(cursorPos > 0){
+					--cursorPos;
 					draw();
 				}
 				break;
-			case TextInputKey.CURSORRIGHT:
-				if(pos < text.charLength){
-					++pos;
+			case TextInputKey.CursorRight:
+				if(cursorPos < text.charLength){
+					++cursorPos;
 					draw();
 				}
 				break;
-			case TextInputKey.HOME:
-				pos = 0;
+			case TextInputKey.Home:
+				cursorPos = 0;
 				draw();
 				break;
-			case TextInputKey.END:
-				pos = text.charLength;
+			case TextInputKey.End:
+				cursorPos = text.charLength;
 				draw();
 				break;
-			case TextInputKey.INSERT:
-				insert = !insert;
+			case TextInputKey.Insert:
+				flags ^= INSERT;
 				draw();
 				break;
 			default:

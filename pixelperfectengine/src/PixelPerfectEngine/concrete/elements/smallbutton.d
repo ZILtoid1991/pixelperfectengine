@@ -2,7 +2,7 @@ module PixelPerfectEngine.concrete.elements.smallbutton;
 
 public import PixelPerfectEngine.concrete.elements.base;
 
-public class SmallButton : WindowElement {
+public class SmallButton : WindowElement, ISmallButton {
 	public string			iconPressed, iconUnpressed;
 	private bool			_isPressed;
 	//protected IRadioButtonGroup		radioButtonGroup;	//If set, the element works like a radio button
@@ -31,5 +31,19 @@ public class SmallButton : WindowElement {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
+	}
+	public bool isSmallButtonHeight(int height) {
+		if (position.width == height && position.height == height) return true;
+		else return false;
+	}
+	///Returns true if left side justified, false otherwise.
+	public bool isLeftSide() @nogc @safe pure nothrow const {
+		return flags & IS_LHS ? true : false;
+	}
+	///Sets the small button to the left side if true.
+	public bool isLeftSide(bool val) @nogc @safe pure nothrow {
+		if (val) flags |= IS_LHS;
+		else flags &= ~IS_LHS;
+		return flags & IS_LHS ? true : false;
 	}
 }

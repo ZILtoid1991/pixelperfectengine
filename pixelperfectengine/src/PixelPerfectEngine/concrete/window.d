@@ -31,10 +31,10 @@ import collections.linkedlist;
  * Basic window. All other windows are inherited from this class.
  */
 public class Window : ElementContainer, Focusable, MouseEventReceptor {
-	alias FocusableSet = LinkedList!(Focusable, false, "cmpObjPtr(a, b)");
-	alias WESet = LinkedList!(WindowElement, false, "cmpObjPtr(a, b)");
-	alias SBSet = LinkedList!(ISmallButton, false, "cmpObjPtr(a, b)");
-	alias CWSet = LinkedList!(Window, false, "cmpObjPtr(a, b)");
+	alias FocusableSet = LinkedList!(Focusable, false, "a is b");//alias FocusableSet = LinkedList!(Focusable, false, "cmpObjPtr(a, b)");
+	alias WESet = LinkedList!(WindowElement, false, "a is b");//alias WESet = LinkedList!(WindowElement, false, "cmpObjPtr(a, b)");
+	alias SBSet = LinkedList!(ISmallButton, false, "a is b");//alias SBSet = LinkedList!(ISmallButton, false, "cmpObjPtr(a, b)");
+	alias CWSet = LinkedList!(Window, false, "a is b");//alias CWSet = LinkedList!(Window, false, "cmpObjPtr(a, b)");
 	protected FocusableSet			focusables;		///All focusable objects belonging to the window
 	protected WESet			 		elements;		///Stores all window elements here
 	protected Text					title;			///Title of the window
@@ -74,12 +74,11 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		output = new BitmapDrawer(position.width(), position.height());
 		this.title = title;
 		this.customStyle = customStyle;
-		this.smallButtons = SBSet(smallButtons);
 	}
 	///Ditto
 	public this(Box size, dstring title, ISmallButton[] smallButtons = [], StyleSheet customStyle = null) {
 		this.customStyle = customStyle;
-		this(size, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), extraButtons, customStyle);
+		this(size, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), smallButtons, customStyle);
 	}
 	/**
 	 * Returns the window's position.
@@ -101,7 +100,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	/**
 	 * If the current window doesn't contain a custom StyleSheet, it gets from it's parent.
 	 */
-	public StyleSheet getStyleSheet() {
+	public StyleSheet getStyleSheet() @safe {
 		if (customStyle is null) {
 			if (parent is null) return globalDefaultStyle;
 			else return parent.getStyleSheet();
@@ -113,7 +112,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 * Adds an element to the window.
 	 */
 	public void addElement(WindowElement we) {
-		we.elementContainer = this;
+		we.setParent(this);
 		elements.put(we);
 		focusables.put(we);
 		we.draw();
@@ -122,13 +121,38 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 * Removes the WindowElement if 'we' is found within its ranges, does nothing otherwise.
 	 */
 	public void removeElement(WindowElement we) {
-		for(int i ; i < elements.length ; i++) {
-			if(elements[i] == we) {
-				elements = remove(elements, i);
-				break;
-			}
-		}
+		elements.removeByElem(we);
 		draw();
+	}
+	/**
+	 * Adds a smallbutton to the header.
+	 */
+	public void addHeaderButton(ISmallButton sb) {
+		const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
+		if (!sb.isSmallButtonHeight(headerHeight)) throw new Exception("Wrong SmallButton height.");
+		smallButtons.put(sb);
+		int left, right = position.width;
+		foreach (ISmallButton key; smallButtons) {
+			if (key.isLeftSide) left += headerHeight;
+			else right -= headerHeight;
+		}
+		Box b;
+		if (sb.isLeftSide) 
+			b = Box(left, 0, left + headerHeight, headerHeight);
+		else
+			b = Box(right - headerHeight, 0, right, headerHeight);
+		WindowElement we = cast(WindowElement)sb;
+		we.setPosition(b);
+		we.setParent(this);
+		elements.put(we);
+	}
+	/**
+	 * Removes a smallbutton from the header.
+	 */
+	public void removeHeaderButton(ISmallButton sb) {
+		smallButtons.removeByElem(sb);
+		elements.removeByElem(cast(WindowElement)sb);
+		draw(true);
 	}
 	/**
 	 * Draws the window. Intended to be used by the WindowHandler.
@@ -141,7 +165,18 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		drawHeader();
 		if(drawHeaderOnly)
 			return;
-		output.drawFilledRectangle(0, position.width() - 1, getStyleSheet().getImage("closeButtonA").height,
+		StyleSheet ss = getStyleSheet();
+		const Box bodyarea = Box(0, ss.drawParameters["WindowHeaderHeight"], position.width, position.height);
+		drawFilledBox(bodyarea, ss.getColor("window"));
+		drawLine(bodyarea.cornerUL, bodyarea.cornerLL, ss.getColor("windowascent"));
+		drawLine(bodyarea.cornerUL, bodyarea.cornerUR, ss.getColor("windowascent"));
+		drawLine(bodyarea.cornerLL, bodyarea.cornerLR, ss.getColor("windowdescent"));
+		drawLine(bodyarea.cornerUR, bodyarea.cornerLR, ss.getColor("windowdescent"));
+
+		foreach (WindowElement we; elements) {
+			we.draw();
+		}
+		/+output.drawFilledRectangle(0, position.width() - 1, getStyleSheet().getImage("closeButtonA").height,
 				position.height() - 1, getStyleSheet().getColor("window"));
 		int y1 = getStyleSheet().getImage("closeButtonA").height;
 		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
@@ -159,58 +194,61 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 
 		//output.drawText(x1+1, 1, title, getFontSet(0), 1);
 
-		fullUpdate = true;
+		//fullUpdate = true;
 		foreach(WindowElement we; elements){
 			we.draw();
 			//output.insertBitmap(we.getPosition().xa,we.getPosition().ya,we.output.output);
 		}
-		fullUpdate = false;
+		//fullUpdate = false;
 		parent.drawUpdate(this);
 		if(onDrawUpdate !is null){
 			onDrawUpdate();
-		}
+		}+/
 	}
 	/**
 	 * Draws the header.
 	 */
 	protected void drawHeader() {
-		const ushort colorC = isActive ? getStyleSheet().getColor("WHAtop") : getStyleSheet().getColor("window");
-		output.drawFilledRectangle(0, position.width() - 1, 0, getStyleSheet().getImage("closeButtonA").height - 1, colorC);
-		output.insertBitmap(0,0,getStyleSheet().getImage("closeButtonA"));
-		const int x1 = getStyleSheet().getImage("closeButtonA").width, y1 = getStyleSheet().drawParameters
-				["WindowHeaderHeight"];
-		int x2 = position.width;
-		int headerLength = cast(int)(extraButtons.length == 0 ? position.width() - 1 : position.width() - 1 -
-				(extraButtons.length * x1));
-		foreach(s ; extraButtons){
-			x2 -= x1;
-			output.insertBitmap(x2,0,getStyleSheet().getImage(s));
+		StyleSheet ss = getStyleSheet();
+		const int headerHeight = ss.drawParameters["WindowHeaderHeight"];
+		Box headerArea = Box(0, 0, position.width, headerHeight);
+		foreach (ISmallButton sb; smallButtons) {
+			if (sb.isLeftSide) headerArea.left += headerHeight;
+			else headerArea.right -= headerHeight;
 		}
-		const ushort colorA = isActive ? getStyleSheet().getColor("WHAascent") : getStyleSheet().getColor("windowascent"),
-				colorB = isActive ? getStyleSheet().getColor("WHAdescent") : getStyleSheet().getColor("windowdescent");
-		output.drawLine(x1, headerLength, 0, 0, colorA);
-		output.drawLine(x1, x1, 0, y1 - 1, colorA);
-		output.drawLine(x1, headerLength, y1 - 1, y1 - 1, colorB);
-		output.drawLine(headerLength, headerLength, 0, y1 - 1, colorB);
-		if(title) {
-			title.formatting = getStyleSheet().getChrFormatting(isActive ? "windowHeader" : "windowHeaderInactive");
-			const Coordinate textPos = Coordinate(x1, getStyleSheet().drawParameters["WHPaddingTop"],headerLength,y1);
-			output.drawSingleLineText(textPos, title);
+		if (active) {
+			drawFilledBox(headerArea, ss.getColor("WHAtop"));
+			drawLine(headerArea.cornerUL, headerArea.cornerLL, ss.getColor("WHAascent"));
+			drawLine(headerArea.cornerUL, headerArea.cornerUR, ss.getColor("WHAascent"));
+			drawLine(headerArea.cornerLL, headerArea.cornerLR, ss.getColor("WHAdescent"));
+			drawLine(headerArea.cornerUR, headerArea.cornerLR, ss.getColor("WHAdescent"));
+		} else {
+			drawFilledBox(headerArea, ss.getColor("window"));
+			drawLine(headerArea.cornerUL, headerArea.cornerLL, ss.getColor("windowascent"));
+			drawLine(headerArea.cornerUL, headerArea.cornerUR, ss.getColor("windowascent"));
+			drawLine(headerArea.cornerLL, headerArea.cornerLR, ss.getColor("windowdescent"));
+			drawLine(headerArea.cornerUR, headerArea.cornerLR, ss.getColor("windowdescent"));
 		}
+		drawTextSL(headerArea, title, Point(0,0));
 	}
 	///Returns true if the window is focused
 	public @property bool active() @safe @nogc pure nothrow {
 		return flags & IS_ACTIVE;
 	}
 	///Sets the IS_ACTIVE flag to the given value
-	protected @property bool active(bool val) @safe @nogc pure nothrow {
-		if (val) flags |= IS_ACTIVE;
-		else flags &= ~IS_ACTIVE;
+	protected @property bool active(bool val) @safe {
+		if (val) {
+			flags |= IS_ACTIVE;
+			title.formatting = getStyleSheet().getChrFormatting("windowHeader");
+		} else {
+			flags &= ~IS_ACTIVE;
+			title.formatting = getStyleSheet().getChrFormatting("windowHeaderInactive");
+		}
 		return active();
 	}
 	///Returns whether the window is moved or not
 	public @property bool isMoved() @safe @nogc pure nothrow {
-		return flags & IS_MOVED;
+		return flags & IS_MOVED ? true : false;
 	}
 	///Sets whether the window is moved or not
 	public @property bool isMoved(bool val) @safe @nogc pure nothrow {
@@ -221,25 +259,23 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	///Sets the title of the window
 	public void setTitle(Text s) @trusted {
 		title = s;
-		headerUpdate = true;
 		drawHeader();
 	}
 	///Ditto
 	public void setTitle(dstring s) @trusted {
 		title.text = s;
-		headerUpdate = true;
 		drawHeader();
 	}
 	///Returns the title of the window
 	public Text getTitle() @safe @nogc pure nothrow {
 		return title;
 	}
-	/**
+	/+/**
 	 * Detects where the mouse is clicked, then it either passes to an element, or tests whether the close button,
 	 * an extra button was clicked, also tests for the header, which creates a drag event for moving the window.
 	 */
 	public void passMouseEvent(int x, int y, int state, ubyte button) {
-		if (state == ButtonState.PRESSED) {
+		if (state == ButtonState.Pressed) {
 			if (getStyleSheet.getImage("closeButtonA").width > x && getStyleSheet.getImage("closeButtonA").height > y && 
 					button == MouseButton.LEFT) {
 				close();
@@ -274,15 +310,16 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 				return;
 			}
 		}
-	}
+	}+/
 	/**
 	 * Closes the window by calling the WindowHandler's closeWindow function.
 	 */
 	public void close() {
-		parent.closeWindow(this);
+		parent.removeChildWindow(this);
+		handler.closeWindow(this);
 	}
-	///Initializes close. Parameter `Event ev` is only as a placeholder for delegate compatibility.
-	public void onClose(Event ev) {
+	///Used for closing the window, either by a smallbutton, or other event
+	protected void onClose(Event ev) {
 		close;
 	}
 	/**
@@ -292,23 +329,24 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		handler = wh;
 	}
 	
-	public Coordinate getAbsolutePosition(WindowElement sender){
-		return Coordinate(sender.position.left + position.left, sender.position.top + position.top, sender.position.right + 
-				position.right, sender.position.bottom + position.bottom);
+	public Coordinate getAbsolutePosition(WindowElement sender) {
+		Box p = sender.getPosition();
+		p.relMove(position.left, position.top);
+		return p;
 	}
 	/**
 	 * Moves the window to the exact location.
 	 */
 	public void move(const int x, const int y) {
 		position.move(x,y);
-		handler.moveWindow(x, y, this);
+		handler.updateWindowCoord(this);
 	}
 	/**
 	 * Moves the window by the given values.
 	 */
 	public void relMove(const int x, const int y) {
 		position.relMove(x,y);
-		handler.relMoveWindow(x, y, this);
+		handler.updateWindowCoord(this);
 	}
 	/**
 	 * Sets the size of the window, also issues a redraw.
@@ -317,13 +355,13 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		position.right = position.left + width;
 		position.bottom = position.top + height;
 		draw();
-		parent.refreshWindow(this);
+		handler.refreshWindow(this);
 	}
 	/**
 	 * Returns the outputted bitmap.
 	 * Can be overridden for 32 bit outputs.
 	 */
-	public @property ABitmap getOutput(){
+	public @property ABitmap getOutput() @nogc @safe pure nothrow {
 		return output.output;
 	}
 	/**
@@ -360,7 +398,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void removeChildWindow(Window w) {
 		if (children.removeByElem(w)) {
 			w.parent = null;
-			handler.removeWindow(w);
+			handler.closeWindow(w);
 		}
 		
 	}
@@ -372,59 +410,59 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	}
 	//Implementation of the `Canvas` interface starts here.
 	///Draws a line.
-	public void drawLine(Point from, Point to, ubyte color) @trusted pure {
+	public void drawLine(Point from, Point to, ubyte color) @trusted {
 		output.drawLine(from, to, color);
 	}
 	///Draws a line pattern.
-	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted pure {
+	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted {
 		output.drawLinePattern(from, to, pattern);
 	}
 	///Draws an empty rectangle.
-	public void drawBox(Coordinate target, ubyte color) @trusted pure {
+	public void drawBox(Coordinate target, ubyte color) @trusted {
 		output.drawBox(target, color);
 	}
 	///Draws an empty rectangle with line patterns.
-	public void drawBoxPattern(Coordinate target, ubyte[] pattern) @trusted pure {
+	public void drawBoxPattern(Coordinate target, ubyte[] pattern) @trusted {
 		output.drawBox(target, pattern);
 	}
 	///Draws a filled rectangle with a specified color,
-	public void drawFilledBox(Coordinate target, ubyte color) @trusted pure {
+	public void drawFilledBox(Coordinate target, ubyte color) @trusted {
 		output.drawFilledBox(target, color);
 	}
 	///Pastes a bitmap to the given point using blitter, which threats color #0 as transparency.
-	public void bitBLT(Point target, ABitmap source) @trusted pure {
+	public void bitBLT(Point target, ABitmap source) @trusted {
 		output.bitBLT(target, cast(Bitmap8Bit)source);
 	}
 	///Pastes a slice of a bitmap to the given point using blitter, which threats color #0 as transparency.
-	public void bitBLT(Point target, ABitmap source, Coordinate slice) @trusted pure {
+	public void bitBLT(Point target, ABitmap source, Coordinate slice) @trusted {
 		output.bitBLT(target, cast(Bitmap8Bit)source, slice);
 	}
 	///Pastes a repeated bitmap pattern over the specified area.
-	public void bitBLTPattern(Coordinate target, ABitmap pattern) @trusted pure {
+	public void bitBLTPattern(Coordinate target, ABitmap pattern) @trusted {
 		output.bitBLTPattern(target, cast(Bitmap8Bit)pattern);
 	}
 	///XOR blits a repeated bitmap pattern over the specified area.
-	public void xorBitBLT(Coordinate target, ABitmap pattern) @trusted pure {
+	public void xorBitBLT(Coordinate target, ABitmap pattern) @trusted {
 		output.xorBitBLT(target, cast(Bitmap8Bit)pattern);
 	}
 	///XOR blits a color index over a specified area.
-	public void xorBitBLT(Coordinate target, ubyte color) @trusted pure {
+	public void xorBitBLT(Coordinate target, ubyte color) @trusted {
 		output.xorBitBLT(target, color);
 	}
 	///Fills an area with the specified color.
-	public void fill(Point target, ubyte color, ubyte background = 0) @trusted pure {
+	public void fill(Point target, ubyte color, ubyte background = 0) @trusted {
 
 	}
 	///Draws a single line text within the given prelimiter.
-	public void drawTextSL(Coordinate target, Text text, Point offset) @trusted pure {
+	public void drawTextSL(Coordinate target, Text text, Point offset) @trusted {
 		output.drawSingleLineText(target, text, offset.x, offset.y);
 	}
 	///Draws a multi line text within the given prelimiter.
-	public void drawTextML(Coordinate target, Text text, Point offset) @trusted pure {
+	public void drawTextML(Coordinate target, Text text, Point offset) @trusted {
 		output.drawMultiLineText(target, text, offset.x, offset.y);
 	}
 	///Clears the area within the target
-	public void clearArea(Coordinate target) @trusted pure {
+	public void clearArea(Coordinate target) @trusted {
 		output.drawBox(target, getStyleSheet.getColor("window"));
 	}
 	//Implementation of the `Focusable` interface:
@@ -436,7 +474,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	///Called when an object loses focus.
 	public void focusTaken() {
 		if (focusedElement != -1) {
-			focusables[focusedElement].focusLost;
+			focusables[focusedElement].focusTaken;
 			focusedElement = -1;
 		}
 		active = false;
@@ -448,7 +486,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public int cycleFocus(int direction) {
 		if (focusedElement < focusables.length && focusedElement >= 0) {
 			if (focusables[focusedElement].cycleFocus(direction) == -1) {
-				focusables[focusedElement].focusLost;
+				focusables[focusedElement].focusTaken;
 				focusedElement += direction;
 				focusables[focusedElement].focusGiven;
 			}

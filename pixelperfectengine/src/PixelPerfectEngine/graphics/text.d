@@ -125,12 +125,15 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * cannot be inserted easily.
 	 */
 	public dchar overwriteChar(size_t pos, dchar c) @nogc @safe pure nothrow {
-		if(pos <= text.length) {
+		if(pos < text.length) {
 			const dchar orig = text[pos];
 			text[pos] = c;
 			return orig;
 		} else if(next) {
 			return next.overwriteChar(pos - text.length, c);
+		} else if (pos == text.length) {
+			text ~= c;
+			return c;
 		} else return dchar.init;
 	}
 	/**

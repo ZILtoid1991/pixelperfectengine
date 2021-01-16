@@ -19,8 +19,8 @@ import bindbc.sdl.bind.sdlmouse;
  * Handles windows as well as PopUpElements.
  */
 public class WindowHandler : InputListener, MouseListener, PopUpHandler {
-	alias WindowSet = LinkedList!(Window, false, "cmpObjPtr(a, b)");
-	alias PopUpSet = LinkedList!(PopUpElement, false, "cmpObjPtr(a, b)");
+	alias WindowSet = LinkedList!(Window, false, "a is b");
+	alias PopUpSet = LinkedList!(PopUpElement, false, "a is b");
 	protected WindowSet windows;
 	protected PopUpSet popUpElements;
 	private int numOfPopUpElements;
@@ -76,9 +76,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	/**
 	 * Adds a window to the handler.
 	 */
-	public void addWindow(Window w) @safe {
-		windows ~= w;
-		w.addParent(this);
+	public void addWindow(Window w) @trusted {
+		windows.put(w);
+		w.addHandler(this);
 		w.draw();
 		setWindowToTop(w);
 	}
@@ -87,6 +87,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * Adds a DefaultDialog as a message box
 	 */
 	public void message(dstring title, dstring message, int width = 256) {
+		import PixelPerfectEngine.concrete.dialogs.defaultdialog;
 		StyleSheet ss = getStyleSheet();
 		dstring[] formattedMessage = ss.getChrFormatting("label").font.breakTextIntoMultipleLines(message, width -
 				ss.drawParameters["WindowLeftPadding"] - ss.drawParameters["WindowRightPadding"]);
@@ -95,8 +96,8 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		height += ss.drawParameters["WindowTopPadding"] + ss.drawParameters["WindowBottomPadding"] +
 				ss.drawParameters["ComponentHeight"];
 		Coordinate c = Coordinate(mouseX - width / 2, mouseY - height / 2, mouseX + width / 2, mouseY + height / 2);
-		Text title0 = new Text(title, ss.getChrFormatting("windowHeader"));
-		addWindow(new DefaultDialog(c, null, title0, formattedMessage));
+		//Text title0 = new Text(title, ss.getChrFormatting("windowHeader"));
+		addWindow(new DefaultDialog(c, null, title, formattedMessage));
 	}
 	/**
 	 * Adds a background.
@@ -108,16 +109,16 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	/**
 	 * Returns the window priority or -1 if the window can't be found.
 	 */
-	private sizediff_t whichWindow(Window w) @safe nothrow {
+	private int whichWindow(Window w) @safe pure nothrow {
 		try
-			windows.which(w);
+			return cast(int)windows.which(w);
 		catch (Exception e)
 			return -1;
 	}
 	/**
 	 * Sets sender to be top priority.
 	 */
-	public void setWindowToTop(Window w) @safe nothrow {
+	public void setWindowToTop(Window w) {
 		windows[0].focusTaken();
 		sizediff_t pri = whichWindow(w);
 		windows.setAsFirst(pri);
@@ -130,7 +131,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	protected void updateSpriteOrder() {
 		spriteLayer.clear();
 		for (int i ; i < windows.length ; i++)
-			spriteLayer.addSprite(windows[i].getOutput, i, windows[i].position);
+			spriteLayer.addSprite(windows[i].getOutput, i, windows[i].getPosition);
 
 		
 	}
@@ -148,13 +149,13 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 */
 	public void closeWindow(Window sender) {
 		//writeln(sender);
-		dragEventState = false;
-		dragEventDest = null;
-		int p = whichWindow(sender);
-		for(int i ; i < windows.length ; i++)
-			spriteLayer.removeSprite(i);
+		//dragEventState = false;
+		//dragEventDest = null;
+		const int p = whichWindow(sender);
+		/+for(int i ; i < windows.length ; i++)
+			spriteLayer.removeSprite(i);+/
 		//spriteLayer.removeSprite(p);
-		windows = remove(windows, p);
+		windows.remove(p);
 
 		updateSpriteOrder();
 	}
@@ -330,39 +331,42 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 */
 	public void refreshWindow(Window sender) @safe {
 		const int n = whichWindow(sender);
-		spriteLayer.replaceSprite(windows[n].output.output, n, windows[n].position);
+		spriteLayer.replaceSprite(windows[n].getOutput, n, windows[n].getPosition);
 	}
 	
 	public void addPopUpElement(PopUpElement p){
-		popUpElements ~= p;
+		popUpElements.put(p);
 		p.addParent(this);
 		p.draw;
 		mouseX -= (p.position.width/2);
 		mouseY -= (p.position.height/2);
 		p.position.move(mouseX,mouseY);
 		numOfPopUpElements--;
-		spriteLayer.addSprite(p.output.output,numOfPopUpElements,mouseX,mouseY);
+		spriteLayer.addSprite(p.getOutput,numOfPopUpElements,mouseX,mouseY);
 
 	}
 	public void addPopUpElement(PopUpElement p, int x, int y){
-		popUpElements ~= p;
+		popUpElements.put(p);
 		p.addParent(this);
 		p.draw;
 		p.position.move(x, y);
 		numOfPopUpElements--;
-		spriteLayer.addSprite(p.output.output,numOfPopUpElements, x, y);
+		spriteLayer.addSprite(p.getOutput,numOfPopUpElements, x, y);
 	}
 	private void removeAllPopUps(){
-		for( ; numOfPopUpElements < 0 ; numOfPopUpElements++){
+		for ( ; numOfPopUpElements < 0 ; numOfPopUpElements++){
 			spriteLayer.removeSprite(numOfPopUpElements);
 		}
-		popUpElements.length = 0;
+		///Why didn't I add a method to clear linked lists? (slams head into wall)
+		while (popUpElements.length) {
+			popUpElements.remove(0);
+		}
 	}
 	private void removeTopPopUp(){
 
 		spriteLayer.removeSprite(numOfPopUpElements++);
 
-		popUpElements.length--;
+		popUpElements.remove(popUpElements.length - 1);
 	}
 	public StyleSheet getDefaultStyleSheet(){
 		return defaultStyle;

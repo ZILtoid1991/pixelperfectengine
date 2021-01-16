@@ -60,7 +60,7 @@ public class StyleSheet{
 	/**
 	 * Creates a default stylesheet.
 	 */
-	public this(){
+	public this() @safe {
 		color["transparent"] = 0x0000;
 		color["normaltext"] = 0x001F;
 		color["window"] = 0x0002;
@@ -107,6 +107,7 @@ public class StyleSheet{
 		drawParameters["WindowRightPadding"] = 5;
 		drawParameters["WindowTopPadding"] = 20;
 		drawParameters["WindowBottomPadding"] = 5;
+		drawParameters["WindowHeaderHeight"] = 16;
 		drawParameters["ComponentHeight"] = 20;
 		drawParameters["WindowHeaderHeight"] = 16;
 		drawParameters["WHPaddingTop"] = 1;
@@ -118,38 +119,38 @@ public class StyleSheet{
 	/**
 	 * Adds a fontset to the stylesheet.
 	 */
-	public void addFontset(Fontset!Bitmap8Bit f, string style) {
+	public void addFontset(Fontset!Bitmap8Bit f, string style) @safe {
 		font[style] = f;
 	}
-	public Fontset!Bitmap8Bit getFontset(string style) {
+	public Fontset!Bitmap8Bit getFontset(string style) @safe {
 		return font.get(fontTypes.get(style, style), font[fontTypes["default"]]);
 	}
-	public void addChrFormatting(CharacterFormattingInfo!Bitmap8Bit frmt, string type) {
+	public void addChrFormatting(CharacterFormattingInfo!Bitmap8Bit frmt, string type) @safe {
 		_chrFormat[type] = frmt;
 	}
 	/**
 	 * Duplicates character formatting for multiple labels.
 	 */
-	public void duplicateChrFormatting(string src, string dest) {
+	public void duplicateChrFormatting(string src, string dest) @safe {
 		_chrFormat[dest] = _chrFormat[src];
 	}
-	public CharacterFormattingInfo!Bitmap8Bit getChrFormatting(string type) {
+	public CharacterFormattingInfo!Bitmap8Bit getChrFormatting(string type) @trusted {
 		return _chrFormat.get(type, _chrFormat["default"]);
 	}
-	public void setColor(ubyte c, string colorName) {
+	public void setColor(ubyte c, string colorName) @safe {
 		color[colorName] = c;
 	}
-	public ubyte getColor(string colorName) {
+	public ubyte getColor(string colorName) @safe {
 		return color[colorName];
 	}
-	public void setImage(Bitmap8Bit bitmap, string name) {
+	public void setImage(Bitmap8Bit bitmap, string name) @safe {
 		images[name] = bitmap;
 	}
-	public Bitmap8Bit getImage(string name) {
+	public Bitmap8Bit getImage(string name) @safe {
 		return images.get(name, null);
 	}
 }
 
 ///Stores a global, default stylesheet.
 ///Must be initialized alongside with the GUI.
-public shared StyleSheet globalDefaultStyle;
+public static StyleSheet globalDefaultStyle;

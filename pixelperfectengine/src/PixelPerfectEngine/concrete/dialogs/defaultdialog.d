@@ -10,7 +10,7 @@ public class DefaultDialog : Window{
 	private string source;
 	public void delegate(Event ev) output;
 
-	public this(Coordinate size, string source, Text title, Text[] message, Text[] options = [],
+	public this(Box size, string source, Text title, Text[] message, Text[] options = [],
 			string[] values = ["close"], StyleSheet customStyle = null) {
 		super(size, title, null, customStyle);
 		//generate text
@@ -33,21 +33,21 @@ public class DefaultDialog : Window{
 		
 		for(int i; i < options.length; i++) {
 			x2 = x1 - (options[i].getWidth + getStyleSheet.drawParameters["ButtonPaddingHoriz"]);
-			buttons ~= new Button(options[i], values[i], Coordinate(x2, button2, x1, button1));
+			buttons ~= new Button(options[i], values[i], Box(x2, button2, x1, button1));
 			buttons[i].onMouseLClick = &actionEvent;
 			addElement(buttons[i]);
 			x1 = x2;
 		}
 		//add labels
 		for(int i; i < message.length; i++) {
-			Label msg = new Label(message[i], "null", Coordinate(getStyleSheet.drawParameters["WindowLeftPadding"],
+			Label msg = new Label(message[i], "null", Box(getStyleSheet.drawParameters["WindowLeftPadding"],
 								y1, size.width()-getStyleSheet.drawParameters["WindowRightPadding"], y1 + y2));
 			addElement(msg);
 			y1 += y2;
 		}
 	}
 	///Ditto
-	public this(Coordinate size, string source, dstring title, dstring[] message, dstring[] options = ["Close"],
+	public this(Box size, string source, dstring title, dstring[] message, dstring[] options = ["Close"],
 			string[] values = ["close"], StyleSheet customStyle = null) {
 		this.customStyle = customStyle;
 		Text[] opt_2;

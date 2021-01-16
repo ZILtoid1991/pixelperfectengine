@@ -55,52 +55,52 @@ public class ListViewItem {
 		}
 		///Returns whether the field is editable.
 		public @property bool editable() @nogc @safe pure nothrow const {
-			return flags & IS_EDITABLE;
+			return flags & IS_EDITABLE ? true : false;
 		}
 		///Sets whether the field is editable. Returns the new value.
 		public @property bool editable(bool val) @nogc @safe pure nothrow {
 			if (val) flags |= IS_EDITABLE;
 			else flags &= ~IS_EDITABLE;
-			return flags & IS_EDITABLE;
+			return flags & IS_EDITABLE ? true : false;
 		}
 		///Returns whether the field is integer only.
 		public @property bool integerOnly() @nogc @safe pure nothrow const {
-			return flags & INTEGER_ONLY;
+			return flags & INTEGER_ONLY ? true : false;
 		}
 		///Sets whether the field is integer only. Returns the new value.
 		public @property bool integerOnly(bool val) @nogc @safe pure nothrow {
 			if (val) flags |= INTEGER_ONLY;
 			else flags &= ~INTEGER_ONLY;
-			return flags & INTEGER_ONLY;
+			return flags & INTEGER_ONLY ? true : false;
 		}
 		///Returns whether the field is numeric only.
 		public @property bool numericOnly() @nogc @safe pure nothrow const {
-			return flags & NUMERIC_ONLY;
+			return flags & NUMERIC_ONLY ? true : false;
 		}
 		///Sets whether the field is numeric only. Returns the new value.
 		public @property bool numericOnly(bool val) @nogc @safe pure nothrow {
 			if (val) flags |= NUMERIC_ONLY;
 			else flags &= ~NUMERIC_ONLY;
-			return flags & NUMERIC_ONLY;
+			return flags & NUMERIC_ONLY ? true : false;
 		}
 		///Returns whether the field forces floating point.
 		public @property bool forceFP() @nogc @safe pure nothrow const {
-			return flags & FORCE_FP;
+			return flags & FORCE_FP ? true : false;
 		}
 		///Sets whether the field forces floating point. Returns the new value.
 		public @property bool forceFP(bool val) @nogc @safe pure nothrow {
 			if (val) flags |= FORCE_FP;
 			else flags &= ~FORCE_FP;
-			return flags & FORCE_FP;
+			return flags & FORCE_FP ? true : false;
 		}
 		///Returns the field's format flags.
 		public @property FormatFlags formatFlags() @nogc @safe pure nothrow const {
-			return cast(FormatFlags)flags & FORMAT_FLAGS;
+			return cast(FormatFlags)(flags & FORMAT_FLAGS);
 		}
 		///Sets whether the field is editable. Returns the new value.
 		public @property FormatFlags formatFlags(FormatFlags val) @nogc @safe pure nothrow {
 			flags |= val;
-			return cast(FormatFlags)flags & FORMAT_FLAGS;
+			return cast(FormatFlags)(flags & FORMAT_FLAGS);
 		}
 	}
 	/**
@@ -112,10 +112,10 @@ public class ListViewItem {
 	/**
 	 * Creates a list view item from texts.
 	 */
-	this (int height, Text[] fields) @nogc @safe pure nothrow {
+	this (int height, Text[] fields) @safe pure nothrow {
 		this.height = height;
-		foreach (Field key; fields) {
-			this.field = Field(key, null, Field.FormatFlags.Context);
+		foreach (Text key; fields) {
+			this.fields ~= Field(key, null, Field.FormatFlags.Context);
 		}
 	}
 	/**
@@ -140,7 +140,7 @@ public class ListViewItem {
 	}
 	///Returns the amount of fields in this item.
 	public size_t length() @nogc @safe pure nothrow {
-		fields.length;
+		return fields.length;
 	}
 	/**
 	 * Draws the ListViewItem. Draw parameters are supplied via a nested class found in ListView.
@@ -152,8 +152,8 @@ public class ListViewItem {
 		Point offset = Point(parent.drawParams.offsetP, parent.drawParams.offsetFR);
 		for (int i = parent.drawParams.offsetC ; i <= parent.drawParams.targetC ; i++) {
 			t.right = min(t.left + parent.drawParams.columnWidths[i], target.right);
-			parent.drawTextSL(t.pad(ss.drawParameters["ListViewColPadding"], ss.drawParameters["ListViewRowPadding"]), fields[i],
-					offset);
+			parent.drawTextSL(t.pad(ss.drawParameters["ListViewColPadding"], ss.drawParameters["ListViewRowPadding"]), 
+					fields[i].text, offset);
 			t.left = t.right;
 			offset.x = 0;
 		}
@@ -168,8 +168,8 @@ public class ListViewItem {
 public class ListViewHeader : ListViewItem {
 	public int[]				columnWidths;	///Width of each columns
 	///Default CTOR
-	this (int height, int[] columnWidths, Text[] fields) @nogc @safe pure nothrow {
-		assert (_columnWidths.length == fields.length, "Lenght mismatch between the two arrays!");
+	this (int height, int[] columnWidths, Text[] fields) @safe pure nothrow {
+		assert (columnWidths.length == fields.length, "Lenght mismatch between the two arrays!");
 		this.columnWidths = columnWidths;
 		super(height, fields);
 	}
@@ -193,7 +193,7 @@ public class ListViewHeader : ListViewItem {
 			with (parent) {
 				drawLine(t.cornerUL, t.cornerUR, ss.getColor("windowascent"));
 				drawLine(t.cornerLL, t.cornerLR, ss.getColor("windowdescent"));
-				drawTextSL(t.pad(ss.drawParameters["ListViewColPadding"], ss.drawParameters["ListViewRowPadding"]), fields[i],
+				drawTextSL(t.pad(ss.drawParameters["ListViewColPadding"], ss.drawParameters["ListViewRowPadding"]), fields[i].text, 
 						offset);
 			}
 			t.left = t.right;
@@ -245,6 +245,8 @@ public class ListView : WindowElement, ElementContainer {
 	///Holds shared draw parameters that are used when the element is being drawn.
 	///Should be set to null otherwise.
 	public DrawParameters		drawParams;
+	///Called when an item is selected
+	public EventDeleg			onItemSelect;
 	///Standard CTOR
 	public this(ListViewHeader header, ListViewItem[] entries, string source, Box position) {
 		_header = header;
@@ -266,7 +268,7 @@ public class ListView : WindowElement, ElementContainer {
 	 * Accesses data entries in a safe manner.
 	 */
 	public ListViewItem opIndexAssign(ListViewItem value, size_t index) @safe pure {
-		if (value.length == header.length) {
+		if (value.length == _header.length) {
 			if (entries.length == index) {
 				entries ~= value;
 			} else {
@@ -280,22 +282,22 @@ public class ListView : WindowElement, ElementContainer {
 	 */
 	public ListViewItem opOpAssign(string op)(ListViewItem value) {
 		static if (op == "~" || op == "+") {
-			if (value.length == header.length) {
+			if (value.length == _header.length) {
 				entries ~= value;
 			} else throw new Exception("Column number mismatch!");
 		} else static assert (0, "Unsupported operator!");
-		return this;
+		return value;
 	}
 	/**
 	 * Allows to append multiple elements to the entry list.
 	 */
-	public ListViewItem opOpAssign(string op)(ListViewItem[] value) {
+	public ListViewItem[] opOpAssign(string op)(ListViewItem[] value) {
 		static if (op == "~" || op == "+") {
-			if (value.length == header.length) {
+			if (value.length == _header.length) {
 				entries ~= value;
 			} else throw new Exception("Column number mismatch!");
 		} else static assert (0, "Unsupported operator!");
-		return this;
+		return value;
 	}
 	override public void draw() {
 		StyleSheet ss = getStyleSheet;
@@ -308,7 +310,7 @@ public class ListView : WindowElement, ElementContainer {
 			if (horizSlider) { 
 				offsetP = horizSlider.value();
 				//int offsetC;
-				for (; _header.columnWidths[OffsetC] < offsetP ; offsetC++) {
+				for (; _header.columnWidths[offsetC] < offsetP ; offsetC++) {
 					offsetP -= _header.columnWidths[offsetC];
 				}
 				///Calculate last column number
@@ -384,7 +386,7 @@ public class ListView : WindowElement, ElementContainer {
 	/**
 	 * Sets the selected item and then does a redraw.
 	 */
-	public int value(int val) {
+	public @property int value(int val) {
 		selection = val;
 		draw;
 		return selection;
@@ -410,6 +412,12 @@ public class ListView : WindowElement, ElementContainer {
 		ListViewItem result = entries[index];
 		entries = entries.remove(index);
 		return result;
+	}
+	/**
+	 * Removes all entries in the list.
+	 */
+	public void clear() @safe {
+		entries.length = 0;
 	}
 	/**
 	 * Refreshes the list view.
@@ -477,59 +485,121 @@ public class ListView : WindowElement, ElementContainer {
 
 	}
 	///Draws a line.
-	public void drawLine(Point from, Point to, ubyte color) @trusted pure {
+	public void drawLine(Point from, Point to, ubyte color) @trusted {
 		parent.drawLine(from, to, color);
 	}
 	///Draws a line pattern.
-	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted pure {
+	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted {
 		parent.drawLinePattern(from, to, pattern);
 	}
 	///Draws an empty rectangle.
-	public void drawBox(Box target, ubyte color) @trusted pure {
+	public void drawBox(Box target, ubyte color) @trusted {
 		parent.drawBox(target, color);
 	}
 	///Draws an empty rectangle with line patterns.
-	public void drawBoxPattern(Box target, ubyte[] pattern) @trusted pure {
+	public void drawBoxPattern(Box target, ubyte[] pattern) @trusted {
 		parent.drawBoxPattern(target, pattern);
 	}
 	///Draws a filled rectangle with a specified color.
-	public void drawFilledBox(Box target, ubyte color) @trusted pure {
+	public void drawFilledBox(Box target, ubyte color) @trusted {
 		parent.drawFilledBox(target, color);
 	}
 	///Pastes a bitmap to the given point using blitter, which threats color #0 as transparency.
-	public void bitBLT(Point target, ABitmap source) @trusted pure {
+	public void bitBLT(Point target, ABitmap source) @trusted {
 		parent.bitBLT(target, source);
 	}
 	///Pastes a slice of a bitmap to the given point using blitter, which threats color #0 as transparency.
-	public void bitBLT(Point target, ABitmap source, Box slice) @trusted pure {
+	public void bitBLT(Point target, ABitmap source, Box slice) @trusted {
 		parent.bitBLT(target, source, slice);
 	}
 	///Pastes a repeated bitmap pattern over the specified area.
-	public void bitBLTPattern(Box target, ABitmap pattern) @trusted pure {
+	public void bitBLTPattern(Box target, ABitmap pattern) @trusted {
 		parent.bitBLTPattern(target, pattern);
 	}
 	///XOR blits a repeated bitmap pattern over the specified area.
-	public void xorBitBLT(Box target, ABitmap pattern) @trusted pure {
+	public void xorBitBLT(Box target, ABitmap pattern) @trusted {
 		parent.xorBitBLT(target, pattern);
 	}
 	///XOR blits a color index over a specified area.
-	public void xorBitBLT(Box target, ubyte color) @trusted pure {
+	public void xorBitBLT(Box target, ubyte color) @trusted {
 		parent.xorBitBLT(target, color);
 	}
 	///Fills an area with the specified color.
-	public void fill(Point target, ubyte color, ubyte background = 0) @trusted pure {
+	public void fill(Point target, ubyte color, ubyte background = 0) @trusted {
 		parent.fill(target, color, background);
 	}
 	///Draws a single line text within the given prelimiter.
-	public void drawTextSL(Box target, Text text, Point offset) @trusted pure {
+	public void drawTextSL(Box target, Text text, Point offset) @trusted {
 		parent.drawTextSL(target, text, offset);
 	}
 	///Draws a multi line text within the given prelimiter.
-	public void drawTextML(Box target, Text text, Point offset) @trusted pure {
+	public void drawTextML(Box target, Text text, Point offset) @trusted {
 		parent.drawTextML(target, text, offset);
 	}
 	///Clears the area within the target
-	public void clearArea(Box target) @trusted pure {
+	public void clearArea(Box target) @trusted {
 		parent.clearArea(target);
+	}
+	///Passes mouse click event
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (vertSlider) {
+			const Box p = vertSlider.getPosition();
+			if (p.isBetween(mce.x, mce.y)) {
+				mce.x -= p.left - position.left;
+				mce.y -= p.top - position.top;
+				vertSlider.passMCE(mec, mce);
+				return;
+			}
+		}
+		if (horizSlider) {
+			const Box p = horizSlider.getPosition();
+			if (p.isBetween(mce.x, mce.y)) {
+				mce.x -= p.left - position.left;
+				mce.y -= p.top - position.top;
+				horizSlider.passMCE(mec, mce);
+				return;
+			}
+		}
+
+		if (mce.button != MouseButton.Left) return;
+
+		mce.x -= _header.height;
+		int pixelsTotal = mce.x, pos;
+		if (vertSlider) ///calculate outscrolled area
+			pixelsTotal += vertSlider.value;
+		
+		for (; pixelsTotal > entries[pos].height ; pos++) 
+			pixelsTotal -= entries[pos].height;
+		if (selection != pos)
+			selection = pos;
+		else if (onItemSelect !is null)
+			onItemSelect(new Event(this, entries[pos], EventType.Selection, SourceType.WindowElement));
+		draw();
+	}
+	///Passes mouse move event
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (vertSlider) {
+			const Box p = vertSlider.getPosition();
+			if (p.isBetween(mme.x, mme.y)) {
+				mme.x -= p.left - position.left;
+				mme.y -= p.top - position.top;
+				vertSlider.passMME(mec, mme);
+				return;
+			}
+		}
+		if (horizSlider) {
+			const Box p = horizSlider.getPosition();
+			if (p.isBetween(mme.x, mme.y)) {
+				mme.x -= p.left - position.left;
+				mme.y -= p.top - position.top;
+				horizSlider.passMME(mec, mme);
+				return;
+			}
+		}
+	}
+	///Passes mouse scroll event
+	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		if (horizSlider) horizSlider.passMWE(mec, mwe);
+		if (vertSlider) vertSlider.passMWE(mec, mwe);
 	}
 }

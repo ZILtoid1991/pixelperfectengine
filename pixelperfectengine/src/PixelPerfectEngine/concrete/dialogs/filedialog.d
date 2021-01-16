@@ -5,6 +5,7 @@ import PixelPerfectEngine.concrete.elements;
 import std.datetime;
 import std.conv : to;
 import std.file;
+static import std.path;
 
 /**
  * File dialog window for opening files.
@@ -38,16 +39,14 @@ public class FileDialog : Window {
 		}
 	}
 
-	//private ActionListener al;
 	private string source;
 	private string[] pathList, driveList;
 	private string directory, filename;
-	private ListView lb;
+	private ListView lw;
 	private TextBox tb;
 
 	private bool save;
 	private FileAssociationDescriptor[] filetypes;
-	public static const string subsourceID = "filedialog";
 	private int selectedType;
 	public void delegate(Event ev) onFileselect;
 	private Button button_up;
@@ -90,6 +89,15 @@ public class FileDialog : Window {
 		tb = new TextBox(new Text(to!dstring(filename), getStyleSheet().getChrFormatting("textBox")), "filename", 
 				Coordinate(4, 130, 162, 150));
 		addElement(tb);
+
+		//generate listview
+		auto hdrFrmt = getStyleSheet().getChrFormatting("ListViewHeader");
+		const int headerHeight = hdrFrmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
+		ListViewHeader lvh = new ListViewHeader(headerHeight, [160, 40, 176], [new Text("Name", hdrFrmt), 
+				new Text("Type", hdrFrmt), new Text("Date", hdrFrmt)]);
+		lw = new ListView(lvh, null, "lw", Box(4, 20, 216, 126));
+
+
 		//generate listbox
 
 
@@ -114,17 +122,16 @@ public class FileDialog : Window {
 	 * Iterates throught a directory for listing.
 	 */
 	private void spanDir(){
-		import std.utf : toUTF32;
+		
 		
 		pathList.length = 0;
-		ListBoxItem[] items;
+		lw.clear();
+		//ListBoxItem[] items;
 		foreach(DirEntry de; dirEntries(directory, SpanMode.shallow)){
 			if(de.isDir){
 				pathList ~= de.name;
-				/*columns[0].elements ~= to!wstring(getFilenameFromPath(de.name));
-				columns[1].elements ~= "<DIR>";
-				columns[2].elements ~= formatDate(de.timeLastModified);*/
-				items ~= new ListBoxItem([toUTF32(getFilenameFromPath(de.name)),"<DIR>"d,formatDate(de.timeLastModified)]);
+				//items ~= new ListBoxItem([toUTF32(getFilenameFromPath(de.name)),"<DIR>"d,formatDate(de.timeLastModified)]);
+				createEntry(de.name, "<DIR>", de.timeLastModified);
 			}
 		}
 		//foreach(f; filetypes){
@@ -135,31 +142,54 @@ public class FileDialog : Window {
 					/*columns[0].elements ~= to!wstring(getFilenameFromPath(de.name, true));
 					columns[1].elements ~= to!wstring(ft);
 					columns[2].elements ~= formatDate(de.timeLastModified);*/
-					items ~= new ListBoxItem([toUTF32(getFilenameFromPath(de.name)),toUTF32(ft),formatDate(de.timeLastModified)]);
+					//items ~= new ListBoxItem([toUTF32(getFilenameFromPath(de.name)),toUTF32(ft),formatDate(de.timeLastModified)]);
+					createEntry(de.name, ft, de.timeLastModified);
 				}
 			}
 		}
-		lb.updateColumns(items);
-		lb.draw();
+		//lb.updateColumns(items);
+		//lb.draw();
+		lw.refresh();
 
+	}
+	/**
+	 * Creates a single ListViewItem with the supplied data, then adds it to the ListView.
+	 */
+	private void createEntry(string filename, string filetype, SysTime time) {
+		import std.utf : toUTF32;
+		auto frmt = getStyleSheet().getChrFormatting("ListViewItem");
+		const int height = frmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
+		lw ~= new ListViewItem(height, [new Text(toUTF32(filename), frmt), new Text(toUTF32(filetype), frmt), 
+				new Text(formatDate(time), frmt)]);
+	}
+	/**
+	 * Creates drive entry for the ListView.
+	 */
+	private void createDriveEntry(dstring driveName) {
+		//import std.utf : toUTF32;
+		auto frmt = getStyleSheet().getChrFormatting("ListViewItem");
+		const int height = frmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
+		lw ~= new ListViewItem(height, [new Text(driveName, frmt), new Text("<DRIVE>", frmt), 
+				new Text("n/a", frmt)]);
 	}
 	/**
 	 * Standard date formatting tool.
 	 */
 	private dstring formatDate(SysTime time){
-		dstring s;
+		dchar[] s;
+		s.reserve(24);
 		s ~= to!dstring(time.year());
-		s ~= "-";
+		s ~= '-';
 		s ~= to!dstring(time.month());
-		s ~= "-";
+		s ~= '-';
 		s ~= to!dstring(time.day());
-		s ~= " ";
+		s ~= ' ';
 		s ~= to!dstring(time.hour());
-		s ~= ":";
+		s ~= ':';
 		s ~= to!dstring(time.minute());
-		s ~= ":";
+		s ~= ':';
 		s ~= to!dstring(time.second());
-		return s;
+		return s.idup;
 	}
 	/**
 	 * Detects the available drives, currently only used under windows.
@@ -229,13 +259,14 @@ public class FileDialog : Window {
 	private void changeDrive(Event ev){
 		version(Windows){
 			pathList.length = 0;
-			ListBoxItem[] items;
+			//ListBoxItem[] items;
 			foreach(string drive; driveList){
 				pathList ~= drive;
-				items ~= new ListBoxItem([to!dstring(drive),"<DRIVE>"d,""d]);
+				//items ~= new ListBoxItem([to!dstring(drive),"<DRIVE>"d,""d]);
+				createDriveEntry(to!dstring(drive));
 			}
-			lb.updateColumns(items);
-			lb.draw();
+			//lb.updateColumns(items);
+			//lb.draw();
 		}else version(Posix){
 			directory = "/dev/";
 			spanDir();
@@ -250,11 +281,12 @@ public class FileDialog : Window {
 		filename = toUTF8(tb.getText.text);
 		//al.actionEvent("file", EventType.FILEDIALOGEVENT, 0, s);
 		if(onFileselect !is null)
-			onFileselect(new Event(source, "", directory, filename, null, selectedType, EventType.FILEDIALOGEVENT));
-		parent.closeWindow(this);
+			onFileselect(new FileEvent(this, SourceType.DialogWindow, directory, filename, filetypes[selectedType].types[0]));
+			//onFileselect(new Event(source, "", directory, filename, null, selectedType, EventType.FILEDIALOGEVENT));
+		handler.closeWindow(this);
 	}
 	private void event_fileSelector(Event ev) {
-		selectedType = ev.value;
+		//selectedType = lw.value;
 		spanDir();
 	}
 	private void button_type_onMouseLClickRel(Event ev) {
@@ -267,27 +299,28 @@ public class FileDialog : Window {
 		}
 		PopUpMenu p = new PopUpMenu(e,"fileSelector");
 		p.onMouseClick = &event_fileSelector;
-		parent.addPopUpElement(p);
+		handler.addPopUpElement(p);
 	}
 	private void button_close_onMouseLClickRel(Event ev) {
-		parent.closeWindow(this);
+		handler.closeWindow(this);
 	}
 	private void listBox_onItemSelect(Event ev) {
 		try{
 			if(pathList.length == 0) return;
-			if(isDir(pathList[ev.value])){
-				directory = pathList[ev.value];
+			if(isDir(pathList[lw.value])){
+				directory = pathList[lw.value];
 				spanDir();
 			}else{
-				filename = getFilenameFromPath(pathList[ev.value]);
+				filename = getFilenameFromPath(pathList[lw.value]);
 				tb.setText(new Text(to!dstring(filename), tb.getText().formatting));
 			}
 		}catch(Exception e){
+			import PixelPerfectEngine.concrete.dialogs.defaultdialog;
 			auto frmt1 = getStyleSheet().getChrFormatting("windowHeader");
 			auto frmt2 = getStyleSheet().getChrFormatting("default");
 			DefaultDialog d = new DefaultDialog(Coordinate(10,10,256,80),"null", new Text(to!dstring("Error!"), frmt1),
 					[new Text(to!dstring(e.msg), frmt2)]);
-			parent.addWindow(d);
+			handler.addWindow(d);
 		}
 	}
 }

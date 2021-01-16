@@ -2,7 +2,7 @@ module PixelPerfectEngine.concrete.popup.base;
 
 public import PixelPerfectEngine.concrete.interfaces;
 public import PixelPerfectEngine.concrete.types;
-import PixelPerfectEngine.graphics.draw;
+package import PixelPerfectEngine.graphics.draw;
 
 /**
  * For creating pop-up elements like menus.
@@ -49,9 +49,6 @@ public abstract class PopUpElement : MouseEventReceptor {
 	protected StyleSheet getStyleSheet(){
 		if(customStyle !is null){
 			return customStyle;
-		}
-		if(styleSheet !is null){
-			return styleSheet;
 		}
 		return parent.getStyleSheet();
 	}

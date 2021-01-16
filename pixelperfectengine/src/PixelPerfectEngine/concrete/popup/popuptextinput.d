@@ -17,11 +17,11 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 		this.position = position;
 		enableEdit = true;
 		output = new BitmapDrawer(position.width, position.height);
-		inputhandler.startTextInput(this);
+		inputhandler.startTextInput(this, false, position);
 	}
 	public override void draw(){
 		StyleSheet ss = getStyleSheet();
-		const Box mainPos = box(0,0,position.width - 1, position.height - 1);
+		const Box mainPos = Box(0,0,position.width - 1, position.height - 1);
 		output.drawFilledBox(mainPos, ss.getColor("window"));
 		output.drawBox(mainPos, ss.getColor("windowascent"));
 		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
@@ -61,7 +61,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 				position.width,position.height - textPadding);
 		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, cursorPos);
 		if(x > textPos.width) {
-			 if(cursorPos == text.text.length) {
+			 if(cursorPos == this.text.text.length) {
 				horizTextOffset = x - textPos.width;
 			 } else if(cursorPixelPos < horizTextOffset) { //Test for whether the cursor would fall out from the current text area
 				horizTextOffset = cursorPixelPos;
@@ -85,47 +85,47 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
      */
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
 		switch(key){
-			case TextInputKey.ESCAPE:
-				inputhandler.stopTextInput(this);
+			case TextInputKey.Escape:
+				inputhandler.stopTextInput();
 				break;
-			case TextInputKey.ENTER:
-				inputhandler.stopTextInput(this);
+			case TextInputKey.Enter:
+				inputhandler.stopTextInput();
 				//invokeActionEvent(new Event(source, null, null, null, text, text.length, EventType.TEXTINPUT));
 				if(onTextInput !is null)
-					onTextInput(new Event(source, null, null, null, text, cast(int)text.charLength, EventType.TEXTINPUT, null, this));
+					onTextInput(new Event(this, text, EventType.TextInput, SourceType.PopUpElement));
 				break;
-			case TextInputKey.BACKSPACE:
+			case TextInputKey.Backspace:
 				if(cursorPos > 0){
 					deleteCharacter(cursorPos - 1);
 					cursorPos--;
 					draw();
 				}
 				break;
-			case TextInputKey.DELETE:
+			case TextInputKey.Delete:
 				deleteCharacter(cursorPos);
 				draw();
 				break;
-			case TextInputKey.CURSORLEFT:
+			case TextInputKey.CursorLeft:
 				if(cursorPos > 0){
 					--cursorPos;
 					draw();
 				}
 				break;
-			case TextInputKey.CURSORRIGHT:
+			case TextInputKey.CursorRight:
 				if(cursorPos < text.charLength){
 					++cursorPos;
 					draw();
 				}
 				break;
-			case TextInputKey.INSERT:
+			case TextInputKey.Insert:
 				insert = !insert;
 				draw();
 				break;
-			case TextInputKey.HOME:
+			case TextInputKey.Home:
 				cursorPos = 0;
 				draw();
 				break;
-			case TextInputKey.END:
+			case TextInputKey.End:
 				cursorPos = text.charLength;
 				draw();
 				break;
@@ -135,7 +135,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 		}
 	}
 	public void dropTextInput(){
-		parent.endPopUpSession();
+		parent.endPopUpSession(this);
 		
 	}
 	public void initTextInput() {

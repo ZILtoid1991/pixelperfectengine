@@ -14,13 +14,11 @@ public class CheckBox : WindowElement, ISmallButton {
 		position = coordinates;
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(position.width, position.height);
-		this.checked = checked;
-		//draw();
+		isChecked = checked;
 	}
 	///Ditto
 	public this(dstring text, string source, Coordinate coordinates, bool checked = false) {
-		this(new Text(text, getAvailableStyleSheet().getChrFormatting("checkBox")), source, coordinates, checked);
+		this(new Text(text, getStyleSheet().getChrFormatting("checkBox")), source, coordinates, checked);
 	}
 	///CTOR for small button version
 	public this(string iconChecked, string iconUnchecked, string source, Coordinate coordinates, bool checked = false) {
@@ -28,21 +26,18 @@ public class CheckBox : WindowElement, ISmallButton {
 		this.iconChecked = iconChecked;
 		this.iconUnchecked = iconUnchecked;
 		this.source = source;
-		output = new BitmapDrawer(position.width, position.height);
-		this.checked = checked;
+		isChecked = checked;
 	}
 	public override void draw() {
 		parent.clearArea(position);
 		StyleSheet ss = getStyleSheet;
-		/+output.drawColorText(getAvailableStyleSheet().getImage("checkBoxA").width, 0, text,
-				getAvailableStyleSheet().getFontset("default"), getAvailableStyleSheet().getColor("normaltext"), 0);+/
 		Bitmap8Bit icon = isChecked ? ss.getImage(iconChecked) : ss.getImage(iconUnchecked);
 		
 		parent.bitBLT(Point(0, 0), icon);
 		
 		if (text) {
 			Coordinate textPos = position;
-			textPos.left += ss.getImage(iconChecked).width + getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+			textPos.left += ss.getImage(iconChecked).width + ss.drawParameters["TextSpacingSides"];
 			parent.drawTextSL(textPos, text, Point(0, 0));
 		}
 		if (isFocused) {
@@ -53,21 +48,7 @@ public class CheckBox : WindowElement, ISmallButton {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
 	}
-	/**
-	 * Returns the current value (whether it's checked or not) as a boolean.
-	 * DEPRECATED!
-	 */
-	public deprecated @nogc @property bool value(){
-		return checked;
-	}
-	/**
-	 * Sets the new value (whether it's checked or not) as a boolean.
-	 * DEPRECATED!
-	 */
-	public deprecated @property bool value(bool b){
-		if (b) check;
-		else unCheck;
-	}
+	
 	
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		const int width = getStyleSheet().getImage(iconChecked).width;
@@ -99,5 +80,15 @@ public class CheckBox : WindowElement, ISmallButton {
 		if (text) return false;
 		else if (position.width == height && position.height == height) return true;
 		else return false;
+	}
+	///Returns true if left side justified, false otherwise.
+	public bool isLeftSide() @nogc @safe pure nothrow const {
+		return flags & IS_LHS ? true : false;
+	}
+	///Sets the small button to the left side if true.
+	public bool isLeftSide(bool val) @nogc @safe pure nothrow {
+		if (val) flags |= IS_LHS;
+		else flags &= ~IS_LHS;
+		return flags & IS_LHS ? true : false;
 	}
 }

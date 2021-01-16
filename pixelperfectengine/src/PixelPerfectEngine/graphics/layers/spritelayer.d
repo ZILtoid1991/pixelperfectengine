@@ -82,13 +82,6 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		 */
 		this(Coordinate position, Coordinate slice, ABitmap sprite, int priority, int scaleHoriz = 1024,
 				int scaleVert = 1024) pure @trusted nothrow {
-			this.position = position;
-			//this.sprite = sprite;
-			//palette = sprite.getPalettePtr();
-			this.priority = priority;
-			//this.attributes = attributes;
-			this.scaleVert = scaleVert;
-			this.scaleHoriz = scaleHoriz;
 			if(slice.top < 0)
 				slice.top = 0;
 			if(slice.left < 0)
@@ -98,21 +91,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			if(slice.bottom >= sprite.height)
 				slice.bottom = sprite.height - 1;
 			this.slice = slice;
-			if(typeid(sprite) is typeid(Bitmap4Bit)){
-				wordLength = 4;
-				paletteSh = 4;
-				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
-			}else if(typeid(sprite) is typeid(Bitmap8Bit)){
-				wordLength = 8;
-				paletteSh = 8;
-				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
-			}else if(typeid(sprite) is typeid(Bitmap16Bit)){
-				wordLength = 16;
-				pixelData = (cast(Bitmap16Bit)(sprite)).getPtr;
-			}else if(typeid(sprite) is typeid(Bitmap32Bit)){
-				wordLength = 32;
-				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
-			}
+			this(position, sprite, priority, paletteSel, scaleHoriz, scaleVert);
 		}
 		/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
 		@property ubyte paletteSh() @safe @nogc pure nothrow const {

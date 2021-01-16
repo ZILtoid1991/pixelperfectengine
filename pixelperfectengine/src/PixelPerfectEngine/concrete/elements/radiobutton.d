@@ -13,34 +13,32 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 	//protected bool					_isLatched;		///The state of the RadioButton
 	public string					iconLatched = "radioButtonB";		///Sets the icon for latched positions
 	public string					iconUnlatched = "radioButtonA";	///Sets the icon for unlatched positions
-	public this(Text text, string source, Box coordinates, IRadioButtonGroup group = null) {
-		position = coordinates;
+	public this(Text text, string source, Box position, IRadioButtonGroup group = null) {
+		this.position = position;
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(position.width, position.height);
 		if (group) group.add(this);
 	}
 	///Ditto
-	public this(dstring text, string source, Box coordinates, IRadioButtonGroup group = null) {
-		this(new Text(text, getAvailableStyleSheet().getChrFormatting("checkBox")), source, coordinates, group);
+	public this(dstring text, string source, Box position, IRadioButtonGroup group = null) {
+		this(new Text(text, getStyleSheet().getChrFormatting("checkBox")), source, position, group);
 	}
 	///Ditto
-	public this(string iconLatched, string iconUnlatched, string source, Box coordinates, IRadioButtonGroup group = null) {
-		position = coordinates;
+	public this(string iconLatched, string iconUnlatched, string source, Box position, IRadioButtonGroup group = null) {
+		this.position = position;
 		this.iconLatched = iconLatched;
 		this.iconUnlatched = iconUnlatched;
 		this.source = source;
-		output = new BitmapDrawer(position.width, position.height);
 		group.add(this);
 	}
 	override public void draw() {
 		parent.clearArea(position);
 		StyleSheet ss = getStyleSheet();
 		Bitmap8Bit icon = isChecked ? ss.getImage(iconLatched) : ss.getImage(iconUnlatched);
-		parent.bitBLT(Coordinate.cornerUL, icon);
+		parent.bitBLT(position.cornerUL, icon);
 		if (text) {
 			Box textPos = position;
-			textPos.left += icon.width + getAvailableStyleSheet.drawParameters["TextSpacingSides"];
+			textPos.left += icon.width + getStyleSheet.drawParameters["TextSpacingSides"];
 			parent.drawTextSL(textPos, text, Point.init);
 		}
 
@@ -72,7 +70,7 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 	}
 
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
-		if (mce.button == MouseButton.Left, mce.state == ButtonState.Pressed) group.latch(this);
+		if (mce.button == MouseButton.Left && mce.state == ButtonState.Pressed) group.latch(this);
 		super.passMCE(mec, mce);
 	}
 	/**
@@ -88,7 +86,7 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 	 * Sets the radio button into its pressed state.
 	 */
 	public void latchOn() @trusted {
-		if (!ischecked) {
+		if (!isChecked) {
 			flags |= IS_CHECKED;
 			draw();
 		}
@@ -111,6 +109,16 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 		if (text) return false;
 		else if (position.width == height && position.height == height) return true;
 		else return false;
+	}
+	///Returns true if left side justified, false otherwise.
+	public bool isLeftSide() @nogc @safe pure nothrow const {
+		return flags & IS_LHS ? true : false;
+	}
+	///Sets the small button to the left side if true.
+	public bool isLeftSide(bool val) @nogc @safe pure nothrow {
+		if (val) flags |= IS_LHS;
+		else flags &= ~IS_LHS;
+		return flags & IS_LHS ? true : false;
 	}
 }
 

@@ -79,10 +79,10 @@ public class VertScrollBar : ScrollBar {
 			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
 		}
 		//draw buttons
-		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage["ButtonUpB"] : ss.getImage["ButtonUpA"]);
+		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("ButtonUpB") : ss.getImage("ButtonUpA"));
 		Point lower = position.cornerLL;
 		lower.y -= position.width;
-		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage["ButtonDownB"] : ss.getImage["ButtonDownA"]);
+		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("ButtonDownB") : ss.getImage("ButtonDownA"));
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
@@ -108,7 +108,7 @@ public class VertScrollBar : ScrollBar {
 				const double newVal = mce.y - position.width - (_barLength / 2);
 				if (newVal >= 0) {
 					const int travelLength = position.height - position.width * 2 - _barLength;
-					_value = nearbyint(travelLength / newVal);
+					_value = cast(int)nearbyint(travelLength / newVal);
 					if (_value > _maxValue) _value = _maxValue;
 				}
 			}
@@ -159,10 +159,10 @@ public class HorizScrollBar : ScrollBar {
 			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
 		}
 		//draw buttons
-		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage["ButtonUpB"] : ss.getImage["ButtonUpA"]);
+		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("ButtonUpB") : ss.getImage("ButtonUpA"));
 		Point lower = position.cornerLL;
 		lower.y -= position.width;
-		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage["ButtonDownB"] : ss.getImage["ButtonDownA"]);
+		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("ButtonDownB") : ss.getImage("ButtonDownA"));
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
@@ -188,7 +188,7 @@ public class HorizScrollBar : ScrollBar {
 				const double newVal = mce.y - position.height - (_barLength / 2);
 				if (newVal >= 0) {
 					const int travelLength = position.width - position.height * 2 - _barLength;
-					_value = nearbyint(travelLength / newVal);
+					_value = cast(int)nearbyint(travelLength / newVal);
 					if (_value > _maxValue) _value = _maxValue;
 				}
 			}

@@ -7,13 +7,13 @@ public class Button : WindowElement {
 	public bool enableRightButtonClick;
 	public bool enableMiddleButtonClick;
 	public this(dstring text, string source, Box position) {
-		this(new Text(text,getAvailableStyleSheet.getChrFormatting("button")), source, position);
+		this(new Text(text,getStyleSheet.getChrFormatting("button")), source, position);
 	}
 	public this(Text text, string source, Box position) {
 		this.position = position;
 		this.text = text;
 		this.source = source;
-		output = new BitmapDrawer(coordinates.width, coordinates.height);
+		//output = new BitmapDrawer(coordinates.width, coordinates.height);
 	}
 	public override void draw() {
 		StyleSheet ss = getStyleSheet();
@@ -49,7 +49,7 @@ public class Button : WindowElement {
 			const int textPadding = ss.drawParameters["horizTextPadding"];
 			parent.drawBoxPattern(position - textPadding, ss.pattern["blackDottedLine"]);
 		}
-		output.drawSingleLineText(position, text, Point(0, 0));
+		parent.drawTextSL(position, text, Point(0, 0));
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
