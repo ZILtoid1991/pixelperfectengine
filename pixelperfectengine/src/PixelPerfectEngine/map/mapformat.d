@@ -722,13 +722,13 @@ public struct LayerInfo {
 		s = toLower(s);
 		switch (s) {
 			case "tile":
-				return LayerType.tile;
+				return LayerType.Tile;
 			case "sprite":
-				return LayerType.sprite;
+				return LayerType.Sprite;
 			case "transformabletile":
-				return LayerType.transformableTile;
+				return LayerType.TransformableTile;
 			default:
-				return LayerType.NULL;
+				return LayerType.init;
 		}
 	}
 }

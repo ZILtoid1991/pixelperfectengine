@@ -38,13 +38,35 @@ public class InputHandler {
 	public static immutable uint anykeyCode = 1402508842; //= defaultHash("AnyKey");
 	public static immutable uint sysescCode = 2320826867; //= defaultHash("SysEsc");
 	//alias CodeTreeSet = TreeMap!(uint, void);
-	protected struct InputBinding {
+	/**
+	 * Defines a single Input Binding.
+	 */
+	public struct InputBinding {
 		uint		code;			///Code being sent out to the target.
-		float[2]	deadzone;		///The deadzone, if the binding is an axis
 		uint		flags;			///For future extensions.
+		float[2]	deadzone;		///The deadzone, if the binding is an axis
 		static enum IS_AXIS_AS_BUTTON = 1<<0;
+
+		this(uint code, uint flags, float[2] deadzone) @nogc @safe pure nothrow {
+			this.code = code;
+			this.flags = flags;
+			this.deadzone = deadzone;
+		}
+
+		int opCmp(const InputBinding other) const @nogc @safe pure nothrow {
+			if (code > other.code) return 1;
+			else if (code < other.code) return -1;
+			else return 0;
+		}
+
+		int opCmp(const uint other) const @nogc @safe pure nothrow {
+			if (code > other) return 1;
+			else if (code < other) return -1;
+			else return 0;
+		}
 	}
-	alias InputBindingLookupTree = TreeMap!(BindingCode, InputBinding[]);
+	alias CodeTreeSet = TreeMap!(InputBinding, void);
+	alias InputBindingLookupTree = TreeMap!(BindingCode, CodeTreeSet);//alias InputBindingLookupTree = TreeMap!(BindingCode, InputBinding[]);
 	alias JoyInfoMap = TreeMap!(int, JoyInfo);
 	alias JoyMap = TreeMap!(int, SDL_Joystick*);
 	/**
@@ -59,7 +81,7 @@ public class InputHandler {
 	///See the enum `StatusFlags` for more info.
 	protected uint						statusFlags;
 	///The currently recorded code.
-	protected uint						recordedCode;
+	protected InputBinding				recordedCode;
 	///Passes all codes from keybindings to this interface.
 	///Multiple listeners at once are removed from newer versions to reduce overhead.
 	///Functionality can be restored with an event hub.
@@ -141,7 +163,7 @@ public class InputHandler {
 	/**
 	 * Initializes event recording.
 	 */
-	public void recordEvent(uint code, bool delConflKeys, bool delConflCodes, bool cancelOnSysEsc, bool allowMouseEvents) {
+	public void recordEvent(InputBinding code, bool delConflKeys, bool delConflCodes, bool cancelOnSysEsc, bool allowMouseEvents) {
 		recordedCode = code;
 		statusFlags |= StatusFlags.CaptureEvent;
 		if (delConflCodes) statusFlags |= StatusFlags.CE_DelConflCodes;
@@ -188,7 +210,7 @@ public class InputHandler {
 					bc.deviceTypeID = Devicetype.Joystick;
 					bc.buttonNum = event.jhat.value;
 					bc.modifierFlags = JoyModifier.DPad;
-					bc.extField = event.jhat.hat;
+					bc.extArea = event.jhat.hat;
 					break;
 				case SDL_JOYAXISMOTION:
 					bc.deviceNum = cast(ubyte)event.jaxis.which;
@@ -256,6 +278,8 @@ public class InputHandler {
 										inputListener.keyEvent(key.code, bc, timestamp, true);
 									else
 										inputListener.keyEvent(key.code, bc, timestamp, false);
+								} else {
+									inputListener.axisEvent(key.code, bc, timestamp, axisOffset);
 								}
 							}
 						} else {
@@ -322,8 +346,8 @@ public class InputHandler {
 						default: break;
 					}
 				} else if (statusFlags & StatusFlags.CaptureEvent) {			//Record event as keybinding
-					CodeTreeSet* hashcodeList = inputLookup.ptrOf(bc);
-					if (hashcodeList && !(hashcodeList.has(sysescCode) && statusFlags & StatusFlags.CE_CancelOnSysEsc)) {
+					CodeTreeSet* hashcodeSet = inputLookup.ptrOf(bc);
+					if (hashcodeSet && !(hashcodeSet.has(sysescCode) && statusFlags & StatusFlags.CE_CancelOnSysEsc)) {
 						if (StatusFlags.CE_DelConflCodes) {
 							BindingCode[] toRemove;
 							foreach (BindingCode key, ref CodeTreeSet hashCodes; inputLookup) {
@@ -334,8 +358,8 @@ public class InputHandler {
 								inputLookup.remove(key);
 							}
 						}
-						if (hashcodeList.length) {
-							if (!(statusFlags & StatusFlags.CE_DelConflKeys)) hashcodeList.put(recordedCode);
+						if (hashcodeSet.length) {
+							if (!(statusFlags & StatusFlags.CE_DelConflKeys)) hashcodeSet.put(recordedCode);
 							else inputLookup[bc] = CodeTreeSet([recordedCode]);
 						} else inputLookup[bc] = CodeTreeSet([recordedCode]);
 					}

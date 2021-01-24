@@ -212,7 +212,7 @@ public class TileLayer : Layer, ITileLayer {
 								if(!currentTile.attributes.horizMirror) {
 									mainRenderingFunction(cast(uint*)tileSrc,cast(uint*)w0,tileXLength,masterVal);
 								} else {
-									copy32bit(cast(uint*)tileSrc, cast(uint*)src, tileXLength);
+									copy(cast(uint*)tileSrc, cast(uint*)src, tileXLength);
 									flipHorizontal(src);
 									mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength,masterVal);
 								}

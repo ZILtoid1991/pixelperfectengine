@@ -20,7 +20,7 @@ import std.algorithm : countUntil;
  */
 public class TextTempl(BitmapType = Bitmap8Bit) {
 
-	public dstring			text;			///The text to be displayed
+	protected dchar[]		_text;			///The text to be displayed
 	public CharacterFormattingInfo!BitmapType 	formatting;	///The formatting of this text block
 	public TextTempl!BitmapType	next;			///The next piece of formatted text block
 	public int				frontTab;		///Space before the text chunk in pixels. Can be negative.
@@ -32,7 +32,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Creates a unit of formatted text from the supplied data.
 	 */
 	public this(dstring text, CharacterFormattingInfo!BitmapType formatting, TextTempl!BitmapType next = null, int frontTab = 0,
-			BitmapType icon = null) @safe pure @nogc nothrow {
+			BitmapType icon = null) @safe pure nothrow {
 		this.text = text;
 		this.formatting = formatting;
 		this.next = next;
@@ -79,8 +79,8 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Returns the character lenght.
 	 */
 	public @property size_t charLength() @safe pure nothrow @nogc const {
-		if (next) return text.length + next.charLength;
-		else return text.length;
+		if (next) return _text.length + next.charLength;
+		else return _text.length;
 	}
 	/**
 	 * Removes the character at the given position.
@@ -90,19 +90,19 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		import std.algorithm.mutation : remove;
 		void _removeChar() @safe pure {
 			if(pos == 0) {
-				text = text[1..$];
-			} else if(pos + 1 == text.length) {
-				if(text.length) text.length = text.length - 1;
+				_text = _text[1..$];
+			} else if(pos + 1 == _text.length) {
+				if(_text.length) _text.length = _text.length - 1;
 			} else {
-				text = text[0..pos] ~ text[(pos + 1)..$];
+				_text = _text[0..pos] ~ _text[(pos + 1)..$];
 			}
 		}
-		if(pos < text.length) {
-			const dchar result = text[pos];
+		if(pos < _text.length) {
+			const dchar result = _text[pos];
 			_removeChar();/+text = text.remove(pos);+/
 			return result;
 		} else if(next) {
-			return next.removeChar(pos - text.length);
+			return next.removeChar(pos - _text.length);
 		} else return dchar.init;
 	}
 	/**
@@ -110,13 +110,13 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Return the inserted character if within bound, or dchar.init if position points to a place where it
 	 * cannot be inserted easily.
 	 */
-	public dchar insertChar(size_t pos, dchar c) @safe pure {
+	public dchar insertChar(size_t pos, dchar c) @trusted pure {
 		import std.array : insertInPlace;
-		if(pos <= text.length) {
-			text.insertInPlace(pos, c);
+		if(pos <= _text.length) {
+			_text.insertInPlace(pos, c);
 			return c;
 		} else if(next) {
-			return next.insertChar(pos - text.length, c);
+			return next.insertChar(pos - _text.length, c);
 		} else return dchar.init;
 	}
 	/**
@@ -124,15 +124,15 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Returns the original character if within bound, or or dchar.init if position points to a place where it
 	 * cannot be inserted easily.
 	 */
-	public dchar overwriteChar(size_t pos, dchar c) @nogc @safe pure nothrow {
-		if(pos < text.length) {
-			const dchar orig = text[pos];
-			text[pos] = c;
+	public dchar overwriteChar(size_t pos, dchar c) @safe pure {
+		if(pos < _text.length) {
+			const dchar orig = _text[pos];
+			_text[pos] = c;
 			return orig;
 		} else if(next) {
-			return next.overwriteChar(pos - text.length, c);
-		} else if (pos == text.length) {
-			text ~= c;
+			return next.overwriteChar(pos - _text.length, c);
+		} else if (pos == _text.length) {
+			_text ~= c;
 			return c;
 		} else return dchar.init;
 	}
@@ -140,10 +140,10 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Returns a character from the given position.
 	 */
 	public dchar getChar(size_t pos) @safe pure {
-		if(pos < text.length) {
-			return text[pos];
+		if(pos < _text.length) {
+			return _text[pos];
 		} else if(next) {
-			return next.getChar(pos - text.length);
+			return next.getChar(pos - _text.length);
 		} else return dchar.init;
 	}
 	/**
@@ -152,7 +152,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	public int getWidth() @safe pure nothrow {
 		int localWidth;
 		auto f = font;
-		foreach (c; text) {
+		foreach (c; _text) {
 			localWidth += f.chars(c).xadvance;
 		}
 		if(icon) localWidth += icon.width + iconOffsetX + iconSpacing;
@@ -164,17 +164,17 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Currently omits any existing embedded icons.
 	 */
 	public int getWidth(sizediff_t begin, sizediff_t end) @safe pure {
-		if(end > text.length && next is null) 
+		if(end > _text.length && next is null) 
 			throw new Exception("Text boundary have been broken!");
 		int localWidth;
-		if(begin < text.length) {
+		if(begin < _text.length) {
 			auto f = font;
 			foreach (c; text[begin..end]) {
 				localWidth += f.chars(c).xadvance;
 			}
 		}
-		begin -= text.length;
-		end -= text.length;
+		begin -= _text.length;
+		end -= _text.length;
 		if (begin < 0) begin = 0;
 		if (next && end > 0) return localWidth + next.getWidth(begin, end);
 		else return localWidth;
@@ -184,6 +184,15 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 */
 	public Fontset!BitmapType font() @safe @nogc pure nothrow {
 		return formatting.font;
+	}
+	///Text accessor
+	public @property dstring text() @safe pure nothrow {
+		return _text.idup;
+	}
+	///Text accessor
+	public @property dstring text(dstring val) @safe pure nothrow {
+		_text = val.dup;
+		return val;
 	}
 }
 alias Text = TextTempl!Bitmap8Bit;

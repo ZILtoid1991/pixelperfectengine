@@ -52,45 +52,45 @@ public interface ITileLayer{
  */
 public interface ISpriteLayer{
 	///Clears all sprite from the layer.
-	public void clear() @safe pure nothrow;
+	public void clear() @safe nothrow;
 	///Removes the sprite with the given ID.
-	public void removeSprite(int n) @safe pure nothrow;
+	public void removeSprite(int n) @safe nothrow;
 	///Moves the sprite to the given location.
-	public void moveSprite(int n, int x, int y) @safe pure nothrow;
+	public void moveSprite(int n, int x, int y) @safe nothrow;
 	///Relatively moves the sprite by the given values.
-	public void relMoveSprite(int n, int x, int y) @safe pure nothrow;
+	public void relMoveSprite(int n, int x, int y) @safe nothrow;
 	///Gets the coordinate of the sprite.
-	public Coordinate getSpriteCoordinate(int n) @nogc @safe pure nothrow;
+	public Coordinate getSpriteCoordinate(int n) @nogc @safe nothrow;
 	///Adds a sprite to the layer.
 	public void addSprite(ABitmap s, int n, Coordinate c, ushort paletteSel = 0, int scaleHoriz = 1024, 
-			int scaleVert = 1024) @safe pure nothrow;
+			int scaleVert = 1024) @safe nothrow;
 	///Adds a sprite to the layer.
 	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
-			int scaleVert = 1024) @safe pure nothrow;
+			int scaleVert = 1024) @safe nothrow;
 	///Sets the rendering function for the sprite (defaults to the layer's rendering function)
-	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe pure nothrow;
+	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe nothrow;
 	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
-	public void replaceSprite(ABitmap s, int n) @safe pure nothrow;
+	public void replaceSprite(ABitmap s, int n) @safe nothrow;
 	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(ABitmap s, int n, int x, int y) @safe pure nothrow;
+	public void replaceSprite(ABitmap s, int n, int x, int y) @safe nothrow;
 	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(ABitmap s, int n, Coordinate c) @safe pure nothrow;
+	public void replaceSprite(ABitmap s, int n, Coordinate c) @safe nothrow;
 	///Returns the displayed portion of the sprite.
-	public @nogc Coordinate getSlice(int n) pure @safe nothrow;
+	public @nogc Coordinate getSlice(int n) @safe nothrow;
 	///Writes the displayed portion of the sprite.
 	///Returns the new slice, if invalid (greater than the bitmap, etc.) returns the old one.
 	public Coordinate setSlice(int n, Coordinate slice) @safe nothrow;
 	///Returns the selected paletteID of the sprite.
-	public @nogc ushort getPaletteID(int n) pure @safe nothrow;
+	public @nogc ushort getPaletteID(int n) @safe nothrow;
 	///Sets the paletteID of the sprite. Returns the new ID, which is truncated to the possible values with a simple binary and operation
 	///Palette must exist in the parent Raster, otherwise AccessError might happen
-	public @nogc ushort setPaletteID(int n, ushort paletteID) pure @safe nothrow;
+	public @nogc ushort setPaletteID(int n, ushort paletteID) @safe nothrow;
 	///Scales bitmap horizontally
-	public int scaleSpriteHoriz(int n, int hScl) @trusted pure nothrow;
+	public int scaleSpriteHoriz(int n, int hScl) @trusted nothrow;
 	///Scales bitmap vertically
-	public int scaleSpriteVert(int n, int vScl) @trusted pure nothrow;
+	public int scaleSpriteVert(int n, int vScl) @trusted nothrow;
 	///Gets the sprite's current horizontal scale value
-	public int getScaleSpriteHoriz(int n) @nogc @trusted pure nothrow;
+	public int getScaleSpriteHoriz(int n) @nogc @trusted nothrow;
 	///Gets the sprite's current vertical scale value
-	public int getScaleSpriteVert(int n) @nogc @trusted pure nothrow;
+	public int getScaleSpriteVert(int n) @nogc @trusted nothrow;
 }

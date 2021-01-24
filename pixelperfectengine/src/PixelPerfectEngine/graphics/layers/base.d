@@ -20,6 +20,7 @@ package import core.stdc.stdlib;
 package import CPUblit.composing;
 package import CPUblit.composing.specblt : xorBlitter;
 package import CPUblit.colorlookup;
+package import CPUblit.transform;
 
 import inteli.emmintrin;
 alias RenderFunc = @nogc pure nothrow void function(uint* src, uint* dest, size_t length, ubyte value);
@@ -32,7 +33,7 @@ alias RenderFunc = @nogc pure nothrow void function(uint* src, uint* dest, size_
 	copy!uint(src, dest, length);
 }
 /// For generating a XOR blitter function with value modifier
-@nogc pure nothrow void localCpy(uint* src, uint* dest, size_t length, ubyte value) {
+@nogc pure nothrow void localXOR(uint* src, uint* dest, size_t length, ubyte value) {
 	xorBlitter!uint(src, dest, length);
 }
 /**
@@ -68,10 +69,10 @@ abstract class Layer {
 	public void setRenderingMode(RenderingMode mode) @nogc @safe pure nothrow {
 		renderMode = mode;
 		mainRenderingFunction = getRenderingFunc(mode);
-		mainColorLookupFunction = &colorLookup!(ushort,uint);
+		//mainColorLookupFunction = &colorLookup!(ushort,uint);
 		//mainHorizontalMirroringFunction = &flipHorizontal;
-		main8BitColorLookupFunction = &colorLookup!(ubyte,uint);
-		main4BitColorLookupFunction = &colorLookup4Bit!uint;
+		//main8BitColorLookupFunction = &colorLookup!(ubyte,uint);
+		//main4BitColorLookupFunction = &colorLookup4Bit!uint;
 	}
 	///Absolute scrolling.
 	public void scroll(int x, int y) @nogc @safe pure nothrow {
@@ -149,33 +150,33 @@ public RenderFunc getRenderingFunc (RenderingMode mode) @nogc @safe pure nothrow
 		case Blitter:
 			return &localBlt;
 		case AlphaBlend:
-			return &alphaBlend32bitMV!(ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {alphaBlendMV(src, dest, length, value);};
 		case Multiply:
-			return &mult32BitMV!(ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {multMV(src, dest, length, value);};
 		case MultiplyBl:
-			return &mult32BitMVBl!(ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {multMVBl(src, dest, length, value);};
 		case Screen:
-			return null;
+			return (uint* src, uint* dest, size_t length, ubyte value) {screenMV(src, dest, length, value);};
 		case ScreenBl:
-			return null;
+			return (uint* src, uint* dest, size_t length, ubyte value) {screenMVBl(src, dest, length, value);};
 		case Add:
-			return &add32BitMV!(false, ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {addMV!(false)(src, dest, length, value);};
 		case AddBl:
-			return &add32BitMV!(true, ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {addMV!(true)(src, dest, length, value);};
 		case Subtract:
-			return &sub32BitMV!(false, ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {subMV!(false)(src, dest, length, value);};
 		case SubtractBl:
-			return &sub32BitMV!(true, ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {subMV!(true)(src, dest, length, value);};
 		case Diff:
-			return &diff32BitMV!(ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {diffMV(src, dest, length, value);};
 		case DiffBl:
-			return &diff32BitMVBl!(ubyte);
+			return (uint* src, uint* dest, size_t length, ubyte value) {diffMVBl(src, dest, length, value);};
 		case AND:
 			return null;
 		case OR:
 			return null;
 		case XOR:
-
+			return &localXOR;
 	}
 }
 /**

@@ -71,7 +71,7 @@ public class PopUpMenu : PopUpElement {
 					position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.text.font.size);
 			output.drawSingleLineText(textPos, e.text);
 			if(e.getIcon() !is null){
-				output.insertBitmap(ss.drawParameters["PopUpMenuHorizPadding"], y, e.getIcon());
+				//output.insertBitmap(ss.drawParameters["PopUpMenuHorizPadding"], y, e.getIcon());
 			}
 			y += e.text.font.size + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 		}

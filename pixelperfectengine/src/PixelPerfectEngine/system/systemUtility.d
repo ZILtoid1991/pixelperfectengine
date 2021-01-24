@@ -111,8 +111,9 @@ public void INIT_CONCRETE(WindowHandler wh){
 	ss.duplicateChrFormatting("default", "panel");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x14, FormattingFlags.rightJustify, 0, 0),"popUpMenuSecondary");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.rightJustify, 0, 0),"defaultRJ");
-	wh.defaultStyle = ss;
+	/+wh.defaultStyle = ss;
 	Window.defaultStyle = ss;
 	WindowElement.styleSheet = ss;
-	PopUpElement.styleSheet = ss;
+	PopUpElement.styleSheet = ss;+/
+	globalDefaultStyle = ss;
 }

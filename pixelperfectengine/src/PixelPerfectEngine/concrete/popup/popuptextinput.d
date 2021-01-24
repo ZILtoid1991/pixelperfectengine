@@ -34,11 +34,13 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 		if(enableEdit) {
 			const int x0 = text.getWidth(0,cursorPos) + textPadding - horizTextOffset;
 			if(!insert){
-				output.drawLine(x0, x0, 2, 2 + y, getStyleSheet().getColor("selection"));
+				//output.drawLine(x0, x0, 2, 2 + y, getStyleSheet().getColor("selection"));
+				output.drawLine(Point(x0, 2), Point(x0, 2 + y), ss.getColor("selection"));
 			}else{
 				const int x1 = cursorPos == text.charLength ? text.font.chars(' ').xadvance :
 						text.getWidth(cursorPos,cursorPos + 1);
-				output.drawFilledRectangle(x0, x1 + x0, 2, 2 + y, getStyleSheet().getColor("selection"));
+				//output.drawFilledRectangle(x0, x1 + x0, 2, 2 + y, getStyleSheet().getColor("selection"));
+				output.drawFilledBox(Box(x0, 2, x1, 2 + y), ss.getColor("selection"));
 			}
 		}
 

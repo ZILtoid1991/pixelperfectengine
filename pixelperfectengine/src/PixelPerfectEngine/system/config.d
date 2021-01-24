@@ -59,7 +59,7 @@ public class ConfigurationProfile {
 	public int threads;
 	public string screenMode, resolution, scalingQuality, driver;
 	//public string[string] videoSettings;
-	//public KeyBinding[] keyBindingList;
+	public KeyBinding[] keyBindingList;
 	public InputDeviceData[] inputDevices;	///Stores all input devices and keybindings
 	private string path;
 	///Stores ancillary tags to be serialized into the config file
@@ -129,11 +129,11 @@ public class ConfigurationProfile {
 											if(t2.name is null){
 												KeyBinding kb;
 												kb.name = t2.expectValue!string();
-												kb.bc.deviceNum = cast(ubyte)devicenumber;
+												kb.bc.deviceNum = cast(ubyte)device.deviceNumber;
 												kb.bc.deviceTypeID = Devicetype.Keyboard;
 												kb.bc.modifierFlags = stringToKeymod(t2.getAttribute!string("keyMod", "None"));
 												kb.bc.keymodIgnore = stringToKeymod(t2.getAttribute!string("keyModIgnore", "All"));
-												kb.bc.buttonNum = t2.getAttribute!int("code", keyNameDict.decode(t2.getAttribute!string("name")));
+												kb.bc.buttonNum = cast(ushort)(t2.getAttribute!int("code", keyNameDict.decode(t2.getAttribute!string("name"))));
 												keyBindingList ~= kb;
 											}
 										}
@@ -144,7 +144,7 @@ public class ConfigurationProfile {
 											if(t2.name is null) {
 												KeyBinding kb;
 												kb.name = t2.expectValue!string();
-												kb.bc.deviceNum = cast(ubyte)devicenumber;
+												kb.bc.deviceNum = cast(ubyte)device.deviceNumber;
 												kb.bc.deviceTypeID = Devicetype.Joystick;
 												switch(t2.getAttribute!string("keyMod")){
 													case "dpad":
@@ -157,7 +157,7 @@ public class ConfigurationProfile {
 														kb.axisAsButton = t2.getAttribute!bool("axisAsButton");
 														goto default;
 													default:
-														kb.bc.buttonNum = t2.getAttribute!int("code", joyButtonNameDict.decode(t2.getAttribute!string("name")));
+														kb.bc.buttonNum = cast(ushort)t2.getAttribute!int("code", joyButtonNameDict.decode(t2.getAttribute!string("name")));
 														break;
 												}
 												keyBindingList ~= kb;
@@ -170,8 +170,11 @@ public class ConfigurationProfile {
 										device.type = Devicetype.Mouse;
 										foreach(Tag t2; t1.tags){
 											if(t2.name is null){
-												const uint scanCode = t2.getAttribute!int("keyCode");
-												keyBindingList ~= KeyBinding(0, scanCode, devicenumber, t2.expectValue!string(), Devicetype.MOUSE);
+												//const ushort scanCode = cast(ushort)t2.getAttribute!int("code");
+												KeyBinding kb;
+												kb.name = t2.expectValue!string();
+												kb.bc.deviceTypeID = Devicetype.Mouse;
+												//keyBindingList ~= KeyBinding(0, scanCode, devicenumber, t2.expectValue!string(), Devicetype.MOUSE);
 											}
 										}
 										break;
@@ -261,20 +264,20 @@ public class ConfigurationProfile {
 					break;
 			}
 		}
-		Tag t3 = new Tag(root, null, "etc");
-		foreach(AuxillaryElements ae; auxillaryParameters){
-			new Tag(t3, null, ae.name, [Value(ae.value)]);
+		//Tag t3 = new Tag(root, null, "etc");
+		foreach(at; ancillaryTags){
+			root.add(at);
 		}
 		string data = root.toSDLDocument();
 		std.file.write(path, data);
 	}
 
-	public ubyte stringToKeymod(string s) @safe pure nothrow const {
+	public ubyte stringToKeymod(string s) @safe const {
 		import std.algorithm.iteration : splitter;
 		if(s == "None")	return KeyModifier.None;
 		if(s == "All")		return KeyModifier.All;
 		auto values = s.splitter(';');
-		ushort result;
+		ubyte result;
 		foreach(t ; values){
 			result |= keymodifierStrings.get(t,0);
 		}
@@ -316,9 +319,9 @@ public class ConfigurationProfile {
 
 	public string joymodToString(const ushort s) @safe pure nothrow const {
 		switch(s) {
-			case JoyModifier.AXIS: return "AXIS";
-			case JoyModifier.DPAD: return "DPAD";
-			default: return "BUTTONS";
+			case JoyModifier.Axis: return "Axis";
+			case JoyModifier.DPad: return "DPad";
+			default: return "Buttons";
 		}
 	}
 	public void useVideoMode(int mode, OutputScreen window){
@@ -344,10 +347,9 @@ public class ConfigurationProfile {
 		return to!string(videoModes[n].w) ~ "x" ~ to!string(videoModes[n].h) ~ "@" ~ to!string(videoModes[n].refresh_rate) ~ "Hz";
 	}
 	public static void setVaultPath(const char* developer, const char* application){
-		debug {
+		if (exists("../_debug/")) {
 			vaultPath = "../_debug/";
 		} else {
-
 			vaultPath = to!string(SDL_GetPrefPath(developer, application));
 		}
 	}
