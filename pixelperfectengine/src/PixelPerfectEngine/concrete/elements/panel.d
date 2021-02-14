@@ -152,4 +152,28 @@ public class Panel : WindowElement, ElementContainer {
 	public void requestCursor(CursorType type) {
 		parent.requestCursor(type);
 	}
+	/**
+	 * Puts a PopUpElement on the GUI.
+	 */
+	public void addPopUpElement(PopUpElement p) {
+		parent.addPopUpElement(p);
+	}
+	/**
+	 * Puts a PopUpElement on the GUI at the given position.
+	 */
+	public void addPopUpElement(PopUpElement p, int x, int y) {
+		parent.addPopUpElement(p, x, y);
+	}
+	/** 
+	 * Ends the popup session and closes all popups.
+	 */
+	public void endPopUpSession(PopUpElement p) {
+		parent.endPopUpSession(p);
+	}
+	/**
+	 * Closes a single popup element.
+	 */
+	public void closePopUp(PopUpElement p) {
+		parent.closePopUp(p);
+	}
 }

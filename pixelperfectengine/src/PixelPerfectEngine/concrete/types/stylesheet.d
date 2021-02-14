@@ -8,6 +8,7 @@ module PixelPerfectEngine.concrete.types.stylesheet;
 
 import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.fontsets;
+import collections.hashmap;
 /**
  * Defines style data for the Concrete GUI.
  */
@@ -49,13 +50,19 @@ public class StyleSheet{
 	Color(0x00,0xFF,0xFF,0xFF),		//Turquiose
 	Color(0xFF,0xFF,0xFF,0xFF),		//White
 	];
-	public Fontset!Bitmap8Bit[string] 		font;		///Fonts stored here. 
-	public CharacterFormattingInfo!Bitmap8Bit[string]	_chrFormat; ///Character formatting
-	public ubyte[string]						color;		///Colors are identified by strings.
-	public ubyte[][string]						pattern;	///Stores line patterns.
-	public Bitmap8Bit[string]					images;		///For icons, pattern fills, etc...
-	public int[string]							drawParameters;		///Draw parameters are used for border thickness, padding, etc...
-	public string[string]						fontTypes;	///Font type descriptions for various kind of components. WILL BE DEPRECATED!
+	//public Fontset!Bitmap8Bit[string] 		font;		
+	public HashMap!(string, Fontset!Bitmap8Bit)	font;///Fonts stored here. 
+	public HashMap!(string, CharacterFormattingInfo!Bitmap8Bit) _chrFormat;	///Character formatting
+	//public CharacterFormattingInfo!Bitmap8Bit[string]	_chrFormat; ///Character formatting
+	//public ubyte[string]						color;		///Colors are identified by strings.
+	public HashMap!(string, ubyte)				color;		///Colors are identified by strings.
+	//public ubyte[][string]					pattern;	///Stores line patterns.
+	public HashMap!(string, ubyte[])			pattern;	///Stores line patterns.
+	//public Bitmap8Bit[string]					images;		///For icons, pattern fills, etc...
+	public HashMap!(string, Bitmap8Bit)			images;		///For icons, pattern fills, etc...
+	//public int[string]							drawParameters;		///Draw parameters are used for border thickness, padding, etc...
+	public HashMap!(string, int)				drawParameters;		///Draw parameters are used for border thickness, padding, etc...
+	//public string[string]						fontTypes;	///Font type descriptions for various kind of components.
 	
 	/**
 	 * Creates a default stylesheet.
@@ -122,32 +129,42 @@ public class StyleSheet{
 	public void addFontset(Fontset!Bitmap8Bit f, string style) @safe {
 		font[style] = f;
 	}
-	public Fontset!Bitmap8Bit getFontset(string style) @safe {
-		return font.get(fontTypes.get(style, style), font[fontTypes["default"]]);
+	public Fontset!Bitmap8Bit getFontset(string style) @safe nothrow {
+		auto result = font[style];
+		if (result !is null) return result;
+		else return font["default"];
 	}
-	public void addChrFormatting(CharacterFormattingInfo!Bitmap8Bit frmt, string type) @safe {
+	/**
+	 * Adds a character formatting to the stylesheet with the given identifier.
+	 */
+	public void addChrFormatting(CharacterFormattingInfo!Bitmap8Bit frmt, string type) @safe nothrow {
 		_chrFormat[type] = frmt;
+		//assert(_chrFormat[type] is frmt);
 	}
 	/**
 	 * Duplicates character formatting for multiple labels.
 	 */
-	public void duplicateChrFormatting(string src, string dest) @safe {
+	public void duplicateChrFormatting(string src, string dest) @safe nothrow {
 		_chrFormat[dest] = _chrFormat[src];
+		
 	}
-	public CharacterFormattingInfo!Bitmap8Bit getChrFormatting(string type) @trusted {
-		return _chrFormat.get(type, _chrFormat["default"]);
+	public CharacterFormattingInfo!Bitmap8Bit getChrFormatting(string type) @safe nothrow {
+		auto result = _chrFormat[type];
+		if (result !is null) return result;
+		else return _chrFormat["default"];
+		//return _chrFormat[type];
 	}
-	public void setColor(ubyte c, string colorName) @safe {
+	public void setColor(ubyte c, string colorName) @safe nothrow {
 		color[colorName] = c;
 	}
-	public ubyte getColor(string colorName) @safe {
+	public ubyte getColor(string colorName) @safe nothrow {
 		return color[colorName];
 	}
-	public void setImage(Bitmap8Bit bitmap, string name) @safe {
+	public void setImage(Bitmap8Bit bitmap, string name) @safe nothrow {
 		images[name] = bitmap;
 	}
-	public Bitmap8Bit getImage(string name) @safe {
-		return images.get(name, null);
+	public Bitmap8Bit getImage(string name) @safe nothrow {
+		return images[name];
 	}
 }
 

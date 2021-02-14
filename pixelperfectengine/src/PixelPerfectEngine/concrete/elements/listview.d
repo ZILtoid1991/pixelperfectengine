@@ -114,6 +114,7 @@ public class ListViewItem {
 	 */
 	this (int height, Text[] fields) @safe pure nothrow {
 		this.height = height;
+		this.fields.reserve = fields.length;
 		foreach (Text key; fields) {
 			this.fields ~= Field(key, null, Field.FormatFlags.Context);
 		}
@@ -124,6 +125,17 @@ public class ListViewItem {
 	this (int height, Field[] fields) @nogc @safe pure nothrow {
 		this.height = height;
 		this.fields = fields;
+	}
+	/**
+	 * Creates a ListViewItem with default text formatting.
+	 */
+	this (int height, dstring[] ds) @safe nothrow {
+		this.height = height;
+		fields.reserve = ds.length;
+		foreach (dstring key ; ds) {
+			this.fields ~= Field(new Text(key, globalDefaultStyle.getChrFormatting("ListViewHeader")), null, 
+					Field.FormatFlags.Context);
+		}
 	}
 	/**
 	 * Accesses fields like an array.
@@ -168,10 +180,19 @@ public class ListViewItem {
 public class ListViewHeader : ListViewItem {
 	public int[]				columnWidths;	///Width of each columns
 	///Default CTOR
-	this (int height, int[] columnWidths, Text[] fields) @safe pure nothrow {
+	this(int height, int[] columnWidths, Text[] fields) @safe pure nothrow {
 		assert (columnWidths.length == fields.length, "Lenght mismatch between the two arrays!");
 		this.columnWidths = columnWidths;
 		super(height, fields);
+	}
+	///CTOR for creating fields with default text formatting
+	this(int height, int[] columnWidths, dstring[] ds) @safe nothrow {
+		Text[] fields;
+		fields.reserve = ds.length;
+		foreach (dstring key; ds) {
+			fields ~= new Text(key, globalDefaultStyle.getChrFormatting("ListViewHeader"));
+		}
+		this(height, columnWidths, fields);
 	}
 	/**
 	 * Draws the header. Draw parameters are supplied via a nested class found in ListView.
@@ -372,8 +393,8 @@ public class ListView : WindowElement, ElementContainer {
 				parent.drawLine(upper, lower, ss.getColor("ListViewVSep"));
 			}
 		}
-		horizSlider.draw;
-		vertSlider.draw;
+		if (horizSlider) horizSlider.draw;
+		if (vertSlider) vertSlider.draw;
 
 		drawParams = null;
 	}
@@ -450,20 +471,23 @@ public class ListView : WindowElement, ElementContainer {
 		if (needsHSB && totalHeight > position.height - ss.drawParameters["HorizScrollBarSize"])
 			needsVSB = true;
 		totalHeight -= _header.height;
-		if (needsVSB && !vertSlider) {
+		if (needsVSB) {
 			const int maxvalue = needsHSB ? totalHeight - position.height - ss.drawParameters["HorizScrollBarSize"] : 
 					totalHeight - position.height;
-			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"], 
-					needsHSB ? position.right - ss.drawParameters["HorizScrollBarSize"] : position.right,
-					position.bottom);
+			
+			const Box target = Box(position.right - ss.drawParameters["HorizScrollBarSize"], position.top, 
+					position.right, needsVSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] : position.bottom);
 			vertSlider = new VertScrollBar(maxvalue, source ~ "VSB", target);
+			vertSlider.setParent(this);
 		}
 		if (needsHSB){
 			const int maxvalue = needsVSB ? totalWidth - position.width - ss.drawParameters["VertScrollBarSize"] : 
 					totalWidth - position.width;
-			const Box target = Box(position.right - ss.drawParameters["HorizScrollBarSize"], position.top, 
-					position.right, needsVSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] : position.bottom);
+			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"], 
+					needsHSB ? position.right - ss.drawParameters["HorizScrollBarSize"] : position.right,
+					position.bottom);
 			horizSlider = new HorizScrollBar(maxvalue, source ~ "VSB", target);
+			horizSlider.setParent(this);
 		}
 	}
 	/**
@@ -567,13 +591,15 @@ public class ListView : WindowElement, ElementContainer {
 		int pixelsTotal = mce.x, pos;
 		if (vertSlider) ///calculate outscrolled area
 			pixelsTotal += vertSlider.value;
-		
-		for (; pixelsTotal > entries[pos].height ; pos++) 
-			pixelsTotal -= entries[pos].height;
-		if (selection != pos)
+		if (entries.length) {
+			for (; pixelsTotal > entries[pos].height ; pos++) {
+				pixelsTotal -= entries[pos].height;
+			}
 			selection = pos;
-		else if (onItemSelect !is null)
-			onItemSelect(new Event(this, entries[pos], EventType.Selection, SourceType.WindowElement));
+			if (onItemSelect !is null)
+				onItemSelect(new Event(this, entries[pos], EventType.Selection, SourceType.WindowElement));
+		}
+		
 		draw();
 	}
 	///Passes mouse move event
@@ -601,5 +627,29 @@ public class ListView : WindowElement, ElementContainer {
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
 		if (horizSlider) horizSlider.passMWE(mec, mwe);
 		if (vertSlider) vertSlider.passMWE(mec, mwe);
+	}
+	/**
+	 * Puts a PopUpElement on the GUI.
+	 */
+	public void addPopUpElement(PopUpElement p) {
+		parent.addPopUpElement(p);
+	}
+	/**
+	 * Puts a PopUpElement on the GUI at the given position.
+	 */
+	public void addPopUpElement(PopUpElement p, int x, int y) {
+		parent.addPopUpElement(p, x, y);
+	}
+	/** 
+	 * Ends the popup session and closes all popups.
+	 */
+	public void endPopUpSession(PopUpElement p) {
+		parent.endPopUpSession(p);
+	}
+	/**
+	 * Closes a single popup element.
+	 */
+	public void closePopUp(PopUpElement p) {
+		parent.closePopUp(p);
 	}
 }

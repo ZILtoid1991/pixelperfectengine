@@ -1,6 +1,7 @@
 module windows.addtiles;
 
 import PixelPerfectEngine.concrete.window;
+import PixelPerfectEngine.concrete.dialogs.filedialog;
 import dimage;
 
 import editor;
@@ -52,7 +53,7 @@ public class AddTiles : Window {
 		this.sizeY = sizeY;
 		addElement(label0);
 		addElement(button_Source);
-		button_Source.onMouseLClickRel = &button_Source_onClick;
+		button_Source.onMouseLClick = &button_Source_onClick;
 		addElement(textBox_Source);
 		textBox_Source.onTextInput = &textBox_Source_onTextInput;
 		addElement(label1);
@@ -62,7 +63,7 @@ public class AddTiles : Window {
 		addElement(label2);
 		addElement(textBox_palOffset);
 		addElement(button_Ok);
-		button_Ok.onMouseLClickRel = &button_Ok_onClick;
+		button_Ok.onMouseLClick = &button_Ok_onClick;
 		addElement(label3);
 		addElement(textBox_name);
 		addElement(label4);
@@ -70,7 +71,7 @@ public class AddTiles : Window {
 		this.editor = editor;
 	}
 	private void button_Source_onClick(Event e) {
-		parent.addWindow(new FileDialog("Import Tile Source"d, "fileDialog_TSBrowse", &fileDialog_TSBrowse_event,
+		handler.addWindow(new FileDialog("Import Tile Source"d, "fileDialog_TSBrowse", &fileDialog_TSBrowse_event,
 				[FileDialog.FileAssociationDescriptor("All supported formats", ["*.tga", "*.png", "*.bmp"]),
 					/+FileDialog.FileAssociationDescriptor("PPE Extendible Map file", ["*.xmf"]),+/
 					FileDialog.FileAssociationDescriptor("Targa Graphics File", ["*.tga"]),
@@ -80,21 +81,22 @@ public class AddTiles : Window {
 	private void textBox_palShift_onTextInput(Event e) {
 		//validate input type
 		import PixelPerfectEngine.system.etc : isInteger;
-		if (!isInteger(e.text.text)) {
-			parent.messageWindow("Bad format!"d, "Inputted value must be integer!"d);
+		if (!isInteger(textBox_palShift.getText.text)) {
+			handler.message("Bad format!"d, "Inputted value must be integer!"d);
 		}
-		const int value = to!int(e.text.text);
+		const int value = to!int(textBox_palShift.getText.text);
 		if (value < 1 || value > 8) {
-			parent.messageWindow("Bad value!"d, "Inputted value must be between 1 and 8!"d);
+			handler.message("Bad value!"d, "Inputted value must be between 1 and 8!"d);
 		}
 	}
-	private void fileDialog_TSBrowse_event(Event e) {
+	private void fileDialog_TSBrowse_event(Event ev) {
+		FileEvent e = cast(FileEvent)ev;
 		if (!loadFile(e.getFullPath)) {
 			textBox_Source.setText(to!dstring(e.getFullPath));
 		}
 	}
 	private void textBox_Source_onTextInput(Event e) {
-		if (loadFile(to!string(e.text.text))) {
+		if (loadFile(to!string(textBox_Source.getText.text))) {
 			textBox_Source.setText(""d);
 		}
 		
@@ -118,16 +120,16 @@ public class AddTiles : Window {
 					source = BMP.load(f);
 					break;
 				default:
-					parent.messageWindow("Unsupported file format!"d, "The specified file format is not supported!"d);
+					handler.message("Unsupported file format!"d, "The specified file format is not supported!"d);
 					return -1;
 			}
 		} catch (Exception ex) {
 			import std.conv : to;
-			parent.messageWindow("Error!"d, to!dstring(ex.msg));
+			handler.message("Error!"d, to!dstring(ex.msg));
 			return -1;
 		}
 		if (source.width % sizeX || source.height % sizeY) {
-			parent.messageWindow("Tile size Mismatch!"d, "Supplied bitmap file is unsuitable for this layer as a tile source!"d);
+			handler.message("Tile size Mismatch!"d, "Supplied bitmap file is unsuitable for this layer as a tile source!"d);
 			source = null;
 			return -1;
 		}
@@ -216,7 +218,7 @@ public class AddTiles : Window {
 			editor.selDoc.updateMaterialList;
 			this.close;
 		} else {
-			parent.messageWindow("Error!"d, "Numbering style must be specified in this case!");
+			handler.message("Error!"d, "Numbering style must be specified in this case!");
 		}
 	}
 }

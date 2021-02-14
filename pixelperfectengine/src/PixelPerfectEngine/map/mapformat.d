@@ -27,9 +27,31 @@ public class MapFormat {
 	protected Tag		root;		///Root tag for common information.
 	public TileInfo[][int]	tileDataFromExt;///Stores basic TileData that are loaded through extensions
 	/**
+	 * Associative array used for rendering mode lookups in one way.
+	 */
+	public static immutable RenderingMode[string] renderingModeLookup;
+	shared static this() {
+		renderingModeLookup["Copy"] = RenderingMode.Copy;
+		renderingModeLookup["Blitter"] = RenderingMode.Blitter;
+		renderingModeLookup["AlphaBlend"] = RenderingMode.AlphaBlend;
+		renderingModeLookup["Add"] = RenderingMode.Add;
+		renderingModeLookup["AddBl"] = RenderingMode.AddBl;
+		renderingModeLookup["Subtract"] = RenderingMode.Subtract;
+		renderingModeLookup["SubtractBl"] = RenderingMode.SubtractBl;
+		renderingModeLookup["Diff"] = RenderingMode.Diff;
+		renderingModeLookup["DiffBl"] = RenderingMode.DiffBl;
+		renderingModeLookup["Multiply"] = RenderingMode.Multiply;
+		renderingModeLookup["MultiplyBl"] = RenderingMode.MultiplyBl;
+		renderingModeLookup["Screen"] = RenderingMode.Screen;
+		renderingModeLookup["ScreenBl"] = RenderingMode.ScreenBl;
+		renderingModeLookup["AND"] = RenderingMode.AND;
+		renderingModeLookup["OR"] = RenderingMode.OR;
+		renderingModeLookup["XOR"] = RenderingMode.XOR;
+	}
+	/**
 	 * Creates new instance from scratch.
 	 */
-	public this (string name, int resX, int resY) @trusted {
+	public this(string name, int resX, int resY) @trusted {
 		root = new Tag();
 		metadata = new Tag(root, null, "Metadata");
 		new Tag(metadata, null, "Version", [Value(1), Value(0)]);
@@ -39,7 +61,7 @@ public class MapFormat {
 	/**
 	 * Serializes itself from file.
 	 */
-	public this (F)(F file) @trusted {
+	public this(F)(F file) @trusted {
 		//File f = File(path, "rb");
 		char[] source;
 		source.length = cast(size_t)file.size;
@@ -51,10 +73,10 @@ public class MapFormat {
 				case "Layer":
 					const int priority = t0.values[1].get!int;
 					layerData[priority] = t0;
-					LayerRenderingMode lrd;
-					switch (t0.getTagValue!string("RenderingMode")) {
+					RenderingMode lrd = renderingModeLookup.get(t0.getTagValue!string("RenderingMode"), RenderingMode.Copy);
+					/+switch (t0.getTagValue!string("RenderingMode")) {
 						case "AlphaBlending":
-							lrd = LayerRenderingMode.ALPHA_BLENDING;
+							lrd = RenderingMode.AlphaBlend;
 							break;
 						case "Blitter":
 							lrd = LayerRenderingMode.BLITTER;
@@ -64,7 +86,7 @@ public class MapFormat {
 							break;
 						default:
 							break;
-					}
+					}+/
 					switch (t0.name) {
 						case "Tile":
 							layeroutput[priority] = new TileLayer(t0.values[2].get!int, t0.values[3].get!int, lrd);
@@ -613,11 +635,12 @@ abstract class MapObject {
  * Implements a Box object. Adds a single Coordinate property to the default MapObject
  */
 public class BoxObject : MapObject {
-	public Coordinate	position;	///position of object on the layer
+	public Box			position;	///position of object on the layer
+	public Color		color;		///identifying color
 	/**
 	 * Creates a new instance from scratch.
 	 */
-	public this (int pID, int gID, string name, Coordinate position) @nogc nothrow @safe pure {
+	public this (int pID, int gID, string name, Box position) @nogc nothrow @safe pure {
 		this.pID = pID;
 		this.gID = gID;
 		this.name = name;
@@ -691,6 +714,7 @@ public class SpriteObject : MapObject {
 				new Attribute("y",Value(y)), new Attribute("scaleHoriz",Value(scaleHoriz)),
 				new Attribute("scaleVert",Value(scaleVert))], ancillaryTags);
 	}
+	
 }
 /**
  * Gets a coordinate out from a Tag's Attributes with standard attribute namings.

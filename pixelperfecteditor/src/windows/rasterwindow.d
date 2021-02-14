@@ -9,9 +9,9 @@ import PixelPerfectEngine.concrete.window;
 import PixelPerfectEngine.graphics.layers;
 import PixelPerfectEngine.graphics.raster : PaletteContainer;
 import CPUblit.composing;
-import CPUblit.draw;
+static import CPUblit.draw;
 import CPUblit.colorlookup;
-import PixelPerfectEngine.system.inputHandler : MouseButton, ButtonState;
+import PixelPerfectEngine.system.input.types : MouseButton, ButtonState;
 
 import document;
 debug import std.stdio;
@@ -24,6 +24,8 @@ public class RasterWindow : Window, PaletteContainer {
 	protected Color[] paletteLocal;
 	protected Color* paletteShared;
 	//protected Layer[int] layers;
+	protected uint statusFlags;
+	protected static enum SELECTION_ARMED = 1 << 0;
 	protected int[] layerList;
 	protected int rasterX, rasterY;
 	protected dstring documentName;
@@ -37,8 +39,8 @@ public class RasterWindow : Window, PaletteContainer {
 		rasterY = y;
 		trueOutput = new Bitmap32Bit(x + 2,y + 18);
 		rasterOutput = new Bitmap32Bit(x + 2, y + 18);
-		super(Coordinate(0, 0, x + 2, y + 18), documentName, ["paletteButtonA", "settingsButtonA", "rightArrowA",
-				"leftArrowA", "downArrowA", "upArrowA",]);
+		super(Coordinate(0, 0, x + 2, y + 18), documentName, /+["paletteButtonA", "settingsButtonA", "rightArrowA",
+				"leftArrowA", "downArrowA", "upArrowA",]+/);
 		this.paletteShared = paletteShared;
 		this.documentName = documentName;
 		this.document = document;
@@ -105,14 +107,25 @@ public class RasterWindow : Window, PaletteContainer {
 		}
 		return backup;
 	}
-	public override void passMouseEvent(int x, int y, int state, ubyte button) {
+	//public override void passMouseEvent(int x, int y, int state, ubyte button) {
+	///Passes mouse click event
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		StyleSheet ss = getStyleSheet;
-		if(y >= ss.drawParameters["WindowHeaderHeight"] && y < trueOutput.height - 1 && x > 0 && x < trueOutput.width - 1) {
-			y -= ss.drawParameters["WindowHeaderHeight"];
-			x--;
-			document.passMouseEvent(x, y, state, button);
+		if(mce.y >= ss.drawParameters["WindowHeaderHeight"] && mce.y < trueOutput.height - 1 && mce.x > 0 && 
+				mce.x < trueOutput.width - 1) {
+			mce.y -= ss.drawParameters["WindowHeaderHeight"];
+			mce.x--;
+			document.passMouseEvent(mce.x, mce.y, mce.state, mce.button);
 		}else
-			super.passMouseEvent(x, y, state, button);
+			super.passMCE(mec, mce);
+	}
+	///Passes mouse move event
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (statusFlags & SELECTION_ARMED) {
+
+		} else {
+			passMME(mec, mme);
+		}
 	}
 	public override void draw(bool drawHeaderOnly = false){
 		if(output.output.width != position.width || output.output.height != position.height){
@@ -132,11 +145,11 @@ public class RasterWindow : Window, PaletteContainer {
 		//draw the borders. we do not need fills or drawing elements
 		uint* ptr = cast(uint*)trueOutput.getPtr;
 		StyleSheet ss = getStyleSheet;
-		drawLine!uint(0, 16, 0, position.height - 1, paletteShared[ss.getColor("windowascent")].base, ptr, trueOutput.width);
-		drawLine!uint(0, 16, position.width - 1, 16, paletteShared[ss.getColor("windowascent")].base, ptr, trueOutput.width);
-		drawLine!uint(position.width - 1, 16, position.width - 1, position.height - 1,
+		CPUblit.draw.drawLine!uint(0, 16, 0, position.height - 1, paletteShared[ss.getColor("windowascent")].base, ptr, trueOutput.width);
+		CPUblit.draw.drawLine!uint(0, 16, position.width - 1, 16, paletteShared[ss.getColor("windowascent")].base, ptr, trueOutput.width);
+		CPUblit.draw.drawLine!uint(position.width - 1, 16, position.width - 1, position.height - 1,
 				paletteShared[ss.getColor("windowdescent")].base, ptr, trueOutput.width);
-		drawLine!uint(0, position.height - 1, position.width - 1, position.height - 1,
+		CPUblit.draw.drawLine!uint(0, position.height - 1, position.width - 1, position.height - 1,
 				paletteShared[ss.getColor("windowdescent")].base, ptr, trueOutput.width);
 	}
 	/**
@@ -183,7 +196,7 @@ public class RasterWindow : Window, PaletteContainer {
 	/**
 	 * Copies and sets all alpha values to 255 to avoid transparency issues
 	 */
-	protected @nogc void helperFunc(void* src, size_t length) pure{
+	protected @nogc void helperFunc(void* src, size_t length) pure nothrow {
 		import PixelPerfectEngine.system.platform;
 		static if(USE_INTEL_INTRINSICS){
 			import inteli.emmintrin;
@@ -220,6 +233,7 @@ public class RasterWindow : Window, PaletteContainer {
 			super.close;
 		}
 	}
+	/+
 	/**
 	 * Implements the scroll buttons and the palette edit button.
 	 */
@@ -248,9 +262,11 @@ public class RasterWindow : Window, PaletteContainer {
 					break;
 			}
 		}
+	}+/
+	///Called when selection needs to be armed.
+	public void armSelection() @nogc @safe pure nothrow {
+		statusFlags |= SELECTION_ARMED;
 	}
-	
-	
 
 	
 

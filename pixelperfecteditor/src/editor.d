@@ -15,7 +15,7 @@ import PixelPerfectEngine.graphics.paletteMan;
 import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.draw;
 //import collision;
-import PixelPerfectEngine.system.inputHandler;
+import PixelPerfectEngine.system.input;
 import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.etc;
 import PixelPerfectEngine.system.config;
@@ -39,33 +39,33 @@ import document;
 import windows.rasterwindow;
 import windows.newtilelayer;
 
-public interface IEditor{
+/+public interface IEditor{
 	public void onExit();
 	public void newDocument();
 	public void passActionEvent(Event e);
 	public void createNewDocument(dstring name, int rX, int rY);
-}
+}+/
 
 public class NewDocumentDialog : Window{
-	public IEditor ie;
+	public Editor ie;
 	private TextBox[] textBoxes;
 	public this(Coordinate size, dstring title){
 		super(size, title);
 	}
 	public this(InputHandler inputhandler){
-		this(Coordinate(10,10,220,150),"New Document"d);
+		this(Box(10,10,220,150),"New Document"d);
 
 		Button[] buttons;
 		Label[] labels;
-		buttons ~= new Button("Ok", "ok", Coordinate(150,110,200,130));
+		buttons ~= new Button("Ok", "ok", Box(150,110,200,130));
 
-		labels ~= new Label("Name:","",Coordinate(5,20,80,39));
-		labels ~= new Label("RasterX:","",Coordinate(5,40,80,59));
-		labels ~= new Label("RasterY:","",Coordinate(5,60,80,79));
+		labels ~= new Label("Name:","",Box(5,20,80,39));
+		labels ~= new Label("RasterX:","",Box(5,40,80,59));
+		labels ~= new Label("RasterY:","",Box(5,60,80,79));
 		//labels ~= new Label("N. of colors:","",Coordinate(5,80,120,99));
-		textBoxes ~= new TextBox("","name",Coordinate(81,20,200,39));
-		textBoxes ~= new TextBox("","rX",Coordinate(121,40,200,59));
-		textBoxes ~= new TextBox("","rY",Coordinate(121,60,200,79));
+		textBoxes ~= new TextBox("","name",Box(81,20,200,39));
+		textBoxes ~= new TextBox("","rX",Box(121,40,200,59));
+		textBoxes ~= new TextBox("","rY",Box(121,60,200,79));
 		//textBoxes ~= new TextBox("","pal",Coordinate(121,80,200,99));
 		addElement(buttons[0]);
 		foreach(WindowElement we; labels){
@@ -75,208 +75,144 @@ public class NewDocumentDialog : Window{
 			//we.addTextInputHandler(inputhandler);
 			addElement(we);
 		}
-		buttons[0].onMouseLClickRel = &buttonOn_onMouseLClickRel;
+		buttons[0].onMouseLClick = &buttonOn_onMouseLClickRel;
 	}
 
 	public void buttonOn_onMouseLClickRel(Event event){
 		ie.createNewDocument(textBoxes[0].getText().text, to!int(textBoxes[1].getText().text), to!int(textBoxes[2].getText().text));
 
-		parent.closeWindow(this);
+		close();
 	}
 }
 
-public class EditorWindowHandler : WindowHandler, ElementContainer{
-	private WindowElement[] elements;
-	//private ListBox layerList, prop;
-	//private ListBoxColumn[] propTL, propSL, propSLE;
-	//private ListBoxColumn[] layerListE;
-	public Label[] labels;
-	private int[] propTLW, propSLW, propSLEW;
-	public Editor ie;
-	//public bool layerList, materialList;
-	public LayerList layerList;
-	public MaterialList materialList;
-
-	//public InputHandler ih;
-
-	private BitmapDrawer output;
-	public this(int sx, int sy, int rx, int ry,ISpriteLayer sl){
-		super(sx,sy,rx,ry,sl);
-		output = new BitmapDrawer(rx, ry);
-		addBackground(output.output);
-		propTLW = [40, 320];
-		propSLW = [160, 320, 48, 64];
-		propSLEW = [160, 320, 40, 56];
-		WindowElement.popUpHandler = this;
-		//openLayerList;
-	}
-	private void onLayerListClose(){
-		layerList = null;
-	}
-	private void onMaterialListClose(){
-		materialList = null;
-	}
-	public void clearArea(WindowElement sender){
-
-	}
-	public void initGUI(){
-		Text pt(dstring text) {
-			return new Text(text, WindowElement.styleSheet.getChrFormatting("popUpMenu"));
+public class TopLevelWindow : Window {
+	public this(int width, int height) {
+		Text mt(dstring text) @safe nothrow {
+			return new Text(text, globalDefaultStyle.getChrFormatting("menuBar"));
 		}
-		Text st(dstring text) {
-			return new Text(text, WindowElement.styleSheet.getChrFormatting("popUpMenuSecondary"));
+		super(Box(0, 0, width, height), ""d, [], null);
+		MenuBar mb;
+		{
+			PopUpMenuElement[] menuElements;
+			menuElements ~= new PopUpMenuElement("file", mt("FILE"));
+
+			menuElements[0].setLength(7);
+			menuElements[0][0] = new PopUpMenuElement("new", "New PPE map");
+			menuElements[0][1] = new PopUpMenuElement("newTemp", "New PPE map from template");
+			menuElements[0][2] = new PopUpMenuElement("load", "Load PPE map");
+			menuElements[0][3] = new PopUpMenuElement("save", "Save PPE map");
+			menuElements[0][4] = new PopUpMenuElement("saveAs", "Save PPE map as");
+			menuElements[0][5] = new PopUpMenuElement("saveTemp", "Save PPE map as template");
+			menuElements[0][6] = new PopUpMenuElement("exit", "Exit application");
+
+			menuElements ~= new PopUpMenuElement("edit", mt("EDIT"));
+
+			menuElements[1].setLength(7);
+			menuElements[1][0] = new PopUpMenuElement("undo", "Undo");
+			menuElements[1][1] = new PopUpMenuElement("redo", "Redo");
+			menuElements[1][2] = new PopUpMenuElement("copy", "Copy");
+			menuElements[1][3] = new PopUpMenuElement("cut", "Cut");
+			menuElements[1][4] = new PopUpMenuElement("paste", "Paste");
+			menuElements[1][5] = new PopUpMenuElement("editorSetup", "Editor settings");
+			menuElements[1][6] = new PopUpMenuElement("docSetup", "Document settings");
+
+			menuElements ~= new PopUpMenuElement("view", mt("VIEW"));
+
+			menuElements[2].setLength(2);
+			menuElements[2][0] = new PopUpMenuElement("layerList", "Layers");
+			menuElements[2][1] = new PopUpMenuElement("materialList", "Materials");
+			//menuElements[2][2] = new PopUpMenuElement("layerTools", "Layer tools", "Alt + T");
+
+			menuElements ~= new PopUpMenuElement("layers", mt("LAYERS"));
+
+			menuElements[3].setLength(5);
+			menuElements[3][0] = new PopUpMenuElement("newLayer", "New layer");
+			menuElements[3][1] = new PopUpMenuElement("delLayer", "Delete layer");
+			menuElements[3][2] = new PopUpMenuElement("impLayer", "Import layer");
+			menuElements[3][3] = new PopUpMenuElement("layerSrc", "Layer resources");
+			menuElements[3][4] = new PopUpMenuElement("resizeLayer", "Resize layer");
+
+			menuElements ~= new PopUpMenuElement("tools", mt("TOOLS"));
+
+			menuElements[4].setLength(2);
+			menuElements[4][0] = new PopUpMenuElement("tgaTool", "TGA Toolkit");
+			menuElements[4][1] = new PopUpMenuElement("bmfontTool", "BMFont Toolkit");
+
+			menuElements ~= new PopUpMenuElement("help", mt("HELP"));
+
+			menuElements[5].setLength(2);
+			menuElements[5][0] = new PopUpMenuElement("helpFile", "Content");
+			menuElements[5][1] = new PopUpMenuElement("about", "About");
+
+			mb = new MenuBar("mb", Box(0,0, width, 16), menuElements);
 		}
-		Text mt(dstring text) {
-			return new Text(text, WindowElement.styleSheet.getChrFormatting("menuBar"));
-		}
-		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
-
-		PopUpMenuElement[] menuElements;
-		menuElements ~= new PopUpMenuElement("file", mt("FILE"));
-
-		menuElements[0].setLength(7);
-		menuElements[0][0] = new PopUpMenuElement("new", pt("New PPE map"));
-		menuElements[0][1] = new PopUpMenuElement("newTemp", pt("New PPE map from template"));
-		menuElements[0][2] = new PopUpMenuElement("load", pt("Load PPE map"));
-		menuElements[0][3] = new PopUpMenuElement("save", pt("Save PPE map"));
-		menuElements[0][4] = new PopUpMenuElement("saveAs", pt("Save PPE map as"));
-		menuElements[0][5] = new PopUpMenuElement("saveTemp", pt("Save PPE map as template"));
-		menuElements[0][6] = new PopUpMenuElement("exit", pt("Exit application"), st("Alt + F4"));
-
-		menuElements ~= new PopUpMenuElement("edit", mt("EDIT"));
-
-		menuElements[1].setLength(7);
-		menuElements[1][0] = new PopUpMenuElement("undo", pt("Undo"));
-		menuElements[1][1] = new PopUpMenuElement("redo", pt("Redo"));
-		menuElements[1][2] = new PopUpMenuElement("copy", pt("Copy"));
-		menuElements[1][3] = new PopUpMenuElement("cut", pt("Cut"));
-		menuElements[1][4] = new PopUpMenuElement("paste", pt("Paste"));
-		menuElements[1][5] = new PopUpMenuElement("editorSetup", pt("Editor settings"));
-		menuElements[1][6] = new PopUpMenuElement("docSetup", pt("Document settings"));
-
-		menuElements ~= new PopUpMenuElement("view", mt("VIEW"));
-
-		menuElements[2].setLength(2);
-		menuElements[2][0] = new PopUpMenuElement("layerList", pt("Layers"));
-		menuElements[2][1] = new PopUpMenuElement("materialList", pt("Materials"));
-		//menuElements[2][2] = new PopUpMenuElement("layerTools", "Layer tools", "Alt + T");
-
-		menuElements ~= new PopUpMenuElement("layers", mt("LAYERS"));
-
-		menuElements[3].setLength(5);
-		menuElements[3][0] = new PopUpMenuElement("newLayer", pt("New layer"));
-		menuElements[3][1] = new PopUpMenuElement("delLayer", pt("Delete layer"));
-		menuElements[3][2] = new PopUpMenuElement("impLayer", pt("Import layer"));
-		menuElements[3][3] = new PopUpMenuElement("layerSrc", pt("Layer resources"));
-		menuElements[3][4] = new PopUpMenuElement("resizeLayer", pt("Resize layer"));
-
-		menuElements ~= new PopUpMenuElement("tools", mt("TOOLS"));
-
-		menuElements[4].setLength(2);
-		menuElements[4][0] = new PopUpMenuElement("tgaTool", pt("TGA Toolkit"));
-		menuElements[4][1] = new PopUpMenuElement("bmfontTool", pt("BMFont Toolkit"));
-
-		menuElements ~= new PopUpMenuElement("help", mt("HELP"));
-
-		menuElements[5].setLength(2);
-		menuElements[5][0] = new PopUpMenuElement("helpFile", pt("Content"));
-		menuElements[5][1] = new PopUpMenuElement("about", pt("About"));
-
-
-		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,848,16),menuElements);
 		addElement(mb);
-		mb.onMouseLClickPre = &actionEvent;
-		foreach(WindowElement we; labels){
-			addElement(we);
-		}
-		foreach(WindowElement we; elements){
+	}
+	public override void draw(bool drawHeaderOnly = false) {
+		output.drawFilledBox(position, 0);
+		foreach (WindowElement we; elements) {
 			we.draw();
 		}
 	}
+	public override void drawHeader() {
 
-	public override StyleSheet getStyleSheet(){
-		return defaultStyle;
 	}
-
-	public void addElement(WindowElement we){
-		elements ~= we;
-		we.elementContainer = this;
-	}
-	public void openLayerList() {
-		if(!layerList){
-			layerList = new LayerList(0, 16, &onLayerListClose);
-			addWindow(layerList);
-		}
-	}
-	public void openMaterialList() {
-
-		if(!materialList){
-			materialList = new MaterialList(0, 16 + 213, &onMaterialListClose);
-			//addWindow(new MaterialList(848 - 98, 16 + 213, &onMaterialListClose));
-			addWindow(materialList);
-		}
-	}
-	public void actionEvent(Event event){
-		switch(event.source){
-			case "exit":
-				ie.onExit;
-				break;
-			case "new":
-				ie.newDocument;
-				break;
-			case "about":
-				Window w = new AboutWindow();
-				addWindow(w);
-				w.relMove(30,30);
-				break;
-			case "layerList":
-				openLayerList;
-				break;
-			case "materialList":
-				openMaterialList;
-				break;
-			default:
-				ie.passActionEvent(event);
-				break;
-		}
-	}
-
-	public override void drawUpdate(WindowElement sender){
-		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
-	}
-
-	override public void passMouseEvent(int x,int y,int state,ubyte button) {
-		foreach(WindowElement e; elements){
-			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
-				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state, button);
+	///Passes mouse click event
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		lastMousePos = Point(mce.x - position.left, mce.y - position.top);
+		foreach (WindowElement we; elements) {
+			if (we.getPosition.isBetween(lastMousePos)) {
+				lastMouseEventTarget = we;
+				mce.x = lastMousePos.x;
+				mce.y = lastMousePos.y;
+				we.passMCE(mec, mce);
 				return;
 			}
 		}
-	}
-	public override void passScrollEvent(int wX, int wY, int x, int y){
-		foreach(WindowElement e; elements){
-			if(e.getPosition().left < wX && e.getPosition().right > wX && e.getPosition().top < wX && e.getPosition().bottom > wY){
-
-				e.onScroll(y, x, wX, wY);
-
+		foreach (ISmallButton sb; smallButtons) {
+			WindowElement we = cast(WindowElement)sb;
+			if (we.getPosition.isBetween(lastMousePos)) {
+				lastMouseEventTarget = we;
+				mce.x = lastMousePos.x;
+				mce.y = lastMousePos.y;
+				we.passMCE(mec, mce);
 				return;
 			}
 		}
+		lastMouseEventTarget = null;
 	}
-	public Coordinate getAbsolutePosition(WindowElement sender){
-		return sender.position;
+	///Passes mouse move event
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		lastMousePos = Point(mme.x - position.left, mme.y - position.top);
+		if (lastMouseEventTarget) {
+			mme.x = lastMousePos.x;
+			mme.y = lastMousePos.y;
+			lastMouseEventTarget.passMME(mec, mme);
+			if (!lastMouseEventTarget.getPosition.isBetween(mme.x, mme.y)) {
+				lastMouseEventTarget = null;
+			}
+		} else {
+			foreach (WindowElement we; elements) {
+				if (we.getPosition.isBetween(lastMousePos)) {
+					lastMouseEventTarget = we;
+					mme.x = lastMousePos.x;
+					mme.y = lastMousePos.y;
+					we.passMME(mec, mme);
+					return;
+				}
+			}
+		}
 	}
 }
-
-public enum PlacementMode : uint{
+/+public enum PlacementMode : uint{
 	NULL		=	0,
 	NORMAL		=	1,
 	VOIDFILL	=	2,
 	OVERWRITE	=	3,
 
-}
+}+/
 
-public class Editor : InputListener, MouseListener, IEditor, SystemEventListener {
+public class Editor : InputListener, SystemEventListener {
 	public OutputScreen[] ow;
 	public Raster rasters;
 	public InputHandler input;
@@ -287,69 +223,158 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 	public SpriteLayer bitmapPreview;
 	public bool onexit, exitDialog, newLayerDialog, mouseState, rasterRefresh;
 	public Window test;
-	public EditorWindowHandler wh;
-	public EffectLayer selectionLayer;
+	public WindowHandler wh;
+	//public EffectLayer selectionLayer;
 	//public ForceFeedbackHandler ffb;
 	//private uint[5] framecounter;
 	public char[40] windowTitle;
 	public ConfigurationProfile configFile;
 	private int mouseX, mouseY;
 	private Coordinate selection, selectedTiles;
-	public PlacementMode pm;
+	//public PlacementMode pm;
 	//public UndoableStack undoStack;
 	public PaletteManager palman;
 	public MapDocument[dstring] documents;
 	public MapDocument selDoc;
+	public LayerList layerList;
+	public MaterialList materialList;
+	
+public this(string[] args){
+		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
+		//configFile = new ConfigurationProfile();
 
-	public void mouseButtonEvent(Uint32 which, Uint32 timestamp, Uint32 windowID, Uint8 button, Uint8 state, Uint8 clicks, Sint32 x, Sint32 y){
+		windowing = new SpriteLayer(RenderingMode.Copy);
+		bitmapPreview = new SpriteLayer();
 
-		setRasterRefresh;
+		wh = new WindowHandler(1696,960,848,480,windowing);
+		//wh.ie = this;
+
+		//Initialize the Concrete framework
+		INIT_CONCRETE(wh);
+		writeln(globalDefaultStyle.drawParameters);
+		//Initialize custom GUI elements
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE1.tga", 16, 16);
+			globalDefaultStyle.setImage(customGUIElems[0], "menuButtonA");
+			globalDefaultStyle.setImage(customGUIElems[1], "menuButtonB");
+			globalDefaultStyle.setImage(customGUIElems[2], "fullSizeButtonA");
+			globalDefaultStyle.setImage(customGUIElems[3], "fullSizeButtonB");
+			globalDefaultStyle.setImage(customGUIElems[4], "smallSizeButtonA");
+			globalDefaultStyle.setImage(customGUIElems[5], "smallSizeButtonB");
+			globalDefaultStyle.setImage(customGUIElems[6], "newDocumentButtonA");
+			globalDefaultStyle.setImage(customGUIElems[7], "newDocumentButtonB");
+			globalDefaultStyle.setImage(customGUIElems[8], "saveDocumentButtonA");
+			globalDefaultStyle.setImage(customGUIElems[9], "saveDocumentButtonB");
+			globalDefaultStyle.setImage(customGUIElems[10], "loadDocumentButtonA");
+			globalDefaultStyle.setImage(customGUIElems[11], "loadDocumentButtonB");
+			globalDefaultStyle.setImage(customGUIElems[12], "settingsButtonA");
+			globalDefaultStyle.setImage(customGUIElems[13], "settingsButtonB");
+			globalDefaultStyle.setImage(customGUIElems[14], "blankButtonA");
+			globalDefaultStyle.setImage(customGUIElems[15], "blankButtonB");
+		}
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE4.tga", 16, 16);
+			globalDefaultStyle.setImage(customGUIElems[0], "addMaterialA");
+			globalDefaultStyle.setImage(customGUIElems[1], "addMaterialB");
+			globalDefaultStyle.setImage(customGUIElems[2], "removeMaterialA");
+			globalDefaultStyle.setImage(customGUIElems[3], "removeMaterialB");
+			globalDefaultStyle.setImage(customGUIElems[4], "horizMirrorA");
+			globalDefaultStyle.setImage(customGUIElems[5], "horizMirrorB");
+			globalDefaultStyle.setImage(customGUIElems[6], "vertMirrorA");
+			globalDefaultStyle.setImage(customGUIElems[7], "vertMirrorB");
+			globalDefaultStyle.setImage(customGUIElems[8], "ovrwrtInsA");
+			globalDefaultStyle.setImage(customGUIElems[9], "ovrwrtInsB");
+			//globalDefaultStyle.setImage(customGUIElems[10], "");
+			//globalDefaultStyle.setImage(customGUIElems[11], "");
+			globalDefaultStyle.setImage(customGUIElems[12], "paletteDownA");
+			globalDefaultStyle.setImage(customGUIElems[13], "paletteDownB");
+			globalDefaultStyle.setImage(customGUIElems[14], "paletteUpA");
+			globalDefaultStyle.setImage(customGUIElems[15], "paletteUpB");
+		}
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE3.tga", 16, 16);
+			globalDefaultStyle.setImage(customGUIElems[0], "trashButtonA");
+			globalDefaultStyle.setImage(customGUIElems[1], "trashButtonB");
+			globalDefaultStyle.setImage(customGUIElems[2], "visibilityButtonA");
+			globalDefaultStyle.setImage(customGUIElems[3], "visibilityButtonB");
+			globalDefaultStyle.setImage(customGUIElems[4], "newTileLayerButtonA");
+			globalDefaultStyle.setImage(customGUIElems[5], "newTileLayerButtonB");
+			globalDefaultStyle.setImage(customGUIElems[6], "newSpriteLayerButtonA");
+			globalDefaultStyle.setImage(customGUIElems[7], "newSpriteLayerButtonB");
+			globalDefaultStyle.setImage(customGUIElems[8], "newTransformableTileLayerButtonA");
+			globalDefaultStyle.setImage(customGUIElems[9], "newTransformableTileLayerButtonB");
+			globalDefaultStyle.setImage(customGUIElems[10], "importLayerDataButtonA");
+			globalDefaultStyle.setImage(customGUIElems[11], "importLayerDataButtonB");
+			globalDefaultStyle.setImage(customGUIElems[12], "importMaterialDataButtonA");
+			globalDefaultStyle.setImage(customGUIElems[13], "importMaterialDataButtonB");
+			globalDefaultStyle.setImage(customGUIElems[14], "paletteButtonA");
+			globalDefaultStyle.setImage(customGUIElems[15], "paletteButtonB");
+		}
+
+		//wh.initGUI();
+
+		input = new InputHandler();
+		//input.ml ~= this;
+		input.mouseListener = wh;
+		input.inputListener = this;
+		input.systemEventListener = this;
+		//input.kb ~= KeyBinding(0, SDL_SCANCODE_ESCAPE, 0, "sysesc", Devicetype.KEYBOARD);
+		//input.kb ~= configFile.keyBindingList;
+		input.addBinding(InputHandler.getSysEscKey, InputBinding(InputHandler.sysescCode));
+		//configFile.loadBindings(input);
+		
+		WindowElement.inputHandler = input;
+		
+		ow ~= new OutputScreen("Pixel Perfect Editor", 1696, 960);
+
+		rasters = new Raster(848, 480, ow[0], 0, 2);
+		ow[0].setMainRaster(rasters);
+		rasters.addLayer(windowing, 0);
+		rasters.addLayer(bitmapPreview, 1);
+		//ISSUE: Copying the palette from StyleSheet.defaultPaletteForGUI doesn't work
+		//SOLUTION: Load the palette from a file
+		rasters.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
+		wh.setBaseWindow(new TopLevelWindow(848, 480));
+		wh.addBackground(loadBitmapFromFile!Bitmap32Bit("../system/background.png"));
+		openMaterialList();
+		openLayerList();
 	}
-	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){
-		setRasterRefresh;
-	}
-	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
-		setRasterRefresh;
-	}
-	public void keyPressed(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){
-		//debug writeln(ID);
-		switch(ID){
-			case "nextLayer":
-				break;
-			case "prevLayer":
-				break;
-			case "scrollUp":
-				break;
-			case "scrollDown":
-				break;
-			case "scrollLeft":
-				break;
-			case "scrollRight":
-				break;
-			case "quit":
-				onExit;
-				break;
-			case "load":
-				onLoad;
-				break;
+	public void menuEvent(Event ev) {
+		MenuEvent mev = cast(MenuEvent)ev;
+		switch (mev.itemSource) {
 			case "save":
-				onSave;
+				onSave();
 				break;
 			case "saveAs":
-				onSaveAs;
+				onSaveAs();
+				break;
+			case "load":
+				onLoad();
+				break;
+			case "newLayer":
+				initNewTileLayer();
+				break;
+			case "layerTools":
+				//TileLayerEditor tle = new TileLayerEditor(this);
+				//wh.addWindow(tle);
+				break;
+			case "resizeLayer":
+				initResizeLayer();
 				break;
 			case "undo":
-				onUndo;
+				onUndo();
 				break;
 			case "redo":
-				onRedo;
+				onRedo();
+				break;
+			case "exit":
+				onQuit();
 				break;
 			default:
 				break;
 		}
 	}
-	public void keyReleased(string ID, Uint32 timestamp, Uint32 devicenumber, Uint32 devicetype){}
-	public void passActionEvent(Event e){
+	/+public void passActionEvent(Event e){
 		switch(e.source){
 			case "save":
 				onSave();
@@ -378,6 +403,27 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				break;
 			default: break;
 		}
+	}+/
+	/**
+	 * Called when a keybinding event is generated.
+	 * The `id` should be generated from a string, usually the name of the binding.
+	 * `code` is a duplicate of the code used for fast lookup of the binding, which also contains other info (deviceID, etc).
+	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
+	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
+	 */
+	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+
+	}
+	/**
+	 * Called when an axis is being operated.
+	 * The `id` should be generated from a string, usually the name of the binding.
+	 * `code` is a duplicate of the code used for fast lookup of the binding, which also contains other info (deviceID, etc).
+	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
+	 * `value` is the current position of the axis normalized between -1.0 and +1.0 for joysticks, and 0.0 and +1.0 for analog
+	 * triggers.
+	 */
+	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+
 	}
 	public void onUndo () {
 		if(selDoc !is null){
@@ -392,13 +438,15 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		}
 	}
 	public void onLoad () {
+		import PixelPerfectEngine.concrete.dialogs.filedialog;
 		FileDialog fd = new FileDialog("Load document","docLoad",&onLoadDialog,[FileDialog.FileAssociationDescriptor(
 			"PPE map file", ["*.xmf"])],".\\",false);
 		wh.addWindow(fd);
 	}
-	public void onLoadDialog (Event event) {
+	public void onLoadDialog (Event ev) {
 		import std.utf : toUTF32;
 		try {
+			FileEvent event = cast(FileEvent)ev;
 			selDoc = new MapDocument(event.getFullPath);
 			dstring name = toUTF32(selDoc.mainDoc.getName);
 			RasterWindow w = new RasterWindow(selDoc.mainDoc.getHorizontalResolution, selDoc.mainDoc.getVerticalResolution, 
@@ -425,21 +473,23 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		}
 	}
 	public void onSaveAs () {
+		import PixelPerfectEngine.concrete.dialogs.filedialog;
 		FileDialog fd = new FileDialog("Save document as","docSave",&onSaveDialog,[FileDialog.FileAssociationDescriptor(
 			"PPE map file", ["*.xmf"])],".\\",true);
 		wh.addWindow(fd);
 	}
-	public void onSaveDialog (Event event) {
+	public void onSaveDialog(Event ev) {
 		import std.path : extension;
 		import std.ascii : toLower;
+		FileEvent event = cast(FileEvent)ev;
 		selDoc.filename = event.getFullPath();
 		if(extension(selDoc.filename) != ".xmf"){
 			selDoc.filename ~= ".xmf";
 		}
 		selDoc.mainDoc.save(selDoc.filename);
 	}
-	public void actionEvent(Event event) {
-
+	/+public void actionEvent(Event ev) {
+		
 		switch(event.subsource){
 			case "exitdialog":
 				if(event.source == "ok"){
@@ -461,7 +511,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 			default:
 				break;
 		}
-	}
+	}+/
 	public void onQuit(){onExit();}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
@@ -472,112 +522,7 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		}
 	}
 	
-	public this(string[] args){
-		pm = PlacementMode.OVERWRITE;
-		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
-		configFile = new ConfigurationProfile();
-
-		windowing = new SpriteLayer(LayerRenderingMode.ALPHA_BLENDING);
-		bitmapPreview = new SpriteLayer();
-
-		wh = new EditorWindowHandler(1696,960,848,480,windowing);
-		wh.ie = this;
-
-		//Initialize the Concrete framework
-		INIT_CONCRETE(wh);
-		//Initialize custom GUI elements
-		{
-			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE1.tga", 16, 16);
-			WindowElement.styleSheet.setImage(customGUIElems[0], "menuButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[1], "menuButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[2], "fullSizeButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[3], "fullSizeButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[4], "smallSizeButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[5], "smallSizeButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[6], "newDocumentButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[7], "newDocumentButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[8], "saveDocumentButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[9], "saveDocumentButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[10], "loadDocumentButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[11], "loadDocumentButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[12], "settingsButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[13], "settingsButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[14], "blankButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[15], "blankButtonB");
-		}
-		{
-			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE4.tga", 16, 16);
-			WindowElement.styleSheet.setImage(customGUIElems[0], "addMaterialA");
-			WindowElement.styleSheet.setImage(customGUIElems[1], "addMaterialB");
-			WindowElement.styleSheet.setImage(customGUIElems[2], "removeMaterialA");
-			WindowElement.styleSheet.setImage(customGUIElems[3], "removeMaterialB");
-			WindowElement.styleSheet.setImage(customGUIElems[4], "horizMirrorA");
-			WindowElement.styleSheet.setImage(customGUIElems[5], "horizMirrorB");
-			WindowElement.styleSheet.setImage(customGUIElems[6], "vertMirrorA");
-			WindowElement.styleSheet.setImage(customGUIElems[7], "vertMirrorB");
-			WindowElement.styleSheet.setImage(customGUIElems[8], "ovrwrtInsA");
-			WindowElement.styleSheet.setImage(customGUIElems[9], "ovrwrtInsB");
-			//WindowElement.styleSheet.setImage(customGUIElems[10], "");
-			//WindowElement.styleSheet.setImage(customGUIElems[11], "");
-			WindowElement.styleSheet.setImage(customGUIElems[12], "paletteDownA");
-			WindowElement.styleSheet.setImage(customGUIElems[13], "paletteDownB");
-			WindowElement.styleSheet.setImage(customGUIElems[14], "paletteUpA");
-			WindowElement.styleSheet.setImage(customGUIElems[15], "paletteUpB");
-		}
-		{
-			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE3.tga", 16, 16);
-			WindowElement.styleSheet.setImage(customGUIElems[0], "trashButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[1], "trashButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[2], "visibilityButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[3], "visibilityButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[4], "newTileLayerButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[5], "newTileLayerButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[6], "newSpriteLayerButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[7], "newSpriteLayerButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[8], "newTransformableTileLayerButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[9], "newTransformableTileLayerButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[10], "importLayerDataButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[11], "importLayerDataButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[12], "importMaterialDataButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[13], "importMaterialDataButtonB");
-			WindowElement.styleSheet.setImage(customGUIElems[14], "paletteButtonA");
-			WindowElement.styleSheet.setImage(customGUIElems[15], "paletteButtonB");
-		}
-
-		wh.initGUI();
-
-		input = new InputHandler();
-		input.ml ~= this;
-		input.ml ~= wh;
-		input.il ~= this;
-		input.sel ~= this;
-		input.kb ~= KeyBinding(0, SDL_SCANCODE_ESCAPE, 0, "sysesc", Devicetype.KEYBOARD);
-		input.kb ~= configFile.keyBindingList;
-		//debug writeln(input.kb);
-		WindowElement.inputHandler = input;
-		//wh.ih = input;
-		//ffb = new ForceFeedbackHandler(input);
-
-		//OutputWindow.setScalingQuality("2");
-		//OutputWindow.setDriver("software");
-		ow ~= new OutputScreen("Pixel Perfect Editor", 1696, 960);
-
-		rasters = new Raster(848, 480, ow[0], 0, 2);
-		ow[0].setMainRaster(rasters);
-		rasters.addLayer(windowing, 0);
-		rasters.addLayer(bitmapPreview, 1);
-		//ISSUE: Copying the palette from StyleSheet.defaultPaletteForGUI doesn't work
-		//SOLUTION: Load the palette from a file
-		rasters.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
-		//rasters[0].addRefreshListener(ow[0],0);
-		WindowElement.onDraw = &setRasterRefresh;
-		PopUpElement.onDraw = &setRasterRefresh;
-		Window.onDrawUpdate = &setRasterRefresh;
-		wh.openLayerList;
-		wh.openMaterialList;
-		//writeln(windowing.getDisplayListItem(65536));
-		windowing.relMoveSprite(65536, 0, 0);
-	}
+	
 	/**
 	 * Opens a window to ask the user for the data on the new tile layer
 	 */
@@ -618,17 +563,23 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 				selDoc.contScrollLayer();
 			}
 		}
-		configFile.store();
+		//configFile.store();
 	}
 	public void onExit(){
-
+		import PixelPerfectEngine.concrete.dialogs.defaultdialog;
 		exitDialog=true;
 		DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","Exit application", ["Are you sure?"],
 				["Yes","No","Pls save"],["ok","close","save"]);
 
-		dd.output = &actionEvent;
+		dd.output = &confirmExit;
 		wh.addWindow(dd);
 
+	}
+	private void confirmExit(Event ev) {
+		WindowElement we = cast(WindowElement)ev.sender;
+		if (we.getSource == "ok") {
+			onexit = true;
+		}
 	}
 	public void newDocument(){
 		NewDocumentDialog ndd = new NewDocumentDialog(input);
@@ -643,5 +594,23 @@ public class Editor : InputListener, MouseListener, IEditor, SystemEventListener
 		wh.addWindow(w);
 		documents[name] = md;
 		selDoc = md;
+	}
+	public void openLayerList() {
+		if (!layerList) {
+			layerList = new LayerList(0, 16, &onLayerListClosed);
+			wh.addWindow(layerList);
+		}
+	}
+	private void onLayerListClosed() {
+		layerList = null;
+	}
+	public void openMaterialList() {
+		if (!materialList) {
+			materialList = new MaterialList(0, 230, &onMaterialListClosed);
+			wh.addWindow(materialList);
+		}
+	}
+	private void onMaterialListClosed() {
+		materialList = null;
 	}
 }

@@ -125,7 +125,7 @@ public interface Focusable {
 /**
  * Implements the 
  */
-public interface ElementContainer : StyleSheetContainer, Canvas {
+public interface ElementContainer : PopUpHandler, Canvas {
 	/**
 	 * Returns the absolute position of the element.
 	 */
@@ -173,10 +173,22 @@ public interface ISmallButton {
 /**
  * Defines functions for pop up handling.
  */
-public interface PopUpHandler : StyleSheetContainer{
+public interface PopUpHandler : StyleSheetContainer {
+	/**
+	 * Puts a PopUpElement on the GUI.
+	 */
 	public void addPopUpElement(PopUpElement p);
+	/**
+	 * Puts a PopUpElement on the GUI at the given position.
+	 */
 	public void addPopUpElement(PopUpElement p, int x, int y);
+	/** 
+	 * Ends the popup session and closes all popups.
+	 */
 	public void endPopUpSession(PopUpElement p);
+	/**
+	 * Closes a single popup element.
+	 */
 	public void closePopUp(PopUpElement p);
 	//public Coordinate getAbsolutePosition(PopUpElement sender);
 	//public void drawUpdate(PopUpElement sender);

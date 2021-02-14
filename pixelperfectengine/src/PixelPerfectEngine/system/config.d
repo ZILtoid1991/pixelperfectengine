@@ -30,6 +30,12 @@ public struct KeyBinding {
 	string			name;		///The name of the keybinding.
 	float[2]		deadzones;	///Defines a deadzone for the axis.
 	bool			axisAsButton;///True if axis is emulating a button outside of deadzone.
+
+	///Converts the struct's other portion into an InputBinding
+	public InputBinding toInputBinding() @nogc @safe pure nothrow const {
+		import collections.commons : defaultHash;
+		return InputBinding(defaultHash(name), axisAsButton ? InputBinding.IS_AXIS_AS_BUTTON : 0, deadzones);
+	}
 }
 
 /**
@@ -189,6 +195,7 @@ public class ConfigurationProfile {
 					}
 				} else {
 					//collect all ancillary tags into an array
+					t0.remove();
 					ancillaryTags ~= t0;
 				}
 			}
@@ -200,78 +207,87 @@ public class ConfigurationProfile {
 
 
 	}
+	/**
+	 * Stores configuration profile on disk.
+	 */
 	public void store(){
-		Tag root = new Tag(null, null);		//, [Value(appName), Value(appVers)]
+		try {
+			Tag root = new Tag(null, null);		//, [Value(appName), Value(appVers)]
 
-		Tag t0 = new Tag(root, null, "audio");
-		new Tag(t0, null, "soundVol", [Value(sfxVol)]);
-		new Tag(t0, null, "musicVolt", [Value(musicVol)]);
+			Tag t0 = new Tag(root, null, "audio");
+			new Tag(t0, null, "soundVol", [Value(sfxVol)]);
+			new Tag(t0, null, "musicVolt", [Value(musicVol)]);
 
-		Tag t1 = new Tag(root, null, "video");
-		new Tag(t1, null, "driver", [Value(driver)]);
-		new Tag(t1, null, "scaling", [Value(scalingQuality)]);
-		new Tag(t1, null, "screenMode", [Value(screenMode)]);
-		new Tag(t1, null, "resolution", [Value(resolution)]);
-		new Tag(t1, null, "threads", [Value(threads)]);
+			Tag t1 = new Tag(root, null, "video");
+			new Tag(t1, null, "driver", [Value(driver)]);
+			new Tag(t1, null, "scaling", [Value(scalingQuality)]);
+			new Tag(t1, null, "screenMode", [Value(screenMode)]);
+			new Tag(t1, null, "resolution", [Value(resolution)]);
+			new Tag(t1, null, "threads", [Value(threads)]);
 
-		Tag t2 = new Tag(root, null, "input");
-		foreach (InputDeviceData idd; inputDevices) {
-			string devType = devicetypeStrings[idd.type];
-			Tag t2_0 = new Tag(t2, null, "device", null, [new Attribute(null, "name",Value(idd.name)), new Attribute(null, 
-					"type", Value(devType)), new Attribute(null, "devNum", Value(idd.deviceNumber))]);
-			final switch (idd.type) with (Devicetype) {
-				case Keyboard:
-					foreach (binding ; idd.keyBindingList) {
-						Attribute[] attrList = [new Attribute(null, "name", Value(keyNameDict.encode(binding.bc.buttonNum)))];
-						if (binding.bc.modifierFlags != KeyModifier.None)
-							attrList ~= new Attribute(null, "keyMod", Value(keymodToString(binding.bc.modifierFlags)));
-						if (binding.bc.keymodIgnore != KeyModifier.All) 
-							attrList ~= new Attribute(null, "keyModIgnore", Value(keymodToString(binding.bc.keymodIgnore)));
-						new Tag(t2_0, null, null, [Value(binding.name)], attrList);
-					}
-					break;
-				case Joystick:
-					foreach (binding ; idd.keyBindingList) {
-						Attribute[] attrList;//= [new Attribute(null, "name", Value(joyButtonNameDict.encode(binding.bc.buttonNum)))];
-						switch (binding.bc.modifierFlags) {
-							case JoyModifier.Axis:
-								attrList = [new Attribute(null, "name", Value(joyAxisNameDict.encode(binding.bc.buttonNum))),
-										new Attribute(null, "keyMod", Value(joymodifierStrings[binding.bc.modifierFlags])),
-										new Attribute(null, "deadZone0", Value(binding.deadzones[0])),
-										new Attribute(null, "deadZone1", Value(binding.deadzones[1]))];
-								if (binding.axisAsButton)
-									attrList ~= new Attribute(null, "axisAsButton", Value(true));
-								break;
-							case JoyModifier.DPad:
-								attrList = [new Attribute(null, "code", Value(cast(int)(binding.bc.buttonNum))),
-										new Attribute(null, "keyMod", Value(joymodifierStrings[binding.bc.modifierFlags]))];
-								break;
-							default:
-								attrList = [new Attribute(null, "name", Value(joyButtonNameDict.encode(binding.bc.buttonNum)))];
-								break;
+			Tag t2 = new Tag(root, null, "input");
+			foreach (InputDeviceData idd; inputDevices) {
+				string devType = devicetypeStrings[idd.type];
+				Tag t2_0 = new Tag(t2, null, "device", null, [new Attribute(null, "name",Value(idd.name)), new Attribute(null, 
+						"type", Value(devType)), new Attribute(null, "devNum", Value(idd.deviceNumber))]);
+				final switch (idd.type) with (Devicetype) {
+					case Keyboard:
+						foreach (binding ; idd.keyBindingList) {
+							Attribute[] attrList = [new Attribute(null, "name", Value(keyNameDict.encode(binding.bc.buttonNum)))];
+							if (binding.bc.modifierFlags != KeyModifier.None)
+								attrList ~= new Attribute(null, "keyMod", Value(keymodToString(binding.bc.modifierFlags)));
+							if (binding.bc.keymodIgnore != KeyModifier.All) 
+								attrList ~= new Attribute(null, "keyModIgnore", Value(keymodToString(binding.bc.keymodIgnore)));
+							new Tag(t2_0, null, null, [Value(binding.name)], attrList);
 						}
-						new Tag(t2_0, null, null, [Value(binding.name)], attrList);
-					}
-					new Tag(t2_0, null, "enableForceFeedback", [Value(idd.enableForceFeedback)]);
-					break;
-				case Mouse:
-					foreach (binding ; idd.keyBindingList) {
-						Attribute[] attrList = [new Attribute(null, "code", Value(cast(int)(binding.bc.buttonNum)))];
-						new Tag(t2_0, null, null, [Value(binding.name)], attrList);
-					}
-					break;
-				case Touchscreen:
-					break;
+						break;
+					case Joystick:
+						foreach (binding ; idd.keyBindingList) {
+							Attribute[] attrList;//= [new Attribute(null, "name", Value(joyButtonNameDict.encode(binding.bc.buttonNum)))];
+							switch (binding.bc.modifierFlags) {
+								case JoyModifier.Axis:
+									attrList = [new Attribute(null, "name", Value(joyAxisNameDict.encode(binding.bc.buttonNum))),
+											new Attribute(null, "keyMod", Value(joymodifierStrings[binding.bc.modifierFlags])),
+											new Attribute(null, "deadZone0", Value(binding.deadzones[0])),
+											new Attribute(null, "deadZone1", Value(binding.deadzones[1]))];
+									if (binding.axisAsButton)
+										attrList ~= new Attribute(null, "axisAsButton", Value(true));
+									break;
+								case JoyModifier.DPad:
+									attrList = [new Attribute(null, "code", Value(cast(int)(binding.bc.buttonNum))),
+											new Attribute(null, "keyMod", Value(joymodifierStrings[binding.bc.modifierFlags]))];
+									break;
+								default:
+									attrList = [new Attribute(null, "name", Value(joyButtonNameDict.encode(binding.bc.buttonNum)))];
+									break;
+							}
+							new Tag(t2_0, null, null, [Value(binding.name)], attrList);
+						}
+						new Tag(t2_0, null, "enableForceFeedback", [Value(idd.enableForceFeedback)]);
+						break;
+					case Mouse:
+						foreach (binding ; idd.keyBindingList) {
+							Attribute[] attrList = [new Attribute(null, "code", Value(cast(int)(binding.bc.buttonNum)))];
+							new Tag(t2_0, null, null, [Value(binding.name)], attrList);
+						}
+						break;
+					case Touchscreen:
+						break;
+				}
 			}
+			//Tag t3 = new Tag(root, null, "etc");
+			foreach(at; ancillaryTags){
+				root.add(at);
+			}
+			string data = root.toSDLDocument();
+			std.file.write(path, data);
+		} catch (Exception e) {
+			debug writeln(e);
 		}
-		//Tag t3 = new Tag(root, null, "etc");
-		foreach(at; ancillaryTags){
-			root.add(at);
-		}
-		string data = root.toSDLDocument();
-		std.file.write(path, data);
 	}
-
+	/**
+	 * Converts a key modifier string to machine-readable value
+	 */
 	public ubyte stringToKeymod(string s) @safe const {
 		import std.algorithm.iteration : splitter;
 		if(s == "None")	return KeyModifier.None;
@@ -283,7 +299,9 @@ public class ConfigurationProfile {
 		}
 		return result;
 	}
-
+	/**
+	 * Converts a key modifier value to human-readable string.
+	 */
 	public string keymodToString(const ubyte keymod) @safe pure nothrow const {
 		if(keymod == KeyModifier.None)
 			return "None";
@@ -316,12 +334,22 @@ public class ConfigurationProfile {
 		}
 		return result[0..$-1];
 	}
-
+	/**
+	 * Converts JoyModifier to human-readable string.
+	 */
 	public string joymodToString(const ushort s) @safe pure nothrow const {
 		switch(s) {
 			case JoyModifier.Axis: return "Axis";
 			case JoyModifier.DPad: return "DPad";
 			default: return "Buttons";
+		}
+	}
+	/**
+	 * Loads inputbindings into a handler.
+	 */
+	public void loadBindings(InputHandler ih) @safe nothrow {
+		foreach (KeyBinding key; keyBindingList) {
+			ih.addBinding(key.bc, key.toInputBinding);
 		}
 	}
 	public void useVideoMode(int mode, OutputScreen window){
@@ -346,6 +374,10 @@ public class ConfigurationProfile {
 	public string videoModeToString(size_t n){
 		return to!string(videoModes[n].w) ~ "x" ~ to!string(videoModes[n].h) ~ "@" ~ to!string(videoModes[n].refresh_rate) ~ "Hz";
 	}
+	/**
+	 * Sets the the path where configuration files and etc. will be stored.
+	 * If ../_debug/ folder exists, it'll be used instead for emulation purposes.
+	 */
 	public static void setVaultPath(const char* developer, const char* application){
 		if (exists("../_debug/")) {
 			vaultPath = "../_debug/";
@@ -358,19 +390,6 @@ public class ConfigurationProfile {
 	}
 
 }
-
-
-
-/*public class VideoMode{
-	public int displayIndex, modeIndex;
-	public SDL_DisplayMode displaymode;
-	public this (){
-
-	}
-	public override string toString(){
-		return to!string(displaymode.w) ~ "x" ~ to!string(displaymode.h) ~ "@" ~ to!string(displaymode.refresh_rate) ~ "Hz";
-	}
-}*/
 /**
  * Default keywords to look up for common video settings
  */

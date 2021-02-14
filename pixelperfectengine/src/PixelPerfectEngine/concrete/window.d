@@ -65,20 +65,41 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public StyleSheet 				customStyle;	///Custom stylesheet for this window
 	protected CWSet					children;		///Stores child windows
 	protected Window				parent;			///Stores reference to the parent
+	public void delegate()			onClose;		///Called when the window is closed
 	public static void delegate() 	onDrawUpdate;	///Called if not null after every draw update
 	/**
-	 * Standard constructor. "size" sets both the initial position and the size of the window.
+	 * Custom constructor. "size" sets both the initial position and the size of the window.
+	 * Buttons in the header can be set through the `smallButtons` parameter
 	 */
-	public this(Box size, Text title, ISmallButton[] smallButtons = [], StyleSheet customStyle = null) {
+	public this(Box size, Text title, ISmallButton[] smallButtons, StyleSheet customStyle = null) {
+		position = size;
+		output = new BitmapDrawer(position.width, position.height);
+		this.title = title;
+		this.customStyle = customStyle;
+		foreach (key; smallButtons) {
+			addHeaderButton(key);
+		}
+	}
+	///Ditto
+	public this(Box size, dstring title, ISmallButton[] smallButtons, StyleSheet customStyle = null) {
+		this(size, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), smallButtons, customStyle);
+	}
+	/**
+	 * Default constructor. "size" sets both the initial position and the size of the window.
+	 * Adds a close button to the header.
+	 */
+	public this(Box size, Text title, StyleSheet customStyle = null) {
 		position = size;
 		output = new BitmapDrawer(position.width(), position.height());
 		this.title = title;
 		this.customStyle = customStyle;
+		SmallButton closeButton = closeButton(customStyle is null ? globalDefaultStyle : customStyle);
+		closeButton.onMouseLClick = &close;
+		addHeaderButton(closeButton);
 	}
 	///Ditto
-	public this(Box size, dstring title, ISmallButton[] smallButtons = [], StyleSheet customStyle = null) {
-		this.customStyle = customStyle;
-		this(size, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), smallButtons, customStyle);
+	public this(Box size, dstring title, StyleSheet customStyle = null) {
+		this(size, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), customStyle);
 	}
 	/**
 	 * Returns the window's position.
@@ -142,9 +163,9 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		else
 			b = Box(right - headerHeight, 0, right, headerHeight);
 		WindowElement we = cast(WindowElement)sb;
-		we.setPosition(b);
 		we.setParent(this);
-		elements.put(we);
+		we.setPosition(b);
+		//elements.put(we);
 	}
 	/**
 	 * Removes a smallbutton from the header.
@@ -166,7 +187,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		if(drawHeaderOnly)
 			return;
 		StyleSheet ss = getStyleSheet();
-		const Box bodyarea = Box(0, ss.drawParameters["WindowHeaderHeight"], position.width, position.height);
+		const Box bodyarea = Box(0, ss.drawParameters["WindowHeaderHeight"], position.width - 1, position.height - 1);
 		drawFilledBox(bodyarea, ss.getColor("window"));
 		drawLine(bodyarea.cornerUL, bodyarea.cornerLL, ss.getColor("windowascent"));
 		drawLine(bodyarea.cornerUL, bodyarea.cornerUR, ss.getColor("windowascent"));
@@ -176,34 +197,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		foreach (WindowElement we; elements) {
 			we.draw();
 		}
-		/+output.drawFilledRectangle(0, position.width() - 1, getStyleSheet().getImage("closeButtonA").height,
-				position.height() - 1, getStyleSheet().getColor("window"));
-		int y1 = getStyleSheet().getImage("closeButtonA").height;
-		/*output.drawRectangle(x1, sizeX - 1, 0, y1, getStyleBrush(header));
-		output.drawFilledRectangle(x1 + (x1/2), sizeX - 1 - (x1/2), y1/2, y1 - (y1/2), getStyleBrush(header).readPixel(x1/2, y1/2));*/
-
-		//int headerLength = cast(int)(extraButtons.length == 0 ? position.width - 1 : position.width() - 1 - ((extraButtons.length>>2) * x1) );
-
-		//drawing the border of the window
-		output.drawLine(0, position.width() - 1, y1, y1, getStyleSheet().getColor("windowascent"));
-		output.drawLine(0, 0, y1, position.height() - 1, getStyleSheet().getColor("windowascent"));
-		output.drawLine(0, position.width() - 1, position.height() - 1, position.height() - 1,
-				getStyleSheet().getColor("windowdescent"));
-		output.drawLine(position.width() - 1, position.width() - 1, y1, position.height() - 1,
-				getStyleSheet().getColor("windowdescent"));
-
-		//output.drawText(x1+1, 1, title, getFontSet(0), 1);
-
-		//fullUpdate = true;
-		foreach(WindowElement we; elements){
-			we.draw();
-			//output.insertBitmap(we.getPosition().xa,we.getPosition().ya,we.output.output);
-		}
-		//fullUpdate = false;
-		parent.drawUpdate(this);
-		if(onDrawUpdate !is null){
-			onDrawUpdate();
-		}+/
+		
 	}
 	/**
 	 * Draws the header.
@@ -211,10 +205,12 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	protected void drawHeader() {
 		StyleSheet ss = getStyleSheet();
 		const int headerHeight = ss.drawParameters["WindowHeaderHeight"];
-		Box headerArea = Box(0, 0, position.width, headerHeight);
+		Box headerArea = Box(0, 0, position.width - 1, headerHeight);
 		foreach (ISmallButton sb; smallButtons) {
 			if (sb.isLeftSide) headerArea.left += headerHeight;
 			else headerArea.right -= headerHeight;
+			WindowElement we = cast(WindowElement)sb;
+			we.draw;
 		}
 		if (active) {
 			drawFilledBox(headerArea, ss.getColor("WHAtop"));
@@ -270,62 +266,22 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public Text getTitle() @safe @nogc pure nothrow {
 		return title;
 	}
-	/+/**
-	 * Detects where the mouse is clicked, then it either passes to an element, or tests whether the close button,
-	 * an extra button was clicked, also tests for the header, which creates a drag event for moving the window.
-	 */
-	public void passMouseEvent(int x, int y, int state, ubyte button) {
-		if (state == ButtonState.Pressed) {
-			if (getStyleSheet.getImage("closeButtonA").width > x && getStyleSheet.getImage("closeButtonA").height > y && 
-					button == MouseButton.LEFT) {
-				close();
-				return;
-			} else if (getStyleSheet.getImage("closeButtonA").height > y) {
-				if(x > position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length)){
-					x -= position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length);
-					extraButtonEvent(x / getStyleSheet.getImage("closeButtonA").width, button, state);
-					return;
-				}
-				parent.moveUpdate(this);
-				return;
-			}
-			//x -= position.xa;
-			//y -= position.ya;
-
-			foreach(WindowElement e; elements){
-				if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
-					e.onClick(x - e.getPosition().left, y - e.getPosition().top, state, button);
-					draggedElement = e;
-
-					return;
-				}
-			}
-		}else{
-			if (draggedElement) {
-				draggedElement.onClick(x - draggedElement.getPosition().left, y - draggedElement.getPosition().top, state, button);
-				draggedElement = null;
-			} else if (x > position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length)) {
-				x -= position.width - (getStyleSheet.getImage("closeButtonA").width * extraButtons.length);
-				extraButtonEvent(x / getStyleSheet.getImage("closeButtonA").width, button, state);
-				return;
-			}
-		}
-	}+/
 	/**
 	 * Closes the window by calling the WindowHandler's closeWindow function.
 	 */
-	public void close() {
-		parent.removeChildWindow(this);
-		handler.closeWindow(this);
+	public void close(Event ev) {
+		close();
 	}
-	///Used for closing the window, either by a smallbutton, or other event
-	protected void onClose(Event ev) {
-		close;
+	///Ditto
+	public void close() {
+		if (onClose !is null) onClose();
+		if (parent !is null) parent.removeChildWindow(this);
+		handler.closeWindow(this);
 	}
 	/**
 	 * Adds a WindowHandler to the window.
 	 */
-	public void addHandler(WindowHandler wh) {
+	public void addHandler(WindowHandler wh) @nogc @safe pure nothrow {
 		handler = wh;
 	}
 	
@@ -369,7 +325,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 */
 	public void requestFocus(WindowElement sender) {
 		try {
-			focusables[focusedElement].focusTaken();
+			if (focusedElement != -1)
+				focusables[focusedElement].focusTaken();
 			Focusable f = cast(Focusable)(sender);
 			focusedElement = focusables.which(f);
 			focusables[focusedElement].focusGiven();
@@ -506,32 +463,52 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	//Implementation of `MouseEventReceptor` interface starts here
 	///Passes mouse click event
 	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
-		lastMousePos = Point(mce.x - position.left, mce.y - position.top);
-		foreach (WindowElement we; elements) {
-			if (we.getPosition.isBetween(lastMousePos)) {
-				lastMouseEventTarget = we;
-				mce.x = lastMousePos.x;
-				mce.y = lastMousePos.y;
-				we.passMCE(mec, mce);
-				return;
+		if (!isMoved) {
+			lastMousePos = Point(mce.x - position.left, mce.y - position.top);
+			foreach (WindowElement we; elements) {
+				if (we.getPosition.isBetween(lastMousePos)) {
+					lastMouseEventTarget = we;
+					mce.x = lastMousePos.x;
+					mce.y = lastMousePos.y;
+					we.passMCE(mec, mce);
+					return;
+				}
 			}
+			foreach (ISmallButton sb; smallButtons) {
+				WindowElement we = cast(WindowElement)sb;
+				if (we.getPosition.isBetween(lastMousePos)) {
+					lastMouseEventTarget = we;
+					mce.x = lastMousePos.x;
+					mce.y = lastMousePos.y;
+					we.passMCE(mec, mce);
+					return;
+				}
+			}
+			const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
+			if (lastMousePos.y < headerHeight) {
+				isMoved = true;
+				handler.initDragEvent(this);
+			}
+			lastMouseEventTarget = null;
+		} else if (!mce.state) {
+			isMoved = false;
 		}
-		StyleSheet ss = getStyleSheet();
-		
-		if (mce.y < ss.drawParameters["windowHeaderHeight"]) {
-			isMoved = true;
-		}
-		lastMouseEventTarget = null;
 	}
 	///Passes mouse move event
 	public void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
 		lastMousePos = Point(mme.x - position.left, mme.y - position.top);
-		if (isMoved) { 
-			relMove(mme.relX, mme.relY);
+		if (isMoved) {
+			if (mme.buttonState)
+				relMove(mme.relX, mme.relY);
+			else
+				isMoved = false;
 		} else if (lastMouseEventTarget) {
 			mme.x = lastMousePos.x;
 			mme.y = lastMousePos.y;
 			lastMouseEventTarget.passMME(mec, mme);
+			if (!lastMouseEventTarget.getPosition.isBetween(mme.x, mme.y)) {
+				lastMouseEventTarget = null;
+			}
 		} else {
 			foreach (WindowElement we; elements) {
 				if (we.getPosition.isBetween(lastMousePos)) {
@@ -549,6 +526,40 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		if (lastMouseEventTarget) {
 			lastMouseEventTarget.passMWE(mec, mwe);
 		}
+	}
+	/**
+	 * Puts a PopUpElement on the GUI.
+	 */
+	public void addPopUpElement(PopUpElement p) {
+		handler.addPopUpElement(p);
+	}
+	/**
+	 * Puts a PopUpElement on the GUI at the given position.
+	 */
+	public void addPopUpElement(PopUpElement p, int x, int y) {
+		handler.addPopUpElement(p, x, y);
+	}
+	/** 
+	 * Ends the popup session and closes all popups.
+	 */
+	public void endPopUpSession(PopUpElement p) {
+		handler.endPopUpSession(p);
+	}
+	/**
+	 * Closes a single popup element.
+	 */
+	public void closePopUp(PopUpElement p) {
+		handler.closePopUp(p);
+	}
+	///Generates a generic close button
+	public static SmallButton closeButton(StyleSheet ss = globalDefaultStyle) {
+		const int windowHeaderHeight = ss.drawParameters["WindowHeaderHeight"];
+		SmallButton sb = new SmallButton("closeButtonB", "closeButtonA", "close", 
+				Box(0,0, windowHeaderHeight, windowHeaderHeight));
+		sb.isLeftSide = true;
+		if (ss !is globalDefaultStyle)
+			sb.customStyle = ss;
+		return sb;
 	}
 }
 

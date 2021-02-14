@@ -65,23 +65,23 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	alias DisplayList = TreeMap!(wchar, DisplayListItem, true);
 	protected DisplayList displayList;
 	protected short[4] transformPoints;	/** Defines how the layer is being transformed */
-	protected short[2] tpOrigin;
+	protected short[2] tpOrigin;		/** Transform point */
 	protected Bitmap32Bit backbuffer;	///used to store current screen output
 	/*static if(BMPType.mangleof == Bitmap8Bit.mangleof){
 		protected ubyte[] src;
 		protected Color* palettePtr;	///Shared palette
 	}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
 		protected ushort[] src;*/
-	static if(BMPType.mangleof == Bitmap4Bit.mangleof || BMPType.mangleof == Bitmap8Bit.mangleof ||
-			BMPType.mangleof == Bitmap16Bit.mangleof){
+	static if(is(BMPType == Bitmap4Bit) || is(BMPType == Bitmap8Bit) ||	is(BMPType == Bitmap16Bit)){
 		protected ushort[] src;
-	}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
+	}else static if(is(BMPType == Bitmap32Bit)){
 
 	}else static assert(false,"Template parameter " ~ BMPType.mangleof ~ " not supported by TransformableTileLayer!");
 	//TO DO: Replace these with a single 32 bit value
 	protected bool		needsUpdate;	///Set to true if backbuffer needs an update (might be replaced with flags)
 	public WarpMode		warpMode;		///Repeats the whole layer if set to true
 	public ubyte		masterVal;		///Sets the master alpha value for the layer
+	public ushort		paletteOffset;	///Offsets the palette by the given amount
 	protected int mX, mY;				///"Inherited" from TileLayer
 	static if(TileX == 8)
 		protected immutable int shiftX = 3;
@@ -107,7 +107,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	protected int4 _tileAmpersand;      ///Used for quick modulo by power of two to calculate tile positions.
 	protected short8 _increment;
 	protected __m128i _mapAmpersand;    ///Used for quick modulo by power of two to read maps
-	protected __m128i _mapShift;		///Used for quick divide by power of two to read maps
+	//protected __m128i _mapShift;		///Used for quick divide by power of two to read maps
 	
 	alias HBIDelegate = @nogc nothrow void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y);
 	/**
@@ -115,7 +115,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	 */
 	public HBIDelegate hBlankInterrupt;
 
-	this(RenderingMode renderMode = RenderingMode.AlphaBlending){
+	this (RenderingMode renderMode = RenderingMode.AlphaBlend) {
 		A = 256;
 		B = 0;
 		C = 0;
@@ -123,7 +123,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		x_0 = 0;
 		y_0 = 0;
 		_tileAmpersand = [TileX - 1, TileY - 1, TileX - 1, TileY - 1];
-		_mapShift = [shiftX, shiftY, shiftX, shiftY];
+		//_mapShift = [shiftX, shiftY, shiftX, shiftY];
+		masterVal = ubyte.max;
 		setRenderingMode(renderMode);
 		needsUpdate = true;
 		//static if (BMPType.mangleof == Bitmap4Bit.mangleof) _paletteOffset = 4;
@@ -181,13 +182,13 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 					xy &= _tileAmpersand;
 					if(currentTile[0].tileID != 0xFFFF){
 						const DisplayListItem d = displayList[currentTile[0].tileID];
-						static if(BMPType.mangleof == Bitmap4Bit.mangleof){
+						static if(is(BMPType == Bitmap4Bit)){
 							ubyte* tsrc = cast(ubyte*)d.pixelSrc;
-						}else static if(BMPType.mangleof == Bitmap8Bit.mangleof){
+						}else static if(is(BMPType == Bitmap8Bit)){
 							ubyte* tsrc = cast(ubyte*)d.pixelSrc;
-						}else static if(BMPType.mangleof == Bitmap16Bit.mangleof){
+						}else static if(is(BMPType == Bitmap16Bit)){
 							ushort* tsrc = cast(ushort*)d.pixelSrc;
-						}else static if(BMPType.mangleof == Bitmap32Bit.mangleof){
+						}else static if(is(BMPType == Bitmap32Bit)){
 							Color* tsrc = cast(Color*)d.pixelSrc;
 						}
 						xy[0] = xy[0] & (TileX - 1);
@@ -215,13 +216,13 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 					x++;
 					if(currentTile[1].tileID != 0xFFFF){
 						const DisplayListItem d = displayList[currentTile[1].tileID];
-						static if(BMPType.mangleof == Bitmap4Bit.mangleof) {
+						static if(is(BMPType == Bitmap4Bit)){
 							ubyte* tsrc = cast(ubyte*)d.pixelSrc;
-						} else static if(BMPType.mangleof == Bitmap8Bit.mangleof) {
+						}else static if(is(BMPType == Bitmap8Bit)){
 							ubyte* tsrc = cast(ubyte*)d.pixelSrc;
-						} else static if(BMPType.mangleof == Bitmap16Bit.mangleof) {
+						}else static if(is(BMPType == Bitmap16Bit)){
 							ushort* tsrc = cast(ushort*)d.pixelSrc;
-						} else static if(BMPType.mangleof == Bitmap32Bit.mangleof) {
+						}else static if(is(BMPType == Bitmap32Bit)){
 							Color* tsrc = cast(Color*)d.pixelSrc;
 						}
 						xy[2] = xy[2] & (TileX - 1);
@@ -290,7 +291,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 				}+/
 				static if(BMPType.mangleof == Bitmap4Bit.mangleof || BMPType.mangleof == Bitmap8Bit.mangleof || 
 						BMPType.mangleof == Bitmap16Bit.mangleof){
-					mainColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palette, rasterX);
+					mainColorLookupFunction(src.ptr, cast(uint*)dest, cast(uint*)palette + paletteOffset, rasterX);
 					dest += rasterX;
 				}
 			}
@@ -306,17 +307,17 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 
 	}
 	///Returns which tile is at the given pixel
-	@nogc public MappingElement tileByPixel(int x, int y) @safe pure nothrow {
-		static if (USE_INTEL_INTRINSICS) {
-			return MappingElement.init;
-		} else {
-			int[2] xy = transformFunctionInt([cast(short)x,cast(short)y],transformPoints,tpOrigin,[cast(short)sX,cast(short)sY]);
-			return tileByPixelWithoutTransform(xy[0],xy[1]);
-		}
+	public MappingElement tileByPixel(int x, int y) @nogc @safe pure nothrow const {
+		//static if (USE_INTEL_INTRINSICS) {
+		//	return MappingElement.init;
+		//} else {
+		int[2] xy = transformFunctionInt([cast(short)x,cast(short)y],transformPoints,tpOrigin,[cast(short)sX,cast(short)sY]);
+		return tileByPixelWithoutTransform(xy[0],xy[1]);
+		//}
 		
 	}
 	///Returns which tile is at the given pixel.
-	protected MappingElement tileByPixelWithoutTransform(int x, int y) @nogc @safe pure nothrow {
+	final protected MappingElement tileByPixelWithoutTransform(int x, int y) @nogc @safe pure nothrow const {
 		x >>>= shiftX;
 		y >>>= shiftY;
 		final switch (warpMode) with (WarpMode) {
@@ -334,8 +335,12 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		return mapping[x + y * mX];
 	}
 	///Returns two tiles to speed up rendering.
-	protected MappingElement[2] tileByPixelWithoutTransform(__m128i params) @nogc @safe pure nothrow {
-		params >>>= mapShift;
+	final protected MappingElement[2] tileByPixelWithoutTransform(__m128i params) @nogc @safe pure nothrow const {
+		//params >>>= mapShift;
+		params[0] >>= shiftX;
+		params[2] >>= shiftX;
+		params[1] >>= shiftY;
+		params[3] >>= shiftY;
 		MappingElement[2] result;
 		final switch (warpMode) with (WarpMode) {
 			case Off:
@@ -451,17 +456,17 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		super.relScroll(x,y);
 		needsUpdate = true;
 	}
-	public MappingElement[] getMapping(){
-		return mapping;
-	}
 	public MappingElement[] getMapping() @nogc @safe pure nothrow {
 		return mapping;
 	}
+	/+public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const {
+		return mapping[(y * mX) + x];
+	}+/
 	public int getTileWidth() @nogc @safe pure nothrow const {
-		return tileX;
+		return TileX;
 	}
 	public int getTileHeight() @nogc @safe pure nothrow const {
-		return tileY;
+		return TileY;
 	}
 	public int getMX() @nogc @safe pure nothrow const {
 		return mX;
@@ -485,7 +490,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		return warpMode;
 	}
 	///Gets the the ID of the given element from the mapping. x , y : Position.
-	@nogc public MappingElement readMapping(int x, int y){
+	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const {
 		if(!warpMode){
 			if(x < 0 || y < 0 || x >= mX || y >= mY){
 				return MappingElement(0xFFFF);

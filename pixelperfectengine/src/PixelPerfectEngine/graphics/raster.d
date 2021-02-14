@@ -14,6 +14,7 @@ import std.conv;
 import std.algorithm.sorting;
 import std.algorithm.mutation;
 import core.time;
+import collections.treemap;
 
 ///The raster calls it every time it finishes the drawing to the framebuffers.
 public interface RefreshListener{
@@ -72,8 +73,11 @@ public class Raster : IRaster, PaletteContainer{
 	 * Color format is ARGB, with each index having their own transparency.
 	 */
     protected Color[] _palette;
-    private Layer[int] layerList;	///Stores the layers by their priorities.
-	private int[] layerPriorityHandler, threads;
+	alias LayerMap = TreeMap!(int, Layer);
+	///Stores the layers by their priorities.
+	public LayerMap layerMap;
+    //private Layer[int] layerList;	
+	private int[] threads;
     private bool r;
 	protected ubyte nOfBuffers;		///Number of framebuffers, 2 for double buffering.
 	protected ubyte updatedBuffer;	///Framebuffer currently being updated
@@ -101,6 +105,9 @@ public class Raster : IRaster, PaletteContainer{
 		doubleBufferRegisters[1] = 0;+/
 		oW.setMainRaster(this);
 		addRefreshListener(oW);
+		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
+		framesPerSecond = 0.0;
+		avgFPS = 0.0;
 	}
 	/**
 	 * Returns a copy of the palette of the object.
@@ -187,24 +194,26 @@ public class Raster : IRaster, PaletteContainer{
 	}
 	///Sets the number of colors.
 	///Will be set deprecated in 0.10.0
-	public void setupPalette(int i){
+	public void setupPalette(int i) {
 		_palette.length = i;
 	}
     ///Replaces the layer at the given number.
-    public void replaceLayer(Layer l, int i){
-		l.setRasterizer(rX, rY);
-        layerList[i] = l;
+	///Deprecated!
+    public deprecated void replaceLayer(Layer l, int i){
+		addLayer(l, i);
     }
     ///Adds a layer at the given priority.
-    public void addLayer(Layer l, int i){
-		l.setRasterizer(rX, rY);
+    public void addLayer(Layer l, int i) @safe pure nothrow {
+		/+l.setRasterizer(rX, rY);
         layerList[i] = l;
 		layerPriorityHandler ~= i;
-		layerPriorityHandler.sort();
+		layerPriorityHandler.sort();+/
+		l.setRasterizer(rX, rY);
+		layerMap[i] = l;
     }
 	///Removes a layer at the given priority.
-	public void removeLayer(int n){
-		layerList.remove(n);
+	public void removeLayer(int n) @safe pure nothrow {
+		/+layerList.remove(n);
 		int[] newlayerPriorityHandler;
 		for(int i; i < layerPriorityHandler.length; i++){
 			//writeln(0);
@@ -213,13 +222,14 @@ public class Raster : IRaster, PaletteContainer{
 
 			}
 		}
-		layerPriorityHandler = newlayerPriorityHandler;
+		layerPriorityHandler = newlayerPriorityHandler;+/
+		layerMap.remove(n);
 	}
 	/**
 	 * Refreshes the whole framebuffer.
 	 */
-    public void refresh(){
-
+    public void refresh() {
+		import std.stdio : writeln;
         r = true;
 		
 		updatedBuffer++;
@@ -227,8 +237,11 @@ public class Raster : IRaster, PaletteContainer{
 
 		SDL_LockTexture(frameBuffer[updatedBuffer], null, &fbData, &fbPitch);
 
-		for(int i ; i < layerPriorityHandler.length ; i++){
+		/+for(int i ; i < layerPriorityHandler.length ; i++){
 			layerList[i].updateRaster(fbData, fbPitch, palette.ptr);
+		}+/
+		foreach (Layer layer ; layerMap) {
+			layer.updateRaster(fbData, fbPitch, palette.ptr);
 		}
 
 		SDL_UnlockTexture(frameBuffer[updatedBuffer]);
@@ -240,9 +253,9 @@ public class Raster : IRaster, PaletteContainer{
 		//get frame duration
 		frameTime_1 = frameTime;
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
-		delta_frameTime = frameTime_1 - frameTime;
-		const real delta_frameTime0 = to!real(delta_frameTime.total!"hnsecs"());
-		framesPerSecond = framesPerSecond + 1 / (delta_frameTime0 / 10000);
+		delta_frameTime = frameTime - frameTime_1;
+		const real delta_frameTime0 = cast(real)(delta_frameTime.total!"usecs"());
+		framesPerSecond = 1 / (delta_frameTime0 / 1_000_000);
 		if(avgFPS)
 			avgFPS = (avgFPS + framesPerSecond) / 2;
 		else

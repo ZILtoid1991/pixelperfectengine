@@ -35,36 +35,12 @@ public class InputHandler {
 		CE_AllowMouse		=	1<<6,	///If set, allows mouse buttons to be recorded
 		AnyKey				=	1<<7	///Enables an anykey event.
 	}
+	///Code that is emmitted on an any key event.
 	public static immutable uint anykeyCode = 1402508842; //= defaultHash("AnyKey");
+	///Code that is emmitted on a system escape key (keyboard Esc key, joystick start button, etc) event.
 	public static immutable uint sysescCode = 2320826867; //= defaultHash("SysEsc");
 	//alias CodeTreeSet = TreeMap!(uint, void);
-	/**
-	 * Defines a single Input Binding.
-	 */
-	public struct InputBinding {
-		uint		code;			///Code being sent out to the target.
-		uint		flags;			///For future extensions.
-		float[2]	deadzone;		///The deadzone, if the binding is an axis
-		static enum IS_AXIS_AS_BUTTON = 1<<0;
-
-		this(uint code, uint flags, float[2] deadzone) @nogc @safe pure nothrow {
-			this.code = code;
-			this.flags = flags;
-			this.deadzone = deadzone;
-		}
-
-		int opCmp(const InputBinding other) const @nogc @safe pure nothrow {
-			if (code > other.code) return 1;
-			else if (code < other.code) return -1;
-			else return 0;
-		}
-
-		int opCmp(const uint other) const @nogc @safe pure nothrow {
-			if (code > other) return 1;
-			else if (code < other) return -1;
-			else return 0;
-		}
-	}
+	
 	alias CodeTreeSet = TreeMap!(InputBinding, void);
 	alias InputBindingLookupTree = TreeMap!(BindingCode, CodeTreeSet);//alias InputBindingLookupTree = TreeMap!(BindingCode, InputBinding[]);
 	alias JoyInfoMap = TreeMap!(int, JoyInfo);
@@ -110,6 +86,37 @@ public class InputHandler {
 		foreach(joy; joysticks) {
 			SDL_JoystickClose(joy);
 		}
+	}
+	/**
+	 * Adds a single inputbinding to the inputhandler.
+	 */
+	public void addBinding(BindingCode bc, InputBinding ib) @safe nothrow {
+		CodeTreeSet* i = inputLookup.ptrOf(bc);
+		if (i) 
+			i.put(ib);
+		else 
+			inputLookup[bc] = CodeTreeSet([ib]);
+	}
+	/**
+	 * Removes a single inputbinding from the inputhandler.
+	 */
+	public void removeBinding(BindingCode bc, InputBinding ib) @safe nothrow {
+		CodeTreeSet* i = inputLookup.ptrOf(bc);
+		if (i) {
+			if (i.length == 1)
+				inputLookup.remove(bc);
+			else
+				i.removeByElem(ib);
+		}
+	}
+	/**
+	 * Replaces the keycode lookup tree.
+	 * Returns a copy of the current one as a backup.
+	 */
+	public InputBindingLookupTree replaceLookupTree(InputBindingLookupTree newTree) @safe nothrow {
+		InputBindingLookupTree backup = inputLookup;
+		inputLookup = newTree;
+		return backup;
 	}
 	///Static CTOR to init joystick handling
 	///Only one input handler should be made per application to avoid issues from SDL_Poll indiscriminately polling all events
@@ -242,8 +249,10 @@ public class InputHandler {
 				case SDL_TEXTINPUT:
 					import std.utf : toUTF32;
 					import std.string : fromStringz;
-					dstring eventText = toUTF32(fromStringz(event.text.text.ptr));
-					textInputListener.textInputEvent(event.text.timestamp, event.text.windowID, eventText);
+					if (statusFlags & StatusFlags.TextInputEnable) {
+						dstring eventText = toUTF32(fromStringz(event.text.text.ptr));
+						textInputListener.textInputEvent(event.text.timestamp, event.text.windowID, eventText);
+					}
 					break;
 				case SDL_TEXTEDITING:
 					import std.utf : toUTF32;
@@ -370,5 +379,13 @@ public class InputHandler {
 				}
 			}
 		}
+	}
+	/**
+	 * Returns a default SysEsc binding.
+	 */
+	public static BindingCode getSysEscKey() @nogc @safe pure nothrow {
+		import PixelPerfectEngine.system.input.scancode : ScanCode;
+		const BindingCode bc = BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0);
+		return bc;
 	}
 }

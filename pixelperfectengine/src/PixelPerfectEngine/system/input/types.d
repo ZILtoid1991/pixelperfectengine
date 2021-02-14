@@ -110,11 +110,13 @@ public struct BindingCode {
 		this.base = base;
 	}
 	///CTOR with individual values
-	this(ushort _buttonNum, ubyte _modifierFlags, ubyte _deviceTypeID, ubyte _deviceNum) @nogc @safe pure nothrow {
+	this(ushort _buttonNum, ubyte _modifierFlags, ubyte _deviceTypeID, ubyte _deviceNum, ubyte _keymodIgnore = 0) 
+			@nogc @safe pure nothrow {
 		buttonNum = _buttonNum;
 		modifierFlags = _modifierFlags;
 		deviceTypeID = _deviceTypeID;
 		deviceNum = _deviceNum;
+		keymodIgnore = _keymodIgnore;
 	}
 	/// Returns the button number portion of the code.
 	@property ushort buttonNum() @nogc @safe pure nothrow const {
@@ -122,7 +124,7 @@ public struct BindingCode {
 	}
 	/// Sets the button number portion of the code.
 	@property ushort buttonNum(ushort val) @nogc @safe pure nothrow {
-		base &= !0x00_00_01_FF;
+		base &= ~0x00_00_01_FF;
 		base |= val & 0x1_FF;
 		return cast(ushort)(base & 0x1_FF);
 	}
@@ -132,7 +134,7 @@ public struct BindingCode {
 	}
 	/// Sets the modifier flag portion of the code.
 	@property ubyte modifierFlags(ubyte val) @nogc @safe pure nothrow {
-		base &= !0x00_01_FE_00;
+		base &= ~0x00_01_FE_00;
 		base |= val << 9;
 		return cast(ubyte)(base >>> 9);
 	}
@@ -142,7 +144,7 @@ public struct BindingCode {
 	}
 	/// Sets the keymod ignore code.
 	@property ubyte keymodIgnore(ubyte val) @nogc @safe pure nothrow {
-		flags &= !0x00_01_FE_00;
+		flags &= ~0x00_01_FE_00;
 		flags |= val << 9;
 		return cast(ubyte)(flags >>> 9);
 	}
@@ -152,7 +154,7 @@ public struct BindingCode {
 	}
 	/// Sets the device type ID portion of the code.
 	@property ubyte deviceTypeID(ubyte val) @nogc @safe pure nothrow {
-		base &= !0x00_0E_00_00;
+		base &= ~0x00_0E_00_00;
 		base |= (val & 0b0000_0111) << 17;
 		return cast(ubyte)((base >>> 17) & 0b0000_0111);
 	}
@@ -162,7 +164,7 @@ public struct BindingCode {
 	}
 	/// Sets the device type ID portion of the code.
 	@property ubyte deviceNum(ubyte val) @nogc @safe pure nothrow {
-		base &= !0x00_F0_00_00;
+		base &= ~0x00_F0_00_00;
 		base |= (val & 0x0f) << 20;
 		return cast(ubyte)((base >>> 20) & 0x0f);
 	}
@@ -172,7 +174,7 @@ public struct BindingCode {
 	}
 	///Sets the extended area value.
 	@property ubyte extArea(ubyte val) @nogc @safe pure nothrow {
-		base &= !0xFF_00_00_00;
+		base &= ~0xFF_00_00_00;
 		base |= val << 24;
 		return cast(ubyte)(base >> 24);
 	}
@@ -194,6 +196,39 @@ public struct BindingCode {
 		return baseLH == baseRH;
 	}
 }
+/**
+ * Defines a single Input Binding.
+ */
+public struct InputBinding {
+	uint		code;			///Code being sent out to the target.
+	uint		flags;			///For future extensions.
+	float[2]	deadzone;		///The deadzone, if the binding is an axis
+	static enum IS_AXIS_AS_BUTTON = 1<<0;
+	///Default CTOR
+	this(uint code, uint flags = 0, float[2] deadzone = [0.0, 0.0]) @nogc @safe pure nothrow {
+		this.code = code;
+		this.flags = flags;
+		this.deadzone = deadzone;
+	}
+	///CTOR that creates code from string
+	this(string code, uint flags = 0, float[2] deadzone = [0.0, 0.0]) @nogc @safe pure nothrow {
+		import collections.commons : defaultHash;
+		this.code = defaultHash(code);
+		this.flags = flags;
+		this.deadzone = deadzone;
+	}
+	int opCmp(const InputBinding other) const @nogc @safe pure nothrow {
+		if (code > other.code) return 1;
+		else if (code < other.code) return -1;
+		else return 0;
+	}
+
+	int opCmp(const uint other) const @nogc @safe pure nothrow {
+		if (code > other) return 1;
+		else if (code < other) return -1;
+		else return 0;
+	}
+}	
 /**
  * Common values for mouse events.
  */

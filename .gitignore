@@ -13,4 +13,5 @@ pixelperfecteditor/bin/
 pixelperfectengine/lib/
 test.*
 bin/
+bin-x86-windows/
 _debug/

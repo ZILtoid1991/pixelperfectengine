@@ -240,6 +240,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	}
 	
 	public void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		
 		if (onMouseMove !is null) {
 			MouseEvent me = new MouseEvent(this, EventType.MouseMotion, SourceType.WindowElement);
 			me.mme = mme;

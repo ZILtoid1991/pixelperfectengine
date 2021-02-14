@@ -72,17 +72,17 @@ public class VertScrollBar : ScrollBar {
 		Box slider;
 		slider.left = position.left;
 		slider.right = position.right;
-		slider.top = (travelLength / value) - (_barLength / 2);
-		slider.bottom = (travelLength / value) + (_barLength / 2);
+		slider.top = travelLength - (_barLength / 2);
+		slider.bottom = travelLength + (_barLength / 2);
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
 		if (isFocused) {
 			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
 		}
 		//draw buttons
-		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("ButtonUpB") : ss.getImage("ButtonUpA"));
+		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("upArrowB") : ss.getImage("upArrowA"));
 		Point lower = position.cornerLL;
 		lower.y -= position.width;
-		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("ButtonDownB") : ss.getImage("ButtonDownA"));
+		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("downArrowB") : ss.getImage("downArrowA"));
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
@@ -141,28 +141,28 @@ public class HorizScrollBar : ScrollBar {
 		this.position = position;
 		this.source = source;
 		_maxValue = maxValue;
-		_barLength = (position.height - position.width * 2) / _maxValue;
+		_barLength = (position.width - position.height * 2) / _maxValue;
 	}
 	public override void draw(){
 		StyleSheet ss = getStyleSheet();
 		//draw background
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
-		const int travelLength = position.height - position.width * 2 - _barLength;
+		const int travelLength = position.width - position.height * 2;
 		Box slider;
 		slider.top = position.top;
 		slider.bottom = position.bottom;
-		slider.left = (travelLength / value) - (_barLength / 2);
-		slider.right = (travelLength / value) + (_barLength / 2);
+		slider.left = position.left + position.width + _barLength * value;
+		slider.right = slider.left + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
 		if (isFocused) {
 			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
 		}
 		//draw buttons
-		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("ButtonUpB") : ss.getImage("ButtonUpA"));
-		Point lower = position.cornerLL;
-		lower.y -= position.width;
-		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("ButtonDownB") : ss.getImage("ButtonDownA"));
+		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("leftArrowB") : ss.getImage("leftArrowA"));
+		Point lower = position.cornerUR;
+		//lower.x -= position.height;
+		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("rightArrowB") : ss.getImage("rightArrowA"));
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}

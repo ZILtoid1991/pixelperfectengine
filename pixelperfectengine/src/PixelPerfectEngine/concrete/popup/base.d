@@ -12,7 +12,7 @@ public abstract class PopUpElement : MouseEventReceptor {
 	protected BitmapDrawer output;
 	public static InputHandler inputhandler;
 	//public static StyleSheet styleSheet;
-	public Coordinate position;
+	protected Box position;
 	public StyleSheet customStyle;
 	protected PopUpHandler parent;
 	protected string source;
@@ -52,8 +52,25 @@ public abstract class PopUpElement : MouseEventReceptor {
 		}
 		return parent.getStyleSheet();
 	}
+	public Box getPosition() @nogc @safe pure nothrow const {
+		return position;
+	}
+	public Box setPosition(Box val) @trusted {
+		position = val;
+		draw();
+		return position;
+	}
+	///Moves the PopUp to the given location
+	public Box move(int x, int y) @nogc @safe pure nothrow {
+		position.move(x, y);
+		return position;
+	}
+	///Relatively moves the PopUp by the given amount
+	public Box relMove(int x, int y) @nogc @safe pure nothrow {
+		position.relMove(x, y);
+		return position;
+	}
 	///Returns the output of the element.
-	///This method is preferred over directly accessing output.output, which won't be available in later versions.
 	public ABitmap getOutput() @safe{
 		return output.output;
 	}

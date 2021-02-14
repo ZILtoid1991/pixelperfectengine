@@ -195,7 +195,7 @@ public class BitmapDrawer{
 		draw.drawFilledRectangle(xa, ya, xb, yb, color, output.getPtr(), output.width);
 	}
 	
-	///Draws text to the given point.
+	///Draws text to the given point. DEPRECATED!
 	public void drawText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, uint style = 0) pure {
 		const int length = fontset.getTextLength(text);
 		//writeln(text);
@@ -257,14 +257,23 @@ public class BitmapDrawer{
 	 * lineOffset specifies how much lines in pixels are skipped on the top.
 	 * Return value contains state flags on wheter certain portions of the text were out of bound.
 	 */
-	public uint drawSingleLineText(Coordinate pos, Text text, int offset = 0, int lineOffset = 0) pure {
+	public uint drawSingleLineText(Box pos, Text text, int offset = 0, int lineOffset = 0) pure {
 		uint status;
 		const int textWidth = text.getWidth();
-		if(textWidth <= pos.width){
-			if(text.formatting.formatFlags & FormattingFlags.rightJustify) {
-				pos.left += pos.width - textWidth;
-			} else if(text.formatting.formatFlags & FormattingFlags.centerJustify) {
+		if (textWidth < pos.width) {
+			/+if (text.formatting.formatFlags & FormattingFlags.centerJustify) {
 				pos.left += (pos.width - textWidth) / 2;
+			} else if (text.formatting.formatFlags & FormattingFlags.rightJustify) {
+				pos.left += pos.width - textWidth;
+			}+/
+			switch (text.formatting.formatFlags & FormattingFlags.justifyMask) {
+				case FormattingFlags.centerJustify:
+					pos.left += (pos.width - textWidth) / 2;
+					break;
+				case FormattingFlags.rightJustify:
+					pos.left += pos.width - textWidth;
+					break;
+				default: break;
 			}
 		}
 		int pX = pos.left;

@@ -45,7 +45,8 @@ public class PopUpMenu : PopUpElement {
 			position = Box(0, 0, width, height);
 			output = new BitmapDrawer(width, height);
 		}
-		output.drawFilledBox(position, ss.getColor("window"));//output.drawFilledRectangle(0,width - 1,0,height - 1,ss.getColor("window"));
+		Box position0 = Box(0, 0, width - 1, height - 1);
+		output.drawFilledBox(position0, ss.getColor("window"));//output.drawFilledRectangle(0,width - 1,0,height - 1,ss.getColor("window"));
 
 		if(select > -1){
 			int y0 = cast(int)((height / elements.length) * select);
@@ -60,19 +61,19 @@ public class PopUpMenu : PopUpElement {
 				/+output.drawColorText(width - ss.drawParameters["PopUpMenuHorizPadding"] - 1, y, e.secondaryText,
 						ss.getFontset("default"), ss.getColor("PopUpMenuSecondaryTextColor"), FontFormat.RightJustified);+/
 				//const int textLength = e.secondaryText.getWidth;
-				const Coordinate textPos = Coordinate(ss.drawParameters["PopUpMenuHorizPadding"], y,
-						position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.secondaryText.font.size);
+				const Box textPos = Box(ss.drawParameters["PopUpMenuHorizPadding"], y,
+						position0.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.secondaryText.font.size);
 				output.drawSingleLineText(textPos, e.secondaryText);
 			}
 			/+output.drawColorText(ss.drawParameters["PopUpMenuHorizPadding"] + iconWidth, y, e.text, ss.getFontset("default"),
 					ss.getColor("normaltext"), 0);+/
 			//const int textLength = e.text.getWidth;
-			const Coordinate textPos = Coordinate(ss.drawParameters["PopUpMenuHorizPadding"], y,
-					position.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.text.font.size);
+			const Box textPos = Box(ss.drawParameters["PopUpMenuHorizPadding"], y,
+					position0.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.text.font.size);
 			output.drawSingleLineText(textPos, e.text);
-			if(e.getIcon() !is null){
+			/+if(e.getIcon() !is null){
 				//output.insertBitmap(ss.drawParameters["PopUpMenuHorizPadding"], y, e.getIcon());
-			}
+			}+/
 			y += e.text.font.size + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 		}
 
@@ -82,17 +83,17 @@ public class PopUpMenu : PopUpElement {
 		output.drawLine(0,width-1,height-1,height-1,ss.getColor("windowdescent"));
 		output.drawLine(width-1,width-1,0,height-1,ss.getColor("windowdescent"));+/
 		with (output) {
-			drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowascent"));
-			drawLine(position.cornerUL, position.cornerLL, ss.getColor("windowascent"));
-			drawLine(position.cornerLL, position.cornerLR, ss.getColor("windowdescent"));
-			drawLine(position.cornerUR, position.cornerLR, ss.getColor("windowdescent"));
+			drawLine(position0.cornerUL, position0.cornerUR, ss.getColor("windowascent"));
+			drawLine(position0.cornerUL, position0.cornerLL, ss.getColor("windowascent"));
+			drawLine(position0.cornerLL, position0.cornerLR, ss.getColor("windowdescent"));
+			drawLine(position0.cornerUR, position0.cornerLR, ss.getColor("windowdescent"));
 		}
 		if(onDraw !is null){
 			onDraw();
 		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
-		
+		mce.y -= position.top;
 		mce.y /= height / elements.length;
 		if(elements[mce.y].source == "\\submenu\\"){
 			PopUpMenu m = new PopUpMenu(elements[mce.y].subElements, this.source);
@@ -110,12 +111,13 @@ public class PopUpMenu : PopUpElement {
 
 	}
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
-		if(mme.x == -1){
+		if(!position.isBetween(mme.x, mme.y)){
 			if(select != -1){
 				select = -1;
 				draw;
 			}
 		}else{
+			mme.y -= position.top;
 			mme.y /= height / elements.length;
 			if(mme.y < elements.length){
 				select = mme.y;
@@ -128,7 +130,7 @@ public class PopUpMenu : PopUpElement {
 /**
 * Defines a single MenuElement, also can contain multiple subelements.
 */
-public class PopUpMenuElement{
+public class PopUpMenuElement {
 	public string source;
 	public Text text, secondaryText;
 	//protected Bitmap8Bit icon;
@@ -143,10 +145,15 @@ public class PopUpMenuElement{
 		this.secondaryText = secondaryText;
 		//this.iconWidth = iconWidth;
 	}+/
-	/+public this(string source, dstring text, dstring secondaryText = "", PopUpMenuElement[] subElements) {
-		this(source, new Text(text, getStyle));
-	}+/
-	public this(string source, Text text, Text secondaryText = null, PopUpMenuElement[] subElements = []){
+	public this(string source, dstring text, dstring secondaryText = "", PopUpMenuElement[] subElements = null) {
+		StyleSheet ss = globalDefaultStyle;
+		Text st;
+		if (secondaryText.length) {
+			st = new Text(text, ss.getChrFormatting("popUpMenuSecondary"));
+		}
+		this(source, new Text(text, ss.getChrFormatting("popUpMenu")), st, subElements);
+	}
+	public this(string source, Text text, Text secondaryText = null, PopUpMenuElement[] subElements = []) {
 		this.source = source;
 		this.text = text;
 		this.secondaryText = secondaryText;
@@ -164,7 +171,7 @@ public class PopUpMenuElement{
 	public void setIcon(Bitmap8Bit icon){
 		text.icon = icon;
 	}
-	public PopUpMenuElement[] getSubElements(){
+	public PopUpMenuElement[] getSubElements() {
 		return subElements;
 	}
 	public void loadSubElements(PopUpMenuElement[] e){

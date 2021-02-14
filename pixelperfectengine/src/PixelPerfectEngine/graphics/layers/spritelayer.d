@@ -4,6 +4,7 @@ public import PixelPerfectEngine.graphics.layers.base;
 
 import collections.treemap;
 import collections.sortedlist;
+import std.bitmanip : bitfields;
 
 /**
  * General-purpose sprite controller and renderer.
@@ -42,12 +43,16 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		 * the end developer isn't careful enough.
 		 */
 		ushort	paletteSel;
-		ubyte	flags;				/// Flags packed into a single byte (bitmapType, paletteSh)
-		ubyte	masterAlpha;		/// Sets the master alpha value of the sprite, e.g. opacity
+		//ubyte	flags;				/// Flags packed into a single byte (bitmapType, paletteSh)
+		mixin(bitfields!(
+			ubyte, "paletteSh", 4,
+			ubyte, "bmpType", 4,
+		));
+		ubyte	masterAlpha = ubyte.max;/// Sets the master alpha value of the sprite, e.g. opacity
 		//ubyte wordLength;			/// Determines the word length of a sprite in a much quicker way than getting classinfo.
 		//ubyte paletteSh;			/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
-		static enum ubyte	PALETTESH_MASK = 0x0F;	/// Mask for paletteSh
-		static enum ubyte	BMPTYPE_MASK = 0x80;	/// Mask for bmpType
+		//static enum ubyte	PALETTESH_MASK = 0x0F;	/// Mask for paletteSh
+		//static enum ubyte	BMPTYPE_MASK = 0x80;	/// Mask for bmpType
 		/**
 		 * Creates a display list item with palette selector.
 		 */
@@ -93,14 +98,16 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			this.slice = slice;
 			this(position, sprite, priority, paletteSel, scaleHoriz, scaleVert);
 		}
+		/+
 		/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
 		@property ubyte paletteSh() @safe @nogc pure nothrow const {
-			return flags & PALETTESH_MASK;
+			return cast(ubyte)flags & PALETTESH_MASK;
 		}
 		/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
 		@property ubyte paletteSh(ubyte val) @safe @nogc pure nothrow {
-			flags |= val & PALETTESH_MASK;
-			return flags & PALETTESH_MASK;
+			flags &= ~PALETTESH_MASK;
+			flags |= val;
+			return cast(ubyte)flags & PALETTESH_MASK;
 		}
 		/// Defines the type of bitmap the sprite is using. This method is much faster and simpler than checking the class type of the bitmap.
 		@property BitmapTypes bmpType() @safe @nogc pure nothrow const {
@@ -108,9 +115,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		}
 		/// Defines the type of bitmap the sprite is using. This method is much faster and simpler than checking the class type of the bitmap.
 		@property BitmapTypes bmpType(BitmapTypes val) @safe @nogc pure nothrow {
+			flags &= ~BMPTYPE_MASK;
 			flags |= cast(ubyte)val << 4;
 			return bmpType;
-		}
+		}+/
 		/**
 		 * Resets the slice to its original position.
 		 */
@@ -190,7 +198,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	}
 	///Ditto.
 	protected bool checkSprite(DisplayListItem sprt) @safe pure nothrow {
-		assert(sprt.bmpType != BitmapTypes.Undefined && sprt.pixelData, "DisplayList error!");
+		//assert(sprt.bmpType != BitmapTypes.Undefined && sprt.pixelData, "DisplayList error!");
 		if(sprt.slice.width && sprt.slice.height 
 				&& (sprt.position.right > sX && sprt.position.bottom > sY && 
 				sprt.position.left < sX + rasterX && sprt.position.top < sY + rasterY)) {
@@ -248,22 +256,20 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public void addSprite(ABitmap s, int n, Box c, ushort paletteSel = 0, int scaleHoriz = 1024, 
 				int scaleVert = 1024) @safe nothrow {
-		synchronized {
-			DisplayListItem d = DisplayListItem(c, s, n, paletteSel, scaleHoriz, scaleVert);
-			d.renderFunc = mainRenderingFunction;
+		DisplayListItem d = DisplayListItem(c, s, n, paletteSel, scaleHoriz, scaleVert);
+		d.renderFunc = mainRenderingFunction;
+		synchronized
 			allSprites[n] = d;
-			checkSprite(allSprites[n]);
-		}
+		checkSprite(d);
 	}
 	///Ditto
 	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
-			int scaleVert = 1024) @safe nothrow {
-		synchronized {
-			DisplayListItem d = DisplayListItem(Box(x, y, s.width + x, s.height + y), s, n, paletteSel, scaleHoriz, scaleVert);
-			d.renderFunc = mainRenderingFunction;
+				int scaleVert = 1024) @safe nothrow {
+		DisplayListItem d = DisplayListItem(Box(x, y, s.width + x, s.height + y), s, n, paletteSel, scaleHoriz, scaleVert);
+		d.renderFunc = mainRenderingFunction;
+		synchronized
 			allSprites[n] = d;
-			checkSprite(allSprites[n]);
-		}
+		checkSprite(d);
 	}
 	/**
 	 * Replaces the bitmap of the given sprite.
@@ -291,8 +297,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 * Removes a sprite from both displaylists by priority.
 	 */
 	public void removeSprite(int n) @safe nothrow {
-		displayedSprites.removeByElem(n);
-		allSprites.remove(n);
+		synchronized {
+			displayedSprites.removeByElem(n);
+			allSprites.remove(n);
+		}
 	}
 	///Clears all sprite from the layer.
 	public void clear() @safe nothrow {

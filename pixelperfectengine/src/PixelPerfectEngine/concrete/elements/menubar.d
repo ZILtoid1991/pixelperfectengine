@@ -12,7 +12,8 @@ public class MenuBar : WindowElement {
 	private int[] menuWidths;
 	//private PopUpHandler popUpHandler;
 	private int select, usedWidth;
-	public this(string source, Coordinate position, PopUpMenuElement[] menus){
+	public this(string source, Box position, PopUpMenuElement[] menus, StyleSheet customStyle = null){
+		this.customStyle = customStyle;
 		this.source = source;
 		this.position = position;
 		//this.popUpHandler = popUpHandler;
@@ -20,8 +21,9 @@ public class MenuBar : WindowElement {
 		select = -1;
 		menuWidths.length = menus.length + 1;
 		menuWidths[0] = position.left;
+		const int spacing = 2 * getStyleSheet().drawParameters["MenuBarHorizPadding"];
 		for (size_t i ; i < menus.length ; i++) {
-			menuWidths[i + 1] = menuWidths[i] + menus[i].text.getWidth;
+			menuWidths[i + 1] = menuWidths[i] + menus[i].text.getWidth + spacing;
 		}
 	}
 	public override void draw() {
@@ -40,45 +42,40 @@ public class MenuBar : WindowElement {
 		foreach (size_t i, PopUpMenuElement menuItem ; menus) {
 			parent.drawTextSL(Box(menuWidths[i], position.top, menuWidths[i+1], position.bottom), menuItem.text, Point(0,0));
 		}
-		/+Fontset!Bitmap8Bit f = ss.getFontset("default");
-		if (output is null){
-			usedWidth = 1;
-			output = new BitmapDrawer(position.width(),position.height());
-			foreach(m ; menus){
-				usedWidth += m.text.getWidth() + (ss.drawParameters["MenuBarHorizPadding"] * 2);
-				menuWidths ~= usedWidth;
-				
-				//writeln(m.text.getWidth());
-			}
-			output.drawFilledRectangle(0, position.width(), 0, position.height(), ss.getColor("window"));
-			assert(menuWidths.length == menus.length + 1);
-		}else{
-			output.drawFilledRectangle(0, usedWidth, 0, position.height(), ss.getColor("window"));
-		}
-		if(select != -1){
-
-		}
-		int x;
-		foreach(size_t i, m ; menus){
-			x += ss.drawParameters["MenuBarHorizPadding"];
-			//const int xAdv = m.text.getWidth();
-			output.drawSingleLineText(Coordinate(menuWidths[i],position.top,menuWidths[i + 1],position.bottom), m.text);
-			x += ss.drawParameters["MenuBarHorizPadding"];			
-		}
-		output.drawLine(0, 0, 0, position.height()-1, ss.getColor("windowascent"));
-		output.drawLine(0, position.width()-1, 0, 0, ss.getColor("windowascent"));
-		output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, ss.getColor("windowdescent"));
-		output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, ss.getColor("windowdescent"));
-		elementContainer.drawUpdate(this);
-		if(onDraw !is null){
-			onDraw();
-		}+/
 	}
 	private void redirectIncomingEvents(Event ev){
 		if(onMouseLClick !is null){
 			onMouseLClick(ev);
 		}
 	}
-	
-
+	///Passes mouse click event
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (mce.state) {
+			for (int i ; i < menus.length ; i++) {
+				if (menuWidths[i] < mce.x && menuWidths[i + 1] > mce.x) {
+					select = i;
+					draw;
+					Coordinate c = parent.getAbsolutePosition(this);
+					parent.addPopUpElement(new PopUpMenu(menus[i].getSubElements, source), c.left + menuWidths[i], c.bottom);
+					break;
+				}
+			}
+		}
+		super.passMCE(mec, mce);
+	}
+	///Passes mouse move event
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (position.isBetween(mme.x, mme.y)) {
+			select = -1;
+		} else {
+			for (int i ; i < menus.length ; i++) {
+				if (menuWidths[i] < mme.x && menuWidths[i + 1] > mme.x) {
+					select = i;
+					draw;
+					break;
+				}
+			}
+		}
+		super.passMME(mec, mme);
+	}
 }

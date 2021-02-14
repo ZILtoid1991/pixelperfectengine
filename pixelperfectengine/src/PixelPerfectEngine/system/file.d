@@ -22,6 +22,8 @@ import PixelPerfectEngine.graphics.fontsets;
 public import dimage.base;
 import dimage.tga;
 import dimage.png;
+import dimage.bmp;
+
 
 import vfile;
 
@@ -40,7 +42,10 @@ public Image loadImage(F = File)(F file) @trusted{
 			}
 			return imageFile;
 		case ".png", ".PNG":
-			PNG imageFile = PNG.load!File(file);
+			PNG imageFile = PNG.load!F(file);
+			return imageFile;
+		case ".bmp", ".BMP":
+			BMP imageFile = BMP.load!F(file);
 			return imageFile;
 		default:
 			throw new Exception("Unsupported file format!");
@@ -50,123 +55,75 @@ public Image loadImage(F = File)(F file) @trusted{
  * Loads a bitmap from Image.
  */
 public T loadBitmapFromImage(T)(Image img) @trusted
-		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
-		|| T.stringof == Bitmap32Bit.stringof){
+		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
 	// Later we might want to detect image type from classinfo, until then let's rely on similarities between types
-	static if(T.stringof == Bitmap4Bit.stringof){
-		if(img.getBitdepth != 4)
+	static if(is(T == Bitmap4Bit)){
+		if (img.getBitdepth == 4)
+			return new Bitmap4Bit(img.imageData.raw, img.width, img.height);
+		else if (img.getBitdepth < 4)
+			return new Bitmap4Bit(img.imageData.convTo(PixelFormat.Indexed4Bit).raw, img.width, img.height);
+		else
+			throw new BitmapFormatException("Bitdepth mismatch exception!");	
+
+	}else static if(is(T == Bitmap8Bit)){
+		if (img.getBitdepth == 8)
+			return new Bitmap8Bit(img.imageData.raw, img.width, img.height);
+		else if (img.getBitdepth < 8)
+			return new Bitmap8Bit(img.imageData.convTo(PixelFormat.Indexed8Bit).raw, img.width, img.height);
+		else
 			throw new BitmapFormatException("Bitdepth mismatch exception!");
-		return new Bitmap4Bit(img.imageData.raw, img.width, img.height);
-	}else static if(T.stringof == Bitmap8Bit.stringof){
-		if(img.getBitdepth != 8)
+
+	}else static if(is(T == Bitmap16Bit)){
+		if (img.getBitdepth == 16)
+			return new Bitmap16Bit(reinterpretCast!ushort(img.imageData.raw), img.width, img.height);
+		else if (img.getBitdepth < 16)
+			return new Bitmap16Bit(reinterpretCast!ushort(img.imageData.convTo(PixelFormat.Indexed16Bit).raw), 
+					img.width, img.height);
+		else
 			throw new BitmapFormatException("Bitdepth mismatch exception!");
-		return new Bitmap8Bit(img.imageData.raw, img.width, img.height);
-	}else static if(T.stringof == Bitmap16Bit.stringof){
-		if(img.getBitdepth != 16)
-			throw new BitmapFormatException("Bitdepth mismatch exception!");
-		return new Bitmap16Bit(reinterpretCast!ushort(img.imageData.raw), img.width, img.height);
-	}else static if(T.stringof == Bitmap32Bit.stringof){
-		if(img.getBitdepth != 32)
-			throw new BitmapFormatException("Bitdepth mismatch exception!");
-		return new Bitmap32Bit(reinterpretCast!Color(img.imageData.raw), img.width, img.height);
+		
+	}else static if(is(T == Bitmap32Bit)){
+		return new Bitmap32Bit(reinterpretCast!Color(img.imageData.convTo(PixelFormat.ARGB8888 | PixelFormat.BigEndian).raw), 
+				img.width, img.height);
+
 	}
 
 }
 //TODO: Make collision model loader for 1 bit bitmaps
 /**
  * Loads a bitmap from disk.
- * Currently supported formats: *.tga, *.png
+ * Currently supported formats: *.tga, *.png, *.bmp
  */
 public T loadBitmapFromFile(T)(string filename)
-		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
-		|| T.stringof == Bitmap32Bit.stringof){
+		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
 	File f = File(filename);
-	switch(extension(filename)){
-		case ".tga", ".TGA":
-			TGA imageFile = TGA.load!(File, false, false)(f);
-			if(!imageFile.getHeader.topOrigin){
-				imageFile.flipVertical;
-			}
-			static if(T.stringof == Bitmap4Bit.stringof){
-				if(imageFile.getBitdepth != 4)
-					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap4Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
-			}else static if(T.stringof == Bitmap8Bit.stringof){
-				if(imageFile.getBitdepth != 8)
-					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap8Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
-			}else static if(T.stringof == Bitmap16Bit.stringof){
-				if(imageFile.getBitdepth != 16)
-					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap16Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
-			}else static if(T.stringof == Bitmap32Bit.stringof){
-				if(imageFile.getBitdepth != 32)
-					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap32Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
-			}
-		case ".png", ".PNG":
-			PNG imageFile = PNG.load!File(f);
-			static if(T.stringof == Bitmap8Bit.stringof){
-				if(imageFile.getBitdepth != 8)
-					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap8Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
-			}else static if(T.stringof == Bitmap32Bit.stringof){
-				if(imageFile.getBitdepth != 32)
-					throw new BitmapFormatException("Bitdepth mismatch exception!");
-				return new Bitmap32Bit(imageFile.imageData.raw, imageFile.width, imageFile.height);
-			}
-		default:
-			throw new Exception("Unsupported file format!");
-	}
+	return loadBitmapFromImage!T(loadImage(f));
 }
 /**
  * Loads a bitmap sheet from file.
  * This one doesn't require TGA devarea extensions.
  */
 public T[] loadBitmapSheetFromFile(T)(string filename, int x, int y)
-		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
-		|| T.stringof == Bitmap32Bit.stringof) {
-	T source = loadBitmapFromFile!T(filename);
-	if(source.width % x == 0 && source.height % y == 0){
-		T[] output;
-		static if (T.stringof == Bitmap4Bit.stringof)
-			const size_t length = x / 2, pitch = source.width / 2;
-		else static if (T.stringof == Bitmap8Bit.stringof)
-			const size_t length = x, pitch = source.width;
-		else static if (T.stringof == Bitmap16Bit.stringof)
-			const size_t length = x * 2, pitch = source.width * 2;
-		else static if (T.stringof == Bitmap32Bit.stringof)
-			const size_t length = x * 4, pitch = source.width * 4;
-		const size_t pitch0 = pitch * y;
-		for (int mY ; mY < source.height / y ; mY++){
-			for (int mX ; mX < source.width / x ; mX++){
-				T next = new T(x, y);
-				for (int lY ; lY < y ; lY++){
-					memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch0 * mY) + (length * mX), length);
-				}
-				output ~= next;
-			}
-		}
-		return output;
-	}else throw new Exception("Requested size cannot be divided by input file's sizes!");
+		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
+	//T source = loadBitmapFromFile!T(filename);
+	return loadBitmapSheetFromImage!T(loadImage(File(filename)), x, y);
 }
 /**
  * Creates a bitmap sheet from an image file.
  * This one doesn't require embedded data.
  */
 public T[] loadBitmapSheetFromImage(T)(Image img, int x, int y)
-		if(T.stringof == Bitmap4Bit.stringof || T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof
-		|| T.stringof == Bitmap32Bit.stringof) {
+		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
 	T source = loadBitmapFromImage!T(img);
 	if(source.width % x == 0 && source.height % y == 0){
 		T[] output;
-		static if (T.stringof == Bitmap4Bit.stringof)
+		static if (is(T == Bitmap4Bit))
 			const size_t length = x / 2, pitch = source.width / 2;
-		else static if (T.stringof == Bitmap8Bit.stringof)
+		else static if (is(T == Bitmap8Bit))
 			const size_t length = x, pitch = source.width;
-		else static if (T.stringof == Bitmap16Bit.stringof)
+		else static if (is(T == Bitmap16Bit))
 			const size_t length = x * 2, pitch = source.width * 2;
-		else static if (T.stringof == Bitmap32Bit.stringof)
+		else static if (is(T == Bitmap32Bit))
 			const size_t length = x * 4, pitch = source.width * 4;
 		const size_t pitch0 = pitch * y;
 		for (int mY ; mY < source.height / y ; mY++){
@@ -192,6 +149,9 @@ public Color[] loadPaletteFromFile(string filename) {
 			return loadPaletteFromImage(imageFile);
 		case ".png", ".PNG":
 			PNG imageFile = PNG.load(f);
+			return loadPaletteFromImage(imageFile);
+		case ".bmp", ".BMP":
+			BMP imageFile = BMP.load(f);
 			return loadPaletteFromImage(imageFile);
 		default:
 			throw new Exception("Unsupported file format!");

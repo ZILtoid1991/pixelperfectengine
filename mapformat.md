@@ -80,7 +80,7 @@ As of version 1.0, TileLayers can have additional ancillary tags as long as they
 
 `RenderingMode "AlphaBlending"`
 
-Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", "Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".
+Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
 
 ## Sprite
 

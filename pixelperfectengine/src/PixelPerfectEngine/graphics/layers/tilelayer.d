@@ -63,8 +63,8 @@ public class TileLayer : Layer, ITileLayer {
 	protected int			tileY;	///Tile height
 	protected int			mX;		///Map width
 	protected int			mY;		///Map height
-	protected int			totalX;	///Total width of the tilelayer in pixels
-	protected int			totalY;	///Total height of the tilelayer in pixels
+	protected size_t		totalX;	///Total width of the tilelayer in pixels
+	protected size_t		totalY;	///Total height of the tilelayer in pixels
 	protected MappingElement[] mapping;///Contains the mapping data
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
@@ -102,8 +102,10 @@ public class TileLayer : Layer, ITileLayer {
 				}
 				break;
 			case MapRepeat:
-				x = x % mX;
-				y = y % mY;
+				//x *= x > 0 ? 1 : -1;
+				x = cast(uint)x % mX;
+				//y *= y > 0 ? 1 : -1;
+				y = cast(uint)y % mY;
 				break;
 			case TileRepeat:
 				if(x < 0 || y < 0 || x >= mX || y >= mY){
@@ -114,9 +116,20 @@ public class TileLayer : Layer, ITileLayer {
 		return mapping[x+(mX*y)];
 	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
-	@nogc public void writeMapping(int x, int y, MappingElement w){
+	public void writeMapping(int x, int y, MappingElement w) @nogc @safe pure nothrow {
 		if(x >= 0 && y >= 0 && x < mX && y < mY)
 			mapping[x+(mX*y)]=w;
+	}
+	/**
+	 * Writes a text to the map.
+	 * This function is a bit rudamentary, as it doesn't handle word breaks, and needs per-line writing.
+	 * Requires the text to be in 16 bit format
+	 */
+	public void writeTextToMap(const int x, const int y, const ubyte color, wstring text, 
+			BitmapAttrib atrb = BitmapAttrib.init) @nogc @safe pure nothrow {
+		for (int i ; i < text.length ; i++) {
+			writeMapping(x + i, y, MappingElement(text[i], atrb, color));
+		}
 	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
 	/*@nogc public void writeTileAttribute(int x, int y, BitmapAttrib ba){
@@ -150,12 +163,13 @@ public class TileLayer : Layer, ITileLayer {
 	}
 	///Returns which tile is at the given pixel
 	public MappingElement tileByPixel(int x, int y) @nogc @safe pure nothrow const {
-		x /= tileX;
-		y /= tileY;
+		x = cast(uint)x / tileX;
+		y = cast(uint)y / tileY;
 		return readMapping(x, y);
 	}
 
-	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette){
+	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette) {
+		import std.stdio : printf;
 		int sX0 = sX, sY0 = sY;
 		if (hBlankInterrupt !is null)
 			hBlankInterrupt(-1, sX0, sY0);
@@ -163,16 +177,18 @@ public class TileLayer : Layer, ITileLayer {
 		for (int line  ; line < rasterY ; line++) {
 			if (hBlankInterrupt !is null)
 				hBlankInterrupt(line, sX0, sY0);
-			if ((sY0 >= 0 && sY0 < totalY) || warpMode) {
-				int sXAbs = warpMode ? sX0 & int.max : sX0, sYAbs = sY0 & int.max;
+			if ((sY0 >= 0 && sY0 < totalY) || warpMode != WarpMode.Off) {
+				int sXlocal = sX0;
+				int sYAbs = sY0 & int.max;
 				const sizediff_t offsetP = line * pitch;	// The offset of the line that is being written
 				void* w0 = workpad + offsetP;
 				const int offsetY = sYAbs % tileY;		//Offset of the current line of the tiles in this line
-				const int offsetX0 = tileX - ((sXAbs + rasterX) % tileX);		//Scroll offset of the rightmost column
-				const int offsetX = (sXAbs & int.max) % tileX;		//Scroll offset of the leftmost column
+				const int offsetX0 = tileX - ((cast(uint)sXlocal + rasterX) % tileX);		//Scroll offset of the rightmost column
+				const int offsetX = (cast(uint)sXlocal % tileX);		//Scroll offset of the leftmost column
 				int tileXLength = offsetX ? tileX - offsetX : tileX;
 				for (int col ; col < rasterX ; ) {
-					const MappingElement currentTile = tileByPixel(sXAbs, sYAbs);
+					//const int sXCurr = col && sX < 0 ? sXlocal - tileXLength : sXlocal;
+					const MappingElement currentTile = tileByPixel(sXlocal, sYAbs);
 					if (currentTile.tileID != 0xFFFF) {
 						const DisplayListItem tileInfo = displayList[currentTile.tileID];
 						const int offsetX1 = col ? 0 : offsetX;
@@ -221,7 +237,7 @@ public class TileLayer : Layer, ITileLayer {
 						}
 
 					}
-					sXAbs += tileXLength;
+					sXlocal += tileXLength;
 					col += tileXLength;
 					w0 += tileXLength<<2;
 

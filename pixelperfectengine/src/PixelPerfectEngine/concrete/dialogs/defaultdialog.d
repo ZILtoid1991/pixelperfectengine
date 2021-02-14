@@ -36,7 +36,7 @@ public class DefaultDialog : Window{
 			buttons ~= new Button(options[i], values[i], Box(x2, button2, x1, button1));
 			buttons[i].onMouseLClick = &actionEvent;
 			addElement(buttons[i]);
-			x1 = x2;
+			x1 = x2 - 1;
 		}
 		//add labels
 		for(int i; i < message.length; i++) {
@@ -66,6 +66,7 @@ public class DefaultDialog : Window{
 		if(we.getSource == "close") {
 			close();
 		} else {
+			ev.aux = this;
 			output(ev);
 		}
 	}

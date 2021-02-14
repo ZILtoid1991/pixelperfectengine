@@ -64,6 +64,12 @@ public class FileEvent : Event {
 		this.filename = filename;
 		this.extension = extension;
 	}
+	/**
+	 * Returns the full path.
+	 */
+	public string getFullPath() @safe pure nothrow const {
+		return path ~ filename ~ extension;
+	}
 }
 /**
  * Defines a menu event.

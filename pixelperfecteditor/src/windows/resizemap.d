@@ -55,26 +55,27 @@ public class ResizeMap : Window {
 		offsetY.onTextInput = &checkTextInput;
 		button_ok = new Button("Ok", "button_ok", Coordinate(140, 102, 190, 118));
 		addElement(button_ok);
-		button_ok.onMouseLClickRel = &button_ok_onClick;
+		button_ok.onMouseLClick = &button_ok_onClick;
 		//originPanel = new Panel("Origin:", "", Coordinate(140, 20, 190, 100));
 		//addElement(originPanel);
 		origin = new RadioButtonGroup();
 		for(int iy ; iy < 3 ; iy++) {
 			for(int ix ; ix < 3 ; ix++) {
 				const Coordinate rbPos = Coordinate(142 + (16*ix), 40 + (16*iy), 142 + 16 + (16*ix), 40 + 16 + (16*iy));
-				RadioButton rb = new RadioButton(to!string(ix) ~ to!string(iy), rbPos, origin);
+				RadioButton rb = new RadioButton("radioButtonB", "radioButtonA",to!string(ix) ~ to!string(iy), rbPos, origin);
 				originSelectors[ix + (iy * 3)] = rb;
 				addElement(rb);
 			}
 		}
 		origin.latch(originSelectors[0]);
 	}
-	private void checkTextInput(Event e) {
+	private void checkTextInput(Event ev) {
 		import std.string : isNumeric;
-		dstring str = e.text.text;
+		WindowElement src = cast(WindowElement)ev.sender;
+		dstring str = src.getText.text;
 		if(str[$-1] == '%') str = str[0..$-1];
 		if(!isNumeric(str)) {
-			switch (e.source) {
+			switch (src.getSource) {
 				case "mX":
 					mX.setText(to!dstring(x));
 					break;
@@ -91,10 +92,10 @@ public class ResizeMap : Window {
 					debug assert(0, "Wrong source value");
 					else break;
 			}
-			parent.messageWindow("Invalid data!", "Please enter numeric values with optional \'%\' symbol at the end!");
+			handler.message("Invalid data!", "Please enter numeric values with optional \'%\' symbol at the end!");
 		}
 	}
-	private void button_ok_onClick(Event e) {
+	private void button_ok_onClick(Event ev) {
 		import editorevents : ResizeTileMapEvent;
 		int calcMValue(int offset, int oldSize, int newSize) @safe pure nothrow @nogc {
 			return offset + (newSize/2 - oldSize/2);
@@ -102,15 +103,15 @@ public class ResizeMap : Window {
 		int calcRValue(int offset, int oldSize, int newSize) @safe pure nothrow @nogc {
 			return offset + (newSize - oldSize);
 		}
-		int oX = to!int(offsetX.getTextDString), oY = to!int(offsetY.getTextDString);
-		//int tX = to!int(this.mX.getTextDString), tY = to!int(this.mY.getTextDString);
+		int oX = to!int(offsetX.getText.text), oY = to!int(offsetY.getText.text);
+		//int tX = to!int(this.mX.getText.text), tY = to!int(this.mY.getText.text);
 		int tX, tY;
-		if(offsetX.getTextDString[$-1] == '%') 
-			tX = cast(int)(x * (to!double(offsetX.getTextDString[0..$-1]) / 100.0));
-		else tX = to!int(mX.getTextDString);
-		if(offsetY.getTextDString[$-1] == '%') 
-			tX = cast(int)(y * (to!double(offsetY.getTextDString[0..$-1]) / 100.0));
-		else tY = to!int(mY.getTextDString);
+		if(offsetX.getText.text[$-1] == '%') 
+			tX = cast(int)(x * (to!double(offsetX.getText.text[0..$-1]) / 100.0));
+		else tX = to!int(mX.getText.text);
+		if(offsetY.getText.text[$-1] == '%') 
+			tX = cast(int)(y * (to!double(offsetY.getText.text[0..$-1]) / 100.0));
+		else tY = to!int(mY.getText.text);
 		switch(origin.value[0]) {
 			case '1':
 				oX = calcMValue(oX,x,tX);

@@ -6,6 +6,8 @@ import editor;
 
 import std.conv : to;
 import std.utf : toUTF8, toUTF32;
+import PixelPerfectEngine.concrete.dialogs.filedialog;
+
 /+import dimage.base;
 import dimage.tga;
 import dimage.png;+/
@@ -51,7 +53,7 @@ public class NewTileLayerDialog : Window {
 		label3 = new Label("Map source:"d, "label3", Coordinate(5, 62, 70, 79));
 		addElement(label3);
 		button_MSBrowse = new Button("Browse"d, "button_MSBrowse", Coordinate(70, 61, 160, 79));
-		button_MSBrowse.onMouseLClickRel = &button_MSBrowse_onClick;
+		button_MSBrowse.onMouseLClick = &button_MSBrowse_onClick;
 		addElement(button_MSBrowse);
 		textBox_MS = new TextBox("none"d, "textBox_MS", Coordinate(5, 81, 160, 99));
 		addElement(textBox_MS);
@@ -71,7 +73,7 @@ public class NewTileLayerDialog : Window {
 		addElement(textBox_Name);
 		button_Create = new Button("Create"d, "button_Create", Coordinate(70, 181, 160, 199));
 		addElement(button_Create);
-		button_Create.onMouseLClickRel = &button_Create_onClick;
+		button_Create.onMouseLClick = &button_Create_onClick;
 	}
 	/+private void button_TSBrowse_onClick(Event ev){
 		parent.addWindow(new FileDialog("Import Tile Source"d, "fileDialog_TSBrowse", &fileDialog_TSBrowse_event,
@@ -85,18 +87,19 @@ public class NewTileLayerDialog : Window {
 		//Get tile data from source
 	}+/
 	private void button_MSBrowse_onClick(Event ev){
-		parent.addWindow(new FileDialog("Import Map Source"d, "fileDialog_MSBrowse", &fileDialog_MSBrowse_event,
+		handler.addWindow(new FileDialog("Import Map Source"d, "fileDialog_MSBrowse", &fileDialog_MSBrowse_event,
 				[FileDialog.FileAssociationDescriptor("Extendible Map file", ["*.xmp"]),
 				FileDialog.FileAssociationDescriptor("PPE Binary Map file", ["*.map"])], "./"));
 	}
 	private void fileDialog_MSBrowse_event(Event ev){
-		textBox_MS.setText(toUTF32(ev.getFullPath));
+		FileEvent fev = cast(FileEvent)ev;
+		textBox_MS.setText(toUTF32(fev.getFullPath));
 	}
 	private void checkTextBoxInput(Event ev){
 		import PixelPerfectEngine.system.etc : isInteger;
 		WindowElement we = cast(WindowElement)ev.sender;
 		if(!isInteger(we.getText.text)){
-			parent.messageWindow("Input error!", "Not a numeric value!");
+			handler.message("Input error!", "Not a numeric value!");
 			we.setText("0");
 		}
 	}
@@ -113,9 +116,9 @@ public class NewTileLayerDialog : Window {
 			/+if(textBox_TS.getText.text != "" && textBox_TS.getText.text != "none")
 				tS = toUTF8(textBox_TS.getText.text);+/
 			dstring name = textBox_Name.getText.text;
-			editor.newTileLayer(tX, tY, mX, mY, name, mS, checkBox_embed.value);
+			editor.newTileLayer(tX, tY, mX, mY, name, mS, checkBox_embed.isChecked);
 		}catch(Exception e){
-			parent.messageWindow("Error!", "Cannot parse data!");
+			handler.message("Error!", "Cannot parse data!");
 		}
 		close();
 	}

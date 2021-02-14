@@ -8,7 +8,7 @@ import PixelPerfectEngine.concrete.eventChainSystem;
 import PixelPerfectEngine.graphics.common : Color, Coordinate;
 import PixelPerfectEngine.graphics.bitmap;
 import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.system.inputHandler : MouseButton, ButtonState;
+import PixelPerfectEngine.system.input : MouseButton, ButtonState;
 import std.stdio;
 
 import app;
@@ -84,10 +84,10 @@ public class MapDocument {
 		final switch (mode) {
 			case EditMode.selectDragScroll:
 				switch (button) {
-					case MouseButton.LEFT:
+					case MouseButton.Left:
 						//Test if an object is being hit by the cursor. If yes, then select the object. If not, then initialize drag layer mode.
 						break;
-					case MouseButton.MID:
+					case MouseButton.Mid:
 						//Enable quicknav mode. Scroll the layer by delta/10 for each frame. Stop if button is released.
 						break;
 					default:
@@ -97,9 +97,9 @@ public class MapDocument {
 			case EditMode.tilePlacement:
 				if(mainDoc.layeroutput.length) {
 					switch (button) {
-						case MouseButton.LEFT:
+						case MouseButton.Left:
 							//Record the first cursor position upon mouse button press, then initialize either a single or zone write for the selected tile layer.
-							if (state == ButtonState.PRESSED) {
+							if (state == ButtonState.Pressed) {
 								prevMouseX = x;
 								prevMouseY = y;
 							} else {
@@ -142,9 +142,9 @@ public class MapDocument {
 								}
 							}
 							break;
-						case MouseButton.MID:
+						case MouseButton.Mid:
 							//Record the first cursor position upon mouse button press, then initialize either a single or zone delete for the selected tile layer.
-							if (state == ButtonState.PRESSED) {
+							if (state == ButtonState.Pressed) {
 								prevMouseX = x;
 								prevMouseY = y;
 							} else {
@@ -175,7 +175,7 @@ public class MapDocument {
 								}
 							}
 							break;
-						case MouseButton.RIGHT:
+						case MouseButton.Right:
 							//Open quick menu with basic edit options and ability of toggling both vertically and horizontally.
 							break;
 						default:
@@ -221,10 +221,10 @@ public class MapDocument {
 	 */
 	public void updateMaterialList () {
 		if (mainDoc[selectedLayer] !is null) {
-			if (prg.wh.materialList !is null) {
+			if (prg.materialList !is null) {
 				TileInfo[] list = mainDoc.getTileInfo(selectedLayer);
 				//writeln(list.length);
-				prg.wh.materialList.updateMaterialList(list);
+				prg.materialList.updateMaterialList(list);
 			}
 		}
 	}
@@ -232,9 +232,9 @@ public class MapDocument {
 	 * Updates the layers for this document.
 	 */
 	public void updateLayerList () {
-		if (prg.wh.layerList !is null) {
+		if (prg.layerList !is null) {
 			LayerInfo[] list = mainDoc.getLayerInfo;
-			prg.wh.layerList.updateLayerList(list);
+			prg.layerList.updateLayerList(list);
 			//prg.wh.layerlist
 		}
 	}

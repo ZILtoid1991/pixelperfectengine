@@ -33,12 +33,12 @@ public class CheckBox : WindowElement, ISmallButton {
 		StyleSheet ss = getStyleSheet;
 		Bitmap8Bit icon = isChecked ? ss.getImage(iconChecked) : ss.getImage(iconUnchecked);
 		
-		parent.bitBLT(Point(0, 0), icon);
+		parent.bitBLT(position.cornerUL, icon);
 		
 		if (text) {
 			Coordinate textPos = position;
 			textPos.left += ss.getImage(iconChecked).width + ss.drawParameters["TextSpacingSides"];
-			parent.drawTextSL(textPos, text, Point(0, 0));
+			parent.drawTextSL(textPos, text, position.cornerUL);
 		}
 		if (isFocused) {
 			const int textPadding = ss.drawParameters["horizTextPadding"];

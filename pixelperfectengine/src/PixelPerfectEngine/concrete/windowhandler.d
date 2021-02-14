@@ -40,7 +40,8 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	///SDL cursor pointer to operate it
 	protected SDL_Cursor* sdlCursor;
 	private ISpriteLayer spriteLayer;
-	private Window windowToMove;
+	//private Window windowToMove;
+	protected MouseEventReceptor dragEventSrc;
 	private PopUpElement dragEventDestPopUp;
 	//private ubyte lastMouseButton;
 	/**
@@ -132,8 +133,8 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		spriteLayer.clear();
 		for (int i ; i < windows.length ; i++)
 			spriteLayer.addSprite(windows[i].getOutput, i, windows[i].getPosition);
-
-		
+		if (background) spriteLayer.addSprite(background, 65_536, 0, 0);
+		if (baseWindow) spriteLayer.addSprite(baseWindow.getOutput, 65_535, 0, 0);
 	}
 	/**
 	 * Returns the default stylesheet.
@@ -159,6 +160,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 
 		updateSpriteOrder();
 	}
+	/+
 	/**
 	 * Initializes window move or resize.
 	 */
@@ -168,6 +170,12 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 			if (cmpObjPtr(windows[0], sender)) 
 				windowToMove = sender;
 		}
+	}+/
+	/**
+	 * Initializes drag event.
+	 */
+	public void initDragEvent(MouseEventReceptor dragEventSrc) @safe nothrow {
+		this.dragEventSrc = dragEventSrc;
 	}
 	/**
 	 * Updates the sender's coordinates.
@@ -183,15 +191,29 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	public void mouseClickEvent(MouseEventCommons mec, MouseClickEvent mce) {
 		mce.x = cast(int)(mce.x / mouseConvX);
 		mce.y = cast(int)(mce.y / mouseConvY);
-		foreach (Window w ; windows) {
-			const Box pos = w.getPosition();
-			if (pos.isBetween(mce.x, mce.y)) {
-				if (!w.active) { //If window is not active, then the window order must be reset
-					//windows[0].focusTaken();
-					setWindowToTop(w);
+		if (!mce.state && dragEventSrc) {
+			dragEventSrc.passMCE(mec, mce);
+			dragEventSrc = null;
+		}
+		if (numOfPopUpElements < 0) {
+			foreach (PopUpElement pe ; popUpElements) {
+				if (pe.getPosition().isBetween(mce.x, mce. y)) {
+					pe.passMCE(mec, mce);
+					return;
 				}
-				w.passMCE(mec, mce);
-				return;
+			}
+			removeAllPopUps();
+		} else {
+			foreach (Window w ; windows) {
+				const Box pos = w.getPosition();
+				if (pos.isBetween(mce.x, mce.y)) {
+					if (!w.active) { //If window is not active, then the window order must be reset
+						//windows[0].focusTaken();
+						setWindowToTop(w);
+					}
+					w.passMCE(mec, mce);
+					return;
+				}
 			}
 		}
 		if (baseWindow) baseWindow.passMCE(mec, mce);
@@ -200,7 +222,8 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * Called on mouse wheel events.
 	 */
 	public void mouseWheelEvent(MouseEventCommons mec, MouseWheelEvent mwe) {
-		if (windows.length) windows[0].passMWE(mec, mwe);
+		if (numOfPopUpElements < 0) popUpElements[$ - 1].passMWE(mec, mwe);
+		else if (windows.length) windows[0].passMWE(mec, mwe);
 		else if (baseWindow) baseWindow.passMWE(mec, mwe);
 	}
 	/**
@@ -211,15 +234,24 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		mme.relY = cast(int)(mme.relY / mouseConvY);
 		mme.x = cast(int)(mme.x / mouseConvX);
 		mme.y = cast(int)(mme.y / mouseConvY);
-		if (windows.length) windows[0].passMME(mec, mme);
+		mouseX = mme.x;
+		mouseY = mme.y;
+		if (dragEventSrc) dragEventSrc.passMME(mec, mme);
+		else if (numOfPopUpElements < 0) popUpElements[$ - 1].passMME(mec, mme);
+		else if (windows.length) windows[0].passMME(mec, mme);
 		else if (baseWindow) baseWindow.passMME(mec, mme);
 	}
-	/+public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype){
-
+	/**
+	 * Sets the BaseWindow to the given object
+	 */
+	public Window setBaseWindow(Window w) @safe nothrow {
+		import PixelPerfectEngine.graphics.layers.base : RenderingMode;
+		w.addHandler(this);
+		baseWindow = w;
+		spriteLayer.addSprite(w.getOutput, 65_535, w.getPosition);
+		spriteLayer.setSpriteRenderingMode(65_535, RenderingMode.Blitter);
+		return baseWindow;
 	}
-	public void keyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype){
-
-	}+/
 	/+public void mouseButtonEvent(uint which, uint timestamp, uint windowID, ubyte button, ubyte state, ubyte clicks, int x, int y){
 
 		//converting the dimensions
@@ -333,14 +365,16 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		const int n = whichWindow(sender);
 		spriteLayer.replaceSprite(windows[n].getOutput, n, windows[n].getPosition);
 	}
-	
+	/**
+	 * Adds a popup element and moves it to the current cursor position.
+	 */
 	public void addPopUpElement(PopUpElement p){
 		popUpElements.put(p);
 		p.addParent(this);
 		p.draw;
-		mouseX -= (p.position.width/2);
-		mouseY -= (p.position.height/2);
-		p.position.move(mouseX,mouseY);
+		/+mouseX -= (p.getPosition.width/2);
+		mouseY -= (p.getPosition.height/2);+/
+		p.move(mouseX - p.getPosition.width/2, mouseY - p.getPosition.height/2);
 		numOfPopUpElements--;
 		spriteLayer.addSprite(p.getOutput,numOfPopUpElements,mouseX,mouseY);
 
@@ -349,7 +383,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		popUpElements.put(p);
 		p.addParent(this);
 		p.draw;
-		p.position.move(x, y);
+		p.move(x, y);
 		numOfPopUpElements--;
 		spriteLayer.addSprite(p.getOutput,numOfPopUpElements, x, y);
 	}
@@ -357,10 +391,14 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		for ( ; numOfPopUpElements < 0 ; numOfPopUpElements++){
 			spriteLayer.removeSprite(numOfPopUpElements);
 		}
+		/+foreach (key ; popUpElements) {
+			key.destroy;
+		}+/
 		///Why didn't I add a method to clear linked lists? (slams head into wall)
-		while (popUpElements.length) {
+		popUpElements = PopUpSet(new PopUpElement[](0));
+		/+while (popUpElements.length) {
 			popUpElements.remove(0);
-		}
+		}+/
 	}
 	private void removeTopPopUp(){
 

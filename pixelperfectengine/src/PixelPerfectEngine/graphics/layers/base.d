@@ -61,7 +61,7 @@ abstract class Layer {
 	protected int		rasterY;///Haster height
 
 	/// Sets the main rasterizer
-	public void setRasterizer(int rX, int rY) @safe pure {
+	public void setRasterizer(int rX, int rY) @safe pure nothrow {
 		rasterX=rX;
 		rasterY=rY;
 	}
@@ -119,7 +119,7 @@ public enum LayerType {
  * Defines how the layer or sprite will be rendered.
  * See each value's documentation individually for more information on each mode.
  */
-enum RenderingMode : ubyte {
+public enum RenderingMode : ubyte {
 	init,			///Rendering mode is not set
 	Copy,			///Copies the pixels without any transparencies. The fastest as it only reads once. Best use is either GUI or lowest-layer.
 	Blitter,		///Copies the pixels to the target using simple transparency. No effect from master-alpha values. Can be faster on less memory-bound machines.
@@ -195,9 +195,10 @@ public struct MappingElement {
 	BitmapAttrib attributes;	///General attributes, such as vertical and horizontal mirroring. The extra 6 bits can be used for various purposes
 	ubyte paletteSel;			///Selects the palette for the bitmap if supported
 	///Default constructor
-	this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false)) @nogc @safe pure nothrow {
+	this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false), ubyte paletteSel = 0) @nogc @safe pure nothrow {
 		this.tileID = tileID;
 		this.attributes = attributes;
+		this.paletteSel = paletteSel;
 	}
 	public string toString() const {
 		import std.conv : to;

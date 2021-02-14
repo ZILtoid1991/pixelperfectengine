@@ -115,7 +115,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 	public this(MapDocument target, int tX, int tY, int mX, int mY, dstring name, string file, bool embed) {
 		import std.utf : toUTF8;
 		creation = new TileLayer(tX, tY);
-		creation.setRenderingMode(LayerRenderingMode.COPY);
+		creation.setRenderingMode(RenderingMode.Copy);
 		this.target = target;
 		//this.md = md;
 		this.tX = tX;
@@ -426,6 +426,8 @@ public class AddTileSheetEvent : UndoableEvent {
 				//debug writeln(target.outputWindow.palette);
 			}+/
 
+			
+		} else {
 			
 		}
 	}

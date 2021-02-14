@@ -22,6 +22,10 @@ public struct Point {
 		x += rX;
 		y += rY;
 	}
+	public string toString() const {
+		import std.conv : to;
+		return "x: " ~ to!string(x) ~ " ; y: " ~ to!string(y);
+	}
 }
 /**
  * Represents a box on a 2D field.
@@ -115,7 +119,7 @@ public struct Box {
 	/**
 	 * Returns a string with the coordinates that is useful for debugging
 	 */
-	public string toString() const{
+	public string toString() const {
 		import PixelPerfectEngine.system.etc;
 		import std.conv;
 		/*return "Coordinate: Left: 0x" ~ intToHex(left, 8) ~ " Top: 0x" ~ intToHex(top, 8) ~ " Right: 0x" ~ intToHex(right, 8) ~ " Bottom: 0x" ~ intToHex(bottom, 8) ~

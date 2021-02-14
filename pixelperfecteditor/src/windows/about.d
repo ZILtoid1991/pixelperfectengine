@@ -25,7 +25,7 @@ public class AboutWindow : Window {
 		label6 = new Label("System/OS: "d ~ osInfo, "label6", Coordinate(5, 120, 300, 140));
 		label7 = new Label("Rendering method: "d ~ renderInfo, "label7", Coordinate(5, 140, 300, 160));
 		buttonClose = new Button("Close"d, "buttonClose", Coordinate(231, 160, 300, 180));
-		buttonClose.onMouseLClickRel = &buttonClose_onMouseLClickRel;
+		buttonClose.onMouseLClick = &buttonClose_onMouseLClickRel;
 		addElement(buttonClose);
 		addElement(label1);
 		addElement(label2);
