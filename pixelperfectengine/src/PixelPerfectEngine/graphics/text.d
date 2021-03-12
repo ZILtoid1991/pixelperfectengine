@@ -91,7 +91,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		void _removeChar() @safe pure {
 			if(pos == 0) {
 				_text = _text[1..$];
-			} else if(pos + 1 == _text.length) {
+			} else if(pos == _text.length - 1) {
 				if(_text.length) _text.length = _text.length - 1;
 			} else {
 				_text = _text[0..pos] ~ _text[(pos + 1)..$];
@@ -104,6 +104,14 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		} else if(next) {
 			return next.removeChar(pos - _text.length);
 		} else return dchar.init;
+	}
+	/**
+	 * Removes a range of characters described by the begin and end position.
+	 */
+	public void removeChar(size_t begin, size_t end) @safe pure {
+		for (size_t i = begin ; i < end ; i++) {
+			removeChar(begin);
+		}
 	}
 	/**
 	 * Inserts a given character at the given position.
@@ -180,7 +188,20 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		else return localWidth;
 	}
 	/**
-	 * Returns the used font type
+	 * Returns the number of characters fully offset by the amount of pixel.
+	 */
+	public int offsetAmount(int pixel) @safe pure nothrow {
+		int chars;
+		while (chars < _text.length && pixel > formatting.font.chars(_text[chars]).xadvance) {
+			pixel -= formatting.font.chars(_text[chars]).xadvance;
+			chars++;
+		}
+		if (chars == _text.length && pixel > 0 && next) 
+			chars += next.offsetAmount(pixel);
+		return chars;
+	}
+	/**
+	 * Returns the used font type.
 	 */
 	public Fontset!BitmapType font() @safe @nogc pure nothrow {
 		return formatting.font;

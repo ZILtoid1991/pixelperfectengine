@@ -25,12 +25,15 @@ public class RasterWindow : Window, PaletteContainer {
 	protected Color* paletteShared;
 	//protected Layer[int] layers;
 	protected uint statusFlags;
-	protected static enum SELECTION_ARMED = 1 << 0;
+	protected static enum MOVE_ARMED = 1 << 0; 		///Redirect mouse events to document
+	protected static enum CLOSE_PROTECT = 1 << 1;
+	protected static enum SELECTION_ARMED = 1 << 2;	///Selection is armed, draw box, and redirect event to document
 	protected int[] layerList;
-	protected int rasterX, rasterY;
+	public int rasterX, rasterY;
 	protected dstring documentName;
 	protected MapDocument document;
-	protected bool _closeProtect;
+	public Box selection;
+	protected RadioButtonGroup modeSel;
 	/**
 	 * Creates a new RasterWindow.
 	 */
@@ -39,12 +42,30 @@ public class RasterWindow : Window, PaletteContainer {
 		rasterY = y;
 		trueOutput = new Bitmap32Bit(x + 2,y + 18);
 		rasterOutput = new Bitmap32Bit(x + 2, y + 18);
-		super(Coordinate(0, 0, x + 2, y + 18), documentName, /+["paletteButtonA", "settingsButtonA", "rightArrowA",
-				"leftArrowA", "downArrowA", "upArrowA",]+/);
+		ISmallButton[] smallButtons;
+		const int windowHeaderHeight = getStyleSheet.drawParameters["WindowHeaderHeight"] - 1;
+		modeSel = new RadioButtonGroup();
+		smallButtons ~= closeButton();
+		smallButtons ~= new SmallButton("settingsButtonB", "settingsButtonA", "settings", Box(0, 0, windowHeaderHeight, 
+				windowHeaderHeight));
+		smallButtons ~= new SmallButton("paletteButtonB", "paletteButtonA", "palette", Box(0, 0, windowHeaderHeight, 
+				windowHeaderHeight));
+		smallButtons ~= new RadioButton("selMoveButtonB", "selMoveButtonA", "selMove", 
+				Box(0, 0, windowHeaderHeight, windowHeaderHeight), modeSel);
+		smallButtons ~= new RadioButton("tilePlacementButtonB", "tilePlacementButtonA", "tile", 
+				Box(0, 0, windowHeaderHeight, windowHeaderHeight), modeSel);
+		smallButtons ~= new RadioButton("objPlacementButtonB", "objPlacementButtonA", "obj", 
+				Box(0, 0, windowHeaderHeight, windowHeaderHeight), modeSel);
+		smallButtons ~= new RadioButton("sprtPlacementButtonB", "sprtPlacementButtonA", "sprt", 
+				Box(0, 0, windowHeaderHeight, windowHeaderHeight), modeSel);
+
+		//smallButtons ~= new SmallButton("settingsButtonB", "settingsButtonA", "settings", Box(0, 0, 16, 16));
+		super(Box(0, 0, x + 1, y + 17), documentName, smallButtons);
 		this.paletteShared = paletteShared;
 		this.documentName = documentName;
 		this.document = document;
-		_closeProtect = true;
+		statusFlags |= CLOSE_PROTECT;
+		modeSel.latchPos(0);
 	}
 	/**
 	 * Overrides the original getOutput function to return a 32 bit bitmap instead.
@@ -111,20 +132,26 @@ public class RasterWindow : Window, PaletteContainer {
 	///Passes mouse click event
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		StyleSheet ss = getStyleSheet;
-		if(mce.y >= ss.drawParameters["WindowHeaderHeight"] && mce.y < trueOutput.height - 1 && mce.x > 0 && 
-				mce.x < trueOutput.width - 1) {
-			mce.y -= ss.drawParameters["WindowHeaderHeight"];
-			mce.x--;
+		if(mce.y >= position.top + ss.drawParameters["WindowHeaderHeight"] && mce.y < position.bottom &&
+				mce.x > position.left && mce.x < position.right) {
+			mce.y -= ss.drawParameters["WindowHeaderHeight"] - position.top;
+			mce.x -= position.left - 1;
 			document.passMouseEvent(mce.x, mce.y, mce.state, mce.button);
 		}else
 			super.passMCE(mec, mce);
 	}
 	///Passes mouse move event
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
-		if (statusFlags & SELECTION_ARMED) {
-
+		StyleSheet ss = getStyleSheet;
+		if (statusFlags & (MOVE_ARMED | SELECTION_ARMED) && mme.buttonState == (1<<MouseButton.Mid) && 
+				mme.y >= position.top + ss.drawParameters["WindowHeaderHeight"] && mme.y < position.bottom &&
+				mme.x > position.left && mme.x < position.right) {
+			mme.y -= ss.drawParameters["WindowHeaderHeight"] - position.top;
+			mme.x -= position.left - 1;
+			document.passMouseEvent(mme.x, mme.y, ButtonState.Pressed, MouseButton.Left);
+			
 		} else {
-			passMME(mec, mme);
+			super.passMME(mec, mme);
 		}
 	}
 	public override void draw(bool drawHeaderOnly = false){
@@ -140,6 +167,9 @@ public class RasterWindow : Window, PaletteContainer {
 					position.width);
 		}
 		updateRaster();
+		if (statusFlags & SELECTION_ARMED) {
+			
+		}
 		/*if(drawHeaderOnly)
 			return;*/
 		//draw the borders. we do not need fills or drawing elements
@@ -171,6 +201,17 @@ public class RasterWindow : Window, PaletteContainer {
 		}
 		for (int i = 16 ; i < trueOutput.height - 1 ; i++) {
 			helperFunc(trueOutput.getPtr + 1 + trueOutput.width * i, trueOutput.width - 2);
+		}
+		import CPUblit.composing.specblt : xorBlitter;
+		uint* p = cast(uint*)trueOutput.getPtr;
+		if (statusFlags & SELECTION_ARMED) {
+			for (int y = selection.top + 16 ; y <= selection.bottom + 16 ; y++) {
+				xorBlitter!uint(p + 1 + trueOutput.width * y, selection.width, 0xFF_00_00_00);
+			}
+		} else {
+			for (int y = selection.top + 16 ; y <= selection.bottom + 16 ; y++) {
+				xorBlitter!uint(p + 1 + trueOutput.width * y, selection.width, 0x00_00_FF_00);
+			}
 		}
 	}
 	/**
@@ -209,14 +250,14 @@ public class RasterWindow : Window, PaletteContainer {
 				length -= 4;
 			}
 			while(length){
-				*cast(uint*)src = *cast(uint*)src | 0xFF_00_00_00;
+				*cast(uint*)src = *cast(uint*)src | 0x00_00_00_FF;
 				src += 4;
 				//dest += 4;
 				length--;
 			}
 		}else{
 			while(length){
-				*cast(uint*)src = *cast(uint*)src | 0xFF_00_00_00;
+				*cast(uint*)src = *cast(uint*)src | 0x00_00_00_FF;
 				src += 4;
 				dest += 4;
 				length--;
@@ -227,48 +268,46 @@ public class RasterWindow : Window, PaletteContainer {
 	 * Overrides the original onExit function for safe close.
 	 */
 	public override void close() {
-		if (_closeProtect) {
+		if (statusFlags & CLOSE_PROTECT) {
 
 		} else {
 			super.close;
 		}
 	}
-	/+
-	/**
-	 * Implements the scroll buttons and the palette edit button.
-	 */
-	public override void extraButtonEvent (int num, ubyte button, int state) {
-		if (state == ButtonState.RELEASED) {
-			document.setContScroll(0,0);
-		} else {
-			switch (num) {
-				case 6:
-					break;
-				case 5:
-					break;
-				case 2:
-					document.setContScroll(1,0);
-					break;
-				case 3:
-					document.setContScroll(-1,0);
-					break;
-				case 0:
-					document.setContScroll(0,1);
-					break;
-				case 1:
-					document.setContScroll(0,-1);
-					break;
-				default:
-					break;
-			}
-		}
-	}+/
+	
 	///Called when selection needs to be armed.
 	public void armSelection() @nogc @safe pure nothrow {
 		statusFlags |= SELECTION_ARMED;
 	}
+	///Called when selection needs to be disarmed.
+	public void disarmSelection() @nogc @safe pure nothrow {
+		statusFlags &= ~SELECTION_ARMED;
+	}
+	///Returns true if selection is armed
+	public bool isSelectionArmed() const @nogc @safe pure nothrow {
+		return statusFlags & SELECTION_ARMED ? true : false;
+	}
+	///Called when the document settings window is needed to be opened.
+	public void onDocSettings(Event ev) {
 
-	
+	}
+	///Called when any of the modes are selected.
+	public void onModeToggle(Event ev) {
+		switch (modeSel.value) {
+			case "tile":
+				document.mode = MapDocument.EditMode.tilePlacement;
+				break;
+			case "obj":
+				document.mode = MapDocument.EditMode.boxPlacement;
+				break;
+			case "sprt":
+				document.mode = MapDocument.EditMode.spritePlacement;
+				break;
+			default:
+				document.mode = MapDocument.EditMode.selectDragScroll;
+				break;
+		}
+	}
 
 	public void loadLayers () {
 		foreach (key; document.mainDoc.layeroutput.byKey) {

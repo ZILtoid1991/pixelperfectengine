@@ -120,8 +120,9 @@ public class StyleSheet{
 		drawParameters["WHPaddingTop"] = 1;
 		drawParameters["HorizScrollBarSize"] = 16;
 		drawParameters["VertScrollBarSize"] = 16;
+		drawParameters["horizTextPadding"] = 1;
 
-		pattern["blackDottedLine"] = [0x00, 0x10];
+		pattern["blackDottedLine"] = [0x00, 0x00, 0x10, 0x10];
 	}
 	/**
 	 * Adds a fontset to the stylesheet.

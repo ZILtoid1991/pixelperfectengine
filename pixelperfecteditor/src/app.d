@@ -240,14 +240,27 @@ class TileLayerTest : SystemEventListener, InputListener{
 			if(left) s.relMoveSprite(65_536,-1,0);
 			if(right) s.relMoveSprite(65_536,1,0);
 			
-			if(scrup) t.relScroll(0,-1);
-			if(scrdown) t.relScroll(0,1);
-			if(scrleft) t.relScroll(-1,0);
-			if(scrright) t.relScroll(1,0);
-			if(scrup) tt.relScroll(0,-1);
-			if(scrdown) tt.relScroll(0,1);
-			if(scrleft) tt.relScroll(-1,0);
-			if(scrright) tt.relScroll(1,0);
+			if(scrup) {
+				t.relScroll(0,-1);
+				tt.relScroll(0,-1);
+				s.relScroll(0,-1);
+			}
+			if(scrdown) {
+				t.relScroll(0,1);
+				tt.relScroll(0,1);
+				s.relScroll(0,1);
+			}
+			if(scrleft) {
+				t.relScroll(-1,0);
+				tt.relScroll(-1,0);
+				s.relScroll(-1,0);
+			}
+			if(scrright) {
+				t.relScroll(1,0);
+				tt.relScroll(1,0);
+				s.relScroll(1,0);
+			}
+			
 			framecounter++;
 			if(framecounter == 10){
 				textLayer.writeTextToMap(10,0,0,format("%3.3f"w,r.avgfps),BitmapAttrib(true, false));

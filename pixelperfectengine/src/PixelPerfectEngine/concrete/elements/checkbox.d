@@ -38,7 +38,7 @@ public class CheckBox : WindowElement, ISmallButton {
 		if (text) {
 			Coordinate textPos = position;
 			textPos.left += ss.getImage(iconChecked).width + ss.drawParameters["TextSpacingSides"];
-			parent.drawTextSL(textPos, text, position.cornerUL);
+			parent.drawTextSL(textPos, text, Point(0, 0));
 		}
 		if (isFocused) {
 			const int textPadding = ss.drawParameters["horizTextPadding"];

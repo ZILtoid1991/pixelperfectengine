@@ -321,8 +321,8 @@ public class ListView : WindowElement, ElementContainer {
 		return value;
 	}
 	override public void draw() {
-		StyleSheet ss = getStyleSheet;
 		parent.clearArea(position);
+		StyleSheet ss = getStyleSheet;
 		parent.drawBox(position, ss.getColor("windowascent"));
 		Point upper = Point(0, position.top + _header.height);
 		Point lower = Point(0, position.bottom);
@@ -432,6 +432,8 @@ public class ListView : WindowElement, ElementContainer {
 		import std.algorithm.mutation : remove;
 		ListViewItem result = entries[index];
 		entries = entries.remove(index);
+		if (selection >= entries.length) selection--;
+		//draw;
 		return result;
 	}
 	/**
@@ -475,20 +477,25 @@ public class ListView : WindowElement, ElementContainer {
 			const int maxvalue = needsHSB ? totalHeight - position.height - ss.drawParameters["HorizScrollBarSize"] : 
 					totalHeight - position.height;
 			
-			const Box target = Box(position.right - ss.drawParameters["HorizScrollBarSize"], position.top, 
+			const Box target = Box(position.right - ss.drawParameters["HorizScrollBarSize"] + 2, position.top, 
 					position.right, needsVSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] : position.bottom);
 			vertSlider = new VertScrollBar(maxvalue, source ~ "VSB", target);
 			vertSlider.setParent(this);
-		}
+			vertSlider.onScrolling = &scrollBarEventOut;
+		} else vertSlider = null;
 		if (needsHSB){
 			const int maxvalue = needsVSB ? totalWidth - position.width - ss.drawParameters["VertScrollBarSize"] : 
 					totalWidth - position.width;
-			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"], 
+			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"] + 2, 
 					needsHSB ? position.right - ss.drawParameters["HorizScrollBarSize"] : position.right,
 					position.bottom);
 			horizSlider = new HorizScrollBar(maxvalue, source ~ "VSB", target);
 			horizSlider.setParent(this);
-		}
+			horizSlider.onScrolling = &scrollBarEventOut;
+		} else horizSlider = null;
+	}
+	protected void scrollBarEventOut(Event ev) {
+		draw;
 	}
 	/**
 	 * Returns the absolute position of the element.
@@ -587,18 +594,30 @@ public class ListView : WindowElement, ElementContainer {
 
 		if (mce.button != MouseButton.Left) return;
 
-		mce.x -= _header.height;
-		int pixelsTotal = mce.x, pos;
-		if (vertSlider) ///calculate outscrolled area
-			pixelsTotal += vertSlider.value;
-		if (entries.length) {
-			for (; pixelsTotal > entries[pos].height ; pos++) {
-				pixelsTotal -= entries[pos].height;
+		
+		if (entries.length && mce.x > _header.height) {
+			mce.x -= _header.height;
+			int pixelsTotal = mce.x, pos;
+			if (vertSlider) ///calculate outscrolled area
+				pixelsTotal += vertSlider.value;
+			while (pos < entries.length) {
+				if (pixelsTotal > entries[pos].height) {
+					pixelsTotal -= entries[pos].height;
+					if (pos + 1 < entries.length)
+						pos++;
+				} else {
+					break;
+				}
 			}
-			selection = pos;
-			if (onItemSelect !is null)
-				onItemSelect(new Event(this, entries[pos], EventType.Selection, SourceType.WindowElement));
-		}
+			if (pos >= entries.length) 
+				selection = -1;
+			else 
+				selection = pos;
+
+			if (onItemSelect !is null && selection != -1)
+				onItemSelect(new Event(this, entries[selection], EventType.Selection, SourceType.WindowElement));
+		} else
+			selection = -1;
 		
 		draw();
 	}

@@ -39,7 +39,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
     ///Contains various status flags.
     protected uint			flags;
 	protected static enum	ENABLE_MOUSE_PRESS = 1<<3;
-	protected static enum	ENABLE_MCLICK_FLAG = 1<<4;
+	protected static enum	IS_CLICKED = 1<<4;
 	protected static enum	ENABLE_RCLICK_FLAG = 1<<5;
 	protected static enum	IS_PRESSED = 1<<6;
 	protected static enum	IS_CHECKED = 1<<7;
@@ -105,7 +105,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	}
 	public Box setPosition(Box position) {
 		this.position = position;
-		draw;
+		draw();
 		return position;
 	}
 	/**
@@ -121,7 +121,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	public @property bool mousePressEvent() @nogc @safe pure nothrow {
 		return flags & ENABLE_MOUSE_PRESS ? true : false;
 	}
-	/**
+	/+/**
 	 * Returns true if middle mouse button events are enabled.
 	 */
 	public @property bool mouseMClickEvent() @nogc @safe pure nothrow {
@@ -132,7 +132,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	 */
 	public @property bool mouseRClickEvent() @nogc @safe pure nothrow {
 		return flags & ENABLE_RCLICK_FLAG ? true : false;
-	}
+	}+/
 	/**
 	 * Returns true if the element will generate events on mouse press and mouse release.
 	 * By default, only release is used.
@@ -142,7 +142,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		else flags &= ~ENABLE_MOUSE_PRESS;
 		return flags & ENABLE_MOUSE_PRESS ? true : false;
 	}
-	/**
+	/+/**
 	 * Returns true if middle mouse button events are enabled.
 	 */
 	public @property bool mouseMClickEvent(bool val) @nogc @safe pure nothrow {
@@ -157,7 +157,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		if (val) flags |= ENABLE_RCLICK_FLAG;
 		else flags &= ~ENABLE_RCLICK_FLAG;
 		return flags & ENABLE_RCLICK_FLAG ? true : false;
-	}
+	}+/
 	/**
 	 * Returns the next available StyleSheet.
 	 */
@@ -210,32 +210,41 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		return flags & IS_CHECKED ? true : false;
 	}
 	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (!mce.state && !(isPressed)) return;
+
 		parent.requestFocus(this);
+
 		if (mce.state == ButtonState.Pressed) {
 			if (mce.button == MouseButton.Left) flags |= IS_PRESSED;
-			if (!(flags & ENABLE_MOUSE_PRESS)) return;
+			if (!(mousePressEvent )) {
+				draw;
+				return;
+			}
 		} else if (mce.button == MouseButton.Left) {
 			flags &= ~IS_PRESSED;
 		}
+
 		MouseEvent me = new MouseEvent(this, EventType.MouseClick, SourceType.WindowElement);
 		me.mec = mec;
 		me.mce = mce;
+		
 		switch (mce.button) {
 			case MouseButton.Left:
-				if (onMouseLClick !is null)
+				if (onMouseLClick !is null && (!mce.state || mousePressEvent))
 					onMouseLClick(me);
 				break;
 			case MouseButton.Right:
-				if (onMouseRClick !is null)
+				if (onMouseRClick !is null && (!mce.state || mousePressEvent))
 					onMouseRClick(me);
 				break;
 			case MouseButton.Mid:
-				if (onMouseMClick !is null)
+				if (onMouseMClick !is null && (!mce.state || mousePressEvent))
 					onMouseMClick(me);
 				break;
 			default:
 				break;
 		}
+		
 		draw;
 	}
 	

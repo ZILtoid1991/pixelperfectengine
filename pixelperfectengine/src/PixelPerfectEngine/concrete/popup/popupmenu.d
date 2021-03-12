@@ -13,15 +13,16 @@ public class PopUpMenu : PopUpElement {
 	//protected Bitmap8Bit[int] icons;
 	protected int width, height, select;
 	PopUpMenuElement[] elements;
-	public void delegate(MenuEvent ev) onMenuSelect;
+	public EventDeleg onMenuSelect;
 	/**
 	 * Creates a single PopUpMenu.
 	 */
-	public this(PopUpMenuElement[] elements, string source){
+	public this(PopUpMenuElement[] elements, string source, EventDeleg onMenuSelect){
 		this.elements = elements;
 		this.source = source;
 		//this. iconWidth = iconWidth;
 		select = -1;
+		this.onMenuSelect = onMenuSelect;
 	}
 	public override void draw(){
 		StyleSheet ss = getStyleSheet();
@@ -42,7 +43,7 @@ public class PopUpMenu : PopUpElement {
 			}
 			width += (ss.drawParameters["PopUpMenuHorizPadding"] * 2);
 			height += ss.drawParameters["PopUpMenuVertPadding"] * 2;
-			position = Box(0, 0, width, height);
+			position = Box(0, 0, width - 1, height - 1);
 			output = new BitmapDrawer(width, height);
 		}
 		Box position0 = Box(0, 0, width - 1, height - 1);
@@ -51,7 +52,7 @@ public class PopUpMenu : PopUpElement {
 		if(select > -1){
 			int y0 = cast(int)((height / elements.length) * select);
 			int y1 = cast(int)((height / elements.length) + y0);
-			output.drawFilledBox(Box(1, y0 + 1, position.width, y1 + 1), ss.getColor("selection")); //output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
+			output.drawFilledBox(Box(1, y0 + 1, position0.width, y1 + 1), ss.getColor("selection")); //output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
 		}
 
 
@@ -93,20 +94,22 @@ public class PopUpMenu : PopUpElement {
 		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
-		mce.y -= position.top;
-		mce.y /= height / elements.length;
-		if(elements[mce.y].source == "\\submenu\\"){
-			PopUpMenu m = new PopUpMenu(elements[mce.y].subElements, this.source);
-			m.onMouseClick = onMouseClick;
-			//parent.getAbsolutePosition()
-			parent.addPopUpElement(m, position.left + width, position.top + mce.y * cast(int)(height / elements.length));
-			//parent.closePopUp(this);
-		}else{
-			//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
-			if(onMenuSelect !is null)
-				onMenuSelect(new MenuEvent(this, SourceType.PopUpElement, elements[mce.y].text, mce.y, elements[mce.y].source));
-			parent.endPopUpSession(this);
-			//parent.closePopUp(this);
+		if (mce.state) {
+			mce.y -= position.top;
+			mce.y /= height / elements.length;
+			if(elements[mce.y].source == "\\submenu\\"){
+				PopUpMenu m = new PopUpMenu(elements[mce.y].subElements, this.source, onMenuSelect);
+				m.onMouseClick = onMouseClick;
+				//parent.getAbsolutePosition()
+				parent.addPopUpElement(m, position.left + width, position.top + mce.y * cast(int)(height / elements.length));
+				//parent.closePopUp(this);
+			}else{
+				//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
+				if(onMenuSelect !is null)
+					onMenuSelect(new MenuEvent(this, SourceType.PopUpElement, elements[mce.y].text, mce.y, elements[mce.y].source));
+				parent.endPopUpSession(this);
+				//parent.closePopUp(this);
+			}
 		}
 
 	}

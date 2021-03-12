@@ -202,12 +202,15 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 					return;
 				}
 			}
-			removeAllPopUps();
+			if (mce.state) {
+				removeAllPopUps();
+				return;
+			}
 		} else {
 			foreach (Window w ; windows) {
 				const Box pos = w.getPosition();
 				if (pos.isBetween(mce.x, mce.y)) {
-					if (!w.active) { //If window is not active, then the window order must be reset
+					if (!w.active && mce.state) { //If window is not active, then the window order must be reset
 						//windows[0].focusTaken();
 						setWindowToTop(w);
 					}
@@ -236,10 +239,21 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		mme.y = cast(int)(mme.y / mouseConvY);
 		mouseX = mme.x;
 		mouseY = mme.y;
-		if (dragEventSrc) dragEventSrc.passMME(mec, mme);
-		else if (numOfPopUpElements < 0) popUpElements[$ - 1].passMME(mec, mme);
-		else if (windows.length) windows[0].passMME(mec, mme);
-		else if (baseWindow) baseWindow.passMME(mec, mme);
+		if (dragEventSrc) {
+			dragEventSrc.passMME(mec, mme);
+			return;
+		}
+		if (numOfPopUpElements < 0) {
+			popUpElements[$ - 1].passMME(mec, mme);
+			return;
+		}
+		foreach (Window key; windows) {
+			if (key.getPosition.isBetween(mme.x, mme.y)) {
+				key.passMME(mec, mme);
+				return;
+			}
+		}
+		if (baseWindow) baseWindow.passMME(mec, mme);
 	}
 	/**
 	 * Sets the BaseWindow to the given object

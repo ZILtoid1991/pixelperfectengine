@@ -159,8 +159,8 @@ public class BitmapDrawer{
 	}
 	///Inserts a midsection of the bitmap defined by slice as a color letter
 	public void insertColorLetter(int x, int y, Bitmap8Bit bitmap, ubyte color, Coordinate slice) pure {
-		if(slice.width <= 0) return;
-		if(slice.height <= 0) return;
+		if(slice.width - 1 <= 0) return;
+		if(slice.height - 1 <= 0) return;
 		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
 		pdest += x + output.width * y;
 		const int bmpWidth = bitmap.width;
@@ -289,10 +289,10 @@ public class BitmapDrawer{
 				if(pX + text.icon.width < targetX) {
 					const int targetHeight = pos.height > text.icon.height - lineOffset ? text.icon.height : pos.height;
 					if(pX >= offset) 
-						insertBitmapSlice(pX, pos.top + text.iconOffsetY, text.icon, Coordinate(0, lineOffset, text.icon.width, 
+						insertBitmapSlice(pX, pos.top + text.iconOffsetY, text.icon, Box(0, lineOffset, text.icon.width, 
 								targetHeight));
 					else if(pX + text.icon.width >= offset) 
-						insertBitmapSlice(pX, pos.top + text.iconOffsetY, text.icon, Coordinate(pX - offset, lineOffset, text.icon.width, 
+						insertBitmapSlice(pX, pos.top + text.iconOffsetY, text.icon, Box(pX - offset, lineOffset, text.icon.width, 
 								targetHeight));
 					pX += text.iconSpacing;
 					currCharPos++;
@@ -313,7 +313,7 @@ public class BitmapDrawer{
 					if(chrInfo.id == 0xFFFD) status |= TextDrawStatus.CharacterNotFound;
 					if(pX < targetX) {
 						if(pX + chrInfo.xadvance >= offset) {	
-							Coordinate letterSlice = Coordinate(chrInfo.x, chrInfo.y + lineOffset, chrInfo.x + chrInfo.width, chrInfo.y + 
+							Box letterSlice = Box(chrInfo.x, chrInfo.y + lineOffset, chrInfo.x + chrInfo.width, chrInfo.y + 
 								chrInfo.height);
 							const int xOffset = pX < offset ? offset - pX : 0;
 							letterSlice.left += xOffset > chrInfo.xoffset ? xOffset : 0; //Draw portion of letter if it's partly obscured at the left

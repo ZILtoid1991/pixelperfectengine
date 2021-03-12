@@ -79,6 +79,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		foreach (key; smallButtons) {
 			addHeaderButton(key);
 		}
+		focusedElement = -1;
 	}
 	///Ditto
 	public this(Box size, dstring title, ISmallButton[] smallButtons, StyleSheet customStyle = null) {
@@ -96,6 +97,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		SmallButton closeButton = closeButton(customStyle is null ? globalDefaultStyle : customStyle);
 		closeButton.onMouseLClick = &close;
 		addHeaderButton(closeButton);
+		focusedElement = -1;
 	}
 	///Ditto
 	public this(Box size, dstring title, StyleSheet customStyle = null) {
@@ -151,7 +153,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void addHeaderButton(ISmallButton sb) {
 		const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
 		if (!sb.isSmallButtonHeight(headerHeight)) throw new Exception("Wrong SmallButton height.");
-		smallButtons.put(sb);
+		
 		int left, right = position.width;
 		foreach (ISmallButton key; smallButtons) {
 			if (key.isLeftSide) left += headerHeight;
@@ -165,7 +167,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		WindowElement we = cast(WindowElement)sb;
 		we.setParent(this);
 		we.setPosition(b);
-		//elements.put(we);
+
+		smallButtons.put(sb);
 	}
 	/**
 	 * Removes a smallbutton from the header.
@@ -173,7 +176,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void removeHeaderButton(ISmallButton sb) {
 		smallButtons.removeByElem(sb);
 		elements.removeByElem(cast(WindowElement)sb);
-		draw(true);
+		drawHeader();
 	}
 	/**
 	 * Draws the window. Intended to be used by the WindowHandler.
@@ -206,12 +209,14 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		StyleSheet ss = getStyleSheet();
 		const int headerHeight = ss.drawParameters["WindowHeaderHeight"];
 		Box headerArea = Box(0, 0, position.width - 1, headerHeight);
+
 		foreach (ISmallButton sb; smallButtons) {
 			if (sb.isLeftSide) headerArea.left += headerHeight;
 			else headerArea.right -= headerHeight;
 			WindowElement we = cast(WindowElement)sb;
 			we.draw;
 		}
+		
 		if (active) {
 			drawFilledBox(headerArea, ss.getColor("WHAtop"));
 			drawLine(headerArea.cornerUL, headerArea.cornerLL, ss.getColor("WHAascent"));
@@ -324,14 +329,16 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 * Gives focus to the windowelement requesting it.
 	 */
 	public void requestFocus(WindowElement sender) {
-		try {
-			if (focusedElement != -1)
-				focusables[focusedElement].focusTaken();
-			Focusable f = cast(Focusable)(sender);
-			focusedElement = focusables.which(f);
-			focusables[focusedElement].focusGiven();
-		} catch (Exception e) {
-			debug writeln(e);
+		if (focusables.has(sender)) {
+			try {
+				if (focusedElement != -1)
+					focusables[focusedElement].focusTaken();
+				Focusable f = cast(Focusable)(sender);
+				focusedElement = focusables.which(f);
+				focusables[focusedElement].focusGiven();
+			} catch (Exception e) {
+				debug writeln(e);
+			}
 		}
 	}
 	/**
@@ -433,6 +440,10 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		if (focusedElement != -1) {
 			focusables[focusedElement].focusTaken;
 			focusedElement = -1;
+		}
+		if (lastMouseEventTarget) {
+			lastMouseEventTarget.focusTaken();
+			lastMouseEventTarget = null;
 		}
 		active = false;
 		draw;
@@ -555,7 +566,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public static SmallButton closeButton(StyleSheet ss = globalDefaultStyle) {
 		const int windowHeaderHeight = ss.drawParameters["WindowHeaderHeight"];
 		SmallButton sb = new SmallButton("closeButtonB", "closeButtonA", "close", 
-				Box(0,0, windowHeaderHeight, windowHeaderHeight));
+				Box(0,0, windowHeaderHeight - 1, windowHeaderHeight - 1));
 		sb.isLeftSide = true;
 		if (ss !is globalDefaultStyle)
 			sb.customStyle = ss;

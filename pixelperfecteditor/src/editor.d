@@ -39,12 +39,7 @@ import document;
 import windows.rasterwindow;
 import windows.newtilelayer;
 
-/+public interface IEditor{
-	public void onExit();
-	public void newDocument();
-	public void passActionEvent(Event e);
-	public void createNewDocument(dstring name, int rX, int rY);
-}+/
+
 
 public class NewDocumentDialog : Window{
 	public Editor ie;
@@ -52,9 +47,9 @@ public class NewDocumentDialog : Window{
 	public this(Coordinate size, dstring title){
 		super(size, title);
 	}
-	public this(InputHandler inputhandler){
+	public this(Editor ie){
 		this(Box(10,10,220,150),"New Document"d);
-
+		this.ie = ie;
 		Button[] buttons;
 		Label[] labels;
 		buttons ~= new Button("Ok", "ok", Box(150,110,200,130));
@@ -63,9 +58,9 @@ public class NewDocumentDialog : Window{
 		labels ~= new Label("RasterX:","",Box(5,40,80,59));
 		labels ~= new Label("RasterY:","",Box(5,60,80,79));
 		//labels ~= new Label("N. of colors:","",Coordinate(5,80,120,99));
-		textBoxes ~= new TextBox("","name",Box(81,20,200,39));
-		textBoxes ~= new TextBox("","rX",Box(121,40,200,59));
-		textBoxes ~= new TextBox("","rY",Box(121,60,200,79));
+		textBoxes ~= new TextBox("newdocument","name",Box(81,20,200,39));
+		textBoxes ~= new TextBox("424","rX",Box(121,40,200,59));
+		textBoxes ~= new TextBox("240","rY",Box(121,60,200,79));
 		//textBoxes ~= new TextBox("","pal",Coordinate(121,80,200,99));
 		addElement(buttons[0]);
 		foreach(WindowElement we; labels){
@@ -86,7 +81,7 @@ public class NewDocumentDialog : Window{
 }
 
 public class TopLevelWindow : Window {
-	public this(int width, int height) {
+	public this(int width, int height, Editor prg) {
 		Text mt(dstring text) @safe nothrow {
 			return new Text(text, globalDefaultStyle.getChrFormatting("menuBar"));
 		}
@@ -144,7 +139,9 @@ public class TopLevelWindow : Window {
 			menuElements[5][0] = new PopUpMenuElement("helpFile", "Content");
 			menuElements[5][1] = new PopUpMenuElement("about", "About");
 
-			mb = new MenuBar("mb", Box(0,0, width, 16), menuElements);
+			mb = new MenuBar("mb", Box(0,0, width - 1, 15), menuElements);
+
+			mb.onMouseLClick = &prg.menuEvent;
 		}
 		addElement(mb);
 	}
@@ -310,6 +307,25 @@ public this(string[] args){
 			globalDefaultStyle.setImage(customGUIElems[14], "paletteButtonA");
 			globalDefaultStyle.setImage(customGUIElems[15], "paletteButtonB");
 		}
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE5.tga", 16, 16);
+			globalDefaultStyle.setImage(customGUIElems[0], "percentButtonA");
+			globalDefaultStyle.setImage(customGUIElems[1], "percentButtonB");
+			globalDefaultStyle.setImage(customGUIElems[2], "tileButtonA");
+			globalDefaultStyle.setImage(customGUIElems[3], "tileButtonB");
+			globalDefaultStyle.setImage(customGUIElems[4], "selMoveButtonA");
+			globalDefaultStyle.setImage(customGUIElems[5], "selMoveButtonB");
+			globalDefaultStyle.setImage(customGUIElems[6], "tilePlacementButtonA");
+			globalDefaultStyle.setImage(customGUIElems[7], "tilePlacementButtonB");
+			globalDefaultStyle.setImage(customGUIElems[8], "objPlacementButtonA");
+			globalDefaultStyle.setImage(customGUIElems[9], "objPlacementButtonB");
+			globalDefaultStyle.setImage(customGUIElems[10], "sprtPlacementButtonA");
+			globalDefaultStyle.setImage(customGUIElems[11], "sprtPlacementButtonB");
+			//globalDefaultStyle.setImage(customGUIElems[12], "importMaterialDataButtonA");
+			//globalDefaultStyle.setImage(customGUIElems[13], "importMaterialDataButtonB");
+			//globalDefaultStyle.setImage(customGUIElems[14], "paletteButtonA");
+			//globalDefaultStyle.setImage(customGUIElems[15], "paletteButtonB");
+		}
 
 		//wh.initGUI();
 
@@ -334,76 +350,56 @@ public this(string[] args){
 		//ISSUE: Copying the palette from StyleSheet.defaultPaletteForGUI doesn't work
 		//SOLUTION: Load the palette from a file
 		rasters.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
-		wh.setBaseWindow(new TopLevelWindow(848, 480));
+		wh.setBaseWindow(new TopLevelWindow(848, 480, this));
 		wh.addBackground(loadBitmapFromFile!Bitmap32Bit("../system/background.png"));
 		openMaterialList();
 		openLayerList();
 	}
 	public void menuEvent(Event ev) {
-		MenuEvent mev = cast(MenuEvent)ev;
-		switch (mev.itemSource) {
-			case "save":
-				onSave();
-				break;
-			case "saveAs":
-				onSaveAs();
-				break;
-			case "load":
-				onLoad();
-				break;
-			case "newLayer":
-				initNewTileLayer();
-				break;
-			case "layerTools":
-				//TileLayerEditor tle = new TileLayerEditor(this);
-				//wh.addWindow(tle);
-				break;
-			case "resizeLayer":
-				initResizeLayer();
-				break;
-			case "undo":
-				onUndo();
-				break;
-			case "redo":
-				onRedo();
-				break;
-			case "exit":
-				onQuit();
-				break;
-			default:
-				break;
+		if (ev.type == EventType.Menu){
+			MenuEvent mev = cast(MenuEvent)ev;
+			switch (mev.itemSource) {
+				case "save":
+					onSave();
+					break;
+				case "saveAs":
+					onSaveAs();
+					break;
+				case "load":
+					onLoad();
+					break;
+				case "newLayer":
+					initNewTileLayer();
+					break;
+				case "new":
+					//TileLayerEditor tle = new TileLayerEditor(this);
+					//wh.addWindow(tle);
+					onNewDocument();
+					break;
+				case "resizeLayer":
+					initResizeLayer();
+					break;
+				case "undo":
+					onUndo();
+					break;
+				case "redo":
+					onRedo();
+					break;
+				case "exit":
+					onQuit();
+					break;
+				case "layerList":
+					openLayerList();
+					break;
+				case "materialList":
+					openMaterialList();
+					break;
+				default:
+					break;
+			}
 		}
 	}
-	/+public void passActionEvent(Event e){
-		switch(e.source){
-			case "save":
-				onSave();
-				break;
-			case "saveAs":
-				onSaveAs();
-				break;
-			case "load":
-				onLoad();
-				break;
-			case "newLayer":
-				initNewTileLayer();
-				break;
-			case "layerTools":
-				//TileLayerEditor tle = new TileLayerEditor(this);
-				//wh.addWindow(tle);
-				break;
-			case "resizeLayer":
-				initResizeLayer();
-				break;
-			case "undo":
-				onUndo();
-				break;
-			case "redo":
-				onRedo();
-				break;
-			default: break;
-		}
-	}+/
+	
 	/**
 	 * Called when a keybinding event is generated.
 	 * The `id` should be generated from a string, usually the name of the binding.
@@ -442,6 +438,9 @@ public this(string[] args){
 		FileDialog fd = new FileDialog("Load document","docLoad",&onLoadDialog,[FileDialog.FileAssociationDescriptor(
 			"PPE map file", ["*.xmf"])],".\\",false);
 		wh.addWindow(fd);
+	}
+	public void onNewDocument () {
+		wh.addWindow(new NewDocumentDialog(this));
 	}
 	public void onLoadDialog (Event ev) {
 		import std.utf : toUTF32;
@@ -581,11 +580,11 @@ public this(string[] args){
 			onexit = true;
 		}
 	}
-	public void newDocument(){
+	/+public void newDocument(){
 		NewDocumentDialog ndd = new NewDocumentDialog(input);
 		ndd.ie = this;
 		wh.addWindow(ndd);
-	}
+	}+/
 	public void createNewDocument(dstring name, int rX, int rY){
 		import std.utf : toUTF8;
 		MapDocument md = new MapDocument(toUTF8(name), rX, rY);

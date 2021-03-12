@@ -15,63 +15,63 @@ public class LayerList : Window {
 	//CheckBox CheckBox_Visible;
 	public this(int x, int y, void delegate() onClose){
 		//super(Coordinate(0 + x, 16 + y, 98 + x, 213 + y), "Layers"d);
-		super(Coordinate(0 + x, 0 + y, 130 + x, 213 + y), "Layers"d);
+		super(Coordinate(0 + x, 0 + y, 129 + x, 213 + y), "Layers"d);
 		this.onClose = onClose;
 		//StyleSheet ss = getStyleSheet();
 		/+listBox_layers = new ListBox("listBox0", Coordinate(1, 17, 129, 180), [], new ListBoxHeader(["Pri"d ,"Type"d, "Name"d],
 				[24, 24, 96]));+/
 		listView_layers = new ListView(
-			new ListViewHeader(16, [24, 24, 96], ["Pri"d ,"Type"d, "Name"d]), null, "listView_layers", Box(1, 17, 129, 180)
+			new ListViewHeader(16, [24, 24, 96], ["Pri"d ,"Type"d, "Name"d]), null, "listView_layers", Box(1, 17, 128, 179)
 		);
 		addElement(listView_layers);
 		listView_layers.onItemSelect = &listBox_layers_onItemSelect;
 		{
-			SmallButton sb = new SmallButton("trashButtonB", "trashButtonA", "trash", Coordinate(113, 196, 129, 212));
+			SmallButton sb = new SmallButton("trashButtonB", "trashButtonA", "trash", Box(113, 197, 129, 213));
 			sb.onMouseLClick = &button_trash_onClick;
 			buttons ~= sb;
 		}
 		{
-			SmallButton sb = new SmallButton("settingsButtonB", "settingsButtonA", "editMat", Coordinate(97, 196, 113, 212));
+			SmallButton sb = new SmallButton("settingsButtonB", "settingsButtonA", "editMat", Box(97, 197, 113, 213));
 			//sb.onMouseLClickRel = &button_trash_onClick;
 			buttons ~= sb;
 		}
 		{
 			SmallButton sb = new SmallButton("newTileLayerButtonB", "newTileLayerButtonA", "newTileLayer",
-					Coordinate(1, 180, 17, 196));
+					Coordinate(1, 181, 16, 196));
 			sb.onMouseLClick = &button_newTileLayer_onClick;
 			buttons ~= sb;
 		}
 		{
 			SmallButton sb = new SmallButton("newSpriteLayerButtonB", "newSpriteLayerButtonA", "newSpriteLayer",
-					Coordinate(17, 180, 33, 196));
+					Coordinate(17, 181, 32, 196));
 			sb.onMouseLClick = &button_newSpriteLayer_onClick;
 			buttons ~= sb;
 		}
 		{
 			SmallButton sb = new SmallButton("newTransformableTileLayerButtonB", "newTransformableTileLayerButtonA",
-					"newTransformableTileLayer", Coordinate(33, 180, 49, 196));
+					"newTransformableTileLayer", Coordinate(33, 181, 48, 196));
 			sb.onMouseLClick = &button_newTransformableTileLayer_onClick;
 			buttons ~= sb;
 		}
 		{
 			SmallButton sb = new SmallButton("importMaterialDataButtonB", "importMaterialDataButtonA", "importMat",
-					Coordinate(97, 180, 113, 196));
+					Coordinate(97, 181, 113, 196));
 			sb.onMouseLClick = &button_importMaterialData_onClick;
 			buttons ~= sb;
 		}
 		{
 			SmallButton sb = new SmallButton("importLayerDataButtonB", "importLayerDataButtonA", "importLayer",
-					Coordinate(113, 180, 129, 196));
+					Coordinate(113, 181, 129, 196));
 			sb.onMouseLClick = &button_importLayerData_onClick;
 			buttons ~= sb;
 		}
 		{
-			SmallButton sb = new SmallButton("upArrowB", "upArrowA", "moveLayerUp", Coordinate(1, 196, 17, 212));
+			SmallButton sb = new SmallButton("upArrowB", "upArrowA", "moveLayerUp", Coordinate(1, 197, 16, 212));
 			sb.onMouseLClick = &button_moveLayerUp_onClick;
 			buttons ~= sb;
 		}
 		{
-			SmallButton sb = new SmallButton("downArrowB", "downArrowA", "moveLayerDown", Coordinate(17, 196, 33, 212));
+			SmallButton sb = new SmallButton("downArrowB", "downArrowA", "moveLayerDown", Coordinate(17, 197, 32, 212));
 			sb.onMouseLClick = &button_moveLayerDown_onClick;
 			buttons ~= sb;
 		}
@@ -118,6 +118,7 @@ public class LayerList : Window {
 			//list ~= new ListViewItem(16, [to!dstring(i.pri), to!dstring(i.type), toUTF32(i.name)]);
 			listView_layers ~= new ListViewItem(16, [to!dstring(i.pri), to!dstring(i.type), toUTF32(i.name)]);
 		}
+		listView_layers.refresh;
 		//listView_layers.(list);
 	}
 	public override void close(){

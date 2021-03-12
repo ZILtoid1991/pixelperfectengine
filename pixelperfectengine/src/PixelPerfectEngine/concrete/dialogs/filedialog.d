@@ -96,9 +96,9 @@ public class FileDialog : Window {
 		ListViewHeader lvh = new ListViewHeader(headerHeight, [160, 40, 176], [new Text("Name", hdrFrmt), 
 				new Text("Type", hdrFrmt), new Text("Date", hdrFrmt)]);
 		lw = new ListView(lvh, null, "lw", Box(4, 20, 216, 126));
+		addElement(lw);
 
-
-		//generate listbox
+		
 
 
 		//Date format: yyyy-mm-dd hh:mm:ss
@@ -287,7 +287,12 @@ public class FileDialog : Window {
 	}
 	private void event_fileSelector(Event ev) {
 		//selectedType = lw.value;
-		spanDir();
+		import std.algorithm.searching : canFind;
+		if (ev.type == EventType.Menu) {
+			MenuEvent mev = cast(MenuEvent)ev;
+			selectedType = cast(int)mev.itemNum;
+			spanDir();
+		}
 	}
 	private void button_type_onMouseLClickRel(Event ev) {
 		PopUpMenuElement[] e;
@@ -297,8 +302,7 @@ public class FileDialog : Window {
 			e ~= new PopUpMenuElement(filetypes[i].types[0],new Text(filetypes[i].description, frmt1), 
 					new Text(filetypes[i].getTypesForSelector(), frmt2));
 		}
-		PopUpMenu p = new PopUpMenu(e,"fileSelector");
-		p.onMouseClick = &event_fileSelector;
+		PopUpMenu p = new PopUpMenu(e,"fileSelector", &event_fileSelector);
 		handler.addPopUpElement(p);
 	}
 	private void button_close_onMouseLClickRel(Event ev) {

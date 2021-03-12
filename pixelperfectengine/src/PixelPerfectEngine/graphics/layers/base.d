@@ -75,14 +75,14 @@ abstract class Layer {
 		//main4BitColorLookupFunction = &colorLookup4Bit!uint;
 	}
 	///Absolute scrolling.
-	public void scroll(int x, int y) @nogc @safe pure nothrow {
-		sX=x;
-		sY=y;
+	public void scroll(int x, int y) @safe pure nothrow {
+		sX = x;
+		sY = y;
 	}
 	///Relative scrolling. Positive values scrolls the layer left and up, negative values scrolls the layer down and right.
-	public void relScroll(int x, int y) @nogc @safe pure nothrow {
-		sX=sX+x;
-		sY=sY+y;
+	public void relScroll(int x, int y) @safe pure nothrow {
+		sX += x;
+		sY += y;
 	}
 	///Getter for the X scroll position.
 	public int getSX() @nogc @safe pure nothrow const {

@@ -25,57 +25,57 @@ public class MaterialList : Window {
 	protected ListViewHeader tileListHeader;
 	protected ListViewHeader spriteListHeader;
 	public this(int x, int y, void delegate() onClose) @trusted {
-		super(Coordinate(x, y, x + 130, y + 251 ), "Materials"d);
+		super(Coordinate(x, y, x + 129, y + 249), "Materials"d);
 		this.onClose = onClose;
 		StyleSheet ss = getStyleSheet();
 		/+listBox_materials = new ListBox("listBox0", Coordinate(1, 17, 129, 218), [], new ListBoxHeader(tileListHeaderS.dup,
 				tileListHeaderW.dup));+/
 		tileListHeader = new ListViewHeader(16, [32, 120], ["ID"d, "Name"d]);
 		spriteListHeader = new ListViewHeader(16, [40, 120, 64], ["ID"d, "Name"d, "Dim"d]);
-		listView_materials = new ListView(tileListHeader, null, "listView_materials", Box(1, 17, 129, 218));
+		listView_materials = new ListView(tileListHeader, null, "listView_materials", Box(1, 17, 128, 215));
 		listView_materials.onItemSelect = &onItemSelect;
 		addElement(listView_materials);
 		{
-			SmallButton sb = new SmallButton("removeMaterialB", "removeMaterialA", "rem", Box(113, 234, 129, 250));
+			SmallButton sb = new SmallButton("removeMaterialB", "removeMaterialA", "rem", Box(113, 233, 129, 248));
 			sb.onMouseLClick = &button_trash_onClick;
 			addElement(sb);
 		}
 		{
-			SmallButton sb = new SmallButton("addMaterialB", "addMaterialA", "add", Box(113, 218, 129, 234));
+			SmallButton sb = new SmallButton("addMaterialB", "addMaterialA", "add", Box(113, 217, 129, 232));
 			sb.onMouseLClick = &button_addMaterial_onClick;
 			addElement(sb);
 		}
 		{
-			CheckBox sb = new CheckBox("horizMirrorB", "horizMirrorA", "horizMirror", Box(1, 218, 17, 234));
+			CheckBox sb = new CheckBox("horizMirrorB", "horizMirrorA", "horizMirror", Box(1, 217, 16, 232));
 			sb.onToggle = &horizMirror_onClick;
 			addElement(sb);
 		}
 		{
-			CheckBox sb = new CheckBox("vertMirrorB", "vertMirrorA", "vertMirror", Box(17, 218, 33, 234));
+			CheckBox sb = new CheckBox("vertMirrorB", "vertMirrorA", "vertMirror", Box(17, 217, 32, 232));
 			sb.onToggle = &vertMirror_onClick;
 			addElement(sb);
 		}
 		{
-			CheckBox sb = new CheckBox("ovrwrtInsB", "ovrwrtInsA", "ovrwrtIns", Box(33, 218, 49, 234));
+			CheckBox sb = new CheckBox("ovrwrtInsB", "ovrwrtInsA", "ovrwrtIns", Box(33, 217, 48, 232));
 			sb.onToggle = &ovrwrtIns_onClick;
 			addElement(sb);
 		}
 		{
-			SmallButton sb = new SmallButton("paletteUpB", "paletteUpA", "palUp", Box(1, 234, 17, 250));
+			SmallButton sb = new SmallButton("paletteUpB", "paletteUpA", "palUp", Box(1, 233, 16, 248));
 			sb.onMouseLClick = &palUp_onClick;
 			addElement(sb);
 		}
 		{
-			SmallButton sb = new SmallButton("paletteDownB", "paletteDownA", "palDown", Box(17, 234, 33, 250));
+			SmallButton sb = new SmallButton("paletteDownB", "paletteDownA", "palDown", Box(17, 233, 32, 248));
 			sb.onMouseLClick = &palDown_onClick;
 			addElement(sb);
 		}
 		{
-			SmallButton sb = new SmallButton("settingsButtonB", "settingsButtonA", "editMat", Box(97, 234, 113, 250));
+			SmallButton sb = new SmallButton("settingsButtonB", "settingsButtonA", "editMat", Box(97, 233, 112, 248));
 			sb.onMouseLClick = &button_editMat_onClick;
 			addElement(sb);
 		}
-		palettePos = new Label("0x00", "palettePos", Box(34, 234, 96, 250));
+		palettePos = new Label("0x00", "palettePos", Box(34, 234, 96, 248));
 		addElement(palettePos);
 	}
 	public void updateMaterialList(TileInfo[] list) @trusted {
@@ -87,22 +87,27 @@ public class MaterialList : Window {
 		foreach (item ; list) {
 			listView_materials ~= new ListViewItem(16, [intToHex!dstring(item.id, 4) ~ "h", toUTF32(item.name)]);
 		}
+		listView_materials.refresh;
 		/+listBox_materials.updateColumns(output, new ListBoxHeader(tileListHeaderS.dup, tileListHeaderW.dup));+/
 	}
 	private void vertMirror_onClick(Event ev) {
 		CheckBox sender = cast(CheckBox)ev.sender;
-		if(sender.isChecked) {
-			prg.selDoc.tileMaterial_FlipVertical(true);
-		} else {
-			prg.selDoc.tileMaterial_FlipVertical(false);
+		if (prg.selDoc) {
+			if(sender.isChecked) {
+				prg.selDoc.tileMaterial_FlipVertical(true);
+			} else {
+				prg.selDoc.tileMaterial_FlipVertical(false);
+			}
 		}
 	}
 	private void horizMirror_onClick(Event ev) {
 		CheckBox sender = cast(CheckBox)ev.sender;
-		if(sender.isChecked) {
-			prg.selDoc.tileMaterial_FlipHorizontal(true);
-		} else {
-			prg.selDoc.tileMaterial_FlipHorizontal(false);
+		if (prg.selDoc) {
+			if(sender.isChecked) {
+				prg.selDoc.tileMaterial_FlipHorizontal(true);
+			} else {
+				prg.selDoc.tileMaterial_FlipHorizontal(false);
+			}
 		}
 	}
 	private void button_addMaterial_onClick(Event ev) {

@@ -88,7 +88,7 @@ public class TextBox : WindowElement, TextInputListener {
 		//draw cursor
 		if (flags & ENABLE_TEXT_EDIT) {
 			//calculate cursor first
-			Box cursor = Box(position.left, position.top + textPadding, position.left, position.bottom - textPadding);
+			Box cursor = Box(position.left + textPadding, position.top + textPadding, position.left + textPadding, position.bottom - textPadding);
 			cursor.left += text.getWidth(0, cursorPos) - horizTextOffset;
 			//cursor must be at least single pixel wide
 			cursor.right = cursor.left;
@@ -97,6 +97,8 @@ public class TextBox : WindowElement, TextInputListener {
 			} else if (flags & INSERT) {
 				if (cursorPos < text.charLength) cursor.right += text.getWidth(cursorPos, cursorPos+1);
 				else cursor.right += text.font.chars(' ').xadvance;
+			} else {
+				cursor.right++;
 			}
 			//Clamp down if cursor is wider than the text editing area
 			cursor.right = cursor.right <= position.right - textPadding ? cursor.right : position.right - textPadding;
@@ -127,7 +129,13 @@ public class TextBox : WindowElement, TextInputListener {
 		text.removeChar(n);
 	}
 	public void textInputEvent(uint timestamp, uint windowID, dstring text){
-		if (flags & INSERT) {
+		if (select) {
+			this.text.removeChar(cursorPos, select);
+			select = 0;
+			for(int j ; j < text.length ; j++){
+				this.text.insertChar(cursorPos++, text[j]);
+			}
+		} else if (flags & INSERT) {
 			for(int j ; j < text.length ; j++){
 				this.text.overwriteChar(cursorPos++, text[j]);
 			}
@@ -165,6 +173,7 @@ public class TextBox : WindowElement, TextInputListener {
 	public void initTextInput() {
 		flags |= ENABLE_TEXT_EDIT;
 		select = cast(int)text.charLength;
+		oldText = new Text(text);
 		draw();
 	}
 
@@ -194,24 +203,36 @@ public class TextBox : WindowElement, TextInputListener {
 				draw();
 				break;
 			case TextInputKey.CursorLeft:
-				if(cursorPos > 0){
-					--cursorPos;
-					draw();
+				if (modifier != KeyModifier.Shift) {
+					select = 0;
+					if(cursorPos > 0){
+						--cursorPos;
+						draw();
+					}
 				}
 				break;
 			case TextInputKey.CursorRight:
-				if(cursorPos < text.charLength){
-					++cursorPos;
-					draw();
+				if (modifier != KeyModifier.Shift) {
+					select = 0;
+					if(cursorPos < text.charLength){
+						++cursorPos;
+						draw();
+					}
 				}
 				break;
 			case TextInputKey.Home:
-				cursorPos = 0;
-				draw();
+				if (modifier != KeyModifier.Shift) {
+					select = 0;
+					cursorPos = 0;
+					draw();
+				}
 				break;
 			case TextInputKey.End:
-				cursorPos = text.charLength;
-				draw();
+				if (modifier != KeyModifier.Shift) {
+					select = 0;
+					cursorPos = text.charLength;
+					draw();
+				}
 				break;
 			case TextInputKey.Insert:
 				flags ^= INSERT;

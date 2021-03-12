@@ -23,13 +23,16 @@ public class SmallButton : WindowElement, ISmallButton {
 		StyleSheet ss = getStyleSheet();
 		Bitmap8Bit icon = isPressed ? ss.getImage(iconPressed) : ss.getImage(iconUnpressed);
 		parent.bitBLT(position.cornerUL, icon);
+		Box pos = position;
+		pos.bottom--;
+		pos.right--;
 		if (isFocused) {
 			const int textPadding = ss.drawParameters["horizTextPadding"];
-			parent.drawBoxPattern(position - textPadding, ss.pattern["blackDottedLine"]);
+			parent.drawBoxPattern(pos - textPadding, ss.pattern["blackDottedLine"]);
 		}
 
 		if (state == ElementState.Disabled) {
-			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
+			parent.bitBLTPattern(pos, ss.getImage("ElementDisabledPtrn"));
 		}
 	}
 	public bool isSmallButtonHeight(int height) {

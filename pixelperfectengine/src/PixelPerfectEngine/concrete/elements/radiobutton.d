@@ -29,7 +29,9 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 		this.iconLatched = iconLatched;
 		this.iconUnlatched = iconUnlatched;
 		this.source = source;
-		group.add(this);
+		this.group = group;
+		if (group)
+			group.add(this);
 	}
 	override public void draw() {
 		parent.clearArea(position);
@@ -78,7 +80,7 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 	 */
 	public void latchOff() @trusted {
 		if (isChecked) {
-			flags &= ~IS_CHECKED;
+			isChecked = false;
 			draw();	
 		}
 	}
@@ -87,7 +89,7 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 	 */
 	public void latchOn() @trusted {
 		if (!isChecked) {
-			flags |= IS_CHECKED;
+			isChecked = true;
 			draw();
 		}
 	}
@@ -128,9 +130,10 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
  */
 public class RadioButtonGroup : IRadioButtonGroup {
 	alias RadioButtonSet = LinkedList!(IRadioButton, false, "a.equals(b)");
-	protected RadioButtonSet radioButtons;
-	protected IRadioButton latchedButton;
-	protected size_t _value;
+	protected RadioButtonSet	radioButtons;
+	protected IRadioButton		latchedButton;
+	protected size_t 			_latchPos;
+	public EventDeleg			onToggle;		///If set, it'll be called when the group is toggled.
 	///Empty ctor
 	public this() @safe pure nothrow @nogc {
 		
@@ -162,10 +165,38 @@ public class RadioButtonGroup : IRadioButtonGroup {
 	 */
 	public void latch(IRadioButton sender) @safe {
 		latchedButton = sender;
-		foreach(elem; radioButtons) {
+		for (int i ; i < radioButtons.length ; i++) {
+			IRadioButton elem = radioButtons[i];
+			if (sender.equals(elem)) {
+				_latchPos = i;
+			}
 			elem.latchOff;
 		}
 		sender.latchOn;
+		callOnToggle(new Event(this, cast(Object)sender, EventType.Toggle, SourceType.RadioButtonGroup));
+	}
+	/**
+	 * Latches to the given position.
+	 */
+	public size_t latchPos(size_t val) @safe {
+		foreach(elem; radioButtons) {
+			elem.latchOff;
+		}
+		radioButtons[val].latchOn;
+		_latchPos = val;
+		callOnToggle(new Event(this, cast(Object)radioButtons[val], EventType.Toggle, SourceType.RadioButtonGroup));
+		return _latchPos;
+	}
+	///Calls the `onToggle` delegate if set
+	protected void callOnToggle(Event ev) @trusted {
+		if (onToggle !is null)
+			onToggle (ev);
+	}
+	/**
+	 * Returns the current latch position.
+	 */
+	public size_t latchPos() @nogc @safe pure nothrow {
+		return _latchPos;
 	}
 	/**
 	 * Returns the value of this group.
@@ -174,5 +205,4 @@ public class RadioButtonGroup : IRadioButtonGroup {
 		if(latchedButton !is null) return latchedButton.value;
 		else return null;
 	}
-	
 }

@@ -11,7 +11,7 @@ module PixelPerfectEngine.graphics.common;
 import dimage.types : ARGB8888BE;
 
 /**
- * Represents a single point on a 2D field.
+ * Graphics primitive. Represents a single point on a 2D field.
  */
 public struct Point {
 	public int x, y;
@@ -28,7 +28,10 @@ public struct Point {
 	}
 }
 /**
- * Represents a box on a 2D field.
+ * Graphics primitive. Represents a box on a 2D field.
+ * Note on area calculation: The smallest box that can be represented is 1 * 1, as it counts the endpoints as part of the box.
+ * This behavior got added with 0.10.0, to standardize various behaviors of the engine, and fix some odd behavior the GUI
+ * drawing functions had.
  */
 public struct Box {
 	public int left, top, right, bottom;
@@ -42,13 +45,13 @@ public struct Box {
 	 * Returns the width of the represented box.
 	 */
 	public @property @nogc @safe nothrow pure int width() const {
-		return right-left;
+		return right - left + 1;
 	}
 	/**
 	 * Returns the height of the represented box.
 	 */
 	public @property @nogc @safe nothrow pure int height() const {
-		return bottom-top;
+		return bottom - top + 1;
 	}
 	/**
 	 * Returns the area of the represented box.
@@ -86,14 +89,14 @@ public struct Box {
 	}
 	/**
 	 * Operator overloading for scalar values.
-	 * `-`: Adds to left and top, substracts from right and bottom.
-	 * `+`: Subtracts from left and top, adds to right and bottom.
+	 * `-`: Adds to left and top, substracts from right and bottom. (Shrinks by amount)
+	 * `+`: Subtracts from left and top, adds to right and bottom. (Grows by amount)
 	 */
 	public Box opBinary(string op)(const int rhs) @nogc @safe pure nothrow const {
 		static if (op == "-") {
-			return Coordinate(left + rhs, top + rhs, right - rhs, bottom - rhs);
+			return Box(left + rhs, top + rhs, right - rhs, bottom - rhs);
 		} else static if (op == "+") {
-			return Coordinate(left - rhs, top - rhs, right + rhs, bottom + rhs);
+			return Box(left - rhs, top - rhs, right + rhs, bottom + rhs);
 		} else static assert(0, "Unsupported operator!");
 	}
 	///Returns the upper-left corner.

@@ -448,11 +448,11 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		needsUpdate = true;
 		return tpOrigin[1];
 	}
-	override public @safe @nogc void scroll(int x,int y) {
+	override public void scroll(int x,int y) {
 		super.scroll(x,y);
 		needsUpdate = true;
 	}
-	override public @safe @nogc void relScroll(int x,int y) {
+	override public void relScroll(int x,int y) {
 		super.relScroll(x,y);
 		needsUpdate = true;
 	}

@@ -19,9 +19,12 @@ abstract class ScrollBar : WindowElement{
 	 * Returns the new slider position.
 	 */
 	public @property int value(int val) {
-		if (val < _maxValue) _value = val;
+		if (val < 0) _value = 0;
+		else if (val < _maxValue) _value = val;
 		else _value = _maxValue;
 		draw();
+		if (onScrolling !is null)
+			onScrolling(new Event(this, EventType.MouseScroll, SourceType.WindowElement));
 		return _value;
 	}
 	/**
@@ -39,7 +42,8 @@ abstract class ScrollBar : WindowElement{
 		const int length = position.width > position.height ? position.width : position.height;
 		_maxValue = val;
 		if (_value > _maxValue) _value = _maxValue;
-		_barLength = (length - iconSize * 2) / _maxValue;
+		const double barLength0 = (length - iconSize * 2) / cast(double)val;
+		_barLength = barLength0 < 1.0 ? 1 : cast(int)barLength0;
 		return _maxValue;
 	}
 	/**
@@ -60,20 +64,19 @@ public class VertScrollBar : ScrollBar {
 	public this(int maxValue, string source, Box position){
 		this.position = position;
 		this.source = source;
-		_maxValue = maxValue;
-		_barLength = (position.height - position.width * 2) / _maxValue;
+		this.maxValue = maxValue;
 	}
 	public override void draw(){
 		StyleSheet ss = getStyleSheet();
 		//draw background
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
-		const int travelLength = position.height - position.width * 2 - _barLength;
+		const int travelLength = position.height - (position.width * 2) - _barLength;
 		Box slider;
 		slider.left = position.left;
 		slider.right = position.right;
-		slider.top = travelLength - (_barLength / 2);
-		slider.bottom = travelLength + (_barLength / 2);
+		slider.top = position.top + position.width + (_barLength * value);
+		slider.bottom = slider.top + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
 		if (isFocused) {
 			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
@@ -105,11 +108,11 @@ public class VertScrollBar : ScrollBar {
 				}
 			} else {
 				import std.math : nearbyint;
-				const double newVal = mce.y - position.width - (_barLength / 2);
+				const double newVal = mce.y - position.width - (_barLength / 2.0);
 				if (newVal >= 0) {
-					const int travelLength = position.height - position.width * 2 - _barLength;
-					_value = cast(int)nearbyint(travelLength / newVal);
-					if (_value > _maxValue) _value = _maxValue;
+					const int travelLength = position.height - (position.width * 2) - _barLength;
+					value = cast(int)nearbyint(travelLength / newVal);
+					
 				}
 			}
 		} 
@@ -117,18 +120,12 @@ public class VertScrollBar : ScrollBar {
 	}
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
 		if (isPressed && mme.buttonState == 1 << MouseButton.Left) {
-			_value += mme.relY;
-			if (_value <= 0 ) _value = 0;
-			else if (_value >= _maxValue) _value = _maxValue;
-			draw;
+			value = _value = mme.relY;
 		}
 		super.passMME(mec, mme);
 	}
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
-		_value += mwe.y;
-		if (_value <= 0 ) _value = 0;
-		else if (_value >= _maxValue) _value = _maxValue;
-		draw;
+		value = _value + mwe.y;
 		super.passMWE(mec, mwe);
 	}
 	
@@ -140,19 +137,18 @@ public class HorizScrollBar : ScrollBar {
 	public this(int maxValue, string source, Box position){
 		this.position = position;
 		this.source = source;
-		_maxValue = maxValue;
-		_barLength = (position.width - position.height * 2) / _maxValue;
+		this.maxValue = maxValue;
 	}
 	public override void draw(){
 		StyleSheet ss = getStyleSheet();
 		//draw background
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
-		const int travelLength = position.width - position.height * 2;
+		//const int travelLength = position.width - position.height * 2;
 		Box slider;
 		slider.top = position.top;
 		slider.bottom = position.bottom;
-		slider.left = position.left + position.width + _barLength * value;
+		slider.left = position.left + position.height + (_barLength * value);
 		slider.right = slider.left + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
 		if (isFocused) {
@@ -185,11 +181,11 @@ public class HorizScrollBar : ScrollBar {
 				}
 			} else {
 				import std.math : nearbyint;
-				const double newVal = mce.y - position.height - (_barLength / 2);
+				const double newVal = mce.y - position.height - (_barLength / 2.0);
 				if (newVal >= 0) {
 					const int travelLength = position.width - position.height * 2 - _barLength;
-					_value = cast(int)nearbyint(travelLength / newVal);
-					if (_value > _maxValue) _value = _maxValue;
+					value = cast(int)nearbyint(travelLength / newVal);
+					
 				}
 			}
 		} 
@@ -197,18 +193,12 @@ public class HorizScrollBar : ScrollBar {
 	}
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
 		if (isPressed && mme.buttonState == 1 << MouseButton.Left) {
-			_value += mme.relX;
-			if (_value <= 0 ) _value = 0;
-			else if (_value >= _maxValue) _value = _maxValue;
-			draw;
+			value = _value + mme.relX;
 		}
 		super.passMME(mec, mme);
 	}
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
-		_value += mwe.x;
-		if (_value <= 0 ) _value = 0;
-		else if (_value >= _maxValue) _value = _maxValue;
-		draw;
+		value = _value + mwe.x;
 		super.passMWE(mec, mwe);
 	}
 }

@@ -298,7 +298,7 @@ public class InputHandler {
 							}
 						}
 					}
-				} else if (statusFlags & StatusFlags.TextInputEnable && bc.deviceTypeID == Devicetype.Keyboard) {		//Generate text editing input
+				} else if (statusFlags & StatusFlags.TextInputEnable && bc.deviceTypeID == Devicetype.Keyboard && !release) {		//Generate text editing input
 					switch(bc.buttonNum){
 						case ScanCode.ENTER, ScanCode.ENTER2, ScanCode.NP_ENTER:
 							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.Enter, 

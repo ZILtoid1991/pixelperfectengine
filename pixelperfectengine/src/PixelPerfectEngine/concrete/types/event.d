@@ -107,6 +107,7 @@ public enum EventType {
  */
 public enum SourceType {
 	WindowElement,
+	RadioButtonGroup,
 	DialogWindow,
 	PopUpElement,
 }

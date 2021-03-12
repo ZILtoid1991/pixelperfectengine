@@ -30,10 +30,10 @@ public class MenuBar : WindowElement {
 		StyleSheet ss = getStyleSheet();
 		with (parent) {
 			drawFilledBox(position, ss.getColor("window"));
-			drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowAscent"));
-			drawLine(position.cornerUL, position.cornerLL, ss.getColor("windowAscent"));
-			drawLine(position.cornerLL, position.cornerLR, ss.getColor("windowDescent"));
-			drawLine(position.cornerUR, position.cornerLR, ss.getColor("windowDescent"));
+			drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowascent"));
+			drawLine(position.cornerUL, position.cornerLL, ss.getColor("windowascent"));
+			drawLine(position.cornerLL, position.cornerLR, ss.getColor("windowdescent"));
+			drawLine(position.cornerUR, position.cornerLR, ss.getColor("windowdescent"));
 		}
 		if (select > -1) {
 			parent.drawFilledBox(Box(menuWidths[select], position.top + 1, menuWidths[select + 1], position.bottom - 1), 
@@ -56,26 +56,34 @@ public class MenuBar : WindowElement {
 					select = i;
 					draw;
 					Coordinate c = parent.getAbsolutePosition(this);
-					parent.addPopUpElement(new PopUpMenu(menus[i].getSubElements, source), c.left + menuWidths[i], c.bottom);
-					break;
+					parent.addPopUpElement(new PopUpMenu(menus[i].getSubElements, source, &redirectIncomingEvents), c.left + 
+							menuWidths[i], c.bottom);
+					super.passMCE(mec, mce);
+					return;
 				}
 			}
 		}
+		select = -1;
 		super.passMCE(mec, mce);
 	}
 	///Passes mouse move event
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
 		if (position.isBetween(mme.x, mme.y)) {
-			select = -1;
-		} else {
 			for (int i ; i < menus.length ; i++) {
 				if (menuWidths[i] < mme.x && menuWidths[i + 1] > mme.x) {
 					select = i;
 					draw;
-					break;
+					return;
 				}
 			}
 		}
+		select = -1;
+		draw;
 		super.passMME(mec, mme);
+	}
+	///Called when an object loses focus.
+	public override void focusTaken() {
+		select = -1;
+		super.focusTaken();
 	}
 }

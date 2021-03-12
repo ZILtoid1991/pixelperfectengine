@@ -122,11 +122,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		/**
 		 * Resets the slice to its original position.
 		 */
-		@nogc void resetSlice() pure @safe nothrow {
+		void resetSlice() pure @nogc @safe nothrow {
 			slice.left = 0;
 			slice.top = 0;
-			slice.right = position.width;
-			slice.bottom = position.height;
+			slice.right = position.width - 1;
+			slice.bottom = position.height - 1;
 		}
 		/**
 		 * Replaces the sprite with a new one.
@@ -140,8 +140,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				this.height = sprite.height;
 				position.right = position.left + cast(int)scaleNearestLength(width, scaleHoriz);
 				position.bottom = position.top + cast(int)scaleNearestLength(height, scaleVert);
+				resetSlice();
 			}
-			resetSlice();
 			if (typeid(sprite) is typeid(Bitmap4Bit)) {
 				bmpType = BitmapTypes.Bmp4Bit;
 				paletteSh = 4;
@@ -191,9 +191,19 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		//src[0].length = 1024;
 	}
 	/**
-	 * Checks whether a sprite would be displayed on the screen, then updates the display list.
+	 * Checks all sprites for whether they're on screen or not.
+	 * Called every time the layer is being scrolled.
 	 */
-	protected bool checkSprite(int n) @safe pure nothrow {
+	public void checkAllSprites() @safe pure nothrow {
+		foreach (key; allSprites) {
+			checkSprite(key);
+		}
+	}
+	/**
+	 * Checks whether a sprite would be displayed on the screen, then updates the display list.
+	 * Returns true if it's on screen.
+	 */
+	public bool checkSprite(int n) @safe pure nothrow {
 		return checkSprite(allSprites[n]);
 	}
 	///Ditto.
@@ -393,13 +403,13 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					rasterY)){+/
 			//if((right > sX && left < sX + rasterX) && (bottom > sY && top < sY + rasterY) && i.slice.width && i.slice.height){
 			int offsetXA = sX > left ? sX - left : 0;//Left hand side offset, zero if not obscured
-			const int offsetXB = sX + rasterX < right ? right - rasterX : 0; //Right hand side offset, zero if not obscured
+			const int offsetXB = sX + rasterX < right ? right - (sX + rasterX) : 0; //Right hand side offset, zero if not obscured
 			const int offsetYA = sY > top ? sY - top : 0;		//top offset of sprite, zero if not obscured
-			const int offsetYB = sY + rasterY < bottom ? bottom - rasterY : 0;	//bottom offset of sprite, zero if not obscured
+			const int offsetYB = sY + rasterY < bottom ? bottom - (sY + rasterY) + 1 : 1;	//bottom offset of sprite, zero if not obscured
 			//const int offsetYB0 = cast(int)scaleNearestLength(offsetYB, i.scaleVert);
 			const int sizeX = i.slice.width();		//total displayed width
 			const int offsetX = left - sX;
-			const int length = sizeX - offsetXA - offsetXB;
+			const int length = sizeX - offsetXA - offsetXB - 1;
 			//int lengthY = i.slice.height - offsetYA - offsetYB;
 			//const int lfour = length * 4;
 			const int offsetY = sY < top ? (top-sY)*pitch : 0;	//used if top portion of the sprite is off-screen
@@ -428,7 +438,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
-						p0 += sizeXOffset >>> 1;
+						p0 += sizeXOffset >> 1;
 					}
 					//}
 					break;
@@ -481,5 +491,16 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		//foreach(int threadOffset; threads.parallel)
 			//free(src[threadOffset]);
 	}
-
+	///Absolute scrolling.
+	public override void scroll(int x, int y) @safe pure nothrow {
+		sX = x;
+		sY = y;
+		checkAllSprites;
+	}
+	///Relative scrolling. Positive values scrolls the layer left and up, negative values scrolls the layer down and right.
+	public override void relScroll(int x, int y) @safe pure nothrow {
+		sX += x;
+		sY += y;
+		checkAllSprites;
+	}
 }
