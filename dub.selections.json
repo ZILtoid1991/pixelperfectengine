@@ -2,11 +2,11 @@
 	"fileVersion": 1,
 	"versions": {
 		"bindbc-loader": "0.3.2",
-		"bindbc-sdl": "0.19.2",
+		"bindbc-sdl": "0.20.0",
 		"bitleveld": "0.1.0-alpha",
 		"bmfont": "0.1.0",
 		"collections-d": "0.3.2",
-		"cpublit": "0.4.0",
+		"cpublit": "0.4.1",
 		"derelict-fi": "2.0.3",
 		"derelict-sdl2": "2.1.4",
 		"derelict-util": "2.0.6",

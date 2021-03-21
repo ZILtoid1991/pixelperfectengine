@@ -61,7 +61,8 @@ public @nogc int[2] transformFunctionInt(short[2] xy, short[4] ABCD, short[2] x0
 		}
 		
 		return [result[0] + x0y0[0], result[1] + x0y0[1]];
-	} else+/ static if (USE_INTEL_INTRINSICS) {
+	} else+/ 
+	static if (USE_INTEL_INTRINSICS) {
 		__m128i result;
 		short8 xy_, sXsY_, x0y0_, ABCD_;
 		xy_[0] = xy[0];
@@ -82,7 +83,7 @@ public @nogc int[2] transformFunctionInt(short[2] xy, short[4] ABCD, short[2] x0
 		ABCD_[3] = ABCD[3];
 		xy_ += sXsY_;
 		xy_ -= x0y0_;
-		result = _mm_madd_epi16(xy_, ABCD_);
+		result = _mm_madd_epi16(cast(__m128i)xy_, cast(__m128i)ABCD_);
 		return [result[0] + x0y0[0], result[1] + x0y0[1]];
 	} else {
 		int[2] result;

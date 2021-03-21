@@ -1,12 +1,14 @@
 module PixelPerfectEngine.concrete.elements.scrollbar;
 
 public import PixelPerfectEngine.concrete.elements.base;
+import std.math : isNaN;
 
 abstract class ScrollBar : WindowElement{
 	protected static enum 	PLUS_PRESSED = 1<<9;
 	protected static enum 	MINUS_PRESSED = 1<<10;
 	protected int _value, _maxValue, _barLength;
-	public void delegate(Event ev) onScrolling;
+	protected double largeVal;							///Set to double.nan if value is less than travellength, or the ratio between 
+	public void delegate(Event ev) onScrolling;			///Called shen the scrollbar's value is changed
 
 	/**
 	 * Returns the slider position.
@@ -44,6 +46,7 @@ abstract class ScrollBar : WindowElement{
 		if (_value > _maxValue) _value = _maxValue;
 		const double barLength0 = (length - iconSize * 2) / cast(double)val;
 		_barLength = barLength0 < 1.0 ? 1 : cast(int)barLength0;
+		largeVal = barLength0 < 1.0 ? 1.0 / barLength0 : double.nan;
 		return _maxValue;
 	}
 	/**
@@ -71,11 +74,12 @@ public class VertScrollBar : ScrollBar {
 		//draw background
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
-		const int travelLength = position.height - (position.width * 2) - _barLength;
+		//const int travelLength = position.height - (position.width * 2) - _barLength;
 		Box slider;
+		const int value0 = isNaN(largeVal) ? value : cast(int)(value / largeVal);
 		slider.left = position.left;
 		slider.right = position.right;
-		slider.top = position.top + position.width + (_barLength * value);
+		slider.top = position.top + position.width + (_barLength * value0);
 		slider.bottom = slider.top + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
 		if (isFocused) {
@@ -94,14 +98,14 @@ public class VertScrollBar : ScrollBar {
 		if (mce.button == MouseButton.Left) {
 			if (mce.y < position.width) {
 				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
-					if (_value > 0) _value--;
+					value = _value - 1;
 					flags |= MINUS_PRESSED;
 				} else if (flags & MINUS_PRESSED && mce.state == ButtonState.Released) {
 					flags &= ~MINUS_PRESSED;
 				}
 			} else if (mce.y >= position.height - position.width) {
 				if (!(flags & PLUS_PRESSED) && mce.state == ButtonState.Pressed) {
-					if (_value < _maxValue) _value++;
+					value = _value + 1;
 					flags |= PLUS_PRESSED;
 				} else if (flags & PLUS_PRESSED && mce.state == ButtonState.Released) {
 					flags &= ~PLUS_PRESSED;
@@ -111,8 +115,8 @@ public class VertScrollBar : ScrollBar {
 				const double newVal = mce.y - position.width - (_barLength / 2.0);
 				if (newVal >= 0) {
 					const int travelLength = position.height - (position.width * 2) - _barLength;
-					value = cast(int)nearbyint(travelLength / newVal);
-					
+					const double valRatio = isNaN(largeVal) ? 1.0 : largeVal;
+					value = cast(int)nearbyint((travelLength / newVal) * valRatio);
 				}
 			}
 		} 
@@ -125,7 +129,7 @@ public class VertScrollBar : ScrollBar {
 		super.passMME(mec, mme);
 	}
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
-		value = _value + mwe.y;
+		value = _value - mwe.y;
 		super.passMWE(mec, mwe);
 	}
 	
@@ -145,10 +149,11 @@ public class HorizScrollBar : ScrollBar {
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
 		//const int travelLength = position.width - position.height * 2;
+		const int value0 = isNaN(largeVal) ? value : cast(int)(value / largeVal);
 		Box slider;
 		slider.top = position.top;
 		slider.bottom = position.bottom;
-		slider.left = position.left + position.height + (_barLength * value);
+		slider.left = position.left + position.height + (_barLength * value0);
 		slider.right = slider.left + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
 		if (isFocused) {
@@ -157,7 +162,7 @@ public class HorizScrollBar : ScrollBar {
 		//draw buttons
 		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("leftArrowB") : ss.getImage("leftArrowA"));
 		Point lower = position.cornerUR;
-		//lower.x -= position.height;
+		lower.x -= position.height;
 		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("rightArrowB") : ss.getImage("rightArrowA"));
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
@@ -167,14 +172,14 @@ public class HorizScrollBar : ScrollBar {
 		if (mce.button == MouseButton.Left) {
 			if (mce.x < position.height) {
 				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
-					if (_value > 0) _value--;
+					value = _value - 1;
 					flags |= MINUS_PRESSED;
 				} else if (flags & MINUS_PRESSED && mce.state == ButtonState.Released) {
 					flags &= ~MINUS_PRESSED;
 				}
-			} else if (mce.y >= position.width - position.height) {
+			} else if (mce.x >= position.width - position.height) {
 				if (!(flags & PLUS_PRESSED) && mce.state == ButtonState.Pressed) {
-					if (_value < _maxValue) _value++;
+					value = _value + 1;
 					flags |= PLUS_PRESSED;
 				} else if (flags & PLUS_PRESSED && mce.state == ButtonState.Released) {
 					flags &= ~PLUS_PRESSED;
@@ -184,8 +189,8 @@ public class HorizScrollBar : ScrollBar {
 				const double newVal = mce.y - position.height - (_barLength / 2.0);
 				if (newVal >= 0) {
 					const int travelLength = position.width - position.height * 2 - _barLength;
-					value = cast(int)nearbyint(travelLength / newVal);
-					
+					const double valRatio = isNaN(largeVal) ? 1.0 : largeVal;
+					value = cast(int)nearbyint((travelLength / newVal) * valRatio);
 				}
 			}
 		} 

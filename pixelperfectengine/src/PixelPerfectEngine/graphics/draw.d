@@ -257,82 +257,133 @@ public class BitmapDrawer{
 	 * lineOffset specifies how much lines in pixels are skipped on the top.
 	 * Return value contains state flags on wheter certain portions of the text were out of bound.
 	 */
-	public uint drawSingleLineText(Box pos, Text text, int offset = 0, int lineOffset = 0) pure {
-		uint status;
-		const int textWidth = text.getWidth();
-		if (textWidth < pos.width) {
-			/+if (text.formatting.formatFlags & FormattingFlags.centerJustify) {
-				pos.left += (pos.width - textWidth) / 2;
-			} else if (text.formatting.formatFlags & FormattingFlags.rightJustify) {
-				pos.left += pos.width - textWidth;
-			}+/
-			switch (text.formatting.formatFlags & FormattingFlags.justifyMask) {
-				case FormattingFlags.centerJustify:
-					pos.left += (pos.width - textWidth) / 2;
-					break;
-				case FormattingFlags.rightJustify:
-					pos.left += pos.width - textWidth;
-					break;
-				default: break;
+	public uint drawSingleLineText(Box pos, Text text, int offset = 0, int lineOffset = 0) {
+		uint status;						//contains status flags
+		bool needsIcon; 					//set to true if icon is inserted or doesn't exist.
+		dchar prevChar;						//previous character, used for kerning
+
+		const int textWidth = text.getWidth();	//Total with of the text
+		int pX = text.frontTab;							//The current position, where the first letter will be drawn
+		
+		
+		//Currently it was chosen to use a workpad to make things simpler
+		//TODO: modify the algorithm to work without a workpad
+		Bitmap8Bit workPad = new Bitmap8Bit(textWidth + 1, text.font.size * 2);
+		///Inserts a color letter.
+		void _insertColorLetter(Point pos, Bitmap8Bit bitmap, ubyte color, Coordinate slice) pure nothrow {
+			if(slice.width - 1 <= 0) return;
+			if(slice.height - 1 <= 0) return;
+			ubyte* psrc = bitmap.getPtr, pdest = workPad.getPtr;
+			pdest += pos.x + workPad.width * pos.y;
+			const int bmpWidth = bitmap.width;
+			psrc += slice.left + bmpWidth * slice.top;
+			//int length = slice.width;
+			for(int iy ; iy < slice.height ; iy++){
+				specblt.textBlitter(psrc,pdest,slice.width,color);
+				psrc += bmpWidth;
+				pdest += workPad.width;
 			}
 		}
-		int pX = pos.left;
-		const int targetX = textWidth - offset > pos.width ? pos.right : pos.left + textWidth;
+		///Copies a bitmap to the canvas using 0th index transparency.
+		void _bitBLT(Point target, Bitmap8Bit source) pure nothrow {
+			ubyte* src = source.getPtr;
+			ubyte* dest = workPad.getPtr + (workPad.width * target.y) + target.x;
+			for (int y ; y < source.height ; y++){
+				compose.blitter(src, dest, source.width);
+				src += source.width;
+				dest += workPad.width;
+			}
+		}
+		//const int targetX = textWidth - offset > pos.width ? pos.right : pos.left + textWidth;
 		Text currTextChunk = text;
-		int currCharPos = text.icon ? -1 : 0;
-		pX += currTextChunk.frontTab - offset > 0 ? currTextChunk.frontTab - offset : 0;
+		int currCharPos;// = text.offsetAmount(offset);
+		if (currCharPos == 0 && currTextChunk.icon && offset < currTextChunk.icon.width + currTextChunk.iconOffsetX)
+			needsIcon = true;
+		//pX += currTextChunk.frontTab - offset > 0 ? currTextChunk.frontTab - offset : 0;
+		int firstCharOffset = offset;// - text.getWidth(0, currCharPos);
+
+		if (currCharPos > 0)
+			firstCharOffset -= text.getWidth(0, currCharPos);
 		
-		while (pX < targetX) {	//Per character/symbol drawing
-			if(currCharPos == -1) {
+		while (pX < textWidth) {	//Per character/symbol drawing
+			if(needsIcon) {
 				//if there's enough space for the icon, then draw it
-				pX += text.iconOffsetX;
-				if(pX + text.icon.width < targetX) {
-					const int targetHeight = pos.height > text.icon.height - lineOffset ? text.icon.height : pos.height;
-					if(pX >= offset) 
-						insertBitmapSlice(pX, pos.top + text.iconOffsetY, text.icon, Box(0, lineOffset, text.icon.width, 
-								targetHeight));
-					else if(pX + text.icon.width >= offset) 
-						insertBitmapSlice(pX, pos.top + text.iconOffsetY, text.icon, Box(pX - offset, lineOffset, text.icon.width, 
-								targetHeight));
-					pX += text.iconSpacing;
-					currCharPos++;
-				} else return status | TextDrawStatus.RHSOutOfBound;
+				pX += currTextChunk.iconOffsetX >= 0 ? currTextChunk.iconOffsetX : 0;
+				//if(pX + currTextChunk.icon.width < targetX) {
+				//const int targetHeight = pos.height > currTextChunk.icon.height - lineOffset ? currTextChunk.icon.height : pos.height;
+				_bitBLT(Point(pX, currTextChunk.iconOffsetY), currTextChunk.icon);
+				pX += text.iconSpacing;
+				needsIcon = false;
+				//} else return status | TextDrawStatus.RHSOutOfBound;
 			} else {
 				//check if there's any characters left in the current text chunk, if not step onto the next one if any, if not then return
 				if(currCharPos >= currTextChunk.text.length) {
 					if(currTextChunk.next) currTextChunk = currTextChunk.next;
 					else return status;
-					if(currTextChunk.icon) currCharPos = -1;
-					else currCharPos = 0;
+					if(currTextChunk.icon) needsIcon = true;
+					else needsIcon = false;
+					currCharPos = 0;
 					pX += currTextChunk.frontTab;
 				} else {
 					//if there's enough space for the next character, then draw it
 					const dchar chr = text.text[currCharPos];
 					Font.Char chrInfo = text.font.chars(chr);
 					//check if the character exists in the fontset, if not, then substitute it and set flag for missing character
-					if(chrInfo.id == 0xFFFD) status |= TextDrawStatus.CharacterNotFound;
-					if(pX < targetX) {
-						if(pX + chrInfo.xadvance >= offset) {	
-							Box letterSlice = Box(chrInfo.x, chrInfo.y + lineOffset, chrInfo.x + chrInfo.width, chrInfo.y + 
-								chrInfo.height);
-							const int xOffset = pX < offset ? offset - pX : 0;
-							letterSlice.left += xOffset > chrInfo.xoffset ? xOffset : 0; //Draw portion of letter if it's partly obscured at the left
-							letterSlice.top += lineOffset > chrInfo.yoffset ? chrInfo.yoffset - lineOffset : 0;
-							if(pX + chrInfo.xoffset + chrInfo.width >= targetX){//Draw portion of letter if it's partly obscured at the left
-								letterSlice.right -= targetX - (pX + chrInfo.xoffset + chrInfo.width);
-								status |= TextDrawStatus.RHSOutOfBound;
-							}
-							/+letterSlice.right -= pX + chrInfo.xoffset + chrInfo.width >= targetX ? 
-									(pX - chrInfo.xoffset) - (targetX - chrInfo.xoffset) : 0;+/
+					if(chrInfo.id == 0xFFFD && chr != 0xFFFD) status |= TextDrawStatus.CharacterNotFound;
+					//const int chrAdvAmount = chrInfo.xadvance + currTextChunk.formatting.getKerning(prevChar, chr);
+					/+if(pX < targetX) {
+						//if(pX + chrInfo.xadvance >= offset) {
+						Box letterSlice = Box(chrInfo.x, chrInfo.y, chrInfo.x + chrInfo.width, chrInfo.y + 
+							chrInfo.height);
+						const int xOffset = pX < offset ? offset - pX : 0;
+						letterSlice.left += xOffset > chrInfo.xoffset ? xOffset : 0; //Draw portion of letter if it's partly obscured at the left
+						letterSlice.top += lineOffset > chrInfo.yoffset ? chrInfo.yoffset - lineOffset : 0;
+						if(pX + chrInfo.xoffset + chrAdvAmount >= targetX){//Draw portion of letter if it's partly obscured at the right
+							letterSlice.right -= targetX - (pX + chrInfo.xoffset + chrInfo.width);
+							status |= TextDrawStatus.RHSOutOfBound;
+						}
+						/+letterSlice.right -= pX + chrInfo.xoffset + chrInfo.width >= targetX ? 
+								(pX - chrInfo.xoffset) - (targetX - chrInfo.xoffset) : 0;+/
+						if (letterSlice.width > 0 && letterSlice.height > 0)
 							insertColorLetter(pX + chrInfo.xoffset - xOffset, pos.top + chrInfo.yoffset - lineOffset, 
 									text.font.pages[chrInfo.page], text.formatting.color, letterSlice);
-						}
-						pX += chrInfo.xadvance;
+						//}
+						pX += chrAdvAmount;
+						firstCharOffset = 0;
 						currCharPos++;
-					} else return status | TextDrawStatus.RHSOutOfBound;
+						prevChar = chr;
+					} else return status | TextDrawStatus.RHSOutOfBound;+/
+					Box letterSrc = Box(chrInfo.x, chrInfo.y, chrInfo.x + chrInfo.width, chrInfo.y + 
+							chrInfo.height);
+					Point chrPos = Point (pX + chrInfo.xoffset, chrInfo.yoffset);
+					_insertColorLetter(chrPos, currTextChunk.font.pages[chrInfo.page], currTextChunk.formatting.color, letterSrc);
+					pX += chrInfo.xadvance + currTextChunk.formatting.getKerning(prevChar, chr);
+					currCharPos++;
 				}
 			}
 		}
+		Point renderTarget = Point(pos.left,pos.top);
+		//Offset text vertically in needed
+		if (text.formatting.formatFlags & FormattingFlags.slHorizCenter) {
+			renderTarget.y += (pos.height / 2) - (text.font.size);
+		}
+		//Offset text to the right if needed
+		if (pos.width > textWidth) {
+			switch (text.formatting.formatFlags & FormattingFlags.justifyMask) {
+				case FormattingFlags.centerJustify:
+					renderTarget.x += (pos.width - textWidth) / 2;
+					break;
+				case FormattingFlags.rightJustify:
+					renderTarget.x += pos.width - textWidth;
+					break;
+				default: break;
+			}
+		}
+		Box textSlice = Box(offset, lineOffset, workPad.width - 1, workPad.height - 1);
+		if (textSlice.width > pos.width) textSlice.width = pos.width;	//clamp down text width
+		if (textSlice.height > pos.height) textSlice.height = pos.height;	//clamp down text height
+		if (textSlice.area > 0)
+			bitBLT(renderTarget, workPad, textSlice);
 		return status;
 	}
 }

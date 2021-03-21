@@ -163,13 +163,13 @@ public class ListViewItem {
 		Box t = Box(target.left, target.top, target.left, target.bottom);
 		Point offset = Point(parent.drawParams.offsetP, parent.drawParams.offsetFR);
 		for (int i = parent.drawParams.offsetC ; i <= parent.drawParams.targetC ; i++) {
-			t.right = min(t.left + parent.drawParams.columnWidths[i], target.right);
+			t.right = min(t.left + parent.drawParams.columnWidths[i] - offset.x, target.right);
 			parent.drawTextSL(t.pad(ss.drawParameters["ListViewColPadding"], ss.drawParameters["ListViewRowPadding"]), 
 					fields[i].text, offset);
 			t.left = t.right;
 			offset.x = 0;
 		}
-		parent.drawParams.target.relMove(0, height);
+		parent.drawParams.target.relMove(0, height - parent.drawParams.offsetFR);
 		parent.drawParams.offsetFR = 0;
 	}
 }
@@ -204,7 +204,7 @@ public class ListViewHeader : ListViewItem {
 		Box t = Box(target.left, target.top, target.left, target.bottom);
 		Point offset = Point(parent.drawParams.offsetP, 0);
 		for (int i = parent.drawParams.offsetC ; i <= parent.drawParams.targetC ; i++) {
-			t.right = min(t.left + parent.drawParams.columnWidths[i], target.right);
+			t.right = min(t.left + parent.drawParams.columnWidths[i] - offset.x, target.right);
 			if (!offset.x) {
 				parent.drawLine(t.cornerUL, t.cornerLL, ss.getColor("windowascent"));
 			}
@@ -322,6 +322,7 @@ public class ListView : WindowElement, ElementContainer {
 	}
 	override public void draw() {
 		parent.clearArea(position);
+		
 		StyleSheet ss = getStyleSheet;
 		parent.drawBox(position, ss.getColor("windowascent"));
 		Point upper = Point(0, position.top + _header.height);
@@ -364,7 +365,7 @@ public class ListView : WindowElement, ElementContainer {
 			for (; entries[firstRow].height < pixelsTotal ; firstRow++) {
 				pixelsTotal -= entries[firstRow].height;
 			}
-			drawParams.offsetFR = entries[firstRow].height - pixelsTotal;
+			drawParams.offsetFR = pixelsTotal;
 			pixelsTotal += position.height;
 			pixelsTotal -= _header.height;
 			if (horizSlider) pixelsTotal -= horizSlider.getPosition().height;
@@ -381,7 +382,7 @@ public class ListView : WindowElement, ElementContainer {
 				parent.drawLine(drawParams.target.cornerLL, drawParams.target.cornerLR, ss.getColor("ListViewHSep"));
 			}
 			if (selection == i) {
-				parent.drawFilledBox(drawParams.target, ss.getColor("selection"));
+				parent.drawFilledBox(drawParams.target - 1, ss.getColor("selection"));
 			}
 			entries[i].draw(this);	
 		}
@@ -487,7 +488,7 @@ public class ListView : WindowElement, ElementContainer {
 			const int maxvalue = needsVSB ? totalWidth - position.width - ss.drawParameters["VertScrollBarSize"] : 
 					totalWidth - position.width;
 			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"] + 2, 
-					needsHSB ? position.right - ss.drawParameters["HorizScrollBarSize"] : position.right,
+					needsVSB ? position.right - ss.drawParameters["HorizScrollBarSize"] : position.right,
 					position.bottom);
 			horizSlider = new HorizScrollBar(maxvalue, source ~ "VSB", target);
 			horizSlider.setParent(this);
@@ -592,7 +593,7 @@ public class ListView : WindowElement, ElementContainer {
 			}
 		}
 
-		if (mce.button != MouseButton.Left) return;
+		if (mce.button != MouseButton.Left && !mce.state) return;
 
 		
 		if (entries.length && mce.x > _header.height) {

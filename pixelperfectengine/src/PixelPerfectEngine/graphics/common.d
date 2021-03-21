@@ -48,9 +48,23 @@ public struct Box {
 		return right - left + 1;
 	}
 	/**
+	 * Sets the width of the represented box while keeping the lefthand coordinate.
+	 */
+	public @property int width(int val) @nogc @safe pure nothrow {
+		right = left + val - 1;
+		return right - left + 1;
+	}
+	/**
 	 * Returns the height of the represented box.
 	 */
 	public @property @nogc @safe nothrow pure int height() const {
+		return bottom - top + 1;
+	}
+	/**
+	 * Sets the height of the represented box while keeping the top coordinate.
+	 */
+	public @property int height(int val) @nogc @safe pure nothrow { 
+		bottom = top + val - 1;
 		return bottom - top + 1;
 	}
 	/**

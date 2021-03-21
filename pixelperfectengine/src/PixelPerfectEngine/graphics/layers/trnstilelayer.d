@@ -175,7 +175,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 					_localTPO_0[i] = localTPO[i & 1];
 				}
 				for(short x; x < rasterX; x++){
-					int4 xy = _mm_srai_epi32(_mm_madd_epi16(_localTP, xy_in + _sXsY - _localTPO),8) + _localTPO_0;
+					int4 xy = _mm_srai_epi32(_mm_madd_epi16(cast(int4)_localTP, cast(int4)(xy_in + _sXsY - _localTPO)),8)
+							+ _localTPO_0;
 					/+MappingElement currentTile0 = tileByPixelWithoutTransform(xy[0],xy[1]),
 							currentTile[1] = tileByPixelWithoutTransform(xy[2],xy[3]);+/
 					MappingElement[2] currentTile = tileByPixelWithoutTransform(xy);

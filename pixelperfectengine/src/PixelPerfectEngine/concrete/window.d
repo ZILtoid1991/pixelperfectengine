@@ -427,7 +427,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	}
 	///Clears the area within the target
 	public void clearArea(Coordinate target) @trusted {
-		output.drawBox(target, getStyleSheet.getColor("window"));
+		output.drawFilledBox(target, getStyleSheet.getColor("window"));
 	}
 	//Implementation of the `Focusable` interface:
 	///Called when an object receives focus.

@@ -155,30 +155,52 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		} else return dchar.init;
 	}
 	/**
+	 * Returns the width of the current text block in pixels.
+	 */
+	public int getBlockWidth() @safe pure nothrow {
+		auto f = font;
+		dchar prev;
+		int localWidth = frontTab;
+		foreach (c; _text) {
+			localWidth += f.chars(c).xadvance + formatting.getKerning(prev, c);
+			prev = c;
+		}
+		if(icon) localWidth += iconOffsetX + iconSpacing;
+		return localWidth;
+	}
+	/**
 	 * Returns the width of the text chain in pixels.
 	 */
 	public int getWidth() @safe pure nothrow {
-		int localWidth;
 		auto f = font;
+		dchar prev;
+		int localWidth = frontTab;
 		foreach (c; _text) {
-			localWidth += f.chars(c).xadvance;
+			localWidth += f.chars(c).xadvance + formatting.getKerning(prev, c);
+			prev = c;
 		}
-		if(icon) localWidth += icon.width + iconOffsetX + iconSpacing;
+		if(icon) localWidth += iconOffsetX + iconSpacing;
 		if(next) return localWidth + next.getWidth();
 		else return localWidth;
 	}
 	/**
 	 * Returns the width of a slice of the text chain in pixels.
-	 * Currently omits any existing embedded icons.
 	 */
 	public int getWidth(sizediff_t begin, sizediff_t end) @safe pure {
 		if(end > _text.length && next is null) 
 			throw new Exception("Text boundary have been broken!");
 		int localWidth;
-		if(begin < _text.length) {
+		if (!begin) {
+			localWidth += frontTab;
+			if (icon)
+				localWidth += iconOffsetX + iconSpacing;
+		}
+		if (begin < _text.length) {
 			auto f = font;
-			foreach (c; text[begin..end]) {
-				localWidth += f.chars(c).xadvance;
+			dchar prev;
+			foreach (c; _text[begin..end]) {
+				localWidth += f.chars(c).xadvance + formatting.getKerning(prev, c);
+				prev = c;
 			}
 		}
 		begin -= _text.length;
@@ -192,8 +214,10 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 */
 	public int offsetAmount(int pixel) @safe pure nothrow {
 		int chars;
-		while (chars < _text.length && pixel > formatting.font.chars(_text[chars]).xadvance) {
-			pixel -= formatting.font.chars(_text[chars]).xadvance;
+		dchar prev;
+		while (chars < _text.length && pixel - font.chars(_text[chars]).xadvance + formatting.getKerning(prev, _text[chars]) > 0) {
+			pixel -= font.chars(_text[chars]).xadvance + formatting.getKerning(prev, _text[chars]);
+			prev = _text[chars];
 			chars++;
 		}
 		if (chars == _text.length && pixel > 0 && next) 
