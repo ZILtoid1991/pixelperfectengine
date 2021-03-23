@@ -209,7 +209,10 @@ public class ListViewHeader : ListViewItem {
 				parent.drawLine(t.cornerUL, t.cornerLL, ss.getColor("windowascent"));
 			}
 			if (t.left + parent.drawParams.columnWidths[i] < target.right) {
-				parent.drawLine(t.cornerUR, t.cornerLR, ss.getColor("windowdescent"));
+				Point from = t.cornerUR, to = t.cornerLR;
+				from.x = from.x - 1;
+				to.x = to.x - 1;
+				parent.drawLine(from, to, ss.getColor("windowdescent"));
 			}
 			with (parent) {
 				drawLine(t.cornerUL, t.cornerUR, ss.getColor("windowascent"));
@@ -382,7 +385,9 @@ public class ListView : WindowElement, ElementContainer {
 				parent.drawLine(drawParams.target.cornerLL, drawParams.target.cornerLR, ss.getColor("ListViewHSep"));
 			}
 			if (selection == i) {
-				parent.drawFilledBox(drawParams.target - 1, ss.getColor("selection"));
+				Box target = drawParams.target - 1;
+				target.bottom -= drawParams.offsetFR;
+				parent.drawFilledBox(target, ss.getColor("selection"));
 			}
 			entries[i].draw(this);	
 		}
@@ -595,10 +600,10 @@ public class ListView : WindowElement, ElementContainer {
 
 		if (mce.button != MouseButton.Left && !mce.state) return;
 
-		
-		if (entries.length && mce.x > _header.height) {
-			mce.x -= _header.height;
-			int pixelsTotal = mce.x, pos;
+		mce.y -= position.top;
+		if (entries.length && mce.y > _header.height) {
+			mce.y -= _header.height;
+			int pixelsTotal = mce.y, pos;
 			if (vertSlider) ///calculate outscrolled area
 				pixelsTotal += vertSlider.value;
 			while (pos < entries.length) {

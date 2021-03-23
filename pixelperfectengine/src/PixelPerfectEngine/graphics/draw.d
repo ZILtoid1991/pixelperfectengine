@@ -263,8 +263,8 @@ public class BitmapDrawer{
 		dchar prevChar;						//previous character, used for kerning
 
 		const int textWidth = text.getWidth();	//Total with of the text
+		if (textWidth < offset) return TextDrawStatus.TooMuchOffset;
 		int pX = text.frontTab;							//The current position, where the first letter will be drawn
-		
 		
 		//Currently it was chosen to use a workpad to make things simpler
 		//TODO: modify the algorithm to work without a workpad
@@ -300,10 +300,10 @@ public class BitmapDrawer{
 		if (currCharPos == 0 && currTextChunk.icon && offset < currTextChunk.icon.width + currTextChunk.iconOffsetX)
 			needsIcon = true;
 		//pX += currTextChunk.frontTab - offset > 0 ? currTextChunk.frontTab - offset : 0;
-		int firstCharOffset = offset;// - text.getWidth(0, currCharPos);
+		/+int firstCharOffset = offset;// - text.getWidth(0, currCharPos);
 
 		if (currCharPos > 0)
-			firstCharOffset -= text.getWidth(0, currCharPos);
+			firstCharOffset -= text.getWidth(0, currCharPos);+/
 		
 		while (pX < textWidth) {	//Per character/symbol drawing
 			if(needsIcon) {
@@ -382,7 +382,7 @@ public class BitmapDrawer{
 		Box textSlice = Box(offset, lineOffset, workPad.width - 1, workPad.height - 1);
 		if (textSlice.width > pos.width) textSlice.width = pos.width;	//clamp down text width
 		if (textSlice.height > pos.height) textSlice.height = pos.height;	//clamp down text height
-		if (textSlice.area > 0)
+		if (textSlice.width > 0 && textSlice.height > 0)
 			bitBLT(renderTarget, workPad, textSlice);
 		return status;
 	}
@@ -395,6 +395,7 @@ enum FontFormat : uint {
 	VertCentered			=	0x2,
 	RightJustified			=	0x10,
 	SingleLine				=	0x100,	///Forces text as single line
+	
 }
 /**
  * Text drawing return flags.
@@ -405,4 +406,5 @@ enum TextDrawStatus : uint {
 	RHSOutOfBound			=	0x00_02,
 	TPOutOfBound			=	0x00_04,
 	BPOutOfBound			=	0x00_08,
+	TooMuchOffset			=	0x1_00_00,
 }

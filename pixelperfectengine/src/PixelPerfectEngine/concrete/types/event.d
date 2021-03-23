@@ -68,7 +68,11 @@ public class FileEvent : Event {
 	 * Returns the full path.
 	 */
 	public string getFullPath() @safe pure nothrow const {
-		return path ~ filename ~ extension;
+		import std.path : extension;
+		if (extension(filename).length)
+			return path ~ filename;
+		else
+			return path ~ filename ~ this.extension;
 	}
 }
 /**

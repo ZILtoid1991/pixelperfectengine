@@ -466,7 +466,11 @@ public this(string[] args){
 	}
 	public void onSave () {
 		if (selDoc.filename) {
-			selDoc.mainDoc.save(selDoc.filename);
+			try {
+				selDoc.mainDoc.save(selDoc.filename);
+			} catch (Exception e) {
+				debug writeln(e);
+			}
 		} else {
 			onSaveAs();
 		}
@@ -485,7 +489,11 @@ public this(string[] args){
 		if(extension(selDoc.filename) != ".xmf"){
 			selDoc.filename ~= ".xmf";
 		}
-		selDoc.mainDoc.save(selDoc.filename);
+		try {
+			selDoc.mainDoc.save(selDoc.filename);
+		} catch (Exception e) {
+			debug writeln(e);
+		}
 	}
 	/+public void actionEvent(Event ev) {
 		

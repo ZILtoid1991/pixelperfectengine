@@ -97,18 +97,10 @@ public class FileDialog : Window {
 				new Text("Type", hdrFrmt), new Text("Date", hdrFrmt)]);
 		lw = new ListView(lvh, null, "lw", Box(4, 20, 216, 126));
 		addElement(lw);
+		lw.onItemSelect = &listView_onItemSelect;
 
-		
-
-
-		//Date format: yyyy-mm-dd hh:mm:ss
-		/+lb = new ListBox("lb", Coordinate(4, 20, 216, 126),null, new ListBoxHeader(["Name", "Type", "Date"], [160, 40, 176]),
-				15);
-		lb.onItemSelect = &listBox_onItemSelect;
-		addElement(lb);+/
 		spanDir();
-		//scrollC ~= lb;
-		//lb.onItemSelect = &actionEvent;
+
 		detectDrive();
 	}
 	///Ditto
@@ -122,35 +114,26 @@ public class FileDialog : Window {
 	 * Iterates throught a directory for listing.
 	 */
 	private void spanDir(){
-		
-		
 		pathList.length = 0;
 		lw.clear();
-		//ListBoxItem[] items;
+		
 		foreach(DirEntry de; dirEntries(directory, SpanMode.shallow)){
 			if(de.isDir){
 				pathList ~= de.name;
-				//items ~= new ListBoxItem([toUTF32(getFilenameFromPath(de.name)),"<DIR>"d,formatDate(de.timeLastModified)]);
 				createEntry(de.name, "<DIR>", de.timeLastModified);
 			}
 		}
-		//foreach(f; filetypes){
+		
 		foreach(ft; filetypes[selectedType].types){
 			foreach(DirEntry de; dirEntries(directory, ft, SpanMode.shallow)){
 				if(de.isFile){
 					pathList ~= de.name;
-					/*columns[0].elements ~= to!wstring(getFilenameFromPath(de.name, true));
-					columns[1].elements ~= to!wstring(ft);
-					columns[2].elements ~= formatDate(de.timeLastModified);*/
-					//items ~= new ListBoxItem([toUTF32(getFilenameFromPath(de.name)),toUTF32(ft),formatDate(de.timeLastModified)]);
 					createEntry(de.name, ft, de.timeLastModified);
 				}
 			}
 		}
-		//lb.updateColumns(items);
-		//lb.draw();
+		
 		lw.refresh();
-
 	}
 	/**
 	 * Creates a single ListViewItem with the supplied data, then adds it to the ListView.
@@ -279,9 +262,9 @@ public class FileDialog : Window {
 		import std.utf : toUTF8;
 		//wstring s = to!wstring(directory);
 		filename = toUTF8(tb.getText.text);
-		//al.actionEvent("file", EventType.FILEDIALOGEVENT, 0, s);
+		
 		if(onFileselect !is null)
-			onFileselect(new FileEvent(this, SourceType.DialogWindow, directory, filename, filetypes[selectedType].types[0]));
+			onFileselect(new FileEvent(this, SourceType.DialogWindow, directory, filename, filetypes[selectedType].types[0][1..$]));
 			//onFileselect(new Event(source, "", directory, filename, null, selectedType, EventType.FILEDIALOGEVENT));
 		handler.closeWindow(this);
 	}
@@ -308,7 +291,7 @@ public class FileDialog : Window {
 	private void button_close_onMouseLClickRel(Event ev) {
 		handler.closeWindow(this);
 	}
-	private void listBox_onItemSelect(Event ev) {
+	private void listView_onItemSelect(Event ev) {
 		try{
 			if(pathList.length == 0) return;
 			if(isDir(pathList[lw.value])){
