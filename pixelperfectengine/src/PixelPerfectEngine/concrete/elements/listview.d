@@ -450,11 +450,12 @@ public class ListView : WindowElement, ElementContainer {
 	}
 	/**
 	 * Refreshes the list view.
-	 * Must be called every time when adding new items was finished.
+	 * Must be called every time when adding new items is finished.
 	 */
 	public void refresh() {
 		selection = -1;
 		recalculateTotalSizes;
+		draw;
 	}
 	/**
 	 * Recalculates the total width and height of the list view's field, also generates scrollbars if needed.

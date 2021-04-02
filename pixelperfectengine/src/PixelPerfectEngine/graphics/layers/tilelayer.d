@@ -262,10 +262,10 @@ public class TileLayer : Layer, ITileLayer {
 	public int getMY() @nogc @safe pure nothrow const {
 		return mY;
 	}
-	public int getTX() @nogc @safe pure nothrow const {
+	public size_t getTX() @nogc @safe pure nothrow const {
 		return totalX;
 	}
-	public int getTY() @nogc @safe pure nothrow const {
+	public size_t getTY() @nogc @safe pure nothrow const {
 		return totalY;
 	}
 	/// Sets the warp mode.

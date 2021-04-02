@@ -14,7 +14,7 @@ dependency "intel-intrinsics" version="*"
 targetType "library"
 targetPath "./pixelperfectengine/lib/"
 sourcePaths "./pixelperfectengine/src/"
-versions "SDL_205" "BindSDL_Mixer"
+versions "SDL_2010" "BindSDL_Mixer"
 importPaths "./pixelperfectengine/src/"
 libs "z" platform="linux"
 subPackage {

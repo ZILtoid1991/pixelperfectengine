@@ -15,13 +15,16 @@ public class MaterialList : Window {
 	//ListBox			listBox_materials;
 	ListView		listView_materials;
 	Label			palettePos;
-	//SmallButton[]	buttons;
-	
+	SmallButton		removeMaterial;
+	SmallButton		addMaterial;
+	CheckBox		horizMirror;
+	CheckBox		vertMirror;
+	CheckBox		ovrwrtIns;
+	SmallButton		paletteUp;
+	SmallButton		paletteDown;
+	SmallButton		settings;
+
 	protected TileInfo[] tiles;
-	/+protected Text[] tileListHeaderS;// = ["ID"d, "Name"d];
-	protected Text[] spriteListHeaderS;// = ["ID"d, "Name"d, "Dim"d];
-	protected int[] tileListHeaderW = [32, 120];
-	protected int[] spriteListHeaderW = [40, 120, 64];+/
 	protected ListViewHeader tileListHeader;
 	protected ListViewHeader spriteListHeader;
 	public this(int x, int y, void delegate() onClose) @trusted {
@@ -35,46 +38,39 @@ public class MaterialList : Window {
 		listView_materials = new ListView(tileListHeader, null, "listView_materials", Box(1, 17, 128, 215));
 		listView_materials.onItemSelect = &onItemSelect;
 		addElement(listView_materials);
-		{
-			SmallButton sb = new SmallButton("removeMaterialB", "removeMaterialA", "rem", Box(113, 233, 129, 248));
-			sb.onMouseLClick = &button_trash_onClick;
-			addElement(sb);
-		}
-		{
-			SmallButton sb = new SmallButton("addMaterialB", "addMaterialA", "add", Box(113, 217, 129, 232));
-			sb.onMouseLClick = &button_addMaterial_onClick;
-			addElement(sb);
-		}
-		{
-			CheckBox sb = new CheckBox("horizMirrorB", "horizMirrorA", "horizMirror", Box(1, 217, 16, 232));
-			sb.onToggle = &horizMirror_onClick;
-			addElement(sb);
-		}
-		{
-			CheckBox sb = new CheckBox("vertMirrorB", "vertMirrorA", "vertMirror", Box(17, 217, 32, 232));
-			sb.onToggle = &vertMirror_onClick;
-			addElement(sb);
-		}
-		{
-			CheckBox sb = new CheckBox("ovrwrtInsB", "ovrwrtInsA", "ovrwrtIns", Box(33, 217, 48, 232));
-			sb.onToggle = &ovrwrtIns_onClick;
-			addElement(sb);
-		}
-		{
-			SmallButton sb = new SmallButton("paletteUpB", "paletteUpA", "palUp", Box(1, 233, 16, 248));
-			sb.onMouseLClick = &palUp_onClick;
-			addElement(sb);
-		}
-		{
-			SmallButton sb = new SmallButton("paletteDownB", "paletteDownA", "palDown", Box(17, 233, 32, 248));
-			sb.onMouseLClick = &palDown_onClick;
-			addElement(sb);
-		}
-		{
-			SmallButton sb = new SmallButton("settingsButtonB", "settingsButtonA", "editMat", Box(97, 233, 112, 248));
-			sb.onMouseLClick = &button_editMat_onClick;
-			addElement(sb);
-		}
+		
+		removeMaterial = new SmallButton("removeMaterialB", "removeMaterialA", "rem", Box(113, 233, 129, 248));
+		removeMaterial.onMouseLClick = &button_trash_onClick;
+		addElement(removeMaterial);
+		
+		addMaterial = new SmallButton("addMaterialB", "addMaterialA", "add", Box(113, 217, 129, 232));
+		addMaterial.onMouseLClick = &button_addMaterial_onClick;
+		addElement(addMaterial);
+		
+		horizMirror = new CheckBox("horizMirrorB", "horizMirrorA", "horizMirror", Box(1, 217, 16, 232));
+		horizMirror.onToggle = &horizMirror_onClick;
+		addElement(horizMirror);
+		
+		vertMirror = new CheckBox("vertMirrorB", "vertMirrorA", "vertMirror", Box(17, 217, 32, 232));
+		vertMirror.onToggle = &vertMirror_onClick;
+		addElement(vertMirror);
+		
+		ovrwrtIns = new CheckBox("ovrwrtInsB", "ovrwrtInsA", "ovrwrtIns", Box(33, 217, 48, 232));
+		ovrwrtIns.onToggle = &ovrwrtIns_onClick;
+		addElement(ovrwrtIns);
+		
+		paletteUp = new SmallButton("paletteUpB", "paletteUpA", "palUp", Box(1, 233, 16, 248));
+		paletteUp.onMouseLClick = &palUp_onClick;
+		addElement(paletteUp);
+		
+		paletteDown = new SmallButton("paletteDownB", "paletteDownA", "palDown", Box(17, 233, 32, 248));
+		paletteDown.onMouseLClick = &palDown_onClick;
+		addElement(paletteDown);
+		
+		settings = new SmallButton("settingsButtonB", "settingsButtonA", "editMat", Box(97, 233, 112, 248));
+		settings.onMouseLClick = &button_editMat_onClick;
+		addElement(settings);
+		
 		palettePos = new Label("0x00", "palettePos", Box(34, 234, 96, 248));
 		addElement(palettePos);
 	}
@@ -119,16 +115,17 @@ public class MaterialList : Window {
 	private void button_trash_onClick(Event ev) {
 		
 	}
-	private void palUp_onClick(Event ev) {
+	public void palUp_onClick(Event ev) {
 		palettePos.setText("0x" ~ intToHex!dstring(prg.selDoc.tileMaterial_PaletteUp, 2));
 	}
-	private void palDown_onClick(Event ev) {
+	public void palDown_onClick(Event ev) {
 		palettePos.setText("0x" ~ intToHex!dstring(prg.selDoc.tileMaterial_PaletteDown, 2));
 	}
 
 	private void ovrwrtIns_onClick(Event ev) {
 		CheckBox sender = cast(CheckBox)ev.sender;
-		prg.selDoc.voidfill = sender.isChecked;
+		if (prg.selDoc)
+			prg.selDoc.voidfill = sender.isChecked;
 	}
 	private void onItemSelect(Event ev) {
 		prg.selDoc.tileMaterial_Select(tiles[listView_materials.value].id);

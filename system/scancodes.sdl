@@ -4,7 +4,7 @@
  * Default scancode-keyname dictionary by Laszlo Szeremi
  * (c) 2017-2020 under Boost license
  *
- * This is intended for configuration file serioalization
+ * This is intended for configuration file serialization
  */
 
 "a" 4
@@ -94,7 +94,7 @@
 
 "numlock" 83
 "npDivide" 84
-"npMultilpy" 85
+"npMultiply" 85
 "npMinus" 86
 "npPlus" 87
 "npEnter" 88

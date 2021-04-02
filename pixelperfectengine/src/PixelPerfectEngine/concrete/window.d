@@ -208,7 +208,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	protected void drawHeader() {
 		StyleSheet ss = getStyleSheet();
 		const int headerHeight = ss.drawParameters["WindowHeaderHeight"];
-		Box headerArea = Box(0, 0, position.width - 1, headerHeight);
+		Box headerArea = Box(0, 0, position.width - 1, headerHeight - 1);
 
 		foreach (ISmallButton sb; smallButtons) {
 			if (sb.isLeftSide) headerArea.left += headerHeight;

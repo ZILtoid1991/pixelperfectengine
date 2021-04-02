@@ -42,11 +42,11 @@ public struct KeyBinding {
  * Stores basic InputDevice info alongside with some additional settings
  */
 public struct InputDeviceData{
-	public int deviceNumber;
-	public Devicetype type;
-	public bool enableForceFeedback;
-	public string name;
-	public KeyBinding[] keyBindingList;
+	public int deviceNumber;			///Number of the device that is being used
+	public Devicetype type;				///Type of the device (keyboard, joystick, etc)
+	public bool enableForceFeedback;	///Toggles force feedback if device is capable of it
+	public string name;					///Name of the device
+	public KeyBinding[] keyBindingList;	///List of the Keybindings associated with this device
 	public this(int deviceNumber, Devicetype type, string name){
 		this.deviceNumber = deviceNumber;
 		this.type = type;
@@ -65,7 +65,7 @@ public class ConfigurationProfile {
 	public int threads;
 	public string screenMode, resolution, scalingQuality, driver;
 	//public string[string] videoSettings;
-	public KeyBinding[] keyBindingList;
+	//public KeyBinding[] keyBindingList;
 	public InputDeviceData[] inputDevices;	///Stores all input devices and keybindings
 	private string path;
 	///Stores ancillary tags to be serialized into the config file
@@ -73,20 +73,24 @@ public class ConfigurationProfile {
 	private static string vaultPath;
 	private SDL_DisplayMode[] videoModes;
 	//public AuxillaryElements auxillaryElements[];
-	public string appName;
-	public string appVers;
+	public string appName;					///Name of the application. Can be used to check e.g. version safety.
+	public string appVers;					///Version of the application. Can be used to check e.g. version safety.
 	/// Initializes a basic configuration profile. If [vaultPath] doesn't have any configfiles, restores it from defaults.
-	public this(){
+	public this() {
 		path = vaultPath ~ "config.sdl";
-		if(exists(path)){
-			restore();
-		}else{
-			std.file.copy("../system/defaultConfig.sdl",path);
-			restore();
-		}
+		if(!exists(path))
+			std.file.copy("../system/defaultConfig.sdl",path);			
+		restore();
 	}
-
-	static this(){
+	/// Initializes a basic configuration profile with user supplied values. 
+	/// If [vaultPath] doesn't have any configfiles, restores it from defaults.
+	public this(string filename, string defaultFile) {
+		path = vaultPath ~ filename;
+		if(!exists(path))
+			std.file.copy(defaultFile, path);			
+		restore();
+	}
+	static this() {
 		keymodifierStrings =
 				["none"	: KeyModifier.None, "Shift": KeyModifier.Shift, "Ctrl": KeyModifier.Ctrl, "Alt": KeyModifier.Alt, 
 						"GUI": KeyModifier.GUI, "NumLock": KeyModifier.NumLock, "CapsLock": KeyModifier.CapsLock, "Mode": KeyModifier.Mode,
@@ -100,17 +104,20 @@ public class ConfigurationProfile {
 		joyButtonNameDict = new Dictionary(xinput.expectTag("button"));
 		joyAxisNameDict = new Dictionary(xinput.expectTag("axis"));
 	}
-	///Restores configuration profile
+	///Restores configuration profile from a file.
 	public void restore() {
 		Tag root;
 
 		try {
 			root = parseFile(path);
 			foreach(Tag t0; root.tags) {
-				if(t0.name == "audio") {		//get values for the audio subsystem
+				if (t0.name == "configurationFile") {	//get configfile metadata
+					appName = t0.values[0].get!string();
+					appVers = t0.values[1].get!string();
+				} else if (t0.name == "audio") {		//get values for the audio subsystem
 					sfxVol = t0.getTagValue!int("soundVol", 100);
 					musicVol = t0.getTagValue!int("musicVol", 100);
-				} else if(t0.name == "video") {	//get values for the video subsystem
+				} else if (t0.name == "video") {	//get values for the video subsystem
 					foreach(Tag t1; t0.tags ){
 						switch(t1.name){
 							case "driver": driver = t1.getValue!string("software"); break;
@@ -121,7 +128,7 @@ public class ConfigurationProfile {
 							default: break;
 						}
 					}
-				} else if(t0.name == "input") {
+				} else if (t0.name == "input") {
 					foreach(Tag t1; t0.tags) {
 						switch(t1.name) {
 							case "device":
@@ -140,7 +147,7 @@ public class ConfigurationProfile {
 												kb.bc.modifierFlags = stringToKeymod(t2.getAttribute!string("keyMod", "None"));
 												kb.bc.keymodIgnore = stringToKeymod(t2.getAttribute!string("keyModIgnore", "All"));
 												kb.bc.buttonNum = cast(ushort)(t2.getAttribute!int("code", keyNameDict.decode(t2.getAttribute!string("name"))));
-												keyBindingList ~= kb;
+												device.keyBindingList ~= kb;
 											}
 										}
 										break;
@@ -166,7 +173,7 @@ public class ConfigurationProfile {
 														kb.bc.buttonNum = cast(ushort)t2.getAttribute!int("code", joyButtonNameDict.decode(t2.getAttribute!string("name")));
 														break;
 												}
-												keyBindingList ~= kb;
+												device.keyBindingList ~= kb;
 											} else if(t2.name == "enableForceFeedback") {
 												device.enableForceFeedback = t2.getValue!bool(true);
 											}
@@ -195,7 +202,7 @@ public class ConfigurationProfile {
 					}
 				} else {
 					//collect all ancillary tags into an array
-					t0.remove();
+					//t0.remove();
 					ancillaryTags ~= t0;
 				}
 			}
@@ -213,6 +220,8 @@ public class ConfigurationProfile {
 	public void store(){
 		try {
 			Tag root = new Tag(null, null);		//, [Value(appName), Value(appVers)]
+
+			new Tag(root, null, "configurationFile", [Value(appName), Value(appVers)]);
 
 			Tag t0 = new Tag(root, null, "audio");
 			new Tag(t0, null, "soundVol", [Value(sfxVol)]);
@@ -277,6 +286,7 @@ public class ConfigurationProfile {
 			}
 			//Tag t3 = new Tag(root, null, "etc");
 			foreach(at; ancillaryTags){
+				at.remove();
 				root.add(at);
 			}
 			string data = root.toSDLDocument();
@@ -348,8 +358,10 @@ public class ConfigurationProfile {
 	 * Loads inputbindings into a handler.
 	 */
 	public void loadBindings(InputHandler ih) @safe nothrow {
-		foreach (KeyBinding key; keyBindingList) {
-			ih.addBinding(key.bc, key.toInputBinding);
+		foreach (iD; inputDevices) {
+			foreach (KeyBinding key; iD.keyBindingList) {
+				ih.addBinding(key.bc, key.toInputBinding);
+			}
 		}
 	}
 	public void useVideoMode(int mode, OutputScreen window){

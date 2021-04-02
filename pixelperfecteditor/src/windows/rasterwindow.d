@@ -58,6 +58,7 @@ public class RasterWindow : Window, PaletteContainer {
 				Box(0, 0, windowHeaderHeight, windowHeaderHeight), modeSel);
 		smallButtons ~= new RadioButton("sprtPlacementButtonB", "sprtPlacementButtonA", "sprt", 
 				Box(0, 0, windowHeaderHeight, windowHeaderHeight), modeSel);
+		modeSel.onToggle = &onModeToggle;
 
 		//smallButtons ~= new SmallButton("settingsButtonB", "settingsButtonA", "settings", Box(0, 0, 16, 16));
 		super(Box(0, 0, x + 1, y + 17), documentName, smallButtons);
@@ -134,21 +135,21 @@ public class RasterWindow : Window, PaletteContainer {
 		StyleSheet ss = getStyleSheet;
 		if(mce.y >= position.top + ss.drawParameters["WindowHeaderHeight"] && mce.y < position.bottom &&
 				mce.x > position.left && mce.x < position.right) {
-			mce.y -= ss.drawParameters["WindowHeaderHeight"] - position.top;
+			mce.y -= ss.drawParameters["WindowHeaderHeight"] + position.top;
 			mce.x -= position.left - 1;
-			document.passMouseEvent(mce.x, mce.y, mce.state, mce.button);
+			document.passMCE(mec, mce);
 		}else
 			super.passMCE(mec, mce);
 	}
 	///Passes mouse move event
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
 		StyleSheet ss = getStyleSheet;
-		if (statusFlags & (MOVE_ARMED | SELECTION_ARMED) && mme.buttonState == (1<<MouseButton.Mid) && 
+		if (statusFlags & (MOVE_ARMED | SELECTION_ARMED) && /+mme.buttonState == (1<<MouseButton.Mid) &&+/ 
 				mme.y >= position.top + ss.drawParameters["WindowHeaderHeight"] && mme.y < position.bottom &&
 				mme.x > position.left && mme.x < position.right) {
-			mme.y -= ss.drawParameters["WindowHeaderHeight"] - position.top;
+			mme.y -= ss.drawParameters["WindowHeaderHeight"] + position.top;
 			mme.x -= position.left - 1;
-			document.passMouseEvent(mme.x, mme.y, ButtonState.Pressed, MouseButton.Left);
+			document.passMME(mec, mme);
 			
 		} else {
 			super.passMME(mec, mme);
@@ -286,6 +287,12 @@ public class RasterWindow : Window, PaletteContainer {
 	///Returns true if selection is armed
 	public bool isSelectionArmed() const @nogc @safe pure nothrow {
 		return statusFlags & SELECTION_ARMED ? true : false;
+	}
+	///Enables or disables move
+	public bool moveEn(bool val) @nogc @safe pure nothrow {
+		if (val) statusFlags |= MOVE_ARMED;
+		else statusFlags &= ~MOVE_ARMED;
+		return statusFlags & MOVE_ARMED;
 	}
 	///Called when the document settings window is needed to be opened.
 	public void onDocSettings(Event ev) {

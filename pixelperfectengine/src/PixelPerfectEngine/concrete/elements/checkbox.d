@@ -8,7 +8,7 @@ public import PixelPerfectEngine.concrete.elements.base;
 public class CheckBox : WindowElement, ISmallButton {
 	public string		iconChecked = "checkBoxB";		///Sets the icon for checked positions
 	public string		iconUnchecked = "checkBoxA";	///Sets the icon for unchecked positions
-	public EventDeleg onToggle;
+	public EventDeleg 	onToggle;
 	///CTOR for checkbox with text
 	public this(Text text, string source, Coordinate coordinates, bool checked = false) {
 		position = coordinates;
@@ -64,18 +64,50 @@ public class CheckBox : WindowElement, ISmallButton {
 		}
 		super.passMCE(mec, mce);
 	}
-
+	/**
+	 * Sets the value of the checkbox to checked.
+	 * Does not inwoke any events.
+	 */
 	public bool check() @trusted {
 		flags |= IS_CHECKED;
 		draw();
 		return isChecked;
 	}
-	
+	/**
+	 * Sets the value of the checkbox to unchecked.
+	 * Does not inwoke any events.
+	 */
 	public bool unCheck() @trusted {
 		flags &= ~IS_CHECKED;
 		draw();
 		return isChecked;
 	}
+	/**
+	 * Toggles the checkbox.
+	 * Inwokes an `onToggle` event if delegate is set.
+	 */
+	public bool toggle() {
+		if (isChecked) {
+			unCheck;
+		} else {
+			check;
+		}
+		if (onToggle !is null) {
+			onToggle(new Event(this, EventType.Toggle, SourceType.WindowElement));
+		}
+		return isChecked();
+	}
+	/**
+	 * Toggles the checkbox to the given value.
+	 * Inwokes an `onToggle` event if delegate is set.
+	 */
+	public bool toggle(bool val) {
+		if (isChecked == val)
+			return val;
+		else
+			return toggle();
+	}
+	///Returns true if the checkbox is a small button.
 	public bool isSmallButtonHeight(int height) {
 		if (text) return false;
 		else if (position.width == height && position.height == height) return true;

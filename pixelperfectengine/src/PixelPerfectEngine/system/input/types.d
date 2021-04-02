@@ -61,6 +61,16 @@ public enum MouseButton : ubyte {
 	Previous	= 5
 }
 /**
+ * Mouse Button flags.
+ */
+public enum MouseButtonFlags : uint {
+	Left		= 1 << 0,
+	Mid			= 1 << 1,
+	Right		= 1 << 2,
+	Next		= 1 << 3,
+	Previous	= 1 << 4
+}
+/**
  * Button states.
  */
 public enum ButtonState : ubyte {

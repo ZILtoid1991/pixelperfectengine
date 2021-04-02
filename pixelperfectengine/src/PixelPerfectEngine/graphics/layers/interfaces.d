@@ -34,9 +34,9 @@ public interface ITileLayer{
 	/// Returns the height of the mapping.
 	public int getMY() @nogc @safe pure nothrow const;
 	/// Returns the total width of the tile layer.
-	public int getTX() @nogc @safe pure nothrow const;
+	public size_t getTX() @nogc @safe pure nothrow const;
 	/// Returns the total height of the tile layer.
-	public int getTY() @nogc @safe pure nothrow const;
+	public size_t getTY() @nogc @safe pure nothrow const;
 	/// Adds a tile.
 	public void addTile(ABitmap tile, wchar id, ubyte paletteSh = 0) pure;
 	/// Returns the tile.

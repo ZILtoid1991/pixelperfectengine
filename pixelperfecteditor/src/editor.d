@@ -238,7 +238,7 @@ public class Editor : InputListener, SystemEventListener {
 	
 public this(string[] args){
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
-		//configFile = new ConfigurationProfile();
+		configFile = new ConfigurationProfile();
 
 		windowing = new SpriteLayer(RenderingMode.Copy);
 		bitmapPreview = new SpriteLayer();
@@ -337,7 +337,7 @@ public this(string[] args){
 		//input.kb ~= KeyBinding(0, SDL_SCANCODE_ESCAPE, 0, "sysesc", Devicetype.KEYBOARD);
 		//input.kb ~= configFile.keyBindingList;
 		input.addBinding(InputHandler.getSysEscKey, InputBinding(InputHandler.sysescCode));
-		//configFile.loadBindings(input);
+		configFile.loadBindings(input);
 		
 		WindowElement.inputHandler = input;
 		
@@ -408,7 +408,127 @@ public this(string[] args){
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
 	 */
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+		import PixelPerfectEngine.system.etc : hashCalc;
+		switch (id) {
+			case hashCalc("copy"):
+				break;
+			case hashCalc("cut"):
+				break;
+			case hashCalc("paste"):
+				break;
+			case hashCalc("undo"):
+				if (!isPressed)
+					onUndo;
+				break;
+			case hashCalc("redo"):
+				if (!isPressed)
+					onRedo;
+				break;
+			case hashCalc("save"):
+				if (!isPressed)
+					onSave;
+				break;
+			case hashCalc("saveAs"):
+				if (!isPressed)
+					onSaveAs;
+				break;
+			case hashCalc("insert"):
+				if (!isPressed){
+					if (materialList)
+						materialList.ovrwrtIns.toggle();
+					else if (selDoc)
+						selDoc.voidfill = !selDoc.voidfill;
+				}
+				break;
+			case hashCalc("delArea"):
+				
+				break;
+			case hashCalc("palUp"):
+				if (isPressed) {
+					if (materialList)
+						materialList.palUp_onClick(null);
+					else if (selDoc)
+						selDoc.tileMaterial_PaletteUp;
+				}
+				break;
+			case hashCalc("palDown"):
+				if (isPressed) {
+					if (materialList)
+						materialList.palDown_onClick(null);
+					else if (selDoc)
+						selDoc.tileMaterial_PaletteDown;
+				}
+				break;
+			case hashCalc("hMirror"):
+				if (!isPressed) {
+					if (materialList)
+						materialList.horizMirror.toggle;
+				}
+				break;
+			case hashCalc("vMirror"):
+				if (!isPressed) {
+					if (materialList)
+						materialList.vertMirror.toggle;
+				}
+				break;
+			case hashCalc("place"):
 
+				break;
+			case hashCalc("nextTile"):
+				break;
+			case hashCalc("prevTile"):
+				break;
+			case hashCalc("moveUp"):
+				break;
+			case hashCalc("moveDown"):
+				break;
+			case hashCalc("moveLeft"):
+				break;
+			case hashCalc("moveRight"):
+				break;
+			case hashCalc("scrollUp"):
+				if (selDoc) {
+					if (isPressed) 
+						selDoc.sYAmount = -1;
+					else
+						selDoc.sYAmount = 0;
+				}
+				break;
+			case hashCalc("scrollDown"):
+				if (selDoc) {
+					if (isPressed) 
+						selDoc.sYAmount = 1;
+					else
+						selDoc.sYAmount = 0;
+				}
+				break;
+			case hashCalc("scrollLeft"):
+				if (selDoc) {
+					if (isPressed) 
+						selDoc.sXAmount = 1;
+					else
+						selDoc.sXAmount = 0;
+				}
+				break;
+			case hashCalc("scrollRight"):
+				if (selDoc) {
+					if (isPressed) 
+						selDoc.sXAmount = -1;
+					else
+						selDoc.sXAmount = 0;
+				}
+				break;
+			case hashCalc("nextLayer"):
+				break;
+			case hashCalc("prevLayer"):
+				break;
+			case hashCalc("hideLayer"):
+				break;
+			case hashCalc("soloLayer"):
+				break;
+			default:
+				break;
+		}
 	}
 	/**
 	 * Called when an axis is being operated.
@@ -495,30 +615,7 @@ public this(string[] args){
 			debug writeln(e);
 		}
 	}
-	/+public void actionEvent(Event ev) {
-		
-		switch(event.subsource){
-			case "exitdialog":
-				if(event.source == "ok"){
-					onexit = true;
-				}
-				break;
-			case FileDialog.subsourceID:
-				switch(event.source){
-					case "docSave":
-						break;
-					case "docLoad":
-						string path = event.path;
-						path ~= event.filename;
-						//document = new ExtendibleMap(path);
-						break;
-					default: break;
-				}
-				break;
-			default:
-				break;
-		}
-	}+/
+	
 	public void onQuit(){onExit();}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
@@ -570,7 +667,7 @@ public this(string[] args){
 				selDoc.contScrollLayer();
 			}
 		}
-		//configFile.store();
+		configFile.store();
 	}
 	public void onExit(){
 		import PixelPerfectEngine.concrete.dialogs.defaultdialog;

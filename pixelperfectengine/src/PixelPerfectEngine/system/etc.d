@@ -272,6 +272,47 @@ public bool cmpObjPtr(O)(O a, O b) @nogc @trusted pure nothrow {
 	return _cmp();
 }
 /**
+ * Calculates the MurMurHashV3/32 value of a string.
+ * CTFE friendly.
+ */
+uint hashCalc(string src, const uint seed = 0) @nogc @safe pure nothrow {
+	uint scramble(uint k) @nogc @safe pure nothrow {
+		k *= 0xcc9e2d51;
+		k = (k << 15) | (k >> 17);
+		k *= 0x1b873593;
+		return k;
+	}
+	size_t pos;
+	uint h = seed, k;
+	const int remainder = cast(int)(src.length % 4);
+	const size_t length = src.length - remainder;
+	for ( ; pos < length ; pos+=4) {
+		k = (cast(uint)src[pos+3] << 24) | (cast(uint)src[pos+2] << 16) | (cast(uint)src[pos+1] << 8) | (cast(uint)src[pos+0]);
+		h ^= scramble(k);
+		h = (h << 13) | (h >> 19);
+		h = h * 5 + 0xe6546b64;
+	}
+	//Read the rest
+	k = 0;
+	for (int i = remainder ; i ; i--) {
+		k <<= 8;
+		k |= cast(uint)src[pos+i-1];
+	}
+	// A swap is *not* necessary here because the preceding loop already
+	// places the low bytes in the low places according to whatever endianness
+	// we use. Swaps only apply when the memory is copied in a chunk.
+	h ^= scramble(k);
+    
+	//Finalize
+	h ^= cast(uint)src.length;
+	h ^= h >> 16;
+	h *= 0x85ebca6b;
+	h ^= h >> 13;
+	h *= 0xc2b2ae35;
+	h ^= h >> 16;
+	return h;
+}
+/**
  * Clamps a value between of two.
  */
 pragma(inline, true)
