@@ -5,17 +5,18 @@ import serializer;
 import editorEvents;
 
 import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.system.inputHandler;
+import PixelPerfectEngine.system.input;
 import PixelPerfectEngine.system.etc : csvParser, isInteger;
 import PixelPerfectEngine.graphics.layers;
 import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.outputScreen;
+import PixelPerfectEngine.system.config;
 import std.bitmanip : bitfields;
 
 import conv = std.conv;
 import stdio = std.stdio;
 
-public class EditorWindowHandler : WindowHandler, ElementContainer{
+/+public class EditorWindowHandler : WindowHandler, ElementContainer{
 	private WindowElement[] elements, mouseC, keyboardC, scrollC;
 	public ListBox objectList, propList;
 	//private ListBoxColumn[] propTL, propSL, propSLE;
@@ -131,49 +132,126 @@ public class EditorWindowHandler : WindowHandler, ElementContainer{
 	public Coordinate getAbsolutePosition(WindowElement sender){
 		return sender.position;
 	}
+}+/
+
+public class TopLevelWindow : Window {
+	public ListView objectList, propList;
+	MenuBar mb;
+	public this (int x, int y) {
+		output = new Bitmap8Bit(x, y);
+		position = Box(0, 0, x - 1, y - 1);
+
+		PopUpMenuElement[] menuElements;
+
+		menuElements ~= new PopUpMenuElement("file", "File");
+
+		menuElements[0] ~= new PopUpMenuElement("new", "New window");
+		menuElements[0] ~= new PopUpMenuElement("load", "Load window");
+		menuElements[0] ~= new PopUpMenuElement("save", "Save window");
+		menuElements[0] ~= new PopUpMenuElement("saveAs", "Save window as");
+		menuElements[0] ~= new PopUpMenuElement("export", "Export window as D code" );
+		menuElements[0] ~= new PopUpMenuElement("exit", "Exit application", "Alt + F4");
+
+		menuElements ~= new PopUpMenuElement("edit", "Edit");
+
+		menuElements[1] ~= new PopUpMenuElement("undo", "Undo");
+		menuElements[1] ~= new PopUpMenuElement("redo", "Redo");
+		menuElements[1] ~= new PopUpMenuElement("copy", "Copy");
+		menuElements[1] ~= new PopUpMenuElement("cut", "Cut");
+		menuElements[1] ~= new PopUpMenuElement("paste", "Paste");
+
+		menuElements ~= new PopUpMenuElement("elements", mt("ELEMENTS"));
+
+		menuElements[2] ~= new PopUpMenuElement("Label", "Label");
+		menuElements[2] ~= new PopUpMenuElement("Button", "Button");
+		menuElements[2] ~= new PopUpMenuElement("TextBox", "TextBox");
+		menuElements[2] ~= new PopUpMenuElement("ListView", "ListView");
+		menuElements[2] ~= new PopUpMenuElement("CheckBox", "CheckBox");
+		menuElements[2] ~= new PopUpMenuElement("RadioButton", "RadioButton");
+		//menuElements[2] ~= new PopUpMenuElement("MenuBar", pt("MenuBar"), st("Ctrl + F7"));
+		menuElements[2] ~= new PopUpMenuElement("HSlider", "HSlider");
+		menuElements[2] ~= new PopUpMenuElement("VSlider", "VSlider");
+
+		menuElements ~= new PopUpMenuElement("help", "Help");
+
+		menuElements[3] ~= new PopUpMenuElement("helpFile", "Content");
+		menuElements[3] ~= new PopUpMenuElement("about", "About");
+
+		mb = new MenuBar("mb", Box(0, 0, x-1, 15), menuElements);
+	}
+	public override void draw(bool drawHeaderOnly = false) {
+		if(output.output.width != position.width || output.output.height != position.height)
+			output = new BitmapDrawer(position.width(), position.height());
+		
+		StyleSheet ss = getStyleSheet();
+		const Box bodyarea = Box(0, 0, position.width - 1, position.height - 1);
+		drawFilledBox(bodyarea, ss.getColor("window"));
+
+		foreach (WindowElement we; elements) {
+			we.draw();
+		}
+		
+	}
 }
 
-public class DummyWindow : Window{
+public class DummyWindow : Window {
 	Editor ed;
-	public this(Coordinate coordinates, dstring name, Editor ed){
+	public this(Box coordinates, dstring name, Editor ed) {
 		super(coordinates, name);
 		this.ed = ed;
 	}
-	override public void passMouseEvent(int x,int y,int state,ubyte button) {
+	///Passes mouse click event
+	override public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		//super.passMouseEvent(x,y,state,button);
-		if(button == MouseButton.LEFT){
-			ed.clickEvent(x,y,state);
-		}else if(button == MouseButton.RIGHT){
+		mce.x -= position.left;
+		mce.y -= position.top;
+		if(mce.button == MouseButton.Left){
+			ed.clickEvent(mce.x, mce.y, mce.state);
+		}else if(button == MouseButton.Right){
 			foreach(we; elements){
-				Coordinate c = we.position;
-				if(x > c.left && x < c.right){
-					if(y > c.top && y < c.bottom){
-						ed.selectEvent(we);
-					}
-				}
+				const Box c = we.position;
+				if(mce.x > c.left && mce.x < c.right && mce.y > c.top && mce.y < c.bottom)
+					ed.selectEvent(we);
 			}
 		}
 	}
 	override public void close() {
 	//super.close;
 	}
-	override public void passMouseMotionEvent(int x, int y, int relX, int relY, ubyte button) {
+	/+override public void passMouseMotionEvent(int x, int y, int relX, int relY, ubyte button) {
 
+	}+/
+	override public void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (mme.buttonState) {
+			mme.x -= position.left;
+			mme.y -= position.top;
+			ed.dragEvent(mme.x, mme.y, mme.relX, mme.relY, mme.buttonState);
+		}
 	}
-	override public void passMouseDragEvent(int x, int y, int relX, int relY, ubyte button) {
-		x -= position.left;
-		y -= position.top;
-		ed.dragEvent(x, y, relX, relY, button);
-	}
-	public void drawSelection(Coordinate box) {
+	public void drawSelection(Box box, bool crossHair = false) {
 		draw();
 		//stdio.writeln(box);
-		output.drawRectangle(box.left, box.right, box.top, box.bottom, 17);
+		drawBox(box, 17);
+		if (crossHair) {
+			const int width = position.width - 1, height = position.height - 1;
+			
+			drawLine(Point(0, box.top), box.cornerUL, 18);
+			drawLine(Point(box.left, 0), box.cornerUL, 18);
+
+			drawLine(Point(width, box.top), box.cornerUR, 18);
+			drawLine(Point(box.right, 0), box.cornerUR, 18);
+
+			drawLine(Point(0, box.bottom), box.cornerLL, 18);
+			drawLine(Point(box.left, height), box.cornerLL, 18);
+
+			drawLine(Point(width, box.bottom), box.cornerLR, 18);
+			drawLine(Point(box.right, height), box.cornerLR, 18);
+		}
 	}
 }
 
 public class Editor : SystemEventListener, InputListener{
-	EditorWindowHandler ewh;
+	WindowHandler		ewh;
 	DummyWindow 		dw;
 	SpriteLayer			sprtL;
 	Raster				mainRaster;
@@ -189,12 +267,13 @@ public class Editor : SystemEventListener, InputListener{
 		bool, "resizeMode", 1,
 		ubyte, "", 2,
 	));
-	Coordinate			moveElemOrig;
+	Box					moveElemOrig;
 	int					x0, y0;
 	ElementType			typeSel;
 	UndoableStack		eventStack;
 	WindowElement[string] elements;
 	string				selection;
+	ConfigurationProfile	config;
 
 	static string[ElementType] nameBases;
 	public this(){
@@ -210,10 +289,10 @@ public class Editor : SystemEventListener, InputListener{
 		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
 		INIT_CONCRETE(ewh);
 		inputH = new InputHandler();
-		inputH.sel ~= this;
-		inputH.il ~= this;
-		inputH.ml ~= ewh;
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.systemEventListener = this;
+		inputH.inputListener = this;
+		
+		/+inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl | KeyModifier.Shift, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, 
 				KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(0, ScanCode.DELETE, 0, "del", Devicetype.KEYBOARD, KeyModifier.LockKeys);
@@ -225,9 +304,17 @@ public class Editor : SystemEventListener, InputListener{
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F5, 0, "CheckBox", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F6, 0, "RadioButton", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F8, 0, "HSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F9, 0, "VSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);
+		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F9, 0, "VSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);+/
+		config = new ConfigurationProfile("config_wmfc.sdl", "../system/config_wmfc.sdl");
+		{
+			import PixelPerfectEngine.system.input.scancode;
+			inputH.addBinding(BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("sysesc"));
+		}
+		config.loadBindings(inputH);
+
 		PopUpElement.inputhandler = inputH;
 		WindowElement.inputHandler = inputH;
+		
 		ewh.initGUI();
 		dw = new DummyWindow(Coordinate(0,16,640,480), "New Window"d, this);
 		ewh.addWindow(dw);
@@ -333,13 +420,13 @@ public class Editor : SystemEventListener, InputListener{
 			}
 		}
 	}
-	public void clickEvent(int x, int y, int state){
+	public void clickEvent(int x, int y, bool state){
 		if(typeSel != ElementType.NULL) {
-			if(state == ButtonState.PRESSED) {
+			if(state) {
 				x0 = x;
 				y0 = y;
 			}else{
-				Coordinate c;
+				Box c;
 				if(x > x0){
 					c.left = x0;
 					c.right = x;
@@ -417,7 +504,7 @@ public class Editor : SystemEventListener, InputListener{
 			}
 		}
 	}
-	public void dragEvent(int x, int y, int relX, int relY, ubyte button) {
+	public void dragEvent(int x, int y, int relX, int relY, uint button) {
 		if (moveElemMode) {
 			const Coordinate temp = elements[selection].position;
 			if(temp.left + relX < 0) relX -= temp.left + relX;
@@ -640,60 +727,58 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
-	public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype) {
-		switch(ID){
-			case "undo":
-				eventStack.undo;
-				break;
-			case "redo":
-				eventStack.redo;
-				break;
-			case "del":
-				const string prevSelection = selection;
-				selection = "window";
-				eventStack.addToTop(new DeleteEvent(elements[prevSelection], prevSelection));
-				break;
-			case "sysesc":
-				deinitElemMove;
-				deinitElemResize;
-				typeSel = ElementType.NULL;
-				break;
-			case "Label":
-				typeSel = ElementType.Label;
-				break;
-			case "Button":
-				typeSel = ElementType.Button;
-				break;
-			case "TextBox":
-				typeSel = ElementType.TextBox;
-				break;
-			case "ListBox":
-				typeSel = ElementType.ListBox;
-				break;
-			case "CheckBox":
-				typeSel = ElementType.CheckBox;
-				break;
-			case "RadioButton":
-				typeSel = ElementType.RadioButton;
-				break;
-			case "MenuBar":
-				typeSel = ElementType.MenuBar;
-				break;
-			case "HSlider":
-				typeSel = ElementType.HSlider;
-				break;
-			case "VSlider":
-				typeSel = ElementType.VSlider;
-				break;
-			default:
-				break;
+	//public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype) {
+	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+		import PixelPerfectEngine.system.etc : hashCalc;
+		if (isPressed) {
+			switch(id){
+				case hashCalc("undo"):
+					eventStack.undo;
+					break;
+				case hashCalc("redo"):
+					eventStack.redo;
+					break;
+				case hashCalc("del"):
+					const string prevSelection = selection;
+					selection = "window";
+					eventStack.addToTop(new DeleteEvent(elements[prevSelection], prevSelection));
+					break;
+				case hashCalc("sysesc"):
+					deinitElemMove;
+					deinitElemResize;
+					typeSel = ElementType.NULL;
+					break;
+				case hashCalc("Label"):
+					typeSel = ElementType.Label;
+					break;
+				case hashCalc("Button"):
+					typeSel = ElementType.Button;
+					break;
+				case hashCalc("TextBox"):
+					typeSel = ElementType.TextBox;
+					break;
+				case hashCalc("ListView"):
+					typeSel = ElementType.ListBox;
+					break;
+				case hashCalc("CheckBox"):
+					typeSel = ElementType.CheckBox;
+					break;
+				case hashCalc("RadioButton"):
+					typeSel = ElementType.RadioButton;
+					break;
+				case hashCalc("MenuBar"):
+					typeSel = ElementType.MenuBar;
+					break;
+				case hashCalc("HSlider"):
+					typeSel = ElementType.HSlider;
+					break;
+				case hashCalc("VSlider"):
+					typeSel = ElementType.VSlider;
+					break;
+				default:
+					break;
+			}
 		}
 	}
-	public void keyReleased(string ID, uint timestamp, uint devicenumber, uint devicetype) {
-		switch(ID){
-			
-			default:
-				break;
-		}
-	}
+	
 }

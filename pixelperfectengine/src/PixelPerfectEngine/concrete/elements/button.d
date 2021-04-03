@@ -38,7 +38,7 @@ public class Button : WindowElement {
 			output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
 			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));+/
 			with (parent) {
-				drawFilledBox(position, ss.getColor("window"));
+				drawFilledBox(position, ss.getColor("buttonTop"));
 				drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowascent"));
 				drawLine(position.cornerUL, position.cornerLL, ss.getColor("windowascent"));
 				drawLine(position.cornerLL, position.cornerLR, ss.getColor("windowdescent"));

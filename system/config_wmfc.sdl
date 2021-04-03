@@ -1,0 +1,89 @@
+/*
+ * Sample configuration file
+ */
+
+// Value #0: Application name
+// Value #1: Application version
+configurationFile "PixelPerfectEditor" "null"
+
+/*
+ * Audio settings, currently only contains volume informations, later will have
+ * some additional data if I get to write a custom audio API.
+ */
+audio {
+    soundVol 100
+    musicVol 100
+}
+ /*
+  * Graphics settings.
+  */
+video {
+    driver "openGL" // Name of API for standard SDL2 APIs, later can specify external library files as drivers
+    scaling "nearest" // Scaling quality, possible values: "nearest", "bilinear", "anisotropic"
+    screenMode "windowed" // Possible values: "windowed", "fullscreen", "fullscreenNative"
+    resolution "0" // Number if SDL2 is used
+    threads 1 // Number of rendering threads used. -1 for autodetect, -2 for GPU dependent
+}
+/*
+ * Input settings.
+ */
+input {
+    /*
+     * device:
+     * type: Possible values: "keyboard", "joystick", "mouse", "touchscreen"(unimplemented)
+     * name: Name of the device, might be absent.
+     * devNum: Device ID.
+     */
+    device name="Keyboard" type="keyboard" devNum=0 {
+        /*
+         * Anonymous tags here are treated as keybindings.
+         * Value #0: ID, usually a readable one.
+         * name: The name of the key from the appropriate naming file.
+         * code: If namings are unavailable, then this will be used, has a higher
+         * priority than keyName
+         * keyMod: In case of keyboards, it's the modifier keys used for various key
+         * combinations. In case of joysticks, it determines whether it's a button,
+         * DPad, or an axis.
+         * keyModIgnore: Determines what modifier keys should it ignore.
+         * deadZone0: Axis deadzone prelimiter 1.
+         * deadZone1: Axis deadzone prelimiter 2.
+         * axisAsButton: Makes the axis to act like a button if within deadzone.
+         */
+        "copy" name="c" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "cut" name="x" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "paste" name="v" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "undo" name="z" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "redo" name="z" keyMod="Ctrl;Shift" keyModIgnore="NumLock;CapsLock"
+        "save" name="s" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "saveAs" name="a" keyMod="Ctrl;Shift" keyModIgnore="NumLock;CapsLock"
+        "load" name="l" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "delete" name="delete" keyModIgnore="NumLock;CapsLock"
+
+        "Label" name="f1" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "Button" name="f2" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "SmallButton" name="f2" keyMod="Ctrl;Shift" keyModIgnore="NumLock;CapsLock"
+        "TextBox" name="f3" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "ListView" name="f4" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "CheckBox" name="f5" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "CheckBox-Small" name="f5" keyMod="Ctrl;Shift" keyModIgnore="NumLock;CapsLock"
+        "RadioButton" name="f6" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "RadioButton-Small" name="f6" keyMod="Ctrl;Shift" keyModIgnore="NumLock;CapsLock"
+        "HSlider" name="f7" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "VSlider" name="f8" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "Panel" name="f9" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        "MenuBar" name="f10" keyMod="Ctrl" keyModIgnore="NumLock;CapsLock"
+        /*
+         * Other tags:
+         *
+         * enableForceFeedback: enables or disables Force Feedback if available on
+         * the device.
+         * Value #0: Boolean
+         */
+    }
+}
+/*
+ * Game settings, etc.
+ */
+etc {
+
+}
