@@ -135,7 +135,7 @@ public class AddTiles : Window {
 		}
 		if(source.isIndexed) {
 			checkBox_palImport.check();
-			const int paletteLengthPOw2 = nextPow2(source.palette.length);
+			const int paletteLengthPOw2 = cast(int)nextPow2(source.palette.length);
 			switch (paletteLengthPOw2) {
 				case 2:
 					textBox_palShift.setText("1");

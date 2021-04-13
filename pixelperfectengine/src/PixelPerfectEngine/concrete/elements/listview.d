@@ -229,7 +229,7 @@ public class ListViewHeader : ListViewItem {
 /**
  * Implements a basic ListView 
  */
-public class ListView : WindowElement, ElementContainer {
+public class ListView : WindowElement, ElementContainer, TextInputListener {
 	///Supplies draw parameters to the items
 	public class DrawParameters {
 		///StyleSheet that is being used currently
@@ -266,11 +266,18 @@ public class ListView : WindowElement, ElementContainer {
 	///Accessed in a safe manner to ensure it's being updated on the output raster and that the number of columns match.
 	protected ListViewItem[]	entries;
 	protected int				selection;		///Selected item's number, or -1 if none selected.
+	protected int				hSelection;		///Horizontal selection for text editing.
+	///Text editing area.
+	protected Box				textArea;
 	///Holds shared draw parameters that are used when the element is being drawn.
 	///Should be set to null otherwise.
 	public DrawParameters		drawParams;
 	///Called when an item is selected
 	public EventDeleg			onItemSelect;
+	///Called when text input is finished and accepted
+	public EventDeleg			onTextInput;
+	protected static enum	EDIT_EN = 1<<9;
+	protected static enum	TEXTINPUT_EN = 1<<10;
 	///Standard CTOR
 	public this(ListViewHeader header, ListViewItem[] entries, string source, Box position) {
 		_header = header;
@@ -324,85 +331,89 @@ public class ListView : WindowElement, ElementContainer {
 		return value;
 	}
 	override public void draw() {
-		parent.clearArea(position);
-		
-		StyleSheet ss = getStyleSheet;
-		parent.drawBox(position, ss.getColor("windowascent"));
-		Point upper = Point(0, position.top + _header.height);
-		Point lower = Point(0, position.bottom);
-		{	///Calculate first column stuff
-			int offsetP, offsetC, targetC, targetP;
-			if (horizSlider) { 
-				offsetP = horizSlider.value();
-				//int offsetC;
-				for (; _header.columnWidths[offsetC] < offsetP ; offsetC++) {
-					offsetP -= _header.columnWidths[offsetC];
-				}
-				///Calculate last column number
-				//int targetC;
-				targetP = horizSlider.value() + position.width;
-				for (; _header.columnWidths[targetC] < targetP ; targetC++) {
-					targetP -= _header.columnWidths[targetC];
-				}
-				//targetP = _header.columnWidths[targetC] - targetP;
-				lower.y -= horizSlider.getPosition().height;
-			} else {
-				targetC = cast(int)_header.columnWidths.length - 1;
-			}
-			drawParams = new DrawParameters(ss, _header.columnWidths, offsetC, targetC, offsetP, 0);
-		}
-		
-		drawParams.target = Box(position.left, position.top, position.right, position.top + _header.height);
-		
-		if (vertSlider) {
-			drawParams.target.right -= vertSlider.getPosition.width;
+		if (flags & TEXTINPUT_EN) { //only redraw the editing cell in this case
 
-		}
-		
-		_header.draw(this);
-		/+Point upper = Point(drawParams.columnWidths[drawParams.offsetC] + position.left, position.top + _header.height);
-		Point lower = Point(upper.x, position.bottom);+/
-		int firstRow, lastRow;
-		if (vertSlider) {
-			int pixelsTotal = vertSlider.value();
-			for (; entries[firstRow].height < pixelsTotal ; firstRow++) {
-				pixelsTotal -= entries[firstRow].height;
-			}
-			drawParams.offsetFR = pixelsTotal;
-			pixelsTotal += position.height;
-			pixelsTotal -= _header.height;
-			if (horizSlider) pixelsTotal -= horizSlider.getPosition().height;
-			lastRow = firstRow;
-			for (; entries[lastRow].height < pixelsTotal ; lastRow++) {
-				pixelsTotal -= entries[lastRow].height;
-			}
 		} else {
-			lastRow = cast(int)entries.length - 1;
-		}
-		
-		for (int i = firstRow ; i <= lastRow ; i++) {
-			if (ss.getColor("ListViewHSep") && i != lastRow) {
-				parent.drawLine(drawParams.target.cornerLL, drawParams.target.cornerLR, ss.getColor("ListViewHSep"));
-			}
-			if (selection == i) {
-				Box target = drawParams.target - 1;
-				target.bottom -= drawParams.offsetFR;
-				parent.drawFilledBox(target, ss.getColor("selection"));
-			}
-			entries[i].draw(this);	
-		}
+			parent.clearArea(position);
 
-		if (ss.getColor("ListViewVSep")) {
-			for (int i = drawParams.offsetC ; i <= drawParams.targetC ; i++) {
-				upper.x = drawParams.columnWidths[i];
-				lower.x = drawParams.columnWidths[i];
-				parent.drawLine(upper, lower, ss.getColor("ListViewVSep"));
+			StyleSheet ss = getStyleSheet;
+			parent.drawBox(position, ss.getColor("windowascent"));
+			Point upper = Point(0, position.top + _header.height);
+			Point lower = Point(0, position.bottom);
+			{	///Calculate first column stuff
+				int offsetP, offsetC, targetC, targetP;
+				if (horizSlider) { 
+					offsetP = horizSlider.value();
+					//int offsetC;
+					for (; _header.columnWidths[offsetC] < offsetP ; offsetC++) {
+						offsetP -= _header.columnWidths[offsetC];
+					}
+					///Calculate last column number
+					//int targetC;
+					targetP = horizSlider.value() + position.width;
+					for (; _header.columnWidths[targetC] < targetP ; targetC++) {
+						targetP -= _header.columnWidths[targetC];
+					}
+					//targetP = _header.columnWidths[targetC] - targetP;
+					lower.y -= horizSlider.getPosition().height;
+				} else {
+					targetC = cast(int)_header.columnWidths.length - 1;
+				}
+				drawParams = new DrawParameters(ss, _header.columnWidths, offsetC, targetC, offsetP, 0);
 			}
-		}
-		if (horizSlider) horizSlider.draw;
-		if (vertSlider) vertSlider.draw;
 
-		drawParams = null;
+			drawParams.target = Box(position.left, position.top, position.right, position.top + _header.height);
+
+			if (vertSlider) {
+				drawParams.target.right -= vertSlider.getPosition.width;
+
+			}
+
+			_header.draw(this);
+			/+Point upper = Point(drawParams.columnWidths[drawParams.offsetC] + position.left, position.top + _header.height);
+			Point lower = Point(upper.x, position.bottom);+/
+			int firstRow, lastRow;
+			if (vertSlider) {
+				int pixelsTotal = vertSlider.value();
+				for (; entries[firstRow].height < pixelsTotal ; firstRow++) {
+					pixelsTotal -= entries[firstRow].height;
+				}
+				drawParams.offsetFR = pixelsTotal;
+				pixelsTotal += position.height;
+				pixelsTotal -= _header.height;
+				if (horizSlider) pixelsTotal -= horizSlider.getPosition().height;
+				lastRow = firstRow;
+				for (; entries[lastRow].height < pixelsTotal ; lastRow++) {
+					pixelsTotal -= entries[lastRow].height;
+				}
+			} else {
+				lastRow = cast(int)entries.length - 1;
+			}
+
+			for (int i = firstRow ; i <= lastRow ; i++) {
+				if (ss.getColor("ListViewHSep") && i != lastRow) {
+					parent.drawLine(drawParams.target.cornerLL, drawParams.target.cornerLR, ss.getColor("ListViewHSep"));
+				}
+				if (selection == i) {
+					Box target = drawParams.target - 1;
+					target.bottom -= drawParams.offsetFR;
+					parent.drawFilledBox(target, ss.getColor("selection"));
+				}
+				entries[i].draw(this);	
+			}
+
+			if (ss.getColor("ListViewVSep")) {
+				for (int i = drawParams.offsetC ; i <= drawParams.targetC ; i++) {
+					upper.x = drawParams.columnWidths[i];
+					lower.x = drawParams.columnWidths[i];
+					parent.drawLine(upper, lower, ss.getColor("ListViewVSep"));
+				}
+			}
+			if (horizSlider) horizSlider.draw;
+			if (vertSlider) vertSlider.draw;
+
+			drawParams = null;
+		}
 	}
 	/**
 	 * Returns the number of the selected item.
@@ -601,6 +612,7 @@ public class ListView : WindowElement, ElementContainer {
 
 		if (mce.button != MouseButton.Left && !mce.state) return;
 
+		mce.x -= position.left;
 		mce.y -= position.top;
 		if (entries.length && mce.y > _header.height) {
 			mce.y -= _header.height;
@@ -616,9 +628,11 @@ public class ListView : WindowElement, ElementContainer {
 					break;
 				}
 			}
-			if (pos >= entries.length) 
+			if (pos >= entries.length) {
 				selection = -1;
-			else 
+			} else if (selection == pos && (flags & EDIT_EN)) {
+				//Calculate horizontal selection
+			} else 
 				selection = pos;
 
 			if (onItemSelect !is null && selection != -1)
@@ -678,4 +692,36 @@ public class ListView : WindowElement, ElementContainer {
 	public void closePopUp(PopUpElement p) {
 		parent.closePopUp(p);
 	}
+	//Interface `TextInputListener` starts here
+	/**
+	 * Passes the inputted text to the target, alongside with a window ID and a timestamp.
+	 */
+	public void textInputEvent(uint timestamp, uint windowID, dstring text) {
+		
+	}
+	/**
+	 * Passes text editing events to the target, alongside with a window ID and a timestamp.
+	 */
+	public void textEditingEvent(uint timestamp, uint windowID, dstring text, int start, int length) {
+		
+	}
+	/**
+	 * Passes text input key events to the target, e.g. cursor keys.
+	 */
+	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier) {
+		
+	}
+	/**
+	 * When called, the listener should drop all text input.
+	 */
+	public void dropTextInput() {
+		flags &= ~TEXTINPUT_EN;
+	}
+	/**
+	 * Called if text input should be initialized.
+	 */
+	public void initTextInput() {
+		flags |= TEXTINPUT_EN;
+	}
+	
 }

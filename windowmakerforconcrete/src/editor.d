@@ -138,7 +138,8 @@ public class TopLevelWindow : Window {
 	public ListView objectList, propList;
 	MenuBar mb;
 	public this (int x, int y) {
-		output = new Bitmap8Bit(x, y);
+		import PixelPerfectEngine.graphics.draw;
+		output = new BitmapDrawer(x, y);
 		position = Box(0, 0, x - 1, y - 1);
 
 		PopUpMenuElement[] menuElements;
@@ -160,7 +161,7 @@ public class TopLevelWindow : Window {
 		menuElements[1] ~= new PopUpMenuElement("cut", "Cut");
 		menuElements[1] ~= new PopUpMenuElement("paste", "Paste");
 
-		menuElements ~= new PopUpMenuElement("elements", mt("ELEMENTS"));
+		menuElements ~= new PopUpMenuElement("elements", "Elements");
 
 		menuElements[2] ~= new PopUpMenuElement("Label", "Label");
 		menuElements[2] ~= new PopUpMenuElement("Button", "Button");
@@ -207,9 +208,9 @@ public class DummyWindow : Window {
 		mce.y -= position.top;
 		if(mce.button == MouseButton.Left){
 			ed.clickEvent(mce.x, mce.y, mce.state);
-		}else if(button == MouseButton.Right){
+		}else if(mce.button == MouseButton.Right){
 			foreach(we; elements){
-				const Box c = we.position;
+				const Box c = we.getPosition;
 				if(mce.x > c.left && mce.x < c.right && mce.y > c.top && mce.y < c.bottom)
 					ed.selectEvent(we);
 			}
@@ -285,7 +286,7 @@ public class Editor : SystemEventListener, InputListener{
 		mainRaster.addLayer(sprtL,0);
 		typeSel = ElementType.NULL;
 
-		ewh = new EditorWindowHandler(1696,960,848,480,sprtL, this);
+		ewh = new WindowHandler(1696,960,848,480,sprtL);
 		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
 		INIT_CONCRETE(ewh);
 		inputH = new InputHandler();
@@ -305,6 +306,7 @@ public class Editor : SystemEventListener, InputListener{
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F6, 0, "RadioButton", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F8, 0, "HSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F9, 0, "VSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);+/
+		ewh.setBaseWindow(new TopLevelWindow(848, 480));
 		config = new ConfigurationProfile("config_wmfc.sdl", "../system/config_wmfc.sdl");
 		{
 			import PixelPerfectEngine.system.input.scancode;
@@ -728,6 +730,9 @@ public class Editor : SystemEventListener, InputListener{
 	public void controllerRemoved(uint ID){}
 	public void controllerAdded(uint ID){}
 	//public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype) {
+	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+
+	}
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		import PixelPerfectEngine.system.etc : hashCalc;
 		if (isPressed) {

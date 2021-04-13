@@ -14,11 +14,12 @@ public enum ElementType {
 	Button,
 	SmallButton,
 	TextBox,
-	ListBox,
+	ListView,
 	RadioButton,
 	CheckBox,
 	HSlider,
 	VSlider,
+	Panel,
 	MenuBar,
 }
 public enum EditMode {

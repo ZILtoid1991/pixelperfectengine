@@ -9,7 +9,7 @@ import std.utf;
 import std.stdio;
 import conv = std.conv;
 
-public class WindowSerializer{
+public class WindowSerializer {
 	Tag root;
 	string filename;
 	public this(){
@@ -20,17 +20,17 @@ public class WindowSerializer{
 		new Tag(window, "size", "y", [Value(480)]);
 		new Tag(window, null, "extraButtons");
 	}
-	public this(string filename){
+	public this(string filename) {
 		this.filename = filename;
 	}
-	public void store(string filename){
+	public void store(string filename) {
 		this.filename = filename;
 		store();
 	}
-	public @property @nogc string getFilename(){
+	public @property @nogc string getFilename() {
 		return filename;
 	}
-	public void store(){
+	public void store() {
 		import std.string : toStringz;
 		string fileout = root.toSDLDocument("\t",1);
 		debug writeln(fileout);
@@ -46,7 +46,7 @@ public class WindowSerializer{
 		return conv.to!string(t.values[0].get!int) ~ ", " ~ conv.to!string(t.values[1].get!int) ~ ", " ~
 				conv.to!string(t.values[2].get!int) ~ ", " ~ conv.to!string(t.values[3].get!int);
 	}
-	public void deserialize(DummyWindow dw, Editor e){
+	public void deserialize(DummyWindow dw, Editor e) {
 		root = parseFile(filename);
 		foreach(t0; root.all.tags){
 			switch(t0.getFullName.toString){
@@ -62,6 +62,8 @@ public class WindowSerializer{
 					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
 					break;
+				case "SmallButton":
+					break;
 				case "TextBox":
 					WindowElement we = new TextBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
@@ -74,15 +76,15 @@ public class WindowSerializer{
 					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
 					break;
-				case "OldListBox":
+				case "ListView":
 					int[] columnWidths;
 					dstring[] columnTexts;
+					const int headerHeight = t0.expectTag("header").expectValue!int();
 					foreach(t1; t0.expectTag("header").tags){
 						columnTexts ~= toUTF32(t1.values[0].get!string);
 						columnWidths ~= t1.values[1].get!int;
 					}
-					WindowElement we = new OldListBox(t0.expectTagValue!string("source"), parseCoordinate(t0.expectTag("position")), [],
-							new ListBoxHeader(columnTexts, columnWidths));
+					WindowElement we = new ListView(new ListViewHeader(headerHeight, columnWidths, columnTexts));
 					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
 					break;
@@ -260,7 +262,7 @@ public class WindowSerializer{
 				t1 = new Tag(root, null, "TextBox", [Value(name)]);
 				new Tag(t1, null, "text", [Value(name)]);
 				break;
-			case ElementType.ListBox:
+			case ElementType.ListView:
 				t1 = new Tag(root, null, "OldListBox", [Value(name)]);
 				Tag t2 = new Tag(t1, null, "header");
 				new Tag(t2, null, null, [Value("col0"), Value(40)]);
