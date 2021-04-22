@@ -36,6 +36,21 @@ be run on many smartphones and even single-board computers.
 This engine is licensed under the Boost Software License 1.0, which means it can be used without attribution and even in
 commercial applications. Be aware that many components are on different licenses, such as SDL2 and ZLib.
 
+# How to build
+
+PixelPerfectEngine actually requires ldc2 to build since that has better vector support than DMD, and vectors are used to speed up the rendering.
+I mainly have tested on 32 bit systems, so there's a few bugs left in, which I'm going to fix in the near future in the next prerelease.
+
+To compile pixelperfecteditor, launch a simple :
+```
+dub build :pixelperfecteditor --compiler=ldc2
+```
+
+To compile windowmakerforconcrete, launch a simple :
+```
+dub build :windowmakerforconcrete --compiler=ldc2
+```
+
 # Features
 
 * Pixel-accurate retro graphics.
