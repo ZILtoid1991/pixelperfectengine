@@ -141,7 +141,7 @@ public class TopLevelWindow : Window {
 
 			mb = new MenuBar("mb", Box(0,0, width - 1, 15), menuElements);
 
-			mb.onMouseLClick = &prg.menuEvent;
+			mb.onMenuEvent = &prg.menuEvent;
 		}
 		addElement(mb);
 	}
