@@ -3,7 +3,9 @@ module PixelPerfectEngine.concrete.elements.listview;
 import PixelPerfectEngine.concrete.elements.base;
 import PixelPerfectEngine.concrete.elements.scrollbar;
 
-import PixelPerfectEngine.system.etc : clamp, min;
+import PixelPerfectEngine.system.etc : clamp, min, max;
+
+import PixelPerfectEngine.system.input.types : TextInputFieldType;
 
 /**
  * Defines a single item in the listview.
@@ -138,6 +140,44 @@ public class ListViewItem {
 		}
 	}
 	/**
+	 * Creates a ListViewItem with default text formatting and input type.
+	 */
+	this (int height, dstring[] ds, TextInputFieldType[] inputTypes) @safe nothrow {
+		this.height = height;
+		fields.reserve = ds.length;
+		assert (ds.length == inputTypes.length, "Mismatch in inputTypes and text length");
+		for (size_t i ; i < ds.length ; i++) {
+			Field f = Field(new Text(ds[i], globalDefaultStyle.getChrFormatting("ListViewHeader")), null, 
+					Field.FormatFlags.Context);
+			final switch (inputTypes[i]) with (TextInputFieldType) {
+				case Text:
+					f.editable = true;
+					break;
+				case Numeric:
+					f.numericOnly = true;
+					goto case Text;
+				case Integer:
+					f.integerOnly = true;
+					goto case Text;
+				case Dec:
+					f.formatFlags = Field.FormatFlags.Dec;
+					goto case Integer;
+				case Hex:
+					f.formatFlags = Field.FormatFlags.HexH;
+					goto case Integer;
+				case Oct:
+					f.formatFlags = Field.FormatFlags.OctH;
+					goto case Integer;
+				case Bin:
+					f.formatFlags = Field.FormatFlags.BinH;
+					goto case Integer;
+				case None, ASCIIText:
+					break;
+			}
+			fields ~= f;
+		}
+	}
+	/**
 	 * Accesses fields like an array.
 	 */
 	public ref Field opIndex(size_t index) @nogc @safe pure nothrow {
@@ -267,8 +307,12 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	protected ListViewItem[]	entries;
 	protected int				selection;		///Selected item's number, or -1 if none selected.
 	protected int				hSelection;		///Horizontal selection for text editing.
+	protected int				tselect;		///Lenght of selected characters.
+	protected int				cursorPos;		///Position of cursor.
+	protected int				horizTextOffset;///Horizontal text offset if text cannot fit the cell.
 	///Text editing area.
 	protected Box				textArea;
+	//protected Text				oldText;
 	///Holds shared draw parameters that are used when the element is being drawn.
 	///Should be set to null otherwise.
 	public DrawParameters		drawParams;
@@ -277,7 +321,9 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	///Called when text input is finished and accepted
 	public EventDeleg			onTextInput;
 	protected static enum	EDIT_EN = 1<<9;
-	protected static enum	TEXTINPUT_EN = 1<<10;
+	protected static enum	MULTICELL_EDIT_EN = 1<<10;
+	protected static enum	TEXTINPUT_EN = 1<<11;
+	protected static enum	INSERT = 1<<12;
 	///Standard CTOR
 	public this(ListViewHeader header, ListViewItem[] entries, string source, Box position) {
 		_header = header;
@@ -324,19 +370,48 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 */
 	public ListViewItem[] opOpAssign(string op)(ListViewItem[] value) {
 		static if (op == "~" || op == "+") {
-			if (value.length == _header.length) {
-				entries ~= value;
-			} else throw new Exception("Column number mismatch!");
+			foreach (ListViewItem key; value) {
+				if (key.length == _header.length) {
+					entries ~= key;
+				} else throw new Exception("Column number mismatch!");
+			}
 		} else static assert (0, "Unsupported operator!");
 		return value;
 	}
 	override public void draw() {
+		StyleSheet ss = getStyleSheet;
 		if (flags & TEXTINPUT_EN) { //only redraw the editing cell in this case
+			const int textPadding = ss.drawParameters["TextSpacingSides"];
+			
+			clearArea(textArea);
+			//drawBox(position, ss.getColor("windowascent"));
+			
+			//draw cursor
+			//if (flags & ENABLE_TEXT_EDIT) {
+			//calculate cursor first
+			Box cursor = Box(textArea.left + textPadding, textArea.top + textPadding, textArea.left + textPadding, textArea.bottom - textPadding);
+			cursor.left += text.getWidth(0, cursorPos) - horizTextOffset;
+			//cursor must be at least single pixel wide
+			cursor.right = cursor.left;
+			if (tselect) {
+				cursor.right += text.getWidth(cursorPos, cursorPos + tselect);
+			} else if (flags & INSERT) {
+				if (cursorPos < text.charLength) cursor.right += text.getWidth(cursorPos, cursorPos+1);
+				else cursor.right += text.font.chars(' ').xadvance;
+			} else {
+				cursor.right++;
+			}
+			//Clamp down if cursor is wider than the text editing area
+			cursor.right = cursor.right <= textArea.right - textPadding ? cursor.right : textArea.right - textPadding;
+			//Draw cursor
+			parent.drawFilledBox(cursor, ss.getColor("selection"));
 
+			//}
+			//draw text
+			parent.drawTextSL(textArea - textPadding, text, Point(horizTextOffset, 0));
 		} else {
 			parent.clearArea(position);
 
-			StyleSheet ss = getStyleSheet;
 			parent.drawBox(position, ss.getColor("windowascent"));
 			Point upper = Point(0, position.top + _header.height);
 			Point lower = Point(0, position.bottom);
@@ -428,6 +503,35 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		selection = val;
 		draw;
 		return selection;
+	}
+	/**
+	 * Enables or disables the text editing of this element.
+	 */
+	public @property bool editEnable(bool val) @nogc @safe pure nothrow {
+		if (val) flags |= EDIT_EN;
+		else flags &= ~EDIT_EN;
+		return flags & EDIT_EN ? true : false;
+	}
+	/**
+	 * Returns true if text editing is enabled.
+	 */
+	public @property bool editEnable() @nogc @safe pure nothrow const {
+		return flags & EDIT_EN ? true : false;
+	}
+	/**
+	 * Enables or disables editing for multiple cells.
+	 * If disabled, the first cell with editing enabled will be able to be edited.
+	 */
+	public @property bool multicellEditEnable(bool val) @nogc @safe pure nothrow {
+		if (val) flags |= MULTICELL_EDIT_EN;
+		else flags &= ~MULTICELL_EDIT_EN;
+		return flags & MULTICELL_EDIT_EN ? true : false;
+	}
+	/**
+	 * Returns true if text editing for multiple cells is enabled.
+	 */
+	public @property bool multicellEditEnable() @nogc @safe pure nothrow const {
+		return flags & MULTICELL_EDIT_EN ? true : false;
 	}
 	/**
 	 * Sets a new header, also able to supply new entries.
@@ -591,6 +695,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	}
 	///Passes mouse click event
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		///TODO: Handle mouse click when in text editing mode
+
 		if (vertSlider) {
 			const Box p = vertSlider.getPosition();
 			if (p.isBetween(mce.x, mce.y)) {
@@ -622,6 +728,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			while (pos < entries.length) {
 				if (pixelsTotal > entries[pos].height) {
 					pixelsTotal -= entries[pos].height;
+					textArea.top += entries[pos].height;
 					if (pos + 1 < entries.length)
 						pos++;
 				} else {
@@ -631,7 +738,34 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			if (pos >= entries.length) {
 				selection = -1;
 			} else if (selection == pos && (flags & EDIT_EN)) {
-				//Calculate horizontal selection
+				//Calculate horizontal selection for Multicell editing if needed
+				if (flags & MULTICELL_EDIT_EN) {
+
+				} else {
+					foreach (size_t i, ListViewItem.Field f ; entries[selection].fields) {
+						if (f.editable) {
+							hSelection = cast(int)i;
+							if (vertSlider) textArea.top -= vertSlider.value;
+							if (horizSlider) textArea.left -= horizSlider.value;
+							with (textArea) {
+								bottom = entries[selection].height;
+								right = _header.columnWidths[i];
+								left = max(textArea.left, position.left);
+								top = max(textArea.top, position.top);
+								right = min(textArea.right, position.right);
+								bottom = min(textArea.bottom, position.bottom);
+							}
+							text = entries[selection][hSelection].text;
+							cursorPos = 0;
+							tselect = cast(int)text.charLength;
+							//oldText = text;
+							inputHandler.startTextInput(this);
+							break;
+						}
+						textArea.left += _header.columnWidths[i];
+					}
+				}
+				selection = pos;
 			} else 
 				selection = pos;
 
@@ -697,19 +831,113 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 * Passes the inputted text to the target, alongside with a window ID and a timestamp.
 	 */
 	public void textInputEvent(uint timestamp, uint windowID, dstring text) {
-		
+		if (tselect) {
+			this.text.removeChar(cursorPos, tselect);
+			tselect = 0;
+			for(int j ; j < text.length ; j++){
+				this.text.insertChar(cursorPos++, text[j]);
+			}
+		} else if (flags & INSERT) {
+			for(int j ; j < text.length ; j++){
+				this.text.overwriteChar(cursorPos++, text[j]);
+			}
+		} else {
+			for(int j ; j < text.length ; j++){
+				this.text.insertChar(cursorPos++, text[j]);
+			}
+		}
+		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
+		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
+				position.width,position.height - textPadding);
+		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, cursorPos);
+		if(x > textPos.width) {
+			 if(cursorPos == this.text.text.length) {
+				horizTextOffset = x - textPos.width;
+			 } else if(cursorPixelPos < horizTextOffset) { //Test for whether the cursor would fall out from the current text area
+				horizTextOffset = cursorPixelPos;
+			 } else if(cursorPixelPos > horizTextOffset + textPos.width) {
+				horizTextOffset = horizTextOffset + textPos.width;
+			 }
+		}
+		draw();
 	}
 	/**
 	 * Passes text editing events to the target, alongside with a window ID and a timestamp.
 	 */
 	public void textEditingEvent(uint timestamp, uint windowID, dstring text, int start, int length) {
-		
+		for (int i ; i < length ; i++) {
+			this.text.overwriteChar(start + i, text[i]);
+		}
+		cursorPos = start + length;
 	}
 	/**
 	 * Passes text input key events to the target, e.g. cursor keys.
 	 */
 	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier) {
-		
+		switch(key) {
+			case TextInputKey.Enter:
+				entries[selection][hSelection].text = text;
+				inputHandler.stopTextInput();
+				if(onTextInput !is null)
+					onTextInput(new CellEditEvent(this, text, selection, hSelection));
+					//onTextInput(new Event(source, null, null, null, text, 0, EventType.T, null, this));
+				break;
+			case TextInputKey.Escape:
+				//text = oldText;
+				inputHandler.stopTextInput();
+				
+
+				break;
+			case TextInputKey.Backspace:
+				if(cursorPos > 0){
+					deleteCharacter(cursorPos - 1);
+					cursorPos--;
+					draw();
+				}
+				break;
+			case TextInputKey.Delete:
+				deleteCharacter(cursorPos);
+				draw();
+				break;
+			case TextInputKey.CursorLeft:
+				if (modifier != KeyModifier.Shift) {
+					tselect = 0;
+					if(cursorPos > 0){
+						--cursorPos;
+						draw();
+					}
+				}
+				break;
+			case TextInputKey.CursorRight:
+				if (modifier != KeyModifier.Shift) {
+					tselect = 0;
+					if(cursorPos < text.charLength){
+						++cursorPos;
+						draw();
+					}
+				}
+				break;
+			case TextInputKey.Home:
+				if (modifier != KeyModifier.Shift) {
+					tselect = 0;
+					cursorPos = 0;
+					draw();
+				}
+				break;
+			case TextInputKey.End:
+				if (modifier != KeyModifier.Shift) {
+					tselect = 0;
+					cursorPos = cast(int)text.charLength;
+					draw();
+				}
+				break;
+			case TextInputKey.Insert:
+				flags ^= INSERT;
+				draw();
+				break;
+			default:
+				break;
+		}
 	}
 	/**
 	 * When called, the listener should drop all text input.
@@ -723,5 +951,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	public void initTextInput() {
 		flags |= TEXTINPUT_EN;
 	}
-	
+	private void deleteCharacter(size_t n){
+		text.removeChar(n);
+	}
 }

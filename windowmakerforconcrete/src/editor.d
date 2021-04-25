@@ -137,11 +137,11 @@ import stdio = std.stdio;
 public class TopLevelWindow : Window {
 	public ListView objectList, propList;
 	MenuBar mb;
-	public this (int x, int y) {
+	Editor editor;
+	public this(int width, int height, Editor e) {
 		import PixelPerfectEngine.graphics.draw;
-		output = new BitmapDrawer(x, y);
-		position = Box(0, 0, x - 1, y - 1);
-
+		super(Box(0, 0, width, height), ""d, [], null);
+		editor = e;
 		PopUpMenuElement[] menuElements;
 
 		menuElements ~= new PopUpMenuElement("file", "File");
@@ -178,7 +178,15 @@ public class TopLevelWindow : Window {
 		menuElements[3] ~= new PopUpMenuElement("helpFile", "Content");
 		menuElements[3] ~= new PopUpMenuElement("about", "About");
 
-		mb = new MenuBar("mb", Box(0, 0, x-1, 15), menuElements);
+		mb = new MenuBar("mb", Box(0, 0, width-1, 15), menuElements);
+		objectList = new ListView(new ListViewHeader(16, [128, 128], ["type"d, "name"d]), [], "objectList", 
+				Box(644,20,width - 5,238));
+		propList = new ListView(new ListViewHeader(16, [128,256], ["Prop"d,"Val"d]), [], "propList",
+				Box(644,242,width - 5,477));
+
+		addElement(mb);
+		addElement(objectList);
+		addElement(propList);
 	}
 	public override void draw(bool drawHeaderOnly = false) {
 		if(output.output.width != position.width || output.output.height != position.height)
@@ -215,6 +223,19 @@ public class DummyWindow : Window {
 					ed.selectEvent(we);
 			}
 		}
+	}
+	public void setWidth(int val) {
+		position.right = position.left + val;
+		draw();
+	}
+	public void setHeight(int val) {
+		position.bottom = position.top + val;
+		draw();
+	}
+	public void setSize(int width, int height) {
+		position.right = position.left + width;
+		position.bottom = position.top + height;
+		draw();
 	}
 	override public void close() {
 	//super.close;
@@ -275,12 +296,14 @@ public class Editor : SystemEventListener, InputListener{
 	WindowElement[string] elements;
 	string				selection;
 	ConfigurationProfile	config;
+	TopLevelWindow		tlw;
 
 	static string[ElementType] nameBases;
 	public this(){
 		import PixelPerfectEngine.system.systemUtility;
 		import PixelPerfectEngine.system.file;
-		sprtL = new SpriteLayer(LayerRenderingMode.COPY);
+		
+		sprtL = new SpriteLayer(RenderingMode.Copy);
 		outScrn = new OutputScreen("WindowMaker for PPE/Concrete",1696,960);
 		mainRaster = new Raster(848,480,outScrn,0);
 		mainRaster.addLayer(sprtL,0);
@@ -306,7 +329,7 @@ public class Editor : SystemEventListener, InputListener{
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F6, 0, "RadioButton", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F8, 0, "HSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F9, 0, "VSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);+/
-		ewh.setBaseWindow(new TopLevelWindow(848, 480));
+		//ewh.setBaseWindow(new TopLevelWindow(848, 480, this));
 		config = new ConfigurationProfile("config_wmfc.sdl", "../system/config_wmfc.sdl");
 		{
 			import PixelPerfectEngine.system.input.scancode;
@@ -317,15 +340,16 @@ public class Editor : SystemEventListener, InputListener{
 		PopUpElement.inputhandler = inputH;
 		WindowElement.inputHandler = inputH;
 		
-		ewh.initGUI();
 		dw = new DummyWindow(Coordinate(0,16,640,480), "New Window"d, this);
 		ewh.addWindow(dw);
+		tlw = new TopLevelWindow(848, 480, this);
+		ewh.setBaseWindow(tlw);
 		eventStack = new UndoableStack(10);
 		wserializer = new WindowSerializer();
 		dwtarget = dw;
 		editorTarget = this;
-		ewh.objectList.onItemSelect = &onObjectListSelect;
-		ewh.propList.onTextInput = &onAttributeEdit;
+		//ewh.objectList.onItemSelect = &onObjectListSelect;
+		//ewh.propList.onTextInput = &onAttributeEdit;
 		updateElementList;
 	}
 	static this(){
@@ -333,7 +357,7 @@ public class Editor : SystemEventListener, InputListener{
 		nameBases[ElementType.Button] = "button";
 		nameBases[ElementType.SmallButton] = "smallButton";
 		nameBases[ElementType.TextBox] = "textBox";
-		nameBases[ElementType.ListBox] = "listBox";
+		nameBases[ElementType.ListView] = "listView";
 		nameBases[ElementType.RadioButton] = "radioButton";
 		nameBases[ElementType.CheckBox] = "checkBox";
 		nameBases[ElementType.HSlider] = "hSlider";
@@ -348,60 +372,65 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void onObjectListSelect(Event ev){
 		deinitElemMove;
-		ListBoxItem lbi = cast(ListBoxItem)ev.aux;
-		if(lbi.getText(0) != "window"){
-			selection = conv.to!string(lbi.getText(1));
+		ListViewItem lbi = cast(ListViewItem)ev.aux;
+		if(lbi[0].text.text != "window"){
+			selection = conv.to!string(lbi[1].text.text);
 		}else{//Fill attribute list with data related to the window
 			selection = "window";
 		}
 		updatePropertyList;
 	}
 	public void onLoadFile(Event ev){
-		wserializer = new WindowSerializer(ev.getFullPath);
+		FileEvent ev0 = cast(FileEvent)ev;
+		wserializer = new WindowSerializer(ev0.getFullPath);
 		wserializer.deserialize(dw, this);
 	}
 	public void onSaveFileAs(Event ev){
-		wserializer.store(ev.getFullPath);
+		FileEvent ev0 = cast(FileEvent)ev;
+		wserializer.store(ev0.getFullPath);
 	}
 	public void onExportWindow(Event ev){
-		wserializer.generateDCode(ev.getFullPath);
+		FileEvent ev0 = cast(FileEvent)ev;
+		wserializer.generateDCode(ev0.getFullPath);
 	}
 	public void onAttributeEdit(Event ev){
 		import std.utf : toUTF8;
-		ListBoxItem lbi = cast(ListBoxItem)ev.aux;
+		CellEditEvent ev0 = cast(CellEditEvent)ev;
+		dstring t = ev0.text.text;
+		ListViewItem lbi = cast(ListViewItem) ev.aux;
 		if(selection == "window"){
-			switch(lbi.getText(0)){
+			switch(lbi[0].text.text) {
 				case "name":
-					eventStack.addToTop(new WindowRenameEvent(conv.to!string(ev.text.text)));
+					eventStack.addToTop(new WindowRenameEvent(conv.to!string(t)));
 					return;
 				case "title":
-					eventStack.addToTop(new WindowRetitleEvent(ev.text.text));
+					eventStack.addToTop(new WindowRetitleEvent(t));
 					return;
 				case "size:x":
-					eventStack.addToTop(new WindowWidthChangeEvent(conv.to!int(ev.text.text)));
+					eventStack.addToTop(new WindowWidthChangeEvent(conv.to!int(t)));
 					return;
 				case "size:y":
-					eventStack.addToTop(new WindowHeightChangeEvent(conv.to!int(ev.text.text)));
+					eventStack.addToTop(new WindowHeightChangeEvent(conv.to!int(t)));
 					return;
 				default:
 					return;
 			}
 		}else{
-			switch(lbi.getText(0)){
+			switch(lbi[0].text.text){
 				case "text":
-					eventStack.addToTop(new TextEditEvent(ev.text.text, selection));
+					eventStack.addToTop(new TextEditEvent(t, selection));
 					return;
 				case "name":
-					eventStack.addToTop(new RenameEvent(selection, conv.to!string(ev.text.text)));
-					selection = conv.to!string(ev.text);
+					eventStack.addToTop(new RenameEvent(selection, conv.to!string(t)));
+					selection = conv.to!string(t);
 					return;
 				case "position":
-					dstring[] src = csvParser(ev.text.text, ';');
+					dstring[] src = csvParser(t, ';');
 					if(src.length == 4){
 						Coordinate c;
 						foreach(s; src){
 							if(!isInteger(s)){
-								ewh.messageWindow("Format Error!", "Value is not integer!");
+								ewh.message("Format Error!", "Value is not integer!");
 								return;
 							}
 						}
@@ -411,11 +440,11 @@ public class Editor : SystemEventListener, InputListener{
 						c.bottom = conv.to!int(src[3]);
 						eventStack.addToTop(new PositionEditEvent(c, selection));
 					}else{
-						ewh.messageWindow("Format Error!", "Correct format is: [int];[int];[int];[int];");
+						ewh.message("Format Error!", "Correct format is: [int];[int];[int];[int];");
 					}
 					return;
 				case "source":
-					eventStack.addToTop(new SourceEditEvent(selection, conv.to!string(ev.text.text)));
+					eventStack.addToTop(new SourceEditEvent(selection, conv.to!string(t)));
 					return;
 				default:
 					return;
@@ -458,9 +487,10 @@ public class Editor : SystemEventListener, InputListener{
 						s = getNextName("textBox");
 						we = new TextBox(conv.to!dstring(s),s,c);
 						break;
-					case ElementType.ListBox:
-						s = getNextName("listBox");
-						we = new ListBox(s,c,[], new ListBoxHeader(["col0", "col1"],[40,40]), 16);
+					case ElementType.ListView:
+						s = getNextName("listView");
+						//we = new ListBox(s,c,[], new ListBoxHeader(["col0", "col1"],[40,40]), 16);
+						we = new ListView(new ListViewHeader(16, [40, 40], ["col0", "col1"]), [], s, c);
 						break;
 					case ElementType.CheckBox:
 						s = getNextName("CheckBox");
@@ -476,11 +506,11 @@ public class Editor : SystemEventListener, InputListener{
 						//break;
 					case ElementType.HSlider:
 						s = getNextName("hSlider");
-						we = new HSlider(16,1,s,c);
+						we = new HorizScrollBar(16,s,c);
 						break;
 					case ElementType.VSlider:
 						s = getNextName("vSlider");
-						we = new HSlider(16,1,s,c);
+						we = new VertScrollBar(16,s,c);
 						break;
 					default:
 						break;
@@ -490,12 +520,12 @@ public class Editor : SystemEventListener, InputListener{
 				//updateElementList;
 			}
 		} else {
-			if (state == ButtonState.PRESSED) {
+			if (state == ButtonState.Pressed) {
 				if(!moveElemMode && elements.get(selection, null)) {
-					if (elements[selection].position.isBetween(x,y)) {
+					if (elements[selection].getPosition.isBetween(x,y)) {
 						initElemMove;
 						
-					} else if (elements[selection].position.right <= x + 1 && elements[selection].position.bottom <= y + 1) {
+					} else if (elements[selection].getPosition.right <= x + 1 && elements[selection].getPosition.bottom <= y + 1) {
 						initElemResize;
 						
 					}
@@ -508,88 +538,79 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void dragEvent(int x, int y, int relX, int relY, uint button) {
 		if (moveElemMode) {
-			const Coordinate temp = elements[selection].position;
+			const Box temp = elements[selection].getPosition;
 			if(temp.left + relX < 0) relX -= temp.left + relX;
-			if(temp.right + relX >= dw.position.width) relX -= (temp.right + relX) - dw.position.width;
+			if(temp.right + relX >= dw.getPosition.width) relX -= (temp.right + relX) - dw.getPosition.width;
 			if(temp.top + relY < 0) relY -= temp.top + relY;
-			if(temp.bottom + relY >= dw.position.height) relY -= (temp.bottom + relY) - dw.position.height;
-			elements[selection].position.relMove(relX, relY);
+			if(temp.bottom + relY >= dw.getPosition.height) relY -= (temp.bottom + relY) - dw.getPosition.height;
+			elements[selection].getPosition.relMove(relX, relY);
 			dw.draw();
 		} else if (resizeMode) {
 			x0 = x;
 			y0 = y;
-			dw.drawSelection(Coordinate(elements[selection].position.left, elements[selection].position.top, x0, y0));
+			dw.drawSelection(Box(elements[selection].getPosition.left, elements[selection].getPosition.top, x0, y0));
 		} else if (typeSel != ElementType.NULL) {
-			dw.drawSelection(Coordinate(x0, y0, x, y));
+			dw.drawSelection(Box(x0, y0, x, y));
 		}
 	}
 
 	public void updateElementList(){
-		ewh.objectList.clearData;
-		ListBoxItem[] list = [new ListBoxItem(["window", ""])];
+		tlw.objectList.clear();
+		tlw.objectList ~= new ListViewItem(16, ["window"d, ""d]);
 		foreach(s; elements.byKey){
-			list ~= new ListBoxItem([conv.to!dstring(elements[s].classinfo.name[37..$]), conv.to!dstring(s)]);
+			tlw.objectList ~= new ListViewItem(16, [conv.to!dstring(elements[s].classinfo.name[37..$]), conv.to!dstring(s)]);
 		}
-		ewh.objectList.updateColumns(list);
+		tlw.objectList.refresh();
 	}
 	public void updatePropertyList(){
 		import sdlang;
 		import std.utf;
-		ewh.propList.clearData;
+		tlw.propList.clear();
 		if(elements.get(selection, null) !is null){
 			string classname = elements[selection].classinfo.name[37..$];
-			ListBoxItem[] list = [new ListBoxItem(["name", conv.to!dstring(selection)], [TextInputType.NULL, TextInputType.TEXT]),
-					new ListBoxItem(["source", conv.to!dstring(wserializer.getValue(selection, "source")[0].get!string())],
-					[TextInputType.NULL, TextInputType.TEXT])];
+			tlw.propList ~= [new ListViewItem(16, ["name"d, conv.to!dstring(selection)], [TextInputFieldType.None, TextInputFieldType.Text]),
+					new ListViewItem(16, ["source"d, conv.to!dstring(wserializer.getValue(selection, "source")[0].get!string())],
+					[TextInputFieldType.None, TextInputFieldType.Text])];
 			if(classname == "Label" || classname == "TextBox" || classname == "Button" || classname == "CheckBox" ||
-					classname == "RadioButtonGroup"){
-				list ~= new ListBoxItem(["text", toUTF32(wserializer.getValue(selection, "text")[0].get!string())], [
-						TextInputType.NULL, TextInputType.TEXT]);
+					classname == "RadioButton"){
+				tlw.propList ~= new ListViewItem(16, ["text", toUTF32(wserializer.getValue(selection, "text")[0].get!string())], 
+						[TextInputFieldType.None, TextInputFieldType.Text]);
 			}
 			Value[] pos0 = wserializer.getValue(selection, "position");
 			dstring pos1 = conv.to!dstring(pos0[0].get!int) ~ ";" ~ conv.to!dstring(pos0[1].get!int) ~ ";" ~
 					conv.to!dstring(pos0[2].get!int) ~ ";" ~ conv.to!dstring(pos0[3].get!int) ~ ";";
-			list ~= new ListBoxItem(["position", pos1], [TextInputType.NULL, TextInputType.TEXT]);
+			tlw.propList ~= new ListViewItem(16, ["position", pos1], [TextInputFieldType.None, TextInputFieldType.Text]);
 			switch(classname){
 				case "Button", "SmallButton":
-					list ~= new ListBoxItem(["icon", conv.to!dstring(wserializer.getValue(selection, "icon")[0].get!string())],
-							[TextInputType.NULL, TextInputType.TEXT] );
+					tlw.propList ~= new ListViewItem(16, ["icon", conv.to!dstring(wserializer.getValue(selection, "icon")[0].get!string())],
+							[TextInputFieldType.None, TextInputFieldType.Text]);
 					break;
-				case "ListBox":
-					list ~= new ListBoxItem(["header", "[...]"], [TextInputType.NULL, TextInputType.NULL]);
-					break;
-				case "RadioButtonGroup":
-					dstring optionName;
-					Value[] optionNameValues = wserializer.getValue(selection, "options");
-					foreach(v ; optionNameValues){
-						optionName ~= toUTF32(v.get!string()) ~ ';';
-					}
-					list ~= [new ListBoxItem(["rowHeight",conv.to!dstring(wserializer.getValue(selection,"rowHeight")[0].get!int())],
-							[TextInputType.NULL, TextInputType.DECIMAL]), new ListBoxItem(["options", optionName], [TextInputType.NULL,
-							TextInputType.TEXT])];
+				case "ListView":
+					tlw.propList ~= new ListViewItem(16, ["header", "[...]"]);
 					break;
 				case "HSlider", "VSlider":
-					list ~= [new ListBoxItem(["barLength",conv.to!dstring(wserializer.getValue(selection,"barLength")[0].get!int())],
-							[TextInputType.NULL, TextInputType.DECIMAL]),
-							new ListBoxItem(["maxValue",conv.to!dstring(wserializer.getValue(selection,"maxValue")[0].get!int())],
-							[TextInputType.NULL, TextInputType.DECIMAL])];
+					tlw.propList ~= [new ListViewItem(16, ["barLength",conv.to!dstring(wserializer.getValue(selection,"barLength")[0].get!int())],
+							[TextInputFieldType.None, TextInputFieldType.Integer]),
+							new ListViewItem(16, ["maxValue",conv.to!dstring(wserializer.getValue(selection,"maxValue")[0].get!int())],
+							[TextInputFieldType.None, TextInputFieldType.Integer])];
 					break;
 				default:
 					break;
 			}
-			ewh.propList.updateColumns(list);
+			
 		}else{
-			ListBoxItem[] list = [new ListBoxItem(["name", conv.to!dstring(wserializer.getWindowName)], [TextInputType.NULL,
-					TextInputType.TEXT]),
-					new ListBoxItem(["title", toUTF32(wserializer.getWindowValue("title")[0].get!string())], [TextInputType.NULL,
-					TextInputType.TEXT]),
-					new ListBoxItem(["size:x", conv.to!dstring(wserializer.getWindowValue("size:x")[0].get!int())], [TextInputType.NULL,
-					TextInputType.TEXT]),
-					new ListBoxItem(["size:y", conv.to!dstring(wserializer.getWindowValue("size:y")[0].get!int())], [TextInputType.NULL,
-					TextInputType.TEXT])];
+			tlw.propList ~= [new ListViewItem(16, ["name", conv.to!dstring(wserializer.getWindowName)], 
+					[TextInputFieldType.None, TextInputFieldType.Text]),
+					new ListViewItem(16, ["title", toUTF32(wserializer.getWindowValue("title")[0].get!string())], 
+					[TextInputFieldType.None, TextInputFieldType.Text]),
+					new ListViewItem(16, ["size:x", conv.to!dstring(wserializer.getWindowValue("size:x")[0].get!int())], 
+					[TextInputFieldType.None, TextInputFieldType.Integer]),
+					new ListViewItem(16, ["size:y", conv.to!dstring(wserializer.getWindowValue("size:y")[0].get!int())], 
+					[TextInputFieldType.None, TextInputFieldType.Integer])];
 
-			ewh.propList.updateColumns(list);
+			
 		}
+		tlw.propList.refresh();
 	}
 
 	public void selectEvent(WindowElement we){
@@ -603,7 +624,9 @@ public class Editor : SystemEventListener, InputListener{
 	}
 
 	public void menuEvent(Event ev){
-		switch(ev.source){
+		import PixelPerfectEngine.concrete.dialogs.filedialog : FileDialog;
+		string source = (cast(MenuEvent)ev).itemSource;
+		switch(source){
 			case "Export":
 				ewh.addWindow(new FileDialog("Export Window"d, "export", &onExportWindow,
 						[FileDialog.FileAssociationDescriptor("D file"d, ["*.d"])], "./", true));
@@ -643,8 +666,8 @@ public class Editor : SystemEventListener, InputListener{
 			case "TextBox":
 				typeSel = ElementType.TextBox;
 				break;
-			case "ListBox":
-				typeSel = ElementType.ListBox;
+			case "ListView":
+				typeSel = ElementType.ListView;
 				break;
 			case "CheckBox":
 				typeSel = ElementType.CheckBox;
@@ -672,22 +695,22 @@ public class Editor : SystemEventListener, InputListener{
 	public void initElemMove() {
 		if(selection != "window" && selection.length) {
 			moveElemMode = true;
-			moveElemOrig = elements[selection].position;
+			moveElemOrig = elements[selection].getPosition;
 		}
 	}
 	public void deinitElemMove() {
 		if(moveElemMode) {
 			moveElemMode = false;
-			elements[selection].position = moveElemOrig;
+			elements[selection].setPosition(moveElemOrig);
 			dw.draw();
 		}
 	}
 	public void finalizeElemMove() {
 		if(moveElemMode) {
 			moveElemMode = false;
-			Coordinate newPos = elements[selection].position;
-			elements[selection].position = moveElemOrig;
-			eventStack.addToTop(new MoveElemEvent(newPos, selection));
+			//Coordinate newPos = elements[selection].getPosition;
+			//elements[selection].setPosition(moveElemOrig);
+			eventStack.addToTop(new MoveElemEvent(elements[selection].getPosition, moveElemOrig, selection));
 		}
 	}
 	public void initElemResize() {
@@ -709,10 +732,10 @@ public class Editor : SystemEventListener, InputListener{
 			if(selection == "window") {
 
 			} else if (selection.length) {
-				if (x0 <= elements[selection].position.left || y0 <= elements[selection].position.top) {
-					ewh.messageWindow("Resize error!", "Out of bound resizing!");
+				if (x0 <= elements[selection].getPosition.left || y0 <= elements[selection].getPosition.top) {
+					ewh.message("Resize error!", "Out of bound resizing!");
 				} else {
-					const Coordinate newPos = Coordinate(elements[selection].position.left, elements[selection].position.top, x0, y0);
+					const Box newPos = Box(elements[selection].getPosition.left, elements[selection].getPosition.top, x0, y0);
 					eventStack.addToTop(new MoveElemEvent(newPos, selection));
 				}
 			}
@@ -763,7 +786,7 @@ public class Editor : SystemEventListener, InputListener{
 					typeSel = ElementType.TextBox;
 					break;
 				case hashCalc("ListView"):
-					typeSel = ElementType.ListBox;
+					typeSel = ElementType.ListView;
 					break;
 				case hashCalc("CheckBox"):
 					typeSel = ElementType.CheckBox;

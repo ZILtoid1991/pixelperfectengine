@@ -82,7 +82,7 @@ public class TextBox : WindowElement, TextInputListener {
 		StyleSheet ss = getStyleSheet();
 		const int textPadding = ss.drawParameters["TextSpacingSides"];
 		with (parent) {
-			drawFilledBox(position, ss.getColor("window"));
+			clearArea(position);
 			drawBox(position, ss.getColor("windowascent"));
 		}
 		//draw cursor

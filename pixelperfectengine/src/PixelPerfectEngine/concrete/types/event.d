@@ -4,6 +4,8 @@ import PixelPerfectEngine.concrete.elements.base;
 import PixelPerfectEngine.concrete.popup.base;
 public import PixelPerfectEngine.system.input.types;
 
+import PixelPerfectEngine.concrete.elements.listview : ListViewItem;
+
 /**
  * Defines an event in the GUI.
  */
@@ -29,6 +31,28 @@ public class Event {
 		this.aux = aux;
 		this.type = type;
 		this.srcType = srcType;
+	}
+}
+/**
+ * Defines a cell editing event.
+ */
+public class CellEditEvent : Event {
+	///The number of row that was edited
+	public int				row;
+	///The number of column that was edited
+	public int				column;
+	///Default CTOR
+	this (Object sender, Object aux, int row, int column) @nogc @safe pure nothrow {
+		super(sender, aux, EventType.CellEdit, SourceType.WindowElement);
+		this.row = row;
+		this.column = column;
+	}
+	///Returns the edited text of the cell
+	public Text text() @trusted @nogc pure nothrow {
+		ListViewItem getListViewItem() @system @nogc pure nothrow {
+			return cast(ListViewItem)aux;
+		}
+		return getListViewItem()[column].text;
 	}
 }
 /**
@@ -105,6 +129,7 @@ public enum EventType {
 	File,
 	Selection,
 	Toggle,
+	CellEdit,
 }
 /**
  * Defines source types.

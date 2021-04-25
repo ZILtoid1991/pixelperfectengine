@@ -29,7 +29,7 @@ public class PlacementEvent : UndoableEvent{
 	}
 	public void redo(){
 		try{
-			wserializer.addElement(type, name, element.position);
+			wserializer.addElement(type, name, element.getPosition);
 			dwtarget.addElement(element);
 			editorTarget.elements[name] = element;
 		}catch(Exception e){
@@ -115,17 +115,17 @@ public class PositionEditEvent : AttributeEditEvent{
 	private Coordinate oldPos, newPos;
 	public this(Coordinate newPos, string targetName){
 		this.newPos = newPos;
-		this.oldPos = editorTarget.elements[targetName].position;
+		this.oldPos = editorTarget.elements[targetName].getPosition;
 		super([Value(newPos.left), Value(newPos.top), Value(newPos.right), Value(newPos.bottom)], "position", targetName);
 	}
 	public override void redo(){
 		super.redo;
-		editorTarget.elements[targetName].position = newPos;
+		editorTarget.elements[targetName].setPosition(newPos);
 		editorTarget.elements[targetName].draw;
 	}
 	public override void undo(){
 		super.undo;
-		editorTarget.elements[targetName].position = oldPos;
+		editorTarget.elements[targetName].setPosition(newPos);
 		editorTarget.elements[targetName].draw;
 	}
 }
@@ -180,7 +180,7 @@ public class WindowWidthChangeEvent : WindowAttributeEditEvent{
 	public this(int newWidth){
 		this.newWidth = newWidth;
 		super("size:x", [Value(newWidth)]);
-		oldWidth = dwtarget.position.width;
+		oldWidth = dwtarget.getPosition.width;
 	}
 	public override void redo(){
 		dwtarget.setWidth(newWidth);
@@ -197,7 +197,7 @@ public class WindowHeightChangeEvent : WindowAttributeEditEvent{
 	public this(int newHeight){
 		this.newHeight = newHeight;
 		super("size:y", [Value(newHeight)]);
-		oldHeight = dwtarget.position.height;
+		oldHeight = dwtarget.getPosition.height;
 	}
 	public override void redo(){
 		dwtarget.setHeight(newHeight);
@@ -230,23 +230,29 @@ public class RenameEvent : UndoableEvent {
 }
 
 public class MoveElemEvent : UndoableEvent {
-	private Coordinate oldPos, newPos;
+	private Box oldPos, newPos;
 	private string target;
-	public this(Coordinate newPos, string target){
+	public this(Box newPos, Box oldPos, string target){
 		this.newPos = newPos;
+		this.oldPos = oldPos;
+		this.target = target;
+	}
+	public this(Box newPos, string target){
+		this.newPos = newPos;
+		this.oldPos = editorTarget.elements[target].getPosition();
 		this.target = target;
 	}
 	public void redo(){
 		wserializer.editValue(target, "position", [Value(newPos.left), Value(newPos.top), Value(newPos.right), 
 				Value(newPos.bottom)]);
-		oldPos = editorTarget.elements[target].position;
-		editorTarget.elements[target].position = newPos;
-		dwtarget.draw();
+		//oldPos = editorTarget.elements[target].position;
+		editorTarget.elements[target].setPosition(newPos);
+		//dwtarget.draw();
 	}
 	public void undo(){
 		wserializer.editValue(target, "position", [Value(oldPos.left), Value(oldPos.top), Value(oldPos.right), 
 				Value(oldPos.bottom)]);
-		editorTarget.elements[target].position = oldPos;
-		dwtarget.draw();
+		editorTarget.elements[target].setPosition(oldPos);
+		//dwtarget.draw();
 	}
 }

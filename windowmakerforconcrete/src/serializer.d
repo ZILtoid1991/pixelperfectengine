@@ -84,7 +84,8 @@ public class WindowSerializer {
 						columnTexts ~= toUTF32(t1.values[0].get!string);
 						columnWidths ~= t1.values[1].get!int;
 					}
-					WindowElement we = new ListView(new ListViewHeader(headerHeight, columnWidths, columnTexts));
+					WindowElement we = new ListView(new ListViewHeader(headerHeight, columnWidths, columnTexts), [], 
+							t0.expectTagValue!string("source"), parseCoordinate(t0.expectTag("position")));
 					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
 					break;

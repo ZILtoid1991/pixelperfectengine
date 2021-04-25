@@ -27,7 +27,7 @@ public enum JoyModifier : ubyte {
  */
 public enum Devicetype : ubyte {
 	Keyboard	= 0,
-	Joystick	= 1,
+	Joystick	= 1,	///Also used for gamepads, wheels, etc., that can be interpreted as such
 	Mouse		= 2,
 	Touchscreen	= 3
 }
@@ -49,6 +49,24 @@ public enum TextInputKey {
 	End			= 11,
 	PageUp		= 12,
 	PageDown	= 13
+}
+/**
+ * Defines what kind of characters can be inputted into a given text field.
+ * Special restrictions are not supported by this enumerator, and every
+ * restriction must be implemented by the targeted text field by disallowing
+ * the input of certain characters.
+ */
+public enum TextInputFieldType : ubyte {
+	init,
+	None = init,
+	Text,
+	ASCIIText,
+	Numeric,
+	Integer,		///Has the ability of fields accepting hexadecimal, etc. integer numbers.
+	Dec,
+	Hex,
+	Oct,
+	Bin
 }
 /**
  * Mouse Buttons that are numbered by the engine.
