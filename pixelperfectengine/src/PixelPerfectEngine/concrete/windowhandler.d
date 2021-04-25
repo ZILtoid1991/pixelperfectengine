@@ -206,7 +206,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 				removeAllPopUps();
 				return;
 			}
-		} else {
+		} else if (mce.state) {
 			foreach (Window w ; windows) {
 				const Box pos = w.getPosition();
 				if (pos.isBetween(mce.x, mce.y)) {
@@ -215,6 +215,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 						setWindowToTop(w);
 					}
 					w.passMCE(mec, mce);
+					dragEventSrc = w;
 					return;
 				}
 			}

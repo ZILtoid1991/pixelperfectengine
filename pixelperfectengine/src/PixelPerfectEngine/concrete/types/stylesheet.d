@@ -75,8 +75,8 @@ public class StyleSheet{
 		color["windowascent"] = 0x0003;
 		color["windowdescent"] = 0x0004;
 		color["windowinactive"] = 0x0005;
-		color["selection"] = 0x0006;
-		color["red"] = 0x0006;
+		color["selection"] = 0x0019;
+		color["red"] = 0x0019;
 		color["WHAascent"] = 0x0007;
 		color["WHAdescent"] = 0x0008;
 		color["WHTextActive"] = 0x001F;

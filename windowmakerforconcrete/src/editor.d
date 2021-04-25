@@ -184,9 +184,15 @@ public class TopLevelWindow : Window {
 		propList = new ListView(new ListViewHeader(16, [128,256], ["Prop"d,"Val"d]), [], "propList",
 				Box(644,242,width - 5,477));
 
+		propList.editEnable = true;
+
 		addElement(mb);
 		addElement(objectList);
 		addElement(propList);
+
+		mb.onMenuEvent = &e.menuEvent;
+		objectList.onItemSelect = &e.onObjectListSelect;
+		propList.onTextInput = &e.onAttributeEdit;
 	}
 	public override void draw(bool drawHeaderOnly = false) {
 		if(output.output.width != position.width || output.output.height != position.height)
@@ -315,6 +321,7 @@ public class Editor : SystemEventListener, InputListener{
 		inputH = new InputHandler();
 		inputH.systemEventListener = this;
 		inputH.inputListener = this;
+		inputH.mouseListener = ewh;
 		
 		/+inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LockKeys);
 		inputH.kb ~= KeyBinding(KeyModifier.Ctrl | KeyModifier.Shift, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, 

@@ -716,11 +716,13 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			}
 		}
 
-		if (mce.button != MouseButton.Left && !mce.state) return;
+		//if (mce.button != MouseButton.Left && !mce.state) return;
 
 		mce.x -= position.left;
 		mce.y -= position.top;
-		if (entries.length && mce.y > _header.height) {
+		if (entries.length && mce.y > _header.height && mce.button == MouseButton.Left && mce.state) {
+			textArea.top = position.top;
+			textArea.left = position.left;
 			mce.y -= _header.height;
 			int pixelsTotal = mce.y, pos;
 			if (vertSlider) ///calculate outscrolled area
@@ -747,9 +749,10 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 							hSelection = cast(int)i;
 							if (vertSlider) textArea.top -= vertSlider.value;
 							if (horizSlider) textArea.left -= horizSlider.value;
+							textArea.top += _header.height;
 							with (textArea) {
-								bottom = entries[selection].height;
-								right = _header.columnWidths[i];
+								bottom = entries[selection].height + textArea.top;
+								right = _header.columnWidths[i] + textArea.left;
 								left = max(textArea.left, position.left);
 								top = max(textArea.top, position.top);
 								right = min(textArea.right, position.right);
@@ -771,7 +774,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 
 			if (onItemSelect !is null && selection != -1)
 				onItemSelect(new Event(this, entries[selection], EventType.Selection, SourceType.WindowElement));
-		} else
+		} else if (!entries.length)
 			selection = -1;
 		
 		draw();
@@ -879,7 +882,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				entries[selection][hSelection].text = text;
 				inputHandler.stopTextInput();
 				if(onTextInput !is null)
-					onTextInput(new CellEditEvent(this, text, selection, hSelection));
+					onTextInput(new CellEditEvent(this, entries[selection], selection, hSelection));
 					//onTextInput(new Event(source, null, null, null, text, 0, EventType.T, null, this));
 				break;
 			case TextInputKey.Escape:
@@ -896,7 +899,9 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				}
 				break;
 			case TextInputKey.Delete:
-				deleteCharacter(cursorPos);
+				if (tselect) {
+					
+				} else deleteCharacter(cursorPos);
 				draw();
 				break;
 			case TextInputKey.CursorLeft:

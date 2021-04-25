@@ -12,6 +12,7 @@ public class MenuBar : WindowElement {
 	private int[] menuWidths;
 	//private PopUpHandler popUpHandler;
 	private int select, usedWidth;
+	public EventDeleg onMenuEvent;
 	public this(string source, Box position, PopUpMenuElement[] menus, StyleSheet customStyle = null){
 		this.customStyle = customStyle;
 		this.source = source;
@@ -44,8 +45,8 @@ public class MenuBar : WindowElement {
 		}
 	}
 	private void redirectIncomingEvents(Event ev){
-		if(onMouseLClick !is null){
-			onMouseLClick(ev);
+		if(onMenuEvent !is null){
+			onMenuEvent(ev);
 		}
 	}
 	///Passes mouse click event

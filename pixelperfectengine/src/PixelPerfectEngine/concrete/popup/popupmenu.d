@@ -152,7 +152,7 @@ public class PopUpMenuElement {
 		StyleSheet ss = globalDefaultStyle;
 		Text st;
 		if (secondaryText.length) {
-			st = new Text(text, ss.getChrFormatting("popUpMenuSecondary"));
+			st = new Text(secondaryText, ss.getChrFormatting("popUpMenuSecondary"));
 		}
 		this(source, new Text(text, ss.getChrFormatting("popUpMenu")), st, subElements);
 	}
