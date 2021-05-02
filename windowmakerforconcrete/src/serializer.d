@@ -49,32 +49,44 @@ public class WindowSerializer {
 	public void deserialize(DummyWindow dw, Editor e) {
 		root = parseFile(filename);
 		foreach(t0; root.all.tags){
+			string name = t0.expectValue!string(), type;
+			WindowElement we;
 			switch(t0.getFullName.toString){
 				case "Label":
-					WindowElement we = new Label(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					we = new Label(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
+					type = "Label";
 					break;
 				case "Button":
-					WindowElement we = new Button(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					we = new Button(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
+					type = "Button";
 					break;
 				case "SmallButton":
 					break;
 				case "TextBox":
-					WindowElement we = new TextBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					we = new TextBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
+					type = "TextBox";
+					break;
+				case "SmallCheckBox":
 					break;
 				case "CheckBox":
-					WindowElement we = new CheckBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+					we = new CheckBox(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
 							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
+					type = "CheckBox";
+					break;
+				case "SmallRadioButton":
+					break;
+				case "RadioButton":
+					we = new RadioButton(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
+							parseCoordinate(t0.expectTag("position")));
+					dw.addElement(we);
+					type = "RadioButton";
 					break;
 				case "ListView":
 					int[] columnWidths;
@@ -84,82 +96,59 @@ public class WindowSerializer {
 						columnTexts ~= toUTF32(t1.values[0].get!string);
 						columnWidths ~= t1.values[1].get!int;
 					}
-					WindowElement we = new ListView(new ListViewHeader(headerHeight, columnWidths, columnTexts), [], 
+					we = new ListView(new ListViewHeader(headerHeight, columnWidths, columnTexts), [], 
 							t0.expectTagValue!string("source"), parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.expectValue!string()] = we;
 					dw.addElement(we);
-					break;
-				/+case "RadioButtonGroup":
-					dstring[] options;
-					Value[] vals = t0.expectTag("options").values;
-					foreach(v; vals){
-						options ~= toUTF32(v.get!string);
-					}
-					WindowElement we = new RadioButtonGroup(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
-							parseCoordinate(t0.expectTag("position")), options, 16, 0);
-					e.elements[t0.expectValue!string()] = we;
-					dw.addElement(we,0);
-					break;+/
-				case "RadioButton":
-					WindowElement we = new RadioButton(toUTF32(t0.expectTagValue!string("text")), t0.expectTagValue!string("source"),
-							parseCoordinate(t0.expectTag("position")));
-					e.elements[t0.expectValue!string()] = we;
-					dw.addElement(we);
+					type = "ListView";
 					break;
 				case "Window":
 					dw.setTitle(toUTF32(t0.expectTagValue!string("title")));
 					dw.setSize(t0.expectTagValue!int("size:x"),t0.expectTagValue!int("size:y"));
+					type = "Window";
 					break;
 				default:
 					break;
+			}
+			if (type != "Window") {
+				e.elements[name] = we;
+				e.elementTypes[name] = type;
 			}
 		}
 		e.updateElementList;
 	}
 	public void generateDCode(string outputFile){
-		string outputCode = "import PixelPerfectEngine.concrete.window \n\n", windowCtor, elementCtors, typeDefs;
+		string outputCode = "import PixelPerfectEngine.concrete.window; \n\n", windowCtor, elementCtors, typeDefs;
 		foreach(t0; root.all.tags){
-			if(t0.getFullName.toString != "Window"){
-				elementCtors ~= "\t\t" ~ t0.getValue!string() ~ " = ";
-				typeDefs ~= "\t" ~ t0.name ~ " " ~ t0.getValue!string() ~ ";\n";
+			string typeName = t0.name;
+			switch (typeName) {
+				case "Window": break;
+				case "SmallRadioButton":
+					elementCtors ~= "\t\t" ~ t0.getValue!string() ~ " = ";
+					typeDefs ~= "\t" ~ "RadioButton" ~ " " ~ t0.getValue!string() ~ ";\n";
+					break;
+				case "SmallCheckBox":
+					elementCtors ~= "\t\t" ~ t0.getValue!string() ~ " = ";
+					typeDefs ~= "\t" ~ "CheckBox" ~ " " ~ t0.getValue!string() ~ ";\n";
+					break;
+				default:
+					elementCtors ~= "\t\t" ~ t0.getValue!string() ~ " = ";
+					typeDefs ~= "\t" ~ typeName ~ " " ~ t0.getValue!string() ~ ";\n";
+					break;
 			}
-			switch(t0.getFullName.toString){
+			switch(typeName){
 				case "Button", "Label", "TextBox", "CheckBox", "RadioButton":
-					elementCtors ~= "new " ~ t0.getFullName.toString ~ "(\"" ~ t0.getTagValue!string("text") ~ "\"d, \"" ~
-							t0.getTagValue!string("source") ~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
+					elementCtors ~= "new " ~ typeName ~ "(\"" ~ t0.getTagValue!string("text") ~ "\"d, \"" ~
+							t0.getTagValue!string("source") ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
-				/+case "RadioButton":
-					string options = "[";
-					foreach(v; t0.getTagValues("options")){
-						options ~= "\"" ~ v.get!string() ~ "\"d, ";
-					}
-					if(options != "[")
-						options.length -= 2;
-					options ~= "]";
-					elementCtors ~= "\t\tnew RadioButton(\"" ~ t0.getTagValue!string("text") ~ "\"d, \"" ~ t0.getTagValue!string("source")
-							~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));";
-					break;+/
-				case "HSlider", "VSlider":
-					elementCtors ~= "\t\tnew " ~ t0.getFullName.toString ~ "(\"" ~ conv.to!string(t0.getTagValue!int("maxValue")) ~
-							", " ~ conv.to!string(t0.getTagValue!int("barLength")) ~ ", " ~ t0.getTagValue!string("source") ~
-							"\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
+				case "HorizScrollBar", "VertScrollBar":
+					elementCtors ~= "new " ~ typeName ~ "(\"" ~ conv.to!string(t0.getTagValue!int("maxValue")) ~ ", " ~ 
+							t0.getTagValue!string("source") ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
-				case "OldListBox":
-					string headerCtorA = "new ListBoxHeader([", headerCtorB = "], [";
-					foreach(t1; t0.expectTag("header").tags){
-						headerCtorA ~= "\"" ~ t1.values[0].get!string ~ "\"d, ";
-						headerCtorB ~= conv.to!string(t1.values[1].get!int) ~ ", ";
-					}
-					headerCtorA.length -= 2;
-					headerCtorB.length -= 2;
-					elementCtors ~= "\t\tnew OldListBox(\"" ~ t0.getTagValue!string("source")
-							~ "\", Coordinate(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "), [], " ~
-							headerCtorA ~ headerCtorB ~ "]));\n";
-					break;
+				
 				case "Window":
 					outputCode ~= "public class " ~ t0.getValue!string() ~ " : Window {\n";
-					string extraButtons;
-					Tag t1 = t0.getTag("extraButtons", null);
+					//string extraButtons;
+					/+Tag t1 = t0.getTag("extraButtons", null);
 					if(t1 !is null){
 						if(t1.values.length){
 							extraButtons = ", [";
@@ -169,10 +158,12 @@ public class WindowSerializer {
 							extraButtons.length -= 2;
 							extraButtons = "]";
 						}
-					}
-					windowCtor = "super(\"" ~ t0.getTagValue!string("title") ~ "\"d, Coordinate(0, 0, " ~
+					}+/
+					/+windowCtor = "super(\"" ~ t0.getTagValue!string("title") ~ "\"d, Box(0, 0, " ~
 							conv.to!string(t0.getTagValue!int("size:x")) ~ ", " ~ conv.to!string(t0.getTagValue!int("size:y")) ~ " )" ~
-							extraButtons ~ ");\n";
+							extraButtons ~ ");\n";+/
+					windowCtor = "super(Box(0, 0, " ~ conv.to!string(t0.getTagValue!int("size:x")) ~ ", " ~ 
+							conv.to!string(t0.getTagValue!int("size:y")) ~ "), \"" ~ t0.getTagValue!string("title") ~ "\");\n";
 					break;
 				default:
 					break;
@@ -243,52 +234,36 @@ public class WindowSerializer {
 			}
 		}
 	}
-	public void addElement(ElementType type, string name, Coordinate initPos){
+	public void addElement(string type, string name, Coordinate initPos){
 		foreach(t; root.tags){
 			if(t.getValue!string() == name)
 				throw new ElementCollisionException("Similarly named element already exists!");
 		}
-		Tag t1;
+		Tag t1 = new Tag(root, null, type, [Value(name)]);
 		switch(type){
-			case ElementType.Label:
-				t1 = new Tag(root, null, "Label", [Value(name)]);
+			case "Label", "TextBox", "RadioButton", "CheckBox":
 				new Tag(t1, null, "text", [Value(name)]);
 				break;
-			case ElementType.Button:
-				t1 = new Tag(root, null, "Button", [Value(name)]);
-				new Tag(t1, null, "text", [Value(name)]);
+			case "Button":
 				new Tag(t1, null, "icon", [Value("null")]);
-				break;
-			case ElementType.TextBox:
-				t1 = new Tag(root, null, "TextBox", [Value(name)]);
-				new Tag(t1, null, "text", [Value(name)]);
-				break;
-			case ElementType.ListView:
-				t1 = new Tag(root, null, "OldListBox", [Value(name)]);
-				Tag t2 = new Tag(t1, null, "header");
+				goto case "Label";
+			case "ListView":
+				Tag t2 = new Tag(t1, null, "header", [Value(16)]);
 				new Tag(t2, null, null, [Value("col0"), Value(40)]);
 				new Tag(t2, null, null, [Value("col1"), Value(40)]);
 				break;
-			case ElementType.RadioButton:
-				t1 = new Tag(root, null, "RadioButton", [Value(name)]);
-				new Tag(t1, null, "text", [Value(name)]);
-				break;
-			case ElementType.CheckBox:
-				t1 = new Tag(root, null, "CheckBox", [Value(name)]);
-				new Tag(t1, null, "text", [Value(name)]);
-				break;
-			case ElementType.HSlider:
-				t1 = new Tag(root, null, "HSlider", [Value(name)]);
+			case "HorizScrollBar", "VertScrollBar":
 				new Tag(t1, null, "barLength", [Value(1)]);
 				new Tag(t1, null, "maxValue", [Value(16)]);
 				break;
-			case ElementType.VSlider:
-				t1 = new Tag(root, null, "VSlider", [Value(name)]);
-				new Tag(t1, null, "barLength", [Value(1)]);
-				new Tag(t1, null, "maxValue", [Value(16)]);
-				break;
-			case ElementType.MenuBar:
-				t1 = new Tag(root, null, "MenuBar", [Value(name)]);
+			case "MenuBar":
+				Tag t2 = new Tag(t1, null, "options");
+				Tag t3 = new Tag(t2, null, null, [Value("opt0")]);
+				new Tag(t3, null, null, [Value("opt0_0")]);
+				new Tag(t3, null, null, [Value("opt0_1")]);
+				Tag t4 = new Tag(t2, null, null, [Value("opt1")]);
+				new Tag(t4, null, null, [Value("opt1_0")]);
+				new Tag(t4, null, null, [Value("opt1_1")]);
 				break;
 			default:
 				break;

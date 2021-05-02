@@ -147,32 +147,20 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	}
 	/**
 	 * Closes the given window.
+	 *
+	 * NOTE: The closed window should be dereferenced in other places in order to be deallocated by the GC. If not,
+	 * then it can be used to restore the window without creating a new one, potentially saving it's states.
 	 */
 	public void closeWindow(Window sender) {
-		//writeln(sender);
-		//dragEventState = false;
-		//dragEventDest = null;
 		const int p = whichWindow(sender);
-		/+for(int i ; i < windows.length ; i++)
-			spriteLayer.removeSprite(i);+/
-		//spriteLayer.removeSprite(p);
 		windows.remove(p);
 
 		updateSpriteOrder();
 	}
-	/+
-	/**
-	 * Initializes window move or resize.
-	 */
-	public void initWindowMove(Window sender) @safe nothrow {
-		//moveState = true;
-		if (windows.length) {
-			if (cmpObjPtr(windows[0], sender)) 
-				windowToMove = sender;
-		}
-	}+/
+	
 	/**
 	 * Initializes drag event.
+	 * Used to avoid issues from stray mouse release, etc.
 	 */
 	public void initDragEvent(MouseEventReceptor dragEventSrc) @safe nothrow {
 		this.dragEventSrc = dragEventSrc;
@@ -257,7 +245,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		if (baseWindow) baseWindow.passMME(mec, mme);
 	}
 	/**
-	 * Sets the BaseWindow to the given object
+	 * Sets the BaseWindow to the given object.
+	 *
+	 * The base window has no priority and will reside forever in the background. Can be used for various ends.
 	 */
 	public Window setBaseWindow(Window w) @safe nothrow {
 		import PixelPerfectEngine.graphics.layers.base : RenderingMode;
@@ -267,114 +257,13 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		spriteLayer.setSpriteRenderingMode(65_535, RenderingMode.Blitter);
 		return baseWindow;
 	}
-	/+public void mouseButtonEvent(uint which, uint timestamp, uint windowID, ubyte button, ubyte state, ubyte clicks, int x, int y){
-
-		//converting the dimensions
-		double xR = to!double(rasterWidth) / to!double(screenWidth) , yR = to!double(rasterHeight) / to!double(screenHeight);
-		x = to!int(x * xR);
-		y = to!int(y * yR);
-		mouseX = x;
-		mouseY = y;
-		//if(button == MouseButton.LEFT){
-		if(state == ButtonState.PRESSED){
-			if(numOfPopUpElements < 0){
-				foreach(p ; popUpElements){
-				if(y >= p.position.top && y <= p.position.bottom && x >= p.position.left && x <= p.position.right){
-					p.onClick(x - p.position.left, y - p.position.top);
-					return;
-				}
-			}
-			//removeAllPopUps();
-			removeTopPopUp();
-			} else {
-				moveX = x;
-				moveY = y;
-				for(int i ; i < windows.length ; i++){
-					if(x >= windows[i].position.left && x <= windows[i].position.right && y >= windows[i].position.top && y <= windows[i].position.bottom){
-						//if(i == 0){
-						dragEventState = true;
-						windows[i].passMouseEvent(x - windows[i].position.left, y - windows[i].position.top, state, button);
-						if(dragEventState)
-							dragEventDest = windows[i];
-					if(windows.length !=0){
-						dragEventState = true;
-						dragEventDest = windows[0];
-					}				//return;
-					//}else{
-						if(i != 0){
-							setWindowToTop(windows[i]);
-
-						}
-						lastMouseButton = button;
-						return;
-					}
-				}
-				passMouseEvent(x,y,state,button);
-
-			}
-		}else{
-			if(moveState){
-				moveState = false;
-			}else if(dragEventDest){
-				dragEventDest.passMouseEvent(x - dragEventDest.position.left, y - dragEventDest.position.top, state, button);
-				dragEventDest = null;
-			}else{
-				passMouseEvent(x,y,state,button);
-			}
-		}
-	}
-	+/
-	/+public void passMouseEvent(int x, int y, int state, ubyte button){
-
-	}
-	public void passMouseDragEvent(int x, int y, int relX, int relY, ubyte button){
-	}
-	public void passMouseMotionEvent(int x, int y, int relX, int relY, ubyte button){
-	}
-	public void mouseWheelEvent(uint type, uint timestamp, uint windowID, uint which, int x, int y, int wX, int wY){
-		double xR = to!double(rasterWidth) / to!double(screenWidth) , yR = to!double(rasterHeight) / to!double(screenHeight);
-		wX = to!int(wX * xR);
-		wY = to!int(wY * yR);
-		if(windows.length != 0)
-			windows[0].passScrollEvent(wX - windows[0].position.left, wY - windows[0].position.top, y, x);
-		passScrollEvent(wX,wY,x,y);
-	}
-	public void passScrollEvent(int wX, int wY, int x, int y){
-
-	}
-	public void mouseMotionEvent(uint timestamp, uint windowID, uint which, uint state, int x, int y, int relX, int relY){
-		import std.math : ceil;
-		//coordinate conversion
-		double xR = to!double(rasterWidth) / to!double(screenWidth) , yR = to!double(rasterHeight) / to!double(screenHeight);
-		x = to!int(x * xR);
-		y = to!int(y * yR);
-		relX = to!int(ceil(relX * xR));
-		relY = to!int(ceil(relY * yR));
-		//passing mouseMovementEvent onto PopUps
-		if(numOfPopUpElements < 0){
-			PopUpElement p = popUpElements[popUpElements.length - 1];
-			if(p.position.top < y && p.position.bottom > y && p.position.left < x && p.position.right > x){
-				p.onMouseMovement(x - p.position.left, y - p.position.top);
-				return;
-			}else{
-				p.onMouseMovement(-1,-1);
-			}
-
-		}
-		if(state == ButtonState.PRESSED && moveState){
-			windowToMove.relMove(relX, relY);
-		}else if(state == ButtonState.PRESSED && dragEventDest){
-			dragEventDest.passMouseDragEvent(x, y, relX, relY, lastMouseButton);
-		}else{
-			if(windows.length){
-				windows[0].passMouseMotionEvent(x, y, relX, relY, lastMouseButton);
-			}
-		}
-	}
-	+/
+	
 	
 	/**
-	 * Refreshes window.
+	 * Replaces the window's old sprite in the spritelayer's display list with the new one.
+	 *
+	 * Needed to be called each time the window's sprite is being replaced, or else the previous one will be continued to
+	 * be displayed without any updates.
 	 */
 	public void refreshWindow(Window sender) @safe {
 		const int n = whichWindow(sender);
@@ -431,11 +320,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		popUpElements.removeByElem(p);
 	}
 	
-	public void drawUpdate(Window sender){
-		/*int p = whichWindow(sender);
-		spriteLayer.removeSprite(p);
-		spriteLayer.addSprite(sender.output.output,p,sender.position);*/
-	}
+	
 	/*public Coordinate getAbsolutePosition(PopUpElement sender){
 		for(int i ; i < popUpElements.length ; i++){
 			if(popUpElements[i] = sender){

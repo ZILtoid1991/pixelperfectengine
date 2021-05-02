@@ -19,10 +19,10 @@ public static Editor editorTarget;
 
 public class PlacementEvent : UndoableEvent{
 	private WindowElement element;
-	private ElementType type;
+	private string type;
 	private string name;
 	private Tag backup;
-	public this(WindowElement element, ElementType type, string name){
+	public this(WindowElement element, string type, string name){
 		this.element = element;
 		this.type = type;
 		this.name = name;
@@ -32,6 +32,7 @@ public class PlacementEvent : UndoableEvent{
 			wserializer.addElement(type, name, element.getPosition);
 			dwtarget.addElement(element);
 			editorTarget.elements[name] = element;
+			editorTarget.elementTypes[name] = type;
 		}catch(Exception e){
 			writeln(e);
 		}
@@ -41,6 +42,7 @@ public class PlacementEvent : UndoableEvent{
 		backup = wserializer.removeElement(name);
 		dwtarget.removeElement(element);
 		editorTarget.elements.remove(name);
+		editorTarget.elementTypes.remove(name);
 		editorTarget.updateElementList;
 	}
 }
@@ -247,12 +249,12 @@ public class MoveElemEvent : UndoableEvent {
 				Value(newPos.bottom)]);
 		//oldPos = editorTarget.elements[target].position;
 		editorTarget.elements[target].setPosition(newPos);
-		//dwtarget.draw();
+		dwtarget.draw();
 	}
 	public void undo(){
 		wserializer.editValue(target, "position", [Value(oldPos.left), Value(oldPos.top), Value(oldPos.right), 
 				Value(oldPos.bottom)]);
 		editorTarget.elements[target].setPosition(oldPos);
-		//dwtarget.draw();
+		dwtarget.draw();
 	}
 }

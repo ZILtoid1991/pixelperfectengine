@@ -949,6 +949,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 */
 	public void dropTextInput() {
 		flags &= ~TEXTINPUT_EN;
+		draw;
 	}
 	/**
 	 * Called if text input should be initialized.

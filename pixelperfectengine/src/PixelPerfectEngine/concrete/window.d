@@ -182,8 +182,10 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 * Draws the window. Intended to be used by the WindowHandler.
 	 */
 	public void draw(bool drawHeaderOnly = false) {
-		if(output.output.width != position.width || output.output.height != position.height)
+		if(output.output.width != position.width || output.output.height != position.height) {
 			output = new BitmapDrawer(position.width(), position.height());
+			handler.refreshWindow(this);
+		}
 		
 		//drawing the header
 		drawHeader();

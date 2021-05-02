@@ -225,22 +225,22 @@ public class DummyWindow : Window {
 		}else if(mce.button == MouseButton.Right){
 			foreach(we; elements){
 				const Box c = we.getPosition;
-				if(mce.x > c.left && mce.x < c.right && mce.y > c.top && mce.y < c.bottom)
+				if(c.isBetween(mce.x, mce.y))
 					ed.selectEvent(we);
 			}
 		}
 	}
 	public void setWidth(int val) {
-		position.right = position.left + val;
+		position.width = val;
 		draw();
 	}
 	public void setHeight(int val) {
-		position.bottom = position.top + val;
+		position.height = val;
 		draw();
 	}
 	public void setSize(int width, int height) {
-		position.right = position.left + width;
-		position.bottom = position.top + height;
+		position.width = width;
+		position.height = height;
 		draw();
 	}
 	override public void close() {
@@ -300,6 +300,7 @@ public class Editor : SystemEventListener, InputListener{
 	ElementType			typeSel;
 	UndoableStack		eventStack;
 	WindowElement[string] elements;
+	string[string]		elementTypes;
 	string				selection;
 	ConfigurationProfile	config;
 	TopLevelWindow		tlw;
@@ -323,19 +324,6 @@ public class Editor : SystemEventListener, InputListener{
 		inputH.inputListener = this;
 		inputH.mouseListener = ewh;
 		
-		/+inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.Z, 0, "undo", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl | KeyModifier.Shift, ScanCode.Z, 0, "redo", Devicetype.KEYBOARD, 
-				KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(0, ScanCode.DELETE, 0, "del", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(0, ScanCode.ESCAPE, 0, "sysesc", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F1, 0, "Label", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F2, 0, "Button", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F3, 0, "TextBox", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F4, 0, "ListBox", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F5, 0, "CheckBox", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F6, 0, "RadioButton", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F8, 0, "HSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);
-		inputH.kb ~= KeyBinding(KeyModifier.Ctrl, ScanCode.F9, 0, "VSlider", Devicetype.KEYBOARD, KeyModifier.LockKeys);+/
 		//ewh.setBaseWindow(new TopLevelWindow(848, 480, this));
 		config = new ConfigurationProfile("config_wmfc.sdl", "../system/config_wmfc.sdl");
 		{
@@ -380,10 +368,10 @@ public class Editor : SystemEventListener, InputListener{
 	public void onObjectListSelect(Event ev){
 		deinitElemMove;
 		ListViewItem lbi = cast(ListViewItem)ev.aux;
-		if(lbi[0].text.text != "window"){
+		if(lbi[0].text.text != "Window"){
 			selection = conv.to!string(lbi[1].text.text);
 		}else{//Fill attribute list with data related to the window
-			selection = "window";
+			selection = "Window";
 		}
 		updatePropertyList;
 	}
@@ -480,31 +468,36 @@ public class Editor : SystemEventListener, InputListener{
 					c.bottom = y0;
 				}
 				WindowElement we;
-				string s;
+				string s, type;
 				switch(typeSel){
 					case ElementType.Label:
 						s = getNextName("label");
+						type = "Label";
 						we = new Label(conv.to!dstring(s),s,c);
 						break;
 					case ElementType.Button:
 						s = getNextName("button");
+						type = "Button";
 						we = new Button(conv.to!dstring(s),s,c);
 						break;
 					case ElementType.TextBox:
 						s = getNextName("textBox");
+						type = "TextBox";
 						we = new TextBox(conv.to!dstring(s),s,c);
 						break;
 					case ElementType.ListView:
 						s = getNextName("listView");
-						//we = new ListBox(s,c,[], new ListBoxHeader(["col0", "col1"],[40,40]), 16);
+						type = "ListView";
 						we = new ListView(new ListViewHeader(16, [40, 40], ["col0", "col1"]), [], s, c);
 						break;
 					case ElementType.CheckBox:
 						s = getNextName("CheckBox");
+						type = "CheckBox";
 						we = new CheckBox(conv.to!dstring(s),s,c);
 						break;
 					case ElementType.RadioButton:
 						s = getNextName("radioButton");
+						type = "RadioButton";
 						we = new RadioButton(conv.to!dstring(s),s,c);
 						break;
 					/+case ElementType.MenuBar:
@@ -512,17 +505,19 @@ public class Editor : SystemEventListener, InputListener{
 						we = new MenuBar(s,c,[new PopUpMenuElement("menu0","menu0")]);+/
 						//break;
 					case ElementType.HSlider:
-						s = getNextName("hSlider");
+						s = getNextName("horizScrollBar");
+						type = "HorizScrollBar";
 						we = new HorizScrollBar(16,s,c);
 						break;
 					case ElementType.VSlider:
-						s = getNextName("vSlider");
+						s = getNextName("vertScrollBar");
+						type = "VertScrollBar";
 						we = new VertScrollBar(16,s,c);
 						break;
 					default:
 						break;
 				}
-				eventStack.addToTop(new PlacementEvent(we, typeSel, s));
+				eventStack.addToTop(new PlacementEvent(we, type, s));
 				typeSel = ElementType.NULL;
 				//updateElementList;
 			}
@@ -557,15 +552,15 @@ public class Editor : SystemEventListener, InputListener{
 			y0 = y;
 			dw.drawSelection(Box(elements[selection].getPosition.left, elements[selection].getPosition.top, x0, y0));
 		} else if (typeSel != ElementType.NULL) {
-			dw.drawSelection(Box(x0, y0, x, y));
+			dw.drawSelection(Box(x0, y0, x, y), true);
 		}
 	}
 
 	public void updateElementList(){
 		tlw.objectList.clear();
-		tlw.objectList ~= new ListViewItem(16, ["window"d, ""d]);
+		tlw.objectList ~= new ListViewItem(16, ["Window"d, ""d]);
 		foreach(s; elements.byKey){
-			tlw.objectList ~= new ListViewItem(16, [conv.to!dstring(elements[s].classinfo.name[37..$]), conv.to!dstring(s)]);
+			tlw.objectList ~= new ListViewItem(16, [conv.to!dstring(elementTypes[s]), conv.to!dstring(s)]);
 		}
 		tlw.objectList.refresh();
 	}
@@ -574,7 +569,7 @@ public class Editor : SystemEventListener, InputListener{
 		import std.utf;
 		tlw.propList.clear();
 		if(elements.get(selection, null) !is null){
-			string classname = elements[selection].classinfo.name[37..$];
+			string classname = elementTypes[selection];
 			tlw.propList ~= [new ListViewItem(16, ["name"d, conv.to!dstring(selection)], [TextInputFieldType.None, TextInputFieldType.Text]),
 					new ListViewItem(16, ["source"d, conv.to!dstring(wserializer.getValue(selection, "source")[0].get!string())],
 					[TextInputFieldType.None, TextInputFieldType.Text])];
@@ -588,7 +583,7 @@ public class Editor : SystemEventListener, InputListener{
 					conv.to!dstring(pos0[2].get!int) ~ ";" ~ conv.to!dstring(pos0[3].get!int) ~ ";";
 			tlw.propList ~= new ListViewItem(16, ["position", pos1], [TextInputFieldType.None, TextInputFieldType.Text]);
 			switch(classname){
-				case "Button", "SmallButton":
+				case "Button", "SmallButton", "SmallCheckBox", "SmallRadioButton":
 					tlw.propList ~= new ListViewItem(16, ["icon", conv.to!dstring(wserializer.getValue(selection, "icon")[0].get!string())],
 							[TextInputFieldType.None, TextInputFieldType.Text]);
 					break;
@@ -634,7 +629,7 @@ public class Editor : SystemEventListener, InputListener{
 		import PixelPerfectEngine.concrete.dialogs.filedialog : FileDialog;
 		string source = (cast(MenuEvent)ev).itemSource;
 		switch(source){
-			case "Export":
+			case "export":
 				ewh.addWindow(new FileDialog("Export Window"d, "export", &onExportWindow,
 						[FileDialog.FileAssociationDescriptor("D file"d, ["*.d"])], "./", true));
 				break;
@@ -696,11 +691,11 @@ public class Editor : SystemEventListener, InputListener{
 		}
 	}
 	public void delElement() {
-		if(selection != "window" && selection.length)
+		if(selection != "Window" && selection.length)
 			eventStack.addToTop(new DeleteEvent(elements[selection], selection));
 	}
 	public void initElemMove() {
-		if(selection != "window" && selection.length) {
+		if(selection != "Window" && selection.length) {
 			moveElemMode = true;
 			moveElemOrig = elements[selection].getPosition;
 		}
@@ -721,7 +716,7 @@ public class Editor : SystemEventListener, InputListener{
 		}
 	}
 	public void initElemResize() {
-		if(selection == "window") {
+		if(selection == "Window") {
 			
 			
 		} else if(selection.length) {
@@ -736,7 +731,7 @@ public class Editor : SystemEventListener, InputListener{
 	public void finalizeElemResize() {
 		if(resizeMode) {
 			resizeMode = false;
-			if(selection == "window") {
+			if(selection == "Window") {
 
 			} else if (selection.length) {
 				if (x0 <= elements[selection].getPosition.left || y0 <= elements[selection].getPosition.top) {
