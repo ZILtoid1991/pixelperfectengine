@@ -142,12 +142,10 @@ public class PopUpMenuElement {
 	private int keycode;
 	public int iconWidth;
 
-	/+public this(string source, Text text, Text secondaryText = null){
-		this.source = source;
-		this.text = text;
-		this.secondaryText = secondaryText;
-		//this.iconWidth = iconWidth;
-	}+/
+	/**
+	 * Generates a menu element with the supplied parameters.
+	 * Uses the default formatting to initialize texts.
+	 */
 	public this(string source, dstring text, dstring secondaryText = "", PopUpMenuElement[] subElements = null) {
 		StyleSheet ss = globalDefaultStyle;
 		Text st;
@@ -156,46 +154,63 @@ public class PopUpMenuElement {
 		}
 		this(source, new Text(text, ss.getChrFormatting("popUpMenu")), st, subElements);
 	}
+	/**
+	 * Generates a menu element with the supplied parameters.
+	 * Text formatting can be supplied with the objects.
+	 */
 	public this(string source, Text text, Text secondaryText = null, PopUpMenuElement[] subElements = []) {
 		this.source = source;
 		this.text = text;
 		this.secondaryText = secondaryText;
 		this.subElements = subElements;
 	}
-	/+public this(string source, Text text, Text secondaryText, PopUpMenuElement[] subElements){
-		this.source = source;
-		this.text = text;
-		this.secondaryText = secondaryText;
-		this.subElements = subElements;
-	}+/
+	///DEPRECATED!
+	///REMOVE BY VER 0.11!
 	public Bitmap8Bit getIcon(){
 		return text.icon;
 	}
+	///DEPRECATED!
+	///REMOVE BY VER 0.11!
 	public void setIcon(Bitmap8Bit icon){
 		text.icon = icon;
 	}
+	///Returns all subelements of this menu element.
 	public PopUpMenuElement[] getSubElements() {
 		return subElements;
 	}
+	/**
+	 * Assigns this current object's all subelements at once.
+	 */
 	public void loadSubElements(PopUpMenuElement[] e){
 		subElements = e;
 	}
+	/**
+	 * Gets the subelement at the given index.
+	 */
 	public PopUpMenuElement opIndex(size_t i){
 		return subElements[i];
 	}
+	/**
+	 * Sets the subelement at the given index.
+	 */
 	public PopUpMenuElement opIndexAssign(PopUpMenuElement value, size_t i){
 		subElements[i] = value;
 		return value;
 	}
+	/**
+	 * Implements appending to the last position of the underlying array.
+	 */
 	public PopUpMenuElement opOpAssign(string op)(PopUpMenuElement value){
 		static if(op == "~"){
 			subElements ~= value;
 			return value;
 		}else static assert("Operator " ~ op ~ " not supported!");
 	}
+	///Returns the lenght of the underlying array.
 	public size_t getLength(){
 		return subElements.length;
 	}
+	///Sets the lenght of the underlying array.
 	public void setLength(int l){
 		subElements.length = l;
 	}

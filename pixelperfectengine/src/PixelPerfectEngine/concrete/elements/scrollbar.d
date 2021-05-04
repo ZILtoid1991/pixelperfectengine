@@ -50,7 +50,9 @@ abstract class ScrollBar : WindowElement{
 		return _maxValue;
 	}
 	/**
-	 * Returns the length of the scrollbar.
+	 * Returns the length of the scrollbar in pixels.
+	 *
+	 * Automatically calculated every time maxValue is changed.
 	 */
 	public @property int barLength() @nogc @safe pure nothrow const {
 		return _barLength;

@@ -12,127 +12,10 @@ import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.outputScreen;
 import PixelPerfectEngine.system.config;
 import std.bitmanip : bitfields;
+public import collections.linkedlist;
 
 import conv = std.conv;
 import stdio = std.stdio;
-
-/+public class EditorWindowHandler : WindowHandler, ElementContainer{
-	private WindowElement[] elements, mouseC, keyboardC, scrollC;
-	public ListBox objectList, propList;
-	//private ListBoxColumn[] propTL, propSL, propSLE;
-	//private ListBoxColumn[] layerListE;
-	public Editor ie;
-
-	//public InputHandler ih;
-
-	private BitmapDrawer output;
-	public this(int sx, int sy, int rx, int ry, ISpriteLayer sl, Editor ie){
-		super(sx,sy,rx,ry,sl);
-		output = new BitmapDrawer(rx, ry);
-		addBackground(output.output);
-
-		WindowElement.popUpHandler = this;
-		this.ie = ie;
-	}
-	public void clearArea(WindowElement sender){
-
-	}
-	public void initGUI(){
-		Text pt(dstring text) {
-			return new Text(text, WindowElement.styleSheet.getChrFormatting("popUpMenu"));
-		}
-		Text st(dstring text) {
-			return new Text(text, WindowElement.styleSheet.getChrFormatting("popUpMenuSecondary"));
-		}
-		Text mt(dstring text) {
-			return new Text(text, WindowElement.styleSheet.getChrFormatting("menuBar"));
-		}
-		output.drawFilledRectangle(0, rasterX, 0, rasterY, 0x0005);
-
-		PopUpMenuElement[] menuElements;
-		menuElements ~= new PopUpMenuElement("file", mt("FILE"));
-
-		menuElements[0] ~= new PopUpMenuElement("new", pt("New window"), st("Ctrl + N"));
-		menuElements[0] ~= new PopUpMenuElement("load", pt("Load window"), st("Ctrl + L"));
-		menuElements[0] ~= new PopUpMenuElement("save", pt("Save window"), st("Ctrl + S"));
-		menuElements[0] ~= new PopUpMenuElement("saveAs", pt("Save window as"), st("Ctrl + Shift + S"));
-		menuElements[0] ~= new PopUpMenuElement("Export", pt("Export window as D code"), st("Ctrl + Shift + X"));
-		menuElements[0] ~= new PopUpMenuElement("exit", pt("Exit application"), st("Alt + F4"));
-
-		menuElements ~= new PopUpMenuElement("edit", mt("EDIT"));
-
-		menuElements[1] ~= new PopUpMenuElement("undo", pt("Undo"), st("Ctrl + Z"));
-		menuElements[1] ~= new PopUpMenuElement("redo", pt("Redo"), st("Ctrl + Shift + Z"));
-		menuElements[1] ~= new PopUpMenuElement("copy", pt("Copy"), st("Ctrl + C"));
-		menuElements[1] ~= new PopUpMenuElement("cut", pt("Cut"), st("Ctrl + X"));
-		menuElements[1] ~= new PopUpMenuElement("paste", pt("Paste"), st("Ctrl + V"));
-
-		menuElements ~= new PopUpMenuElement("elements", mt("ELEMENTS"));
-
-		menuElements[2] ~= new PopUpMenuElement("Label", pt("Label"), st("Ctrl + F1"));
-		menuElements[2] ~= new PopUpMenuElement("Button", pt("Button"), st("Ctrl + F2"));
-		menuElements[2] ~= new PopUpMenuElement("TextBox", pt("TextBox"), st("Ctrl + F3"));
-		menuElements[2] ~= new PopUpMenuElement("ListBox", pt("ListBox"), st("Ctrl + F4"));
-		menuElements[2] ~= new PopUpMenuElement("CheckBox", pt("CheckBox"), st("Ctrl + F5"));
-		menuElements[2] ~= new PopUpMenuElement("RadioButton", pt("RadioButton"), st("Ctrl + F6"));
-		//menuElements[2] ~= new PopUpMenuElement("MenuBar", pt("MenuBar"), st("Ctrl + F7"));
-		menuElements[2] ~= new PopUpMenuElement("HSlider", pt("HSlider"), st("Ctrl + F8"));
-		menuElements[2] ~= new PopUpMenuElement("VSlider", pt("VSlider"), st("Ctrl + F9"));
-
-		menuElements ~= new PopUpMenuElement("help", mt("HELP"));
-
-		menuElements[3] ~= new PopUpMenuElement("helpFile", pt("Content"));
-		menuElements[3] ~= new PopUpMenuElement("about", pt("About"));
-
-		MenuBar mb = new MenuBar("menubar",Coordinate(0,0,rasterX - 1,16),menuElements);
-		addElement(mb);
-
-		objectList = new ListBox("objectList", Coordinate(644,20,rasterX - 5,238), [], new ListBoxHeader(["Type"d,"Name"d],[128,128]),16);
-		propList = new ListBox("propList", Coordinate(644,242,rasterX - 5,477), [], new ListBoxHeader(["Prop"d,"Val"d],[128,256]),16,true);
-		addElement(objectList);
-		addElement(propList);
-
-		foreach(WindowElement we; elements){
-			we.draw();
-		}
-		mb.onMouseLClickPre = &ie.menuEvent;
-	}
-
-	public override StyleSheet getStyleSheet(){
-		return defaultStyle;
-	}
-
-	public void addElement(WindowElement we){
-		elements ~= we;
-		we.elementContainer = this;
-	}
-
-	public override void drawUpdate(WindowElement sender){
-		output.insertBitmap(sender.getPosition().left,sender.getPosition().top,sender.output.output);
-	}
-
-	override public void passMouseEvent(int x,int y,int state,ubyte button) {
-		foreach(WindowElement e; elements){
-			if(e.getPosition().left < x && e.getPosition().right > x && e.getPosition().top < y && e.getPosition().bottom > y){
-				e.onClick(x - e.getPosition().left, y - e.getPosition().top, state, button);
-				return;
-			}
-		}
-	}
-	public override void passScrollEvent(int wX, int wY, int x, int y){
-		foreach(WindowElement e; elements){
-			if(e.getPosition().left < wX && e.getPosition().right > wX && e.getPosition().top < wX && e.getPosition().bottom > wY){
-
-				e.onScroll(y, x, wX, wY);
-
-				return;
-			}
-		}
-	}
-	public Coordinate getAbsolutePosition(WindowElement sender){
-		return sender.position;
-	}
-}+/
 
 public class TopLevelWindow : Window {
 	public ListView objectList, propList;
@@ -278,6 +161,8 @@ public class DummyWindow : Window {
 	}
 }
 
+
+
 public class Editor : SystemEventListener, InputListener{
 	WindowHandler		ewh;
 	DummyWindow 		dw;
@@ -299,8 +184,10 @@ public class Editor : SystemEventListener, InputListener{
 	int					x0, y0;
 	ElementType			typeSel;
 	UndoableStack		eventStack;
-	WindowElement[string] elements;
-	string[string]		elementTypes;
+	/+WindowElement[string] elements;
+	string[string]		elementTypes;+/
+	alias ElementInfoSet = LinkedList!(ElementInfo, false);
+	ElementInfoSet		elements;
 	string				selection;
 	ConfigurationProfile	config;
 	TopLevelWindow		tlw;
@@ -559,8 +446,8 @@ public class Editor : SystemEventListener, InputListener{
 	public void updateElementList(){
 		tlw.objectList.clear();
 		tlw.objectList ~= new ListViewItem(16, ["Window"d, ""d]);
-		foreach(s; elements.byKey){
-			tlw.objectList ~= new ListViewItem(16, [conv.to!dstring(elementTypes[s]), conv.to!dstring(s)]);
+		foreach(s; elements){
+			tlw.objectList ~= new ListViewItem(16, [conv.to!dstring(s.type), conv.to!dstring(s.name)]);
 		}
 		tlw.objectList.refresh();
 	}

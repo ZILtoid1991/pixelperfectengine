@@ -31,8 +31,7 @@ public class PlacementEvent : UndoableEvent{
 		try{
 			wserializer.addElement(type, name, element.getPosition);
 			dwtarget.addElement(element);
-			editorTarget.elements[name] = element;
-			editorTarget.elementTypes[name] = type;
+			editorTarget.elements.put(ElementInfo(element, name, type));
 		}catch(Exception e){
 			writeln(e);
 		}
@@ -41,31 +40,28 @@ public class PlacementEvent : UndoableEvent{
 	public void undo(){
 		backup = wserializer.removeElement(name);
 		dwtarget.removeElement(element);
-		editorTarget.elements.remove(name);
-		editorTarget.elementTypes.remove(name);
+		editorTarget.elements.remove(ElementInfo(element, name, type));
 		editorTarget.updateElementList;
 	}
 }
 
 public class DeleteEvent : UndoableEvent{
-	private string name;
 	private Tag backup;
-	private WindowElement element;
-	public this(WindowElement element, string name){
-		this.name = name;
-		this.element = element;
+	ElementInfo eleminfo;
+	public this(ElementInfo eleminfo){
+		this.eleminfo = eleminfo;
 	}
 	public void redo(){
 		backup = wserializer.removeElement(name);
 		dwtarget.removeElement(element);
-		editorTarget.elements.remove(name);
+		editorTarget.elements.remove(eleminfo);
 		editorTarget.updateElementList;
 	}
 	public void undo(){
 		try{
 			wserializer.addElement(backup);
 			dwtarget.addElement(element);
-			editorTarget.elements[name] = element;
+			editorTarget.elements.put(eleminfo);
 		}catch(Exception e){
 			writeln(e);
 		}

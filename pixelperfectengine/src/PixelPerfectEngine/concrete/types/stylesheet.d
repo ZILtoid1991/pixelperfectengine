@@ -126,45 +126,64 @@ public class StyleSheet{
 		pattern["blackDottedLine"] = [0x1f, 0x1f, 0x10, 0x10];
 	}
 	/**
-	 * Adds a fontset to the stylesheet.
+	 * Adds a fontset to the stylesheet with the given ID.
+	 * IMPORTANT: ID of "default" must be set at least in order to ensure fallback capabilities!
 	 */
-	public void addFontset(Fontset!Bitmap8Bit f, string style) @safe {
-		font[style] = f;
+	public void addFontset(Fontset!Bitmap8Bit f, string ID) @safe {
+		font[ID] = f;
 	}
-	public Fontset!Bitmap8Bit getFontset(string style) @safe nothrow {
-		auto result = font[style];
+	/**
+	 * Returns the fontset with the given ID, or the default one if not found.
+	 */
+	public Fontset!Bitmap8Bit getFontset(string ID) @safe nothrow {
+		auto result = font[ID];
 		if (result !is null) return result;
 		else return font["default"];
 	}
 	/**
 	 * Adds a character formatting to the stylesheet with the given identifier.
+	 * IMPORTANT: ID of "default" must be set at least in order to ensure fallback capabilities!
 	 */
-	public void addChrFormatting(CharacterFormattingInfo!Bitmap8Bit frmt, string type) @safe nothrow {
-		_chrFormat[type] = frmt;
+	public void addChrFormatting(CharacterFormattingInfo!Bitmap8Bit frmt, string ID) @safe nothrow {
+		_chrFormat[ID] = frmt;
 		//assert(_chrFormat[type] is frmt);
 	}
 	/**
-	 * Duplicates character formatting for multiple labels.
+	 * Duplicates character formatting for multiple IDs.
 	 */
 	public void duplicateChrFormatting(string src, string dest) @safe nothrow {
 		_chrFormat[dest] = _chrFormat[src];
 		
 	}
-	public CharacterFormattingInfo!Bitmap8Bit getChrFormatting(string type) @safe nothrow {
-		auto result = _chrFormat[type];
+	/**
+	 * Returns the character formatting with the given ID, or the default one if not found.
+	 */
+	public CharacterFormattingInfo!Bitmap8Bit getChrFormatting(string ID) @safe nothrow {
+		auto result = _chrFormat[ID];
 		if (result !is null) return result;
 		else return _chrFormat["default"];
-		//return _chrFormat[type];
 	}
+	/**
+	 * Sets the given color to the supplied name to be recalled by element draw functions.
+	 */
 	public void setColor(ubyte c, string colorName) @safe nothrow {
 		color[colorName] = c;
 	}
+	/**
+	 * Returns the color that matches the name, or 0 if not found.
+	 */
 	public ubyte getColor(string colorName) @safe nothrow {
 		return color[colorName];
 	}
+	/**
+	 * Sets the image of the given name.
+	 */
 	public void setImage(Bitmap8Bit bitmap, string name) @safe nothrow {
 		images[name] = bitmap;
 	}
+	/**
+	 * Returns the image that matches the name, or null if not found.
+	 */
 	public Bitmap8Bit getImage(string name) @safe nothrow {
 		return images[name];
 	}
