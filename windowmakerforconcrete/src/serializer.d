@@ -106,12 +106,24 @@ public class WindowSerializer {
 					dw.setSize(t0.expectTagValue!int("size:x"),t0.expectTagValue!int("size:y"));
 					type = "Window";
 					break;
+				case "HorizScrollBar":
+					we = new HorizScrollBar(t0.expectTagValue!int("maxValue"), t0.expectTagValue!string("source"),
+							parseCoordinate(t0.expectTag("position")));
+					dw.addElement(we);
+					type = "HorizScrollBar";
+					break;
+				case "VertScrollBar":
+					we = new VertScrollBar(t0.expectTagValue!int("maxValue"), t0.expectTagValue!string("source"),
+							parseCoordinate(t0.expectTag("position")));
+					dw.addElement(we);
+					type = "VertScrollBar";
+					break;
 				default:
 					break;
 			}
 			if (type != "Window") {
-				e.elements[name] = we;
-				e.elementTypes[name] = type;
+				e.elements[name] = ElementInfo(we, name, type);
+				//e.elementTypes[name] = type;
 			}
 		}
 		e.updateElementList;
@@ -253,7 +265,7 @@ public class WindowSerializer {
 				new Tag(t2, null, null, [Value("col1"), Value(40)]);
 				break;
 			case "HorizScrollBar", "VertScrollBar":
-				new Tag(t1, null, "barLength", [Value(1)]);
+				//new Tag(t1, null, "barLength", [Value(1)]);
 				new Tag(t1, null, "maxValue", [Value(16)]);
 				break;
 			case "MenuBar":

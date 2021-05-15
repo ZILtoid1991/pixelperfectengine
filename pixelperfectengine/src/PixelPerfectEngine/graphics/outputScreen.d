@@ -64,7 +64,7 @@ public class OutputScreen : RefreshListener{
 	}
 	///Exits fullscreen mode.
 	public void setToWindowed(){
-		if(SDL_SetWindowFullscreen(window, 0)){
+		if(SDL_SetWindowFullscreen(window, SDL_WindowFlags.SDL_WINDOW_SHOWN)){
 			throw new VideoModeException("Error while changing to windowed mode!" ~ to!string(SDL_GetError()));
 		}
 	}

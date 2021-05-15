@@ -152,6 +152,7 @@ public class InputHandler {
 	 * Starts text input handling.
 	 */
 	public void startTextInput(TextInputListener listener, bool reportTextEditingEvents = false, Box textEditingArea = Box.init) {
+		if (textInputListener !is null) textInputListener.dropTextInput();
 		textInputListener = listener;
 		statusFlags |= StatusFlags.TextInputEnable;
 		if (reportTextEditingEvents) statusFlags |= StatusFlags.TI_ReportTextEditingEvents;

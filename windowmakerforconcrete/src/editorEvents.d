@@ -31,7 +31,7 @@ public class PlacementEvent : UndoableEvent{
 		try{
 			wserializer.addElement(type, name, element.getPosition);
 			dwtarget.addElement(element);
-			editorTarget.elements.put(ElementInfo(element, name, type));
+			editorTarget.elements[name] = ElementInfo(element, name, type);
 		}catch(Exception e){
 			writeln(e);
 		}
@@ -40,7 +40,7 @@ public class PlacementEvent : UndoableEvent{
 	public void undo(){
 		backup = wserializer.removeElement(name);
 		dwtarget.removeElement(element);
-		editorTarget.elements.remove(ElementInfo(element, name, type));
+		editorTarget.elements.remove(name);
 		editorTarget.updateElementList;
 	}
 }
@@ -52,16 +52,16 @@ public class DeleteEvent : UndoableEvent{
 		this.eleminfo = eleminfo;
 	}
 	public void redo(){
-		backup = wserializer.removeElement(name);
-		dwtarget.removeElement(element);
-		editorTarget.elements.remove(eleminfo);
+		backup = wserializer.removeElement(eleminfo.name);
+		dwtarget.removeElement(eleminfo.element);
+		editorTarget.elements.remove(eleminfo.name);
 		editorTarget.updateElementList;
 	}
 	public void undo(){
 		try{
 			wserializer.addElement(backup);
-			dwtarget.addElement(element);
-			editorTarget.elements.put(eleminfo);
+			dwtarget.addElement(eleminfo.element);
+			editorTarget.elements[eleminfo.name] = eleminfo;
 		}catch(Exception e){
 			writeln(e);
 		}
@@ -89,16 +89,16 @@ public class TextEditEvent : AttributeEditEvent{
 	private dstring oldText, newText;
 	public this(dstring newText, string targetName){
 		this.newText = newText;
-		this.oldText = editorTarget.elements[targetName].getText.text;
+		this.oldText = editorTarget.elements[targetName].element.getText.text;
 		super([Value(toUTF8(newText))], "text", targetName);
 	}
 	public override void redo(){
 		super.redo;
-		editorTarget.elements[targetName].setText(newText);
+		editorTarget.elements[targetName].element.setText(newText);
 	}
 	public override void undo(){
 		super.undo;
-		editorTarget.elements[targetName].setText(oldText);
+		editorTarget.elements[targetName].element.setText(oldText);
 	}
 }
 
@@ -113,18 +113,18 @@ public class PositionEditEvent : AttributeEditEvent{
 	private Coordinate oldPos, newPos;
 	public this(Coordinate newPos, string targetName){
 		this.newPos = newPos;
-		this.oldPos = editorTarget.elements[targetName].getPosition;
+		this.oldPos = editorTarget.elements[targetName].element.getPosition;
 		super([Value(newPos.left), Value(newPos.top), Value(newPos.right), Value(newPos.bottom)], "position", targetName);
 	}
 	public override void redo(){
 		super.redo;
-		editorTarget.elements[targetName].setPosition(newPos);
-		editorTarget.elements[targetName].draw;
+		editorTarget.elements[targetName].element.setPosition(newPos);
+		dwtarget.draw;
 	}
 	public override void undo(){
 		super.undo;
-		editorTarget.elements[targetName].setPosition(newPos);
-		editorTarget.elements[targetName].draw;
+		editorTarget.elements[targetName].element.setPosition(newPos);
+		dwtarget.draw;
 	}
 }
 
@@ -209,19 +209,23 @@ public class WindowHeightChangeEvent : WindowAttributeEditEvent{
 
 public class RenameEvent : UndoableEvent {
 	private string oldName, newName;
+	private ElementInfo eleminfo, backup;
 	public this(string oldName, string newName){
 		this.oldName = oldName;
 		this.newName = newName;
+		eleminfo = editorTarget.elements[oldName];
+		backup = eleminfo;
+		eleminfo.name = newName;
 	}
 	public void redo(){
 		wserializer.renameElement(oldName, newName);
-		editorTarget.elements[newName] = editorTarget.elements[oldName];
+		editorTarget.elements[newName] = eleminfo;
 		editorTarget.elements.remove(oldName);
 		editorTarget.updateElementList;
 	}
 	public void undo(){
 		wserializer.renameElement(newName, oldName);
-		editorTarget.elements[oldName] = editorTarget.elements[newName];
+		editorTarget.elements[oldName] = backup;
 		editorTarget.elements.remove(newName);
 		editorTarget.updateElementList;
 	}
@@ -237,20 +241,20 @@ public class MoveElemEvent : UndoableEvent {
 	}
 	public this(Box newPos, string target){
 		this.newPos = newPos;
-		this.oldPos = editorTarget.elements[target].getPosition();
+		this.oldPos = editorTarget.elements[target].element.getPosition();
 		this.target = target;
 	}
 	public void redo(){
 		wserializer.editValue(target, "position", [Value(newPos.left), Value(newPos.top), Value(newPos.right), 
 				Value(newPos.bottom)]);
 		//oldPos = editorTarget.elements[target].position;
-		editorTarget.elements[target].setPosition(newPos);
+		editorTarget.elements[target].element.setPosition(newPos);
 		dwtarget.draw();
 	}
 	public void undo(){
 		wserializer.editValue(target, "position", [Value(oldPos.left), Value(oldPos.top), Value(oldPos.right), 
 				Value(oldPos.bottom)]);
-		editorTarget.elements[target].setPosition(oldPos);
+		editorTarget.elements[target].element.setPosition(oldPos);
 		dwtarget.draw();
 	}
 }

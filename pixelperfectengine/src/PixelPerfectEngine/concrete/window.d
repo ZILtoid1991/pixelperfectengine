@@ -144,7 +144,11 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 * Removes the WindowElement if 'we' is found within its ranges, does nothing otherwise.
 	 */
 	public void removeElement(WindowElement we) {
-		elements.removeByElem(we);
+		synchronized {
+			//we.setParent(null);
+			elements.removeByElem(we);
+			focusables.removeByElem(we);
+		}
 		draw();
 	}
 	/**

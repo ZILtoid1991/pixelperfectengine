@@ -12,7 +12,7 @@ import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.outputScreen;
 import PixelPerfectEngine.system.config;
 import std.bitmanip : bitfields;
-public import collections.linkedlist;
+public import collections.linkedhashmap;
 
 import conv = std.conv;
 import stdio = std.stdio;
@@ -91,7 +91,9 @@ public class TopLevelWindow : Window {
 		
 	}
 }
-
+/**
+ * Window to display the current layout.
+ */
 public class DummyWindow : Window {
 	Editor ed;
 	public this(Box coordinates, dstring name, Editor ed) {
@@ -186,8 +188,8 @@ public class Editor : SystemEventListener, InputListener{
 	UndoableStack		eventStack;
 	/+WindowElement[string] elements;
 	string[string]		elementTypes;+/
-	alias ElementInfoSet = LinkedList!(ElementInfo, false);
-	ElementInfoSet		elements;
+	alias ElementInfoMap = LinkedHashMap!(string, ElementInfo);
+	ElementInfoMap		elements;
 	string				selection;
 	ConfigurationProfile	config;
 	TopLevelWindow		tlw;
@@ -248,8 +250,10 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public string getNextName(string input){
 		for(int i ; true ; i++){
-			if(elements.get(input ~ conv.to!string(i), null) is null)
-				return input ~ conv.to!string(i);
+			//if(elements.get(input ~ conv.to!string(i), null) is null)
+			string newname = input ~ conv.to!string(i);
+			if(!elements.getPtr(newname))
+				return newname;
 		}
 	}
 	public void onObjectListSelect(Event ev){
@@ -410,11 +414,11 @@ public class Editor : SystemEventListener, InputListener{
 			}
 		} else {
 			if (state == ButtonState.Pressed) {
-				if(!moveElemMode && elements.get(selection, null)) {
-					if (elements[selection].getPosition.isBetween(x,y)) {
+				if(!moveElemMode && elements.getPtr(selection)) {
+					if (elements[selection].element.getPosition.isBetween(x,y)) {
 						initElemMove;
 						
-					} else if (elements[selection].getPosition.right <= x + 1 && elements[selection].getPosition.bottom <= y + 1) {
+					} else if (elements[selection].element.getPosition.right <= x + 1 && elements[selection].element.getPosition.bottom <= y + 1) {
 						initElemResize;
 						
 					}
@@ -427,17 +431,18 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void dragEvent(int x, int y, int relX, int relY, uint button) {
 		if (moveElemMode) {
-			const Box temp = elements[selection].getPosition;
+			Box temp = elements[selection].element.getPosition;
 			if(temp.left + relX < 0) relX -= temp.left + relX;
 			if(temp.right + relX >= dw.getPosition.width) relX -= (temp.right + relX) - dw.getPosition.width;
 			if(temp.top + relY < 0) relY -= temp.top + relY;
 			if(temp.bottom + relY >= dw.getPosition.height) relY -= (temp.bottom + relY) - dw.getPosition.height;
-			elements[selection].getPosition.relMove(relX, relY);
+			temp.relMove(relX, relY);
+			elements[selection].element.setPosition(temp);
 			dw.draw();
 		} else if (resizeMode) {
 			x0 = x;
 			y0 = y;
-			dw.drawSelection(Box(elements[selection].getPosition.left, elements[selection].getPosition.top, x0, y0));
+			dw.drawSelection(Box(elements[selection].element.getPosition.left, elements[selection].element.getPosition.top, x0, y0));
 		} else if (typeSel != ElementType.NULL) {
 			dw.drawSelection(Box(x0, y0, x, y), true);
 		}
@@ -455,8 +460,8 @@ public class Editor : SystemEventListener, InputListener{
 		import sdlang;
 		import std.utf;
 		tlw.propList.clear();
-		if(elements.get(selection, null) !is null){
-			string classname = elementTypes[selection];
+		if(elements.getPtr(selection) !is null){
+			string classname = elements[selection].type;
 			tlw.propList ~= [new ListViewItem(16, ["name"d, conv.to!dstring(selection)], [TextInputFieldType.None, TextInputFieldType.Text]),
 					new ListViewItem(16, ["source"d, conv.to!dstring(wserializer.getValue(selection, "source")[0].get!string())],
 					[TextInputFieldType.None, TextInputFieldType.Text])];
@@ -470,16 +475,19 @@ public class Editor : SystemEventListener, InputListener{
 					conv.to!dstring(pos0[2].get!int) ~ ";" ~ conv.to!dstring(pos0[3].get!int) ~ ";";
 			tlw.propList ~= new ListViewItem(16, ["position", pos1], [TextInputFieldType.None, TextInputFieldType.Text]);
 			switch(classname){
-				case "Button", "SmallButton", "SmallCheckBox", "SmallRadioButton":
-					tlw.propList ~= new ListViewItem(16, ["icon", conv.to!dstring(wserializer.getValue(selection, "icon")[0].get!string())],
+				/+case "SmallButton", "SmallCheckBox", "SmallRadioButton", "CheckBox", "RadioButton":
+					tlw.propList ~= new ListViewItem(16, [
+							"iconPressed", conv.to!dstring(wserializer.getValue(selection, "iconPressed")[0].get!string())],
 							[TextInputFieldType.None, TextInputFieldType.Text]);
-					break;
+					tlw.propList ~= new ListViewItem(16, [
+							"iconUnpressed", conv.to!dstring(wserializer.getValue(selection, "iconUnpressed")[0].get!string())],
+							[TextInputFieldType.None, TextInputFieldType.Text]);
+					break;+/
 				case "ListView":
 					tlw.propList ~= new ListViewItem(16, ["header", "[...]"]);
 					break;
-				case "HSlider", "VSlider":
-					tlw.propList ~= [new ListViewItem(16, ["barLength",conv.to!dstring(wserializer.getValue(selection,"barLength")[0].get!int())],
-							[TextInputFieldType.None, TextInputFieldType.Integer]),
+				case "HorizScrollBar", "VertScrollBar":
+					tlw.propList ~= [
 							new ListViewItem(16, ["maxValue",conv.to!dstring(wserializer.getValue(selection,"maxValue")[0].get!int())],
 							[TextInputFieldType.None, TextInputFieldType.Integer])];
 					break;
@@ -503,9 +511,9 @@ public class Editor : SystemEventListener, InputListener{
 	}
 
 	public void selectEvent(WindowElement we){
-		foreach(s; elements.byKey){
-			if(elements[s] == we){
-				selection = s;
+		foreach (s; elements) {
+			if (s.element is we) {
+				selection = s.name;
 				updatePropertyList;
 				return;
 			}
@@ -579,27 +587,25 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void delElement() {
 		if(selection != "Window" && selection.length)
-			eventStack.addToTop(new DeleteEvent(elements[selection], selection));
+			eventStack.addToTop(new DeleteEvent(elements[selection]));
 	}
 	public void initElemMove() {
 		if(selection != "Window" && selection.length) {
 			moveElemMode = true;
-			moveElemOrig = elements[selection].getPosition;
+			moveElemOrig = elements[selection].element.getPosition;
 		}
 	}
 	public void deinitElemMove() {
 		if(moveElemMode) {
 			moveElemMode = false;
-			elements[selection].setPosition(moveElemOrig);
+			elements[selection].element.setPosition(moveElemOrig);
 			dw.draw();
 		}
 	}
 	public void finalizeElemMove() {
 		if(moveElemMode) {
 			moveElemMode = false;
-			//Coordinate newPos = elements[selection].getPosition;
-			//elements[selection].setPosition(moveElemOrig);
-			eventStack.addToTop(new MoveElemEvent(elements[selection].getPosition, moveElemOrig, selection));
+			eventStack.addToTop(new MoveElemEvent(elements[selection].element.getPosition, moveElemOrig, selection));
 		}
 	}
 	public void initElemResize() {
@@ -621,10 +627,10 @@ public class Editor : SystemEventListener, InputListener{
 			if(selection == "Window") {
 
 			} else if (selection.length) {
-				if (x0 <= elements[selection].getPosition.left || y0 <= elements[selection].getPosition.top) {
+				if (x0 <= elements[selection].element.getPosition.left || y0 <= elements[selection].element.getPosition.top) {
 					ewh.message("Resize error!", "Out of bound resizing!");
 				} else {
-					const Box newPos = Box(elements[selection].getPosition.left, elements[selection].getPosition.top, x0, y0);
+					const Box newPos = Box(elements[selection].element.getPosition.left, elements[selection].element.getPosition.top, x0, y0);
 					eventStack.addToTop(new MoveElemEvent(newPos, selection));
 				}
 			}
@@ -658,7 +664,7 @@ public class Editor : SystemEventListener, InputListener{
 				case hashCalc("del"):
 					const string prevSelection = selection;
 					selection = "window";
-					eventStack.addToTop(new DeleteEvent(elements[prevSelection], prevSelection));
+					eventStack.addToTop(new DeleteEvent(elements[prevSelection]));
 					break;
 				case hashCalc("sysesc"):
 					deinitElemMove;
