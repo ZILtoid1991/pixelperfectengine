@@ -48,3 +48,6 @@ and even now I have used some workarounds to accomodate this.
 ### Unreactive radiobuttons in header
 Radiobuttons in headers for some reason are not reacting correctly. They will show the correct output once the 
 header needs a full redraw.
+
+### Drive button doesn't work in FileDialog
+Will be fixed next time.

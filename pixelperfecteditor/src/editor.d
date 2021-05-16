@@ -236,7 +236,7 @@ public class Editor : InputListener, SystemEventListener {
 	public LayerList layerList;
 	public MaterialList materialList;
 	
-public this(string[] args){
+	public this(string[] args){
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
 		configFile = new ConfigurationProfile();
 
@@ -556,7 +556,7 @@ public this(string[] args){
 	public void onLoad () {
 		import PixelPerfectEngine.concrete.dialogs.filedialog;
 		FileDialog fd = new FileDialog("Load document","docLoad",&onLoadDialog,[FileDialog.FileAssociationDescriptor(
-			"PPE map file", ["*.xmf"])],".\\",false);
+			"PPE map file", ["*.xmf"])],"./",false);
 		wh.addWindow(fd);
 	}
 	public void onNewDocument () {
@@ -598,7 +598,7 @@ public this(string[] args){
 	public void onSaveAs () {
 		import PixelPerfectEngine.concrete.dialogs.filedialog;
 		FileDialog fd = new FileDialog("Save document as","docSave",&onSaveDialog,[FileDialog.FileAssociationDescriptor(
-			"PPE map file", ["*.xmf"])],".\\",true);
+			"PPE map file", ["*.xmf"])],"./",true);
 		wh.addWindow(fd);
 	}
 	public void onSaveDialog(Event ev) {
