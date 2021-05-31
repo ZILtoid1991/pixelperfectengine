@@ -35,6 +35,8 @@ Marks the text as italic. The amount can be set with the attribute `amount`.
 
 Sets the type of the font.
 
+In the future, there might be a size attribute, if vector fonts will ever be supported.
+
 * `</ frontTab amount="10">`
 
 Inserts a tabulator at the given position.
