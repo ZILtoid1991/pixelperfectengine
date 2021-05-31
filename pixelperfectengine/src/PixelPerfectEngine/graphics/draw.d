@@ -379,7 +379,7 @@ public class BitmapDrawer{
 				default: break;
 			}
 		}
-		Box textSlice = Box(offset, lineOffset, workPad.width - 1, workPad.height - 1);
+		Box textSlice = Box(offset, lineOffset + text.formatting.offsetV, workPad.width - 1, workPad.height - 1);
 		if (textSlice.width > pos.width) textSlice.width = pos.width;	//clamp down text width
 		if (textSlice.height > pos.height) textSlice.height = pos.height;	//clamp down text height
 		if (textSlice.width > 0 && textSlice.height > 0)

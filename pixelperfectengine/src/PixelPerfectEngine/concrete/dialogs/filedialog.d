@@ -5,7 +5,7 @@ import PixelPerfectEngine.concrete.elements;
 import std.datetime;
 import std.conv : to;
 import std.file;
-static import std.path;
+import std.path;
 
 /**
  * File dialog window for opening files.
@@ -99,9 +99,18 @@ public class FileDialog : Window {
 		addElement(lw);
 		lw.onItemSelect = &listView_onItemSelect;
 
-		spanDir();
+		version(Windows){
+			for(char c = 'A'; c <='Z'; c++){
+				string s;
+				s ~= c;
+				s ~= ":\x5c";
+				if(exists(s)){
+					driveList ~= (s);
+				}
+			}
+		}
 
-		detectDrive();
+		spanDir();
 	}
 	///Ditto
 	public this(dstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
@@ -116,23 +125,29 @@ public class FileDialog : Window {
 	private void spanDir(){
 		pathList.length = 0;
 		lw.clear();
-		
-		foreach(DirEntry de; dirEntries(directory, SpanMode.shallow)){
-			if(de.isDir){
-				pathList ~= de.name;
-				createEntry(de.name, "<DIR>", de.timeLastModified);
-			}
-		}
-		
-		foreach(ft; filetypes[selectedType].types){
-			foreach(DirEntry de; dirEntries(directory, ft, SpanMode.shallow)){
-				if(de.isFile){
+		try {
+			foreach(DirEntry de; dirEntries(directory, SpanMode.shallow)){
+				if(de.isDir){
 					pathList ~= de.name;
-					createEntry(de.name, ft, de.timeLastModified);
+					createEntry(de.name, "<DIR>", de.timeLastModified);
 				}
 			}
+
+			foreach(ft; filetypes[selectedType].types){
+				foreach(DirEntry de; dirEntries(directory, ft, SpanMode.shallow)){
+					if(de.isFile){
+						pathList ~= de.name;
+						createEntry(de.name, ft, de.timeLastModified);
+					}
+				}
+			}
+		} catch (Exception e) {
+			debug {
+				import std.stdio : writeln;
+				writeln(e);
+			}
+			handler.message("Directory error!", to!dstring(e.msg));
 		}
-		
 		lw.refresh();
 	}
 	/**
@@ -142,7 +157,7 @@ public class FileDialog : Window {
 		import std.utf : toUTF32;
 		auto frmt = getStyleSheet().getChrFormatting("ListViewItem");
 		const int height = frmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
-		lw ~= new ListViewItem(height, [new Text(toUTF32(filename), frmt), new Text(toUTF32(filetype), frmt), 
+		lw ~= new ListViewItem(height, [new Text(toUTF32(baseName(filename)), frmt), new Text(toUTF32(filetype), frmt), 
 				new Text(formatDate(time), frmt)]);
 	}
 	/**
@@ -174,6 +189,7 @@ public class FileDialog : Window {
 		s ~= to!dstring(time.second());
 		return s.idup;
 	}
+	/+
 	/**
 	 * Detects the available drives, currently only used under windows.
 	 */
@@ -188,42 +204,16 @@ public class FileDialog : Window {
 					driveList ~= (s);
 				}
 			}
-		}else{
-
 		}
-	}
-	/**
-	 * Returns the filename from the path.
-	 */
-	private string getFilenameFromPath(string p, bool b = false){
-		size_t n, m = p.length;
-		string s;
-		for(size_t i ; i < p.length ; i++){
-			if(std.path.isDirSeparator(p[i])){
-				n = i;
-			}
-		}
-		//n++;
-		if(b){
-			for(size_t i ; i < p.length ; i++){
-				if(p[i] == '.'){
-					m = i;
-				}
-			}
-		}
-		for( ; n < m ; n++){
-			if(p[n] < 128 && p[n] > 31)
-				s ~= p[n];
-		}
-		return s;
-	}
+	}+/
+	
 	/**
 	 * Called when the up button is pressed. Goes up in the folder hiearchy.
 	 */
 	private void up(Event ev){
 		int n;
 		for(int i ; i < directory.length ; i++){
-			if(std.path.isDirSeparator(directory[i])){
+			if(isDirSeparator(directory[i])){
 				n = i;
 			}
 		}
@@ -242,12 +232,14 @@ public class FileDialog : Window {
 	private void changeDrive(Event ev){
 		version(Windows){
 			pathList.length = 0;
+			lw.clear();
 			//ListBoxItem[] items;
 			foreach(string drive; driveList){
 				pathList ~= drive;
 				//items ~= new ListBoxItem([to!dstring(drive),"<DRIVE>"d,""d]);
 				createDriveEntry(to!dstring(drive));
 			}
+			lw.refresh();
 			//lb.updateColumns(items);
 			//lb.draw();
 		}else version(Posix){
@@ -279,8 +271,8 @@ public class FileDialog : Window {
 	}
 	private void button_type_onMouseLClickRel(Event ev) {
 		PopUpMenuElement[] e;
-		auto frmt1 = getStyleSheet().getChrFormatting("menuPri");
-		auto frmt2 = getStyleSheet().getChrFormatting("menuSec");
+		auto frmt1 = getStyleSheet().getChrFormatting("popUpMenu");
+		auto frmt2 = getStyleSheet().getChrFormatting("popUpMenuSecondary");
 		for(int i ; i < filetypes.length ; i++){
 			e ~= new PopUpMenuElement(filetypes[i].types[0],new Text(filetypes[i].description, frmt1), 
 					new Text(filetypes[i].getTypesForSelector(), frmt2));
@@ -298,16 +290,16 @@ public class FileDialog : Window {
 				directory = pathList[lw.value];
 				spanDir();
 			}else{
-				filename = getFilenameFromPath(pathList[lw.value]);
+				filename = stripExtension(pathList[lw.value]);
 				tb.setText(new Text(to!dstring(filename), tb.getText().formatting));
 			}
 		}catch(Exception e){
-			import PixelPerfectEngine.concrete.dialogs.defaultdialog;
+			/+import PixelPerfectEngine.concrete.dialogs.defaultdialog;
 			auto frmt1 = getStyleSheet().getChrFormatting("windowHeader");
 			auto frmt2 = getStyleSheet().getChrFormatting("default");
 			DefaultDialog d = new DefaultDialog(Coordinate(10,10,256,80),"null", new Text(to!dstring("Error!"), frmt1),
-					[new Text(to!dstring(e.msg), frmt2)]);
-			handler.addWindow(d);
+					[new Text(to!dstring(e.msg), frmt2)]);+/
+			handler.message("Error!",to!dstring(e.msg));
 		}
 	}
 }

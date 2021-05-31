@@ -1,5 +1,10 @@
-# current
+# Current
 
+## Fixed bugs
+
+### Drive button works again
+
+# 0.10.0-beta1
 ## New features
 
  * Added `hashCalc` function to `PixelPerfectEngine.system.etc`. It can calculate the MurmurhashV3/32 hash of a
