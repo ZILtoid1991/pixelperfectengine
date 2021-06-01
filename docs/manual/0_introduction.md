@@ -61,7 +61,7 @@ editor of the engine. The editor will have it's own little manual soon.
 * Original assets
 
 * Seriously, even if you're not a good artist and poor, just find someone who's willing to work for exposure and 
-creative control! They might not be the best, but everybody have to gain experience.
+creative control! They might not be the best, but everybody have to gain experience. (Just don't sell their work for money)
 
 * If you still plan to use unoriginal assets, then don't sell your game for money!
 
@@ -100,3 +100,17 @@ Sprites on this layer have no size limits, can be horizontally and vertically re
 sprites are possible using certain tricks. All sprite layers will have the ability for individual rendering functions,
 and master alpha values, as well as palette swapping. Sadly, per-line effects are not supported yet, as it would
 overcomplicate the calculation of out of bounds areas.
+
+## Collision Detection
+
+Collision detection is essential for games except for certain types of puzzle games and adventure games. It tests whether two objects or an object and a background collides, their positions, etc.
+
+There are three kinds of object collision events in this engine: edge, box overlap, and shape overlap. Object-background collision is used for testing what kind of tiles are being overlapped by the select objects.
+
+## Graphics Drawing Functions
+
+The engine is capable of drawing to bitmaps using various drawing and image compositing functions, such as line drawing, filling, bitmap compositing, and bitmapped text drawing.
+
+## Graphical User Interface
+
+A GUI subsystem, called Concrete, has been created to make editors using the engine itself, however it's also possible to use it for puzzle, strategy, and management games, also for configuration managers. The GUI has it's own layout editor for faster creation and easier visualization.
