@@ -36,9 +36,9 @@ public class InputHandler {
 		AnyKey				=	1<<7	///Enables an anykey event.
 	}
 	///Code that is emmitted on an any key event.
-	public static immutable uint anykeyCode = 1402508842; //= defaultHash("AnyKey");
+	public static immutable uint anykeyCode = 1402_508_842; //= defaultHash("AnyKey");
 	///Code that is emmitted on a system escape key (keyboard Esc key, joystick start button, etc) event.
-	public static immutable uint sysescCode = 2320826867; //= defaultHash("SysEsc");
+	public static immutable uint sysescCode = 2320_826_867; //= defaultHash("SysEsc");
 	//alias CodeTreeSet = TreeMap!(uint, void);
 	
 	alias CodeTreeSet = TreeMap!(InputBinding, void);
@@ -76,7 +76,7 @@ public class InputHandler {
 	/**
 	 * CTOR.
 	 * Detects joysticks upon construction.
-	 * IMPORTANT: Only a single instance of this class!
+	 * IMPORTANT: Only a single instance of this class should exist!
 	 */
 	public this() {
 		SDL_InitSubSystem(SDL_INIT_JOYSTICK);

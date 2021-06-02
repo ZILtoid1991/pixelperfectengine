@@ -6,8 +6,6 @@ module PixelPerfectEngine.collision.objectCollision;
  * Pixel Perfect Engine, collision.objectCollision module.
  */
 
-import PixelPerfectEngine.system.advBitArray;
-
 import collections.treemap;
 import PixelPerfectEngine.collision.common;
 //import PixelPerfectEngine.collision.boxCollision;

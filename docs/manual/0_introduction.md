@@ -61,13 +61,26 @@ editor of the engine. The editor will have it's own little manual soon.
 * Original assets
 
 * Seriously, even if you're not a good artist and poor, just find someone who's willing to work for exposure and 
-creative control! They might not be the best, but everybody have to gain experience. (Just don't sell their work for money)
+creative control! They might not be the best, but everybody have to gain experience (Just don't sell their work for
+money). Okay, there's are times when you can get great results from using e.g. public domain sound effects with some
+editing, but generally try to avoid them, especially if they don't match in style.
 
 * If you still plan to use unoriginal assets, then don't sell your game for money!
 
 * If you sell your game with flipped assets, and you didn't have any talents, then don't sue game journalists!
 
 # List of currently implemented engine features
+
+## Input Handling System
+
+A game isn't a game without any kind of input, since it's needed for any kind of interaction. The input handler
+supports keyboards, joysticks, and mice at the moment, and will have touchscreen support in the future. It also has a
+built-in input binding recorder which can be used with the configuration profile handler, and text input handling.
+
+## Configuration Profile Handler
+
+Configuration profiles are useful for storing game settings, such as input bindings, volume settings, etc. However,
+for saving game progress, you need a different thing.
 
 ## Tile Layers
 
@@ -103,14 +116,38 @@ overcomplicate the calculation of out of bounds areas.
 
 ## Collision Detection
 
-Collision detection is essential for games except for certain types of puzzle games and adventure games. It tests whether two objects or an object and a background collides, their positions, etc.
+Collision detection is essential for games except for certain types of puzzle games and adventure games. It tests 
+whether two objects or an object and a background collides, their positions, etc.
 
-There are three kinds of object collision events in this engine: edge, box overlap, and shape overlap. Object-background collision is used for testing what kind of tiles are being overlapped by the select objects.
+There are three kinds of object collision events in this engine: edge, box overlap, and shape overlap. 
+Object-background collision is used for testing what kind of tiles are being overlapped by the select objects.
+
+## Bitmap Text
+
+The engine natively supports AngelCode BMfont for bitmapped fonts. It supports unicode characters (up to UTF32!) and
+variable-width fonts. There's also a special blitter function that turns monochromatic text to colored one.
 
 ## Graphics Drawing Functions
 
-The engine is capable of drawing to bitmaps using various drawing and image compositing functions, such as line drawing, filling, bitmap compositing, and bitmapped text drawing.
+The engine is capable of drawing to bitmaps using various drawing and image compositing functions, such as line 
+drawing, filling, bitmap compositing, and bitmapped text drawing.
 
 ## Graphical User Interface
 
-A GUI subsystem, called Concrete, has been created to make editors using the engine itself, however it's also possible to use it for puzzle, strategy, and management games, also for configuration managers. The GUI has it's own layout editor for faster creation and easier visualization.
+A GUI subsystem, called Concrete, has been created to make editors using the engine itself, however it's also possible
+to use it for puzzle, strategy, and management games, also for configuration managers. The GUI has it's own layout
+editor for faster creation and easier visualization.
+
+# Planned features
+
+* Software synths for audio, with MIDI 2.0 support
+* Transformable sprites
+* Effects layer
+* Data packages
+* Localization and multiple languages
+
+# Notes on the manual
+
+See folder `../tutorials/` in the future for short demonstration codes.
+
+All hashes are created with either the MurMurHashV3/32, or the MurMurHashV3/64 algorithm, unless noted otherwise.

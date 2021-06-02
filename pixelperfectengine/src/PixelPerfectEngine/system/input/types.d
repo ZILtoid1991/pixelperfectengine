@@ -36,6 +36,7 @@ public enum Devicetype : ubyte {
  * Multiple enter and backspace keys are converted as such.
  */
 public enum TextInputKey {
+	init,
 	Enter		= 1,
 	Escape		= 2,
 	Backspace	= 3,

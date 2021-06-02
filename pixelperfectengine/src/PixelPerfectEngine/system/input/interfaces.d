@@ -11,7 +11,7 @@ public interface InputListener {
 	 * The `id` should be generated from a string, usually the name of the binding.
 	 * `code` is a duplicate of the code used for fast lookup of the binding, which also contains other info (deviceID, etc).
 	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
-	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
+	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on getting centered.
 	 */
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed);
 	/**
@@ -34,10 +34,12 @@ public interface SystemEventListener {
 	public void onQuit();
 	/**
 	 * Called if a controller was added.
+	 * The `id` is the ID of the attached controller.
 	 */
 	public void controllerAdded(uint id);
 	/**
 	 * Called if a controller was removed.
+	 * The `id` is the ID of the removed controller.
 	 */
 	public void controllerRemoved(uint id);
 }
