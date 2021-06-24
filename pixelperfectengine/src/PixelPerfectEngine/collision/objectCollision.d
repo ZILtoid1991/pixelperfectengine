@@ -20,7 +20,15 @@ public class ObjectCollisionDetector {
 	 * The delegate where the events will be passed.
 	 * Must be set up before using the collision detector.
 	 */
-	void delegate(ObjectCollisionEvent event)			objectToObjectCollision;
+	protected void delegate(ObjectCollisionEvent event)			objectToObjectCollision;
+	/**
+	 * Default CTOR that initializes the objectToObjectCollision, and contextID.
+	 */
+	public this (void delegate(ObjectCollisionEvent event) objectToObjectCollision, int contextID) @safe pure {
+		assert(objectToObjectCollision !is null, "Delegate `objectToObjectCollision` must be a non-null value!");
+		this.objectToObjectCollision = objectToObjectCollision;
+		this.contextID = contextID;
+	}
 	/**
 	 * Tests all shapes against each other
 	 */
@@ -36,7 +44,7 @@ public class ObjectCollisionDetector {
 		testSingle(objectID, objects.ptrOf(objectID));
 	}
 	///Ditto
-	protected void testSingle(int iA, CollisionShape* shA) {
+	protected final void testSingle(int iA, CollisionShape* shA) {
 		foreach (int iB, ref CollisionShape shB; objects) {
 			if (iA != iB) {
 				ObjectCollisionEvent event = testCollision(shA, &shB);
@@ -51,9 +59,9 @@ public class ObjectCollisionDetector {
 	/**
 	 * Tests two objects. Calls cl if collision have happened, with the appropriate values.
 	 */
-	protected ObjectCollisionEvent testCollision(CollisionShape* shA, CollisionShape* shB) pure {
-		if (shA.position.bottom < shB.position.top || shA.position.top > shB.position.bottom || 
-				shA.position.right < shB.position.left || shA.position.left > shB.position.right){
+	protected final ObjectCollisionEvent testCollision(CollisionShape* shA, CollisionShape* shB) pure {
+		if (shA.position.bottom <= shB.position.top || shA.position.top >= shB.position.bottom || 
+				shA.position.right <= shB.position.left || shA.position.left >= shB.position.right){
 			//test if edge collision have happened with side edges
 			if (shA.position.bottom >= shB.position.top && shA.position.top <= shB.position.bottom && 
 					(shA.position.right - shB.position.left == -1 || shA.position.left - shB.position.right == 1)) {
@@ -103,7 +111,7 @@ public class ObjectCollisionDetector {
 			ca.bottom = shA.position.height;
 			cb.right = shB.position.width;
 			cb.bottom = shB.position.height;
-			if(shA.position.top >= shB.position.top){
+			if (shA.position.top >= shB.position.top) {
 				ca.top += shA.position.top - shB.position.top;
 				cc.top = shA.position.top;
 			} else {
@@ -117,14 +125,14 @@ public class ObjectCollisionDetector {
 				cb.bottom -= shB.position.bottom - shA.position.bottom;
 				cc.bottom = shA.position.bottom; 
 			}
-			if(shA.position.left >= shB.position.left) {
+			if (shA.position.left >= shB.position.left) {
 				ca.left += shA.position.left - shB.position.left;
 				cc.left = shA.position.left;
 			} else {
 				cb.left += shB.position.left - shA.position.left;
 				cc.left = shB.position.left;
 			}
-			if(shA.position.right >= shB.position.right) {
+			if (shA.position.right >= shB.position.right) {
 				ca.right -= shA.position.right - shB.position.right;
 				cc.right = shB.position.right;
 			} else {
@@ -137,8 +145,8 @@ public class ObjectCollisionDetector {
 			}
 			ObjectCollisionEvent event = new ObjectCollisionEvent(shA, shB, contextID, cc, ObjectCollisionEvent.Type.BoxOverlap);
 			if(shA.shape !is null && shB.shape !is null) {
-				for (int y ; y < cc.width ; y++) {
-					for (int x ; x < cc.height ; x++) {
+				for (int y ; y < cc.height ; y++) {
+					for (int x ; x < cc.width ; x++) {
 						if (shA.shape.readPixel(ca.left + x, ca.top + y) && shB.shape.readPixel(cb.left + x, cb.top + y)) {
 							event.type = ObjectCollisionEvent.Type.ShapeOverlap;
 							return event;

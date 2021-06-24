@@ -92,9 +92,16 @@ alias Bitmap16Bit = Bitmap!("HW",ushort);
 alias Bitmap32Bit = Bitmap!("W",Color);
 /**
  * Implements a bitmap with variable bit depth. Use the aliases to initialize them.
- * Note for 16Bit bitmap: It's using the master palette, It's not implementing any 16 bit RGB or RGBA color space directly. Can implement such
+ *
+ * Note on 16 bit bitmaps: It's using the master palette, It's not implementing any 16 bit RGB or RGBA color space 
+ * directly. Can implement such
  * colorspaces via proper lookup tables.
- * Note for 4Bit bitmap: It's width needs to be an even number (for rendering simplicity), otherwise it'll cause an exception.
+ *
+ * Note on 4 bit bitmaps: It's width needs to be an even number (for rendering simplicity), otherwise it'll cause an 
+ * exception.
+ *
+ * Note on 1 bit bitmaps: Uses size_t based paddings for more than one bit testing at the time in the future, through
+ * the use of logic functions.
  */
 public class Bitmap(string S,T) : ABitmap {
 	static if (S == "b") { 
@@ -103,6 +110,9 @@ public class Bitmap(string S,T) : ABitmap {
 		bool				invertHoriz;	///Horizontal invertion for reading and writing
 		bool				invertVert;		///Vertical invertion for reading anr writing
 	}
+	/**
+	 * Image data.
+	 */
 	T[] 					pixels;
 	static if(S != "HB" && S != "QB" && S != "b"){
 		/**
@@ -155,24 +165,7 @@ public class Bitmap(string S,T) : ABitmap {
 			return new Bitmap!(S,T)(workpad, localWidth, localHeight);
 		}
 	} else static if(S == "HB"){
-		///Creates an empty bitmap. DEPRECATED!
-		this(int x, int y, Color* palettePtr) @safe pure {
-			if(x & 1)
-				x++;
-			_width=x;
-			_height=y;
-			pixels.length=(x*y)/2;
-			this.palettePtr = palettePtr;
-		}
-		///Creates a bitmap from an array. DEPRECATED!
-		this(ubyte[] p, int x, int y, Color* palettePtr){
-			if (p.length/2 < x * y || x & 1)
-				throw new BitmapFormatException("Incorrect Bitmap size exception!");
-			_width=x;
-			_height=y;
-			pixels=p;
-			this.palettePtr = palettePtr;
-		}
+		
 		///Creates an empty bitmap.
 		this(int x, int y) @safe pure{
 			if(x & 1)
@@ -264,6 +257,21 @@ public class Bitmap(string S,T) : ABitmap {
 	    @nogc public bool writePixel(int x, int y, bool val) @trusted pure {
 			return pixelAccess[(invertHoriz ? _width - x : x) + ((invertVert ? _height - y : y) * pitch)] = val;
 		}
+		/**
+		 * Tests a single line of pixels between two 1 bit bitmaps for collision, using a single chunk of pixels. (Unimplemented, is a placeholder as of now)
+		 * * line: The (first) line, which is being tested in the current object.
+		 * * other: The other object that this is being tested against.
+		 * * otherLine: The (first) line, which is being tested in the other object.
+		 * * offset: The horizontal offset of the other object to the right. If negative, then it's being offsetted to the left.
+		 * * nOfLines: The number of lines to be tested. Must be non-zero, otherwise the test won't run.
+		 */
+		final public bool testLineCollision(int line, Bitmap1bit other, int otherLine, const int offset, uint nOfLines = 1) 
+				@safe @nogc nothrow pure const {
+			for ( ; nOfLines > 0 ; nOfLines--) {
+
+			}
+			return false;
+		}
 	}
 	static if(S == "B" || S == "HW") {
 		/**
@@ -279,11 +287,8 @@ public class Bitmap(string S,T) : ABitmap {
 	}
 	static if(S == "W"){
 		/**
-		 * Generates a basic collision shape using
+		 * Clears the Bitmap
 		 */
-		public Bitmap1bit getBasicCollisionShape() @safe pure {
-			return null;
-		}
 		override void clear() @nogc @safe pure nothrow {
 			for(int i ; i < pixels.length ; i++){
 				pixels[i] = Color(0x0);
@@ -312,7 +317,20 @@ public class Bitmap(string S,T) : ABitmap {
 	override @nogc @property string wordLengthByString() @safe {
 		return S;
 	}
-
+	static if (S != "b" || S != "W") {
+		/**
+		 * Generates a standard collision model by checking against a transparency value (default vaule is T.init).
+		 */
+		Bitmap1bit generateStandardCollisionModel(const T transparency = T.init) {
+			Bitmap1bit output = new Bitmap1bit(width, height);
+			for (int y ; y < height ; y++) {
+				for (int x ; x < width ; x++) {
+					output.writePixel(x, y, readPixel(x, y) != transparency);
+				}
+			}
+			return output;
+		}
+	}
 }
 
 /**
@@ -326,5 +344,5 @@ public enum BitmapTypes : ubyte {
 	Bmp8Bit,
 	Bmp16Bit,
 	Bmp32Bit,
-	Planar,
+	Planar,				///Mainly used as a placeholder
 }

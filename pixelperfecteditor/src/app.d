@@ -23,7 +23,10 @@ import PixelPerfectEngine.graphics.raster;
 import PixelPerfectEngine.graphics.layers;
 
 import PixelPerfectEngine.graphics.bitmap;
-//import PixelPerfectEngine.collision;
+
+import PixelPerfectEngine.collision.common;
+import PixelPerfectEngine.collision.objectCollision;
+
 import PixelPerfectEngine.system.input;
 import PixelPerfectEngine.system.file;
 import PixelPerfectEngine.system.etc;
@@ -55,8 +58,10 @@ int main(string[] args){
 	prg.whereTheMagicHappens;
 	return 0;
 }
-
-class TileLayerTest : SystemEventListener, InputListener{
+/**
+ * Tests graphics output, input events, collision, etc.
+ */
+class TileLayerTest : SystemEventListener, InputListener {
 	bool isRunning, up, down, left, right, scrup, scrdown, scrleft, scrright;
 	OutputScreen output;
 	Raster r;
@@ -65,8 +70,10 @@ class TileLayerTest : SystemEventListener, InputListener{
 	TransformableTileLayer!(Bitmap8Bit,16,16) tt;
 	Bitmap8Bit[] tiles;
 	Bitmap8Bit dlangMan;
+	Bitmap1bit dlangManCS;
 	SpriteLayer s;
 	InputHandler ih;
+	//ObjectCollisionDetector ocd;
 	float theta;
 	int framecounter;
 	this (bool testTransformableTileLayer, int mapWidth, int mapHeight) {
@@ -93,22 +100,20 @@ class TileLayerTest : SystemEventListener, InputListener{
 		//writeln(r.layerMap);
 		//c = new CollisionDetector();
 		dlangMan = loadBitmapFromImage!Bitmap8Bit(spriteSource);
+		dlangManCS = dlangMan.generateStandardCollisionModel();
+		//ocd = new ObjectCollisionDetector(&onCollision, 0);
 		//CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
 		//dlangMan.offsetIndexes(256,false);
 		s.addSprite(dlangMan, 65_536, 0, 0, 1);
-		writeln(s.getDisplayListItem(65_536).toString);
+		//ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
 		//s.scaleSpriteHoriz(0,-1024);
 		//s.scaleSpriteVert(0,-1024);
 		for(int i = 1 ; i < 10 ; i++){
-			s.addSprite(dlangMan, i, uniform(0,320), uniform(0,240), 1);
-			//assert(check, "DisplayList Error!");
+			const int x = uniform(0,320), y = uniform(0,240);
+			s.addSprite(dlangMan, i, x, uniform(0,240), 1);
+			//ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
 		}
-		//s.collisionDetector[1] = c;
-		//c.source = s;
-		//c.addCollisionModel(cm,0);
-		//c.addCollisionModel(cm,1);
-		//c.addCollisionListener(this);
-		//tiles.length = tileSource.bitmapID.length;
+		
 		tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
 		//tiles = loadBitmapSheetFromFile!(Bitmap8Bit)("../assets/sci-fi-tileset.png", 16, 16);
 		if (testTransformableTileLayer) {
@@ -140,34 +145,7 @@ class TileLayerTest : SystemEventListener, InputListener{
 		ih = new InputHandler();
 		ih.systemEventListener = this;
 		ih.inputListener = this;
-		/+ih.kb ~= KeyBinding(0, SDL_SCANCODE_UP,0, "up", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, SDL_SCANCODE_DOWN,0, "down", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, SDL_SCANCODE_LEFT,0, "left", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, SDL_SCANCODE_RIGHT,0, "right", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.np8,0, "scrup", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.np2,0, "scrdown", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.np4,0, "scrleft", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.np6,0, "scrright", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F1,0, "A+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F2,0, "A-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F3,0, "B+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F4,0, "B-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F5,0, "C+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F6,0, "C-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F7,0, "D+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F8,0, "D-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F9,0, "x0+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.F10,0, "x0-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.PAGEUP,0, "y0+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.PAGEDOWN,0, "y0-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.NP_PLUS,0, "theta+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.NP_MINUS,0, "theta-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.n1,0, "sV+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.n2,0, "sV-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.n3,0, "sH+", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.n4,0, "sH-", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.Q,0, "HM", Devicetype.KEYBOARD, KeyModifier.All);
-		ih.kb ~= KeyBinding(0, ScanCode.W,0, "VM", Devicetype.KEYBOARD, KeyModifier.All);+/
+		
 		{
 			import PixelPerfectEngine.system.input.scancode;
 			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("up"));
@@ -222,7 +200,9 @@ class TileLayerTest : SystemEventListener, InputListener{
 		//r.palette[0].alpha = 255;
 		r.palette[256].base = 0;
 		//textLayer.writeTextToMap(2,2,0,"Hello world!",BitmapAttrib(true, false));
-		textLayer.writeTextToMap(0,0,0,"Framerate:",BitmapAttrib(true, false));
+		textLayer.writeTextToMap(0, 0, 0, "Framerate:", BitmapAttrib(true, false));
+		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false));
+		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false));
 		//writeln(tt);
 		//r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);
@@ -235,11 +215,20 @@ class TileLayerTest : SystemEventListener, InputListener{
 		while(isRunning){
 			r.refresh();
 			ih.test();
-			if(up) s.relMoveSprite(65_536,0,-1);
-			if(down) s.relMoveSprite(65_536,0,1);
-			if(left) s.relMoveSprite(65_536,-1,0);
-			if(right) s.relMoveSprite(65_536,1,0);
-			
+			if(up) {
+				s.relMoveSprite(65_536,0,-1);
+			}
+			if(down) {
+				s.relMoveSprite(65_536,0,1);
+			}
+			if(left) {
+				s.relMoveSprite(65_536,-1,0);
+			}
+			if(right) {
+				s.relMoveSprite(65_536,1,0);
+			}
+			//ocd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
+			//ocd.testSingle(65_536);
 			if(scrup) {
 				t.relScroll(0,-1);
 				tt.relScroll(0,-1);
@@ -267,6 +256,23 @@ class TileLayerTest : SystemEventListener, InputListener{
 				framecounter = 0;
 			}
 			//t.relScroll(1,0);
+		}
+	}
+	public void onCollision(ObjectCollisionEvent event) {
+		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));
+		final switch (event.type) with (ObjectCollisionEvent.Type) {
+			case None:
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				break;
+			case BoxEdge:
+				textLayer.writeTextToMap(10,2,0,"     BoxEdge",BitmapAttrib(true, false));
+				break;
+			case BoxOverlap:
+				textLayer.writeTextToMap(10,2,0,"  BoxOverlap",BitmapAttrib(true, false));
+				break;
+			case ShapeOverlap:
+				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false));
+				break;
 		}
 	}
 	override public void onQuit() {

@@ -33,7 +33,7 @@ public enum Devicetype : ubyte {
 }
 /**
  * Keys used during text input.
- * Multiple enter and backspace keys are converted as such.
+ * Multiple enter and backspace keys are not threated as different entities in this case.
  */
 public enum TextInputKey {
 	init,
@@ -229,10 +229,10 @@ public struct BindingCode {
  * Defines a single Input Binding.
  */
 public struct InputBinding {
-	uint		code;			///Code being sent out to the target.
-	uint		flags;			///For future extensions.
-	float[2]	deadzone;		///The deadzone, if the binding is an axis
-	static enum IS_AXIS_AS_BUTTON = 1<<0;
+	uint		code;			///Code being sent out to the target, should be a MurmurhashV3/32 code.
+	uint		flags;			///Stores additional properties of the input binding.
+	float[2]	deadzone;		///The deadzone, if the binding is an axis.
+	static enum IS_AXIS_AS_BUTTON = 1<<0;	///If set in the flags field, then it treats the axis as a button.
 	///Default CTOR
 	this(uint code, uint flags = 0, float[2] deadzone = [0.0, 0.0]) @nogc @safe pure nothrow {
 		this.code = code;

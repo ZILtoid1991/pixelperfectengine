@@ -67,7 +67,7 @@ public class TileCollisionEvent {
 		Box					position;	///Position of the tile
 		MappingElement		data;		///Data of the mapping element read out from the layer
 	}
-	CollisionShape		a;			///Source object
+	CollisionShape*		a;			///Source object
 	int					contextID;	///The context of the collision (e.g. layer number)
 	CollisionContext[]	overlap;	///All overlapping collisions
 	CollisionContext[]	topEdge;	///Top edge collisions if any
