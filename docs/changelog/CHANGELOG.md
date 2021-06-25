@@ -2,7 +2,9 @@
 
 ## Fixed bugs
 
-### Drive button works again
+* Drive button works again
+* Layers now cannot be created before docs
+* Materials cannot be created before layers
 
 # 0.10.0-beta1
 ## New features
