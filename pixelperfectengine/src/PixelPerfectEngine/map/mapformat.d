@@ -222,6 +222,15 @@ public class MapFormat {
 		return result;
 	}
 	/**
+	 * Returns a specified layer's basic information.
+	 */
+	public LayerInfo getLayerInfo(int pri) @trusted {
+		Tag t = layerData.get(pri, null);
+		if (t !is null) return LayerInfo(LayerInfo.parseLayerTypeString(t.name), t.values[1].get!int(), 
+				t.values[0].get!string());
+		else return LayerInfo.init;
+	}
+	/**
 	 * Alters a tile layer data.
 	 */
 	public void alterTileLayerInfo(T)(int layerNum, int dataNum, T value) @trusted {

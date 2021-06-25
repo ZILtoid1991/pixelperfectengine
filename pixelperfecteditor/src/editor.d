@@ -248,7 +248,7 @@ public class Editor : InputListener, SystemEventListener {
 
 		//Initialize the Concrete framework
 		INIT_CONCRETE(wh);
-		writeln(globalDefaultStyle.drawParameters);
+		//writeln(globalDefaultStyle.drawParameters);
 		//Initialize custom GUI elements
 		{
 			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE1.tga", 16, 16);
@@ -631,17 +631,21 @@ public class Editor : InputListener, SystemEventListener {
 	 * Opens a window to ask the user for the data on the new tile layer
 	 */
 	public void initNewTileLayer(){
-		wh.addWindow(new NewTileLayerDialog(this));
+		if (selDoc !is null)
+			wh.addWindow(new NewTileLayerDialog(this));
 	}
 	/**
 	 * Opens a window to ask the user for input on materials to be added
 	 */
 	public void initAddMaterials() {
 		import windows.addtiles;
-		if(selDoc){
-			ITileLayer itl = cast(ITileLayer)selDoc.mainDoc.layeroutput[selDoc.selectedLayer];
-			const int tileX = itl.getTileWidth, tileY = itl.getTileHeight;
-			wh.addWindow(new AddTiles(this, tileX, tileY));
+		if (selDoc !is null) {
+			if (selDoc.mainDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+					selDoc.mainDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+				ITileLayer itl = cast(ITileLayer)selDoc.mainDoc.layeroutput[selDoc.selectedLayer];
+				const int tileX = itl.getTileWidth, tileY = itl.getTileHeight;
+				wh.addWindow(new AddTiles(this, tileX, tileY));
+			}
 		}
 	}
 	/**
