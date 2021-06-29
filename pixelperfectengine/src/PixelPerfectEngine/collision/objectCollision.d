@@ -119,12 +119,12 @@ public class ObjectCollisionDetector {
 				cc.top = shA.position.top;
 			}
 			if(shA.position.bottom <= shB.position.bottom) {
-				ca.bottom = shB.position.bottom - shA.position.bottom;
-				cb.bottom = shB.position.height - 1;
+				cb.bottom = shB.position.bottom - shA.position.bottom;
+				ca.bottom = shB.position.height - 1;
 				cc.bottom = shA.position.bottom;
 			} else {
-				cb.bottom = shA.position.bottom - shB.position.bottom;
-				ca.bottom = shA.position.height - 1;
+				ca.bottom = shA.position.bottom - shB.position.bottom;
+				cb.bottom = shA.position.height - 1;
 				cc.bottom = shB.position.bottom; 
 			}
 			if (shA.position.left <= shB.position.left) {
@@ -135,12 +135,12 @@ public class ObjectCollisionDetector {
 				cc.left = shA.position.left;
 			}
 			if (shA.position.right <= shB.position.right) {
-				ca.right = shB.position.right - shA.position.right;
-				cb.right = shB.position.width - 1;
+				cb.right = shB.position.right - shA.position.right;
+				ca.right = shB.position.width - 1;
 				cc.right = shA.position.right;
 			} else {
-				cb.right = shA.position.right - shB.position.right;
-				ca.right = shA.position.width - 1;
+				ca.right = shA.position.right - shB.position.right;
+				cb.right = shA.position.width - 1;
 				cc.right = shB.position.right;
 			}
 			debug {
