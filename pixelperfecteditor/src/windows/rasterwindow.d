@@ -23,15 +23,18 @@ public class RasterWindow : Window, PaletteContainer {
 	protected Bitmap32Bit trueOutput, rasterOutput;
 	protected Color[] paletteLocal;
 	protected Color* paletteShared;
-	//protected Layer[int] layers;
+	public Color		selColor;		///Selection invert color (red by default)
+	public Color		selArmColor;	///Selection armed color (blue by default)
 	protected uint statusFlags;
 	protected static enum MOVE_ARMED = 1 << 0; 		///Redirect mouse events to document
 	protected static enum CLOSE_PROTECT = 1 << 1;
 	protected static enum SELECTION_ARMED = 1 << 2;	///Selection is armed, draw box, and redirect event to document
+	protected static enum SHOW_SELECTION = 1 << 3;	///Shows selection
 	protected int[] layerList;
-	public int rasterX, rasterY;
+	public int rasterX, rasterY;		///Raster sizes
 	protected dstring documentName;
 	protected MapDocument document;
+	///The selection area on the screen. Converted from the parent document's own absolute values
 	public Box selection;
 	protected RadioButtonGroup modeSel;
 	/**
@@ -67,6 +70,8 @@ public class RasterWindow : Window, PaletteContainer {
 		this.document = document;
 		statusFlags |= CLOSE_PROTECT;
 		modeSel.latchPos(0);
+		selColor = Color(0xff,0x00,0x00,0x00);
+		selArmColor = Color(0x00,0x00,0xff,0x00);
 	}
 	/**
 	 * Overrides the original getOutput function to return a 32 bit bitmap instead.
@@ -207,11 +212,11 @@ public class RasterWindow : Window, PaletteContainer {
 		uint* p = cast(uint*)trueOutput.getPtr;
 		if (statusFlags & SELECTION_ARMED) {
 			for (int y = selection.top + 16 ; y <= selection.bottom + 16 ; y++) {
-				xorBlitter!uint(p + 1 + trueOutput.width * y, selection.width, 0xFF_00_00_00);
+				xorBlitter!uint(p + 1 + trueOutput.width * y, selection.width, selArmColor.base);
 			}
-		} else {
+		} else if (statusFlags & SHOW_SELECTION) {
 			for (int y = selection.top + 16 ; y <= selection.bottom + 16 ; y++) {
-				xorBlitter!uint(p + 1 + trueOutput.width * y, selection.width, 0x00_00_FF_00);
+				xorBlitter!uint(p + 1 + trueOutput.width * y, selection.width, selColor.base);
 			}
 		}
 	}
@@ -287,6 +292,16 @@ public class RasterWindow : Window, PaletteContainer {
 	///Returns true if selection is armed
 	public bool isSelectionArmed() const @nogc @safe pure nothrow {
 		return statusFlags & SELECTION_ARMED ? true : false;
+	}
+	///Called when selection needs to be disarmed.
+	public bool showSelection(bool val) @nogc @safe pure nothrow {
+		if (val) statusFlags |= SHOW_SELECTION;
+		else statusFlags &= ~SHOW_SELECTION;
+		return statusFlags & SHOW_SELECTION ? true : false;
+	}
+	///Returns true if selection is displayed
+	public bool showSelection() const @nogc @safe pure nothrow {
+		return statusFlags & SHOW_SELECTION ? true : false;
 	}
 	///Enables or disables move
 	public bool moveEn(bool val) @nogc @safe pure nothrow {

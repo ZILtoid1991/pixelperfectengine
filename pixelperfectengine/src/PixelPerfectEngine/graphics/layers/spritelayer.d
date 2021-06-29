@@ -186,8 +186,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected Color[2048]		src;				///Local buffer for scaling
 	//size_t[8] prevSize;
 	///Default ctor
-	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) @nogc nothrow @safe {
+	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
 		setRenderingMode(renderMode);
+		displayedSprites.reserve(128);
 		//src[0].length = 1024;
 	}
 	/**

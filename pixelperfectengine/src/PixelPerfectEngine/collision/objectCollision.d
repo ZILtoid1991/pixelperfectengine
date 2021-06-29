@@ -107,37 +107,41 @@ public class ObjectCollisionDetector {
 		} else {
 			//if there's a bitmap for both shapes, then proceed to per-pixel testing
 			Coordinate ca, cb, cc; // test area coordinates
-			ca.right = shA.position.width;
-			ca.bottom = shA.position.height;
-			cb.right = shB.position.width;
-			cb.bottom = shB.position.height;
-			if (shA.position.top >= shB.position.top) {
-				ca.top += shA.position.top - shB.position.top;
-				cc.top = shA.position.top;
-			} else {
-				cb.top += shB.position.top - shA.position.top;
+			//ca: Shape a's overlap area
+			//cb: Shape b's overlap area
+			//cc: global overlap area
+			//
+			if (shA.position.top <= shB.position.top) {
+				ca.top = shB.position.top - shA.position.top;
 				cc.top = shB.position.top;
-			}
-			if(shA.position.bottom >= shB.position.bottom) {
-				ca.bottom -= shA.position.bottom - shB.position.bottom;
-				cc.bottom = shB.position.bottom;
 			} else {
-				cb.bottom -= shB.position.bottom - shA.position.bottom;
-				cc.bottom = shA.position.bottom; 
+				cb.top = shA.position.top - shB.position.top;
+				cc.top = shA.position.top;
 			}
-			if (shA.position.left >= shB.position.left) {
-				ca.left += shA.position.left - shB.position.left;
-				cc.left = shA.position.left;
+			if(shA.position.bottom <= shB.position.bottom) {
+				ca.bottom = shB.position.bottom - shA.position.bottom;
+				cb.bottom = shB.position.height - 1;
+				cc.bottom = shA.position.bottom;
 			} else {
-				cb.left += shB.position.left - shA.position.left;
+				cb.bottom = shA.position.bottom - shB.position.bottom;
+				ca.bottom = shA.position.height - 1;
+				cc.bottom = shB.position.bottom; 
+			}
+			if (shA.position.left <= shB.position.left) {
+				ca.left = shB.position.left - shA.position.left;
 				cc.left = shB.position.left;
-			}
-			if (shA.position.right >= shB.position.right) {
-				ca.right -= shA.position.right - shB.position.right;
-				cc.right = shB.position.right;
 			} else {
-				cb.right -= shB.position.right - shA.position.right;
+				cb.left = shA.position.left - shB.position.left;
+				cc.left = shA.position.left;
+			}
+			if (shA.position.right <= shB.position.right) {
+				ca.right = shB.position.right - shA.position.right;
+				cb.right = shB.position.width - 1;
 				cc.right = shA.position.right;
+			} else {
+				cb.right = shA.position.right - shB.position.right;
+				ca.right = shA.position.width - 1;
+				cc.right = shB.position.right;
 			}
 			debug {
 				assert ((ca.width == cb.width) && (cb.width == cc.width), "Width mismatch error!");

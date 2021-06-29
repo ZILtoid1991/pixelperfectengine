@@ -126,6 +126,7 @@ public T[] loadBitmapSheetFromImage(T)(Image img, int x, int y)
 		else static if (is(T == Bitmap32Bit))
 			const size_t length = x * 4, pitch = source.width * 4;
 		const size_t pitch0 = pitch * y;
+		output.reserve(source.height / y * source.width / x);
 		for (int mY ; mY < source.height / y ; mY++){
 			for (int mX ; mX < source.width / x ; mX++){
 				T next = new T(x, y);

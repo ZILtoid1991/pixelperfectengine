@@ -32,19 +32,21 @@ public class MapDocument : MouseEventReceptor {
 	Color[] delegate(MapDocument sender) paletteReturnFunc;	///Used for adding the palette for the document
 	int					selectedLayer;	///Indicates the currently selected layer
 	Box					mapSelection;	///Contains the selected map area parameters
-	Box					areaSelection;	///Contains the selected layer area parameters
+	Box					areaSelection;	///Contains the selected layer area parameters in pixels
 	RasterWindow		outputWindow;	///Window used to output the screen data
 	EditMode			mode;			///Mose event mode selector
 	LayerInfo[]			layerList;		///Local layerinfo for data lookup
 	string				filename;		///Null if not yet saved, otherwise name of the target file
 	protected int		prevMouseX;		///Previous mouse X position
 	protected int		prevMouseY;		///Previous mouse Y position
+
 	public int			sXAmount;		///Continuous X scroll amount
 	public int			sYAmount;		///Continuous Y scroll amount
 	protected uint		flags;			///Various status flags combined into one.
 	protected static enum	VOIDFILL_EN = 1<<0;	///If set, tilePlacement overrides only transparent (0xFFFF) tiles.
 	protected static enum	LAYER_SCROLL = 1<<1;///If set, then layer is being scrolled.
 	protected static enum	PLACEMENT = 1<<2;	///To solve some "debounce" issues around mouse click releases
+	protected static enum	DISPL_SELECTION = 1<<3;	///If set, then selection is shown
 	protected MappingElement	selectedMappingElement;	///Currently selected mapping element to write, including mirroring properties, palette selection, and priority attributes
 	//public bool			voidfill;		///If true, tilePlacement overrides only transparent (0xFFFF) tiles.
 	/**
@@ -84,161 +86,6 @@ public class MapDocument : MouseEventReceptor {
 			itl.addTile(tiles[i], i);
 		}
 	}
-	/+/**
-	 * Pass mouse events here. DEPRECATED!
-	 */
-	public void passMouseEvent(int x, int y, int state, ubyte button) {
-		//Normal mode:
-		//left : drag layer/select ; right : menu ; middle : quick nav ; other buttons : user defined
-		//TileLayer placement mode:
-		//left : placement ; right : menu ; middle : delete ; other buttons : user defined
-		final switch (mode) {
-			case EditMode.selectDragScroll:
-				/+if (state == ButtonState.Pressed) {
-					prevMouseX = x;
-					prevMouseY = y;
-				}+/
-				switch (button) {
-					case MouseButton.Left:
-						//Initialize drag select
-						if (state == ButtonState.Pressed) {
-							prevMouseX = x;
-							prevMouseY = y;
-						} else {
-							Box b;
-
-							if (prevMouseX > x) {
-								b.right = prevMouseX;
-								b.left = x;
-							} else {
-								b.right = x;
-								b.left = prevMouseX;
-							}
-
-							if (prevMouseY > y) {
-								b.bottom = prevMouseY;
-								b.top = y;
-							} else {
-								b.bottom = y;
-								b.top = prevMouseY;
-							}
-						}
-						break;
-					case MouseButton.Mid:
-						//Enable quicknav mode. Scroll the layer by delta/10 for each frame. Stop if button is released.
-						if (state == ButtonState.Pressed) {
-							outputWindow.requestCursor(CursorType.Hand);
-							prevMouseX = x;
-							prevMouseY = y;
-						} else {
-							outputWindow.requestCursor(CursorType.Arrow);
-						}
-						scrollSelectedLayer(prevMouseX - x, prevMouseY - y);
-
-						prevMouseX = x;
-						prevMouseY = y;
-						break;
-					default:
-						break;
-				}
-				break;
-			case EditMode.tilePlacement:
-				if(mainDoc.layeroutput.length) {
-					switch (button) {
-						case MouseButton.Left:
-							//Record the first cursor position upon mouse button press, then initialize either a single or zone write for the selected tile layer.
-							if (state == ButtonState.Pressed) {
-								prevMouseX = x;
-								prevMouseY = y;
-							} else {
-								ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
-								x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
-								y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-								prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTileWidth;
-								prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-								Coordinate c;
-								
-								if (x > prevMouseX){
-									c.left = prevMouseX;
-									c.right = x;
-								} else {
-									c.left = x;
-									c.right = prevMouseX;
-								}
-								if (y > prevMouseY){
-									c.top = prevMouseY;
-									c.bottom = y;
-								} else {
-									c.top = y;
-									c.bottom = prevMouseY;
-								}
-
-								if (voidfill) {
-									if (c.width == 0 && c.height == 0) {
-										if (target.readMapping(c.left, c.top).tileID == 0xFFFF)
-											events.addToTop(new WriteToMapSingle(target, c.left, c.top, selectedMappingElement));
-									} else {
-										events.addToTop(new WriteToMapVoidFill(target, c, selectedMappingElement));
-									}
-								} else {
-									if (c.width == 0 && c.height == 0) {
-										events.addToTop(new WriteToMapSingle(target, c.left, c.top, selectedMappingElement));
-
-									} else {
-										events.addToTop(new WriteToMapOverwrite(target, c, selectedMappingElement));
-									}
-								}
-							}
-							break;
-						case MouseButton.Mid:
-							//Record the first cursor position upon mouse button press, then initialize either a single or zone delete for the selected tile layer.
-							if (state == ButtonState.Pressed) {
-								prevMouseX = x;
-								prevMouseY = y;
-							} else {
-								ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
-								x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
-								y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-								prevMouseX = (prevMouseX + mainDoc[selectedLayer].getSX) / target.getTileWidth;
-								prevMouseY = (prevMouseY + mainDoc[selectedLayer].getSY) / target.getTileHeight;
-								Coordinate c;
-								if (x > prevMouseX){
-									c.left = prevMouseX;
-									c.right = x;
-								} else {
-									c.left = x;
-									c.right = prevMouseX;
-								}
-								if (y > prevMouseY){
-									c.top = prevMouseY;
-									c.bottom = y;
-								} else {
-									c.top = y;
-									c.bottom = prevMouseY;
-								}
-								if (c.width == 0 && c.height == 0) {
-									events.addToTop(new WriteToMapSingle(target, c.left, c.top, MappingElement(0xFFFF)));
-								} else {
-									events.addToTop(new WriteToMapOverwrite(target, c, MappingElement(0xFFFF)));
-								}
-							}
-							break;
-						case MouseButton.Right:
-							//Open quick menu with basic edit options and ability of toggling both vertically and horizontally.
-							break;
-						default:
-							break;
-					}
-					outputWindow.draw();
-				}
-				//outputWindow.updateRaster();
-				break;
-			case EditMode.spritePlacement:
-				break;
-			case EditMode.boxPlacement:
-				break;
-		}
-	}+/
 	/**
 	 * Scrolls the selected layer by a given amount.
 	 */
@@ -265,7 +112,7 @@ public class MapDocument : MouseEventReceptor {
 			if (onscreen.isBetween(areaSelection.cornerUL) || onscreen.isBetween(areaSelection.cornerUR) || 
 					onscreen.isBetween(areaSelection.cornerLL) || onscreen.isBetween(areaSelection.cornerLR)) {
 				outputWindow.selection = areaSelection;
-				outputWindow.selection.move(sX, sY);
+				outputWindow.selection.move(sX * -1, sY * -1);
 
 				outputWindow.selection.left = outputWindow.selection.left < 0 ? 0 : outputWindow.selection.left;
 				outputWindow.selection.left = outputWindow.selection.left >= outputWindow.rasterX ? outputWindow.rasterX - 1 : 
@@ -354,14 +201,14 @@ public class MapDocument : MouseEventReceptor {
 		final switch (mode) with (EditMode) {
 			case tilePlacement:
 				switch (mce.button) {
-					case MouseButton.Left:
+					case MouseButton.Left:			//Tile placement
 						//Record the first cursor position upon mouse button press, then initialize either a single or zone write for the selected tile layer.
 						if (mce.state) {
 							prevMouseX = x;
 							prevMouseY = y;
-							flags ^= PLACEMENT;
+							flags |= PLACEMENT;
 						} else if (flags & PLACEMENT) {
-							flags ^= PLACEMENT;
+							flags &= ~PLACEMENT;
 							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
 							const int tileWidth = target.getTileWidth, tileHeight = target.getTileHeight;
 							const int hScroll = mainDoc[selectedLayer].getSX, vScroll = mainDoc[selectedLayer].getSX;
@@ -404,14 +251,14 @@ public class MapDocument : MouseEventReceptor {
 						}
 						outputWindow.updateRaster();
 						break;
-					case MouseButton.Mid:
+					case MouseButton.Mid:			//Tile deletion
 						//Record the first cursor position upon mouse button press, then initialize either a single or zone delete for the selected tile layer.
 						if (mce.state) {
 							prevMouseX = x;
 							prevMouseY = y;
-							flags ^= PLACEMENT;
+							flags |= PLACEMENT;
 						} else if (flags & PLACEMENT) {
-							flags ^= PLACEMENT;
+							flags &= ~PLACEMENT;
 							ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
 							x = (x + mainDoc[selectedLayer].getSX) / target.getTileWidth;
 							y = (y + mainDoc[selectedLayer].getSY) / target.getTileHeight;
@@ -501,6 +348,8 @@ public class MapDocument : MouseEventReceptor {
 										break;
 								}
 							}
+
+							outputWindow.showSelection = true;
 						}
 						break;
 					case MouseButton.Mid:
@@ -534,6 +383,25 @@ public class MapDocument : MouseEventReceptor {
 		final switch (mode) with (EditMode) {
 			case selectDragScroll:
 				switch (mme.buttonState) {
+					case MouseButtonFlags.Left:
+						Box s;
+						if (prevMouseX < mme.x) {
+							s.left = prevMouseX;
+							s.right = mme.x;
+						} else {
+							s.left = mme.x;
+							s.right = prevMouseX;
+						}
+						if (prevMouseY < mme.y) {
+							s.top = prevMouseY;
+							s.bottom = mme.y;
+						} else {
+							s.top = mme.y;
+							s.bottom = prevMouseY;
+						}
+						outputWindow.selection = s;
+						outputWindow.updateRaster();
+						break;
 					case MouseButtonFlags.Mid:
 						scrollSelectedLayer(prevMouseX - mme.x, prevMouseY - mme.y);
 						prevMouseX = mme.x;

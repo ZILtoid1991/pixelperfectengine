@@ -73,7 +73,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	Bitmap1bit dlangManCS;
 	SpriteLayer s;
 	InputHandler ih;
-	//ObjectCollisionDetector ocd;
+	ObjectCollisionDetector ocd;
 	float theta;
 	int framecounter;
 	this (bool testTransformableTileLayer, int mapWidth, int mapHeight) {
@@ -91,27 +91,35 @@ class TileLayerTest : SystemEventListener, InputListener {
 		textLayer.paletteOffset = 512;
 		textLayer.masterVal = 127;
 		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
-		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(RenderingMode.Copy);
+		//tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(RenderingMode.Copy);
 		s = new SpriteLayer(RenderingMode.AlphaBlend);
 		if (testTransformableTileLayer) r.addLayer(tt, 0);
 		else r.addLayer(t, 0);
 		r.addLayer(s, 1);
 		r.addLayer(textLayer, 65_536);
+
+		Color[] localPal = loadPaletteFromImage(tileSource);
+		localPal.length = 256;
+		r.addPaletteChunk(localPal);
+		localPal = loadPaletteFromImage(spriteSource);
+		localPal.length = 256;
+		r.addPaletteChunk(localPal);
+		r.addPaletteChunk([Color(0x00,0x00,0x00,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x00,0x00,0x00,0xFF),
+				Color(0xff,0x00,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),Color(0x00,0xff,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),
+				Color(0x00,0x00,0xff,0xFF)]);
+
 		//writeln(r.layerMap);
 		//c = new CollisionDetector();
 		dlangMan = loadBitmapFromImage!Bitmap8Bit(spriteSource);
 		dlangManCS = dlangMan.generateStandardCollisionModel();
-		//ocd = new ObjectCollisionDetector(&onCollision, 0);
-		//CollisionModel cm = new CollisionModel(dlangMan.width, dlangMan.height, dlangMan.generateStandardCollisionModel());
-		//dlangMan.offsetIndexes(256,false);
+		ocd = new ObjectCollisionDetector(&onCollision, 0);
 		s.addSprite(dlangMan, 65_536, 0, 0, 1);
-		//ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
-		//s.scaleSpriteHoriz(0,-1024);
-		//s.scaleSpriteVert(0,-1024);
+		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
+		
 		for(int i = 1 ; i < 10 ; i++){
 			const int x = uniform(0,320), y = uniform(0,240);
-			s.addSprite(dlangMan, i, x, uniform(0,240), 1);
-			//ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
+			s.addSprite(dlangMan, i, x, y, 1);
+			ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
 		}
 		
 		tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
@@ -187,15 +195,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 				writeln('[',x,',',y,"] : ", t.transformFunc([x,y]));
 			}
 		}*/
-		Color[] localPal = loadPaletteFromImage(tileSource);
-		localPal.length = 256;
-		r.addPaletteChunk(localPal);
-		localPal = loadPaletteFromImage(spriteSource);
-		localPal.length = 256;
-		r.addPaletteChunk(localPal);
-		r.addPaletteChunk([Color(0x00,0x00,0x00,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x00,0x00,0x00,0xFF),
-				Color(0xff,0x00,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),Color(0x00,0xff,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),
-				Color(0x00,0x00,0xff,0xFF)]);
+		
 		//writeln(r.palette);
 		//r.palette[0].alpha = 255;
 		r.palette[256].base = 0;
@@ -227,8 +227,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 			if(right) {
 				s.relMoveSprite(65_536,1,0);
 			}
-			//ocd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
-			//ocd.testSingle(65_536);
+			ocd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
+			ocd.testSingle(65_536);
 			if(scrup) {
 				t.relScroll(0,-1);
 				tt.relScroll(0,-1);
@@ -252,14 +252,14 @@ class TileLayerTest : SystemEventListener, InputListener {
 			
 			framecounter++;
 			if(framecounter == 10){
-				textLayer.writeTextToMap(10,0,0,format("%3.3f"w,r.avgfps),BitmapAttrib(true, false));
+				//textLayer.writeTextToMap(10,0,0,format("%3.3f"w,r.avgfps),BitmapAttrib(true, false));
 				framecounter = 0;
 			}
 			//t.relScroll(1,0);
 		}
 	}
 	public void onCollision(ObjectCollisionEvent event) {
-		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));
+		//textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));
 		final switch (event.type) with (ObjectCollisionEvent.Type) {
 			case None:
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
@@ -389,7 +389,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
 	 */
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
-		writeln(id, ";", code, ";",timestamp, ";",isPressed, ";");
+		//writeln(id, ";", code, ";",timestamp, ";",isPressed, ";");
 		switch (id) {
 			case 1720810685:	//up
 				up = isPressed;
