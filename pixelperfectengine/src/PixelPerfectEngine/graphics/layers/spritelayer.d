@@ -276,7 +276,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Ditto
 	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
 				int scaleVert = 1024) @safe nothrow {
-		DisplayListItem d = DisplayListItem(Box(x, y, s.width + x, s.height + y), s, n, paletteSel, scaleHoriz, scaleVert);
+		DisplayListItem d = DisplayListItem(Box(x, y, x + s.width - 1, y + s.height - 1), s, n, paletteSel, scaleHoriz, scaleVert);
 		d.renderFunc = mainRenderingFunction;
 		synchronized
 			allSprites[n] = d;
