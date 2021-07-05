@@ -1,8 +1,8 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"bindbc-loader": "0.3.2",
-		"bindbc-sdl": "0.21.2",
+		"bindbc-loader": "1.0.0",
+		"bindbc-sdl": "1.0.0",
 		"bitleveld": "0.1.0-alpha",
 		"bmfont": "0.1.0",
 		"collections-d": "0.4.4",
@@ -18,7 +18,7 @@
 		"sdlang-d": "0.10.6",
 		"std-experimental-xml": "0.1.7",
 		"stdx-allocator": "2.77.5",
-		"taggedalgebraic": "0.11.21",
+		"taggedalgebraic": "0.11.22",
 		"undead": "1.1.5",
 		"unit-threaded": "0.7.55",
 		"vfile": "0.1.2"

@@ -13,7 +13,8 @@ public import PixelPerfectEngine.system.exc;
 /**
  * Implements a simple way for audio playback, through the use of SDL2_mixer.
  *
- * It's simple to use, but very limited. `PixelPerfect.audio` will implement a system for plugin-based audio playback,
+ * It's simple to use, but very limited and will be deprecated. `PixelPerfect.audio` will implement a system for 
+ * plugin-based audio playback,
  * with MIDI 2.0 support.
  *
  * Only one instance should be used.

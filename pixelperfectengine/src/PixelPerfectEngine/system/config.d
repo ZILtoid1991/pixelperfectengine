@@ -57,17 +57,24 @@ public struct InputDeviceData{
  * Handles configuration files, like key configurations, 
  */
 public class ConfigurationProfile {
-	public static const ubyte[string] keymodifierStrings;
-	public static const string[ubyte] joymodifierStrings;
-	public static const string[Devicetype] devicetypeStrings;
-	private static Dictionary keyNameDict, joyButtonNameDict, joyAxisNameDict;
-	public int sfxVol, musicVol;
-	public int threads;
-	public string screenMode, resolution, scalingQuality, driver;
+	public static const ubyte[string] keymodifierStrings;		///Key modifier strings, used for reading config files
+	public static const string[ubyte] joymodifierStrings;		///Joy modifier strings, used for reading config files
+	public static const string[Devicetype] devicetypeStrings;	///Device type strings
+	private static Dictionary keyNameDict, joyButtonNameDict, joyAxisNameDict;	///Two-way dictionaries
+	public int		sfxVol;			///Sound effects volume (0-100)
+	public int		musicVol;		///Music volume (0-100)
+	public string	audioDriver;	///Audio driver, null for auto
+	public string	audioDevice;	///Audio device, null for auto
+	public int		audioFrequency;	///Audio sampling frequency
+	public int		threads;		///Rendering threads (kinda deprecated)
+	public string 	screenMode;		///Graphics screen mode
+	public string	resolution;		///Resolution, or window size in windowed mode
+	public string	scalingQuality;	///Scaling quality (what scaler it uses)
+	public string	gfxdriver;		///Graphics driver
 	//public string[string] videoSettings;
 	//public KeyBinding[] keyBindingList;
 	public InputDeviceData[] inputDevices;	///Stores all input devices and keybindings
-	private string path;
+	private string	path;			///Path where the 
 	///Stores ancillary tags to be serialized into the config file
 	protected Tag[] ancillaryTags;
 	private static string vaultPath;
@@ -120,10 +127,10 @@ public class ConfigurationProfile {
 				} else if (t0.name == "video") {	//get values for the video subsystem
 					foreach(Tag t1; t0.tags ){
 						switch(t1.name){
-							case "driver": driver = t1.getValue!string("software"); break;
+							case "driver": gfxdriver = t1.getValue!string("software"); break;
 							case "scaling": scalingQuality = t1.getValue!string("nearest"); break;
-							case "screenMode": driver = t1.getValue!string("windowed"); break;
-							case "resolution": driver = t1.getValue!string("0"); break;
+							case "screenMode": gfxdriver = t1.getValue!string("windowed"); break;
+							case "resolution": gfxdriver = t1.getValue!string("0"); break;
 							case "threads": threads = t1.getValue!int(-1); break;
 							default: break;
 						}
@@ -228,7 +235,7 @@ public class ConfigurationProfile {
 			new Tag(t0, null, "musicVolt", [Value(musicVol)]);
 
 			Tag t1 = new Tag(root, null, "video");
-			new Tag(t1, null, "driver", [Value(driver)]);
+			new Tag(t1, null, "driver", [Value(gfxdriver)]);
 			new Tag(t1, null, "scaling", [Value(scalingQuality)]);
 			new Tag(t1, null, "screenMode", [Value(screenMode)]);
 			new Tag(t1, null, "resolution", [Value(resolution)]);

@@ -188,6 +188,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Default ctor
 	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
 		setRenderingMode(renderMode);
+		//Bug workaround: Sometimes when attempting to append an element to a zero-length array, it causes an exception
+		//to be thrown, due to access errors. This bug is unstable, and as such hard to debug for (memory leakage issue?)
 		displayedSprites.reserve(128);
 		//src[0].length = 1024;
 	}
