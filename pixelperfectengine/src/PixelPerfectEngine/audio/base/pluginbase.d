@@ -28,6 +28,19 @@ public abstract class PluginBase {
 		));
     }
 	private int		sampleRate;			///The sample rate that the audio subsystem runs at
+	private PluginInfo info;///Basic info about the plugin
+	/**
+	 * Returns the basic informations about this plugin.
+	 */
+	public PluginInfo getInfo() @nogc @safe pure nothrow const {
+		return info;
+	}
+	/**
+	 * Returns the current sample rate.
+	 */
+	public int getSamplerate() @nogc @safe pure nothrow const {
+		return rate;
+	}
 	/**
 	 * MIDI 2.0 data received here.
 	 *
