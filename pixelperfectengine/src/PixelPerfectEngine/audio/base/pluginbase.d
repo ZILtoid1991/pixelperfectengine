@@ -18,17 +18,19 @@ public abstract class PluginBase {
 	public struct PluginInfo {
 		public ubyte		nOfAudioInput;		///Number of audio input channels
 		public ubyte		nOfAudioOutput;		///Number of audio output channels
-		public ubyte		nOfMIDIIn;			///Number of MIDI inputs
-		public ubyte		nOfMIDIOut;			///Number of MIDI outputs, including sendbacks for MIDI 2.0
 		mixin(bitfields!(
 			bool, "isInstrument", 1,
 			bool, "isEffect", 1,
 			bool, "midiSendback", 1,
-			uint, "reserved", 29,
+			bool, "hasMidiIn", 1,
+			bool, "hasMidiOut", 1,
+			uint, "reserved", 11,
 		));
+		public string[]		inputChNames;		///Names of the input channels
+		public string[]		outputChNames;		///Names of the output channels
     }
-	private int		sampleRate;			///The sample rate that the audio subsystem runs at
-	private PluginInfo info;///Basic info about the plugin
+	private int				sampleRate;			///The sample rate that the audio subsystem runs at
+	private PluginInfo		info;///Basic info about the plugin
 	/**
 	 * Returns the basic informations about this plugin.
 	 */
