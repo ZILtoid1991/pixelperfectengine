@@ -30,7 +30,7 @@ public abstract class PluginBase {
 		public string[]		outputChNames;		///Names of the output channels
     }
 	private int				sampleRate;			///The sample rate that the audio subsystem runs at
-	private PluginInfo		info;///Basic info about the plugin
+	private PluginInfo		info;				///Basic info about the plugin
 	/**
 	 * Returns the basic informations about this plugin.
 	 */
@@ -41,7 +41,7 @@ public abstract class PluginBase {
 	 * Returns the current sample rate.
 	 */
 	public int getSamplerate() @nogc @safe pure nothrow const {
-		return rate;
+		return sampleRate;
 	}
 	/**
 	 * MIDI 2.0 data received here.
