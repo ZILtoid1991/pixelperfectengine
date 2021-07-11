@@ -121,6 +121,54 @@ public class AudioDeviceHandler {
 		return given.format;
 	}
 }
+/**
+ * Manages all audio plugins complete with routing, MIDI2.0, etc.
+ */
+public class PluginManager : Thread {
+	/**
+	 * Buffer size in samples.
+	 *
+	 * Must be set up on initialization, then all buffers must be this size.
+	 */
+	protected int			bufferSize;
+	/**
+	 * List of plugins.
+	 *
+	 * Ran in order, should be ordered in such way to ensure that routing is correct, and the plugins that need the
+	 * input will get some.
+	 */
+	protected AudioPlugin[]	pluginList;
+	/**
+	 * List of pointers to buffers.
+	 *
+	 * Order of first dimension must match the plugins. Pointers can be shared between multiple inputs or outputs.
+	 */
+	protected float*[][]	bufferList;
+	/**
+	 * List of the buffers themselves.
+	 *
+	 * One buffer can be shared between multiple input and/or output for mixing, etc.
+	 * All buffers must have the same size, defined by the variable `bufferSize`
+	 */
+	protected float[][]		buffers;
+
+	/**
+	 * Renders the audio to the buffers.
+	 */
+	public void render(void* userdata, ubyte* stream, int len) @nogc nothrow {
+		
+	}
+	/**
+	 * MIDI commands are received here from plugins.
+	 *
+	 * data: up to 128 bits of MIDI 2.0 commands. Any packets that are shorter should be padded with zeros.
+	 * offset: time offset of the command. This can reduce jitter caused by the asynchronous operation of the 
+	 * sequencer and the audio plugin system.
+	 */
+	public void midiReceive(uint[4] data, uint offset) @nogc nothrow {
+		
+	}
+}
 alias CallBackDeleg = void delegate(void* userdata, ubyte* stream, int len) @nogc nothrow;
 ///Privides a way for delegates to be called from SDL2.
 ///Must be set up before audio device initialization.
