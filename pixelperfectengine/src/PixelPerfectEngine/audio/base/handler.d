@@ -139,11 +139,19 @@ public class PluginManager : Thread {
 	 */
 	protected AudioPlugin[]	pluginList;
 	/**
-	 * List of pointers to buffers.
+	 * List of pointers to input buffers.
 	 *
 	 * Order of first dimension must match the plugins. Pointers can be shared between multiple inputs or outputs.
+	 * If a specific plugin doesn't have any inputs, then an array with zero elements must be added.
 	 */
-	protected float*[][]	bufferList;
+	protected float*[][]	inBufferList;
+	/**
+	 * List of pointers to output buffers.
+	 *
+	 * Order of first dimension must match the plugins. Pointers can be shared between multiple inputs or outputs.
+	 * If a specific plugin doesn't have any outputs, then an array with zero elements must be added.
+	 */
+	protected float*[][]	outBufferList;
 	/**
 	 * List of the buffers themselves.
 	 *
@@ -167,6 +175,32 @@ public class PluginManager : Thread {
 	 */
 	public void midiReceive(uint[4] data, uint offset) @nogc nothrow {
 		
+	}
+	/**
+	 * Sets up a specific number of buffers.
+	 */
+	public void setBuffers(size_t num) nothrow {
+		buffers.length = num;
+		for (size_t i ; i < buffers.length ; i++) {
+			buffers[i].length = bufferSize;
+		}
+	}
+	/**
+	 * Adds a plugin to the list.
+	 */
+	public void addPlugin(AudioPlugin plugin, size_t[] inBuffs, size_t[] outBuffs) nothrow {
+		pluginList ~= plugin;
+		float*[] buffList0, buffList1;
+		buffList0.length = inBuffs.length;
+		for (size_t i ; i < inBuffs.length ; i++) {
+			buffList0[i] = buffers[inBuffs[i]].ptr;
+		}
+		buffList1.length = outBuffs.length;
+		for (size_t i ; i < outBuffs.length ; i++) {
+			buffList1[i] = buffers[outBuffs[i]].ptr;
+		}
+		inBufferList ~= buffList0;
+		outBufferList ~= buffList1;
 	}
 }
 alias CallBackDeleg = void delegate(void* userdata, ubyte* stream, int len) @nogc nothrow;

@@ -49,7 +49,7 @@ import inteli.emmintrin;
 	 */
 	public void convExIntToFlt(size_t length, int* src, float* dest) {
 		while (length) {
-			_mm_store_ps(dest, _mm_cvtepi32_ps(_mm_load_si128(cast(__m128i*)src) * CONV_RATIO_RECIPROCAL);
+			_mm_store_ps(dest, _mm_cvtepi32_ps(_mm_load_si128(cast(__m128i*)src)) * CONV_RATIO_RECIPROCAL);
 			length -= 4;
 			src += 4;
 			dest += 4;
