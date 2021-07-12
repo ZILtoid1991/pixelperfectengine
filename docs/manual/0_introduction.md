@@ -138,6 +138,12 @@ A GUI subsystem, called Concrete, has been created to make editors using the eng
 to use it for puzzle, strategy, and management games, also for configuration managers. The GUI has it's own layout
 editor for faster creation and easier visualization.
 
+## Audio subsystem
+
+There's a custom audio subsystem, which can be used to geterate both music and sound effects. It uses software synthesizers, that can be manipulated real time through MIDI2.0, which is also can be used for preset recall. Dynamic soundtracks containing more than just fading in and out MP3 files.
+
+A musician wanting to use the synths must be familiar with MIDI2.0, and programming the synths themselves. Some corners can be cut by using presets of course.
+
 # Planned features
 
 * Software synths for audio, with MIDI 2.0 support
