@@ -11,6 +11,8 @@ module PixelPerfectEngine.audio.base.func;
 import inteli.emmintrin;
 
 @nogc nothrow pure:
+	///Constant for fast integer to floating point conversion
+	package immutable __m128 CONV_RATIO_RECIPROCAL = __m128(-1.0 / ushort.min);
 	/**
 	 * Mixes an audio stream to the destination.
 	 */
@@ -30,6 +32,7 @@ import inteli.emmintrin;
 	}
 	/**
 	 * Interleaves two channels.
+	 * `dest` must be as big as the length of `srcL` and `srcR`.
 	 */
 	public void interleave(size_t length, float* srcL, float* srcR, float* dest) {
 		while (length) {
@@ -39,5 +42,16 @@ import inteli.emmintrin;
 			srcL++;
 			srcR++;
 			length--;
+		}
+	}
+	/**
+	 * Converts a 32 bit extended integer stream to 32 bit floating point.
+	 */
+	public void convExIntToFlt(size_t length, int* src, float* dest) {
+		while (length) {
+			_mm_store_ps(dest, _mm_cvtepi32_ps(_mm_load_si128(cast(__m128i*)src) * CONV_RATIO_RECIPROCAL);
+			length -= 4;
+			src += 4;
+			dest += 4;
 		}
 	}
