@@ -11,7 +11,8 @@ module PixelPerfectEngine.audio.base.envgen;
 /**
  * Envelope generator struct.
  *
- * Uses floating-point arithmetic internally, but output can be converted to integer if needed. Shaping is supported through internal filtering.
+ * Uses integer arithmetics for speed. In the future, it'll have support for shaping the envelope.
+ * Output is between 0 and 65 535.
  */
 public struct EnvelopeGenerator {
 	/**
@@ -24,34 +25,34 @@ public struct EnvelopeGenerator {
 		Sustain,
 		Release,
 	}
-	//Note: All `rate` values should be between 0.0 and 1.0
-	//All `control` values should be between 1.0 and - 1.0
-	public float		attackRate;		///Sets how long the attack phase will last (less = longer)
-	public float		attackShape;	///Controls the shape of the attack curve
-	public float		decayRate;		///Sets how long the decay phase will last (less = longer)
-	public float		decayShape;		///Controls the shape of the decay curve
-	public float		sustainLevel;	///Sets the level of sustain.
-	public float		sustainControl;	///Controls how the sustain level will change
-	public float		releaseRate;	///Sets how long the release phase will last (less = longer)
-	public float		releaseShape;	///Controls the shape of the release curve
-	//status values
-	protected ubyte		currStage;		///The current stage of the envelope generator
-	protected bool		keyState;		///If key is on, then it's set to true
-	public bool			isPercussive;	///If true, then the sustain stage is skipped
-	protected float		counter;		///The current position of the counter
-	protected float		currValue;		///The current output value of the envelope generator
+	//Note: These values have a max value of 0xFF_FF_FF, save for sustain rate, which can be negative. 
+	//Decay and sustain rates are dependent on sustain level, so they sould be adjusted accordingly if timings of
+	//these must be kept constant.
+	public uint			attackRate = 0xFF_FF_FF;	///Sets how long the attack phase will last (less = longer)
+	public uint			decayRate;		///Sets how long the decay phase will last (less = longer)
+	public uint			sustainLevel = 0xFF_FF_FF;	///Sets the level of sustain.
+	public int			sustainControl;	///Controls how the sustain level will change
+	public uint			releaseRate = 0xFF_FF_FF;	///Sets how long the release phase will last (less = longer)
 	
+	//mostly internal status values
+	protected ubyte		currStage;		///The current stage of the envelope generator
+	protected bool		_keyState;		///If key is on, then it's set to true
+	protected bool		_isRunning;		///If set, then the envelope is running
+	public bool			isPercussive;	///If true, then the sustain stage is skipped
+	protected int		counter;		///The current position of the counter + unshaped output
+	//protected int		currVal;		///The current value + shaped output
 	/**
 	 * Advances the main counter by one amount.
-	 * Returns the unfiltered output.
+	 *
+	 * Returns the output.
 	 */
-	public float advanceCounter() @nogc @safe pure nothrow {
-		final switch (currStage) with stage {
+	public int advance() @nogc @safe pure nothrow {
+		final switch (currStage) with (Stage) {
 			case Off: break;
 			case Attack:
 				counter +=attackRate;
-				if (counter >= 1.0) {
-					counter = 1.0;
+				if (counter >= 0xFF_FF_FF) {
+					counter = 0xFF_FF_FF;
 					currStage = Stage.Decay;
 				}
 				break;
@@ -64,19 +65,53 @@ public struct EnvelopeGenerator {
 				break;
 			case Sustain:
 				counter -= sustainControl;
-				if (counter <= 0.0) {
-					counter = 0.0;
+				if (counter <= 0) {
+					counter = 0;
+					currStage = Stage.Off;
+				} else if (counter >= 0xFF_FF_FF) {
+					counter = 0xFF_FF_FF;
 					currStage = Stage.Off;
 				}
 				break;
 			case Release:
 				counter -= releaseRate;
-				if (vounter <= 0.0) {
-					counter = 0.0;
+				if (counter <= 0) {
+					counter = 0;
 					currStage = Stage.Off;
 				}
 				break;
 		}
-		return counter;
+		return counter >> 8;
+	}
+	/**
+	 * Sets the key position to on.
+	 */
+	public void keyOn() @nogc @safe pure nothrow {
+		counter = 0;
+		_keyState = true;
+		currStage = Stage.Attack;
+	}
+	/**
+	 * Sets the key position to off.
+	 */
+	public void keyOff() @nogc @safe pure nothrow {
+		_keyState = false;
+		currStage = Stage.Release;
+	}
+	///Returns the current stage
+	public ubyte position() @nogc @safe pure nothrow const {
+		return currStage;
+	}
+	///Reads the current output
+	public int output() @nogc @safe pure nothrow const {
+		return counter >> 8;
+	}
+	///Returns true if the envelope generator is running
+	public bool isRunning() @nogc @safe pure nothrow const {
+		return _isRunning;
+	}
+	///Returns true if key is on
+	public bool keypos() @nogc @safe pure nothrow const {
+		return _keyState;
 	}
 }
