@@ -170,3 +170,17 @@ public enum SampleLoadErrorCode : int {
 	ChNumNotSupported			=	0x8,
 	SampleLenghtNotSupported	=	0x10,	//Should be only used if a specific sample length was requested
 }
+/**
+ * Defines a workpad for many simple audio codecs
+ */
+public struct Workpad {
+	size_t			pos;		///Position of the decoder
+	int				outn1;		///Previous output sample
+	int				pred;		///Predictor for AdPCM
+}
+/**
+ * Defines a workpad for sample stretching algorithms
+ */
+public struct WavemodWorkpad {
+	ulong			lookupval;	///Current nearest-lookup position
+}
