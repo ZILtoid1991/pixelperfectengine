@@ -9,6 +9,7 @@ module PixelPerfectEngine.audio.base.func;
  */
 
 import inteli.emmintrin;
+import bitleveld.reinterpret;
 
 @nogc nothrow pure:
 	///Constant for fast integer to floating point conversion
@@ -53,5 +54,37 @@ import inteli.emmintrin;
 			length -= 4;
 			src += 4;
 			dest += 4;
+		}
+	}
+	/**
+	 * Decodes an amount of 8 bit unsigned PCM to extended 32 bit.
+	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
+	 */
+	public void decode8bitPCM(const(ubyte)[] src, int[] dest, ref Workpad wp) @nogc @safe pure nothrow {
+		for (size_t i ; i < dest.length ; i++) {
+			const ubyte val = src[wp.pos + i];
+			dest[i] = (val + val<<8) + ushort.min;
+		}
+		wp.pos += dest.length;
+	}
+	/**
+	 * Decodes an amount of 16 bit signed PCM to extended 32 bit.
+	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
+	 */
+	public void decode16bitPCM(const(short)[] src, int[] dest, ref Workpad wp) @nogc @safe pure nothrow {
+		for (size_t i ; i < dest.length : i++) {
+			dest[i] = src[wp.pos + i];
+		}
+		wp.pos += dest.length;
+	}
+	/**
+	 * Streches a buffer to the given amount using no interpolation.
+	 * Can be used to pitch the sample.
+	 */
+	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, uint modifier = 0x01_00_00_00) @nogc @safe pure nothrow {
+		ulong lookupVal;
+		for (size_t i ; i < dest.length ; i++) {
+			dest[i] = src[cast(size_t)(lookupVal>>24)];
+			lookupVal += modifier;
 		}
 	}
