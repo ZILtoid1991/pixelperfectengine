@@ -60,7 +60,7 @@ import bitleveld.reinterpret;
 	 * Decodes an amount of 8 bit unsigned PCM to extended 32 bit.
 	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
 	 */
-	public void decode8bitPCM(const(ubyte)[] src, int[] dest, ref Workpad wp) @nogc @safe pure nothrow {
+	public void decode8bitPCM(const(ubyte)[] src, int[] dest, ref Workpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			const ubyte val = src[wp.pos + i];
 			dest[i] = (val + val<<8) + ushort.min;
@@ -71,7 +71,7 @@ import bitleveld.reinterpret;
 	 * Decodes an amount of 16 bit signed PCM to extended 32 bit.
 	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
 	 */
-	public void decode16bitPCM(const(short)[] src, int[] dest, ref Workpad wp) @nogc @safe pure nothrow {
+	public void decode16bitPCM(const(short)[] src, int[] dest, ref Workpad wp) @safe {
 		for (size_t i ; i < dest.length : i++) {
 			dest[i] = src[wp.pos + i];
 		}
@@ -81,10 +81,9 @@ import bitleveld.reinterpret;
 	 * Streches a buffer to the given amount using no interpolation.
 	 * Can be used to pitch the sample.
 	 */
-	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, uint modifier = 0x01_00_00_00) @nogc @safe pure nothrow {
-		ulong lookupVal;
+	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, ref WavemodWorkpad wp, uint modifier = 0x10_00_00) @safe {
 		for (size_t i ; i < dest.length ; i++) {
-			dest[i] = src[cast(size_t)(lookupVal>>24)];
-			lookupVal += modifier;
+			dest[i] = src[cast(size_t)(wp.lookupVal>>20)];
+			wp.lookupVal += modifier;
 		}
 	}
