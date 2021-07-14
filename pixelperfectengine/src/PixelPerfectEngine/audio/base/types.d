@@ -182,5 +182,5 @@ public struct Workpad {
  * Defines a workpad for sample stretching algorithms
  */
 public struct WavemodWorkpad {
-	ulong			lookupval;	///Current nearest-lookup position
+	ulong			lookupVal;	///Current nearest-lookup position
 }
