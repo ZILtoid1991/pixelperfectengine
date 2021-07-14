@@ -115,3 +115,17 @@ public struct EnvelopeGenerator {
 		return _keyState;
 	}
 }
+/**
+ * Calculates the rate for an envelope parameter for a given amount of time.
+ *
+ * time: time in seconds. Can be a fraction of a second.
+ * freq: the frequency which the envelope generator is being updated at (e.g. sampling frequency)
+ * high: the higher value of the envelope stage.
+ * low: the lower value of the envelope stage.
+ *
+ * Note: The high and low values must be kept in order even in case of an ascending stage.
+ */
+public uint calculateRate(double time, int freq, uint high = 0xFF_FF_FF, uint low = 0) @nogc @safe pure nothrow {
+	double result = cast(double)(high - low) / (freq * time);
+	return cast(uint)result;
+}
