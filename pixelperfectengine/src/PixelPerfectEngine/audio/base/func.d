@@ -64,10 +64,10 @@ package static immutable ushort[89] IMA_ADPCM_STEP_TABLE =
  * Used for decoding Mu-Law encoded PCM samples
  */
 package static immutable short[256] MU_LAW_DECODER_TABLE =
-			[-32124,-31100,-30076,-29052,-28028,-27004,-25980,-24956,
-			-23932,-22908,-21884,-20860,-19836,-18812,-17788,-16764,
-			-15996,-15484,-14972,-14460,-13948,-13436,-12924,-12412,
-			-11900,-11388,-10876,-10364, -9852, -9340, -8828, -8316,
+			[-32_124,-31_100,-30_076,-29_052,-28_028,-27_004,-25_980,-24_956,
+			-23_932,-22_908,-21_884,-20_860,-19_836,-18_812,-17_788,-16_764,
+			-15_996,-15_484,-14_972,-14_460,-13_948,-13_436,-12_924,-12_412,
+			-11_900,-11_388,-10_876,-10_364, -9852, -9340, -8828, -8316,
 			-7932, -7676, -7420, -7164, -6908, -6652, -6396, -6140,
 			-5884, -5628, -5372, -5116, -4860, -4604, -4348, -4092,
 			-3900, -3772, -3644, -3516, -3388, -3260, -3132, -3004,
@@ -80,10 +80,10 @@ package static immutable short[256] MU_LAW_DECODER_TABLE =
 			-244,  -228,  -212,  -196,  -180,  -164,  -148,  -132,
 			-120,  -112,  -104,   -96,   -88,   -80,   -72,   -64,
 			-56,   -48,   -40,   -32,   -24,   -16,    -8,     -1,
-			32124, 31100, 30076, 29052, 28028, 27004, 25980, 24956,
-			23932, 22908, 21884, 20860, 19836, 18812, 17788, 16764,
-			15996, 15484, 14972, 14460, 13948, 13436, 12924, 12412,
-			11900, 11388, 10876, 10364,  9852,  9340,  8828,  8316,
+			32_124, 31_100, 30_076, 29_052, 28_028, 27_004, 25_980, 24_956,
+			23_932, 22_908, 21_884, 20_860, 19_836, 18_812, 17_788, 16_764,
+			15_996, 15_484, 14_972, 14_460, 13_948, 13_436, 12_924, 12_412,
+			11_900, 11_388, 10_876, 10_364,  9852,  9340,  8828,  8316,
 			7932,  7676,  7420,  7164,  6908,  6652,  6396,  6140,
 			5884,  5628,  5372,  5116,  4860,  4604,  4348,  4092,
 			3900,  3772,  3644,  3516,  3388,  3260,  3132,  3004,
@@ -104,10 +104,10 @@ package static immutable short[256] A_LAW_DECODER_TABLE =
 			-7552, -7296, -8064, -7808, -6528, -6272, -7040, -6784,
 			-2752, -2624, -3008, -2880, -2240, -2112, -2496, -2368,
 			-3776, -3648, -4032, -3904, -3264, -3136, -3520, -3392,
-			-22016,-20992,-24064,-23040,-17920,-16896,-19968,-18944,
-			-30208,-29184,-32256,-31232,-26112,-25088,-28160,-27136,
-			-11008,-10496,-12032,-11520,-8960, -8448, -9984, -9472,
-			-15104,-14592,-16128,-15616,-13056,-12544,-14080,-13568,
+			-22_016,-20_992,-24_064,-23_040,-17_920,-16_896,-19_968,-18_944,
+			-30_208,-29_184,-32_256,-31_232,-26_112,-25_088,-28_160,-27_136,
+			-11_008,-10_496,-12_032,-11_520,-8960, -8448, -9984, -9472,
+			-15_104,-14_592,-16_128,-15_616,-13_056,-12_544,-14_080,-13_568,
 			-344,  -328,  -376,  -360,  -280,  -264,  -312,  -296,
 			-472,  -456,  -504,  -488,  -408,  -392,  -440,  -424,
 			-88,   -72,   -120,  -104,  -24,   -8,    -56,   -40,
@@ -120,10 +120,10 @@ package static immutable short[256] A_LAW_DECODER_TABLE =
 			7552,  7296,  8064,  7808,  6528,  6272,  7040,  6784,
 			2752,  2624,  3008,  2880,  2240,  2112,  2496,  2368,
 			3776,  3648,  4032,  3904,  3264,  3136,  3520,  3392,
-			22016, 20992, 24064, 23040, 17920, 16896, 19968, 18944,
-			30208, 29184, 32256, 31232, 26112, 25088, 28160, 27136,
-			11008, 10496, 12032, 11520, 8960,  8448,  9984,  9472,
-			15104, 14592, 16128, 15616, 13056, 12544, 14080, 13568,
+			22_016, 20_992, 24_064, 23_040, 17_920, 16_896, 19_968, 18_944,
+			30_208, 29_184, 32_256, 31_232, 26_112, 25_088, 28_160, 27_136,
+			11_008, 10_496, 12_032, 11_520, 8960,  8448,  9984,  9472,
+			15_104, 14_592, 16_128, 15_616, 13_056, 12_544, 14_080, 13_568,
 			344,   328,   376,   360,   280,   264,   312,   296,
 			472,   456,   504,   488,   408,   392,   440,   424,
 			88,    72,   120,   104,    24,     8,    56,    40,
@@ -207,17 +207,18 @@ alias ADPCMStream = NibbleArray;
 	 */
 	public void decode4bitIMAADPCM(ADPCMStream src, int[] dest, ref Workpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
-			ubyte index = src[i];
+			const ubyte index = src[i];
 			uint stepSize;
 			int d_n;
 			wp.pred += ADPCM_INDEX_TABLE_4BIT[index];
 			clamp(wp.pred, 0, 88);
 			stepSize = IMA_ADPCM_STEP_TABLE[wp.pred];
-			d_n = ((stepSize) * (index & 0b0100)>>2) + ((stepSize>>1) * (index & 0b0010)>>1) + ((stepSize>>2) * index & 0b0001) + (stepSize>>3);
+			d_n = ((stepSize) * (index & 0b0100)>>2) + ((stepSize>>1) * (index & 0b0010)>>1) + ((stepSize>>2) * index & 0b0001) 
+					+ (stepSize>>3);
 			if(index & 0b1000)
 				d_n *= -1;
 			d_n += wp.outn1;
-			dest = d_n;
+			dest[i] = d_n;
 			wp.outn1 = d_n;
 		}
 		wp.pos += dest.length;
@@ -228,17 +229,18 @@ alias ADPCMStream = NibbleArray;
 	 */
 	public void decode4bitDialogicADPCM(ADPCMStream src, int[] dest, ref Workpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
-			ubyte index = src[i];
+			const ubyte index = src[i];
 			uint stepSize;
 			int d_n;
 			wp.pred += ADPCM_INDEX_TABLE_4BIT[index];
-			clamp(wp.pred, 0, 88);
+			clamp(wp.pred, 0, 48);
 			stepSize = DIALOGIC_ADPCM_STEP_TABLE[wp.pred];
-			d_n = ((stepSize) * (index & 0b0100)>>2) + ((stepSize>>1) * (index & 0b0010)>>1) + ((stepSize>>2) * index & 0b0001) + (stepSize>>3);
+			d_n = ((stepSize) * (index & 0b0100)>>2) + ((stepSize>>1) * (index & 0b0010)>>1) + ((stepSize>>2) * index & 0b0001) 
+					+ (stepSize>>3);
 			if(index & 0b1000)
 				d_n *= -1;
 			d_n += wp.outn1;
-			dest = d_n<<4 + dn>>8 + short.min;
+			dest[i] = (d_n<<4) + (d_n>>8) + short.min;
 			wp.outn1 = d_n;
 		}
 		wp.pos += dest.length;
@@ -246,7 +248,7 @@ alias ADPCMStream = NibbleArray;
 	/**
 	 * Decodes a Mu-Law encoded stream.
 	 */
-	public void decodeMuLawStream(const(ubyte)[]src, int dest, ref Workpad wp) @safe {
+	public void decodeMuLawStream(const(ubyte)[]src, int[] dest, ref Workpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			dest[i] = MU_LAW_DECODER_TABLE[src[wp.pos + i]];
 		}
@@ -255,7 +257,7 @@ alias ADPCMStream = NibbleArray;
 	/**
 	 * Decodes an A-Law encoded stream.
 	 */
-	public void decodeALawStream(const(ubyte)[]src, int dest, ref Workpad wp) @safe {
+	public void decodeALawStream(const(ubyte)[]src, int[] dest, ref Workpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			dest[i] = A_LAW_DECODER_TABLE[src[wp.pos + i]];
 		}
@@ -265,7 +267,8 @@ alias ADPCMStream = NibbleArray;
 	 * Streches a buffer to the given amount using no interpolation.
 	 * Can be used to pitch the sample.
 	 */
-	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, ref WavemodWorkpad wp, uint modifier = 0x10_00_00) @safe {
+	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, ref WavemodWorkpad wp, uint modifier = 0x10_00_00) 
+			@safe {
 		for (size_t i ; i < dest.length ; i++) {
 			dest[i] = src[cast(size_t)(wp.lookupVal>>20)];
 			wp.lookupVal += modifier;
