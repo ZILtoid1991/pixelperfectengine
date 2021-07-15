@@ -176,7 +176,7 @@ public enum SampleLoadErrorCode : int {
 public struct Workpad {
 	size_t			pos;		///Position of the decoder
 	int				outn1;		///Previous output sample
-	int				pred;		///Predictor for AdPCM
+	int				pred;		///Predictor for ADPCM
 }
 /**
  * Defines a workpad for sample stretching algorithms
