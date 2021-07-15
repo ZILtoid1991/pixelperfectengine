@@ -13,6 +13,7 @@ import bitleveld.reinterpret;
 import bitleveld.datatypes;
 
 import PixelPerfectEngine.audio.base.types;
+import PixelPerfectEngine.system.etc;
 
 ///Constant for fast integer to floating point conversion
 package immutable __m128 CONV_RATIO_RECIPROCAL = __m128(-1.0 / ushort.min);
@@ -134,6 +135,17 @@ alias ADPCMStream = NibbleArray;
 	public void decode4bitIMAADPCM(ADPCMStream src, int[] dest, ref Workpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			ubyte index = src[i];
+			uint stepSize;
+			int d_n;
+			wp.pred += ADPCM_INDEX_TABLE_4BIT[index];
+			clamp(wp.pred, 0, 88);
+			stepSize = IMA_ADPCM_STEP_TABLE[wp.pred];
+			d_n = ((stepSize) * (index & 0b0100)>>2) + ((stepSize>>1) * (index & 0b0010)>>1) + ((stepSize>>2) * index & 0b0001) + (stepSize>>3);
+			if(index & 0b1000)
+				d_n *= -1;
+			d_n += wp.outn1;
+			dest = d_n;
+			wp.outn1 = d_n;
 		}
 		wp.pos += dest.length;
 	}
