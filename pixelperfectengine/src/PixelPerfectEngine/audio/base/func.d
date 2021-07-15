@@ -187,7 +187,7 @@ alias ADPCMStream = NibbleArray;
 	public void decode8bitPCM(const(ubyte)[] src, int[] dest, ref Workpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			const ubyte val = src[wp.pos + i];
-			dest[i] = (val + val<<8) + ushort.min;
+			dest[i] = (val + val<<8) + short.min;
 		}
 		wp.pos += dest.length;
 	}
@@ -218,6 +218,27 @@ alias ADPCMStream = NibbleArray;
 				d_n *= -1;
 			d_n += wp.outn1;
 			dest = d_n;
+			wp.outn1 = d_n;
+		}
+		wp.pos += dest.length;
+	}
+	/**
+	 * Decodes an amount of 4 bit Oki/Dialogic ADPCM stream to extended 32 bit.
+	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
+	 */
+	public void decode4bitDialogicADPCM(ADPCMStream src, int[] dest, ref Workpad wp) @safe {
+		for (size_t i ; i < dest.length ; i++) {
+			ubyte index = src[i];
+			uint stepSize;
+			int d_n;
+			wp.pred += ADPCM_INDEX_TABLE_4BIT[index];
+			clamp(wp.pred, 0, 88);
+			stepSize = DIALOGIC_ADPCM_STEP_TABLE[wp.pred];
+			d_n = ((stepSize) * (index & 0b0100)>>2) + ((stepSize>>1) * (index & 0b0010)>>1) + ((stepSize>>2) * index & 0b0001) + (stepSize>>3);
+			if(index & 0b1000)
+				d_n *= -1;
+			d_n += wp.outn1;
+			dest = d_n<<4 + dn>>8 + short.min;
 			wp.outn1 = d_n;
 		}
 		wp.pos += dest.length;
