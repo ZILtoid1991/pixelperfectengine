@@ -142,8 +142,8 @@ alias ADPCMStream = NibbleArray;
 	 * Mixes an audio stream to the destination.
 	 */
 	public void mixIntoStream(size_t length, float* src, float* dest, float amount = 1.0, float corr = 0.5) {
-		const __m128 amountV = __m128([amount, amount, amount, amount]);
-		const __m128 corrV = __m128([corr, corr, corr, corr]);
+		const __m128 amountV = __m128(amount);
+		const __m128 corrV = __m128(corr);
 		while (length) {
 			const __m128 srcV = _mm_load_ps(src);
 			__m128 destV = _mm_load_ps(dest);

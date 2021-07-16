@@ -10,6 +10,7 @@ import PixelPerfectEngine.graphics.common;
 
 /**
  * Manages palettes
+ * DEPRECATED! Palette management is now done by the raster.
  */
 public class PaletteManager{
 	Color[][string] palettes;

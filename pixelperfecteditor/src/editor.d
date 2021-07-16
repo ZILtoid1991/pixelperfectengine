@@ -230,7 +230,7 @@ public class Editor : InputListener, SystemEventListener {
 	private Coordinate selection, selectedTiles;
 	//public PlacementMode pm;
 	//public UndoableStack undoStack;
-	public PaletteManager palman;
+	//public PaletteManager palman;
 	public MapDocument[dstring] documents;
 	public MapDocument selDoc;
 	public LayerList layerList;
@@ -347,8 +347,6 @@ public class Editor : InputListener, SystemEventListener {
 		ow[0].setMainRaster(rasters);
 		rasters.addLayer(windowing, 0);
 		rasters.addLayer(bitmapPreview, 1);
-		//ISSUE: Copying the palette from StyleSheet.defaultPaletteForGUI doesn't work
-		//SOLUTION: Load the palette from a file
 		rasters.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
 		wh.setBaseWindow(new TopLevelWindow(848, 480, this));
 		wh.addBackground(loadBitmapFromFile!Bitmap32Bit("../system/background.png"));
