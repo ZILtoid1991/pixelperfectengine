@@ -1,10 +1,22 @@
 # Current
 
+## New features
+
+### Custom audio subsystem
+
+The custom audio subsystem was recreated with the following principles:
+
+* for the time being, only simple synths should be added.
+* It has to use MIDI 2.0 instead of some fancier and custom command set.
+* It has to be as simple as possible.
+
 ## Fixed bugs
 
 * Drive button works again
 * Layers now cannot be created before docs
 * Materials cannot be created before layers
+* Radiobuttons now update correctly in window headers. Turns out all it's problem was that the raster window didn't do
+updates on every redraw - my bad.
 
 # 0.10.0-beta1
 ## New features
