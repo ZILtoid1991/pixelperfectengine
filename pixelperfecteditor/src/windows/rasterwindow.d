@@ -138,13 +138,15 @@ public class RasterWindow : Window, PaletteContainer {
 	///Passes mouse click event
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		StyleSheet ss = getStyleSheet;
-		if(mce.y >= position.top + ss.drawParameters["WindowHeaderHeight"] && mce.y < position.bottom &&
+		if (mce.y >= position.top + ss.drawParameters["WindowHeaderHeight"] && mce.y < position.bottom &&
 				mce.x > position.left && mce.x < position.right) {
 			mce.y -= ss.drawParameters["WindowHeaderHeight"] + position.top;
 			mce.x -= position.left - 1;
 			document.passMCE(mec, mce);
-		}else
+		} else {
+			draw();
 			super.passMCE(mec, mce);
+		}
 	}
 	///Passes mouse move event
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {

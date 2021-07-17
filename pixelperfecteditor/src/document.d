@@ -87,6 +87,12 @@ public class MapDocument : MouseEventReceptor {
 		}
 	}
 	/**
+	 * Clears selection area.
+	 */
+	public void clearSelection() {
+		
+	}
+	/**
 	 * Scrolls the selected layer by a given amount.
 	 */
 	public void scrollSelectedLayer (int x, int y) {
