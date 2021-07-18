@@ -47,6 +47,10 @@ public class CheckBox : WindowElement, ISmallButton {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
+
+		if (onDraw !is null) {
+			onDraw();
+		}
 	}
 	
 	

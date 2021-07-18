@@ -95,6 +95,9 @@ public class VertScrollBar : ScrollBar {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
+		if (onDraw !is null) {
+			onDraw();
+		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (mce.button == MouseButton.Left) {

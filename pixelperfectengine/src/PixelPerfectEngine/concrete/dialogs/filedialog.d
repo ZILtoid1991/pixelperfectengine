@@ -284,7 +284,7 @@ public class FileDialog : Window {
 		handler.closeWindow(this);
 	}
 	private void listView_onItemSelect(Event ev) {
-		try{
+		try {
 			if(pathList.length == 0) return;
 			if(isDir(pathList[lw.value])){
 				directory = pathList[lw.value];
@@ -293,12 +293,7 @@ public class FileDialog : Window {
 				filename = stripExtension(pathList[lw.value]);
 				tb.setText(new Text(to!dstring(filename), tb.getText().formatting));
 			}
-		}catch(Exception e){
-			/+import PixelPerfectEngine.concrete.dialogs.defaultdialog;
-			auto frmt1 = getStyleSheet().getChrFormatting("windowHeader");
-			auto frmt2 = getStyleSheet().getChrFormatting("default");
-			DefaultDialog d = new DefaultDialog(Coordinate(10,10,256,80),"null", new Text(to!dstring("Error!"), frmt1),
-					[new Text(to!dstring(e.msg), frmt2)]);+/
+		} catch(Exception e) {
 			handler.message("Error!",to!dstring(e.msg));
 		}
 	}

@@ -2,6 +2,9 @@ module PixelPerfectEngine.concrete.elements.label;
 
 public import PixelPerfectEngine.concrete.elements.base;
 
+/**
+ * A simple label used on GUI elements to annotate things.
+ */
 public class Label : WindowElement {
 	public this(dstring text, string source, Coordinate coordinates) {
 		this(new Text(text, getStyleSheet().getChrFormatting("label")), source, coordinates);
@@ -22,6 +25,9 @@ public class Label : WindowElement {
 
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
+		}
+		if (onDraw !is null) {
+			onDraw();
 		}
 	}
 }

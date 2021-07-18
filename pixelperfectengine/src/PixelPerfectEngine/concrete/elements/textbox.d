@@ -115,6 +115,10 @@ public class TextBox : WindowElement, TextInputListener {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
+
+		if (onDraw !is null) {
+			onDraw();
+		}
 	}
 	/**
      * Passes text editing events to the target, alongside with a window ID and a timestamp.

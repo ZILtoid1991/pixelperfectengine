@@ -52,23 +52,9 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
-		/+if(text) {
-			const int textPadding = getAvailableStyleSheet.drawParameters["TextSpacingSides"];
-			const Coordinate textPos = Coordinate(textPadding +	getAvailableStyleSheet().getImage(iconUnlatched).width,
-					(position.height / 2) - (text.font.size / 2), position.width, position.height - textPadding);
-			output.drawSingleLineText(textPos, text);
-		}
-		/+output.drawColorText(getAvailableStyleSheet().getImage("checkBoxA").width, 0, text,
-				getAvailableStyleSheet().getFontset("default"), getAvailableStyleSheet().getColor("normaltext"), 0);+/
-		if(_isLatched) {
-			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconLatched));
-		} else {
-			output.insertBitmap(0, 0, getAvailableStyleSheet().getImage(iconUnlatched));
-		}
-		elementContainer.drawUpdate(this);
-		if(onDraw !is null) {
+		if (onDraw !is null) {
 			onDraw();
-		}+/
+		}
 	}
 
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {

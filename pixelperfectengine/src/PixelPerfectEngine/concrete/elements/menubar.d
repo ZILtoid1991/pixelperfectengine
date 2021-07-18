@@ -43,6 +43,9 @@ public class MenuBar : WindowElement {
 		foreach (size_t i, PopUpMenuElement menuItem ; menus) {
 			parent.drawTextSL(Box(menuWidths[i], position.top, menuWidths[i+1], position.bottom), menuItem.text, Point(0,0));
 		}
+		if (onDraw !is null) {
+			onDraw();
+		}
 	}
 	private void redirectIncomingEvents(Event ev){
 		if(onMenuEvent !is null){

@@ -34,6 +34,9 @@ public class SmallButton : WindowElement, ISmallButton {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(pos, ss.getImage("ElementDisabledPtrn"));
 		}
+		if (onDraw !is null) {
+			onDraw();
+		}
 	}
 	public bool isSmallButtonHeight(int height) {
 		if (position.width == height && position.height == height) return true;

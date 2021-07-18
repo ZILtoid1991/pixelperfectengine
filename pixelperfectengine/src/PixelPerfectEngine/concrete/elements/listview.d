@@ -389,7 +389,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			//draw cursor
 			//if (flags & ENABLE_TEXT_EDIT) {
 			//calculate cursor first
-			Box cursor = Box(textArea.left + textPadding, textArea.top + textPadding, textArea.left + textPadding, textArea.bottom - textPadding);
+			Box cursor = Box(textArea.left + textPadding, textArea.top + textPadding, textArea.left + textPadding, 
+					textArea.bottom - textPadding);
 			cursor.left += text.getWidth(0, cursorPos) - horizTextOffset;
 			//cursor must be at least single pixel wide
 			cursor.right = cursor.left;
@@ -488,6 +489,9 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			if (vertSlider) vertSlider.draw;
 
 			drawParams = null;
+		}
+		if (onDraw !is null) {
+			onDraw();
 		}
 	}
 	/**

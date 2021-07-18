@@ -65,6 +65,10 @@ public class RasterWindow : Window, PaletteContainer {
 
 		//smallButtons ~= new SmallButton("settingsButtonB", "settingsButtonA", "settings", Box(0, 0, 16, 16));
 		super(Box(0, 0, x + 1, y + 17), documentName, smallButtons);
+		foreach (ISmallButton key; smallButtons) {
+			WindowElement we = cast(WindowElement)key;
+			we.onDraw = &clrLookup;
+		}
 		this.paletteShared = paletteShared;
 		this.documentName = documentName;
 		this.document = document;
@@ -144,7 +148,6 @@ public class RasterWindow : Window, PaletteContainer {
 			mce.x -= position.left - 1;
 			document.passMCE(mec, mce);
 		} else {
-			draw();
 			super.passMCE(mec, mce);
 		}
 	}
@@ -162,6 +165,15 @@ public class RasterWindow : Window, PaletteContainer {
 			super.passMME(mec, mme);
 		}
 	}
+	/**
+	 * Copy 8 bit bitmap with color lookup.
+	 */
+	protected void clrLookup() {
+		for(int y ; y < 16 ; y++){	//
+			colorLookup(output.output.getPtr + (y * position.width), trueOutput.getPtr + (y * position.width), paletteShared,
+					position.width);
+		}
+	}
 	public override void draw(bool drawHeaderOnly = false){
 		if(output.output.width != position.width || output.output.height != position.height){
 			output = new BitmapDrawer(position.width(), position.height());
@@ -170,10 +182,7 @@ public class RasterWindow : Window, PaletteContainer {
 		}
 
 		drawHeader();
-		for(int y ; y < 16 ; y++){	//copy 8 bit bitmap with color lookup
-			colorLookup(output.output.getPtr + (y * position.width), trueOutput.getPtr + (y * position.width), paletteShared,
-					position.width);
-		}
+		clrLookup();
 		updateRaster();
 		if (statusFlags & SELECTION_ARMED) {
 			
@@ -214,11 +223,11 @@ public class RasterWindow : Window, PaletteContainer {
 		uint* p = cast(uint*)trueOutput.getPtr;
 		if (statusFlags & SELECTION_ARMED) {
 			for (int y = selection.top + 16 ; y <= selection.bottom + 16 ; y++) {
-				xorBlitter!uint(p + 1 + trueOutput.width * y, selection.width, selArmColor.base);
+				xorBlitter!uint(p + 1 + trueOutput.width * y + selection.left, selection.width, selArmColor.base);
 			}
 		} else if (statusFlags & SHOW_SELECTION) {
 			for (int y = selection.top + 16 ; y <= selection.bottom + 16 ; y++) {
-				xorBlitter!uint(p + 1 + trueOutput.width * y, selection.width, selColor.base);
+				xorBlitter!uint(p + 1 + trueOutput.width * y + selection.left, selection.width, selColor.base);
 			}
 		}
 	}
@@ -331,6 +340,7 @@ public class RasterWindow : Window, PaletteContainer {
 				document.mode = MapDocument.EditMode.selectDragScroll;
 				break;
 		}
+		document.clearSelection();
 	}
 
 	public void loadLayers () {

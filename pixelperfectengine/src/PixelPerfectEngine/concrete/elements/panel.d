@@ -46,6 +46,9 @@ public class Panel : WindowElement, ElementContainer {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
+		if (onDraw !is null) {
+			onDraw();
+		}
 	}
 	
 	public Coordinate getAbsolutePosition(WindowElement sender) {

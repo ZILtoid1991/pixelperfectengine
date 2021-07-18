@@ -90,7 +90,11 @@ public class MapDocument : MouseEventReceptor {
 	 * Clears selection area.
 	 */
 	public void clearSelection() {
-		
+		if (outputWindow) {
+			outputWindow.disarmSelection();
+			outputWindow.showSelection = false;
+			outputWindow.updateRaster();
+		}
 	}
 	/**
 	 * Scrolls the selected layer by a given amount.
@@ -100,6 +104,7 @@ public class MapDocument : MouseEventReceptor {
 			mainDoc[selectedLayer].relScroll(x, y);
 		}
 		outputWindow.updateRaster();
+		updateSelection();
 	}
 	/**
 	 * Sets the continuous scroll amounts.
@@ -118,7 +123,7 @@ public class MapDocument : MouseEventReceptor {
 			if (onscreen.isBetween(areaSelection.cornerUL) || onscreen.isBetween(areaSelection.cornerUR) || 
 					onscreen.isBetween(areaSelection.cornerLL) || onscreen.isBetween(areaSelection.cornerLR)) {
 				outputWindow.selection = areaSelection;
-				outputWindow.selection.move(sX * -1, sY * -1);
+				outputWindow.selection.relMove(sX * -1, sY * -1);
 
 				outputWindow.selection.left = outputWindow.selection.left < 0 ? 0 : outputWindow.selection.left;
 				outputWindow.selection.left = outputWindow.selection.left >= outputWindow.rasterX ? outputWindow.rasterX - 1 : 
@@ -136,6 +141,7 @@ public class MapDocument : MouseEventReceptor {
 			} else {
 				outputWindow.selection = Box (0, 0, -1, -1);
 			}
+			outputWindow.updateRaster();
 		}
 	}
 	/**
@@ -316,46 +322,43 @@ public class MapDocument : MouseEventReceptor {
 							outputWindow.selection.bottom = y;
 						} else {
 							outputWindow.disarmSelection;
-							Box c;
-
-							if (x > prevMouseX){
-								c.left = prevMouseX;
-								c.right = x;
-							} else {
-								c.left = x;
-								c.right = prevMouseX;
-							}
-
-							if (y > prevMouseY){
-								c.top = prevMouseY;
-								c.bottom = y;
-							} else {
-								c.top = y;
-								c.bottom = prevMouseY;
-							}
-							
+							Box c = outputWindow.selection;
 							if (getLayerInfo(selectedLayer).type != LayerType.init) {
 								Layer l = mainDoc.layeroutput[selectedLayer];
 								areaSelection = c;
-								areaSelection.move(l.getSX, l.getSY);
+								areaSelection.relMove(l.getSX, l.getSY);
 								
 								switch (getLayerInfo(selectedLayer).type) {
-									case LayerType.Tile: //If TileLayer is selected, recalculate coordinates to the nearest valid points
+									case LayerType.Tile: 
 										TileLayer tl = cast(TileLayer)l;
-										areaSelection.left = (areaSelection.left / tl.getTileWidth) * tl.getTileWidth;
-										areaSelection.top = (areaSelection.top / tl.getTileHeight) * tl.getTileHeight;
-										areaSelection.right = (areaSelection.right / tl.getTileWidth) * tl.getTileWidth/+ + 
-												(areaSelection.right % tl.getTileWidth ? 1 : 0)+/;
-										areaSelection.bottom = (areaSelection.bottom / tl.getTileHeight) * tl.getTileHeight/+ +
-												(areaSelection.bottom % tl.getTileHeight ? 1 : 0)+/;
+										const int tileWidth = tl.getTileWidth, tileHeight = tl.getTileHeight, 
+												mapWidth = tl.getMX, mapHeight = tl.getMY;
+										//calculate selected map area
+										mapSelection.left = areaSelection.left / tileWidth;
+										mapSelection.right = areaSelection.right / tileWidth + (areaSelection.right % tileWidth > 0 ? 1 : 0);
+										mapSelection.top = areaSelection.top / tileHeight;
+										mapSelection.bottom = areaSelection.bottom / tileHeight + (areaSelection.bottom % tileHeight > 0 ? 1 : 0);
+										//Clamp map sizes between what map has
+										import PixelPerfectEngine.system.etc : clamp;
+										
+										clamp(mapSelection.left, 0, mapWidth);
+										clamp(mapSelection.right, 0, mapHeight);
+										clamp(mapSelection.top, 0, mapWidth);
+										clamp(mapSelection.bottom, 0, mapHeight);
+										//adjust displayed selection to mapSelection
+										areaSelection.left = mapSelection.left * tileWidth;
+										areaSelection.right = mapSelection.right * tileWidth;
+										areaSelection.top = mapSelection.top * tileHeight;
+										areaSelection.bottom = mapSelection.bottom * tileHeight;								
 										break;
 									
 									default:
 										break;
 								}
 							}
-
+							outputWindow.disarmSelection();
 							outputWindow.showSelection = true;
+							updateSelection();
 						}
 						break;
 					case MouseButton.Mid:
