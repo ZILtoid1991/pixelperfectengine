@@ -53,18 +53,18 @@ public class ResizeMap : Window {
 		offsetY = new TextBox("0", "offsetY", Coordinate(80, 80, 135, 98));
 		addElement(offsetY);
 		offsetY.onTextInput = &checkTextInput;
-		button_ok = new Button("Ok", "button_ok", Coordinate(140, 102, 190, 118));
+		button_ok = new Button("Ok", "button_ok", Coordinate(140, 102, 193, 118));
 		addElement(button_ok);
 		button_ok.onMouseLClick = &button_ok_onClick;
-		//originPanel = new Panel("Origin:", "", Coordinate(140, 20, 190, 100));
-		//addElement(originPanel);
+		originPanel = new Panel("Origin:", "", Coordinate(140, 20, 193, 92));
+		addElement(originPanel);
 		origin = new RadioButtonGroup();
 		for(int iy ; iy < 3 ; iy++) {
 			for(int ix ; ix < 3 ; ix++) {
-				const Coordinate rbPos = Coordinate(142 + (16*ix), 40 + (16*iy), 142 + 16 + (16*ix), 40 + 16 + (16*iy));
+				const Coordinate rbPos = Coordinate(143 + (16*ix), 40 + (16*iy), 143 + 16 + (16*ix), 40 + 16 + (16*iy));
 				RadioButton rb = new RadioButton("radioButtonB", "radioButtonA",to!string(ix) ~ to!string(iy), rbPos, origin);
 				originSelectors[ix + (iy * 3)] = rb;
-				addElement(rb);
+				originPanel.addElement(rb);
 			}
 		}
 		origin.latch(originSelectors[0]);

@@ -34,13 +34,18 @@ public class Panel : WindowElement, ElementContainer {
 		}
 		StyleSheet ss = getStyleSheet();
 		const int textLength = text.getWidth();
-		const Box offsetEdge = position - (text.font.size / 2);
-		const Box textPos = Box(offsetEdge.left, position.top, offsetEdge.left + textLength, position.top + text.font.size);
+		Box offsetEdge = position;// - (text.font.size / 2);
+		offsetEdge.top = offsetEdge.top + (text.font.size / 2);
+		const Box textPos = Box(offsetEdge.left + (text.font.size / 2), position.top,
+				offsetEdge.left + textLength + (text.font.size / 2), position.top + text.font.size);
 		with (parent) {
-			drawLine(Point(offsetEdge.left + textLength, offsetEdge.top), offsetEdge.cornerUR, ss.getColor("windowAscent"));
-			drawLine(offsetEdge.cornerUL, offsetEdge.cornerLL, ss.getColor("windowAscent"));
-			drawLine(offsetEdge.cornerLL, offsetEdge.cornerLR, ss.getColor("windowAscent"));
-			drawLine(offsetEdge.cornerUR, offsetEdge.cornerLR, ss.getColor("windowAscent"));
+			drawLine(offsetEdge.cornerUL, Point(offsetEdge.left + (text.font.size / 2), offsetEdge.top), 
+					ss.getColor("windowascent"));
+			drawLine(Point(offsetEdge.left + textLength + (text.font.size / 2), offsetEdge.top), offsetEdge.cornerUR, 
+					ss.getColor("windowascent"));
+			drawLine(offsetEdge.cornerUL, offsetEdge.cornerLL, ss.getColor("windowascent"));
+			drawLine(offsetEdge.cornerLL, offsetEdge.cornerLR, ss.getColor("windowascent"));
+			drawLine(offsetEdge.cornerUR, offsetEdge.cornerLR, ss.getColor("windowascent"));
 			drawTextSL(textPos, text, Point(0, 0));
 		}
 		if (state == ElementState.Disabled) {
@@ -50,7 +55,15 @@ public class Panel : WindowElement, ElementContainer {
 			onDraw();
 		}
 	}
-	
+	/**
+	 * Adds an element to the panel
+	 */
+	public void addElement(WindowElement we) {
+		we.setParent(this);
+		subElems.put(we);
+		we.draw();
+	}
+
 	public Coordinate getAbsolutePosition(WindowElement sender) {
 		return parent.getAbsolutePosition(sender); // TODO: implement
 	}

@@ -82,11 +82,11 @@ public class StyleSheet{
 		color["WHTextActive"] = 0x001F;
 		color["WHTextInactive"] = 0x0017;
 		color["WHAtop"] = 0x0009;
-		color["blue"] = 0x000A;
-		color["darkblue"] = 0x000B;
-		color["yellow"] = 0x000C;
+		color["blue"] = 0x001c;
+		color["darkblue"] = 0x0014;
+		color["yellow"] = 0x001b;
 		color["secondarytext"] = 0x001B;
-		color["grey"] = 0x000E;
+		color["grey"] = 0x0017;
 		color["black"] = 0x000F;
 		color["white"] = 0x0001;
 		color["PopUpMenuSecondaryTextColor"] = 0x001B;

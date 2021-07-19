@@ -36,3 +36,11 @@ subPackage {
 	sourcePaths "./windowmakerforconcrete/src/"
 	importPaths "./windowmakerforconcrete/src/"
 }
+subPackage {
+	name "wallbreaker"
+	dependency "pixelperfectengine" version="*"
+	targetType "executable"
+	targetPath "./wallbreaker/bin-$ARCH-$PLATFORM/"
+	sourcePaths "./wallbreaker/src/"
+	importPaths "./wallbreaker/src/"
+}
