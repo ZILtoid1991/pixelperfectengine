@@ -1,6 +1,7 @@
 module editorevents;
 
 import document;
+import clipboard;
 
 public import PixelPerfectEngine.concrete.eventChainSystem;
 public import PixelPerfectEngine.graphics.layers;
@@ -24,8 +25,10 @@ public class WriteToMapVoidFill : UndoableEvent {
 		//mask.length = area.area;
 	}
 	public void redo() {
-		for(int y = area.top ; y <= area.bottom ; y++){
-			for(int x = area.left ; x <= area.right ; x++){
+		original.length = 0;
+		original.reserve(area.area);
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
 				MappingElement o = target.readMapping(x,y);
 				original ~= o;
 				if (o.tileID == 0xFFFF)
@@ -35,8 +38,8 @@ public class WriteToMapVoidFill : UndoableEvent {
 	}
 	public void undo() {
 		size_t pos;
-		for(int y = area.top ; y <= area.bottom ; y++){
-			for(int x = area.left ; x <= area.right ; x++){
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
 				target.writeMapping(x,y,original[pos]);
 				pos++;
 			}
@@ -56,6 +59,8 @@ public class WriteToMapOverwrite : UndoableEvent {
 		//original.length = (area.width + 1) * (area.height + 1);
 	}
 	public void redo() {
+		original.length = 0;
+		original.reserve(area.area);
 		for(int y = area.top ; y <= area.bottom ; y++){
 			for(int x = area.left ; x <= area.right ; x++){
 				original ~= target.readMapping(x,y);
@@ -65,8 +70,8 @@ public class WriteToMapOverwrite : UndoableEvent {
 	}
 	public void undo() {
 		size_t pos;
-		for(int y = area.top ; y <= area.bottom ; y++){
-			for(int x = area.left ; x <= area.right ; x++){
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
 				target.writeMapping(x,y,original[pos]);
 				pos++;
 			}
@@ -407,31 +412,85 @@ public class AddTileSheetEvent : UndoableEvent {
 					//writeln(idList);
 				}
 				targetDoc.mainDoc.addTileInfo(layer, idList, fileName, null);
-			}
-			/+if (source.isIndexed) {
-				Color[] palette;
-				/*foreach (color ; source.palette) {
-					palette ~= Color(color.a, color.r, color.g, color.b);
-					debug writeln(color);
-				}*/
-				auto sourcePalette = source.palette;
-				palette.reserve(sourcePalette.length);
-				for (ushort i ; i < sourcePalette.length ; i++){
-					const auto origC = sourcePalette[i];
-					const Color c = Color(origC.a, origC.r, origC.g, origC.b);
-					palette ~= c;
-				}
-				target.mainDoc.addPaletteFile(res, "", cast(int)target.outputWindow.palette.length);
-				target.outputWindow.palette = target.outputWindow.palette ~ palette;
-				//debug writeln(target.outputWindow.palette);
-			}+/
-
-			
+			}			
 		} else {
 			
 		}
 	}
 	public void undo() {
+		//remove palette if exists
+		if (paletteOffset >= 0) {
+			const ushort offset = cast(ushort)(paletteOffset << paletteShift);
+			targetDoc.outputWindow.clearPaletteChunk(cast(ushort)source.palette.length, offset);
+		}
+		
+	}
+}
+/**
+ * Cuts a selected portion of tiles out from a tilelayer.
+ */
+public class CutFromTileLayerEvent : UndoableEvent {
+	ITileLayer target;
+	Coordinate area;
+	MappingElement[] original;
+	public this(ITileLayer target, Coordinate area){
+		this.target = target;
+		this.area = area;
+	}
+	public void redo() {
+		original.length = 0;
+		original.reserve(area.area);
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				MappingElement o = target.readMapping(x,y);
+				original ~= o;
+				target.writeMapping(x,y,MappingElement.init);
+			}
+		}
+	}
+	public void undo() {
+		size_t pos;
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				target.writeMapping(x,y,original[pos]);
+				pos++;
+			}
+		}
+	}
+}
+/**
+ * Pastes a copied area to a given tilelayer.
+ */
+public class PasteIntoTileLayerEvent : UndoableEvent {
+	MapClipboard.Item		item;
+	ITileLayer				target;
+	Point					position;
+	MappingElement[]		original;
+	public this (MapClipboard.Item item, ITileLayer target, Point position) {
+		this.item = item;
+		this.target = target;
+		this.position = position;
+	}
 
+	public void redo() {
+		original.length = 0;
+		original.reserve(area.area);
+		for (int y = area.top, y0 ; y <= area.bottom ; y++, y0++) {
+			for (int x = area.left, x0 ; x <= area.right ; x++, x0++) {
+				MappingElement o = target.readMapping(x,y);
+				original ~= o;
+				target.writeMapping(x,y,item.map[x0 + (y0 + item.width)]);
+			}
+		}
+	}
+
+	public void undo() {
+		size_t pos;
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				target.writeMapping(x,y,original[pos]);
+				pos++;
+			}
+		}
 	}
 }
