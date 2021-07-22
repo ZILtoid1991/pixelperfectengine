@@ -77,7 +77,7 @@ Other master controls:
 * `relX`: ubyte, between 0 and 127. Selects a predefined release time (attack time * 3), and it'll be applied to the extra envelope generator. cc87
 * `susX`: uint. Sets the sustain level of the extra envelope. cc12 [m2]
 * `susCX`: int. Controls how the EEG will behave in the sustain phase. cc88 [m2]
-* `pitchAm`: uint. Sets the amount the EEG can detune the channel (coarse: +127/-128). cc13 [m2] (note on channel combination: only one channel's EEG can affect the pitch of the channel)
+* `pitchAm`: uint. Sets the amount the EEG can detune the channel (coarse: +63/-64). cc13 [m2] (note on channel combination: only one channel's EEG can affect the pitch of the channel)
 * `eegAssign`: ubyte. Bit 0 enables the EEG to modify the feedback loop of O0, bit 1 the feedback loop of O1, bit 2 the channel volume, bit 3 the channel balance, bit 4 the pitch LFO, bit 5 the volume/level LFO, bit 6 both aux send controls. cc89
 * `aLFOAssign`: ubyte. If bit 0 is set, then the master volume can be affected by the amplitude LFO. Bit 1 enables this for the channel balance. Bit 2 for aux send levels. cc90
 * `aux0Send`: double. Converted to a logarithmic scale. Controls the amount of sound sent to the aux0 output. cc91 [m2]
