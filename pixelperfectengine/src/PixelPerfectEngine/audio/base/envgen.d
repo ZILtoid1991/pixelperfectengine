@@ -1,5 +1,7 @@
 module PixelPerfectEngine.audio.base.envgen;
 
+import std.math : pow;
+
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
  *
@@ -11,8 +13,8 @@ module PixelPerfectEngine.audio.base.envgen;
 /**
  * Envelope generator struct.
  *
- * Uses integer arithmetics for speed. In the future, it'll have support for shaping the envelope.
- * Output is between 0 and 65 535.
+ * Uses integer arithmetics for speed. Shaping is supported via the `gamma()` and `gammaF()` functions, and a 2.0 g value will make a logarithmic output.
+ * Output is between 0 and 16 777 215, or 0.0 and 1.0 for floating point output via `gammaF()`
  */
 public struct EnvelopeGenerator {
 	/**
@@ -40,7 +42,9 @@ public struct EnvelopeGenerator {
 	protected bool		_isRunning;		///If set, then the envelope is running
 	public bool			isPercussive;	///If true, then the sustain stage is skipped
 	protected int		counter;		///The current position of the counter + unshaped output
-	//protected int		currVal;		///The current value + shaped output
+	public static immutable int maxOutput = 0xFF_FF_FF;///The maximum possible output of the envelope generator
+	public static immutable int minOutput = 0;///The minimum possible output of the envelope generator.
+	protected static immutable double outConv = 1.0 / cast(double)maxOutput;///Reciprocal for output conversion
 	/**
 	 * Advances the main counter by one amount.
 	 *
@@ -81,7 +85,7 @@ public struct EnvelopeGenerator {
 				}
 				break;
 		}
-		return counter >> 8;
+		return counter;
 	}
 	/**
 	 * Sets the key position to on.
@@ -104,7 +108,7 @@ public struct EnvelopeGenerator {
 	}
 	///Reads the current output
 	public int output() @nogc @safe pure nothrow const {
-		return counter >> 8;
+		return counter;
 	}
 	///Returns true if the envelope generator is running
 	public bool isRunning() @nogc @safe pure nothrow const {
@@ -113,6 +117,16 @@ public struct EnvelopeGenerator {
 	///Returns true if key is on
 	public bool keypos() @nogc @safe pure nothrow const {
 		return _keyState;
+	}
+	///Calculates the gamma of the output
+	///Returns the value as a floating-point number between 0.0 and 1.0
+	public double gammaF(double g) @nogc @safe pure nothrow const {
+		return pow(counter * outConv, g);
+	}
+	///Calculates the gamma of the output
+	///Returns the value as an integer
+	public int gamma(double g) @nogc @safe pure nothrow const {
+		return cast(int)(gammaF(g) * maxOutput);
 	}
 }
 /**
