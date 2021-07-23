@@ -28,7 +28,7 @@
 * `dec`: ubyte, between 0 and 127. Selects a predefined decay time (attack time * 3), and it'll be applied to the envelope generator. Controlled by cc74 on O0, and cc79 on O1.
 * `rel`: ubyte, between 0 and 127. Selects a predefined release time (attack time * 3), and it'll be applied to the envelope generator. Controlled by cc74 on O0, and cc79 on O1.
 * `sus`: uint. Sets the sustain level. Controlled by cc16 on O0, and cc24 on O1. [m2]
-* `susC`: int. Controls how the envelope will behave during the sustain phase. Controlled by cc81 on O0, and cc83 on O1.
+* `susC`: int. Controls how the envelope will behave during the sustain phase, with the lowest value enabling the percussive mode of the envelope generator. Controlled by cc81 on O0, and cc83 on O1.
 * `outLevel`: double. Sets the output level of the operator. Converted internally to a logarithmic scale. Controlled by cc17 on O0, and cc25 on O1. [m2]
 * `fbAmount`: ubyte, between 0 and 255. Sets the feedback amount of the operator. Converted internally to a logarithmic scale. Controlled by cc71 on O0, and cc76 on O1. [m2]
 * `opCtrl`: ubyte. If bit 0 is set, feedback will be taken directly from the output of the oscillator, otherwise the envelope generator affected level will be used. If bit 1 is set, then the amplitude LFO will modify the output level of the operator. Controlled by cc80 on O0, and cc82 on O1.
