@@ -3,6 +3,7 @@ module document;
 import PixelPerfectEngine.map.mapdata;
 import PixelPerfectEngine.map.mapformat;
 import editorevents;
+import clipboard;
 import windows.rasterwindow;
 import PixelPerfectEngine.concrete.eventChainSystem;
 import PixelPerfectEngine.concrete.interfaces : MouseEventReceptor;
@@ -188,7 +189,6 @@ public class MapDocument : MouseEventReceptor {
 	public void tileMaterial_Select(wchar id) {
 		selectedMappingElement.tileID = id;
 		mode = EditMode.tilePlacement;
-
 	}
 	public ushort tileMaterial_PaletteUp() {
 		selectedMappingElement.paletteSel++;
@@ -441,5 +441,65 @@ public class MapDocument : MouseEventReceptor {
 				return key;
 		}
 		return LayerInfo.init;
+	}
+	/**
+	 * Copies an area on a tilelayer to a MapClipboard item.
+	 */
+	protected MapClipboard.Item createMapClipboardItem() {
+		MapClipboard.Item result;
+		const LayerType lt = getLayerInfo(selectedLayer).type;
+		if (lt == LayerType.Tile || lt == LayerType.TransformableTile) {
+			result.map.length = mapSelection.area;
+			ITileLayer tl = cast(ITileLayer)mainDoc.layeroutput[selectedLayer];
+			for (int y ; y < mapSelection.height ; y++) {
+				for (int x ; x < mapSelection.width; x++) {
+					result.map[x + (mapSelection.width * y)] = tl.readMapping(mapSelection.left + x, mapSelection.top + y);
+				}
+			}
+		}
+		return result;
+	}
+	/**
+	 * Creates a copy event if called.
+	 * Uses the internal states of this document.
+	 */
+	public void copy() {
+		switch (getLayerInfo(selectedLayer).type) {
+			case LayerType.Tile, LayerType.TransformableTile:
+				MapClipboard.Item area = createMapClipboardItem();
+				prg.mapClipboard.addItem(area);
+				break;
+			default:
+				break;
+		}
+	}
+	/**
+	 * Creates a cut event if called.
+	 * Uses the internal states of this document.
+	 */
+	public void cut() {
+		switch (getLayerInfo(selectedLayer).type) {
+			case LayerType.Tile, LayerType.TransformableTile:
+				MapClipboard.Item area = createMapClipboardItem();
+				prg.mapClipboard.addItem(area);
+				events.addToTop(new CutFromTileLayerEvent(cast(ITileLayer)mainDoc.layeroutput[selectedLayer]));
+				break;
+			default:
+				break;
+		}
+	}
+	/**
+	 * Creates a paste event if called.
+	 * Uses the internal states of this document.
+	 */
+	public void paste(size_t which = 0) {
+		switch (getLayerInfo(selectedLayer).type) {
+			case LayerType.Tile, LayerType.TransformableTile:
+				events.addToTop(new PasteIntoTileLayerEvent(prg.mapClipboard.getItem(which), 
+						cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection.cornerUL));
+				break;
+			default:
+				break;
+		}
 	}
 }

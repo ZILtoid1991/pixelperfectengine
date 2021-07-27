@@ -38,6 +38,7 @@ public import windows.materiallist;
 import document;
 import windows.rasterwindow;
 import windows.newtilelayer;
+import clipboard;
 
 
 
@@ -235,6 +236,7 @@ public class Editor : InputListener, SystemEventListener {
 	public MapDocument selDoc;
 	public LayerList layerList;
 	public MaterialList materialList;
+	public MapClipboard mapClipboard;
 	
 	public this(string[] args){
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
@@ -612,6 +614,15 @@ public class Editor : InputListener, SystemEventListener {
 		} catch (Exception e) {
 			debug writeln(e);
 		}
+	}
+	public void onCopy() {
+
+	}
+	public void onCut() {
+
+	}
+	public void onPaste() {
+
 	}
 	
 	public void onQuit(){onExit();}

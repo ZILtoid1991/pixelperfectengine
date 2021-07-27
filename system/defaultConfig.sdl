@@ -13,7 +13,7 @@ audio {
     soundVol 100        //Sound volume (0-100)
     musicVol 100        //Music volume (0-100)
     driver -1           //Name of the audio driver, or -1 for auto
-    device ""           //Name of the audio device, or -1 for auto
+    device -1           //Name of the audio device, or -1 for auto
     frequency 48000     //Playback frequency (should be either 44100 or 48000)
 }
  /*

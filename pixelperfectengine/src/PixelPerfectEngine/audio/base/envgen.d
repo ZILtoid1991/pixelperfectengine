@@ -1,6 +1,6 @@
 module PixelPerfectEngine.audio.base.envgen;
 
-import std.math : pow;
+import std.math : sqrt;
 
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
@@ -13,8 +13,10 @@ import std.math : pow;
 /**
  * Envelope generator struct.
  *
- * Uses integer arithmetics for speed. Shaping is supported via the `gamma()` and `gammaF()` functions, and a 2.0 g value will make a logarithmic output.
- * Output is between 0 and 16 777 215, or 0.0 and 1.0 for floating point output via `gammaF()`
+ * Uses integer arithmetics for speed.
+ * Shaping is done through the shpF() and shp() functions. A 0.5 value should return a mostly linear output, and a
+ * 0.25 an "audio-grade logarithmic" for volume, but since the calculation is optimized for speed rather than accuracy, 
+ * there will be imperfections.
  */
 public struct EnvelopeGenerator {
 	/**
@@ -106,9 +108,13 @@ public struct EnvelopeGenerator {
 	public ubyte position() @nogc @safe pure nothrow const {
 		return currStage;
 	}
-	///Reads the current output
+	///Returns the current output
 	public int output() @nogc @safe pure nothrow const {
 		return counter;
+	}
+	///Returns the current output as a floating-point value, between 0.0 and 1.0
+	public double outputF() @nogc @safe pure nothrow const {
+		return counter * outConv;
 	}
 	///Returns true if the envelope generator is running
 	public bool isRunning() @nogc @safe pure nothrow const {
@@ -118,15 +124,16 @@ public struct EnvelopeGenerator {
 	public bool keypos() @nogc @safe pure nothrow const {
 		return _keyState;
 	}
-	///Calculates the gamma of the output
-	///Returns the value as a floating-point number between 0.0 and 1.0
-	public double gammaF(double g) @nogc @safe pure nothrow const {
-		return pow(counter * outConv, g);
+	///Changes the shape of the output using optimized mathematics
+	///Output is returned as a floating-point value between 0.0 and 1.0
+	public double shpF(double g) @nogc @safe pure nothrow const {
+		const double outF = counter * outConv;
+		return (sqrt(sqrt(outF)) * g) + (outF * outF * outF * outF * (1.0 - g));
 	}
-	///Calculates the gamma of the output
-	///Returns the value as an integer
-	public int gamma(double g) @nogc @safe pure nothrow const {
-		return cast(int)(gammaF(g) * maxOutput);
+	///Changes the shape of the output using optimized mathematics
+	///Output is returned as an integer value between 0 and `maxOutput`.
+	public int shp(double g) @nogc @safe pure nothrow const {
+		return cast(int)(shpF(g) * maxOutput);
 	}
 }
 /**
