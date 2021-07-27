@@ -1,3 +1,9 @@
+# synth layout
+
+* 16 channels consisting of two operators (oscillator + envelope generator) and one extra envelope generator. Channels can be individually paired up for more complex tones and algorithms (12), at the cost of poliphony (8, if every channel is paired)
+* Two LFOs, one for pitch control, one for amplitude.
+* 4 outputs. One pair for main stereo out, and two individual mono auxiliary outputs for effect sed, etc.
+
 # Operator
 
 ## Diagram
@@ -31,7 +37,7 @@
 * `susC`: int. Controls how the envelope will behave during the sustain phase, with the lowest value enabling the percussive mode of the envelope generator. Controlled by cc81 on O0, and cc83 on O1.
 * `outLevel`: double. Sets the output level of the operator. Converted internally to a logarithmic scale. Controlled by cc17 on O0, and cc25 on O1. [m2]
 * `fbAmount`: ubyte, between 0 and 255. Sets the feedback amount of the operator. Converted internally to a logarithmic scale. Controlled by cc71 on O0, and cc76 on O1. [m2]
-* `opCtrl`: ubyte. If bit 0 is set, feedback will be taken directly from the output of the oscillator, otherwise the envelope generator affected level will be used. If bit 1 is set, then the amplitude LFO will modify the output level of the operator. Controlled by cc80 on O0, and cc82 on O1.
+* `opCtrl`: ubyte. If bit 0 is set, feedback will be taken directly from the output of the oscillator, otherwise the envelope generator affected level will be used. If bit 1 is set, then the amplitude LFO will modify the output level of the operator. Bit 2 enables the velocity control of the output level, bit 3 is for the feedback level. Controlled by cc80 on O0, and cc82 on O1.
 * `shpA`: double, between 0.3 and 3.0. Controls the shape of the envelope during the attack curve. Controlled by cc18 on O0, and cc 26 on O1. [m2]
 * `shpB`: double, between 0.3 and 3.0. controls the shape of the envelope outside of the attack curve. Controlled by cc19 on O0, and cc27 on O1. [m2]
 * `tune`: uint. The most significant 7 bit set the amount of seminotes (+103 ; -24), the rest sets the amount of seminote upwards. On MIDI 1.0, cc20 tunes the operator coarsely, cc21 within a seminote, for O0. For O1, cc28 and cc29 do the same. In MIDI 2.0 mode, a single corase tune cc can more precisely tune the oscillators. [m2]
@@ -85,6 +91,8 @@ Other master controls:
 * `aLFOamount`: double. Controls how much the amplitude levels will be affected by the amplitude LFO. cc93 [m2]
 * `pLFOamount`: double. Controls how much the pitch will be affected by the pitch LFO. cc94 [m2]
 * `channelCtrl`: ubyte. Controls the channel. Bit 0 selects an algorithm. Bit 1 and 2 on a secondary channel can combine it with a primary one. cc102
+* `velCtrlAssign`: ubyte. Controls what parameters the velocity control can affect. Bit 0 is the amplitude, bit 1 is the pitch amount assignment. cc103.
+* `velCtrlAm`: double. Controls how much the velocity should affect the control parameters. cc104 [m2]
 
 ## channel combination
 
@@ -166,3 +174,18 @@ algorithm 11:
 [P0]->
 [P1]->
 ```
+
+# sysex strings
+
+MIDI 1.0 Sysex command `01` enables the setting of global parameters, such as LFO frequencies and waveforms. Command `02 <chnum>` work on both 1.0 and 2.0 implementation, and saves the current preset to the current position. Command `03 <chnum>` will cause the synth to send a single command back to the host, if the channel runs out.
+
+## Control parameters
+
+* 01: LFOp frequency MSB
+* 02: LFOp frequency LSB
+* 03: LFOp waveform select
+* 04: LFOa frequency MSB
+* 05: LFOa frequency LSB
+* 06: LFOa waveform select
+ 
+For MIDI 2.0, these values can be found on page 16 of any non-registered parameter CC, except that 02, and 05 are invalid, and instead a single 32 bit value can set the LFO frequency.
