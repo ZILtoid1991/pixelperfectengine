@@ -183,4 +183,9 @@ public struct Workpad {
  */
 public struct WavemodWorkpad {
 	ulong			lookupVal;	///Current nearest-lookup position
+	///Substracts from the offset for the next wavechunk.
+	///Returns the new lookupVal
+	ulong sub(size_t amount) @nogc @safe pure nothrow {
+		return lookupVal - (amount<<20);
+	}
 }
