@@ -7,20 +7,20 @@ import std.math : sqrt;
  *
  * Pixel Perfect Engine, audio.base.envgen module.
  *
- * Contains ADSR envelope generation algorithms.
+ * Contains ADSR envelop generation algorithms.
  */
 
 /**
- * Envelope generator struct.
+ * ADSR Envelop generator struct.
  *
  * Uses integer arithmetics for speed.
  * Shaping is done through the shpF() and shp() functions. A 0.5 value should return a mostly linear output, and a
  * 0.25 an "audio-grade logarithmic" for volume, but since the calculation is optimized for speed rather than accuracy, 
  * there will be imperfections.
  */
-public struct EnvelopeGenerator {
+public struct ADSREnvelopGenerator {
 	/**
-	 * Indicates the current stage of the envelope.
+	 * Indicates the current stage of the envelop.
 	 */
 	public enum Stage : ubyte {
 		Off,
@@ -39,13 +39,13 @@ public struct EnvelopeGenerator {
 	public uint			releaseRate = 0xFF_FF_FF;	///Sets how long the release phase will last (less = longer)
 	
 	//mostly internal status values
-	protected ubyte		currStage;		///The current stage of the envelope generator
+	protected ubyte		currStage;		///The current stage of the envelop generator
 	protected bool		_keyState;		///If key is on, then it's set to true
-	protected bool		_isRunning;		///If set, then the envelope is running
+	protected bool		_isRunning;		///If set, then the envelop is running
 	public bool			isPercussive;	///If true, then the sustain stage is skipped
 	protected int		counter;		///The current position of the counter + unshaped output
-	public static immutable int maxOutput = 0xFF_FF_FF;///The maximum possible output of the envelope generator
-	public static immutable int minOutput = 0;///The minimum possible output of the envelope generator.
+	public static immutable int maxOutput = 0xFF_FF_FF;///The maximum possible output of the envelop generator
+	public static immutable int minOutput = 0;///The minimum possible output of the envelop generator.
 	protected static immutable double outConv = 1.0 / cast(double)maxOutput;///Reciprocal for output conversion
 	/**
 	 * Advances the main counter by one amount.
@@ -116,7 +116,7 @@ public struct EnvelopeGenerator {
 	public double outputF() @nogc @safe pure nothrow const {
 		return counter * outConv;
 	}
-	///Returns true if the envelope generator is running
+	///Returns true if the envelop generator is running
 	public bool isRunning() @nogc @safe pure nothrow const {
 		return _isRunning;
 	}
@@ -137,7 +137,7 @@ public struct EnvelopeGenerator {
 	}
 }
 /**
- * Calculates the rate for an envelope parameter for a given amount of time.
+ * Calculates the rate for an envelop parameter for a given amount of time.
  *
  * time: time in seconds. Can be a fraction of a second.
  * freq: the frequency which the envelope generator is being updated at (e.g. sampling frequency)
