@@ -482,7 +482,7 @@ public class MapDocument : MouseEventReceptor {
 			case LayerType.Tile, LayerType.TransformableTile:
 				MapClipboard.Item area = createMapClipboardItem();
 				prg.mapClipboard.addItem(area);
-				events.addToTop(new CutFromTileLayerEvent(cast(ITileLayer)mainDoc.layeroutput[selectedLayer]));
+				events.addToTop(new CutFromTileLayerEvent(cast(ITileLayer)mainDoc.layeroutput[selectedLayer], mapSelection));
 				break;
 			default:
 				break;

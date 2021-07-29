@@ -411,10 +411,16 @@ public class Editor : InputListener, SystemEventListener {
 		import PixelPerfectEngine.system.etc : hashCalc;
 		switch (id) {
 			case hashCalc("copy"):
+				if (!isPressed)
+					onCopy;
 				break;
 			case hashCalc("cut"):
+				if (!isPressed)
+					onCut;
 				break;
 			case hashCalc("paste"):
+				if (!isPressed)
+					onPaste;
 				break;
 			case hashCalc("undo"):
 				if (!isPressed)
@@ -616,13 +622,19 @@ public class Editor : InputListener, SystemEventListener {
 		}
 	}
 	public void onCopy() {
-
+		if (selDoc !is null) {
+			selDoc.copy();
+		}
 	}
 	public void onCut() {
-
+		if (selDoc !is null) {
+			selDoc.cut();
+		}
 	}
 	public void onPaste() {
-
+		if (selDoc !is null) {
+			selDoc.paste();
+		}
 	}
 	
 	public void onQuit(){onExit();}
