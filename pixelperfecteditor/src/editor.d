@@ -352,6 +352,7 @@ public class Editor : InputListener, SystemEventListener {
 		rasters.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
 		wh.setBaseWindow(new TopLevelWindow(848, 480, this));
 		wh.addBackground(loadBitmapFromFile!Bitmap32Bit("../system/background.png"));
+		mapClipboard = new MapClipboard(10);
 		openMaterialList();
 		openLayerList();
 	}

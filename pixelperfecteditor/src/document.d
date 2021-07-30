@@ -335,9 +335,9 @@ public class MapDocument : MouseEventReceptor {
 												mapWidth = tl.getMX, mapHeight = tl.getMY;
 										//calculate selected map area
 										mapSelection.left = areaSelection.left / tileWidth;
-										mapSelection.right = areaSelection.right / tileWidth + (areaSelection.right % tileWidth > 0 ? 1 : 0);
+										mapSelection.right = areaSelection.right / tileWidth; /+ + (areaSelection.right % tileWidth > 0 ? 1 : 0); +/
 										mapSelection.top = areaSelection.top / tileHeight;
-										mapSelection.bottom = areaSelection.bottom / tileHeight + (areaSelection.bottom % tileHeight > 0 ? 1 : 0);
+										mapSelection.bottom = areaSelection.bottom / tileHeight; /+ + (areaSelection.bottom % tileHeight > 0 ? 1 : 0); +/
 										//Clamp map sizes between what map has
 										import PixelPerfectEngine.system.etc : clamp;
 										
@@ -347,9 +347,9 @@ public class MapDocument : MouseEventReceptor {
 										clamp(mapSelection.bottom, 0, mapHeight);
 										//adjust displayed selection to mapSelection
 										areaSelection.left = mapSelection.left * tileWidth;
-										areaSelection.right = mapSelection.right * tileWidth;
+										areaSelection.right = (mapSelection.right + 1) * tileWidth;//areaSelection.right = mapSelection.right * tileWidth;
 										areaSelection.top = mapSelection.top * tileHeight;
-										areaSelection.bottom = mapSelection.bottom * tileHeight;								
+										areaSelection.bottom = (mapSelection.bottom + 1) * tileHeight;//areaSelection.bottom = mapSelection.bottom * tileHeight;								
 										break;
 									
 									default:
@@ -450,6 +450,8 @@ public class MapDocument : MouseEventReceptor {
 		const LayerType lt = getLayerInfo(selectedLayer).type;
 		if (lt == LayerType.Tile || lt == LayerType.TransformableTile) {
 			result.map.length = mapSelection.area;
+			result.width = mapSelection.width;
+			result.height = mapSelection.height;
 			ITileLayer tl = cast(ITileLayer)mainDoc.layeroutput[selectedLayer];
 			for (int y ; y < mapSelection.height ; y++) {
 				for (int x ; x < mapSelection.width; x++) {

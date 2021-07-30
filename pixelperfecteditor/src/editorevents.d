@@ -440,8 +440,8 @@ public class CutFromTileLayerEvent : UndoableEvent {
 	public void redo() {
 		original.length = 0;
 		original.reserve(area.area);
-		for (int y = area.top ; y <= area.bottom ; y++) {
-			for (int x = area.left ; x <= area.right ; x++) {
+		for (int y = area.top ; y < area.bottom ; y++) {
+			for (int x = area.left ; x < area.right ; x++) {
 				MappingElement o = target.readMapping(x,y);
 				original ~= o;
 				target.writeMapping(x,y,MappingElement.init);
@@ -450,8 +450,8 @@ public class CutFromTileLayerEvent : UndoableEvent {
 	}
 	public void undo() {
 		size_t pos;
-		for (int y = area.top ; y <= area.bottom ; y++) {
-			for (int x = area.left ; x <= area.right ; x++) {
+		for (int y = area.top ; y < area.bottom ; y++) {
+			for (int x = area.left ; x < area.right ; x++) {
 				target.writeMapping(x,y,original[pos]);
 				pos++;
 			}
@@ -475,19 +475,19 @@ public class PasteIntoTileLayerEvent : UndoableEvent {
 	public void redo() {
 		original.length = 0;
 		original.reserve(item.width * item.height);
-		for (int y = position.y, y0 ; y0 <= item.height ; y++, y0++) {
-			for (int x = position.x, x0 ; x0 <= item.width ; x++, x0++) {
+		for (int y = position.y, y0 ; y0 < item.height ; y++, y0++) {
+			for (int x = position.x, x0 ; x0 < item.width ; x++, x0++) {
 				MappingElement o = target.readMapping(x,y);
 				original ~= o;
-				target.writeMapping(x,y,item.map[x0 + (y0 + item.width)]);
+				target.writeMapping(x,y,item.map[x0 + (y0 * item.width)]);
 			}
 		}
 	}
 
 	public void undo() {
 		size_t pos;
-		for (int y = position.y ; y <= position.y + item.height ; y++) {
-			for (int x = position.x ; x <= position.x + item.width ; x++) {
+		for (int y = position.y ; y < position.y + item.height ; y++) {
+			for (int x = position.x ; x < position.x + item.width ; x++) {
 				target.writeMapping(x,y,original[pos]);
 				pos++;
 			}
