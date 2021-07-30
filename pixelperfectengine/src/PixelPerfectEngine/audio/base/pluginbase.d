@@ -76,4 +76,20 @@ public abstract class AudioPlugin {
 	 * format: The format of the wave data, including the data type, bit depth, base sampling rate
 	 */
 	public abstract int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow;
+	/**
+	 * Restores a parameter to the given preset.
+	 * Returns an errorcode on failure.
+	 */
+	public abstract int recallParam_int(uint presetID, uint paramID, int value) @nogc nothrow;
+	/**
+	 * Restores a parameter to the given preset.
+	 * Returns an errorcode on failure.
+	 */
+	public abstract int recallParam_uint(uint presetID, uint paramID, uint value) @nogc nothrow;
+	/**
+	 * Restores a parameter to the given preset.
+	 * Returns an errorcode on failure.
+	 */
+	public abstract int recallParam_double(uint presetID, uint paramID, double value) @nogc nothrow;
+	
 }
