@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.elements.scrollbar;
+module pixelperfectengine.concrete.elements.scrollbar;
 
-public import PixelPerfectEngine.concrete.elements.base;
+public import pixelperfectengine.concrete.elements.base;
 import std.math : isNaN;
 
 abstract class ScrollBar : WindowElement{

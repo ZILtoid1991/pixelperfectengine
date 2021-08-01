@@ -1,6 +1,6 @@
 module clipboard;
 
-import PixelPerfectEngine.graphics.layers.base : MappingElement;
+import pixelperfectengine.graphics.layers.base : MappingElement;
 
 /**
  * Implements a clipboard for maps, with history.

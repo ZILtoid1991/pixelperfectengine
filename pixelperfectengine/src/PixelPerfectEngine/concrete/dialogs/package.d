@@ -1,2 +1,2 @@
-module PixelPerfectEngine.concrete.dialogs;
+module pixelperfectengine.concrete.dialogs;
 

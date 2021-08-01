@@ -1,8 +1,8 @@
-module PixelPerfectEngine.concrete.popup.base;
+module pixelperfectengine.concrete.popup.base;
 
-public import PixelPerfectEngine.concrete.interfaces;
-public import PixelPerfectEngine.concrete.types;
-package import PixelPerfectEngine.graphics.draw;
+public import pixelperfectengine.concrete.interfaces;
+public import pixelperfectengine.concrete.types;
+package import pixelperfectengine.graphics.draw;
 
 /**
  * For creating pop-up elements like menus.

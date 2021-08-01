@@ -1,12 +1,12 @@
 module windows.materiallist;
 
-import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.map.mapformat;
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.map.mapformat;
 
 import app;
 
 import std.utf : toUTF32;
-import PixelPerfectEngine.system.etc : intToHex;
+import pixelperfectengine.system.etc : intToHex;
 
 /**
  * Preliminary, future version will feature material selection with images.
@@ -75,7 +75,7 @@ public class MaterialList : Window {
 		addElement(palettePos);
 	}
 	public void updateMaterialList(TileInfo[] list) @trusted {
-		import PixelPerfectEngine.system.etc : intToHex;
+		import pixelperfectengine.system.etc : intToHex;
 		tiles = list;
 		/+ListViewItem[] output;
 		output.reserve = list.length;+/

@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.popup.popupmenu;
+module pixelperfectengine.concrete.popup.popupmenu;
 
-import PixelPerfectEngine.concrete.popup.base;
+import pixelperfectengine.concrete.popup.base;
 
 /**
  * To create drop-down lists, menu bars, etc.

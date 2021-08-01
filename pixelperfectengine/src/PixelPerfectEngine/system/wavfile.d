@@ -1,4 +1,4 @@
-module wavfile;
+module pixelperfectengine.system.wavfile;
 
 static import std.file;
 import std.format;

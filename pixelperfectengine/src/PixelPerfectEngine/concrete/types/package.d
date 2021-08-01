@@ -1,5 +1,5 @@
-module PixelPerfectEngine.concrete.types;
+module pixelperfectengine.concrete.types;
 
-public import PixelPerfectEngine.concrete.types.event;
-public import PixelPerfectEngine.concrete.types.stylesheet;
-public import PixelPerfectEngine.concrete.types.etc;
+public import pixelperfectengine.concrete.types.event;
+public import pixelperfectengine.concrete.types.stylesheet;
+public import pixelperfectengine.concrete.types.etc;

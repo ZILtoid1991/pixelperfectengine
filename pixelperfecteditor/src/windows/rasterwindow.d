@@ -5,13 +5,13 @@ module windows.rasterwindow;
  *
  * Outputs layers to a window with the capability of temporarily removing them
  */
-import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.graphics.raster : PaletteContainer;
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.graphics.layers;
+import pixelperfectengine.graphics.raster : PaletteContainer;
 import CPUblit.composing;
 static import CPUblit.draw;
 import CPUblit.colorlookup;
-import PixelPerfectEngine.system.input.types : MouseButton, ButtonState;
+import pixelperfectengine.system.input.types : MouseButton, ButtonState;
 
 import document;
 debug import std.stdio;
@@ -255,7 +255,7 @@ public class RasterWindow : Window, PaletteContainer {
 	 * Copies and sets all alpha values to 255 to avoid transparency issues
 	 */
 	protected @nogc void helperFunc(void* src, size_t length) pure nothrow {
-		import PixelPerfectEngine.system.platform;
+		import pixelperfectengine.system.platform;
 		static if(USE_INTEL_INTRINSICS){
 			import inteli.emmintrin;
 			immutable ubyte[16] ALPHA_255_VEC = [255,0,0,0,255,0,0,0,255,0,0,0,255,0,0,0];

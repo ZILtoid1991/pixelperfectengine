@@ -1,6 +1,6 @@
-module PixelPerfectEngine.system.input.interfaces;
+module pixelperfectengine.system.input.interfaces;
 
-public import PixelPerfectEngine.system.input.types;
+public import pixelperfectengine.system.input.types;
 
 /**
  * Listener for keyboard, joystick, etc. events.

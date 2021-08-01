@@ -1,4 +1,4 @@
-module PixelPerfectEngine.collision.common;
+module pixelperfectengine.collision.common;
 
 /*
  * Copyright (C) 2015-2020, by Laszlo Szeremi under the Boost license.
@@ -6,9 +6,9 @@ module PixelPerfectEngine.collision.common;
  * Pixel Perfect Engine, collision.common module.
  */
 
-public import PixelPerfectEngine.graphics.common;
-public import PixelPerfectEngine.graphics.bitmap;
-public import PixelPerfectEngine.graphics.layers : MappingElement;
+public import pixelperfectengine.graphics.common;
+public import pixelperfectengine.graphics.bitmap;
+public import pixelperfectengine.graphics.layers : MappingElement;
 import collections.treemap;
 
 /**

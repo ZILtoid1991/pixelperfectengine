@@ -4,17 +4,17 @@
  * Pixel Perfect Engine, graphics.layers.base module
  */
 
-module PixelPerfectEngine.graphics.layers.base;
+module pixelperfectengine.graphics.layers.base;
 
-public import PixelPerfectEngine.graphics.bitmap;
-public import PixelPerfectEngine.graphics.common;
-public import PixelPerfectEngine.graphics.layers.interfaces;
-package import PixelPerfectEngine.graphics.transformFunctions;
-package import PixelPerfectEngine.system.etc;
-//package import PixelPerfectEngine.system.platform;
+public import pixelperfectengine.graphics.bitmap;
+public import pixelperfectengine.graphics.common;
+public import pixelperfectengine.graphics.layers.interfaces;
+package import pixelperfectengine.graphics.transformfunctions;
+package import pixelperfectengine.system.etc;
+//package import pixelperfectengine.system.platform;
 
 package import std.bitmanip : bitfields;
-public import PixelPerfectEngine.system.exc;
+public import pixelperfectengine.system.exc;
 package import bindbc.sdl;
 package import core.stdc.stdlib;
 package import CPUblit.composing;

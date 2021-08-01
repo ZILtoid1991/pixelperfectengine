@@ -1,4 +1,4 @@
-module PixelPerfectEngine.collision.objectCollision;
+module pixelperfectengine.collision.objectcollision;
 
 /*
  * Copyright (C) 2015-2020, by Laszlo Szeremi under the Boost license.
@@ -7,8 +7,8 @@ module PixelPerfectEngine.collision.objectCollision;
  */
 
 import collections.treemap;
-import PixelPerfectEngine.collision.common;
-//import PixelPerfectEngine.collision.boxCollision;
+import pixelperfectengine.collision.common;
+//import pixelperfectengine.collision.boxCollision;
 
 /**
  * Object-to-object collision detector.

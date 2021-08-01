@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.elements.label;
+module pixelperfectengine.concrete.elements.label;
 
-public import PixelPerfectEngine.concrete.elements.base;
+public import pixelperfectengine.concrete.elements.base;
 
 /**
  * A simple label used on GUI elements to annotate things.

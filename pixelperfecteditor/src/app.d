@@ -1,7 +1,7 @@
 /*
-Copyright (C) 2015, by Laszlo Szeremi under the Boost license.
+Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
 
-VDP Engine
+PixelPerfectEditor
 */
 
 
@@ -18,24 +18,24 @@ import bindbc.sdl;
 
 //import system.config;
 
-import PixelPerfectEngine.graphics.outputScreen;
-import PixelPerfectEngine.graphics.raster;
-import PixelPerfectEngine.graphics.layers;
+import pixelperfectengine.graphics.outputScreen;
+import pixelperfectengine.graphics.raster;
+import pixelperfectengine.graphics.layers;
 
-import PixelPerfectEngine.graphics.bitmap;
+import pixelperfectengine.graphics.bitmap;
 
-import PixelPerfectEngine.collision.common;
-import PixelPerfectEngine.collision.objectCollision;
+import pixelperfectengine.collision.common;
+import pixelperfectengine.collision.objectCollision;
 
-import PixelPerfectEngine.system.input;
-import PixelPerfectEngine.system.file;
-import PixelPerfectEngine.system.etc;
-import PixelPerfectEngine.system.config;
-//import PixelPerfectEngine.system.binarySearchTree;
-import PixelPerfectEngine.system.common;
+import pixelperfectengine.system.input;
+import pixelperfectengine.system.file;
+import pixelperfectengine.system.etc;
+import pixelperfectengine.system.config;
+//import pixelperfectengine.system.binarySearchTree;
+import pixelperfectengine.system.common;
 
 public import editor;
-//import PixelPerfectEngine.extbmp.extbmp;
+//import pixelperfectengine.extbmp.extbmp;
 
 public Editor prg;
 
@@ -155,7 +155,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		ih.inputListener = this;
 		
 		{
-			import PixelPerfectEngine.system.input.scancode;
+			import pixelperfectengine.system.input.scancode;
 			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("up"));
 			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("down"));
 			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("left"));
@@ -286,7 +286,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	}
 	/+override public void keyPressed(string ID,uint timestamp,uint devicenumber,uint devicetype) {
 		//writeln(ID);
-		import PixelPerfectEngine.graphics.transformFunctions;
+		import pixelperfectengine.graphics.transformFunctions;
 		switch(ID){
 			case "up": up = true; break;
 			case "down": down = true; break;

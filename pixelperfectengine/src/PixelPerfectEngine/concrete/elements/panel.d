@@ -1,8 +1,8 @@
-module PixelPerfectEngine.concrete.elements.panel;
+module pixelperfectengine.concrete.elements.panel;
 
-import PixelPerfectEngine.concrete.elements.base;
+import pixelperfectengine.concrete.elements.base;
 
-import PixelPerfectEngine.system.etc : clamp, cmpObjPtr;
+import pixelperfectengine.system.etc : clamp, cmpObjPtr;
 
 import collections.linkedlist;
 

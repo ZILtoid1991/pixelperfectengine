@@ -3,13 +3,13 @@
  *
  * Pixel Perfect Engine, graphics.bitmap module
  */
-module PixelPerfectEngine.graphics.raster;
+module pixelperfectengine.graphics.raster;
 
-import PixelPerfectEngine.graphics.outputScreen;
-import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.graphics.bitmap;
+import pixelperfectengine.graphics.outputscreen;
+import pixelperfectengine.graphics.layers;
+import pixelperfectengine.graphics.bitmap;
 import bindbc.sdl;
-public import PixelPerfectEngine.graphics.common;
+public import pixelperfectengine.graphics.common;
 import std.conv;
 import std.algorithm.sorting;
 import std.algorithm.mutation;

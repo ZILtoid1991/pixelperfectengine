@@ -1,6 +1,6 @@
-module PixelPerfectEngine.graphics.layers.spritelayer;
+module pixelperfectengine.graphics.layers.spritelayer;
 
-public import PixelPerfectEngine.graphics.layers.base;
+public import pixelperfectengine.graphics.layers.base;
 
 import collections.treemap;
 import collections.sortedlist;

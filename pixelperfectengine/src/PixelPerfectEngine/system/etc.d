@@ -1,4 +1,4 @@
-module PixelPerfectEngine.system.etc;
+module pixelperfectengine.system.etc;
 
 import std.conv;
 import std.algorithm.mutation;

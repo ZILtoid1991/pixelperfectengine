@@ -3,11 +3,11 @@ module editorevents;
 import document;
 import clipboard;
 
-public import PixelPerfectEngine.concrete.eventChainSystem;
-public import PixelPerfectEngine.graphics.layers;
-public import PixelPerfectEngine.map.mapformat;
+public import pixelperfectengine.concrete.eventchainsystem;
+public import pixelperfectengine.graphics.layers;
+public import pixelperfectengine.map.mapformat;
 
-import PixelPerfectEngine.system.file;
+import pixelperfectengine.system.file;
 
 import std.stdio;
 import std.conv : to;
@@ -136,7 +136,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 		import std.file : exists, isFile;
 		import std.path : baseName;
 		import std.utf : toUTF8;
-		import PixelPerfectEngine.system.etc : intToHex;
+		import pixelperfectengine.system.etc : intToHex;
 		if (backup) {	//If a backup exists, then re-add that to the document, then return.
 			target.mainDoc.addNewLayer(pri, backup, creation);
 			target.outputWindow.addLayer(pri);
@@ -340,7 +340,7 @@ public class AddTileSheetEvent : UndoableEvent {
 		this.numStyle = numStyle;
 	}
 	public void redo() {
-		import PixelPerfectEngine.system.etc : intToHex, intToOct;
+		import pixelperfectengine.system.etc : intToHex, intToOct;
 		//Copy palette if exists (-1 means no palette or do not import palette)
 		if (paletteOffset >= 0) {
 			//Color[] targetPalette = targetDoc.outputWindow.paletteLocal;
@@ -466,20 +466,33 @@ public class PasteIntoTileLayerEvent : UndoableEvent {
 	ITileLayer				target;
 	Point					position;
 	MappingElement[]		original;
-	public this (MapClipboard.Item item, ITileLayer target, Point position) {
+	bool					overwrite;
+	public this (MapClipboard.Item item, ITileLayer target, Point position, bool overwrite = true) {
 		this.item = item;
 		this.target = target;
 		this.position = position;
+		this.overwrite = overwrite;
 	}
 
 	public void redo() {
 		original.length = 0;
 		original.reserve(item.width * item.height);
-		for (int y = position.y, y0 ; y0 < item.height ; y++, y0++) {
-			for (int x = position.x, x0 ; x0 < item.width ; x++, x0++) {
-				MappingElement o = target.readMapping(x,y);
-				original ~= o;
-				target.writeMapping(x,y,item.map[x0 + (y0 * item.width)]);
+		if (overwrite) {
+			for (int y = position.y, y0 ; y0 < item.height ; y++, y0++) {
+				for (int x = position.x, x0 ; x0 < item.width ; x++, x0++) {
+					MappingElement o = target.readMapping(x,y);
+					original ~= o;
+					target.writeMapping(x,y,item.map[x0 + (y0 * item.width)]);
+				}
+			}
+		} else {
+			for (int y = position.y, y0 ; y0 < item.height ; y++, y0++) {
+				for (int x = position.x, x0 ; x0 < item.width ; x++, x0++) {
+					MappingElement o = target.readMapping(x,y), n = item.map[x0 + (y0 * item.width)];
+					original ~= o;
+					if (n.tileID != 0xFFFF)
+						target.writeMapping(x,y,n);
+				}
 			}
 		}
 	}

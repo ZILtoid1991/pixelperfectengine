@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.elements.smallbutton;
+module pixelperfectengine.concrete.elements.smallbutton;
 
-public import PixelPerfectEngine.concrete.elements.base;
+public import pixelperfectengine.concrete.elements.base;
 
 public class SmallButton : WindowElement, ISmallButton {
 	public string			iconPressed, iconUnpressed;

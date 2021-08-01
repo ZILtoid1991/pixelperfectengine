@@ -4,10 +4,10 @@
  * Pixel Perfect Engine, concrete.text module
  */
 
-module PixelPerfectEngine.graphics.text;
+module pixelperfectengine.graphics.text;
 
-public import PixelPerfectEngine.graphics.fontsets;
-public import PixelPerfectEngine.graphics.bitmap;
+public import pixelperfectengine.graphics.fontsets;
+public import pixelperfectengine.graphics.bitmap;
 
 import xml = undead.xml;
 import std.utf : toUTF32, toUTF8;

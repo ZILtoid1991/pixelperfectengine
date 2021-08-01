@@ -4,11 +4,11 @@
  * Pixel Perfect Engine, sound module
  */
 
-module PixelPerfectEngine.sound.sound;
+module pixelperfectengine.sound.sound;
 
 import bindbc.sdl.mixer;
 import std.conv;
-public import PixelPerfectEngine.system.exc;
+public import pixelperfectengine.system.exc;
 
 /**
  * Implements a simple way for audio playback, through the use of SDL2_mixer.

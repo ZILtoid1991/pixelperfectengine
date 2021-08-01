@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.elements.button;
+module pixelperfectengine.concrete.elements.button;
 
-public import PixelPerfectEngine.concrete.elements.base;
+public import pixelperfectengine.concrete.elements.base;
 
 public class Button : WindowElement {
 	private bool isPressed;

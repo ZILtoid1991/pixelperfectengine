@@ -1,4 +1,4 @@
-module PixelPerfectEngine.map.mapformat;
+module pixelperfectengine.map.mapformat;
 /*
  * Copyright (C) 2015-2019, by Laszlo Szeremi under the Boost license.
  *
@@ -6,10 +6,10 @@ module PixelPerfectEngine.map.mapformat;
  */
 import sdlang;
 
-import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.graphics.raster : PaletteContainer;
+import pixelperfectengine.graphics.layers;
+import pixelperfectengine.graphics.raster : PaletteContainer;
 import std.stdio;
-public import PixelPerfectEngine.map.mapdata;
+public import pixelperfectengine.map.mapdata;
 
 /**
  * Serializes/deserializes XMF map data in SDLang format.
@@ -74,19 +74,7 @@ public class MapFormat {
 					const int priority = t0.values[1].get!int;
 					layerData[priority] = t0;
 					RenderingMode lrd = renderingModeLookup.get(t0.getTagValue!string("RenderingMode"), RenderingMode.Copy);
-					/+switch (t0.getTagValue!string("RenderingMode")) {
-						case "AlphaBlending":
-							lrd = RenderingMode.AlphaBlend;
-							break;
-						case "Blitter":
-							lrd = LayerRenderingMode.BLITTER;
-							break;
-						case "Copy":
-							lrd = LayerRenderingMode.COPY;
-							break;
-						default:
-							break;
-					}+/
+					
 					switch (t0.name) {
 						case "Tile":
 							layeroutput[priority] = new TileLayer(t0.values[2].get!int, t0.values[3].get!int, lrd);
@@ -95,9 +83,7 @@ public class MapFormat {
 							throw new Exception("Unsupported layer format");
 					}
 					break;
-				/*case "Metadata":
-					metadata = t0;
-					break;*/
+				
 				default:
 					if(t0.name == "Metadata"){
 						metadata = t0;
@@ -112,7 +98,7 @@ public class MapFormat {
 	 * TODO: Add dpk support
 	 */
 	public void loadTiles (PaletteContainer paletteTarget) @trusted {
-		import PixelPerfectEngine.system.file;
+		import pixelperfectengine.system.file;
 		foreach (key, value ; layerData) {
 			if (value.name != "Tile") continue;
 			Tag[] tileSource = getAllTileSources(key);
@@ -163,7 +149,7 @@ public class MapFormat {
 	 * Loads mapping data from disk to all layers.
 	 */
 	public void loadMappingData () @trusted {
-		import PixelPerfectEngine.system.etc : reinterpretCast;
+		import pixelperfectengine.system.etc : reinterpretCast;
 		foreach (key, value ; layerData) {
 			Tag t0 = value.getTag("Embed:MapData");
 			if (t0 !is null) {
@@ -316,13 +302,40 @@ public class MapFormat {
 		}
 	}
 	///Ditto, but from preexiting Tag.
-	public void addSingleTileInfo(int pri, Tag t, string source) @trusted {
-		foreach (Tag t0 ; layerData[pri].namespaces["Embed"].tags) {
+	public void addSingleTileInfo(int pri, Tag t, string source, string dpkSource = null) @trusted {
+		/+foreach (Tag t0 ; layerData[pri].namespaces["Embed"].tags) {
 			if (t0.name == "TileInfo" && t0.values.length >= 1 && t0.values[0].get!string() == source) {
 				t0.add(t);
 				return;
 			}
+		}+/
+		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
+				Tag t1 = t0.getTag("Embed:TileInfo");
+				t1.add(t);
+			}
 		}
+	}
+	/**
+	 * Renames a tile.
+	 * Returns the previous name if the action was successful, or null if there was some issue.
+	 */
+	public string renameTile(int pri, int id, string newName, string source, string dpkSource = null) {
+		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
+				Tag t1 = t0.getTag("Embed:TileInfo");
+				if (t1 is null) return null;
+				foreach (Tag t2; t1.tags) {
+					if (t2.values[0].get!int() == id) {
+						string oldName = t2.values[2].get!string();
+						t2.values[2] = Value(newName);
+						return oldName;
+					}
+				}
+				
+			}
+		}
+		return null;
 	}
 	/**
 	 * Removes a single tile from a TileInfo chunk.
@@ -442,7 +455,7 @@ public class MapFormat {
 	}
 	///Ditto
 	public void addEmbeddedMapData(int pri, MappingElement[] me) @safe {
-		import PixelPerfectEngine.system.etc : reinterpretCast;
+		import pixelperfectengine.system.etc : reinterpretCast;
 		addEmbeddedMapData(pri, reinterpretCast!ubyte(me));
 	}
 	/**
@@ -477,7 +490,7 @@ public class MapFormat {
 	 * Only works with uncompressed data due to the need of recompression.
 	 */
 	public void pullMapDataFromLayer(int pri) @trusted {
-		import PixelPerfectEngine.system.etc : reinterpretCast;
+		import pixelperfectengine.system.etc : reinterpretCast;
 		ITileLayer t = cast(ITileLayer)layeroutput[pri];
 		MappingElement[] mapping = t.getMapping;
 		if (layerData[pri].getTag("Embed:MapData") !is null) {
@@ -569,7 +582,7 @@ public class MapFormat {
 	 * Adds an embedded palette to the document.
 	 */
 	public Tag addEmbeddedPalette (Color[] c, string name, int offset) @trusted {
-		import PixelPerfectEngine.system.etc : reinterpretCast;
+		import pixelperfectengine.system.etc : reinterpretCast;
 		Attribute[] a;
 		if (offset) a ~= new Attribute("offset", Value(offset));
 		return new Tag(root, "Embed", "Palette", [Value(name), Value(reinterpretCast!ubyte(c))], a);

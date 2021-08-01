@@ -1,4 +1,4 @@
-module PixelPerfectEngine.audio.base.envgen;
+module pixelperfectengine.audio.base.envgen;
 
 import std.math : sqrt;
 

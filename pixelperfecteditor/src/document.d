@@ -1,17 +1,17 @@
 module document;
 
-import PixelPerfectEngine.map.mapdata;
-import PixelPerfectEngine.map.mapformat;
+import pixelperfectengine.map.mapdata;
+import pixelperfectengine.map.mapformat;
 import editorevents;
 import clipboard;
 import windows.rasterwindow;
-import PixelPerfectEngine.concrete.eventChainSystem;
-import PixelPerfectEngine.concrete.interfaces : MouseEventReceptor;
-import PixelPerfectEngine.concrete.types : CursorType;
-import PixelPerfectEngine.graphics.common : Color, Coordinate;
-import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.system.input : MouseButton, ButtonState, MouseClickEvent, MouseMotionEvent, MouseWheelEvent, 
+import pixelperfectengine.concrete.eventChainSystem;
+import pixelperfectengine.concrete.interfaces : MouseEventReceptor;
+import pixelperfectengine.concrete.types : CursorType;
+import pixelperfectengine.graphics.common : Color, Coordinate;
+import pixelperfectengine.graphics.bitmap;
+import pixelperfectengine.graphics.layers;
+import pixelperfectengine.system.input : MouseButton, ButtonState, MouseClickEvent, MouseMotionEvent, MouseWheelEvent, 
 		MouseEventCommons, MouseButtonFlags;
 import std.stdio;
 
@@ -339,7 +339,7 @@ public class MapDocument : MouseEventReceptor {
 										mapSelection.top = areaSelection.top / tileHeight;
 										mapSelection.bottom = areaSelection.bottom / tileHeight; /+ + (areaSelection.bottom % tileHeight > 0 ? 1 : 0); +/
 										//Clamp map sizes between what map has
-										import PixelPerfectEngine.system.etc : clamp;
+										import pixelperfectengine.system.etc : clamp;
 										
 										clamp(mapSelection.left, 0, mapWidth);
 										clamp(mapSelection.right, 0, mapHeight);
@@ -474,6 +474,7 @@ public class MapDocument : MouseEventReceptor {
 			default:
 				break;
 		}
+		outputWindow.updateRaster();
 	}
 	/**
 	 * Creates a cut event if called.
@@ -489,6 +490,7 @@ public class MapDocument : MouseEventReceptor {
 			default:
 				break;
 		}
+		outputWindow.updateRaster();
 	}
 	/**
 	 * Creates a paste event if called.
@@ -498,10 +500,11 @@ public class MapDocument : MouseEventReceptor {
 		switch (getLayerInfo(selectedLayer).type) {
 			case LayerType.Tile, LayerType.TransformableTile:
 				events.addToTop(new PasteIntoTileLayerEvent(prg.mapClipboard.getItem(which), 
-						cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection.cornerUL));
+						cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection.cornerUL, voidfill));
 				break;
 			default:
 				break;
 		}
+		outputWindow.updateRaster();
 	}
 }

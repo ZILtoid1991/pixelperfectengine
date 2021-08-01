@@ -1,4 +1,4 @@
-﻿module PixelPerfectEngine.system.file;
+﻿module pixelperfectengine.system.file;
 /*
  * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
  *
@@ -10,14 +10,14 @@ import std.path;
 import std.stdio;
 import std.conv : to;
 import core.stdc.string : memcpy;
-import PixelPerfectEngine.system.etc;
-import PixelPerfectEngine.system.exc;
+import pixelperfectengine.system.etc;
+import pixelperfectengine.system.exc;
 
-import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.graphics.raster;
-import PixelPerfectEngine.graphics.fontsets;
+import pixelperfectengine.graphics.bitmap;
+import pixelperfectengine.graphics.raster;
+import pixelperfectengine.graphics.fontsets;
 
-//import PixelPerfectEngine.extbmp.extbmp;
+//import pixelperfectengine.extbmp.extbmp;
 
 public import dimage.base;
 import dimage.tga;

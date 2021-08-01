@@ -4,7 +4,7 @@
  * Pixel Perfect Engine, graphics.common module
  */
 
-module PixelPerfectEngine.graphics.common;
+module pixelperfectengine.graphics.common;
 
 //public import CPUblit.colorspaces;
 
@@ -137,7 +137,7 @@ public struct Box {
 	 * Returns a string with the coordinates that is useful for debugging
 	 */
 	public string toString() const {
-		import PixelPerfectEngine.system.etc;
+		import pixelperfectengine.system.etc;
 		import std.conv;
 		/*return "Coordinate: Left: 0x" ~ intToHex(left, 8) ~ " Top: 0x" ~ intToHex(top, 8) ~ " Right: 0x" ~ intToHex(right, 8) ~ " Bottom: 0x" ~ intToHex(bottom, 8) ~
 				" Width: 0x" ~ intToHex(width(), 8) ~ " Height: 0x" ~ intToHex(height(), 8);*/

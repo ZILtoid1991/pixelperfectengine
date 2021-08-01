@@ -1,4 +1,4 @@
-module PixelPerfectEngine.collision;
+module pixelperfectengine.collision;
 
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
@@ -6,5 +6,5 @@ module PixelPerfectEngine.collision;
  * Pixel Perfect Engine, collision module.
  */
 
-import PixelPerfectEngine.collision.objectCollision;
-import PixelPerfectEngine.collision.common;
+import pixelperfectengine.collision.objectcollision;
+import pixelperfectengine.collision.common;

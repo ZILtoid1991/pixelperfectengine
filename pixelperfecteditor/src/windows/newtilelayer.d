@@ -1,12 +1,12 @@
 module windows.newtilelayer;
 
-import PixelPerfectEngine.concrete.window;
+import pixelperfectengine.concrete.window;
 
 import editor;
 
 import std.conv : to;
 import std.utf : toUTF8, toUTF32;
-import PixelPerfectEngine.concrete.dialogs.filedialog;
+import pixelperfectengine.concrete.dialogs.filedialog;
 
 /+import dimage.base;
 import dimage.tga;
@@ -96,7 +96,7 @@ public class NewTileLayerDialog : Window {
 		textBox_MS.setText(toUTF32(fev.getFullPath));
 	}
 	private void checkTextBoxInput(Event ev){
-		import PixelPerfectEngine.system.etc : isInteger;
+		import pixelperfectengine.system.etc : isInteger;
 		WindowElement we = cast(WindowElement)ev.sender;
 		if(!isInteger(we.getText.text)){
 			handler.message("Input error!", "Not a numeric value!");

@@ -4,11 +4,11 @@
  * Pixel Perfect Engine, graphics.layers.trnstilelayer module
  */
 
-module PixelPerfectEngine.graphics.layers.trnstilelayer;
+module pixelperfectengine.graphics.layers.trnstilelayer;
 
-public import PixelPerfectEngine.graphics.layers.base;
-import PixelPerfectEngine.system.etc;
-import PixelPerfectEngine.system.exc;
+public import pixelperfectengine.graphics.layers.base;
+import pixelperfectengine.system.etc;
+import pixelperfectengine.system.exc;
 import collections.treemap;
 import inteli.emmintrin;
 

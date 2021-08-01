@@ -4,19 +4,19 @@
  * Pixel Perfect Engine, concrete.window module
  */
 
-module PixelPerfectEngine.concrete.window;
+module pixelperfectengine.concrete.window;
 
-import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.graphics.draw;
-import PixelPerfectEngine.graphics.layers;
+import pixelperfectengine.graphics.bitmap;
+import pixelperfectengine.graphics.draw;
+import pixelperfectengine.graphics.layers;
 
-public import PixelPerfectEngine.concrete.elements;
-public import PixelPerfectEngine.concrete.types;
-public import PixelPerfectEngine.concrete.interfaces;
-public import PixelPerfectEngine.concrete.windowhandler;
+public import pixelperfectengine.concrete.elements;
+public import pixelperfectengine.concrete.types;
+public import pixelperfectengine.concrete.interfaces;
+public import pixelperfectengine.concrete.windowhandler;
 
-import PixelPerfectEngine.system.etc;
-import PixelPerfectEngine.system.input.interfaces;
+import pixelperfectengine.system.etc;
+import pixelperfectengine.system.input.interfaces;
 
 import std.algorithm.mutation;
 import std.stdio;

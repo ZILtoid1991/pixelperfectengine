@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.elements.textbox;
+module pixelperfectengine.concrete.elements.textbox;
 
-public import PixelPerfectEngine.concrete.elements.base;
+public import pixelperfectengine.concrete.elements.base;
 
 /**
  * Text input box

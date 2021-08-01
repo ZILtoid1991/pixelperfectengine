@@ -1,7 +1,7 @@
-module PixelPerfectEngine.concrete.dialogs.textinputdialog;
+module pixelperfectengine.concrete.dialogs.textinputdialog;
 
-public import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.concrete.elements;
+public import pixelperfectengine.concrete.window;
+import pixelperfectengine.concrete.elements;
 
 /**
  * Standard text input form for various applications.

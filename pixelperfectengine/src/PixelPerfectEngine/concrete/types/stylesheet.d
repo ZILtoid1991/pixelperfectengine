@@ -4,10 +4,10 @@
  * Pixel Perfect Engine, concrete.stylesheet module
  */
 
-module PixelPerfectEngine.concrete.types.stylesheet;
+module pixelperfectengine.concrete.types.stylesheet;
 
-import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.graphics.fontsets;
+import pixelperfectengine.graphics.bitmap;
+import pixelperfectengine.graphics.fontsets;
 import collections.hashmap;
 /**
  * Defines style data for the Concrete GUI.

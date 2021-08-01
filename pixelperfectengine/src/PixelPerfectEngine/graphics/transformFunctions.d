@@ -4,11 +4,11 @@
  * Pixel Perfect Engine, graphics.transformFunctions module
  */
 
-module PixelPerfectEngine.graphics.transformFunctions;
+module pixelperfectengine.graphics.transformfunctions;
 
 package static immutable uint[4] maskAC = [0, uint.max, 0, uint.max];
 
-import PixelPerfectEngine.system.platform;
+import pixelperfectengine.system.platform;
 
 static if(USE_INTEL_INTRINSICS) import inteli.emmintrin;
 

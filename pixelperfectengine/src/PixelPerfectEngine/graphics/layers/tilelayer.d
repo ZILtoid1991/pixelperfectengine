@@ -4,9 +4,9 @@
  * Pixel Perfect Engine, graphics.layers.tilelayer module
  */
 
-module PixelPerfectEngine.graphics.layers.tilelayer;
+module pixelperfectengine.graphics.layers.tilelayer;
 
-public import PixelPerfectEngine.graphics.layers.base;
+public import pixelperfectengine.graphics.layers.base;
 import collections.treemap;
 
 public class TileLayer : Layer, ITileLayer {

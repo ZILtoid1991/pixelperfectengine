@@ -6,28 +6,28 @@
 
 module editor;
 
-import PixelPerfectEngine.graphics.outputScreen;
-import PixelPerfectEngine.graphics.raster;
-import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.graphics.paletteMan;
-//import PixelPerfectEngine.extbmp.extbmp;
+import pixelperfectengine.graphics.outputScreen;
+import pixelperfectengine.graphics.raster;
+import pixelperfectengine.graphics.layers;
+import pixelperfectengine.graphics.paletteMan;
+//import pixelperfectengine.extbmp.extbmp;
 
-import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.graphics.draw;
+import pixelperfectengine.graphics.bitmap;
+import pixelperfectengine.graphics.draw;
 //import collision;
-import PixelPerfectEngine.system.input;
-import PixelPerfectEngine.system.file;
-import PixelPerfectEngine.system.etc;
-import PixelPerfectEngine.system.config;
-import PixelPerfectEngine.system.systemUtility;
+import pixelperfectengine.system.input;
+import pixelperfectengine.system.file;
+import pixelperfectengine.system.etc;
+import pixelperfectengine.system.config;
+import pixelperfectengine.system.systemUtility;
 import std.stdio;
 import std.conv;
 import core.stdc.string : memcpy;
 //import derelict.sdl2.sdl;
 import bindbc.sdl;
-import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.concrete.eventChainSystem;
-import PixelPerfectEngine.map.mapformat;
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.concrete.eventChainSystem;
+import pixelperfectengine.map.mapformat;
 
 //import converterdialog;
 import windows.resizemap;
@@ -395,6 +395,15 @@ public class Editor : InputListener, SystemEventListener {
 				case "materialList":
 					openMaterialList();
 					break;
+				case "copy":
+					onCopy();
+					break;
+				case "cut":
+					onCut();
+					break;
+				case "paste":
+					onPaste();
+					break;
 				default:
 					break;
 			}
@@ -409,7 +418,7 @@ public class Editor : InputListener, SystemEventListener {
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
 	 */
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
-		import PixelPerfectEngine.system.etc : hashCalc;
+		import pixelperfectengine.system.etc : hashCalc;
 		switch (id) {
 			case hashCalc("copy"):
 				if (!isPressed)
@@ -561,7 +570,7 @@ public class Editor : InputListener, SystemEventListener {
 		}
 	}
 	public void onLoad () {
-		import PixelPerfectEngine.concrete.dialogs.filedialog;
+		import pixelperfectengine.concrete.dialogs.filedialog;
 		FileDialog fd = new FileDialog("Load document","docLoad",&onLoadDialog,[FileDialog.FileAssociationDescriptor(
 			"PPE map file", ["*.xmf"])],"./",false);
 		wh.addWindow(fd);
@@ -603,7 +612,7 @@ public class Editor : InputListener, SystemEventListener {
 		}
 	}
 	public void onSaveAs () {
-		import PixelPerfectEngine.concrete.dialogs.filedialog;
+		import pixelperfectengine.concrete.dialogs.filedialog;
 		FileDialog fd = new FileDialog("Save document as","docSave",&onSaveDialog,[FileDialog.FileAssociationDescriptor(
 			"PPE map file", ["*.xmf"])],"./",true);
 		wh.addWindow(fd);
@@ -696,7 +705,7 @@ public class Editor : InputListener, SystemEventListener {
 		configFile.store();
 	}
 	public void onExit(){
-		import PixelPerfectEngine.concrete.dialogs.defaultdialog;
+		import pixelperfectengine.concrete.dialogs.defaultdialog;
 		exitDialog=true;
 		DefaultDialog dd = new DefaultDialog(Coordinate(10,10,220,75), "exitdialog","Exit application", ["Are you sure?"],
 				["Yes","No","Pls save"],["ok","close","save"]);

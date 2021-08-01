@@ -3,9 +3,9 @@
  *
  * Pixel Perfect Engine, image file extensions module.
  */
-module PixelPerfectEngine.graphics.extensions;
+module pixelperfectengine.graphics.extensions;
 
-import PixelPerfectEngine.system.etc;
+import pixelperfectengine.system.etc;
 
 /**
  * Implements a custom sprite sheet module with variable sprite sizes.

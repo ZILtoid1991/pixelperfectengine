@@ -1,8 +1,8 @@
 module windows.resizemap;
 
-import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.graphics.common;
-import PixelPerfectEngine.map.mapformat;
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.graphics.common;
+import pixelperfectengine.map.mapformat;
 import std.conv;
 import document;
 
@@ -23,7 +23,7 @@ public class ResizeMap : Window {
 	int x, y, targetLayer;
 	MapDocument targetDoc;
 	this(MapDocument targetDoc) {
-		import PixelPerfectEngine.graphics.layers : ITileLayer;
+		import pixelperfectengine.graphics.layers : ITileLayer;
 		super(Coordinate(0, 0, 195, 120), "Resize Map");
 		targetLayer = targetDoc.selectedLayer;
 		ITileLayer layer = cast(ITileLayer)targetDoc.mainDoc.layeroutput[targetLayer];

@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.popup.popuptextinput;
+module pixelperfectengine.concrete.popup.popuptextinput;
 
-public import PixelPerfectEngine.concrete.popup.base;
+public import pixelperfectengine.concrete.popup.base;
 
 /**
  * Text input in pop-up fashion.

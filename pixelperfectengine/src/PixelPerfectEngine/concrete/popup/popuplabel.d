@@ -1,2 +1,2 @@
-module PixelPerfectEngine.concrete.popup.popuplabel;
+module pixelperfectengine.concrete.popup.popuplabel;
 

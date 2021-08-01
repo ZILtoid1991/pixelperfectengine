@@ -1,7 +1,7 @@
-module PixelPerfectEngine.concrete.dialogs.filedialog;
+module pixelperfectengine.concrete.dialogs.filedialog;
 
-public import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.concrete.elements;
+public import pixelperfectengine.concrete.window;
+import pixelperfectengine.concrete.elements;
 import std.datetime;
 import std.conv : to;
 import std.file;

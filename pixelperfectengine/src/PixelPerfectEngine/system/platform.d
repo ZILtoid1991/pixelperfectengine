@@ -1,4 +1,4 @@
-module PixelPerfectEngine.system.platform;
+module pixelperfectengine.system.platform;
 
 version(X86){
 	static enum ARCH_INTEL_X86 = true;

@@ -3,10 +3,10 @@
  *
  * Pixel Perfect Engine, graphics.layers package
  */
-module PixelPerfectEngine.graphics.layers;
+module pixelperfectengine.graphics.layers;
 
-public import PixelPerfectEngine.graphics.layers.base;
+public import pixelperfectengine.graphics.layers.base;
 
-public import PixelPerfectEngine.graphics.layers.tilelayer;
-public import PixelPerfectEngine.graphics.layers.trnstilelayer;
-public import PixelPerfectEngine.graphics.layers.spritelayer;
+public import pixelperfectengine.graphics.layers.tilelayer;
+public import pixelperfectengine.graphics.layers.trnstilelayer;
+public import pixelperfectengine.graphics.layers.spritelayer;

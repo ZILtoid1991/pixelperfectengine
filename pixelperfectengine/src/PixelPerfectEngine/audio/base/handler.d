@@ -1,4 +1,4 @@
-module PixelPerfectEngine.audio.base.handler;
+module pixelperfectengine.audio.base.handler;
 
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
@@ -10,9 +10,10 @@ import core.thread.osthread;
 
 import std.conv : to;
 import std.string : fromStringz;
+import std.bitmanip : bitfields;
 
-import PixelPerfectEngine.system.exc;
-import PixelPerfectEngine.audio.base.pluginbase;
+import pixelperfectengine.system.exc;
+import pixelperfectengine.audio.base.modulebase;
 
 import bindbc.sdl.bind.sdlaudio;
 import bindbc.sdl.bind.sdlerror : SDL_GetError;
@@ -122,9 +123,9 @@ public class AudioDeviceHandler {
 	}
 }
 /**
- * Manages all audio plugins complete with routing, MIDI2.0, etc.
+ * Manages all audio modules complete with routing, MIDI2.0, etc.
  */
-public class PluginManager : Thread {
+public class ModuleManager : Thread {
 	/**
 	 * Buffer size in samples.
 	 *
@@ -132,23 +133,23 @@ public class PluginManager : Thread {
 	 */
 	protected int			bufferSize;
 	/**
-	 * List of plugins.
+	 * List of modules.
 	 *
-	 * Ran in order, should be ordered in such way to ensure that routing is correct, and the plugins that need the
+	 * Ran in order, should be ordered in such way to ensure that routing is correct, and the modules that need the
 	 * input will get some.
 	 */
-	protected AudioPlugin[]	pluginList;
+	protected AudioModule[]	moduleList;
 	/**
 	 * List of pointers to input buffers.
 	 *
-	 * Order of first dimension must match the plugins. Pointers can be shared between multiple inputs or outputs.
+	 * Order of first dimension must match the modules. Pointers can be shared between multiple inputs or outputs.
 	 * If a specific plugin doesn't have any inputs, then an array with zero elements must be added.
 	 */
 	protected float*[][]	inBufferList;
 	/**
 	 * List of pointers to output buffers.
 	 *
-	 * Order of first dimension must match the plugins. Pointers can be shared between multiple inputs or outputs.
+	 * Order of first dimension must match the modules. Pointers can be shared between multiple inputs or outputs.
 	 * If a specific plugin doesn't have any outputs, then an array with zero elements must be added.
 	 */
 	protected float*[][]	outBufferList;
@@ -167,7 +168,7 @@ public class PluginManager : Thread {
 		
 	}
 	/**
-	 * MIDI commands are received here from plugins.
+	 * MIDI commands are received here from modules.
 	 *
 	 * data: up to 128 bits of MIDI 2.0 commands. Any packets that are shorter should be padded with zeros.
 	 * offset: time offset of the command. This can reduce jitter caused by the asynchronous operation of the 
@@ -188,8 +189,8 @@ public class PluginManager : Thread {
 	/**
 	 * Adds a plugin to the list.
 	 */
-	public void addPlugin(AudioPlugin plugin, size_t[] inBuffs, size_t[] outBuffs) nothrow {
-		pluginList ~= plugin;
+	public void addModule(AudioModule md, size_t[] inBuffs, size_t[] outBuffs) nothrow {
+		moduleList ~= md;
 		float*[] buffList0, buffList1;
 		buffList0.length = inBuffs.length;
 		for (size_t i ; i < inBuffs.length ; i++) {
@@ -201,6 +202,23 @@ public class PluginManager : Thread {
 		}
 		inBufferList ~= buffList0;
 		outBufferList ~= buffList1;
+	}
+	/**
+	 * Locks the manager and all audio modules within it to avoid interference from GC.
+	 *
+	 * This will however disable any further memory allocation until thread is unlocked.
+	 */
+	public void lockAudioThread() {
+		
+	}
+	/**
+	 * Unlocks the manager and all audio modules within it to allow GC allocation, which is needed for loading, etc.
+	 *
+	 * Note that this will probably result in the GC regularly stopping the audio thread, resulting in audio glitches,
+	 * etc.
+	 */
+	public void unlockAudioThread() {
+
 	}
 }
 alias CallBackDeleg = void delegate(void* userdata, ubyte* stream, int len) @nogc nothrow;

@@ -1,7 +1,7 @@
-module PixelPerfectEngine.concrete.elements.menubar;
+module pixelperfectengine.concrete.elements.menubar;
 
-public import PixelPerfectEngine.concrete.elements.base;
-public import PixelPerfectEngine.concrete.popup;
+public import pixelperfectengine.concrete.elements.base;
+public import pixelperfectengine.concrete.popup;
 
 /**
  * Menubar containing menus in a tree-like structure.

@@ -1,4 +1,4 @@
-module PixelPerfectEngine.concrete.types.etc;
+module pixelperfectengine.concrete.types.etc;
 
 /**
  * Defines various cursor types.

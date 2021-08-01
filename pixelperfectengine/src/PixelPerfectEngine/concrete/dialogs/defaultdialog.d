@@ -1,7 +1,7 @@
-module PixelPerfectEngine.concrete.dialogs.defaultdialog;
+module pixelperfectengine.concrete.dialogs.defaultdialog;
 
-public import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.concrete.elements;
+public import pixelperfectengine.concrete.window;
+import pixelperfectengine.concrete.elements;
 
 /**
  * Default dialog for simple messageboxes.

@@ -1,4 +1,4 @@
-module PixelPerfectEngine.audio.base.types;
+module pixelperfectengine.audio.base.types;
 
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.

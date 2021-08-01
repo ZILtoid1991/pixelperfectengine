@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.elements.checkbox;
+module pixelperfectengine.concrete.elements.checkbox;
 
-public import PixelPerfectEngine.concrete.elements.base;
+public import pixelperfectengine.concrete.elements.base;
 
 /**
  * A simple toggle button.

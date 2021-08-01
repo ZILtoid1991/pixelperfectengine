@@ -4,7 +4,7 @@
  * Pixel Perfect Engine, config module
  */
 
-module PixelPerfectEngine.system.config;
+module pixelperfectengine.system.config;
 
 //import std.xml;
 import std.file;
@@ -13,11 +13,11 @@ import std.string;
 import std.conv;
 //import std.csv;
 
-import PixelPerfectEngine.system.input.handler;
-import PixelPerfectEngine.system.exc;
-import PixelPerfectEngine.system.etc;
-import PixelPerfectEngine.system.dictionary;
-import PixelPerfectEngine.graphics.outputScreen;
+import pixelperfectengine.system.input.handler;
+import pixelperfectengine.system.exc;
+import pixelperfectengine.system.etc;
+import pixelperfectengine.system.dictionary;
+import pixelperfectengine.graphics.outputscreen;
 
 import bindbc.sdl;
 

@@ -1,6 +1,6 @@
-module PixelPerfectEngine.concrete.elements.radiobutton;
+module pixelperfectengine.concrete.elements.radiobutton;
 
-public import PixelPerfectEngine.concrete.elements.base;
+public import pixelperfectengine.concrete.elements.base;
 import collections.linkedlist;
 
 /**

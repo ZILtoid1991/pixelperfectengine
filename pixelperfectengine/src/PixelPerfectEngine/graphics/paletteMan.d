@@ -4,9 +4,9 @@
  * Pixel Perfect Engine, graphics.paletteMan module
  */
 
-module PixelPerfectEngine.graphics.paletteMan;
+module pixelperfectengine.graphics.paletteMan;
 
-import PixelPerfectEngine.graphics.common;
+import pixelperfectengine.graphics.common;
 
 /**
  * Manages palettes

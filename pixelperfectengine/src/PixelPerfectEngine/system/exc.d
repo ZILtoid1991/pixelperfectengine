@@ -1,4 +1,4 @@
-﻿module PixelPerfectEngine.system.exc;
+﻿module pixelperfectengine.system.exc;
 /*
  * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
  *

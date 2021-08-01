@@ -4,17 +4,17 @@
  * Pixel Perfect Engine, concrete.interfaces module
  */
 
-module PixelPerfectEngine.concrete.interfaces;
+module pixelperfectengine.concrete.interfaces;
 
-public import PixelPerfectEngine.graphics.fontsets;
-public import PixelPerfectEngine.graphics.bitmap;
-public import PixelPerfectEngine.graphics.common;
-public import PixelPerfectEngine.graphics.text;
+public import pixelperfectengine.graphics.fontsets;
+public import pixelperfectengine.graphics.bitmap;
+public import pixelperfectengine.graphics.common;
+public import pixelperfectengine.graphics.text;
 
-public import PixelPerfectEngine.concrete.elements.base;
-public import PixelPerfectEngine.concrete.popup.base;
+public import pixelperfectengine.concrete.elements.base;
+public import pixelperfectengine.concrete.popup.base;
 
-public import PixelPerfectEngine.system.input.types;
+public import pixelperfectengine.system.input.types;
 
 /+/**
  * Checkbox interface.

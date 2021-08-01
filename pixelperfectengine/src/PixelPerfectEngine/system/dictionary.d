@@ -1,4 +1,4 @@
-module PixelPerfectEngine.system.dictionary;
+module pixelperfectengine.system.dictionary;
 
 /*
  * Copyright (C) 2015-2020, by Laszlo Szeremi under the Boost license.

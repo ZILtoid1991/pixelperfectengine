@@ -4,13 +4,13 @@
  * pixel Perfect Engine, graphics.bitmap module
  */
 
-module PixelPerfectEngine.graphics.bitmap;
+module pixelperfectengine.graphics.bitmap;
 import std.bitmanip;
-import PixelPerfectEngine.system.exc;
+import pixelperfectengine.system.exc;
 import bitleveld.reinterpret;
 
-//public import pixelPerfectEngine.system.advBitArray;
-public import PixelPerfectEngine.graphics.common;
+//public import pixelperfectengine.system.advBitArray;
+public import pixelperfectengine.graphics.common;
 
 /**
  * Bitmap attributes, mainly for layers.

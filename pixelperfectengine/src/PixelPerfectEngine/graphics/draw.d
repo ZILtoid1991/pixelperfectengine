@@ -4,20 +4,20 @@
  * Pixel Perfect Engine, graphics.draw module
  */
 
-module PixelPerfectEngine.graphics.draw;
+module pixelperfectengine.graphics.draw;
 
 import std.stdio;
 import std.math;
 import std.conv;
 
-import PixelPerfectEngine.graphics.bitmap;
+import pixelperfectengine.graphics.bitmap;
 import compose = CPUblit.composing;
 import specblt = CPUblit.composing.specblt;
 import draw = CPUblit.draw;
 import bmfont;
-public import PixelPerfectEngine.graphics.fontsets;
-public import PixelPerfectEngine.graphics.common;
-import PixelPerfectEngine.graphics.text : Text;
+public import pixelperfectengine.graphics.fontsets;
+public import pixelperfectengine.graphics.common;
+import pixelperfectengine.graphics.text : Text;
 //import system.etc;
 /**
  * Draws into a 8bit bitmap.

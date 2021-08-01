@@ -1,4 +1,4 @@
-module PixelPerfectEngine.system.input.handler;
+module pixelperfectengine.system.input.handler;
 
 import bindbc.sdl.bind;
 
@@ -6,10 +6,10 @@ import collections.treemap;
 import collections.linkedlist;
 import collections.commons : defaultHash;
 
-public import PixelPerfectEngine.system.input.types;
-public import PixelPerfectEngine.system.input.interfaces;
-public import PixelPerfectEngine.graphics.common : Box;
-import PixelPerfectEngine.system.input.scancode;
+public import pixelperfectengine.system.input.types;
+public import pixelperfectengine.system.input.interfaces;
+public import pixelperfectengine.graphics.common : Box;
+import pixelperfectengine.system.input.scancode;
 
 /**
  * Converts and redirects inputs as events.
@@ -385,7 +385,7 @@ public class InputHandler {
 	 * Returns a default SysEsc binding.
 	 */
 	public static BindingCode getSysEscKey() @nogc @safe pure nothrow {
-		import PixelPerfectEngine.system.input.scancode : ScanCode;
+		import pixelperfectengine.system.input.scancode : ScanCode;
 		const BindingCode bc = BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0);
 		return bc;
 	}

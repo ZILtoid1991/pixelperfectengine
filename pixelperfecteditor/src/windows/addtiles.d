@@ -1,7 +1,7 @@
 module windows.addtiles;
 
-import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.concrete.dialogs.filedialog;
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.concrete.dialogs.filedialog;
 import dimage;
 
 import editor;
@@ -80,7 +80,7 @@ public class AddTiles : Window {
 	}
 	private void textBox_palShift_onTextInput(Event e) {
 		//validate input type
-		import PixelPerfectEngine.system.etc : isInteger;
+		import pixelperfectengine.system.etc : isInteger;
 		if (!isInteger(textBox_palShift.getText.text)) {
 			handler.message("Bad format!"d, "Inputted value must be integer!"d);
 		}
@@ -104,7 +104,7 @@ public class AddTiles : Window {
 	private int loadFile(string path) {
 		import std.path : extension;
 		import std.stdio : File;
-		import PixelPerfectEngine.system.etc : nextPow2;
+		import pixelperfectengine.system.etc : nextPow2;
 		File f = File(path);
 		try {
 			switch (path.extension) {
@@ -167,7 +167,7 @@ public class AddTiles : Window {
 		return 0;
 	}
 	private void button_Ok_onClick(Event e) {
-		import PixelPerfectEngine.system.etc : parseHex, parseOct, parseDec;
+		import pixelperfectengine.system.etc : parseHex, parseOct, parseDec;
 		import editorevents : AddTileSheetEvent;
 		//detect numbering style
 		uint numStyle0;

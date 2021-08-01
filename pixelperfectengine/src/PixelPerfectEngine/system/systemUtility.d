@@ -1,4 +1,4 @@
-module PixelPerfectEngine.system.systemUtility;
+module pixelperfectengine.system.systemutility;
 /*
  * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
  *
@@ -58,18 +58,18 @@ version(X86){
 }
 
 
-	import PixelPerfectEngine.concrete.window;
-	import PixelPerfectEngine.system.file;
-	//import PixelPerfectEngine.extbmp.extbmp;
+	import pixelperfectengine.concrete.window;
+	import pixelperfectengine.system.file;
+	//import pixelperfectengine.extbmp.extbmp;
 /**
  * Loads the defaults for Concrete.
  */
 public void INIT_CONCRETE(WindowHandler wh){
-	import PixelPerfectEngine.concrete.window;
-	import PixelPerfectEngine.system.file;
-	//import PixelPerfectEngine.extbmp.extbmp;
-	import PixelPerfectEngine.graphics.fontsets;
-	import PixelPerfectEngine.graphics.bitmap;
+	import pixelperfectengine.concrete.window;
+	import pixelperfectengine.system.file;
+	//import pixelperfectengine.extbmp.extbmp;
+	import pixelperfectengine.graphics.fontsets;
+	import pixelperfectengine.graphics.bitmap;
 	import std.stdio;
 	Fontset!Bitmap8Bit defaultFont = new Fontset!Bitmap8Bit(File("../system/OpenSans-reg-14.fnt"), "../system/");
 	Fontset!Bitmap8Bit fixedWidthFont = new Fontset!Bitmap8Bit(File("../system/scp-14-reg.fnt"), "../system/");

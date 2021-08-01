@@ -1,4 +1,4 @@
-﻿module PixelPerfectEngine.map.mapdata;
+﻿module pixelperfectengine.map.mapdata;
 /*
  * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
  *
@@ -8,10 +8,10 @@ import std.stdio;
 import std.file;
 import std.conv;
 import std.base64;
-import PixelPerfectEngine.graphics.bitmap;
-import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.system.exc;
-import PixelPerfectEngine.system.etc;
+import pixelperfectengine.graphics.bitmap;
+import pixelperfectengine.graphics.layers;
+import pixelperfectengine.system.exc;
+import pixelperfectengine.system.etc;
 import core.stdc.stdlib;
 import core.stdc.stdio;
 import std.string;
@@ -23,7 +23,7 @@ version(Windows){
 	import core.stdc.errno;
 }
 
-public import PixelPerfectEngine.system.exc;
+public import pixelperfectengine.system.exc;
 /**
  * Contains the very basic data for the map binary file (*.mbf).
  */

@@ -1,10 +1,10 @@
-module PixelPerfectEngine.concrete.elements.base;
+module pixelperfectengine.concrete.elements.base;
 
-public import PixelPerfectEngine.concrete.interfaces;
-public import PixelPerfectEngine.concrete.types.stylesheet;
-public import PixelPerfectEngine.concrete.types.event;
-public import PixelPerfectEngine.system.input.handler;
-//import PixelPerfectEngine.system.input.types : MouseMotionEvent;
+public import pixelperfectengine.concrete.interfaces;
+public import pixelperfectengine.concrete.types.stylesheet;
+public import pixelperfectengine.concrete.types.event;
+public import pixelperfectengine.system.input.handler;
+//import pixelperfectengine.system.input.types : MouseMotionEvent;
 
 
 /**

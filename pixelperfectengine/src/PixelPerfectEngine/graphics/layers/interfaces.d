@@ -4,9 +4,9 @@
  * Pixel Perfect Engine, graphics.layers.base module
  */
 
-module PixelPerfectEngine.graphics.layers.interfaces;
+module pixelperfectengine.graphics.layers.interfaces;
 
-import PixelPerfectEngine.graphics.layers.base;
+import pixelperfectengine.graphics.layers.base;
 
 /**
  * Tile interface, defines common functions.

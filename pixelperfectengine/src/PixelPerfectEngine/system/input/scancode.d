@@ -1,4 +1,4 @@
-module PixelPerfectEngine.system.input.scancode;
+module pixelperfectengine.system.input.scancode;
 
 /**
  * USB HID compatible keyboard scancodes.

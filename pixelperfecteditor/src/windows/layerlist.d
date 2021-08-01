@@ -1,11 +1,11 @@
 module windows.layerlist;
 
-import PixelPerfectEngine.concrete.window;
+import pixelperfectengine.concrete.window;
 import app;
 import std.utf : toUTF32;
 import std.conv : to;
-import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.map.mapformat : LayerInfo;
+import pixelperfectengine.graphics.layers;
+import pixelperfectengine.map.mapformat : LayerInfo;
 
 public class LayerList : Window {
 	//ListBox listBox_layers;

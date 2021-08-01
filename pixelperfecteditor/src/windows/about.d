@@ -1,8 +1,8 @@
 module windows.about;
 
-import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.graphics.common;
-import PixelPerfectEngine.system.systemUtility;
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.graphics.common;
+import pixelperfectengine.system.systemUtility;
 
 immutable dstring verInfo = "0.10.0"d;
 

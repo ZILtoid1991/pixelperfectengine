@@ -3,9 +3,9 @@
  *
  * Pixel Perfect Engine, tiledata module
  */
-module PixelPerfectEngine.map.tiledata;
+module pixelperfectengine.map.tiledata;
 
-import PixelPerfectEngine.system.etc;
+import pixelperfectengine.system.etc;
 
 /**
  * Represents TileInfo that can be embedded into TGA and PNG files, also can be stored in other files.

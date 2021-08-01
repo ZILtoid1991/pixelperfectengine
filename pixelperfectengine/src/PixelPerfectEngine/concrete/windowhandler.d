@@ -1,17 +1,17 @@
-module PixelPerfectEngine.concrete.windowhandler;
+module pixelperfectengine.concrete.windowhandler;
 
-public import PixelPerfectEngine.concrete.interfaces;
-public import PixelPerfectEngine.concrete.window;
-public import PixelPerfectEngine.concrete.types;
-public import PixelPerfectEngine.concrete.popup;
-public import PixelPerfectEngine.concrete.dialogs;
+public import pixelperfectengine.concrete.interfaces;
+public import pixelperfectengine.concrete.window;
+public import pixelperfectengine.concrete.types;
+public import pixelperfectengine.concrete.popup;
+public import pixelperfectengine.concrete.dialogs;
 
-public import PixelPerfectEngine.system.input.interfaces;
+public import pixelperfectengine.system.input.interfaces;
 
-public import PixelPerfectEngine.graphics.layers : ISpriteLayer;
+public import pixelperfectengine.graphics.layers : ISpriteLayer;
 
 import collections.linkedlist;
-import PixelPerfectEngine.system.etc : cmpObjPtr;
+import pixelperfectengine.system.etc : cmpObjPtr;
 
 import bindbc.sdl.bind.sdlmouse;
 
@@ -88,7 +88,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * Adds a DefaultDialog as a message box
 	 */
 	public void message(dstring title, dstring message, int width = 256) {
-		import PixelPerfectEngine.concrete.dialogs.defaultdialog;
+		import pixelperfectengine.concrete.dialogs.defaultdialog;
 		StyleSheet ss = getStyleSheet();
 		dstring[] formattedMessage = ss.getChrFormatting("label").font.breakTextIntoMultipleLines(message, width -
 				ss.drawParameters["WindowLeftPadding"] - ss.drawParameters["WindowRightPadding"]);
@@ -250,7 +250,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * The base window has no priority and will reside forever in the background. Can be used for various ends.
 	 */
 	public Window setBaseWindow(Window w) @safe nothrow {
-		import PixelPerfectEngine.graphics.layers.base : RenderingMode;
+		import pixelperfectengine.graphics.layers.base : RenderingMode;
 		w.addHandler(this);
 		baseWindow = w;
 		spriteLayer.addSprite(w.getOutput, 65_535, w.getPosition);

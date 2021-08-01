@@ -1,10 +1,10 @@
-module PixelPerfectEngine.concrete.types.event;
+module pixelperfectengine.concrete.types.event;
 
-import PixelPerfectEngine.concrete.elements.base;
-import PixelPerfectEngine.concrete.popup.base;
-public import PixelPerfectEngine.system.input.types;
+import pixelperfectengine.concrete.elements.base;
+import pixelperfectengine.concrete.popup.base;
+public import pixelperfectengine.system.input.types;
 
-import PixelPerfectEngine.concrete.elements.listview : ListViewItem;
+import pixelperfectengine.concrete.elements.listview : ListViewItem;
 
 /**
  * Defines an event in the GUI.

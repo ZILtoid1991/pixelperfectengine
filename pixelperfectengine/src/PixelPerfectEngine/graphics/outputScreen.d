@@ -3,11 +3,11 @@
  *
  * Pixel Perfect Engine, graphics.outputScreen module
  */
-module PixelPerfectEngine.graphics.outputScreen;
+module pixelperfectengine.graphics.outputscreen;
 
 import bindbc.sdl;
-import PixelPerfectEngine.graphics.raster;
-import PixelPerfectEngine.system.exc;
+import pixelperfectengine.graphics.raster;
+import pixelperfectengine.system.exc;
 import std.stdio;
 import std.conv;
 

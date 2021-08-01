@@ -1,4 +1,4 @@
-module PixelPerfectEngine.concrete.eventChainSystem;
+module pixelperfectengine.concrete.eventchainsystem;
 
 import collections.linkedlist;
 /**

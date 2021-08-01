@@ -1,4 +1,4 @@
-module PixelPerfectEngine.system.input.types;
+module pixelperfectengine.system.input.types;
 
 /// Key modifiers used by the engine.
 public enum KeyModifier : ubyte {

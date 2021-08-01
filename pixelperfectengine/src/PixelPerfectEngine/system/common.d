@@ -4,7 +4,7 @@
  * Pixel Perfect Engine, system.common module
  */
 
-module PixelPerfectEngine.system.common;
+module pixelperfectengine.system.common;
 
 import bindbc.sdl;
 

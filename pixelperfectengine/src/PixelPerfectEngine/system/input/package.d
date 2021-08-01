@@ -1,5 +1,5 @@
-module PixelPerfectEngine.system.input;
+module pixelperfectengine.system.input;
 
-public import PixelPerfectEngine.system.input.handler;
-public import PixelPerfectEngine.system.input.interfaces;
-public import PixelPerfectEngine.system.input.types;
+public import pixelperfectengine.system.input.handler;
+public import pixelperfectengine.system.input.interfaces;
+public import pixelperfectengine.system.input.types;

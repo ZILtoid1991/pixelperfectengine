@@ -1,25 +1,25 @@
-module PixelPerfectEngine.audio.base.pluginbase;
+module pixelperfectengine.audio.base.modulebase;
 
 import std.bitmanip;
 
-import PixelPerfectEngine.audio.base.types;
-import PixelPerfectEngine.audio.base.handler;
+import pixelperfectengine.audio.base.types;
+import pixelperfectengine.audio.base.handler;
 
 
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
  *
- * Pixel Perfect Engine, audio.base.pluginbase module.
+ * Pixel Perfect Engine, audio.base.modulebase module.
  */
 
 /**
- * Implements the base class for all plugins.
+ * Implements the base class for all audio modules.
  */
-public abstract class AudioPlugin {
+public abstract class AudioModule {
 	/**
-	 * Contains all data related to plugin info.
+	 * Contains all data related to module info.
 	 */
-	public struct PluginInfo {
+	public struct ModuleInfo {
 		public ubyte		nOfAudioInput;		///Number of audio input channels
 		public ubyte		nOfAudioOutput;		///Number of audio output channels
 		mixin(bitfields!(
@@ -34,13 +34,13 @@ public abstract class AudioPlugin {
 		public string[]		outputChNames;		///Names of the output channels
     }
 	protected int			sampleRate;			///The sample rate that the audio subsystem runs at
-	protected PluginInfo	info;				///Basic info about the plugin
-	protected PluginManager	handler;			///The main audio handler, also MIDI outs can be passed there
+	protected ModuleInfo	info;				///Basic info about the plugin
+	protected ModuleManager	handler;			///The main audio handler, also MIDI outs can be passed there
 	public @nogc nothrow void delegate(uint[4] data, uint offset)	midiOut;	///A delegate where MIDI messages are being routed
 	/**
-	 * Returns the basic informations about this plugin.
+	 * Returns the basic informations about this module.
 	 */
-	public PluginInfo getInfo() @nogc @safe pure nothrow {
+	public ModuleInfo getInfo() @nogc @safe pure nothrow {
 		return info;
 	}
 	/**

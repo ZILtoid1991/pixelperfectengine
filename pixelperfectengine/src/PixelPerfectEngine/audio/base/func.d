@@ -1,4 +1,4 @@
-module PixelPerfectEngine.audio.base.func;
+module pixelperfectengine.audio.base.func;
 
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
@@ -12,8 +12,8 @@ import inteli.emmintrin;
 import bitleveld.reinterpret;
 import bitleveld.datatypes;
 
-import PixelPerfectEngine.audio.base.types;
-import PixelPerfectEngine.system.etc;
+import pixelperfectengine.audio.base.types;
+import pixelperfectengine.system.etc;
 
 ///Constant for fast integer to floating point conversion
 package immutable __m128 CONV_RATIO_RECIPROCAL = __m128(-1.0 / ushort.min);
