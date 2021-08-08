@@ -1,6 +1,7 @@
 module pixelperfectengine.audio.base.modulebase;
 
 import std.bitmanip;
+import collections.sortedlist;
 
 import pixelperfectengine.audio.base.types;
 import pixelperfectengine.audio.base.handler;
@@ -36,6 +37,9 @@ public abstract class AudioModule {
 	protected int			sampleRate;			///The sample rate that the audio subsystem runs at
 	protected ModuleInfo	info;				///Basic info about the plugin
 	protected ModuleManager	handler;			///The main audio handler, also MIDI outs can be passed there
+	alias StreamIDSet = SortedList!(ubyte, "a < b", false);
+	protected StreamIDSet	enabledInputs;		///List of enabled input channel numbers
+	protected StreamIDSet	enabledOutputs;		///List of enabled output channel numbers
 	public @nogc nothrow void delegate(uint[4] data, uint offset)	midiOut;	///A delegate where MIDI messages are being routed
 	/**
 	 * Returns the basic informations about this module.
@@ -48,6 +52,17 @@ public abstract class AudioModule {
 	 */
 	public int getSamplerate() @nogc @safe pure nothrow const {
 		return sampleRate;
+	}
+	/**
+	 * Sets the module up.
+	 *
+	 * Can be overridden in child classes to allow resets.
+	 */
+	public void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate) @safe {
+		enabledInputs = StreamIDSet(inputs);
+		enabledOutputs = StreamIDSet(outputs);
+		this.sampleRate = sampleRate;
+
 	}
 	/**
 	 * MIDI 2.0 data received here.
@@ -74,6 +89,8 @@ public abstract class AudioModule {
 	 * id: The ID of the waveform.
 	 * rawData: The data itself, in unprocessed form.
 	 * format: The format of the wave data, including the data type, bit depth, base sampling rate
+	 *
+	 * Note: This function needs the audio system to be unlocked.
 	 */
 	public abstract int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow;
 	/**
