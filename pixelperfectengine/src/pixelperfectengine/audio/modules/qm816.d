@@ -8,15 +8,14 @@ import midi2.types.enums;
 
 /**
 QM816 - implements a Quadrature-Amplitude synthesizer. This technique was used in early 
-digital fM synths, since it allowed allowed a cheap implementation of the same thing as
+digital FM synths, since it allowed allowed a cheap implementation of the same thing as
 long as the modulator was a sinusoidal waveform.
 
 It has 16 2 operator channels that can be individually paired-up for 4 operator channels,
 for more complex sounds. Also all operators have the option for feedback, including 
 carriers. 2 operator channels have 2, 4 operator channels have 3*4 algorithms.
 
-Before use, the synth needs to be supplied with a wavetable file, in 16 bit wav format,
-with values between 0 and 4095.
+Before use, the synth needs to be supplied with a wavetable file, in 16 bit wav format.
 */
 public class QM816 : AudioModule {
 	/** 
@@ -339,11 +338,11 @@ public class QM816 : AudioModule {
 		}
 	}
 	/**
-	Sets a registered parameter (MIDI1.0)
+	Sets a registered parameter
 
 	If type is not zero, then the MSB is being set, otherwise the LSB will be used
 	*/
-	protected void setRegisteredParam(ushort val, ubyte[2] paramNum, ubyte type, ubyte chNum) @nogc @safe pure nothrow {
+	protected void setRegisteredParam(T)(T val, ubyte[2] paramNum, ubyte type, ubyte chNum) @nogc @safe pure nothrow {
 		switch (paramNum[0]) {
 			case 0:			//Pitch bend sensitivity
 				//channels[chNum].pitchBendSens = 
@@ -356,11 +355,11 @@ public class QM816 : AudioModule {
 		}
 	}
 	/**
-	Sets an unregistered parameter (MIDI1.0)
+	Sets an unregistered parameter
 
 	If type is not zero, then the MSB is being set, otherwise the LSB will be used
 	*/
-	protected void setUnregisteredParam(ushort val, ubyte[2] paramNum, ubyte type, ubyte chNum) @nogc @safe pure nothrow {
+	protected void setUnregisteredParam(T)(T val, ubyte[2] paramNum, ubyte type, ubyte chNum) @nogc @safe pure nothrow {
 		switch (paramNum[1]) {
 			case 0:			//Channel operator 0
 
@@ -377,7 +376,7 @@ public class QM816 : AudioModule {
 	///Updates an operator for a cycle
 	pragma(inline, true)
 	protected final void updateOperator(ref Operator op) @nogc @safe pure nothrow {
-		op.output = wavetables[op.opCtrl & Operator.OpCtrlFlags.WavetableSelect][(op.pos>>20 + op.input>>4 + op.feedback>>4) 
+		op.output = wavetables[op.opCtrl & Operator.OpCtrlFlags.WavetableSelect][(op.pos>>20 + op.input>>4 + op.feedback>>3) 
 				& 0x3_FF];
 		const double egOut = op.eg.shpF(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA : op.shpR);
 		const double out0 = op.output;
