@@ -12,7 +12,10 @@ import inteli.emmintrin;
 import bitleveld.reinterpret;
 import bitleveld.datatypes;
 
-import pixelperfectengine.audio.base.types;
+import std.math;
+
+
+public import pixelperfectengine.audio.base.types;
 import pixelperfectengine.system.etc;
 
 ///Constant for fast integer to floating point conversion
@@ -273,4 +276,41 @@ alias ADPCMStream = NibbleArray;
 			dest[i] = src[cast(size_t)(wp.lookupVal>>20)];
 			wp.lookupVal += modifier;
 		}
+	}
+	/**
+	 * Converts MIDI note to frequency.
+	 */
+	public double midiToFreq(int note, const double baseFreq = 440.0) {
+		double r = note - 69;
+		r /= 12;
+		r = pow(2, r);
+		return r * baseFreq;
+	}
+	/**
+	 * Converts note number to frequency.
+	 */
+	public double noteToFreq(double note, const double baseFreq = 440.0) {
+		double r = note - 69;
+		r /= 12;
+		r = pow(2, r);
+		return r * baseFreq;
+	}
+	/**
+	 * Calculates biquad low-pass filter values from the supplied values.
+	 *
+	 * fs: sampling frequency.
+	 * f0: cutting frequency.
+	 * q: the Q factor of the filter.
+	 */
+	public BiquadFilterValues createLPF(float fs, float f0, float q) {
+		BiquadFilterValues result;
+		const float w0 = 2 * PI * f0 / fs;
+		const float alpha = sin(w0) / (2 * q);
+		result.b1 = 1 - cos(w0);
+		result.b0 = result.b1 / 2;
+		result.b2 = result.b0;
+		result.a0 = 1 + alpha;
+		result.a1 = -2 * cos(w0);
+		result.a2 = 1 - alpha;
+		return result;
 	}

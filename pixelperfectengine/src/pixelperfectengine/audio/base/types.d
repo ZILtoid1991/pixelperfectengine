@@ -189,3 +189,14 @@ public struct WavemodWorkpad {
 		return lookupVal - (amount<<20);
 	}
 }
+/**
+ * Stores Biquad filter values for audio.
+ */
+struct BiquadFilterValues {
+	float	a0;
+	float	a1;
+	float	a2;
+	float	b0;
+	float	b1;
+	float	b2;
+}

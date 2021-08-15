@@ -6,6 +6,8 @@ import pixelperfectengine.audio.base.envgen;
 import midi2.types.structs;
 import midi2.types.enums;
 
+import inteli.emmintrin;
+
 /**
 QM816 - implements a Quadrature-Amplitude synthesizer. This technique was used in early 
 digital FM synths, since it allowed allowed a cheap implementation of the same thing as
@@ -19,7 +21,7 @@ Before use, the synth needs to be supplied with a wavetable file, in 16 bit wav 
 */
 public class QM816 : AudioModule {
 	/** 
-	Contains a table to calculate ADSR values.
+	Contains a table to calculate Attack, Decay, and Release values.
 
 	All values are seconds with factions. Actual values are live-calculated depending on sustain-level and sampling
 	frequency.
@@ -36,6 +38,56 @@ public class QM816 : AudioModule {
 		3.231, 3.331, 3.392, 3.474, 3.557, 3.621, 3.726, 3.812, 3.899, 3.987, 4.076, 4.166, 4.257, 4.349, 4.442, 4.535,//7
 		
 	];
+	/**
+	Contains a table to calculate Sustain control values.
+
+	All values are seconds with fractions. Actual values are live-calculated depending on sustain level and sampling
+	frequency. Please note that with certain levels of sustain, the actual max time might be altered.
+	*/
+	public static immutable float[62] SUSTAIN_CONTROL_TIME_TABLE = [
+	//	0     |1     |2     |3     |4     |5     |6     |7     |8     |9     |A     |B     |C     |D     |E     |F
+		60.00, 55.00, 50.00, 45.00, 42.50, 40.00, 38.50, 35.00, 32.50, 30.00, 27.50, 25.00, 24.00, 23.00, 22.00, 21.00,//0
+		20.00, 19.00, 18.00, 17.50, 17.00, 16.50, 16.00, 15.50, 15.00, 14.50, 14.00, 13.50, 13.00, 12.50, 12.25, 12.00,//1
+		11.75, 11.50, 11.25, 11.00, 10.75, 10.50, 10.25, 10.00, 9.750, 9.500, 9.250, 9.000, 8.750, 8.500, 8.250, 8.000,//2
+		7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500               //3
+	];
+	/**
+	Defines operator parameter numbers, within the unregistered namespace.
+	*/
+	public enum OperatorParamNums {
+		//Unregistered
+		Level		=	0,
+		Attack		=	1,
+		Decay		=	2,
+		SusLevel	=	3,
+		SusCtrl		=	4,
+		Release		=	5,
+		Waveform	=	6,
+		Feedback	=	7,
+		TuneCor		=	8,
+		TuneFine	=	9,
+		ShpA		=	10,
+		ShpR		=	11,
+		FBMode		=	12,
+		OpCtrl		=	13,
+	}
+	/**
+	Defines channel parameter numbers, within the unregistered namespace.
+	*/
+	public enum ChannelParamNums {
+		MasterVol	=	0,
+		Bal			=	1,
+		AuxLA		=	2,
+		AuxLB		=	3,
+		Attack		=	4,
+		Decay		=	5,
+		SusLevel	=	6,
+		SusCtrl		=	7,
+		Release		=	8,
+		EEGDetune	=	9,
+		ShpA		=	10,
+		ShpR		=	11,
+	}
 	/**
 	Implements a single operator.
 	
@@ -89,6 +141,7 @@ public class QM816 : AudioModule {
 			MWOLAssign		=	1 << 16,	///Assign modulation wheel to output level
 			MWFBAssign		=	1 << 17,	///Assign modulation wheel to feedback level
 			EEGFBAssign		=	1 << 18,	///Assign extra Envelop Generator to feedback
+			EGRelAdaptive	=	1 << 19,	///Adaptive release time based on current output level
 		}
 		///Attack time control (between 0 and 127)
 		ubyte			atk;
@@ -292,8 +345,8 @@ public class QM816 : AudioModule {
 		ubyte			susCCX;
 	}
 	///Contains the wavetables for the operators and LFOs.
-	///Value is normalized to be between -2048 to +2047 via bit shifts if fed into another oscillators via
-	///bitshifts, otherwise the full range is used
+	///Value might be divided to limit the values between 2047 and -2048 via bitshifting,
+	///otherwise the full range can be used for audio output, etc.
 	///Loaded from a 16 bit wave file.
 	protected short[1024][128]	wavetables;
 	///Stores presets.
@@ -312,6 +365,17 @@ public class QM816 : AudioModule {
 	protected ubyte[16]			bankNum;
 	///Keeps the registered/unregistered parameter positions (LSB = 0).
 	protected ubyte[2]			paramNum;
+	///Stores LFO waveform selection.
+	protected ubyte[2]			lfoWaveform;
+	///Stores output filter values.
+	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: n-1; 7: n-2;
+	protected __m128[8]			filterVals;
+	///Mixing buffers
+	///Output is directed there before filtering
+	protected int[][4]			intBuffers;
+	///Dummy buffer
+	///Only used if one or more outputs haven't been defined
+	protected float[]			dummyBuf;
 	/**
 	 * MIDI 2.0 data received here.
 	 *
@@ -368,20 +432,21 @@ public class QM816 : AudioModule {
 				break;
 			case 2:			//Channel common values
 				break;
-			case 16:		//LFO settings
+			case 16:		//LFO and master filter settings
 				break;
 			default: break;
 		}
 	}
 	///Updates an operator for a cycle
 	pragma(inline, true)
-	protected final void updateOperator(ref Operator op) @nogc @safe pure nothrow {
+	protected final void updateOperator(ref Operator op, const float alfoIn, const float eegIn) @nogc @safe pure nothrow {
 		op.output = wavetables[op.opCtrl & Operator.OpCtrlFlags.WavetableSelect][(op.pos>>20 + op.input>>4 + op.feedback>>3) 
 				& 0x3_FF];
 		const double egOut = op.eg.shpF(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA : op.shpR);
 		const double out0 = op.output;
-		const double out1 = out0 * egOut;
-		op.feedback = cast(int)(op.opCtrl & Operator.OpCtrlFlags.FBMode ? out0 : out1);
+		const double out1 = out0 * egOut * (op.opCtrl & Operator.OpCtrlFlags.ALFOAssign ? alfoIn : 1.0);
+		op.feedback = cast(int)((op.opCtrl & Operator.OpCtrlFlags.FBMode ? out0 : out1) * 
+				(op.opCtrl & Operator.OpCtrlFlags.EEGFBAssign ? eegIn : 1.0));
 		op.output_0 = cast(int)(out1 * op.outL);
 		op.pos += op.step;
 

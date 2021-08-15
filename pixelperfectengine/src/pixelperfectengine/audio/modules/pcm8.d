@@ -1,6 +1,7 @@
 module pixelperfectengine.audio.modules.pcm8;
 
 import pixelperfectengine.audio.base.modulebase;
+import pixelperfectengine.audio.base.types;
 import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.func;
 
@@ -31,7 +32,7 @@ public class PCM8 {
 		WaveFormat	format;
 	}
 	/**
-	Defines a single sample-channel assignment.
+	Defines a single sample-to-note assignment.
 	*/
 	protected struct SampleAssignment {
 		///Number of sample that is assigned.
@@ -39,11 +40,5 @@ public class PCM8 {
 		///The base frequency of the sample.
 		///Overrides the format definition.
 		float		baseFreq;
-		///The base note of the sample.
-		ubyte		baseNote;
-		///The lowest note that is assigned to this sample.
-		ubyte		low;
-		///The highest note that is assigned to this sample.
-		ubyte		high;
 	}
 }
