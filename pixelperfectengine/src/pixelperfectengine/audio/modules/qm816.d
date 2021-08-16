@@ -398,8 +398,10 @@ public class QM816 : AudioModule {
 	///Dummy buffer
 	///Only used if one or more outputs haven't been defined
 	protected float[]			dummyBuf;
-	///Amplitude LFO buffer
+	///Amplitude LFO buffer. Values are between 0.0 and 1.0
 	protected float[]			aLFOBuf;
+	///Pitch LFO buffer. Values are between 0.5 and 2.0
+	protected float[]			pLFOBuf;
 	/**
 	 * MIDI 2.0 data received here.
 	 *
@@ -480,21 +482,30 @@ public class QM816 : AudioModule {
 	protected void updateChannelM00(int chNum, size_t length) @nogc @safe pure nothrow {
 		const int opOffset = chNum * 2;
 		for (size_t i ; i < length ; i++) {
-			updateOperator(operators[opOffset]);
+			const float eegOut = channels[chNum].eeg.shpF(channels[chNum].eeg.position == ADSREnvelopGenerator.Stage.Attack ? channels[chNum].shpAX : channels[chNum].shpRX);
+			updateOperator(operators[opOffset], aLFOBuf, eegOut);
 			operators[opOffset + 1].input = operators[opOffset].output_0;
+			updateOperator(operators[opOffset + 1], aLFOBuf, eegOut);
 			intBuffers[0][i] = cast(int)(channels[chNum].masterVol * (1 - channels[chNum].masterBal) * operators[opOffset + 1].output_0);
 			intBuffers[1][i] = cast(int)(channels[chNum].masterVol * (channels[chNum].masterBal) * operators[opOffset + 1].output_0);
 			intBuffers[2][i] = cast(int)(channels[chNum].auxSend0 * operators[opOffset + 1].output_0);
 			intBuffers[3][i] = cast(int)(channels[chNum].auxSend1 * operators[opOffset + 1].output_0);
+			channels[chNum].eeg.advance();
 		}
 	}
 	///Algorithm Mode0/1 (Parallel)
 	protected void updateChannelM01(int chNum, size_t length) @nogc @safe pure nothrow {
 		const int opOffset = chNum * 2;
 		for (size_t i ; i < length ; i++) {
+			const float eegOut = channels[chNum].eeg.shpF(channels[chNum].eeg.position == ADSREnvelopGenerator.Stage.Attack ? channels[chNum].shpAX : channels[chNum].shpRX);
 			updateOperator(operators[opOffset]);
 			updateOperator(operators[opOffset + 1]);
 			const int outSum = operators[opOffset].output_0 + operators[opOffset + 1];
+			intBuffers[0][i] = cast(int)(channels[chNum].masterVol * (1 - channels[chNum].masterBal) * operators[opOffset + 1].output_0);
+			intBuffers[1][i] = cast(int)(channels[chNum].masterVol * (channels[chNum].masterBal) * operators[opOffset + 1].output_0);
+			intBuffers[2][i] = cast(int)(channels[chNum].auxSend0 * operators[opOffset + 1].output_0);
+			intBuffers[3][i] = cast(int)(channels[chNum].auxSend1 * operators[opOffset + 1].output_0);
+			channels[chNum].eeg.advance();
 		}
 	}
 }
