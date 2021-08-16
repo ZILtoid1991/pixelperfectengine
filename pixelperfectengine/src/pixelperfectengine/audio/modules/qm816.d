@@ -68,8 +68,8 @@ public class QM816 : AudioModule {
 		TuneFine	=	9,
 		ShpA		=	10,
 		ShpR		=	11,
-		FBMode		=	12,
-		OpCtrl		=	13,
+		VelAm		=	12,
+		OpCtrl		=	15,
 	}
 	/**
 	Defines channel parameter numbers, within the unregistered namespace.
@@ -77,16 +77,32 @@ public class QM816 : AudioModule {
 	public enum ChannelParamNums {
 		MasterVol	=	0,
 		Bal			=	1,
-		AuxLA		=	2,
-		AuxLB		=	3,
-		Attack		=	4,
-		Decay		=	5,
-		SusLevel	=	6,
-		SusCtrl		=	7,
-		Release		=	8,
-		EEGDetune	=	9,
-		ShpA		=	10,
-		ShpR		=	11,
+		AuxSLA		=	2,
+		AuxSLB		=	3,
+		ALFO		=	4,
+		PLFO		=	5,
+		Attack		=	6,
+		Decay		=	7,
+		SusLevel	=	8,
+		SusCtrl		=	9,
+		Release		=	10,
+		EEGDetune	=	11,
+		ShpA		=	12,
+		ShpR		=	13,
+		EEGApmAm	=	14,
+		ModWheelAm	=	15,
+		VelAm		=	16,
+		ChCtrlL		=	20,
+		ChCtrlH		=	21,
+		
+	}
+	/**
+	Defines channel parameters within the registered namespace
+	*/
+	public enum ChannelRegParams {
+		PitchBendSens,
+		TuneCor,
+		TuneFine,
 	}
 	/**
 	Implements a single operator.
@@ -121,6 +137,8 @@ public class QM816 : AudioModule {
 		float			shpA	=	0.5;
 		///ADSR shaping parameter (for the decay/release phase)
 		float			shpR	=	0.5;
+		///Velocity amount for operator
+		float			velAm	=	1.0;
 		///Output affected by EEG and level.
 		///Either used for audible output, or to modulate other operators
 		int				output_0;
@@ -257,6 +275,8 @@ public class QM816 : AudioModule {
 		float			shpA0	=	0.5;
 		///ADSR shaping parameter (for the decay/release phase)
 		float			shpR0	=	0.5;
+		///Velocity amount for operator
+		float			velAm0	=	1.0;
 		///Control flags and Wavetable selector
 		uint			opCtrl0;
 		///Attack time control (between 0 and 127)
@@ -283,6 +303,8 @@ public class QM816 : AudioModule {
 		float			shpA1	=	0.5;
 		///ADSR shaping parameter (for the decay/release phase)
 		float			shpR1	=	0.5;
+		///Velocity amount for operator
+		float			velAm1	=	1.0;
 		///Control flags and Wavetable selector
 		uint			opCtrl1;
 		///Attack time control (between 0 and 127)
@@ -376,6 +398,8 @@ public class QM816 : AudioModule {
 	///Dummy buffer
 	///Only used if one or more outputs haven't been defined
 	protected float[]			dummyBuf;
+	///Amplitude LFO buffer
+	protected float[]			aLFOBuf;
 	/**
 	 * MIDI 2.0 data received here.
 	 *
@@ -451,5 +475,26 @@ public class QM816 : AudioModule {
 		op.pos += op.step;
 
 		op.eg.advance();
+	}
+	///Algorithm Mode 0/0 (Serial)
+	protected void updateChannelM00(int chNum, size_t length) @nogc @safe pure nothrow {
+		const int opOffset = chNum * 2;
+		for (size_t i ; i < length ; i++) {
+			updateOperator(operators[opOffset]);
+			operators[opOffset + 1].input = operators[opOffset].output_0;
+			intBuffers[0][i] = cast(int)(channels[chNum].masterVol * (1 - channels[chNum].masterBal) * operators[opOffset + 1].output_0);
+			intBuffers[1][i] = cast(int)(channels[chNum].masterVol * (channels[chNum].masterBal) * operators[opOffset + 1].output_0);
+			intBuffers[2][i] = cast(int)(channels[chNum].auxSend0 * operators[opOffset + 1].output_0);
+			intBuffers[3][i] = cast(int)(channels[chNum].auxSend1 * operators[opOffset + 1].output_0);
+		}
+	}
+	///Algorithm Mode0/1 (Parallel)
+	protected void updateChannelM01(int chNum, size_t length) @nogc @safe pure nothrow {
+		const int opOffset = chNum * 2;
+		for (size_t i ; i < length ; i++) {
+			updateOperator(operators[opOffset]);
+			updateOperator(operators[opOffset + 1]);
+			const int outSum = operators[opOffset].output_0 + operators[opOffset + 1];
+		}
 	}
 }
