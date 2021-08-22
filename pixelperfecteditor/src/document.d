@@ -4,10 +4,11 @@ import pixelperfectengine.map.mapdata;
 import pixelperfectengine.map.mapformat;
 import editorevents;
 import clipboard;
+import contmenu;
 import windows.rasterwindow;
 import pixelperfectengine.concrete.eventChainSystem;
 import pixelperfectengine.concrete.interfaces : MouseEventReceptor;
-import pixelperfectengine.concrete.types : CursorType;
+import pixelperfectengine.concrete.types;
 import pixelperfectengine.graphics.common : Color, Coordinate;
 import pixelperfectengine.graphics.bitmap;
 import pixelperfectengine.graphics.layers;
@@ -209,7 +210,6 @@ public class MapDocument : MouseEventReceptor {
 	
 	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		int x = mce.x, y = mce.y;
-
 		final switch (mode) with (EditMode) {
 			case tilePlacement:
 				switch (mce.button) {
@@ -302,6 +302,9 @@ public class MapDocument : MouseEventReceptor {
 							}
 						}
 						outputWindow.updateRaster();
+						break;
+					case MouseButton.Right:
+						prg.wh.addPopUpElement(createSelectContextMenu(&onSelectContextMenuSelect));
 						break;
 					default:
 						break;
@@ -506,5 +509,11 @@ public class MapDocument : MouseEventReceptor {
 				break;
 		}
 		outputWindow.updateRaster();
+	}
+	/**
+	 * Context menu for selection events go here
+	 */
+	protected void onSelectContextMenuSelect (Event ev) {
+
 	}
 }

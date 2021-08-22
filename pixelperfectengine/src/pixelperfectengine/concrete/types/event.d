@@ -99,6 +99,7 @@ public class FileEvent : Event {
 			return path ~ filename ~ this.extension;
 	}
 }
+alias EventDeleg = void delegate(Event ev);
 /**
  * Defines a menu event.
  */

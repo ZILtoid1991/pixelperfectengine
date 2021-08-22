@@ -15,7 +15,6 @@ public enum ElementState : ubyte {
 	DisabledWOGray		=	1,	///Disabled without grayout, should be only used by elements contained within
 	Disabled			=	2,	///Means the element is disabled
 }
-alias EventDeleg = void delegate(Event ev);
 /**
  * All Window elements inherit from this class. Provides basic interfacing with containers.
  */

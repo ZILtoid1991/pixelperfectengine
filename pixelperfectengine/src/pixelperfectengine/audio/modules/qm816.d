@@ -514,7 +514,7 @@ public class QM816 : AudioModule {
 								bankNum[firstPacket.channel] = firstPacket.value;
 								break;
 							case 1:				//Modulation wheel
-								chCtrls[firstPacket.channel] = cast(double)(firstPacket.value) / byte.max;
+								chCtrls[firstPacket.channel].modwheel = cast(double)(firstPacket.value) / byte.max;
 								break;
 							case 6:			//Data Entry MSB
 								paramNum[1] = firstPacket.value;
