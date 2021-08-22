@@ -15,6 +15,8 @@ audio {
     driver -1           //Name of the audio driver, or -1 for auto
     device -1           //Name of the audio device, or -1 for auto
     frequency 48000     //Playback frequency (should be either 44100 or 48000)
+    bufferLen 1024      //Length of the buffer (must be power of two)
+    frameLen 512        //Length of an audio frame (must be less or equal than buffer, and power of two)
 }
  /*
   * Graphics settings.

@@ -3,8 +3,8 @@ module pixelperfectengine.audio.base.modulebase;
 import std.bitmanip;
 import collections.sortedlist;
 
-import pixelperfectengine.audio.base.types;
-import pixelperfectengine.audio.base.handler;
+public import pixelperfectengine.audio.base.types;
+public import pixelperfectengine.audio.base.handler;
 
 
 /*
@@ -34,6 +34,7 @@ public abstract class AudioModule {
 		public string[]		inputChNames;		///Names of the input channels
 		public string[]		outputChNames;		///Names of the output channels
     }
+	protected size_t		bufferSize;			///The size of the output buffers (must kept as a constant)
 	protected int			sampleRate;			///The sample rate that the audio subsystem runs at
 	protected ModuleInfo	info;				///Basic info about the plugin
 	protected ModuleManager	handler;			///The main audio handler, also MIDI outs can be passed there
@@ -58,11 +59,11 @@ public abstract class AudioModule {
 	 *
 	 * Can be overridden in child classes to allow resets.
 	 */
-	public void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate) @safe {
+	public void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize) @safe {
 		enabledInputs = StreamIDSet(inputs);
 		enabledOutputs = StreamIDSet(outputs);
 		this.sampleRate = sampleRate;
-
+		this.bufferSize = bufferSize;
 	}
 	/**
 	 * MIDI 2.0 data received here.
@@ -81,7 +82,7 @@ public abstract class AudioModule {
 	 *
 	 * NOTE: Buffers must have matching sizes.
 	 */
-	public abstract void renderFrame(float*[] input, float*[] output, size_t length) @nogc nothrow;
+	public abstract void renderFrame(float*[] input, float*[] output) @nogc nothrow;
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
 	 * errorcode.
@@ -108,5 +109,9 @@ public abstract class AudioModule {
 	 * Returns an errorcode on failure.
 	 */
 	public abstract int recallParam_double(uint presetID, uint paramID, double value) @nogc nothrow;
-	
+	/**
+	 * Restores a parameter to the given preset.
+	 * Returns an errorcode on failure.
+	 */
+	public abstract int recallParam_string(uint presetID, uint paramID, string value) @nogc nothrow;
 }

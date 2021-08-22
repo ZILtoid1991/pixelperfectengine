@@ -121,17 +121,39 @@ public class AudioDeviceHandler {
 	public SDL_AudioFormat getFormat() @nogc @safe pure nothrow const {
 		return given.format;
 	}
+	/**
+	 * Returns the number of audio channels.
+	 */
+	public ubyte getChannels() @nogc @safe pure nothrow const {
+		return given.channels;
+	}
 }
 /**
  * Manages all audio modules complete with routing, MIDI2.0, etc.
  */
 public class ModuleManager : Thread {
 	/**
-	 * Buffer size in samples.
+	 * Output buffer size in samples.
 	 *
-	 * Must be set up on initialization, then all buffers must be this size.
+	 * Must be set upon initialization.
+	 */
+	protected int			outBufferSize;
+	/**
+	 * Rendering buffer size in samples, also the length of a single frame.
+	 *
+	 * Must be less than outBufferSize, and power of two.
 	 */
 	protected int			bufferSize;
+	/**
+	 * Number of maximum frames that can be put into the output buffer.
+	 */
+	protected int			nOfFrames;
+	/**
+	 * Current audio frame.
+	 */
+	protected int			currFrame;
+	///Pointer to the audio device handler.
+	public AudioDeviceHandler	devHandler;
 	/**
 	 * List of modules.
 	 *
@@ -158,14 +180,45 @@ public class ModuleManager : Thread {
 	 *
 	 * One buffer can be shared between multiple input and/or output for mixing, etc.
 	 * All buffers must have the same size, defined by the variable `bufferSize`
+	 * The first buffers are used for output rendering.
 	 */
 	protected float[][]		buffers;
+	/**
+	 * Final buffers.
+	 *
+	 * May be null, if frame length is equal with output buffer length.
+	 */
+	protected float[][]		finalBuffers;
 
 	/**
-	 * Renders the audio to the buffers.
+	 * Puts the output to the final destination.
+	 *
+	 * Currently only stereo output is supported.
 	 */
-	public void render(void* userdata, ubyte* stream, int len) @nogc nothrow {
-		
+	public void put(void* userdata, ubyte* stream, int len) @nogc nothrow {
+		import pixelperfectengine.audio.base.func : interleave;
+		while (currFrame < nOfFrames)
+			renderFrame();
+		if (finalBuffers.length == 2) {
+			interleave(len, finalBuffers[0].ptr, finalBuffers[1].ptr, cast(float*)stream);
+		}
+		currFrame = 0;
+	}
+	/**
+	 * Renders a single frame of audio.
+	 */
+	public void renderFrame() @nogc nothrow {
+		import core.stdc.string : memcpy;
+		if (currFrame >= nOfFrames)
+			return;
+		foreach (size_t i, AudioModule am; moduleList) {
+			am.renderFrame(inBufferList[i], outBufferList[i]);
+		}
+		const size_t offset = currFrame * bufferSize;
+		for (int i ; i < devHandler.getChannels() ; i++) {
+			memcpy(finalBuffers[i].ptr + offset, buffers[i].ptr, bufferSize * float.sizeof);
+		}
+		currFrame++;
 	}
 	/**
 	 * MIDI commands are received here from modules.

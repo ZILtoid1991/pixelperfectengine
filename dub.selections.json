@@ -1,8 +1,8 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"bindbc-loader": "1.0.0",
-		"bindbc-sdl": "1.0.0",
+		"bindbc-loader": "1.0.1",
+		"bindbc-sdl": "1.0.1",
 		"bitleveld": "0.1.0-alpha",
 		"bmfont": "0.1.0",
 		"collections-d": "0.4.4",
@@ -15,7 +15,8 @@
 		"libinputvisitor": "1.2.2",
 		"libpcm": "0.2.2",
 		"lzwford": "1.0.0",
-		"midi2": "~master",
+		"midi-di": "0.0.1",
+		"midi2": "0.1.2",
 		"sdlang-d": "0.10.6",
 		"std-experimental-xml": "0.1.7",
 		"stdx-allocator": "2.77.5",

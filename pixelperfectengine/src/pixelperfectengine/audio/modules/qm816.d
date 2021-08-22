@@ -44,12 +44,12 @@ public class QM816 : AudioModule {
 	All values are seconds with fractions. Actual values are live-calculated depending on sustain level and sampling
 	frequency. Please note that with certain levels of sustain, the actual max time might be altered.
 	*/
-	public static immutable float[62] SUSTAIN_CONTROL_TIME_TABLE = [
+	public static immutable float[63] SUSTAIN_CONTROL_TIME_TABLE = [
 	//	0     |1     |2     |3     |4     |5     |6     |7     |8     |9     |A     |B     |C     |D     |E     |F
-		60.00, 55.00, 50.00, 45.00, 42.50, 40.00, 38.50, 35.00, 32.50, 30.00, 27.50, 25.00, 24.00, 23.00, 22.00, 21.00,//0
-		20.00, 19.00, 18.00, 17.50, 17.00, 16.50, 16.00, 15.50, 15.00, 14.50, 14.00, 13.50, 13.00, 12.50, 12.25, 12.00,//1
-		11.75, 11.50, 11.25, 11.00, 10.75, 10.50, 10.25, 10.00, 9.750, 9.500, 9.250, 9.000, 8.750, 8.500, 8.250, 8.000,//2
-		7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500               //3
+		70.00, 60.00, 55.00, 50.00, 45.00, 42.50, 40.00, 38.50, 35.00, 32.50, 30.00, 27.50, 25.00, 24.00, 23.00, 22.00,//0
+		21.00, 20.00, 19.00, 18.00, 17.50, 17.00, 16.50, 16.00, 15.50, 15.00, 14.50, 14.00, 13.50, 13.00, 12.50, 12.25,//1
+		12.00, 11.75, 11.50, 11.25, 11.00, 10.75, 10.50, 10.25, 10.00, 9.750, 9.500, 9.250, 9.000, 8.750, 8.500, 8.250,//2
+		8.000, 7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500        //3
 	];
 	/**
 	Defines operator parameter numbers, within the unregistered namespace.
@@ -105,6 +105,23 @@ public class QM816 : AudioModule {
 		TuneFine,
 	}
 	/**
+	Defines global parameter nummbers, within the unregistered namespace
+	*/
+	public enum GlobalParamNums {
+		PLFORate	=	0,
+		PLFOWF		=	1,
+		ALFORate	=	2,
+		ALFOWF		=	3,
+		FilterLCFreq=	4,
+		FilterLCQ	=	5,
+		FilterRCFreq=	6,
+		FilterRCQ	=	7,
+		FilterACFreq=	8,
+		FilterACQ	=	9,
+		FilterBCFreq=	10,
+		FilterBCQ	=	11,
+	}
+	/**
 	Implements a single operator.
 	
 	Contains an oscillator, an ADSR envelop generator, and locals.
@@ -118,8 +135,14 @@ public class QM816 : AudioModule {
 		uint			step;
 		///Operator tuning
 		///Bit 31-25: Coarse detuning (-24 to +103 seminotes)
-		///Bit 24-0: Fine detuning (0 to 100 cents)
-		uint			tune	=	0x30_00_00_00;
+		///Bit 24-0: Fine detuning (-100 to 100 cents), 0x1_00_00_00 is center
+		uint			tune	=	0x31_00_00_00;
+		enum TuneCtrlFlags : uint {
+			FineTuneMidPoint	=	0x1_00_00_00,
+			CorTuneMidPoint		=	0x30_00_00_00,
+			FineTuneTest		=	0x1_FF_FF_FF,
+			CorTuneTest			=	0xFE_00_00_00,
+		}
 		///Input register.
 		///The amount which the oscillator will be offsetted.
 		int				input;
@@ -260,6 +283,21 @@ public class QM816 : AudioModule {
 		ubyte			susCCX;
 	}
 	/**
+	Stores channel controller values (modwheel, velocity, etc.)
+	*/
+	public struct ChControllers {
+		///Modulation wheel parameter, normalized between 0.0 and 1.0
+		float			modwheel;
+		///Velocity parameter, normalized between 0.0 and 1.0
+		float			velocity;
+		///Pitch bend parameter, with the amount of pitch shifting in semitones + fractions
+		float			pitchBend;
+		///The note that is currently being played
+		ubyte			note;
+		///The current bank that is selected
+		ubyte			bank;
+	}
+	/**
 	Defines a preset.
 	*/
 	public struct Preset {
@@ -360,9 +398,9 @@ public class QM816 : AudioModule {
 		///Release time control (between 0 and 127)
 		ubyte			relX;
 		///Sustain curve control (between 0 and 127)
-		///0: Percussive mode
+		///0 = Percussive mode
 		///1 - 63: Descending over time
-		///64: Constant
+		///64 = Constant
 		///65 - 127: Ascending over time
 		ubyte			susCCX;
 	}
@@ -381,27 +419,80 @@ public class QM816 : AudioModule {
 	///Channel data.
 	///See rendering function on updating.
 	protected Channel[16]		channels;
+	///Channel control data.
+	protected ChControllers[16]	chCtrls;
 	///Preset numbers per channels.
 	protected ubyte[16]			presetNum;
 	///Bank numbers per channels.
 	protected ubyte[16]			bankNum;
 	///Keeps the registered/unregistered parameter positions (LSB = 0).
 	protected ubyte[2]			paramNum;
-	///Stores LFO waveform selection.
+	///Stores LFO waveform selection. 1: Amplitude; 0: Pitch
 	protected ubyte[2]			lfoWaveform;
+	///Stores temporary parameter values
+	protected ubyte[4]			paramTemp;
+	///Stores ALFO position
+	protected uint				aLFOPos;
+	///Stores ALFO rate
+	protected uint				aLFORate;
 	///Stores output filter values.
 	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: n-1; 7: n-2;
 	protected __m128[8]			filterVals;
-	///Mixing buffers
+	///Stores control values of the output values.
+	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
+	protected float[8]			filterCtrl;
+	///Initial mixing buffers
 	///Output is directed there before filtering
-	protected int[][4]			intBuffers;
+	///Layout is: LRAB
+	protected float[]			initBuffers;
 	///Dummy buffer
 	///Only used if one or more outputs haven't been defined
 	protected float[]			dummyBuf;
 	///Amplitude LFO buffer. Values are between 0.0 and 1.0
 	protected float[]			aLFOBuf;
-	///Pitch LFO buffer. Values are between 0.5 and 2.0
-	protected float[]			pLFOBuf;
+	///Pitch LFO output. Values are between -1.0 and 1.0
+	protected float				pLFOOut;
+	///Stores PLFO position
+	protected uint				pLFOPos;
+	///Stores PLFO rate
+	protected uint				pLFORate;
+	/**
+	Creates an instance of QM816
+	*/
+	public this(ModuleManager handler) @safe nothrow {
+		this.handler = handler;
+		info.nOfAudioInput = 0;
+		info.nOfAudioOutput = 4;
+		info.outputChNames = ["mainL", "mainR", "auxSendA", "auxSendB"];
+		info.isInstrument = true;
+		info.hasMidiIn = true;
+		info.hasMidiOut = true;
+		info.midiSendback = true;
+	}
+	/**
+	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
+	 * errorcode.
+	 *
+	 * id: The ID of the waveform.
+	 * rawData: The data itself, in unprocessed form.
+	 * format: The format of the wave data, including the data type, bit depth, base sampling rate
+	 *
+	 * Note: This function needs the audio system to be unlocked.
+	 */
+	public override int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow {
+		int errorcode;
+		if (format.channels != 1) errorcode |= SampleLoadErrorCode.ChNumNotSupported;
+		if (format.bitsPerSample != 16) errorcode |= SampleLoadErrorCode.BitdepthNotSupported;
+		if (format.format != AudioFormat.PCM) errorcode |= SampleLoadErrorCode.FormatNotSupported;
+		if (rawData.length != 128 * 1024 * 2) errorcode |= SampleLoadErrorCode.SampleLenghtNotSupported;
+		if (errorcode) {
+			return errorcode;
+		} else {
+			import core.stdc.string : memcpy;
+			memcpy (wavetables.ptr, rawData.ptr, 128 * 1024 * 2);
+			return 0;
+		}
+	}
 	/**
 	 * MIDI 2.0 data received here.
 	 *
@@ -418,6 +509,44 @@ public class QM816 : AudioModule {
 			case MessageType.MIDI1:			//Process MIDI 1.0 messages
 				switch (firstPacket.status) {
 					case MIDI1_0Cmd.CtrlCh:	//Process MIDI 1.0 control change messages
+						switch (firstPacket.note) {
+							case 0, 32:			//Bank select
+								bankNum[firstPacket.channel] = firstPacket.value;
+								break;
+							case 1:				//Modulation wheel
+								chCtrls[firstPacket.channel] = cast(double)(firstPacket.value) / byte.max;
+								break;
+							case 6:			//Data Entry MSB
+								paramNum[1] = firstPacket.value;
+								break;
+							case 38:		//Data Entry LSB
+								paramNum[0] = firstPacket.value;
+								break;
+							case 98:		//Non Registered Parameter Number LSB
+								setUnregisteredParam(firstPacket.value, paramNum, 0, firstPacket.channel);
+								break;
+							case 99:		//Non Registered Parameter Number LSB
+								setUnregisteredParam(firstPacket.value, paramNum, 0, firstPacket.channel);
+								break;
+							default:
+								break;
+						}
+						break;
+					case MIDI1_0Cmd.NoteOn:
+						break;
+					case MIDI1_0Cmd.NoteOff:
+						break;
+					case MIDI1_0Cmd.PrgCh:
+						break;
+					
+					default:
+						break;
+				}
+				break;
+			case MessageType.MIDI2:
+				switch (firstPacket.status) {
+					case MIDI2_0Cmd.CtrlCh:	//Control change
+						setUnregisteredParam(data[1], [firstPacket.index, firstPacket.value], 0, firstPacket.channel);
 						break;
 					default:
 						break;
@@ -434,12 +563,11 @@ public class QM816 : AudioModule {
 	*/
 	protected void setRegisteredParam(T)(T val, ubyte[2] paramNum, ubyte type, ubyte chNum) @nogc @safe pure nothrow {
 		switch (paramNum[0]) {
-			case 0:			//Pitch bend sensitivity
-				//channels[chNum].pitchBendSens = 
+			case ChannelRegParams.PitchBendSens:
 				break;
-			case 1:			//Channel master tuning (fine)
+			case ChannelRegParams.TuneFine:			//Channel master tuning (fine)
 				break;
-			case 2:			//Channel master tuning (coarse)
+			case ChannelRegParams.TuneCor:			//Channel master tuning (coarse)
 				break;
 			default: break;
 		}
@@ -450,62 +578,816 @@ public class QM816 : AudioModule {
 	If type is not zero, then the MSB is being set, otherwise the LSB will be used
 	*/
 	protected void setUnregisteredParam(T)(T val, ubyte[2] paramNum, ubyte type, ubyte chNum) @nogc @safe pure nothrow {
+		void setOpParam(int chNum) {
+			switch (paramNum[0]) {
+				case OperatorParamNums.Attack:
+					static if (is(T == uint)) {
+						operators[chNum].atk = cast(ubyte)(val >> 25);
+					} else static if (is(T == ubyte)) {
+						operators[chNum].atk = val;
+					}
+					if (operators[chNum].atk) {
+						operators[chNum].eg.attackRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].atk], sampleRate);
+					} else {
+						operators[chNum].eg.attackRate = 1.0;
+					}
+					break;
+				case OperatorParamNums.Decay:
+					static if (is(T == uint)) {
+						operators[chNum].dec = cast(ubyte)(val >> 25);
+					} else static if (is(T == ubyte)) {
+						operators[chNum].dec = val;
+					}
+					if (operators[chNum].dec) {
+						operators[chNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].dec] * 2, sampleRate, 
+								ADSREnvelopGenerator.maxOutput, operators[chNum].eg.sustainLevel);
+					} else {
+						operators[chNum].eg.decayRate = 1.0;
+					}
+					break;
+				case OperatorParamNums.Feedback:
+					static if (is(T == uint)) {
+						const double valF = cast(double)val / uint.max;
+						operators[chNum].fbL = valF * valF;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+							operators[chNum].fbL = valF * valF;
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.Level:
+					static if (is(T == uint)) {
+						const double valF = cast(double)val / uint.max;
+						operators[chNum].outL = valF * valF;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+							operators[chNum].outL = valF * valF;
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.OpCtrl:
+					break;
+				case OperatorParamNums.Release:
+					static if (is(T == uint)) {
+						operators[chNum].rel = cast(ubyte)(val >> 25);
+					} else static if (is(T == ubyte)) {
+						operators[chNum].rel = val;
+					}
+					if (operators[chNum].rel) {
+						operators[chNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].rel] * 2, sampleRate, 
+								operators[chNum].eg.sustainLevel);
+					} else {
+						operators[chNum].eg.releaseRate = 1.0;
+					}
+					break;
+				case OperatorParamNums.ShpA:
+					static if (is(T == uint)) {
+						operators[chNum].shpA = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].shpA = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.ShpR:
+					static if (is(T == uint)) {
+						operators[chNum].shpR = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].shpR = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.SusCtrl:
+					static if (is(T == uint)) {
+						operators[chNum].susCC = cast(ubyte)(val >> 25);
+					} else static if (is(T == ubyte)) {
+						operators[chNum].susCC = val;
+					}
+					if (operators[chNum].susCC) {
+						operators[chNum].eg.isPercussive = false;
+						if (operators[chNum].susCC == 64) {
+							operators[chNum].eg.sustainControl = 0.0;
+						} else if (operators[chNum].susCC < 64) {
+							operators[chNum].eg.sustainControl = -1.0 * 
+									calculateRate(SUSTAIN_CONTROL_TIME_TABLE[operators[chNum].susCC - 1], sampleRate);
+						} else {
+							operators[chNum].eg.sustainControl = 
+									calculateRate(SUSTAIN_CONTROL_TIME_TABLE[operators[chNum].susCC - 64], sampleRate);
+						}
+					} else {
+						operators[chNum].eg.isPercussive = true;
+						operators[chNum].eg.sustainControl = 0.0;
+					}
+					break;
+				case OperatorParamNums.SusLevel:
+					static if (is(T == uint)) {
+						operators[chNum].eg.sustainLevel = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].eg.sustainLevel = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+						
+					}
+					//Recalculate decay and release rates to new sustain levels
+					if (operators[chNum].dec) {
+						operators[chNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].dec] * 2, sampleRate, 
+								ADSREnvelopGenerator.maxOutput, operators[chNum].eg.sustainLevel);
+					} else {
+						operators[chNum].eg.decayRate = 1.0;
+					}
+					if (operators[chNum].rel) {
+						operators[chNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].rel] * 2, sampleRate, 
+								operators[chNum].eg.sustainLevel);
+					} else {
+						operators[chNum].eg.releaseRate = 1.0;
+					}
+					break;
+				case OperatorParamNums.TuneCor:
+					static if (is(T == uint)) {
+						operators[chNum].tune = val;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							//operators[chNum].velAm = val32 / ushort.max>>2;
+							operators[chNum].tune &= ~(uint.max<<18);
+							operators[chNum].tune |= val32<<18;
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.TuneFine:
+					operators[chNum].tune &= uint.max>>7;
+					static if (is(T == uint)) {
+						operators[chNum].tune |= val>>7;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].tune |= val32<<10 | val32>>5;
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.VelAm:
+					static if (is(T == uint)) {
+						operators[chNum].velAm = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].velAm = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.Waveform:
+					operators[chNum].opCtrl &= ~Operator.OpCtrlFlags.WavetableSelect;
+					static if (is(T == uint)) {
+						operators[chNum].opCtrl |= cast(ubyte)(val >> 25);
+					} else static if (is(T == ubyte)) {
+						operators[chNum].opCtrl |= val;
+					}
+					break;
+				default: break;
+			}
+		}
 		switch (paramNum[1]) {
 			case 0:			//Channel operator 0
-
+				chNum *= 2;
+				setOpParam(chNum);
 				break;
 			case 1:			//Channel operator 1
+				chNum *= 2;
+				setOpParam(chNum + 1);
 				break;
 			case 2:			//Channel common values
+				switch (paramNum[0]){
+					case ChannelParamNums.ALFO: break;
+					case ChannelParamNums.Attack: break;
+					case ChannelParamNums.AuxSLA: break;
+					case ChannelParamNums.AuxSLB: break;
+					case ChannelParamNums.Bal: break;
+					case ChannelParamNums.ChCtrlH: break;
+					case ChannelParamNums.ChCtrlL: break;
+					case ChannelParamNums.Decay: break;
+					case ChannelParamNums.EEGApmAm: break;
+					case ChannelParamNums.EEGDetune: break;
+					case ChannelParamNums.MasterVol: break;
+					case ChannelParamNums.ModWheelAm: break;
+					case ChannelParamNums.PLFO: break;
+					case ChannelParamNums.Release: break;
+					case ChannelParamNums.ShpA: break;
+					case ChannelParamNums.ShpR: break;
+					case ChannelParamNums.SusCtrl: break;
+					case ChannelParamNums.SusLevel: break;
+					case ChannelParamNums.VelAm: break;
+					default:
+						break;
+				}
 				break;
 			case 16:		//LFO and master filter settings
+				void setFilterFreq(int num) @nogc @safe pure nothrow {
+					static if (is(T == uint)) {
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[num] = valF * valF * 22_000;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+							filterCtrl[num] = valF * valF * 22_000;
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+				}
+				void setFilterQ(int num) @nogc @safe pure nothrow {
+					static if (is(T == uint)) {
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[num] = valF;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+							filterCtrl[num] = valF;
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+				}
+				switch (paramNum[0]) {
+					case GlobalParamNums.PLFORate:
+						double valF;
+						static if (is(T == uint)) {
+							valF = cast(double)val / uint.max;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+								return;
+							}
+						}
+						valF *= 16;
+						const double cycleLen = sampleRate / (1.0 / valF);
+						pLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0));
+						break;
+					case GlobalParamNums.PLFOWF:
+						static if (is(T == uint)) {
+							lfoWaveform[0] = cast(ubyte)(val >> 25);
+						} else static if (is(T == ubyte)) {
+							lfoWaveform[0] = val;
+						}
+						break;
+					case GlobalParamNums.ALFORate:
+						double valF;
+						static if (is(T == uint)) {
+							valF = cast(double)val / uint.max;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+								return;
+							}
+						}
+						valF *= 16;
+						const double cycleLen = sampleRate / (1.0 / valF);
+						aLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0));
+						break;
+					case GlobalParamNums.ALFOWF:
+						static if (is(T == uint)) {
+							lfoWaveform[1] = cast(ubyte)(val >> 25);
+						} else static if (is(T == ubyte)) {
+							lfoWaveform[1] = val;
+						}
+						break;
+					case GlobalParamNums.FilterLCFreq:
+						setFilterFreq(0);
+						break;
+					case GlobalParamNums.FilterLCQ: 
+						setFilterQ(1);
+						break;
+					case GlobalParamNums.FilterRCFreq: 
+						setFilterFreq(2);
+						break;
+					case GlobalParamNums.FilterRCQ: 
+						setFilterQ(3);
+						break;
+					case GlobalParamNums.FilterACFreq:
+						setFilterFreq(4);
+						break;
+					case GlobalParamNums.FilterACQ: 
+						setFilterQ(5);
+						break;
+					case GlobalParamNums.FilterBCFreq: 
+						setFilterFreq(6);
+						break;
+					case GlobalParamNums.FilterBCQ: 
+						setFilterQ(7);
+						break;
+					default:
+						break;
+				}
 				break;
 			default: break;
 		}
 	}
 	///Updates an operator for a cycle
 	pragma(inline, true)
-	protected final void updateOperator(ref Operator op, const float alfoIn, const float eegIn) @nogc @safe pure nothrow {
+	protected final void updateOperator(ref Operator op, const float alfoIn, const float eegIn, float vel, 
+			const float mw) @nogc @safe pure nothrow {
 		op.output = wavetables[op.opCtrl & Operator.OpCtrlFlags.WavetableSelect][(op.pos>>20 + op.input>>4 + op.feedback>>3) 
 				& 0x3_FF];
-		const double egOut = op.eg.shpF(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA : op.shpR);
+		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA : op.shpR);
 		const double out0 = op.output;
 		const double out1 = out0 * egOut * (op.opCtrl & Operator.OpCtrlFlags.ALFOAssign ? alfoIn : 1.0);
+		vel = op.opCtrl & Operator.OpCtrlFlags.VelNegative ? 1.0 - vel : vel;
 		op.feedback = cast(int)((op.opCtrl & Operator.OpCtrlFlags.FBMode ? out0 : out1) * 
-				(op.opCtrl & Operator.OpCtrlFlags.EEGFBAssign ? eegIn : 1.0));
-		op.output_0 = cast(int)(out1 * op.outL);
+				(op.opCtrl & Operator.OpCtrlFlags.EEGFBAssign ? eegIn : 1.0) * 
+				(op.opCtrl & Operator.OpCtrlFlags.VelFBAssign ? vel : 1.0) *
+				(op.opCtrl & Operator.OpCtrlFlags.MWFBAssign ? mw : 1.0));
+		op.output_0 = cast(int)(out1 * op.outL * 
+				(op.opCtrl & Operator.OpCtrlFlags.VelOLAssign ? vel : 1.0) *
+				(op.opCtrl & Operator.OpCtrlFlags.MWOLAssign ? mw : 1.0) * 
+				(op.opCtrl & Operator.OpCtrlFlags.ALFOAssign ? alfoIn : 1.0));
 		op.pos += op.step;
-
+		//op.input = 0;
 		op.eg.advance();
 	}
+	///Macro for channel update constants that need to be calculated once per frame
+	///Kept in at one place to make updates easier and more consistent
+	static immutable string CHNL_UPDATE_CONSTS =
+		"const int opOffset = chNum * 2;\n" ~
+		"const float aLFOOutMW = (channels[chNum].chCtrl & Channel.ChCtrlFlags.MWALFOAssign ? chCtrls[chNum].modwheel * " ~
+				"channels[chNum].modwheelAmount : 1.0);" ~
+		"const float auxSendAmMW = (channels[chNum].chCtrl & Channel.ChCtrlFlags.MWAuxSendAssign ? chCtrls[chNum].modwheel *"~
+				"channels[chNum].modwheelAmount : 1.0);" ~
+		"const float masterVol = channels[chNum].masterVol * (channels[chNum].chCtrl & Channel.ChCtrlFlags.VelCtrlVolAssign" ~
+				"? chCtrls[chNum].velocity : 1.0);";
+	///Macro for channel update constants that need to be calculated once per frame, for combined channels' second half
+	///Kept in at one place to make updates easier and more consistent
+	static immutable string CHNL_UPDATE_CONSTS0 =
+		"const float aLFOOutMW0 = (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.MWALFOAssign ? " ~
+				"chCtrls[chNum + 8].modwheel * channels[chNum + 8].modwheelAmount : 1.0);" ~
+		"const float auxSendAmMW0 = (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.MWAuxSendAssign ? " ~
+				"chCtrls[chNum + 8].modwheel * channels[chNum + 8].modwheelAmount : 1.0);" ~
+		"const float masterVol0 = channels[chNum + 8].masterVol *(channels[chNum + 8].chCtrl & " ~
+				" Channel.ChCtrlFlags.VelCtrlVolAssign ? chCtrls[chNum + 8].velocity : 1.0);";
+	
+	///Macro for channel update constants that need to be calculated for each cycle
+	///Kept in at one place to make updates easier and more consistent
+	static immutable string CHNL_UPDATE_CONSTS_CYCL = 
+		"const float eegOut = channels[chNum].eeg.shp(channels[chNum].eeg.position == ADSREnvelopGenerator.Stage.Attack ? " ~
+				"channels[chNum].shpAX : channels[chNum].shpRX) * channels[chNum].eegAmpAmount + " ~
+				"(1.0 - channels[chNum].eegAmpAmount);" ~
+		"const float aLFOOut = channels[chNum].aLFOlevel * aLFOBuf[i] * aLFOOutMW *" ~
+				"(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGALFOAssign ? eegOut : 1.0);" ~
+		"const float auxSendAm = auxSendAmMW * (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGAuxSendAssign ? eegOut : " ~
+				" 1.0);";
+	
+	///Macro for channel update constants that need to be calculated for each cycle for combined channels' second half
+	///Kept in at one place to make updates easier and more consistent
+	static immutable string CHNL_UPDATE_CONSTS_CYCL0 = 
+		"const float eegOut0 = channels[chNum + 8].eeg.shp(channels[chNum + 8].eeg.position == " ~
+				" ADSREnvelopGenerator.Stage.Attack ? channels[chNum + 8].shpAX : channels[chNum + 8].shpRX) * " ~ 
+				" channels[chNum + 8].eegAmpAmount + (1.0 - channels[chNum + 8].eegAmpAmount);" ~
+		"const float aLFOOut0 = channels[chNum + 8].aLFOlevel * aLFOBuf[i] * aLFOOutMW *" ~
+				"(channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.EEGALFOAssign ? eegOut : 1.0);" ~
+		"const float auxSendAm0 = auxSendAmMW * (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.EEGAuxSendAssign ? " ~ 
+				"eegOut : 1.0);";
+	
+	///Macro for output mixing
+	static immutable string CHNL_UPDATE_MIX =
+		"__m128 outlevels;" ~
+		"outlevels[0] = masterVol * (1 - channels[chNum].masterBal) * " ~
+		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
+		"outlevels[1] = masterVol * (channels[chNum].masterBal) * " ~
+		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
+		"outlevels[2] = channels[chNum].auxSend0 * auxSendAm;" ~
+		"outlevels[3] = channels[chNum].auxSend1 * auxSendAm;" ~
+		"_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels * _mm_cvtepi32_ps(outSum));";
+	
 	///Algorithm Mode 0/0 (Serial)
-	protected void updateChannelM00(int chNum, size_t length) @nogc @safe pure nothrow {
-		const int opOffset = chNum * 2;
+	protected void updateChannelM00(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
 		for (size_t i ; i < length ; i++) {
-			const float eegOut = channels[chNum].eeg.shpF(channels[chNum].eeg.position == ADSREnvelopGenerator.Stage.Attack ? channels[chNum].shpAX : channels[chNum].shpRX);
-			updateOperator(operators[opOffset], aLFOBuf, eegOut);
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);
 			operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1], aLFOBuf, eegOut);
-			intBuffers[0][i] = cast(int)(channels[chNum].masterVol * (1 - channels[chNum].masterBal) * operators[opOffset + 1].output_0);
-			intBuffers[1][i] = cast(int)(channels[chNum].masterVol * (channels[chNum].masterBal) * operators[opOffset + 1].output_0);
-			intBuffers[2][i] = cast(int)(channels[chNum].auxSend0 * operators[opOffset + 1].output_0);
-			intBuffers[3][i] = cast(int)(channels[chNum].auxSend1 * operators[opOffset + 1].output_0);
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);
+			//const int outSum = operators[opOffset].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 		}
 	}
 	///Algorithm Mode0/1 (Parallel)
-	protected void updateChannelM01(int chNum, size_t length) @nogc @safe pure nothrow {
-		const int opOffset = chNum * 2;
+	protected void updateChannelM01(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
 		for (size_t i ; i < length ; i++) {
-			const float eegOut = channels[chNum].eeg.shpF(channels[chNum].eeg.position == ADSREnvelopGenerator.Stage.Attack ? channels[chNum].shpAX : channels[chNum].shpRX);
-			updateOperator(operators[opOffset]);
-			updateOperator(operators[opOffset + 1]);
-			const int outSum = operators[opOffset].output_0 + operators[opOffset + 1];
-			intBuffers[0][i] = cast(int)(channels[chNum].masterVol * (1 - channels[chNum].masterBal) * operators[opOffset + 1].output_0);
-			intBuffers[1][i] = cast(int)(channels[chNum].masterVol * (channels[chNum].masterBal) * operators[opOffset + 1].output_0);
-			intBuffers[2][i] = cast(int)(channels[chNum].auxSend0 * operators[opOffset + 1].output_0);
-			intBuffers[3][i] = cast(int)(channels[chNum].auxSend1 * operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);
+			//const int outSum = operators[opOffset].output_0 + operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels * _mm_cvtepi32_ps(outSum));
 			channels[chNum].eeg.advance();
+		}
+	}
+	///Algorithm Mode1/00 ([S0]->[S1]->[P0]->[P1])
+	protected void updateChannelM100(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			operators[opOffset].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	///Dummy algorithm for combined channels
+	protected void updateChannelMD(int chNum, size_t length) @nogc pure nothrow {
+
+	}
+	/**
+	Algorithm Mode1/10
+	[S0]\
+    	 ->[P0]->[P1]->
+	[S1]/
+	*/
+	protected void updateChannelM110(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			operators[opOffset].input = operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode1/01
+	[S0]->[S1]->[P0]->
+            	[P1]->
+	*/
+	protected void updateChannelM101(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			operators[opOffset].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			//operators[opOffset + 1].input = operators[opOffset].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode1/11
+	[S0]\
+    	 ->[P0]->
+	[S1]/  [P1]->
+	*/
+	protected void updateChannelM111(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			operators[opOffset].input = operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			//operators[opOffset + 1].input = operators[opOffset].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode2/00
+	[S0]->[S1]\
+	           ->[P1]->
+    	  [P0]/
+	*/
+	protected void updateChannelM200(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			//operators[opOffset].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset].output_0 + operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode2/10
+	[S0]\
+	[S1]-->[P1]->
+	[P0]/
+	*/
+	protected void updateChannelM210(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			//operators[opOffset].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset].output_0 + operators[opOffset + 17].output_0 + 
+					operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode2/01
+	          /[P0]->
+	[S0]->[S1]
+    	      \[P1]->
+	*/
+	protected void updateChannelM201(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			operators[opOffset].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode2/11
+	[S0]\ /[P0]->
+	     -
+	[S1]/ \[P1]->
+	*/
+	protected void updateChannelM211(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			operators[opOffset].input = operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode3/00
+	[S0]->[S1]->
+	[P0]->[P1]->
+	*/
+	protected void updateChannelM300(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			//operators[opOffset].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode3/10
+	      [S0]->
+    	  [S1]->
+	[P0]->[P1]->
+	*/
+	protected void updateChannelM310(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			//operators[opOffset].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
+					operators[opOffset + 16].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode3/01
+	    />[S1]->
+	[S0]->[P0]->
+    	\>[P1]->
+	*/
+	protected void updateChannelM301(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			operators[opOffset].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
+					operators[opOffset + 17].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
+		}
+	}
+	/**
+	Algorithm Mode3/11
+	[S0]->
+	[S1]->
+	[P0]->
+	[P1]->
+	*/
+	protected void updateChannelM311(int chNum, size_t length) @nogc pure nothrow {
+		mixin(CHNL_UPDATE_CONSTS);
+		mixin(CHNL_UPDATE_CONSTS0);
+		for (size_t i ; i < length ; i++) {
+			mixin(CHNL_UPDATE_CONSTS_CYCL);
+			mixin(CHNL_UPDATE_CONSTS_CYCL0);
+			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			operators[opOffset].input = operators[opOffset + 17].output_0;
+			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			operators[opOffset + 1].input = operators[opOffset].output_0;
+			updateOperator(operators[opOffset + 1],aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			//const int outSum = operators[opOffset + 1].output_0;
+			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset].output_0 +
+					operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0);
+			mixin(CHNL_UPDATE_MIX);
+			channels[chNum].eeg.advance();
+			channels[chNum + 8].eeg.advance();
 		}
 	}
 }

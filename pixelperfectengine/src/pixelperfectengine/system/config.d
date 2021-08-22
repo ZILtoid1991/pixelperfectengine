@@ -66,6 +66,8 @@ public class ConfigurationProfile {
 	public string	audioDriver;	///Audio driver, null for auto
 	public string	audioDevice;	///Audio device, null for auto
 	public int		audioFrequency;	///Audio sampling frequency
+	public int		audioBufferLen;	///Audio buffer length
+	public int		audioFrameLen;	///Audio frame length
 	public int		threads;		///Rendering threads (kinda deprecated)
 	public string 	screenMode;		///Graphics screen mode
 	public string	resolution;		///Resolution, or window size in windowed mode

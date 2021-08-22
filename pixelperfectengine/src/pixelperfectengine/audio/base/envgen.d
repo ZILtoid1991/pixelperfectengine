@@ -13,7 +13,7 @@ import std.math : sqrt;
 /**
  * ADSR Envelop generator struct.
  *
- * Uses integer arithmetics for speed.
+ * Uses floating-point arithmetics, since most targets will use that.
  * Shaping is done through the shpF() and shp() functions. A 0.5 value should return a mostly linear output, and a
  * 0.25 an "audio-grade logarithmic" for volume, but since the calculation is optimized for speed rather than accuracy, 
  * there will be imperfections.
@@ -29,36 +29,35 @@ public struct ADSREnvelopGenerator {
 		Sustain,
 		Release,
 	}
-	//Note: These values have a max value of 0xFF_FF_FF, save for sustain rate, which can be negative. 
+	//Note: These values have a max value of 1.0, save for sustain rate, which can be negative. 
 	//Decay and sustain rates are dependent on sustain level, so they sould be adjusted accordingly if timings of
 	//these must be kept constant.
-	public uint			attackRate = 0xFF_FF_FF;	///Sets how long the attack phase will last (less = longer)
-	public uint			decayRate;		///Sets how long the decay phase will last (less = longer)
-	public uint			sustainLevel = 0xFF_FF_FF;	///Sets the level of sustain.
-	public int			sustainControl;	///Controls how the sustain level will change
-	public uint			releaseRate = 0xFF_FF_FF;	///Sets how long the release phase will last (less = longer)
+	public double		attackRate = 1.0;	///Sets how long the attack phase will last (less = longer)
+	public double		decayRate = 0.0;	///Sets how long the decay phase will last (less = longer)
+	public double		sustainLevel = 1.0;	///Sets the level of sustain.
+	public double		sustainControl = 0.0;///Controls how the sustain level will change (between -1.0 and 1.0)
+	public double		releaseRate = 1.0;	///Sets how long the release phase will last (less = longer)
 	
 	//mostly internal status values
+	protected double	counter;		///The current position of the counter + unshaped output
 	protected ubyte		currStage;		///The current stage of the envelop generator
 	protected bool		_keyState;		///If key is on, then it's set to true
 	protected bool		_isRunning;		///If set, then the envelop is running
 	public bool			isPercussive;	///If true, then the sustain stage is skipped
-	protected int		counter;		///The current position of the counter + unshaped output
-	public static immutable int maxOutput = 0xFF_FF_FF;///The maximum possible output of the envelop generator
-	public static immutable int minOutput = 0;///The minimum possible output of the envelop generator.
-	protected static immutable double outConv = 1.0 / cast(double)maxOutput;///Reciprocal for output conversion
+	public static immutable double maxOutput = 1.0;///The maximum possible output of the envelop generator
+	public static immutable double minOutput = 0.0;///The minimum possible output of the envelop generator.
 	/**
 	 * Advances the main counter by one amount.
 	 *
 	 * Returns the output.
 	 */
-	public int advance() @nogc @safe pure nothrow {
+	public double advance() @nogc @safe pure nothrow {
 		final switch (currStage) with (Stage) {
 			case Off: break;
 			case Attack:
 				counter +=attackRate;
-				if (counter >= 0xFF_FF_FF) {
-					counter = 0xFF_FF_FF;
+				if (counter >= maxOutput) {
+					counter = maxOutput;
 					currStage = Stage.Decay;
 				}
 				break;
@@ -71,18 +70,18 @@ public struct ADSREnvelopGenerator {
 				break;
 			case Sustain:
 				counter -= sustainControl;
-				if (counter <= 0) {
-					counter = 0;
+				if (counter <= minOutput) {
+					counter = minOutput;
 					currStage = Stage.Off;
-				} else if (counter >= 0xFF_FF_FF) {
-					counter = 0xFF_FF_FF;
+				} else if (counter >= maxOutput) {
+					counter = maxOutput;
 					currStage = Stage.Off;
 				}
 				break;
 			case Release:
 				counter -= releaseRate;
-				if (counter <= 0) {
-					counter = 0;
+				if (counter <= minOutput) {
+					counter = minOutput;
 					currStage = Stage.Off;
 				}
 				break;
@@ -108,13 +107,9 @@ public struct ADSREnvelopGenerator {
 	public ubyte position() @nogc @safe pure nothrow const {
 		return currStage;
 	}
-	///Returns the current output
-	public int output() @nogc @safe pure nothrow const {
-		return counter;
-	}
 	///Returns the current output as a floating-point value, between 0.0 and 1.0
-	public double outputF() @nogc @safe pure nothrow const {
-		return counter * outConv;
+	public double output() @nogc @safe pure nothrow const {
+		return counter;
 	}
 	///Returns true if the envelop generator is running
 	public bool isRunning() @nogc @safe pure nothrow const {
@@ -126,15 +121,13 @@ public struct ADSREnvelopGenerator {
 	}
 	///Changes the shape of the output using optimized mathematics
 	///Output is returned as a floating-point value between 0.0 and 1.0
-	public double shpF(double g) @nogc @safe pure nothrow const {
-		const double outF = counter * outConv;
-		return (sqrt(sqrt(outF)) * g) + (outF * outF * outF * outF * (1.0 - g));
+	public double shp(double g) @nogc @safe pure nothrow const {
+		//return (sqrt(sqrt(outF)) * g) + (outF * outF * outF * outF * (1.0 - g));
+		const double outL = counter * counter * counter * counter;
+		const double outH = counter + (counter - outL);
+		return (outL * g) + (outH * (1.0 - g));
 	}
-	///Changes the shape of the output using optimized mathematics
-	///Output is returned as an integer value between 0 and `maxOutput`.
-	public int shp(double g) @nogc @safe pure nothrow const {
-		return cast(int)(shpF(g) * maxOutput);
-	}
+	
 }
 /**
  * Calculates the rate for an envelop parameter for a given amount of time.
@@ -146,7 +139,8 @@ public struct ADSREnvelopGenerator {
  *
  * Note: The high and low values must be kept in order even in case of an ascending stage.
  */
-public uint calculateRate(double time, int freq, uint high = 0xFF_FF_FF, uint low = 0) @nogc @safe pure nothrow {
-	double result = cast(double)(high - low) / (freq * time);
-	return cast(uint)result;
+public double calculateRate(double time, int freq, double high = ADSREnvelopGenerator.maxOutput, 
+		double low = ADSREnvelopGenerator.minOutput) @nogc @safe pure nothrow {
+	return (high - low) / (freq * time);
+	
 }
