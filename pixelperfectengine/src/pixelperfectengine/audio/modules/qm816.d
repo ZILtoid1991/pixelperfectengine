@@ -171,18 +171,19 @@ public class QM816 : AudioModule {
 		enum OpCtrlFlags {
 			WavetableSelect	=	127,		///Wavetable select flags
 			FBMode			=	1 << 7,		///Feedback mode (L: After Envelop Generator, H: Before Envelop Generator)
-			ALFOAssign		=	1 << 8,		///Assign Amplitude LFO to output level
-			VelOLAssign		=	1 << 9,		///Assign velocity to output level
-			VelFBAssign		=	1 << 10,	///Assign velocity to feedback level
-			VelAtkAssign	=	1 << 11,	///Assign velocity to attack time
-			VelSusAssign	=	1 << 12,	///Assign Velocity to sustain level
-			VelAtkShp		=	1 << 13,	///Assign velocity to attack shape
-			VelRelShp		=	1 << 14,	///Assign velocity to release shape
-			VelNegative		=	1 << 15,	///Invert velocity control
-			MWOLAssign		=	1 << 16,	///Assign modulation wheel to output level
-			MWFBAssign		=	1 << 17,	///Assign modulation wheel to feedback level
-			EEGFBAssign		=	1 << 18,	///Assign extra Envelop Generator to feedback
-			EGRelAdaptive	=	1 << 19,	///Adaptive release time based on current output level
+			FBNeg			=	1 << 8,		///Feedback mode (L: Positive, H: Negative)
+			ALFOAssign		=	1 << 9,		///Assign Amplitude LFO to output level
+			VelOLAssign		=	1 << 10,	///Assign velocity to output level
+			VelFBAssign		=	1 << 11,	///Assign velocity to feedback level
+			VelAtkAssign	=	1 << 12,	///Assign velocity to attack time
+			VelSusAssign	=	1 << 13,	///Assign Velocity to sustain level
+			VelAtkShp		=	1 << 14,	///Assign velocity to attack shape
+			VelRelShp		=	1 << 15,	///Assign velocity to release shape
+			VelNegative		=	1 << 16,	///Invert velocity control
+			MWOLAssign		=	1 << 17,	///Assign modulation wheel to output level
+			MWFBAssign		=	1 << 18,	///Assign modulation wheel to feedback level
+			EEGFBAssign		=	1 << 19,	///Assign extra Envelop Generator to feedback
+			EGRelAdaptive	=	1 << 20,	///Adaptive release time based on current output level
 		}
 		///Attack time control (between 0 and 127)
 		ubyte			atk;
@@ -987,6 +988,7 @@ public class QM816 : AudioModule {
 				(op.opCtrl & Operator.OpCtrlFlags.EEGFBAssign ? eegIn : 1.0) * 
 				(op.opCtrl & Operator.OpCtrlFlags.VelFBAssign ? vel : 1.0) *
 				(op.opCtrl & Operator.OpCtrlFlags.MWFBAssign ? mw : 1.0));
+		op.feedback *= op.opCtrl & Operator.OpCtrlFlags.FBNeg ? -1 : 1;
 		op.output_0 = cast(int)(out1 * op.outL * 
 				(op.opCtrl & Operator.OpCtrlFlags.VelOLAssign ? vel : 1.0) *
 				(op.opCtrl & Operator.OpCtrlFlags.MWOLAssign ? mw : 1.0) * 
