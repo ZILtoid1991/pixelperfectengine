@@ -2,7 +2,7 @@
 
 * 16 channels consisting of two operators (oscillator + envelop generator) and one extra envelop generator. Channels can be individually paired up for more complex tones and algorithms (12), at the cost of poliphony (8, if every channel is paired)
 * Two LFOs, one for pitch control, one for amplitude.
-* 4 outputs. One pair for main stereo out, and two individual mono auxiliary outputs for effect sed, etc.
+* 4 outputs. One pair for main stereo out, and two individual mono auxiliary outputs for effect send, etc. Each output has a 12db/o low-pass filter to either remove some of the aliasing artifacts, or to even use them for improvised substractive synthesis
 
 # Operator
 
@@ -26,27 +26,45 @@
     |  --------------- |[ADSREnvGen]
     |------------------|
 ```
-## local variables
+## operator controllers
 
-* `wavetable`: the selected wavetable. Each wavetable is 1024 long, and can have values between 0 and 4095. There are 128 wavetables, although many may be all zeroes or duplicates. Wavetables are not preserved during preset dumps, instead it's kept in a `*.wav` file, which the user must preserve alongside with the preset dump file.
-* `waveform`: ubyte, between 0 and 127. Selects the waveform for the given operator. Controlled by cc70 on O0, and cc75 on O1.
-* `atk`: ubyte, between 0 and 127. Selects a predefined attack time, and it'll be applied to the envelop generator. Controlled by cc73 on O0, and cc78 on O1.
-* `dec`: ubyte, between 0 and 127. Selects a predefined decay time (attack time * 3), and it'll be applied to the envelop generator. Controlled by cc74 on O0, and cc79 on O1.
-* `rel`: ubyte, between 0 and 127. Selects a predefined release time (attack time * 3), and it'll be applied to the envelop generator. Controlled by cc74 on O0, and cc79 on O1.
-* `sus`: uint. Sets the sustain level. Controlled by cc16 on O0, and cc24 on O1. [m2]
-* `susC`: int. Controls how the envelop will behave during the sustain phase, with the lowest value enabling the percussive mode of the envelope generator. Controlled by cc81 on O0, and cc83 on O1.
-* `outLevel`: double. Sets the output level of the operator. Converted internally to a logarithmic scale. Controlled by cc17 on O0, and cc25 on O1. [m2]
-* `fbAmount`: ubyte, between 0 and 255. Sets the feedback amount of the operator. Converted internally to a logarithmic scale. Controlled by cc71 on O0, and cc76 on O1. [m2]
+Note: unregistered parameter bank 0 is belonging to operator 0 and bank 1 is belonging to operator 1. Single-byte only parameters only use the top 7 bits of 32 bit control change commands of MIDI2.0.
+
+* `waveform`: Selects a waveform from the 128, externally loaded ones. The wavetable itself is a 16 bit table, with 1024 long waveforms. Controlled by either unregistered parameter 6 (single-byte only), or cc70(0)/cc75(1).
+* `atk`: Selects a predefined attack time, and it'll be applied to the envelop generator. Controlled by either unregistered parameter 1 (single-byte only), or cc73(0)/cc78.
+* `dec`: Selects a predefined decay time, and it'll be applied to the envelop generator. Controlled by either unregistered parameter 2 (single-byte only), or cc74(0)/cc79.
+* `rel`: Selects a predefined release time, and it'll be applied to the envelop generator. Controlled by either unregistered parameter 5 (single-byte only), or cc72(0)/cc77.
+* `sus`: Sets the sustain level. Controlled by either unregistered parameter 3, or cc16(0)/cc24(1).
+* `susC`: Controls how the envelop will behave during the sustain phase. 0 means the envelop is percussive, the moment the envelop reaches the sustain level it switches to release phase. 1-63 will choose a descending curve, 64 sets the sustain constant 65-127 will choose an ascending curve. Controlled by either unregistered parameter 4 (single-byte only), or by cc81(0)/cc83(1)
+* `outLevel`: Controls the output level of the operator. Controlled by either unregistered parameter 0, or cc17(0)/cc25(1)
+* `fbAmount`: Controls how much feedback the operator has. Controlled by either unregistered parameter 7, or cc71(0)/cc76(1)
 * `opCtrl`: ubyte. If bit 0 is set, feedback will be taken directly from the output of the oscillator, otherwise the envelop generator affected level will be used. If bit 1 is set, then the amplitude LFO will modify the output level of the operator. Bit 2 enables the velocity control of the output level, bit 3 is for the feedback level. Controlled by cc80 on O0, and cc82 on O1.
-* `shpA`: double, between 0.3 and 3.0. Controls the shape of the envelope during the attack curve. Controlled by cc18 on O0, and cc 26 on O1. [m2]
-* `shpB`: double, between 0.3 and 3.0. controls the shape of the envelope outside of the attack curve. Controlled by cc19 on O0, and cc27 on O1. [m2]
-* `tune`: uint. The most significant 7 bit set the amount of seminotes (+103 ; -24), the rest sets the amount of seminote upwards. On MIDI 1.0, cc20 tunes the operator coarsely, cc21 within a seminote, for O0. For O1, cc28 and cc29 do the same. In MIDI 2.0 mode, a single corase tune cc can more precisely tune the oscillators. [m2]
-
-Legend:
-
-* [m2]: Has extended precision with MIDI 2.0
+* `shpA`: Controls the shape of the envolop during the attack phase. 50% creates a mostly linear output. Controlled by either unregistered parameter 10, or cc18(0)/cc26(1).
+* `shpR`: Controls the shape of the envolop outside the attack phase. 50% creates a mostly linear output. Controlled by either unregistered parameter 10, or cc19(0)/cc27(1).
+* `tuneCor`: Sets the coarse tuning of the oscillator. The most significant 7 bits are on a whoe note basis, with the range of -24 to +103 semitones. The remaining bits tune up or down by a whole semitone. Controlled by unregistered parameter 8, or cc20(0)/cc28(1). Note on MIDI2.0: Control change here have enough precision to take care of fine tuning too.
+* `tuneFine`: Sets the fine tuning of the oscillator. Controlled by unregistered parameter 9, or cc21(0)/cc29(1).
+* `opCtrl`: Operator control flags. Controlled by unregistered parameter 15. See "Operator control flags" for further info.
 
 Note: cc0 through cc31 are 14 bit controllers if a second control change offsetted by 32 (cc32-63) is sent. 
+
+## Operator control flags
+
+Notation: [bit index in parameter settings]{bit index in the operator itself}
+
+* `FBMode`: Toggles the source of the feedback. L: After envelop generator, H: before envelop generator.[0]{7}
+* `FBNeg`: Inverts the feedback if set. [1]{8}
+* `ALFOAssign`: Assigns amplitude LFO to the operator output level control. [2]{9}
+* `VelOLAssign`: Assigns the velocity control parameter to the operator output level control. [3]{10}
+* `VelFBAssign`: Assigns the velocity control parameter to the feedback level control. [4]{11}
+* `VelAtkAssign`: Assigns the velocity control parameter to the attack time control. [5]{12}
+* `VelSusAssign`: Assigns the velocity control parameter to the sustain level control. [6]{13}
+* `VelAtkShp`: Assigns the velocity control parameter to the attack shape control. [7]{14}
+* `VelRelShp`: Assigns the velocity control parameter to the release shape control. [8]{15}
+* `VelAtkShp`: Assigns the velocity control parameter to the attack shape control. [9]{16}
+* `MWOLAssign`: Assigns the modulation wheel control parameter to the operator output level control. [10]{17}
+* `MWFBAssign`: Assigns the modulation wheel control parameter to the feedback control. [11]{18}
+* `EEGFBAssign`: Assigns the extra envelope to the feedback control. [12]{19}
+* `EGRelAdaptive`: Sets the release rate to be adaptive, and the time to be constant, when uning non-constant sustain levels. [13]{20}
 
 ## functions
 
