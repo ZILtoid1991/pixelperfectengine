@@ -60,7 +60,7 @@ Notation: [bit index in parameter settings]{bit index in the operator itself}
 * `VelSusAssign`: Assigns the velocity control parameter to the sustain level control. [6]{13}
 * `VelAtkShp`: Assigns the velocity control parameter to the attack shape control. [7]{14}
 * `VelRelShp`: Assigns the velocity control parameter to the release shape control. [8]{15}
-* `VelAtkShp`: Assigns the velocity control parameter to the attack shape control. [9]{16}
+* `VelNegative`: Inverts the velocity control for this operator. [9]{16}
 * `MWOLAssign`: Assigns the modulation wheel control parameter to the operator output level control. [10]{17}
 * `MWFBAssign`: Assigns the modulation wheel control parameter to the feedback control. [11]{18}
 * `EEGFBAssign`: Assigns the extra envelope to the feedback control. [12]{19}
