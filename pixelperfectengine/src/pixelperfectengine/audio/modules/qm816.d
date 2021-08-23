@@ -1005,18 +1005,32 @@ public class QM816 : AudioModule {
 				"channels[chNum].modwheelAmount : 1.0);" ~
 		"const float auxSendAmMW = (channels[chNum].chCtrl & Channel.ChCtrlFlags.MWAuxSendAssign ? chCtrls[chNum].modwheel *"~
 				"channels[chNum].modwheelAmount : 1.0);" ~
-		"const float masterVol = channels[chNum].masterVol * (channels[chNum].chCtrl & Channel.ChCtrlFlags.VelCtrlVolAssign" ~
-				"? chCtrls[chNum].velocity : 1.0);";
+		"const float velCh = (channels[chNum].chCtrl & Channel.ChCtrlFlags.VelCtrlReverse ? " ~ 
+				"1.0 - chCtrls[chNum].velocity : chCtrls[chNum].velocity);" ~
+		"const float velOP0 = operators[opOffset].opCtrl & Operator.OpCtrlFlags.VelNegative ?" ~
+				"1.0 - (chCtrls[chNum].velocity * operators[opOffset].velAm) :" ~ 
+				"chCtrls[chNum].velocity * operators[opOffset].velAm;" ~
+		"const float velOP1 = operators[opOffset + 1].opCtrl & Operator.OpCtrlFlags.VelNegative ?" ~
+				"1.0 - (chCtrls[chNum].velocity * operators[opOffset + 1].velAm) :" ~ 
+				"chCtrls[chNum].velocity * operators[opOffset + 1].velAm;" ~
+		"float masterVol = channels[chNum].masterVol * (channels[chNum].chCtrl & " ~
+				"Channel.ChCtrlFlags.VelCtrlVolAssign ? velCh : 1.0);";
 	///Macro for channel update constants that need to be calculated once per frame, for combined channels' second half
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS0 =
 		"const float aLFOOutMW0 = (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.MWALFOAssign ? " ~
-				"chCtrls[chNum + 8].modwheel * channels[chNum + 8].modwheelAmount : 1.0);" ~
+				"chCtrls[chNum].modwheel * channels[chNum + 8].modwheelAmount : 1.0);" ~
 		"const float auxSendAmMW0 = (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.MWAuxSendAssign ? " ~
-				"chCtrls[chNum + 8].modwheel * channels[chNum + 8].modwheelAmount : 1.0);" ~
-		"const float masterVol0 = channels[chNum + 8].masterVol *(channels[chNum + 8].chCtrl & " ~
-				" Channel.ChCtrlFlags.VelCtrlVolAssign ? chCtrls[chNum + 8].velocity : 1.0);";
-	
+				"chCtrls[chNum].modwheel * channels[chNum + 8].modwheelAmount : 1.0);" ~
+		"const float velCh0 = channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.VelCtrlReverse ? " ~ 
+				"1.0 - chCtrls[chNum].velocity : chCtrls[chNum].velocity;" ~
+		"const float velOS0 = operators[opOffset + 16].opCtrl & Operator.OpCtrlFlags.VelNegative ?" ~
+				"1.0 - (chCtrls[chNum].velocity * operators[opOffset + 16].velAm) :" ~ 
+				"chCtrls[chNum].velocity * operators[opOffset + 16].velAm;" ~
+		"const float velOS1 = operators[opOffset + 17].opCtrl & Operator.OpCtrlFlags.VelNegative ?" ~
+				"1.0 - (chCtrls[chNum].velocity * operators[opOffset + 17].velAm) :" ~ 
+				"chCtrls[chNum].velocity * operators[opOffset + 17].velAm;" ~
+		"masterVol *= (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.VelCtrlVolAssign ? velCh : 1.0);";
 	///Macro for channel update constants that need to be calculated for each cycle
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS_CYCL = 
@@ -1026,7 +1040,11 @@ public class QM816 : AudioModule {
 		"const float aLFOOut = channels[chNum].aLFOlevel * aLFOBuf[i] * aLFOOutMW *" ~
 				"(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGALFOAssign ? eegOut : 1.0);" ~
 		"const float auxSendAm = auxSendAmMW * (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGAuxSendAssign ? eegOut : " ~
-				" 1.0);";
+				"1.0);" ~
+		"float mB = channels[chNum].masterBal * (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGBalAssign ? " ~
+				"eegOut : 1.0) * (channels[chNum].chCtrl & Channel.ChCtrlFlags.ALFOBalAssign ? aLFOOut : 1.0);" ~ 
+		"float mV = masterVol * (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0) * " ~ 
+				"(channels[chNum].chCtrl & Channel.ChCtrlFlags.ALFOVolAssign ? aLFOOut : 1.0);";
 	
 	///Macro for channel update constants that need to be calculated for each cycle for combined channels' second half
 	///Kept in at one place to make updates easier and more consistent
@@ -1048,8 +1066,21 @@ public class QM816 : AudioModule {
 		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
 		"outlevels[2] = channels[chNum].auxSend0 * auxSendAm;" ~
 		"outlevels[3] = channels[chNum].auxSend1 * auxSendAm;" ~
-		"_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels * _mm_cvtepi32_ps(outSum));";
+		"_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *" ~ 
+		"		_mm_cvtepi32_ps(outSum));";
+	///Macro for output mixing in case of combo modes
+	static immutable string CHNL_UPDATE_MIX0 =
+		"__m128 outlevels;" ~
+		"outlevels[0] = masterVol * (1 - channels[chNum].masterBal) * " ~
+		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
+		"outlevels[1] = masterVol * (channels[chNum].masterBal) * " ~
+		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
+		"outlevels[2] = channels[chNum].auxSend0 * auxSendAm * auxSendAm0;" ~
+		"outlevels[3] = channels[chNum].auxSend1 * auxSendAm * auxSendAm0;" ~
+		"_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *" ~ 
+		"		_mm_cvtepi32_ps(outSum));";
 	
+
 	///Algorithm Mode 0/0 (Serial)
 	protected void updateChannelM00(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
