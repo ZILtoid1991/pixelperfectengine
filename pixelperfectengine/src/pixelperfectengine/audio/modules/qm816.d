@@ -148,14 +148,29 @@ public class QM816 : AudioModule {
 		int				input;
 		///Feedback register. Either out_0[n-1] or out[n-1] multiplied by feedback amount.
 		///The amount which the oscillator will be offsetted.
+		///Negative if inverted.
 		int				feedback;
 		///Output register.
 		///Not affected by either level or EG
 		int				output;
 		///Output level (between 0.0 and 1.0)
 		float			outL	=	1.0;
+		///Velocity to output level assignment
+		float			velToOutL=	0.0;
+		///Modulation wheel to output level assignment
+		float			mwToOutL=	0.0;
+		///Amplitude LFO to output level assignment
+		float			lfoToOutL=	0.0;
 		///Feedback level (between 0.0 and 1.0)
 		float			fbL		=	0.0;
+		///Velocity to feedback level assignment
+		float			velTofbL=	0.0;
+		///Modulation wheel to feedback level assignment
+		float			mwTofbL	=	0.0;
+		///Amplitude LFO to feedback level assignment
+		float			lfoTofbL=	0.0;
+		///Extra envelop generator to feedback level assignment
+		float			eegTofbL=	0.0;
 		///ADSR shaping parameter (for the attack phase)
 		float			shpA	=	0.5;
 		///ADSR shaping parameter (for the decay/release phase)
@@ -295,8 +310,6 @@ public class QM816 : AudioModule {
 		float			pitchBend;
 		///The note that is currently being played
 		ubyte			note;
-		///The current bank that is selected
-		ubyte			bank;
 	}
 	/**
 	Defines a preset.
@@ -976,23 +989,32 @@ public class QM816 : AudioModule {
 	}
 	///Updates an operator for a cycle
 	pragma(inline, true)
-	protected final void updateOperator(ref Operator op, const float alfoIn, const float eegIn, float vel, 
+	protected final void updateOperator(ref Operator op, const float alfoIn, const float eegIn, const float vel, 
 			const float mw) @nogc @safe pure nothrow {
 		op.output = wavetables[op.opCtrl & Operator.OpCtrlFlags.WavetableSelect][(op.pos>>20 + op.input>>4 + op.feedback>>3) 
 				& 0x3_FF];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA : op.shpR);
 		const double out0 = op.output;
-		const double out1 = out0 * egOut * (op.opCtrl & Operator.OpCtrlFlags.ALFOAssign ? alfoIn : 1.0);
-		vel = op.opCtrl & Operator.OpCtrlFlags.VelNegative ? 1.0 - vel : vel;
-		op.feedback = cast(int)((op.opCtrl & Operator.OpCtrlFlags.FBMode ? out0 : out1) * 
-				(op.opCtrl & Operator.OpCtrlFlags.EEGFBAssign ? eegIn : 1.0) * 
-				(op.opCtrl & Operator.OpCtrlFlags.VelFBAssign ? vel : 1.0) *
-				(op.opCtrl & Operator.OpCtrlFlags.MWFBAssign ? mw : 1.0));
-		op.feedback *= op.opCtrl & Operator.OpCtrlFlags.FBNeg ? -1 : 1;
-		op.output_0 = cast(int)(out1 * op.outL * 
-				(op.opCtrl & Operator.OpCtrlFlags.VelOLAssign ? vel : 1.0) *
-				(op.opCtrl & Operator.OpCtrlFlags.MWOLAssign ? mw : 1.0) * 
-				(op.opCtrl & Operator.OpCtrlFlags.ALFOAssign ? alfoIn : 1.0));
+		__m128 outCtrl, fbCtrl, chCtrl;
+		outCtrl[0] = op.velToOutL;
+		outCtrl[1] = op.mwToOutL;
+		outCtrl[2] = op.lfoToOutL;
+		fbCtrl[0] = op.velTofbL;
+		fbCtrl[1] = op.mwTofbL;
+		fbCtrl[2] = op.lfoTofbL;
+		fbCtrl[3] = op.eegTofbL;
+		chCtrl[0] = vel;
+		chCtrl[1] = mw;
+		chCtrl[2] = alfoIn;
+		chCtrl[3] = eegIn;
+		outCtrl = (outCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * outCtrl));
+		fbCtrl = (fbCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * fbCtrl));
+		const double out1 = out0 * egOut;
+		//vel = op.opCtrl & Operator.OpCtrlFlags.VelNegative ? 1.0 - vel : vel;
+		op.feedback = cast(int)((op.opCtrl & Operator.OpCtrlFlags.FBMode ? out0 : out1) * op.fbL * fbCtrl[0] * fbCtrl[1] * 
+				fbCtrl[2] * fbCtrl[3]);
+		//op.feedback *= op.opCtrl & Operator.OpCtrlFlags.FBNeg ? -1 : 1;
+		op.output_0 = cast(int)(out1 * op.outL * outCtrl[0] * outCtrl[1] * outCtrl[2]);
 		op.pos += op.step;
 		//op.input = 0;
 		op.eg.advance();

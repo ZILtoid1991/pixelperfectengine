@@ -68,7 +68,7 @@ Notation: [bit index in parameter settings]{bit index in the operator itself}
 
 ## functions
 
-out = wavetable[((step>>20) + in + fb) & 1023]
+out = wavetable[((step>>20) + (in>>4) + (fb>>3)) & 1023]
 out_a = (out * (amp + 1)) >> 12
 amp = (ADSREnvGen.shpI(ADSREnvGen.stage == attack ? shpA : shpR) * (outLevel/65536)^2 * 4096
 fb = ((fbMode ? out(n-1) : out_a(n-1)) * (fbAmp + 1)) >> 10
