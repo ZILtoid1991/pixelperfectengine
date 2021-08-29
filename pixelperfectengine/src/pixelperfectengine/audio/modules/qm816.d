@@ -8,6 +8,8 @@ import midi2.types.enums;
 
 import inteli.emmintrin;
 
+import std.math;
+
 /**
 QM816 - implements a Quadrature-Amplitude synthesizer. This technique was used in early 
 digital FM synths, since it allowed allowed a cheap implementation of the same thing as
@@ -68,8 +70,16 @@ public class QM816 : AudioModule {
 		TuneFine	=	9,
 		ShpA		=	10,
 		ShpR		=	11,
-		VelAm		=	12,
+		VelToLevel	=	12,
+		MWToLevel	=	13,
+		LFOToLevel	=	14,
 		OpCtrl		=	15,
+		VelToFB		=	16,
+		MWToFB		=	17,
+		LFOToFB		=	18,
+		EEGToFB		=	19,
+		VelToShpA	=	20,
+		VelToShpR	=	21,
 	}
 	/**
 	Defines channel parameter numbers, within the unregistered namespace.
@@ -79,22 +89,25 @@ public class QM816 : AudioModule {
 		Bal			=	1,
 		AuxSLA		=	2,
 		AuxSLB		=	3,
-		ALFO		=	4,
+		EEGDetune	=	4,
 		PLFO		=	5,
 		Attack		=	6,
 		Decay		=	7,
 		SusLevel	=	8,
 		SusCtrl		=	9,
 		Release		=	10,
-		EEGDetune	=	11,
-		ShpA		=	12,
-		ShpR		=	13,
-		EEGApmAm	=	14,
-		ModWheelAm	=	15,
-		VelAm		=	16,
-		ChCtrlL		=	20,
-		ChCtrlH		=	21,
-		
+		ShpA		=	11,
+		ShpR		=	12,
+		ChCtrl		=	16,
+		RingMod		=	17,
+		EEGToLeft	=	18,
+		EEGToRight	=	19,
+		EEGToAuxA	=	20,
+		EEGToAuxB	=	21,
+		LFOToLeft	=	18,
+		LFOToRight	=	19,
+		LFOToAuxA	=	20,
+		LFOToAuxB	=	21,
 	}
 	/**
 	Defines channel parameters within the registered namespace
@@ -155,28 +168,18 @@ public class QM816 : AudioModule {
 		int				output;
 		///Output level (between 0.0 and 1.0)
 		float			outL	=	1.0;
-		///Velocity to output level assignment
-		float			velToOutL=	0.0;
-		///Modulation wheel to output level assignment
-		float			mwToOutL=	0.0;
-		///Amplitude LFO to output level assignment
-		float			lfoToOutL=	0.0;
 		///Feedback level (between 0.0 and 1.0)
 		float			fbL		=	0.0;
-		///Velocity to feedback level assignment
-		float			velTofbL=	0.0;
-		///Modulation wheel to feedback level assignment
-		float			mwTofbL	=	0.0;
-		///Amplitude LFO to feedback level assignment
-		float			lfoTofbL=	0.0;
-		///Extra envelop generator to feedback level assignment
-		float			eegTofbL=	0.0;
-		///ADSR shaping parameter (for the attack phase)
-		float			shpA	=	0.5;
-		///ADSR shaping parameter (for the decay/release phase)
-		float			shpR	=	0.5;
-		///Velocity amount for operator
-		float			velAm	=	1.0;
+		///Output level controller assignment
+		///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: unused
+		__m128			outLCtrl=	__m128(0.0);
+		///Feedback level controller assignment
+		///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: Extra envelop generator
+		__m128			fbLCtrl	=	__m128(0.0);
+		///Live calculated out of shpA
+		float			shpA0	=	0.0;
+		///Live calculated out of shpR
+		float			shpR0	=	0.0;
 		///Output affected by EEG and level.
 		///Either used for audible output, or to modulate other operators
 		int				output_0;
@@ -187,18 +190,10 @@ public class QM816 : AudioModule {
 			WavetableSelect	=	127,		///Wavetable select flags
 			FBMode			=	1 << 7,		///Feedback mode (L: After Envelop Generator, H: Before Envelop Generator)
 			FBNeg			=	1 << 8,		///Feedback mode (L: Positive, H: Negative)
-			ALFOAssign		=	1 << 9,		///Assign Amplitude LFO to output level
-			VelOLAssign		=	1 << 10,	///Assign velocity to output level
-			VelFBAssign		=	1 << 11,	///Assign velocity to feedback level
-			VelAtkAssign	=	1 << 12,	///Assign velocity to attack time
-			VelSusAssign	=	1 << 13,	///Assign Velocity to sustain level
-			VelAtkShp		=	1 << 14,	///Assign velocity to attack shape
-			VelRelShp		=	1 << 15,	///Assign velocity to release shape
-			VelNegative		=	1 << 16,	///Invert velocity control
-			MWOLAssign		=	1 << 17,	///Assign modulation wheel to output level
-			MWFBAssign		=	1 << 18,	///Assign modulation wheel to feedback level
-			EEGFBAssign		=	1 << 19,	///Assign extra Envelop Generator to feedback
-			EGRelAdaptive	=	1 << 20,	///Adaptive release time based on current output level
+			MWNeg			=	1 << 9,		///Invert modulation wheel control
+			VelNeg			=	1 << 10,	///Invert velocity control
+			EGRelAdaptive	=	1 << 11,	///Adaptive release time based on current output level
+			FixedPitch		=	1 << 12,	///Enables fixed pitch mode
 		}
 		///Attack time control (between 0 and 127)
 		ubyte			atk;
@@ -212,6 +207,14 @@ public class QM816 : AudioModule {
 		///64: Constant
 		///65 - 127: Ascending over time
 		ubyte			susCC;
+		///ADSR shaping parameter (for the attack phase)
+		float			shpA	=	0.5;
+		///ADSR shaping parameter (for the decay/release phase)
+		float			shpR	=	0.5;
+		///Assigns velocity to shpA
+		float			shpAVel	=	0.0;
+		///Assigns velocity to shpR
+		float			shpRVel =	0.0;
 	}
 	/**
 	Defines channel common parameters.
@@ -233,8 +236,6 @@ public class QM816 : AudioModule {
 		uint			pitchBendSens;
 		///A-4 channel tuning in hertz.
 		float			chnlTun = 440.0;
-		///Amount of how much amplitude values must be affected by EEG
-		float			eegAmpAmount;
 		///Stores channel control flags.
 		uint			chCtrl;
 		///Defines channel control flags.
@@ -252,39 +253,33 @@ public class QM816 : AudioModule {
 			ComboMode3		=	0b0011,
 			///Used for testing combo mode.
 			ComboModeTest	=	ComboMode3,
-			EEGVolAssign	=	1<<2,	///Assigns EEG to channel volume
-			EEGBalAssign	=	1<<3,	///Assigns EEG to balance
-			EEGALFOAssign	=	1<<4,	///Assigns EEG to amplitude LFO level
-			EEGPLFOAssign	=	1<<5,	///Assigns EEG to pitch LFO level
-			EEGAuxSendAssign=	1<<6,	///Assigns EEG to aux send levels
-			ALFOVolAssign	=	1<<7,	///Assigns amplitude LFO to channel volume
-			ALFOBalAssign	=	1<<8,	///Assigns amplitude LFO to balance
-			ALFOAuxSendAssign=	1<<9,	///Assigns amplitude LFO to aux send levels
-			VelCtrlVolAssign=	1<<10,	///Assigns velocity control to channel volume
-			VelCtrlEEGDetAmA=	1<<11,	///Assigns velocity control to EEG detune amount
-			VelCtrlReverse	=	1<<12,	///Reverses the velocity control value
-			Algorithm		=	1<<13,	///Channel algorithm (H: Parallel, L: Series)
-			MWPLFOAssign	=	1<<14,	///Modulation wheel to pitch LFO assign
-			MWALFOAssign	=	1<<15,	///Modulation wheel to amplitude LFO assign
-			MWAuxSendAssign	=	1<<16,	///Modulation wheel to aux send assign
-
+			Algorithm		=	1<<2,	///Channel algorithm (H: Parallel, L: Series)
+			IndivOutChLev	=	1<<3,	///Enables the setting of individual output channel levels
+			LFOPan			=	1<<4,	///Enables LFO Panning
+			EEGPan			=	1<<5,	///Enables EEG Panning
+			MWToTrem		=	1<<6,	///Assigns modwheel to amplitude LFO
+			MWToVibr		=	1<<7,	///Assigns modwheel to pitch LFO
+			MWToAux			=	1<<8,	///Assigns modwheel to aux levels
 		}
 		///Master volume (0.0 to 1.0)
 		float			masterVol;
 		///Master balance (0.0 to 1.0)
 		float			masterBal;
-		///Aux send level 0
-		float			auxSend0;
-		///Aux send level 1
-		float			auxSend1;
-		///Amplitude LFO level
-		float			aLFOlevel;
+		///Calculated output level controls + aux send levels
+		///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
+		__m128			outLevels;
+		///EEG assign levels
+		///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
+		__m128			eegLevels;
+		///Amplitude LFO assign levels
+		///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
+		__m128			aLFOlevels;
+		///Ring modulation amount
+		///Only available on select algorithms
+		int				rmAmount;
 		///Pitch LFO level
 		float			pLFOlevel;
-		///Velocity amount
-		float			velAmount;
-		///Modulation wheel amount
-		float			modwheelAmount;
+		///Amplitude LFO to 
 		///Attack time control (between 0 and 127)
 		ubyte			atkX;
 		///Decay time control (between 0 and 127)
@@ -470,6 +465,9 @@ public class QM816 : AudioModule {
 	protected uint				pLFOPos;
 	///Stores PLFO rate
 	protected uint				pLFORate;
+	alias ChFun = void delegate(int chNum, size_t length) @nogc pure nothrow;
+	///Channel update delegates
+	protected ChFun[16]			chDeleg;
 	/**
 	Creates an instance of QM816
 	*/
@@ -658,6 +656,12 @@ public class QM816 : AudioModule {
 					}
 					break;
 				case OperatorParamNums.OpCtrl:
+					static if (is(T == uint)) {
+						operators[chNum].opCtrl = val;
+					} else static if (is(T == ubyte)) {
+						operators[chNum].opCtrl &= ~(byte.max<<7);
+						operators[chNum].opCtrl |= val<<7;
+					}
 					break;
 				case OperatorParamNums.Release:
 					static if (is(T == uint)) {
@@ -796,9 +800,9 @@ public class QM816 : AudioModule {
 						}
 					}
 					break;
-				case OperatorParamNums.VelAm:
+				case OperatorParamNums.VelToLevel:
 					static if (is(T == uint)) {
-						operators[chNum].velAm = cast(double)val / uint.max;
+						operators[chNum].outLCtrl[0] = cast(double)val / uint.max;
 					} else static if (is(T == ubyte)) {
 						if (type)
 							paramTemp[2] = val;
@@ -806,7 +810,143 @@ public class QM816 : AudioModule {
 							paramTemp[3] = val;
 						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
 							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].velAm = cast(double)(val32) / cast(double)(ushort.max>>2);
+							operators[chNum].outLCtrl[0] = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.MWToLevel:
+					static if (is(T == uint)) {
+						operators[chNum].outLCtrl[1] = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].outLCtrl[1] = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.LFOToLevel:
+					static if (is(T == uint)) {
+						operators[chNum].outLCtrl[2] = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].outLCtrl[2] = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.VelToFB:
+					static if (is(T == uint)) {
+						operators[chNum].fbLCtrl[0] = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].fbLCtrl[0] = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.MWToFB:
+					static if (is(T == uint)) {
+						operators[chNum].fbLCtrl[1] = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].fbLCtrl[1] = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.LFOToFB:
+					static if (is(T == uint)) {
+						operators[chNum].fbLCtrl[2] = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].fbLCtrl[2] = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.EEGToFB:
+					static if (is(T == uint)) {
+						operators[chNum].fbLCtrl[3] = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].fbLCtrl[3] = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.VelToShpA:
+					static if (is(T == uint)) {
+						operators[chNum].shpAVel = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].shpAVel = cast(double)(val32) / cast(double)(ushort.max>>2);
+						} else {		//Set temp for next command (assume MSB-LSB order)
+							paramNum[0] = paramTemp[0];
+							paramNum[1] = paramTemp[1];
+						}
+					}
+					break;
+				case OperatorParamNums.VelToShpR:
+					static if (is(T == uint)) {
+						operators[chNum].shpRVel = cast(double)val / uint.max;
+					} else static if (is(T == ubyte)) {
+						if (type)
+							paramTemp[2] = val;
+						else
+							paramTemp[3] = val;
+						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+							operators[chNum].shpRVel = cast(double)(val32) / cast(double)(ushort.max>>2);
 						} else {		//Set temp for next command (assume MSB-LSB order)
 							paramNum[0] = paramTemp[0];
 							paramNum[1] = paramTemp[1];
@@ -835,25 +975,159 @@ public class QM816 : AudioModule {
 				break;
 			case 2:			//Channel common values
 				switch (paramNum[0]){
-					case ChannelParamNums.ALFO: break;
-					case ChannelParamNums.Attack: break;
-					case ChannelParamNums.AuxSLA: break;
-					case ChannelParamNums.AuxSLB: break;
-					case ChannelParamNums.Bal: break;
-					case ChannelParamNums.ChCtrlH: break;
-					case ChannelParamNums.ChCtrlL: break;
-					case ChannelParamNums.Decay: break;
-					case ChannelParamNums.EEGApmAm: break;
+					//case ChannelParamNums.ALFO: break;
+					case ChannelParamNums.Attack:
+						static if (is(T == uint)) {
+							channels[chNum].atkX = cast(ubyte)(val >> 25);
+						} else static if (is(T == ubyte)) {
+							channels[chNum].atkX = val;
+						}
+						if (channels[chNum].atkX) {
+							channels[chNum].eeg.attackRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].atkX], sampleRate);
+						} else {
+							channels[chNum].eeg.attackRate = 1.0;
+						}
+						break;
+					case ChannelParamNums.AuxSLA:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].outLevels[2] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].outLevels[2] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.AuxSLB: 
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].outLevels[2] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].outLevels[2] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.Bal: 
+						static if (is(T == uint)) {
+							channels[chNum].masterBal = cast(double)val / uint.max;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								channels[chNum].masterBal = cast(double)(val32) / cast(double)(ushort.max>>2);
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+								return;
+							}
+						}
+						if (channels[chNum].chCtrl & Channel.ChCtrlFlags.IndivOutChLev) {
+							channels[chNum].outLevels[1] = channels[chNum].masterBal * channels[chNum].masterBal;
+						} else {
+							channels[chNum].outLevels[0] = channels[chNum].masterVol - channels[chNum].masterBal;
+							channels[chNum].outLevels[1] = channels[chNum].masterVol - (1.0 - channels[chNum].masterBal);
+						}
+						break;
+					case ChannelParamNums.ChCtrl:
+						static if (is(T == uint)) {
+							channels[chNum].chCtrl = val;
+						} else static if (is(T == ubyte)) {
+							if (type) {
+								channels[chNum].chCtrl &= ~(byte.max<<7);
+								channels[chNum].chCtrl |= val<<7;
+							} else {
+								channels[chNum].chCtrl &= ~(cast(uint)byte.max);
+								channels[chNum].chCtrl |= val;
+							}
+						}
+						break;
+					//case ChannelParamNums.ChCtrlL: break;
+					case ChannelParamNums.Decay:
+						static if (is(T == uint)) {
+							channels[chNum].decX = cast(ubyte)(val >> 25);
+						} else static if (is(T == ubyte)) {
+							channels[chNum].decX = val;
+						}
+						if (channels[chNum].decX) {
+							channels[chNum].eeg.decayRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].decX] * 2, sampleRate);
+						} else {
+							channels[chNum].eeg.decayRate = 1.0;
+						}
+						break;
 					case ChannelParamNums.EEGDetune: break;
-					case ChannelParamNums.MasterVol: break;
-					case ChannelParamNums.ModWheelAm: break;
+					case ChannelParamNums.MasterVol: 
+						break;
 					case ChannelParamNums.PLFO: break;
-					case ChannelParamNums.Release: break;
-					case ChannelParamNums.ShpA: break;
-					case ChannelParamNums.ShpR: break;
+					case ChannelParamNums.Release: 
+						static if (is(T == uint)) {
+							channels[chNum].relX = cast(ubyte)(val >> 25);
+						} else static if (is(T == ubyte)) {
+							channels[chNum].relX = val;
+						}
+						if (channels[chNum].relX) {
+							channels[chNum].eeg.releaseRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].relX] * 2, sampleRate);
+						} else {
+							channels[chNum].eeg.releaseRate = 1.0;
+						}
+						break;
+					case ChannelParamNums.ShpA:
+						static if (is(T == uint)) {
+							channels[chNum].shpAX = cast(double)val / uint.max;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								channels[chNum].shpAX = cast(double)(val32) / cast(double)(ushort.max>>2);
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.ShpR:
+						static if (is(T == uint)) {
+							channels[chNum].shpRX = cast(double)val / uint.max;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								channels[chNum].shpRX = cast(double)(val32) / cast(double)(ushort.max>>2);
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
 					case ChannelParamNums.SusCtrl: break;
 					case ChannelParamNums.SusLevel: break;
-					case ChannelParamNums.VelAm: break;
 					default:
 						break;
 				}
@@ -988,27 +1262,15 @@ public class QM816 : AudioModule {
 		}
 	}
 	///Updates an operator for a cycle
+	///chCtrl index notation: 0: velocity, 1: modulation wheel, 2: Amplitude LFO, 3: Extra Envelop Generator
 	pragma(inline, true)
-	protected final void updateOperator(ref Operator op, const float alfoIn, const float eegIn, const float vel, 
-			const float mw) @nogc @safe pure nothrow {
+	protected final void updateOperator(ref Operator op, __m128 chCtrl) @nogc @safe pure nothrow {
 		op.output = wavetables[op.opCtrl & Operator.OpCtrlFlags.WavetableSelect][(op.pos>>20 + op.input>>4 + op.feedback>>3) 
 				& 0x3_FF];
-		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA : op.shpR);
+		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		const double out0 = op.output;
-		__m128 outCtrl, fbCtrl, chCtrl;
-		outCtrl[0] = op.velToOutL;
-		outCtrl[1] = op.mwToOutL;
-		outCtrl[2] = op.lfoToOutL;
-		fbCtrl[0] = op.velTofbL;
-		fbCtrl[1] = op.mwTofbL;
-		fbCtrl[2] = op.lfoTofbL;
-		fbCtrl[3] = op.eegTofbL;
-		chCtrl[0] = vel;
-		chCtrl[1] = mw;
-		chCtrl[2] = alfoIn;
-		chCtrl[3] = eegIn;
-		outCtrl = (outCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * outCtrl));
-		fbCtrl = (fbCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * fbCtrl));
+		__m128 outCtrl = (op.outLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.outLCtrl));
+		__m128 fbCtrl = (op.fbLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.fbLCtrl));
 		const double out1 = out0 * egOut;
 		//vel = op.opCtrl & Operator.OpCtrlFlags.VelNegative ? 1.0 - vel : vel;
 		op.feedback = cast(int)((op.opCtrl & Operator.OpCtrlFlags.FBMode ? out0 : out1) * op.fbL * fbCtrl[0] * fbCtrl[1] * 
@@ -1022,85 +1284,84 @@ public class QM816 : AudioModule {
 	///Macro for channel update constants that need to be calculated once per frame
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS =
-		"const int opOffset = chNum * 2;\n" ~
-		"const float aLFOOutMW = (channels[chNum].chCtrl & Channel.ChCtrlFlags.MWALFOAssign ? chCtrls[chNum].modwheel * " ~
-				"channels[chNum].modwheelAmount : 1.0);" ~
-		"const float auxSendAmMW = (channels[chNum].chCtrl & Channel.ChCtrlFlags.MWAuxSendAssign ? chCtrls[chNum].modwheel *"~
-				"channels[chNum].modwheelAmount : 1.0);" ~
-		"const float velCh = (channels[chNum].chCtrl & Channel.ChCtrlFlags.VelCtrlReverse ? " ~ 
-				"1.0 - chCtrls[chNum].velocity : chCtrls[chNum].velocity);" ~
-		"const float velOP0 = operators[opOffset].opCtrl & Operator.OpCtrlFlags.VelNegative ?" ~
-				"1.0 - (chCtrls[chNum].velocity * operators[opOffset].velAm) :" ~ 
-				"chCtrls[chNum].velocity * operators[opOffset].velAm;" ~
-		"const float velOP1 = operators[opOffset + 1].opCtrl & Operator.OpCtrlFlags.VelNegative ?" ~
-				"1.0 - (chCtrls[chNum].velocity * operators[opOffset + 1].velAm) :" ~ 
-				"chCtrls[chNum].velocity * operators[opOffset + 1].velAm;" ~
-		"float masterVol = channels[chNum].masterVol * (channels[chNum].chCtrl & " ~
-				"Channel.ChCtrlFlags.VelCtrlVolAssign ? velCh : 1.0);";
+		`const int opOffset = chNum * 2;` ~
+		`__m128 aLFOOutMW = __m128(channels[chNum].chCtrl & Channel.ChCtrlFlags.MWToTrem ? chCtrls[chNum].modwheel : 1.0);` ~
+		`const float auxSendAmMW = (channels[chNum].chCtrl & Channel.ChCtrlFlags.MWToAux ? chCtrls[chNum].modwheel : 1.0);` ~
+		`__m128 opCtrl0, opCtrl1, mwAuxCtrl;` ~
+		`opCtrl0[0] = operators[opOffset].opCtrl & Operator.OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : ` ~
+				`chCtrls[chNum].velocity;` ~
+		`opCtrl1[0] = operators[opOffset + 1].opCtrl & Operator.OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : ` ~
+				`chCtrls[chNum].velocity;` ~
+		`opCtrl0[1] = operators[opOffset].opCtrl & Operator.OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : ` ~
+				`chCtrls[chNum].modwheel;` ~
+		`opCtrl1[1] = operators[opOffset + 1].opCtrl & Operator.OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : ` ~
+				`chCtrls[chNum].modwheel;` ~
+		`mwAuxCtrl[0] = 1.0;` ~
+		`mwAuxCtrl[1] = 1.0;` ~
+		`mwAuxCtrl[2] = auxSendAmMW;` ~
+		`mwAuxCtrl[3] = auxSendAmMW;` ~
+		`const float lfopan = (channels[chNum].chCtrl & Channel.ChCtrlFlags.LFOPan ? 1.0 : 0);` ~
+		`const float eegpan = (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGPan ? 1.0 : 0);`
+		;
 	///Macro for channel update constants that need to be calculated once per frame, for combined channels' second half
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS0 =
-		"const float aLFOOutMW0 = (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.MWALFOAssign ? " ~
-				"chCtrls[chNum].modwheel * channels[chNum + 8].modwheelAmount : 1.0);" ~
-		"const float auxSendAmMW0 = (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.MWAuxSendAssign ? " ~
-				"chCtrls[chNum].modwheel * channels[chNum + 8].modwheelAmount : 1.0);" ~
-		"const float velCh0 = channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.VelCtrlReverse ? " ~ 
-				"1.0 - chCtrls[chNum].velocity : chCtrls[chNum].velocity;" ~
-		"const float velOS0 = operators[opOffset + 16].opCtrl & Operator.OpCtrlFlags.VelNegative ?" ~
-				"1.0 - (chCtrls[chNum].velocity * operators[opOffset + 16].velAm) :" ~ 
-				"chCtrls[chNum].velocity * operators[opOffset + 16].velAm;" ~
-		"const float velOS1 = operators[opOffset + 17].opCtrl & Operator.OpCtrlFlags.VelNegative ?" ~
-				"1.0 - (chCtrls[chNum].velocity * operators[opOffset + 17].velAm) :" ~ 
-				"chCtrls[chNum].velocity * operators[opOffset + 17].velAm;" ~
-		"masterVol *= (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.VelCtrlVolAssign ? velCh : 1.0);";
+		`__m128 opCtrl2, opCtrl3;` ~
+		`opCtrl2[0] = operators[opOffset + 16].opCtrl & Operator.OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : ` ~
+				`chCtrls[chNum].velocity;` ~
+		`opCtrl3[0] = operators[opOffset + 17].opCtrl & Operator.OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : ` ~
+				`chCtrls[chNum].velocity;` ~
+		`opCtrl2[1] = operators[opOffset + 16].opCtrl & Operator.OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : ` ~
+				`chCtrls[chNum].modwheel;` ~
+		`opCtrl3[1] = operators[opOffset + 17].opCtrl & Operator.OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : ` ~
+				`chCtrls[chNum].modwheel;` ~
+		`const float eegpan0 = (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.EEGPan ? 1.0 : 0);`
+		;
 	///Macro for channel update constants that need to be calculated for each cycle
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS_CYCL = 
-		"const float eegOut = channels[chNum].eeg.shp(channels[chNum].eeg.position == ADSREnvelopGenerator.Stage.Attack ? " ~
-				"channels[chNum].shpAX : channels[chNum].shpRX) * channels[chNum].eegAmpAmount + " ~
-				"(1.0 - channels[chNum].eegAmpAmount);" ~
-		"const float aLFOOut = channels[chNum].aLFOlevel * aLFOBuf[i] * aLFOOutMW *" ~
-				"(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGALFOAssign ? eegOut : 1.0);" ~
-		"const float auxSendAm = auxSendAmMW * (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGAuxSendAssign ? eegOut : " ~
-				"1.0);" ~
-		"float mB = channels[chNum].masterBal * (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGBalAssign ? " ~
-				"eegOut : 1.0) * (channels[chNum].chCtrl & Channel.ChCtrlFlags.ALFOBalAssign ? aLFOOut : 1.0);" ~ 
-		"float mV = masterVol * (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0) * " ~ 
-				"(channels[chNum].chCtrl & Channel.ChCtrlFlags.ALFOVolAssign ? aLFOOut : 1.0);";
+		`const float eegOut = channels[chNum].eeg.shp(channels[chNum].eeg.position == ADSREnvelopGenerator.Stage.Attack ? ` ~
+				`channels[chNum].shpAX : channels[chNum].shpRX);` ~
+		`__m128 eegToMast = __m128(eegOut), lfoToMast = __m128(aLFOBuf[i]);` ~
+		`eegToMast[0] = abs(eegpan - eegToMast[0]);` ~
+		`lfoToMast[0] = abs(lfopan - lfoToMast[0]);` ~
+		`opCtrl0[2] = aLFOBuf[i];` ~
+		`opCtrl1[2] = aLFOBuf[i];` ~
+		`opCtrl0[3] = eegOut;` ~
+		`opCtrl1[3] = eegOut;`
+		;
 	
 	///Macro for channel update constants that need to be calculated for each cycle for combined channels' second half
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS_CYCL0 = 
-		"const float eegOut0 = channels[chNum + 8].eeg.shp(channels[chNum + 8].eeg.position == " ~
-				" ADSREnvelopGenerator.Stage.Attack ? channels[chNum + 8].shpAX : channels[chNum + 8].shpRX) * " ~ 
-				" channels[chNum + 8].eegAmpAmount + (1.0 - channels[chNum + 8].eegAmpAmount);" ~
-		"const float aLFOOut0 = channels[chNum + 8].aLFOlevel * aLFOBuf[i] * aLFOOutMW *" ~
-				"(channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.EEGALFOAssign ? eegOut : 1.0);" ~
-		"const float auxSendAm0 = auxSendAmMW * (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.EEGAuxSendAssign ? " ~ 
-				"eegOut : 1.0);";
-	
+		`const float eegOut0 = channels[chNum + 8].eeg.shp(channels[chNum + 8].eeg.position == ` ~
+				`ADSREnvelopGenerator.Stage.Attack ? channels[chNum + 8].shpAX : channels[chNum + 8].shpRX);` ~
+		`__m128 eegToMast0 = __m128(eegOut0);` ~
+		`eegToMast0[0] = abs(eegpan0 - eegToMast0[0]);` ~
+		`opCtrl2[2] = aLFOBuf[i];` ~
+		`opCtrl3[2] = aLFOBuf[i];` ~
+		`opCtrl2[3] = eegOut0;` ~
+		`opCtrl3[3] = eegOut0;`
+		;
+			
 	///Macro for output mixing
 	static immutable string CHNL_UPDATE_MIX =
-		"__m128 outlevels;" ~
-		"outlevels[0] = masterVol * (1 - channels[chNum].masterBal) * " ~
-		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
-		"outlevels[1] = masterVol * (channels[chNum].masterBal) * " ~
-		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
-		"outlevels[2] = channels[chNum].auxSend0 * auxSendAm;" ~
-		"outlevels[3] = channels[chNum].auxSend1 * auxSendAm;" ~
+		"__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;" ~
+		"outlevels *= (channels[chNum].eegLevels * eegToMast) + (__m128(1.0) - (__m128(1.0) * channels[chNum].eegLevels));" ~
+		"outlevels *= (channels[chNum].aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * channels[chNum].aLFOlevels));"~
 		"_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *" ~ 
-		"		_mm_cvtepi32_ps(outSum));";
+		"		_mm_cvtepi32_ps(outSum));"
+		;
 	///Macro for output mixing in case of combo modes
 	static immutable string CHNL_UPDATE_MIX0 =
-		"__m128 outlevels;" ~
-		"outlevels[0] = masterVol * (1 - channels[chNum].masterBal) * " ~
-		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
-		"outlevels[1] = masterVol * (channels[chNum].masterBal) * " ~
-		"		(channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGVolAssign ? eegOut : 1.0);" ~
-		"outlevels[2] = channels[chNum].auxSend0 * auxSendAm * auxSendAm0;" ~
-		"outlevels[3] = channels[chNum].auxSend1 * auxSendAm * auxSendAm0;" ~
+		"__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;" ~
+		"outlevels *= (channels[chNum].eegLevels * eegToMast) + (__m128(1.0) - (__m128(1.0) * channels[chNum].eegLevels));" ~
+		"outlevels *= (channels[chNum + 8].eegLevels * eegToMast0) + (__m128(1.0) - " ~
+		" (__m128(1.0) * channels[chNum + 8].eegLevels));" ~
+		"outlevels *= (channels[chNum].aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * channels[chNum].aLFOlevels));"~
 		"_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *" ~ 
-		"		_mm_cvtepi32_ps(outSum));";
+		"		_mm_cvtepi32_ps(outSum));"
+		;
 	
 
 	///Algorithm Mode 0/0 (Serial)
@@ -1108,9 +1369,9 @@ public class QM816 : AudioModule {
 		mixin(CHNL_UPDATE_CONSTS);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);
+			updateOperator(operators[opOffset], opCtrl0);
 			operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);
+			updateOperator(operators[opOffset + 1], opCtrl1);
 			//const int outSum = operators[opOffset].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -1122,12 +1383,12 @@ public class QM816 : AudioModule {
 		mixin(CHNL_UPDATE_CONSTS);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);
+			updateOperator(operators[opOffset], opCtrl0);
+			updateOperator(operators[opOffset + 1], opCtrl1);
 			//const int outSum = operators[opOffset].output_0 + operators[opOffset + 1].output_0;
-			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0);
+			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
-			_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels * _mm_cvtepi32_ps(outSum));
 			channels[chNum].eeg.advance();
 		}
 	}
@@ -1138,13 +1399,13 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			operators[opOffset].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -1168,13 +1429,13 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			operators[opOffset].input = operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -1193,15 +1454,16 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			operators[opOffset].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			//operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
-			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0);
+			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -1219,15 +1481,16 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			operators[opOffset].input = operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			//operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
-			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0);
+			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -1245,13 +1508,13 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			//operators[opOffset].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset].output_0 + operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -1271,14 +1534,14 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			//operators[opOffset].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset].output_0 + operators[opOffset + 17].output_0 + 
 					operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -1298,15 +1561,16 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			operators[opOffset].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
-			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0);
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0 + 
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -1324,15 +1588,16 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			operators[opOffset].input = operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
-			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0);
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0 + 
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -1349,15 +1614,16 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			//operators[opOffset].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
-			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0);
+			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
+					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -1375,16 +1641,17 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			//operators[opOffset].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
-					operators[opOffset + 16].output_0);
+					operators[opOffset + 16].output_0 + 
+					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -1402,16 +1669,17 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			operators[opOffset].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 1], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
-					operators[opOffset + 17].output_0);
+					operators[opOffset + 17].output_0 + 
+					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -1430,16 +1698,17 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
-			updateOperator(operators[opOffset + 16], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S0
+			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			updateOperator(operators[opOffset + 17], aLFOOut0, eegOut0, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//S1
+			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			operators[opOffset].input = operators[opOffset + 17].output_0;
-			updateOperator(operators[opOffset], aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);		//P0
+			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset].output_0;
-			updateOperator(operators[opOffset + 1],aLFOOut, eegOut, chCtrls[chNum].velocity, chCtrls[chNum].modwheel);	//P1
+			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset].output_0 +
-					operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0);
+					operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0 + 
+					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
