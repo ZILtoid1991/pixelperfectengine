@@ -104,10 +104,10 @@ public class QM816 : AudioModule {
 		EEGToRight	=	19,
 		EEGToAuxA	=	20,
 		EEGToAuxB	=	21,
-		LFOToLeft	=	18,
-		LFOToRight	=	19,
-		LFOToAuxA	=	20,
-		LFOToAuxB	=	21,
+		LFOToLeft	=	22,
+		LFOToRight	=	23,
+		LFOToAuxA	=	24,
+		LFOToAuxB	=	25,
 	}
 	/**
 	Defines channel parameters within the registered namespace
@@ -974,7 +974,7 @@ public class QM816 : AudioModule {
 				setOpParam(chNum + 1);
 				break;
 			case 2:			//Channel common values
-				switch (paramNum[0]){
+				switch (paramNum[0]) { 
 					//case ChannelParamNums.ALFO: break;
 					case ChannelParamNums.Attack:
 						static if (is(T == uint)) {
@@ -1076,10 +1076,64 @@ public class QM816 : AudioModule {
 							channels[chNum].eeg.decayRate = 1.0;
 						}
 						break;
-					case ChannelParamNums.EEGDetune: break;
-					case ChannelParamNums.MasterVol: 
+					case ChannelParamNums.EEGDetune:
+						static if (is(T == uint)) {
+							channels[chNum].eegDetuneAm = val;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								channels[chNum].eegDetuneAm = paramTemp[3] | paramTemp[2]<<7;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
 						break;
-					case ChannelParamNums.PLFO: break;
+					case ChannelParamNums.MasterVol: 
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].outLevels[2] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].outLevels[2] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						if (channels[chNum].chCtrl & Channel.ChCtrlFlags.IndivOutChLev) {
+							channels[chNum].outLevels[1] = channels[chNum].masterBal * channels[chNum].masterBal;
+						} else {
+							channels[chNum].outLevels[0] = channels[chNum].masterVol - channels[chNum].masterBal;
+							channels[chNum].outLevels[1] = channels[chNum].masterVol - (1.0 - channels[chNum].masterBal);
+						}
+						break;
+					case ChannelParamNums.PLFO: 
+						static if (is(T == uint)) {
+							channels[chNum].pLFOlevel = cast(double)val / uint.max;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								channels[chNum].pLFOlevel = cast(double)(val32) / cast(double)(ushort.max>>2);
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
 					case ChannelParamNums.Release: 
 						static if (is(T == uint)) {
 							channels[chNum].relX = cast(ubyte)(val >> 25);
@@ -1126,8 +1180,214 @@ public class QM816 : AudioModule {
 							}
 						}
 						break;
-					case ChannelParamNums.SusCtrl: break;
-					case ChannelParamNums.SusLevel: break;
+					case ChannelParamNums.SusCtrl: 
+						static if (is(T == uint)) {
+							channels[chNum].susCCX = cast(ubyte)(val >> 25);
+						} else static if (is(T == ubyte)) {
+							channels[chNum].susCCX = val;
+						}
+						if (channels[chNum].susCCX) {
+							channels[chNum].eeg.isPercussive = false;
+							if (channels[chNum].susCCX == 64) {
+								channels[chNum].eeg.sustainControl = 0.0;
+							} else if (channels[chNum].susCCX < 64) {
+								channels[chNum].eeg.sustainControl = -1.0 * 
+										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].susCCX - 1], sampleRate);
+							} else {
+								channels[chNum].eeg.sustainControl = 
+										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].susCCX - 64], sampleRate);
+							}
+						} else {
+							channels[chNum].eeg.isPercussive = true;
+							channels[chNum].eeg.sustainControl = 0.0;
+						}
+						break;
+					case ChannelParamNums.SusLevel: 
+						static if (is(T == uint)) {
+							channels[chNum].eeg.sustainLevel = cast(double)val / uint.max;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								channels[chNum].eeg.sustainLevel = cast(double)(val32) / cast(double)(ushort.max>>2);
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.RingMod: 
+						static if (is(T == uint)) {
+							channels[chNum].rmAmount = val>>16;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								channels[chNum].eeg.sustainLevel = val32<<2 | val32>>12;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.EEGToLeft:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].eegLevels[0] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].eegLevels[0] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.EEGToRight:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].eegLevels[1] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].eegLevels[1] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.EEGToAuxA:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].eegLevels[2] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].eegLevels[2] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.EEGToAuxB:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].eegLevels[3] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].eegLevels[3] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.LFOToLeft:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].aLFOlevels[0] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].aLFOlevels[0] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.LFOToRight:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].aLFOlevels[1] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].aLFOlevels[1] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.LFOToAuxA:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].aLFOlevels[2] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].aLFOlevels[2] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
+					case ChannelParamNums.LFOToAuxB:
+						static if (is(T == uint)) {
+							const double valF = cast(double)val / uint.max;
+							channels[chNum].aLFOlevels[3] = valF * valF;
+						} else static if (is(T == ubyte)) {
+							if (type)
+								paramTemp[2] = val;
+							else
+								paramTemp[3] = val;
+							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
+								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
+								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
+								channels[chNum].aLFOlevels[3] = valF * valF;
+							} else {		//Set temp for next command (assume MSB-LSB order)
+								paramNum[0] = paramTemp[0];
+								paramNum[1] = paramTemp[1];
+							}
+						}
+						break;
 					default:
 						break;
 				}
@@ -1155,7 +1415,7 @@ public class QM816 : AudioModule {
 				void setFilterQ(int num) @nogc @safe pure nothrow {
 					static if (is(T == uint)) {
 						const double valF = cast(double)val / uint.max;
-						filterCtrl[num] = valF;
+						filterCtrl[num] = valF * 2;
 					} else static if (is(T == ubyte)) {
 						if (type)
 							paramTemp[2] = val;
@@ -1164,7 +1424,7 @@ public class QM816 : AudioModule {
 						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
 							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
 							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-							filterCtrl[num] = valF;
+							filterCtrl[num] = valF * 2;
 						} else {		//Set temp for next command (assume MSB-LSB order)
 							paramNum[0] = paramTemp[0];
 							paramNum[1] = paramTemp[1];
