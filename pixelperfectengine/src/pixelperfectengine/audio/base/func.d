@@ -280,7 +280,7 @@ alias ADPCMStream = NibbleArray;
 	/**
 	 * Converts MIDI note to frequency.
 	 */
-	public double midiToFreq(int note, const double baseFreq = 440.0) {
+	public double midiToFreq(int note, const double baseFreq = 440.0) @safe {
 		double r = note - 69;
 		r /= 12;
 		r = pow(2, r);
@@ -289,7 +289,7 @@ alias ADPCMStream = NibbleArray;
 	/**
 	 * Converts note number to frequency.
 	 */
-	public double noteToFreq(double note, const double baseFreq = 440.0) {
+	public double noteToFreq(double note, const double baseFreq = 440.0) @safe {
 		double r = note - 69;
 		r /= 12;
 		r = pow(2, r);
@@ -302,7 +302,7 @@ alias ADPCMStream = NibbleArray;
 	 * f0: cutting frequency.
 	 * q: the Q factor of the filter.
 	 */
-	public BiquadFilterValues createLPF(float fs, float f0, float q) {
+	public BiquadFilterValues createLPF(float fs, float f0, float q) @safe {
 		BiquadFilterValues result;
 		const float w0 = 2 * PI * f0 / fs;
 		const float alpha = sin(w0) / (2 * q);

@@ -2,6 +2,7 @@ module pixelperfectengine.audio.modules.qm816;
 
 import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.envgen;
+import pixelperfectengine.audio.base.func;
 
 import midi2.types.structs;
 import midi2.types.enums;
@@ -149,6 +150,7 @@ public class QM816 : AudioModule {
 		///Operator tuning
 		///Bit 31-25: Coarse detuning (-24 to +103 seminotes)
 		///Bit 24-0: Fine detuning (-100 to 100 cents), 0x1_00_00_00 is center
+		///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
 		uint			tune	=	0x31_00_00_00;
 		enum TuneCtrlFlags : uint {
 			FineTuneMidPoint	=	0x1_00_00_00,
@@ -215,6 +217,49 @@ public class QM816 : AudioModule {
 		float			shpAVel	=	0.0;
 		///Assigns velocity to shpR
 		float			shpRVel =	0.0;
+
+		///Sets the frequency of the operator
+		void setFrequency(int slmpFreq, ubyte note, double pitchBend, double tuning) @nogc @safe pure nothrow {
+			/+const double actualNote = (opCtrl & OpCtrlFlags.FixedPitch) ? 
+					(tune>>25) + ((cast(double)(tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
+					TuneCtrlFlags.FineTuneTest) : pitchBend + note ;+/
+			double actualNote;
+			if (opCtrl & OpCtrlFlags.FixedPitch) {
+				actualNote = (tune>>25) + ((cast(double)(tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
+						TuneCtrlFlags.FineTuneTest);
+			} else {
+				actualNote = pitchBend + note + cast(int)((tune>>25) - TuneCtrlFlags.CorTuneMidPoint) + ((cast(double)(tune & 
+						TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / TuneCtrlFlags.FineTuneTest);
+			}
+			const double oscFreq = noteToFreq(actualNote, tuning);
+			const double cycLen = oscFreq / (slmpFreq / 1024.0);
+			step = cast(uint)(cast(double)(1<<20) / cycLen);
+		}
+		///Resets the Envelop generator
+		void resetEG() @nogc @safe pure nothrow {
+			//Set attack phase
+			//Set decay phase
+			//Set sustain level
+			//Set sustain phase
+			//Set release phase
+		}
+		auto opAssign(Preset.Op value) @nogc @safe pure nothrow {
+			eg.sustainLevel = value.susLevel;
+			tune = value.tune;
+			outL = value.outL;
+			fbL = value.fbL;
+			for (int i ; i < 4 ; i++)
+				outLCtrl[i] = value.outLCtrl[i];
+			for (int i ; i < 4 ; i++)
+				fbLCtrl[i] = value.fbLCtrl[i];
+			opCtrl = value.opCtrl;
+			atk = value.atk;
+			dec = value.dec;
+			susCC = value.susCC;
+			rel = value.rel;
+			resetEG();
+			return this;
+		}
 	}
 	/**
 	Defines channel common parameters.
@@ -310,108 +355,103 @@ public class QM816 : AudioModule {
 	Defines a preset.
 	*/
 	public struct Preset {
-		///Operator tuning
-		///Bit 31-25: Coarse detuning (-24 to +103 seminotes)
-		///Bit 24-0: Fine detuning (0 to 100 cents)
-		uint			tune0	=	0x30_00_00_00;
-		///Output level (between 0.0 and 1.0)
-		float			outL0	=	1.0;
-		///Feedback level (between 0.0 and 1.0)
-		float			fbL0	=	0.0;
-		///ADSR shaping parameter (for the attack phase)
-		float			shpA0	=	0.5;
-		///ADSR shaping parameter (for the decay/release phase)
-		float			shpR0	=	0.5;
-		///Velocity amount for operator
-		float			velAm0	=	1.0;
-		///Control flags and Wavetable selector
-		uint			opCtrl0;
-		///Attack time control (between 0 and 127)
-		ubyte			atk0;
-		///Decay time control (between 0 and 127)
-		ubyte			dec0;
-		///Release time control (between 0 and 127)
-		ubyte			rel0;
-		///Sustain curve control (between 0 and 127)
-		///0: Percussive mode
-		///1 - 63: Descending over time
-		///64: Constant
-		///65 - 127: Ascending over time
-		ubyte			susCC0;
-		///Operator tuning
-		///Bit 31-25: Coarse detuning (-24 to +103 seminotes)
-		///Bit 24-0: Fine detuning (0 to 100 cents)
-		uint			tune1	=	0x30_00_00_00;
-		///Output level (between 0.0 and 1.0)
-		float			outL1	=	1.0;
-		///Feedback level (between 0.0 and 1.0)
-		float			fbL1	=	0.0;
-		///ADSR shaping parameter (for the attack phase)
-		float			shpA1	=	0.5;
-		///ADSR shaping parameter (for the decay/release phase)
-		float			shpR1	=	0.5;
-		///Velocity amount for operator
-		float			velAm1	=	1.0;
-		///Control flags and Wavetable selector
-		uint			opCtrl1;
-		///Attack time control (between 0 and 127)
-		ubyte			atk1;
-		///Decay time control (between 0 and 127)
-		ubyte			dec1;
-		///Release time control (between 0 and 127)
-		ubyte			rel1;
-		///Sustain curve control (between 0 and 127)
-		///0: Percussive mode
-		///1 - 63: Descending over time
-		///64: Constant
-		///65 - 127: Ascending over time
-		ubyte			susCC1;
-		///ADSR shaping parameter (for the attack phase)
-		float			shpAX;
-		///ADSR shaping parameter (for the decay/release phase)
-		float			shpRX;
-		///Pitch amount for EEG
-		///Bit 31-25: Coarse (-64 to +63 seminotes)
-		///Bit 24-0: Fine (0 to 100 cents)
-		uint			eegDetuneAm;
-		///Pitch bend sensitivity
-		///Bit 31-25: Coarse (0 to 127 seminotes)
-		///Bit 24-0: Fine (0 to 100 cents)
-		uint			pitchBendSens;
-		///A-4 channel tuning in hertz.
-		float			chnlTun = 440.0;
-		///Amount of how much amplitude values must be affected by EEG
-		float			eegAmpAmount;
-		///Stores channel control flags.
-		uint			chCtrl;
-		///Master volume (0.0 to 1.0)
-		float			masterVol;
-		///Master balance (0.0 to 1.0)
-		float			masterBal;
-		///Aux send level 0
-		float			auxSend0;
-		///Aux send level 1
-		float			auxSend1;
-		///Amplitude LFO level
-		float			aLFOlevel;
-		///Pitch LFO level
-		float			pLFOlevel;
-		///Velocity amount
-		float			velAmount;
-		///Modulation wheel amount
-		float			modwheelAmount;
-		///Attack time control (between 0 and 127)
-		ubyte			atkX;
-		///Decay time control (between 0 and 127)
-		ubyte			decX;
-		///Release time control (between 0 and 127)
-		ubyte			relX;
-		///Sustain curve control (between 0 and 127)
-		///0 = Percussive mode
-		///1 - 63: Descending over time
-		///64 = Constant
-		///65 - 127: Ascending over time
-		ubyte			susCCX;
+		///Defines parameters of a single operator
+		public struct Op {
+			///Operator tuning
+			///Bit 31-25: Coarse detuning (-24 to +103 seminotes)
+			///Bit 24-0: Fine detuning (-100 to 100 cents), 0x1_00_00_00 is center
+			///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
+			uint			tune	=	0x31_00_00_00;
+			///Output level (between 0.0 and 1.0)
+			float			outL;
+			///Feedback level (between 0.0 and 1.0)
+			float			fbL;
+			///Output level controller assignment
+			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: unused
+			float[4]		outLCtrl;
+			///Feedback level controller assignment
+			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: Extra envelop generator
+			float[4]		fbLCtrl;
+			///Control flags and Wavetable selector
+			uint			opCtrl;
+			///Attack time control (between 0 and 127)
+			ubyte			atk;
+			///Decay time control (between 0 and 127)
+			ubyte			dec;
+			///Release time control (between 0 and 127)
+			ubyte			rel;
+			///Sustain curve control (between 0 and 127)
+			///0: Percussive mode
+			///1 - 63: Descending over time
+			///64: Constant
+			///65 - 127: Ascending over time
+			ubyte			susCC;
+			///Sustain level for the EG
+			float			susLevel;
+			///ADSR shaping parameter (for the attack phase)
+			float			shpA	=	0.5;
+			///ADSR shaping parameter (for the decay/release phase)
+			float			shpR	=	0.5;
+			///Assigns velocity to shpA
+			float			shpAVel	=	0.0;
+			///Assigns velocity to shpR
+			float			shpRVel =	0.0;
+		}
+		///Defines parameters of a single channel.
+		public struct Ch {
+			///ADSR shaping parameter (for the attack phase)
+			float			shpAX;
+			///ADSR shaping parameter (for the decay/release phase)
+			float			shpRX;
+			///Pitch amount for EEG
+			///Bit 31-25: Coarse (-64 to +63 seminotes)
+			///Bit 24-0: Fine (0 to 100 cents)
+			uint			eegDetuneAm;
+			///Pitch bend sensitivity
+			///Bit 31-25: Coarse (0 to 127 seminotes)
+			///Bit 24-0: Fine (0 to 100 cents)
+			uint			pitchBendSens;
+			///A-4 channel tuning in hertz.
+			float			chnlTun = 440.0;
+			///Stores channel control flags.
+			uint			chCtrl;
+			///Master volume (0.0 to 1.0)
+			float			masterVol;
+			///Master balance (0.0 to 1.0)
+			float			masterBal;
+			///Aux send A
+			float			auxSendA;
+			///Aux send B
+			float			auxSendB;
+			///EEG assign levels
+			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
+			float[4]		eegLevels;
+			///Amplitude LFO assign levels
+			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
+			float[4]		aLFOlevels;
+			///Ring modulation amount
+			///Only available on select algorithms
+			int				rmAmount;
+			///Pitch LFO level
+			float			pLFOlevel;
+			///Amplitude LFO to 
+			///Attack time control (between 0 and 127)
+			ubyte			atkX;
+			///Decay time control (between 0 and 127)
+			ubyte			decX;
+			///Release time control (between 0 and 127)
+			ubyte			relX;
+			///Sustain curve control (between 0 and 127)
+			///0: Percussive mode
+			///1 - 63: Descending over time
+			///64: Constant
+			///65 - 127: Ascending over time
+			ubyte			susCCX;
+			///Sustain level
+			float			susLevel;
+		}
+		Op[2]			operators;		///The operators belonging to this channel
+		Ch				channel;		///Channel common values
 	}
 	///Contains the wavetables for the operators and LFOs.
 	///Value might be divided to limit the values between 2047 and -2048 via bitshifting,
@@ -420,7 +460,8 @@ public class QM816 : AudioModule {
 	protected short[1024][128]	wavetables;
 	///Stores presets.
 	///8 banks of 128 presets are available for a total of 1024.
-	///Note: Combined channel presets must be loaded in pairs to each channels.
+	///If a channel combination is being used, then bank pairs (0-1, 2-3, etc) will store their primary and secondary
+	///halves, and calling either will load both halves.
 	protected Preset[128][8]	soundBank;
 	///Operator data.
 	///See rendering function on updating.
@@ -544,11 +585,71 @@ public class QM816 : AudioModule {
 								break;
 						}
 						break;
-					case MIDI1_0Cmd.NoteOn:
+					case MIDI1_0Cmd.NoteOn:	//Note on command
+						chCtrls[firstPacket.channel].note = firstPacket.note;
+						chCtrls[firstPacket.channel].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
+						if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && firstPacket.channel < 8) {
+							const uint chOffset = firstPacket.channel;
+							channels[chOffset].eeg.keyOn();
+							channels[chOffset + 8].eeg.keyOn();
+							operators[chOffset].eg.keyOn();
+							operators[chOffset + 1].eg.keyOn();
+							operators[chOffset + 16].eg.keyOn();
+							operators[chOffset + 17].eg.keyOn();
+							operators[chOffset].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+							operators[chOffset + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+							operators[chOffset + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+							operators[chOffset + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+						} else if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) == 0) {
+							const uint chOffset = firstPacket.channel;
+							channels[chOffset].eeg.keyOn();
+							operators[chOffset].eg.keyOn();
+							operators[chOffset + 1].eg.keyOn();
+							operators[chOffset].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+							operators[chOffset + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+						}
 						break;
-					case MIDI1_0Cmd.NoteOff:
+					case MIDI1_0Cmd.NoteOff://Note off command
+						chCtrls[firstPacket.channel].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
+						if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && firstPacket.channel < 8) {
+							const uint chOffset = firstPacket.channel;
+							channels[chOffset].eeg.keyOff();
+							channels[chOffset + 8].eeg.keyOff();
+							operators[chOffset].eg.keyOff();
+							operators[chOffset + 1].eg.keyOff();
+							operators[chOffset + 16].eg.keyOff();
+							operators[chOffset + 17].eg.keyOff();
+							
+						} else if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) == 0) {
+							const uint chOffset = firstPacket.channel;
+							channels[chOffset].eeg.keyOff();
+							operators[chOffset].eg.keyOff();
+							operators[chOffset + 1].eg.keyOff();
+							
+						}
 						break;
-					case MIDI1_0Cmd.PrgCh:
+					case MIDI1_0Cmd.ChAftrTch:
+						chCtrls[firstPacket.channel].velocity = cast(double)firstPacket.note / cast(double)byte.max;
+						break;
+					case MIDI1_0Cmd.PolyAftrTch:
+						chCtrls[firstPacket.channel].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
+						break;
+					case MIDI1_0Cmd.PrgCh:	//Program change
+						const uint chOffset = firstPacket.channel;
+						const uint chCtrl = soundBank[bankNum[chOffset] & 7][presetNum[chOffset]].channel.chCtrl;
+						if (chCtrl & Channel.ChCtrlFlags.ComboModeTest) {
+							const uint chX = chOffset & 7, bankX = bankNum[chOffset] & 7 & ~1;
+							prgRecall(chX, presetNum[chX], bankX);
+							prgRecall(chX + 8, presetNum[chX], bankX + 1);
+						} else {
+							prgRecall(chOffset, presetNum[chOffset], bankNum[chOffset]);
+						}
 						break;
 					
 					default:
@@ -560,6 +661,38 @@ public class QM816 : AudioModule {
 					case MIDI2_0Cmd.CtrlCh:	//Control change
 						setUnregisteredParam(data[1], [firstPacket.index, firstPacket.value], 0, firstPacket.channel);
 						break;
+					case MIDI2_0Cmd.NoteOn:
+						import bitleveld.reinterpret;
+						NoteVals v = reinterpretGet!(NoteVals)([data[1]]);
+						chCtrls[firstPacket.channel].note = firstPacket.note;
+						chCtrls[firstPacket.channel].velocity = v.velocity / cast(double)ushort.max;
+						if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && firstPacket.channel < 8) {
+							const uint chOffset = firstPacket.channel;
+							channels[chOffset].eeg.keyOn();
+							channels[chOffset + 8].eeg.keyOn();
+							operators[chOffset].eg.keyOn();
+							operators[chOffset + 1].eg.keyOn();
+							operators[chOffset + 16].eg.keyOn();
+							operators[chOffset + 17].eg.keyOn();
+							operators[chOffset].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+							operators[chOffset + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+							operators[chOffset + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+							operators[chOffset + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+						} else if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) == 0) {
+							const uint chOffset = firstPacket.channel;
+							channels[chOffset].eeg.keyOn();
+							operators[chOffset].eg.keyOn();
+							operators[chOffset + 1].eg.keyOn();
+							operators[chOffset].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+							operators[chOffset + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
+									channels[chOffset].chnlTun);
+						}
+						break;
 					default:
 						break;
 				}
@@ -569,6 +702,14 @@ public class QM816 : AudioModule {
 		}
 	}
 	/**
+	Recalls a program
+	*/
+	protected void prgRecall(ubyte ch, ubyte prg, ubyte bank) @nogc @safe pure nothrow {
+		Preset p = soundBank[bank & 7][prg];
+		operators[ch] = p.operators[0];
+		operators[ch + 1] = p.operators[1];
+	}
+	/**
 	Sets a registered parameter
 
 	If type is not zero, then the MSB is being set, otherwise the LSB will be used
@@ -576,6 +717,17 @@ public class QM816 : AudioModule {
 	protected void setRegisteredParam(T)(T val, ubyte[2] paramNum, ubyte type, ubyte chNum) @nogc @safe pure nothrow {
 		switch (paramNum[0]) {
 			case ChannelRegParams.PitchBendSens:
+				static if (is(T == uint)) {
+					channels[chNum].pitchBendSens = val;
+				} else static if (is(T == ubyte)) {
+					if (type) {
+						channels[chNum].pitchBendSens &= ~(byte.max<<25);
+						channels[chNum].pitchBendSens |= val<<25;
+					} else {
+						channels[chNum].pitchBendSens &= ~(byte.max<<18);
+						channels[chNum].pitchBendSens |= val<<18;
+					}
+				}
 				break;
 			case ChannelRegParams.TuneFine:			//Channel master tuning (fine)
 				break;
@@ -1061,6 +1213,14 @@ public class QM816 : AudioModule {
 								channels[chNum].chCtrl &= ~(cast(uint)byte.max);
 								channels[chNum].chCtrl |= val;
 							}
+						}
+						//mirror operator configuration parameters between paired channels
+						if (chNum < 8) {
+							channels[chNum + 8].chCtrl &= ~Channel.ChCtrlFlags.ComboModeTest;
+							channels[chNum + 8].chCtrl |= Channel.ChCtrlFlags.ComboModeTest & channels[chNum].chCtrl;
+						} else {
+							channels[chNum - 8].chCtrl &= ~Channel.ChCtrlFlags.ComboModeTest;
+							channels[chNum - 8].chCtrl |= Channel.ChCtrlFlags.ComboModeTest & channels[chNum].chCtrl;
 						}
 						break;
 					//case ChannelParamNums.ChCtrlL: break;
