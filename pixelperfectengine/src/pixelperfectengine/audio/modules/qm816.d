@@ -236,12 +236,41 @@ public class QM816 : AudioModule {
 			step = cast(uint)(cast(double)(1<<20) / cycLen);
 		}
 		///Resets the Envelop generator
-		void resetEG() @nogc @safe pure nothrow {
+		void resetEG(int sampleRate) @nogc @safe pure nothrow {
 			//Set attack phase
+			if (atk) {
+				eg.attackRate = calculateRate(ADSR_TIME_TABLE[atk], sampleRate);
+			} else {
+				eg.attackRate = 1.0;
+			}
 			//Set decay phase
-			//Set sustain level
+			if (dec) {
+				eg.decayRate = calculateRate(ADSR_TIME_TABLE[dec] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, eg.sustainLevel);
+			} else {
+				eg.decayRate = 1.0;
+			}
 			//Set sustain phase
+			if (susCC) {
+				eg.isPercussive = false;
+				if (susCC == 64) {
+					eg.sustainControl = 0.0;
+				} else if (susCC < 64) {
+					eg.sustainControl = -1.0 * 
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[susCC - 1], sampleRate);
+				} else {
+					eg.sustainControl = 
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[susCC - 64], sampleRate);
+				}
+			} else {
+				eg.isPercussive = true;
+				eg.sustainControl = 0.0;
+			}
 			//Set release phase
+			if (rel) {
+				eg.releaseRate = calculateRate(ADSR_TIME_TABLE[rel] * 2, sampleRate, eg.sustainLevel);
+			} else {
+				eg.releaseRate = 1.0;
+			}
 		}
 		auto opAssign(Preset.Op value) @nogc @safe pure nothrow {
 			eg.sustainLevel = value.susLevel;
@@ -257,7 +286,6 @@ public class QM816 : AudioModule {
 			dec = value.dec;
 			susCC = value.susCC;
 			rel = value.rel;
-			resetEG();
 			return this;
 		}
 	}
@@ -337,6 +365,71 @@ public class QM816 : AudioModule {
 		///64: Constant
 		///65 - 127: Ascending over time
 		ubyte			susCCX;
+		///Resets the Extra Envelop generator
+		void resetEEG(int sampleRate) @nogc @safe pure nothrow {
+			//Set attack phase
+			if (atkX) {
+				eeg.attackRate = calculateRate(ADSR_TIME_TABLE[atkX], sampleRate);
+			} else {
+				eeg.attackRate = 1.0;
+			}
+			//Set decay phase
+			if (decX) {
+				eeg.decayRate = calculateRate(ADSR_TIME_TABLE[decX] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, eeg.sustainLevel);
+			} else {
+				eeg.decayRate = 1.0;
+			}
+			//Set sustain phase
+			if (susCCX) {
+				eeg.isPercussive = false;
+				if (susCCX == 64) {
+					eeg.sustainControl = 0.0;
+				} else if (susCCX < 64) {
+					eeg.sustainControl = -1.0 * calculateRate(SUSTAIN_CONTROL_TIME_TABLE[susCCX - 1], sampleRate);
+				} else {
+					eeg.sustainControl = calculateRate(SUSTAIN_CONTROL_TIME_TABLE[susCCX - 64], sampleRate);
+				}
+			} else {
+				eeg.isPercussive = true;
+				eeg.sustainControl = 0.0;
+			}
+			//Set release phase
+			if (relX) {
+				eeg.releaseRate = calculateRate(ADSR_TIME_TABLE[relX] * 2, sampleRate, eeg.sustainLevel);
+			} else {
+				eeg.releaseRate = 1.0;
+			}
+		}
+		auto opAssign(Preset.Ch value) @nogc @safe pure nothrow {
+			eeg.sustainLevel = value.susLevel;
+			shpAX = value.shpAX;
+			shpRX = value.shpRX;
+			eegDetuneAm = value.eegDetuneAm;
+			pitchBendSens = value.pitchBendSens;
+			chnlTun = value.chnlTun;
+			chCtrl = value.chCtrl;
+			masterVol = value.masterVol;
+			masterBal = value.masterBal;
+			outLevels[2] = value.auxSendA;
+			outLevels[3] = value.auxSendB;
+			for (int i ; i < 4 ; i++)
+				eegLevels[i] = value.eegLevels[i];
+			for (int i ; i < 4 ; i++)
+				aLFOlevels[i] = value.aLFOlevels[i];
+			rmAmount = value.rmAmount;
+			pLFOlevel = value.pLFOlevel;
+			atkX = value.atkX;
+			decX = value.decX;
+			relX = value.relX;
+			susCCX = value.susCCX;
+			if (chCtrl & ChCtrlFlags.IndivOutChLev) {
+				outLevels[1] = masterBal * masterBal;
+			} else {
+				outLevels[0] = masterVol - masterBal;
+				outLevels[1] = masterVol - (1.0 - masterBal);
+			}
+			return this;
+		}
 	}
 	/**
 	Stores channel controller values (modwheel, velocity, etc.)
@@ -586,52 +679,66 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case MIDI1_0Cmd.NoteOn:	//Note on command
-						chCtrls[firstPacket.channel].note = firstPacket.note;
-						chCtrls[firstPacket.channel].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
-						if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && firstPacket.channel < 8) {
-							const uint chOffset = firstPacket.channel;
-							channels[chOffset].eeg.keyOn();
-							channels[chOffset + 8].eeg.keyOn();
-							operators[chOffset].eg.keyOn();
-							operators[chOffset + 1].eg.keyOn();
-							operators[chOffset + 16].eg.keyOn();
-							operators[chOffset + 17].eg.keyOn();
-							operators[chOffset].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-							operators[chOffset + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-							operators[chOffset + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-							operators[chOffset + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-						} else if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) == 0) {
-							const uint chOffset = firstPacket.channel;
-							channels[chOffset].eeg.keyOn();
-							operators[chOffset].eg.keyOn();
-							operators[chOffset + 1].eg.keyOn();
-							operators[chOffset].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-							operators[chOffset + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
+						const uint ch = firstPacket.channel;
+						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch > 7) return;
+						chCtrls[ch].note = firstPacket.note;
+						chCtrls[ch].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
+						channels[ch].eeg.keyOn();
+						operators[ch].eg.keyOn();
+						operators[ch].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+						operators[ch + 1].eg.keyOn();
+						operators[ch + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[ch + 1].pitchBend, channels[ch].chnlTun);
+						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch <= 7) {
+							channels[ch + 8].eeg.keyOn();
+							operators[ch + 16].eg.keyOn();
+							operators[ch + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+							operators[ch + 17].eg.keyOn();
+							operators[ch + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
 						}
 						break;
 					case MIDI1_0Cmd.NoteOff://Note off command
-						chCtrls[firstPacket.channel].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
-						if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && firstPacket.channel < 8) {
-							const uint chOffset = firstPacket.channel;
-							channels[chOffset].eeg.keyOff();
-							channels[chOffset + 8].eeg.keyOff();
-							operators[chOffset].eg.keyOff();
-							operators[chOffset + 1].eg.keyOff();
-							operators[chOffset + 16].eg.keyOff();
-							operators[chOffset + 17].eg.keyOff();
-							
-						} else if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) == 0) {
-							const uint chOffset = firstPacket.channel;
-							channels[chOffset].eeg.keyOff();
-							operators[chOffset].eg.keyOff();
-							operators[chOffset + 1].eg.keyOff();
-							
+						const uint ch = firstPacket.channel;
+						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch > 7) return;
+						chCtrls[ch].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
+						channels[ch].eeg.keyOff();
+						operators[ch].eg.keyOff();
+						if (operators[ch].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
+							if (operators[ch].rel) {
+								operators[ch].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch].rel] * 2, sampleRate, 
+										operators[ch].eg.sustainLevel);
+							} else {
+								operators[ch].eg.releaseRate = 1.0;
+							}
+						}
+						operators[ch + 1].eg.keyOff();
+						if (operators[ch + 1].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
+							if (operators[ch + 1].rel) {
+								operators[ch + 1].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 1].rel] * 2, sampleRate, 
+										operators[ch + 1].eg.sustainLevel);
+							} else {
+								operators[ch + 1].eg.releaseRate = 1.0;
+							}
+						}
+						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch <= 7) {
+							channels[ch + 8].eeg.keyOff();
+							operators[ch + 16].eg.keyOff();
+							if (operators[ch + 16].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
+								if (operators[ch + 16].rel) {
+									operators[ch + 16].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 16].rel] * 2, sampleRate, 
+											operators[ch + 16].eg.sustainLevel);
+								} else {
+									operators[ch + 16].eg.releaseRate = 1.0;
+								}
+							}
+							operators[ch + 17].eg.keyOff();
+							if (operators[ch + 17].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
+								if (operators[ch + 17].rel) {
+									operators[ch + 17].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 17].rel] * 2, sampleRate, 
+											operators[ch + 17].eg.sustainLevel);
+								} else {
+									operators[ch + 17].eg.releaseRate = 1.0;
+								}
+							}
 						}
 						break;
 					case MIDI1_0Cmd.ChAftrTch:
@@ -651,7 +758,12 @@ public class QM816 : AudioModule {
 							prgRecall(chOffset, presetNum[chOffset], bankNum[chOffset]);
 						}
 						break;
-					
+					case MIDI1_0Cmd.PitchBend:
+						const uint ch = firstPacket.channel;
+						const double pitchBendSens = (channels[ch].pitchBendSens>>25) + 
+								(cast(double)(channels[ch].pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
+						chCtrls[ch].pitchBend = pitchBendSens * ((cast(double)firstPacket.bend - 0x20_00) / 0x3F_FF);
+						break;
 					default:
 						break;
 				}
@@ -661,37 +773,94 @@ public class QM816 : AudioModule {
 					case MIDI2_0Cmd.CtrlCh:	//Control change
 						setUnregisteredParam(data[1], [firstPacket.index, firstPacket.value], 0, firstPacket.channel);
 						break;
-					case MIDI2_0Cmd.NoteOn:
-						import bitleveld.reinterpret;
-						NoteVals v = reinterpretGet!(NoteVals)([data[1]]);
-						chCtrls[firstPacket.channel].note = firstPacket.note;
-						chCtrls[firstPacket.channel].velocity = v.velocity / cast(double)ushort.max;
-						if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && firstPacket.channel < 8) {
-							const uint chOffset = firstPacket.channel;
-							channels[chOffset].eeg.keyOn();
-							channels[chOffset + 8].eeg.keyOn();
-							operators[chOffset].eg.keyOn();
-							operators[chOffset + 1].eg.keyOn();
-							operators[chOffset + 16].eg.keyOn();
-							operators[chOffset + 17].eg.keyOn();
-							operators[chOffset].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-							operators[chOffset + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-							operators[chOffset + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-							operators[chOffset + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-						} else if ((channels[firstPacket.channel].chCtrl & Channel.ChCtrlFlags.ComboModeTest) == 0) {
-							const uint chOffset = firstPacket.channel;
-							channels[chOffset].eeg.keyOn();
-							operators[chOffset].eg.keyOn();
-							operators[chOffset + 1].eg.keyOn();
-							operators[chOffset].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
-							operators[chOffset + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[chOffset].pitchBend, 
-									channels[chOffset].chnlTun);
+					case MIDI2_0Cmd.CtrlChR://Registered control change
+						setRegisteredParam(data[1], [firstPacket.index, firstPacket.value], 0, firstPacket.channel);
+						break;
+					case MIDI2_0Cmd.PrgCh:	//Program change
+						const uint chOffset = firstPacket.channel;
+						//const uint prg = data[1]>>24, bank = data[1] & 7;
+						presetNum[chOffset] = cast(ubyte)(data[1]>>24);
+						if (firstPacket.value & 1) bankNum[chOffset] = cast(ubyte)(data[1] & 7);
+						const uint chCtrl = soundBank[bankNum[chOffset] & 7][presetNum[chOffset]].channel.chCtrl;
+						if (chCtrl & Channel.ChCtrlFlags.ComboModeTest) {
+							const uint chX = chOffset & 7, bankX = bankNum[chOffset] & 7 & ~1;
+							prgRecall(chX, presetNum[chX], bankX);
+							prgRecall(chX + 8, presetNum[chX], bankX + 1);
+						} else {
+							prgRecall(chOffset, presetNum[chOffset], bankNum[chOffset]);
 						}
+						break;
+					case MIDI2_0Cmd.NoteOn:
+						NoteVals v = *cast(NoteVals*)(&data[1]);
+						const uint ch = firstPacket.channel;
+						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch > 7) return;
+						chCtrls[ch].note = firstPacket.note;
+						chCtrls[ch].velocity = v.velocity / cast(double)ushort.max;
+						channels[ch].eeg.keyOn();
+						operators[ch].eg.keyOn();
+						operators[ch].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+						operators[ch + 1].eg.keyOn();
+						operators[ch + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[ch + 1].pitchBend, channels[ch].chnlTun);
+						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch <= 7) {
+							channels[ch + 8].eeg.keyOn();
+							operators[ch + 16].eg.keyOn();
+							operators[ch + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+							operators[ch + 17].eg.keyOn();
+							operators[ch + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+						}
+						break;
+					case MIDI2_0Cmd.NoteOff:
+						NoteVals v = *cast(NoteVals*)(&data[1]);
+						const uint ch = firstPacket.channel;
+						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch > 7) return;
+						//chCtrls[ch].note = firstPacket.note;
+						chCtrls[ch].velocity = v.velocity / cast(double)ushort.max;
+						channels[ch].eeg.keyOff();
+						operators[ch].eg.keyOff();
+						if (operators[ch].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
+							if (operators[ch].rel) {
+								operators[ch].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch].rel] * 2, sampleRate, 
+										operators[ch].eg.sustainLevel);
+							} else {
+								operators[ch].eg.releaseRate = 1.0;
+							}
+						}
+						operators[ch + 1].eg.keyOff();
+						if (operators[ch + 1].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
+							if (operators[ch + 1].rel) {
+								operators[ch + 1].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 1].rel] * 2, sampleRate, 
+										operators[ch + 1].eg.sustainLevel);
+							} else {
+								operators[ch + 1].eg.releaseRate = 1.0;
+							}
+						}
+						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch <= 7) {
+							channels[ch + 8].eeg.keyOff();
+							operators[ch + 16].eg.keyOff();
+							if (operators[ch + 16].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
+								if (operators[ch + 16].rel) {
+									operators[ch + 16].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 16].rel] * 2, sampleRate, 
+											operators[ch + 16].eg.sustainLevel);
+								} else {
+									operators[ch + 16].eg.releaseRate = 1.0;
+								}
+							}
+							operators[ch + 17].eg.keyOff();
+							if (operators[ch + 17].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
+								if (operators[ch + 17].rel) {
+									operators[ch + 17].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 17].rel] * 2, sampleRate, 
+											operators[ch + 17].eg.sustainLevel);
+								} else {
+									operators[ch + 17].eg.releaseRate = 1.0;
+								}
+							}
+						}
+						break;
+					case MIDI2_0Cmd.PitchBend:
+						const uint ch = firstPacket.channel;
+						const double pitchBendSens = (channels[ch].pitchBendSens>>25) + 
+								(cast(double)(channels[ch].pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
+						chCtrls[ch].pitchBend = pitchBendSens * (cast(double)(firstPacket.bend - (uint.max / 2)) / (uint.max / 2));
 						break;
 					default:
 						break;
@@ -702,12 +871,77 @@ public class QM816 : AudioModule {
 		}
 	}
 	/**
+	Sets the channel delegates
+	*/
+	protected void setChDeleg(uint chCtrl, uint chNum, uint chCtrl0 = 0) @nogc @safe pure nothrow {
+		if (chCtrl & Channel.ChCtrlFlags.ComboModeTest) {	//Test if channel is combined or not
+			if (chNum < 8) {
+				const uint algID = chCtrl & (Channel.ChCtrlFlags.ComboModeTest | Channel.ChCtrlFlags.Algorithm) | 
+						((chCtrl0 | Channel.ChCtrlFlags.Algorithm)<<1);
+				enum priChAlg = Channel.ChCtrlFlags.Algorithm;
+				enum secChAlg = Channel.ChCtrlFlags.Algorithm<<1;
+				switch (algID) {
+					case Channel.ChCtrlFlags.ComboMode1:
+						chDeleg[chNum] = &updateChannelM100;
+						break;
+					case Channel.ChCtrlFlags.ComboMode1 | secChAlg:
+						chDeleg[chNum] = &updateChannelM110;
+						break;
+					case Channel.ChCtrlFlags.ComboMode1 | priChAlg:
+						chDeleg[chNum] = &updateChannelM101;
+						break;
+					case Channel.ChCtrlFlags.ComboMode1 | secChAlg | priChAlg:
+						chDeleg[chNum] = &updateChannelM111;
+						break;
+					case Channel.ChCtrlFlags.ComboMode2:
+						chDeleg[chNum] = &updateChannelM200;
+						break;
+					case Channel.ChCtrlFlags.ComboMode2 | secChAlg:
+						chDeleg[chNum] = &updateChannelM210;
+						break;
+					case Channel.ChCtrlFlags.ComboMode2 | priChAlg:
+						chDeleg[chNum] = &updateChannelM201;
+						break;
+					case Channel.ChCtrlFlags.ComboMode2 | secChAlg | priChAlg:
+						chDeleg[chNum] = &updateChannelM211;
+						break;
+					case Channel.ChCtrlFlags.ComboMode3:
+						chDeleg[chNum] = &updateChannelM300;
+						break;
+					case Channel.ChCtrlFlags.ComboMode3 | secChAlg:
+						chDeleg[chNum] = &updateChannelM310;
+						break;
+					case Channel.ChCtrlFlags.ComboMode3 | priChAlg:
+						chDeleg[chNum] = &updateChannelM301;
+						break;
+					case Channel.ChCtrlFlags.ComboMode3 | secChAlg | priChAlg:
+						chDeleg[chNum] = &updateChannelM311;
+						break;
+					default:
+						chDeleg[chNum] = &updateChannelMD;
+						break;
+				}
+			} else {
+				chDeleg[chNum] = &updateChannelMD;
+			}
+		} else {
+			if (chCtrl & Channel.ChCtrlFlags.Algorithm) 
+				chDeleg[chNum] = &updateChannelM01;
+			else
+				chDeleg[chNum] = &updateChannelM00;
+		}
+	}
+	/**
 	Recalls a program
 	*/
 	protected void prgRecall(ubyte ch, ubyte prg, ubyte bank) @nogc @safe pure nothrow {
 		Preset p = soundBank[bank & 7][prg];
 		operators[ch] = p.operators[0];
+		operators[ch].resetEG(sampleRate);
 		operators[ch + 1] = p.operators[1];
+		operators[ch + 1].resetEG(sampleRate);
+		channels[ch] = p.channel;
+		channels[ch].resetEEG(sampleRate);
 	}
 	/**
 	Sets a registered parameter
