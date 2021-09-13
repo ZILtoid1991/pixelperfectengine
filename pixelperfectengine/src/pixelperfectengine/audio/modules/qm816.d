@@ -579,8 +579,8 @@ public class QM816 : AudioModule {
 	///Stores ALFO rate
 	protected uint				aLFORate;
 	///Stores output filter values.
-	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: n-1; 7: n-2;
-	protected __m128[8]			filterVals;
+	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: x[n-1]; 7: x[n-2]; 8: y[n-1] 9: y[n-2]
+	protected __m128[10]		filterVals;
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
 	protected float[8]			filterCtrl;
@@ -1846,7 +1846,7 @@ public class QM816 : AudioModule {
 						}
 						valF *= 16;
 						const double cycleLen = sampleRate / (1.0 / valF);
-						pLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0));
+						pLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0) * bufferSize);
 						break;
 					case GlobalParamNums.PLFOWF:
 						static if (is(T == uint)) {
@@ -1913,6 +1913,57 @@ public class QM816 : AudioModule {
 				}
 				break;
 			default: break;
+		}
+	}
+	/**
+	 * Renders the current audio frame.
+	 * 
+	 * input: the input buffers if any, null if none.
+	 * output: the output buffers if any, null if none.
+	 * length: the lenth of the current audio frame in samples.
+	 *
+	 * NOTE: Buffers must have matching sizes.
+	 */
+	public override void renderFrame(float*[] input, float*[] output) @nogc nothrow {
+		//Generate aLFO table
+		for (int i ; i < bufferSize ; i++) {
+			aLFOBuf[i] = (wavetables[lfoWaveform[1]][(aLFOPos>>20) & 1023] - short.min) * (1 / cast(float)(ushort.max));
+			aLFOPos += aLFORate;
+		}
+		//Generate pLFO out
+		{
+			pLFOOut = (wavetables[lfoWaveform[0]][(pLFOPos>>20) & 1023]) * (1 / cast(float)(short.max));
+			pLFOPos += pLFORate;
+		}
+		//Render each channel
+		foreach (size_t i, ChFun fun ; chDeleg) {
+			fun(cast(int)i, bufferSize);
+		}
+		//Filter and mix outputs
+		float*[4] outBuf;
+		for (ubyte i, j ; i < 4 ; i++) {
+			if (enabledOutputs.has(i)) {
+				outBuf[i] = output[j];
+				j++;
+			} else {
+				outBuf[i] = dummyBuf.ptr;
+			}
+		}
+		const __m128 b0_a0 = filterVals[3] / filterVals[0], b1_a0 = filterVals[4] / filterVals[0], 
+				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];
+		for (int i ; i < bufferSize ; i++) {
+			__m128 input0 = _mm_load_ps(initBuffers.ptr + i);
+			input0 *= __m128(1 / short.max);
+			input0 = _mm_max_ps(input0, __m128(-1.0));
+			input0 = _mm_min_ps(input0, __m128(1.0));
+			__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
+					a2_a0 * filterVals[9];
+			for (int j ; j < 4 ; j++)
+				outBuf[j][i] += output0[j];
+			filterVals[7] = filterVals[6];
+			filterVals[6] = input0;
+			filterVals[9] = filterVals[8];
+			filterVals[8] = output0;
 		}
 	}
 	///Updates an operator for a cycle
