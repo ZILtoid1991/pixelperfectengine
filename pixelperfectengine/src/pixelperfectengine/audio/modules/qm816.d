@@ -2404,11 +2404,11 @@ public class QM816 : AudioModule {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
 			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
-			operators[opOffset + 17].input = operators[opOffset + 16].output_0;
+			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
 			updateOperator(operators[opOffset + 17], opCtrl3);	//S1
-			operators[opOffset].input = operators[opOffset + 17].output_0;
+			//operators[opOffset].input = operators[opOffset + 17].output_0;
 			updateOperator(operators[opOffset], opCtrl0);		//P0
-			operators[opOffset + 1].input = operators[opOffset].output_0;
+			//operators[opOffset + 1].input = operators[opOffset].output_0;
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset].output_0 +
