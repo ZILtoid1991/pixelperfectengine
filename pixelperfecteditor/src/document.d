@@ -304,7 +304,7 @@ public class MapDocument : MouseEventReceptor {
 						outputWindow.updateRaster();
 						break;
 					case MouseButton.Right:
-						prg.wh.addPopUpElement(createTilePlacementContextMenu(&onSelectContextMenuSelect));
+						if (mce.state) prg.wh.addPopUpElement(createTilePlacementContextMenu(&onSelectContextMenuSelect));
 						break;
 					default:
 						break;
@@ -381,7 +381,7 @@ public class MapDocument : MouseEventReceptor {
 						prevMouseY = y;
 						break;
 					case MouseButton.Right:
-						prg.wh.addPopUpElement(createSelectContextMenu(&onSelectContextMenuSelect));
+						if (mce.state) prg.wh.addPopUpElement(createSelectContextMenu(&onSelectContextMenuSelect));
 						break;
 					default:
 						break;

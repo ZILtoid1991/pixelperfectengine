@@ -14,6 +14,7 @@ import collections.linkedlist;
 import pixelperfectengine.system.etc : cmpObjPtr;
 
 import bindbc.sdl.bind.sdlmouse;
+import std.math : nearbyint;
 
 /**
  * Handles windows as well as PopUpElements.
@@ -222,10 +223,10 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * Called on mouse motion events.
 	 */
 	public void mouseMotionEvent(MouseEventCommons mec, MouseMotionEvent mme) {
-		mme.relX = cast(int)(mme.relX / mouseConvX);
-		mme.relY = cast(int)(mme.relY / mouseConvY);
-		mme.x = cast(int)(mme.x / mouseConvX);
-		mme.y = cast(int)(mme.y / mouseConvY);
+		mme.relX = cast(int)nearbyint(mme.relX / mouseConvX);
+		mme.relY = cast(int)nearbyint(mme.relY / mouseConvY);
+		mme.x = cast(int)nearbyint(mme.x / mouseConvX);
+		mme.y = cast(int)nearbyint(mme.y / mouseConvY);
 		mouseX = mme.x;
 		mouseY = mme.y;
 		if (dragEventSrc) {
@@ -278,9 +279,10 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		p.draw;
 		/+mouseX -= (p.getPosition.width/2);
 		mouseY -= (p.getPosition.height/2);+/
-		p.move(mouseX - p.getPosition.width/2, mouseY - p.getPosition.height/2);
+		
+		p.move(mouseX, mouseY);
 		numOfPopUpElements--;
-		spriteLayer.addSprite(p.getOutput,numOfPopUpElements,mouseX,mouseY);
+		spriteLayer.addSprite(p.getOutput(), numOfPopUpElements, p.getPosition());
 
 	}
 	public void addPopUpElement(PopUpElement p, int x, int y){

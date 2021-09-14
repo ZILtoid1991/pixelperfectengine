@@ -599,6 +599,9 @@ public class QM816 : AudioModule {
 	protected uint				pLFOPos;
 	///Stores PLFO rate
 	protected uint				pLFORate;
+	///Mixdown value.
+	///Used for final mixing.
+	protected float				mixdownVal = 1.0 / (ushort.max);
 	alias ChFun = void delegate(int chNum, size_t length) @nogc pure nothrow;
 	///Channel update delegates
 	protected ChFun[16]			chDeleg;
@@ -1953,7 +1956,7 @@ public class QM816 : AudioModule {
 				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];
 		for (int i ; i < bufferSize ; i++) {
 			__m128 input0 = _mm_load_ps(initBuffers.ptr + i);
-			input0 *= __m128(1 / short.max);
+			input0 *= __m128(mixdownVal);
 			input0 = _mm_max_ps(input0, __m128(-1.0));
 			input0 = _mm_min_ps(input0, __m128(1.0));
 			__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
