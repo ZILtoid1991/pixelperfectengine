@@ -17,6 +17,14 @@ The custom audio subsystem was recreated with the following principles:
 * Materials cannot be created before layers
 * Radiobuttons now update correctly in window headers. Turns out all it's problem was that the raster window didn't do
 updates on every redraw - my bad.
+* Scrollbar behavior fixed. Now they jump immediately at the correct approximate location it's expected.
+
+## New editor features
+
+* Selecting areas
+* Clipboard
+* Right-click context menu
+* Tile and Layer renaming
 
 # 0.10.0-beta1
 ## New features

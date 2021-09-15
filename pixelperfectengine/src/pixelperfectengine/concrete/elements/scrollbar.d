@@ -7,7 +7,8 @@ abstract class ScrollBar : WindowElement{
 	protected static enum 	PLUS_PRESSED = 1<<9;
 	protected static enum 	MINUS_PRESSED = 1<<10;
 	protected int _value, _maxValue, _barLength;
-	protected double largeVal;							///Set to double.nan if value is less than travellength, or the ratio between 
+	//protected double largeVal;							///Set to double.nan if value is less than travellength, or the ratio between 
+	protected double valRatio;							///Ratio between the travel length and the maximum value
 	public void delegate(Event ev) onScrolling;			///Called shen the scrollbar's value is changed
 
 	/**
@@ -46,7 +47,8 @@ abstract class ScrollBar : WindowElement{
 		if (_value > _maxValue) _value = _maxValue;
 		const double barLength0 = (length - iconSize * 2) / cast(double)val;
 		_barLength = barLength0 < 1.0 ? 1 : cast(int)barLength0;
-		largeVal = barLength0 < 1.0 ? 1.0 / barLength0 : double.nan;
+		//largeVal = barLength0 < 1.0 ? 1.0 / barLength0 : double.nan;
+		valRatio = 1.0 / barLength0;
 		return _maxValue;
 	}
 	/**
@@ -78,7 +80,7 @@ public class VertScrollBar : ScrollBar {
 		//draw slider
 		//const int travelLength = position.height - (position.width * 2) - _barLength;
 		Box slider;
-		const int value0 = isNaN(largeVal) ? value : cast(int)(value / largeVal);
+		const int value0 = valRatio < 1.0 ? value : cast(int)(value / valRatio);
 		slider.left = position.left;
 		slider.right = position.right;
 		slider.top = position.top + position.width + (_barLength * value0);
@@ -119,9 +121,10 @@ public class VertScrollBar : ScrollBar {
 				import std.math : nearbyint;
 				const double newVal = mce.y - position.width - (_barLength / 2.0);
 				if (newVal >= 0) {
-					const int travelLength = position.height - (position.width * 2) - _barLength;
-					const double valRatio = isNaN(largeVal) ? 1.0 : largeVal;
-					value = cast(int)nearbyint((travelLength / newVal) * valRatio);
+					//const int travelLength = position.height - (position.width * 2) - _barLength;
+					//const double valRatio = isNaN(largeVal) ? 1.0 : largeVal;
+					//value = cast(int)nearbyint((travelLength / newVal) * valRatio);
+					value = cast(int)nearbyint((newVal) * valRatio);
 				}
 			}
 		} 
@@ -154,7 +157,7 @@ public class HorizScrollBar : ScrollBar {
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
 		//const int travelLength = position.width - position.height * 2;
-		const int value0 = isNaN(largeVal) ? value : cast(int)(value / largeVal);
+		const int value0 = valRatio < 1.0 ? value : cast(int)(value / valRatio);
 		Box slider;
 		slider.top = position.top;
 		slider.bottom = position.bottom;
@@ -191,11 +194,12 @@ public class HorizScrollBar : ScrollBar {
 				}
 			} else {
 				import std.math : nearbyint;
-				const double newVal = mce.y - position.height - (_barLength / 2.0);
+				const double newVal = mce.x - position.height - (_barLength / 2.0);
 				if (newVal >= 0) {
-					const int travelLength = position.width - position.height * 2 - _barLength;
-					const double valRatio = isNaN(largeVal) ? 1.0 : largeVal;
-					value = cast(int)nearbyint((travelLength / newVal) * valRatio);
+					//const int travelLength = position.width - position.height * 2 - _barLength;
+					//const double valRatio = isNaN(largeVal) ? 1.0 : largeVal;
+					//value = cast(int)nearbyint((travelLength / newVal) * valRatio);
+					value = cast(int)nearbyint((newVal) * valRatio);
 				}
 			}
 		} 

@@ -704,8 +704,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		if (vertSlider) {
 			const Box p = vertSlider.getPosition();
 			if (p.isBetween(mce.x, mce.y)) {
-				mce.x -= p.left - position.left;
-				mce.y -= p.top - position.top;
+				mce.x -= p.left;
+				mce.y -= p.top;
 				vertSlider.passMCE(mec, mce);
 				return;
 			}
@@ -713,8 +713,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		if (horizSlider) {
 			const Box p = horizSlider.getPosition();
 			if (p.isBetween(mce.x, mce.y)) {
-				mce.x -= p.left - position.left;
-				mce.y -= p.top - position.top;
+				mce.x -= p.left;
+				mce.y -= p.top;
 				horizSlider.passMCE(mec, mce);
 				return;
 			}

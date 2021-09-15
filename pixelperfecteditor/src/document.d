@@ -517,6 +517,35 @@ public class MapDocument : MouseEventReceptor {
 	 * Context menu for selection events go here
 	 */
 	protected void onSelectContextMenuSelect (Event ev) {
-
+		MenuEvent me = cast(MenuEvent)ev;
+		switch (me.itemSource) {
+			case "copy":
+				copy;
+				break;
+			case "cut":
+				cut;
+				break;
+			case "paste":
+				paste;
+				break;
+			case "flp":
+				break;
+			case "shp":
+				break;
+			case "hm":
+				selectedMappingElement.attributes.horizMirror = !selectedMappingElement.attributes.horizMirror;
+				break;
+			case "vm":
+				selectedMappingElement.attributes.vertMirror = !selectedMappingElement.attributes.vertMirror;
+				break;
+			case "p+":
+				selectedMappingElement.paletteSel++;
+				break;
+			case "p-":
+				selectedMappingElement.paletteSel--;
+				break;
+			default:
+				break;
+		}
 	}
 }

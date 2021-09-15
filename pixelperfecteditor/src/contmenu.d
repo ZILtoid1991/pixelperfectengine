@@ -16,8 +16,8 @@ public PopUpMenu createSelectContextMenu(EventDeleg onMenuSelect) {
     elements ~= new PopUpMenuElement("copy", "Copy"d);
     elements ~= new PopUpMenuElement("cut", "Cut"d);
     elements ~= new PopUpMenuElement("paste", "Paste"d);
-    elements ~= new PopUpMenuElement("fh", "Flip area horizontally"d);
-    elements ~= new PopUpMenuElement("fv", "Flip area vertically"d);
+    elements ~= new PopUpMenuElement("flp", "Flip..."d);
+    elements ~= new PopUpMenuElement("shp", "Shift palette"d);
     return new PopUpMenu(elements, "contextMenu_Select", onMenuSelect);
 }
 /**

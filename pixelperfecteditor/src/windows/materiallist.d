@@ -37,6 +37,8 @@ public class MaterialList : Window {
 		spriteListHeader = new ListViewHeader(16, [40, 120, 64], ["ID"d, "Name"d, "Dim"d]);
 		listView_materials = new ListView(tileListHeader, null, "listView_materials", Box(1, 17, 128, 215));
 		listView_materials.onItemSelect = &onItemSelect;
+		listView_materials.editEnable = true;
+		listView_materials.onTextInput = &onItemRename;
 		addElement(listView_materials);
 		
 		removeMaterial = new SmallButton("removeMaterialB", "removeMaterialA", "rem", Box(113, 233, 129, 248));
@@ -81,7 +83,9 @@ public class MaterialList : Window {
 		output.reserve = list.length;+/
 		listView_materials.clear;
 		foreach (item ; list) {
-			listView_materials ~= new ListViewItem(16, [intToHex!dstring(item.id, 4) ~ "h", toUTF32(item.name)]);
+			ListViewItem f = new ListViewItem(16, [intToHex!dstring(item.id, 4) ~ "h", toUTF32(item.name)]);
+			f[1].editable = true;
+			listView_materials ~= f;
 		}
 		listView_materials.refresh;
 		/+listBox_materials.updateColumns(output, new ListBoxHeader(tileListHeaderS.dup, tileListHeaderW.dup));+/
@@ -129,6 +133,9 @@ public class MaterialList : Window {
 	}
 	private void onItemSelect(Event ev) {
 		prg.selDoc.tileMaterial_Select(tiles[listView_materials.value].id);
+	}
+	private void onItemRename(Event ev) {
+
 	}
 }
 /**
