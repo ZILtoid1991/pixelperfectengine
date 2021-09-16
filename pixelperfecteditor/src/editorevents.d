@@ -507,3 +507,60 @@ public class PasteIntoTileLayerEvent : UndoableEvent {
 		}
 	}
 }
+/**
+ * Removes a single tile.
+ */
+public class RemoveTile : UndoableEvent {
+	int id;
+	MapDocument targetDoc;
+	int layer;
+	Tag infobackup;
+	ABitmap bitmapbackup;
+	string source, dpkSource;
+	this (int id, MapDocument targetDoc, int layer) {
+		this.id = id;
+		this.targetDoc = targetDoc;
+		this.layer = layer;
+	}
+
+	public void redo() {
+		infobackup = targetDoc.mainDoc.removeTile(layer, id, source, dpkSource);
+		TileLayer tl = cast(TileLayer)targetDoc.mainDoc.layeroutput[layer];
+		tl.removeTile(cast(wchar)id);
+		targetDoc.updateMaterialList();
+	}
+
+	public void undo() {
+		targetDoc.mainDoc.addTile(layer, infobackup, source, dpkSource);
+		Tag t = targetDoc.mainDoc.getTileSourceTag(layer, source, dpkSource);
+		TileLayer tl = cast(TileLayer)targetDoc.mainDoc.layeroutput[layer];
+		tl.addTile(bitmapbackup, cast(wchar)id, cast(ubyte)(t.getAttribute!int("palShift")));
+		targetDoc.updateMaterialList();
+	}
+}
+/**
+ * Renames a single tile
+ */
+public class RenameTile : UndoableEvent {
+	int id;
+	MapDocument targetDoc;
+	int layer;
+	string oldName, newName;
+
+	this (int id, MapDocument targetDoc, int layer, string newName) {
+		this.id = id;
+		this.targetDoc = targetDoc;
+		this.layer = layer;
+		this.newName = newName;
+	}
+
+	public void redo() {
+		oldName = targetDoc.mainDoc.renameTile(layer, id, newName);
+		targetDoc.updateMaterialList();
+	}
+
+	public void undo() {
+		newName = targetDoc.mainDoc.renameTile(layer, id, oldName);
+		targetDoc.updateMaterialList();
+	}
+}

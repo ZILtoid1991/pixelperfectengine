@@ -548,4 +548,16 @@ public class MapDocument : MouseEventReceptor {
 				break;
 		}
 	}
+	/**
+	 * Removes a tile from the material list.
+	 */
+	public void removeTile(int id) {
+		events.addToTop(new RemoveTile(id, this, selectedLayer));
+	}
+	/**
+	 * Renames a tile on the material list.
+	 */
+	public void renameTile(int id, string name) {
+		events.addToTop(new RenameTile(id, this, selectedLayer, name));
+	}
 }

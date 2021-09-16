@@ -5,6 +5,8 @@ Prerequirements:
 
 This document is not finished, although I plan to minimize changes that would break a lot of things.
 
+Currently the only change since its initial version is adding a constraint to tile IDs per layer, to avoid problems with ID collisions.
+
 Extension: `.XMF` (Extendible Map Format)
 
 Naming conventions:
@@ -114,7 +116,7 @@ Has a single kind of nameless tag in the given format:
 
 Explanations for values in order:
 
-1) The ID of the tile. Must be between 0 and 65535.
+1) The ID of the tile. Must be between 0 and 65535. Each ID is unique per layer.
 2) Determines which tile is requested from the sheet in left-to-right top-to-bottom order.
 3) The name of the tile.
 

@@ -291,7 +291,7 @@ public class MapFormat {
 	/**
 	 * Adds a single TileInfo to a preexisting chunk on the layer.
 	 */
-	public void addSingleTileInfo(int pri, TileInfo item, string source, string dpkSource = null) {
+	public void addTile(int pri, TileInfo item, string source, string dpkSource = null) {
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
 			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
 				Tag t1 = t0.getTag("Embed:TileInfo");
@@ -302,13 +302,7 @@ public class MapFormat {
 		}
 	}
 	///Ditto, but from preexiting Tag.
-	public void addSingleTileInfo(int pri, Tag t, string source, string dpkSource = null) @trusted {
-		/+foreach (Tag t0 ; layerData[pri].namespaces["Embed"].tags) {
-			if (t0.name == "TileInfo" && t0.values.length >= 1 && t0.values[0].get!string() == source) {
-				t0.add(t);
-				return;
-			}
-		}+/
+	public void addTile(int pri, Tag t, string source, string dpkSource = null) @trusted {
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
 			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
 				Tag t1 = t0.getTag("Embed:TileInfo");
@@ -317,19 +311,20 @@ public class MapFormat {
 		}
 	}
 	/**
-	 * Renames a tile.
+	 * Renames a single tile.
 	 * Returns the previous name if the action was successful, or null if there was some issue.
 	 */
-	public string renameTile(int pri, int id, string newName, string source, string dpkSource = null) {
+	public string renameTile(int pri, int id, string newName) {
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
+			if (t0.name == "TileSource") {
 				Tag t1 = t0.getTag("Embed:TileInfo");
-				if (t1 is null) return null;
-				foreach (Tag t2; t1.tags) {
-					if (t2.values[0].get!int() == id) {
-						string oldName = t2.values[2].get!string();
-						t2.values[2] = Value(newName);
-						return oldName;
+				if (t1 !is null) {
+					foreach (Tag t2; t1.tags) {
+						if (t2.values[0].get!int() == id) {
+							string oldName = t2.values[2].get!string();
+							t2.values[2] = Value(newName);
+							return oldName;
+						}
 					}
 				}
 				
@@ -342,10 +337,20 @@ public class MapFormat {
 	 * Returns a tag as a backup.
 	 * Returns null if source is not found.
 	 */
-	public Tag removeTileInfo(int pri, string source) @trusted {
-		foreach (Tag t0 ; layerData[pri].namespaces["Embed"].tags) {
-			if (t0.name == "TileInfo" && t0.values.length >= 1 && t0.values[0].get!string() == source) {
-				return t0.remove;
+	public Tag removeTile(int pri, int id, ref string source, ref string dpkSource) @trusted {
+		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			if (t0.name == "TileSource") {
+				Tag t1 = t0.getTag("Embed:TileInfo");
+				if (t1 !is null) {
+					source = t1.values[0].get!string();
+					dpkSource = t1.getAttribute!string("dpkSource", null);
+					foreach (Tag t2; t1.tags) {
+						if (t2.values[0].get!int() == id) {
+							return t2.remove();
+						}
+					}
+				}
+				
 			}
 		}
 		return null;

@@ -5,7 +5,7 @@ import pixelperfectengine.map.mapformat;
 
 import app;
 
-import std.utf : toUTF32;
+import std.utf : toUTF32, toUTF8;
 import pixelperfectengine.system.etc : intToHex;
 
 /**
@@ -117,7 +117,9 @@ public class MaterialList : Window {
 
 	}
 	private void button_trash_onClick(Event ev) {
-		
+		if (listView_materials.value != -1) {
+			prg.selDoc.removeTile(tiles[listView_materials.value].id);
+		}
 	}
 	public void palUp_onClick(Event ev) {
 		palettePos.setText("0x" ~ intToHex!dstring(prg.selDoc.tileMaterial_PaletteUp, 2));
@@ -135,7 +137,9 @@ public class MaterialList : Window {
 		prg.selDoc.tileMaterial_Select(tiles[listView_materials.value].id);
 	}
 	private void onItemRename(Event ev) {
-
+		CellEditEvent cee = cast(CellEditEvent)ev;
+		string newName = toUTF8(cee.text().text());
+		prg.selDoc.renameTile(tiles[listView_materials.value].id, newName);
 	}
 }
 /**
