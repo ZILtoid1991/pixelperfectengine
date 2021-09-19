@@ -9,6 +9,7 @@ import sdlang;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster : PaletteContainer;
 import std.stdio;
+import collections.treemap;
 public import pixelperfectengine.map.mapdata;
 
 /**
@@ -21,10 +22,10 @@ public import pixelperfectengine.map.mapdata;
  * Namespaces are reserved for internal use (eg. file sources, objects).
  */
 public class MapFormat {
-	public Tag[int] 	layerData;	///Layerdata stored as SDLang tags.
-	public Layer[int]	layeroutput;	///Used to fast map and object data pullback in editors
-	protected Tag 		metadata;	///Stores metadata.
-	protected Tag		root;		///Root tag for common information.
+	public TreeMap!(int,Tag) 	layerData;	///Layerdata stored as SDLang tags.
+	public TreeMap!(int,Layer)	layeroutput;///Used to fast map and object data pullback in editors
+	protected Tag 				metadata;	///Stores metadata.
+	protected Tag				root;		///Root tag for common information.
 	public TileInfo[][int]	tileDataFromExt;///Stores basic TileData that are loaded through extensions
 	/**
 	 * Associative array used for rendering mode lookups in one way.
@@ -174,8 +175,8 @@ public class MapFormat {
 	 */
 	public void save (string path) @trusted {
 		debug writeln(root.tags);
-		foreach(i; layerData.byKey){
-			if(layerData[i].name == "Tile")
+		foreach(int i, Tag t; layerData){
+			if(t.name == "Tile")
 				pullMapDataFromLayer (i);
 		}
 		string output = root.toSDLDocument();
@@ -193,7 +194,7 @@ public class MapFormat {
 	 * Returns the requested layer
 	 */
 	public Layer opIndex(int index) @safe pure {
-		return layeroutput.get(index, null);
+		return layeroutput[index];
 	}
 	/**
 	 * Returns all layer's basic information.
@@ -211,7 +212,7 @@ public class MapFormat {
 	 * Returns a specified layer's basic information.
 	 */
 	public LayerInfo getLayerInfo(int pri) @trusted {
-		Tag t = layerData.get(pri, null);
+		Tag t = layerData[pri];
 		if (t !is null) return LayerInfo(LayerInfo.parseLayerTypeString(t.name), t.values[1].get!int(), 
 				t.values[0].get!string());
 		else return LayerInfo.init;
@@ -342,8 +343,8 @@ public class MapFormat {
 			if (t0.name == "TileSource") {
 				Tag t1 = t0.getTag("Embed:TileInfo");
 				if (t1 !is null) {
-					source = t1.values[0].get!string();
-					dpkSource = t1.getAttribute!string("dpkSource", null);
+					source = t0.values[0].get!string();
+					dpkSource = t0.getAttribute!string("dpkSource", null);
 					foreach (Tag t2; t1.tags) {
 						if (t2.values[0].get!int() == id) {
 							return t2.remove();

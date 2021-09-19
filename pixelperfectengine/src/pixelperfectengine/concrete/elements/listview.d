@@ -745,33 +745,41 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				selection = -1;
 			} else if (selection == pos && (flags & EDIT_EN)) {
 				//Calculate horizontal selection for Multicell editing if needed
-				if (flags & MULTICELL_EDIT_EN) {
-
-				} else {
-					foreach (size_t i, ListViewItem.Field f ; entries[selection].fields) {
-						if (f.editable) {
-							hSelection = cast(int)i;
-							if (vertSlider) textArea.top -= vertSlider.value;
-							if (horizSlider) textArea.left -= horizSlider.value;
-							textArea.top += _header.height;
-							with (textArea) {
-								bottom = entries[selection].height + textArea.top;
-								right = _header.columnWidths[i] + textArea.left;
-								left = max(textArea.left, position.left);
-								top = max(textArea.top, position.top);
-								right = min(textArea.right, position.right);
-								bottom = min(textArea.bottom, position.bottom);
+				/+if (flags & MULTICELL_EDIT_EN) {
+					
+				} else {+/
+				foreach (size_t i, ListViewItem.Field f ; entries[selection].fields) {
+					if (f.editable) {
+						hSelection = cast(int)i;
+						if (vertSlider) textArea.top -= vertSlider.value;
+						if (horizSlider) textArea.left -= horizSlider.value;
+						textArea.top += _header.height;
+						with (textArea) {
+							bottom = entries[selection].height + textArea.top;
+							right = _header.columnWidths[i] + textArea.left;
+							left = max(textArea.left, position.left);
+							top = max(textArea.top, position.top);
+							right = min(textArea.right, position.right);
+							bottom = min(textArea.bottom, position.bottom);
+						}
+						text = entries[selection][hSelection].text;
+						cursorPos = 0;
+						tselect = cast(int)text.charLength;
+						//oldText = text;
+						if (flags & MULTICELL_EDIT_EN) {
+							if (textArea.left < mce.x && textArea.right > mce.y) {
+								inputHandler.startTextInput(this);
+								break;
 							}
-							text = entries[selection][hSelection].text;
-							cursorPos = 0;
-							tselect = cast(int)text.charLength;
-							//oldText = text;
+						} else {
 							inputHandler.startTextInput(this);
 							break;
 						}
-						textArea.left += _header.columnWidths[i];
+						
 					}
+					textArea.left += _header.columnWidths[i];
 				}
+				//}
 				selection = pos;
 			} else 
 				selection = pos;

@@ -139,7 +139,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 		import pixelperfectengine.system.etc : intToHex;
 		if (backup) {	//If a backup exists, then re-add that to the document, then return.
 			target.mainDoc.addNewLayer(pri, backup, creation);
-			target.outputWindow.addLayer(pri);
+			//target.outputWindow.addLayer(pri);
 			return;
 		}
 		try {
@@ -241,7 +241,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 				}
 
 			}+/
-			target.outputWindow.addLayer(nextLayer);
+			//target.outputWindow.addLayer(nextLayer);
 			target.selectedLayer = nextLayer;
 			pri = nextLayer;
 			target.updateLayerList();
@@ -252,7 +252,7 @@ public class CreateTileLayerEvent : UndoableEvent {
 	}
 	public void undo() {
 		//Just remove the added layer from the layerlists
-		target.outputWindow.removeLayer(pri);
+		//target.outputWindow.removeLayer(pri);
 		backup = target.mainDoc.removeLayer(pri);
 		target.updateLayerList();
 		target.updateMaterialList();
@@ -526,6 +526,7 @@ public class RemoveTile : UndoableEvent {
 	public void redo() {
 		infobackup = targetDoc.mainDoc.removeTile(layer, id, source, dpkSource);
 		TileLayer tl = cast(TileLayer)targetDoc.mainDoc.layeroutput[layer];
+		bitmapbackup = tl.getTile(cast(wchar)id);
 		tl.removeTile(cast(wchar)id);
 		targetDoc.updateMaterialList();
 	}
@@ -560,7 +561,98 @@ public class RenameTile : UndoableEvent {
 	}
 
 	public void undo() {
-		newName = targetDoc.mainDoc.renameTile(layer, id, oldName);
+		targetDoc.mainDoc.renameTile(layer, id, oldName);
 		targetDoc.updateMaterialList();
+	}
+}
+/**
+ * Removes a layer.
+ */
+public class RemoveLayer : UndoableEvent {
+	MapDocument targetDoc;
+	int layer;
+	Tag infobackup;
+	Layer databackup;
+	this (MapDocument targetDoc, int layer) {
+		this.targetDoc = targetDoc;
+		this.layer = layer;
+	}
+
+	public void redo() {
+		infobackup = targetDoc.mainDoc.layerData.remove(layer);
+		databackup = targetDoc.mainDoc.layeroutput.remove(layer);
+		targetDoc.updateLayerList();
+	}
+
+	public void undo() {
+		targetDoc.mainDoc.layerData[layer] = infobackup;
+		targetDoc.mainDoc.layeroutput[layer] = databackup;
+		targetDoc.updateLayerList();
+	}
+}
+/**
+ * Renames a layer.
+ */
+public class RenameLayer : UndoableEvent {
+	MapDocument targetDoc;
+	int layer;
+	string oldName, newName;
+	this (MapDocument targetDoc, int layer, string newName) {
+		this.targetDoc = targetDoc;
+		this.layer = layer;
+		this.newName = newName;
+	}
+
+	public void redo() {
+		try {
+			Tag t = targetDoc.mainDoc.layerData[layer];
+			oldName = t.values[0].get!string();
+			t.values[0] = Value(newName);
+		} catch (DOMException e) {
+			debug writeln(e);
+		} catch (Exception e) {
+			debug writeln(e);
+		}
+		targetDoc.updateLayerList();
+	}
+	
+	public void undo() {
+		try {
+			Tag t = targetDoc.mainDoc.layerData[layer];
+			//newName = t.values[0].get!string();
+			t.values[0] = Value(oldName);
+		} catch (DOMException e) {
+			debug writeln(e);
+		} catch (Exception e) {
+			debug writeln(e);
+		}
+		targetDoc.updateLayerList();
+	}
+}
+/**
+ * Moves a layer in the priority list.
+ */
+public class ChangeLayerPriority : UndoableEvent {
+	MapDocument targetDoc;
+	int layer;
+	int newPri;
+	this (MapDocument targetDoc, int layer, int newPri) {
+		this.targetDoc = targetDoc;
+		this.layer = layer;
+		this.newPri = newPri;
+	}
+
+	public void redo() {
+		targetDoc.mainDoc.layerData[newPri] = targetDoc.mainDoc.layerData.remove(layer);
+		targetDoc.mainDoc.layeroutput[newPri] = targetDoc.mainDoc.layeroutput.remove(layer);
+		targetDoc.selectedLayer = newPri;
+		targetDoc.updateLayerList();
+	}
+	
+	public void undo() {
+		targetDoc.mainDoc.layerData[layer] = targetDoc.mainDoc.layerData.remove(newPri);
+		targetDoc.mainDoc.layeroutput[layer] = targetDoc.mainDoc.layeroutput.remove(newPri);
+		targetDoc.selectedLayer = layer;
+		targetDoc.updateLayerList();
 	}
 }

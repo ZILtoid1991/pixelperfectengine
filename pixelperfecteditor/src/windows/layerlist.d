@@ -23,8 +23,11 @@ public class LayerList : Window {
 		listView_layers = new ListView(
 			new ListViewHeader(16, [24, 24, 96], ["Pri"d ,"Type"d, "Name"d]), null, "listView_layers", Box(1, 17, 128, 179)
 		);
+		listView_layers.editEnable = true;
+		listView_layers.multicellEditEnable = true;
 		addElement(listView_layers);
 		listView_layers.onItemSelect = &listBox_layers_onItemSelect;
+		listView_layers.onTextInput = &layerList_TextEdit;
 		{
 			SmallButton sb = new SmallButton("trashButtonB", "trashButtonA", "trash", Box(113, 197, 129, 213));
 			sb.onMouseLClick = &button_trash_onClick;
@@ -116,10 +119,23 @@ public class LayerList : Window {
 		listView_layers.clear();
 		foreach (i ; items) {
 			//list ~= new ListViewItem(16, [to!dstring(i.pri), to!dstring(i.type), toUTF32(i.name)]);
-			listView_layers ~= new ListViewItem(16, [to!dstring(i.pri), to!dstring(i.type), toUTF32(i.name)]);
+			ListViewItem lvi = new ListViewItem(16, [to!dstring(i.pri), to!dstring(i.type), toUTF32(i.name)]);
+			lvi[0].editable = true;
+			lvi[2].editable = true;
+			listView_layers ~= lvi;
 		}
 		listView_layers.refresh;
 		//listView_layers.(list);
+	}
+	private void layerList_TextEdit(Event ev) {
+		CellEditEvent cee = cast(CellEditEvent)ev;
+		if (prg.selDoc !is null) {
+			if (cee.column == 2) {	//Rename
+				
+			} else {				//Set new priority
+	
+			}
+		}
 	}
 	public override void close(){
 		if(onClose !is null){

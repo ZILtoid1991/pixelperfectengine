@@ -30,7 +30,7 @@ public class RasterWindow : Window, PaletteContainer {
 	protected static enum CLOSE_PROTECT = 1 << 1;
 	protected static enum SELECTION_ARMED = 1 << 2;	///Selection is armed, draw box, and redirect event to document
 	protected static enum SHOW_SELECTION = 1 << 3;	///Shows selection
-	protected int[] layerList;
+	//protected int[] layerList;
 	public int rasterX, rasterY;		///Raster sizes
 	protected dstring documentName;
 	protected MapDocument document;
@@ -192,8 +192,10 @@ public class RasterWindow : Window, PaletteContainer {
 		//draw the borders. we do not need fills or drawing elements
 		uint* ptr = cast(uint*)trueOutput.getPtr;
 		StyleSheet ss = getStyleSheet;
-		CPUblit.draw.drawLine!uint(0, 16, 0, position.height - 1, paletteShared[ss.getColor("windowascent")].base, ptr, trueOutput.width);
-		CPUblit.draw.drawLine!uint(0, 16, position.width - 1, 16, paletteShared[ss.getColor("windowascent")].base, ptr, trueOutput.width);
+		CPUblit.draw.drawLine!uint(0, 16, 0, position.height - 1, paletteShared[ss.getColor("windowascent")].base, ptr, 
+				trueOutput.width);
+		CPUblit.draw.drawLine!uint(0, 16, position.width - 1, 16, paletteShared[ss.getColor("windowascent")].base, ptr, 
+				trueOutput.width);
 		CPUblit.draw.drawLine!uint(position.width - 1, 16, position.width - 1, position.height - 1,
 				paletteShared[ss.getColor("windowdescent")].base, ptr, trueOutput.width);
 		CPUblit.draw.drawLine!uint(0, position.height - 1, position.width - 1, position.height - 1,
@@ -209,13 +211,15 @@ public class RasterWindow : Window, PaletteContainer {
 				trueOutput.writePixel (x, y, Color(0,0,0,0));
 			}
 		}
-		//debug writeln(paletteLocal);
 		//update each layer individually
-		for(int i ; i < layerList.length ; i++){
+		foreach (Layer l ; document.mainDoc.layeroutput) {
+			l.updateRaster((trueOutput.getPtr + (17 * trueOutput.width) + 1), trueOutput.width * 4, paletteLocal.ptr);
+		}
+		/+for(int i ; i < layerList.length ; i++){
 			//document.mainDoc[layerList[i]].updateRaster(rasterOutput.getPtr, rasterX * 4, paletteLocal.ptr);
 			document.mainDoc[layerList[i]].updateRaster((trueOutput.getPtr + (17 * trueOutput.width) + 1), trueOutput.width * 4,
 					paletteLocal.ptr);
-		}
+		}+/
 		for (int i = 16 ; i < trueOutput.height - 1 ; i++) {
 			helperFunc(trueOutput.getPtr + 1 + trueOutput.width * i, trueOutput.width - 2);
 		}
@@ -231,7 +235,7 @@ public class RasterWindow : Window, PaletteContainer {
 			}
 		}
 	}
-	/**
+	/+/**
 	 * Adds a new layer then reorders the display list.
 	 */
 	public void addLayer(int p) {
@@ -250,7 +254,7 @@ public class RasterWindow : Window, PaletteContainer {
 				return;
 			}
 		}
-	}
+	}+/
 	/**
 	 * Copies and sets all alpha values to 255 to avoid transparency issues
 	 */
@@ -344,9 +348,9 @@ public class RasterWindow : Window, PaletteContainer {
 	}
 
 	public void loadLayers () {
-		foreach (key; document.mainDoc.layeroutput.byKey) {
-			document.mainDoc.layeroutput[key].setRasterizer(rasterX, rasterY);
-			addLayer(key);
+		foreach (key; document.mainDoc.layeroutput) {
+			key.setRasterizer(rasterX, rasterY);
+			//addLayer(key);
 		}
 	}
 }

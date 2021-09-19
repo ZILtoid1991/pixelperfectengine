@@ -552,12 +552,38 @@ public class MapDocument : MouseEventReceptor {
 	 * Removes a tile from the material list.
 	 */
 	public void removeTile(int id) {
-		events.addToTop(new RemoveTile(id, this, selectedLayer));
+		if (mainDoc.layeroutput[selectedLayer])
+			events.addToTop(new RemoveTile(id, this, selectedLayer));
 	}
 	/**
 	 * Renames a tile on the material list.
 	 */
 	public void renameTile(int id, string name) {
-		events.addToTop(new RenameTile(id, this, selectedLayer, name));
+		if (mainDoc.layeroutput[selectedLayer])
+			events.addToTop(new RenameTile(id, this, selectedLayer, name));
+	}
+	/**
+	 * Removes a layer.
+	 */
+	public void removeLayer() {
+		if (mainDoc.layeroutput[selectedLayer])
+			events.addToTop(new RemoveLayer(this, selectedLayer));
+	}
+	/**
+	 * Renames a layer.
+	 */
+	public void renameLayer(string newName) {
+		if (mainDoc.layeroutput[selectedLayer])
+			events.addToTop(new RenameLayer(this, selectedLayer, newName));
+	}
+	/**
+	 * Moves the priority of a layer.
+	 */
+	public void changeLayerPriority(int newPri) {
+		if (mainDoc.layeroutput[newPri]) {
+			prg.wh.message("Layer edit error!", "Layer priority is already in use or invalid!");
+		} else if (mainDoc.layeroutput[selectedLayer]) {
+			events.addToTop(new ChangeLayerPriority(this, selectedLayer, newPri));
+		}
 	}
 }

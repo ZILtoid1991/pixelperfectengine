@@ -196,7 +196,7 @@ public class TileLayer : Layer, ITileLayer {
 						if (col + tileXLength > rasterX) {
 							tileXLength -= offsetX0;
 						}
-						final switch (tileInfo.wordLength) {
+						switch (tileInfo.wordLength) {
 							case 4:
 								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + (offsetX1 + (offsetY0 * tileX)>>>1);
 								main4BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + 
@@ -233,7 +233,7 @@ public class TileLayer : Layer, ITileLayer {
 									mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength,masterVal);
 								}
 								break;
-
+							default: break;
 						}
 
 					}
