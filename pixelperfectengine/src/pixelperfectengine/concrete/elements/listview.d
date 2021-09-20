@@ -748,12 +748,13 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				/+if (flags & MULTICELL_EDIT_EN) {
 					
 				} else {+/
+				textArea.top += _header.height;
 				foreach (size_t i, ListViewItem.Field f ; entries[selection].fields) {
 					if (f.editable) {
 						hSelection = cast(int)i;
 						if (vertSlider) textArea.top -= vertSlider.value;
 						if (horizSlider) textArea.left -= horizSlider.value;
-						textArea.top += _header.height;
+						
 						with (textArea) {
 							bottom = entries[selection].height + textArea.top;
 							right = _header.columnWidths[i] + textArea.left;
@@ -767,7 +768,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 						tselect = cast(int)text.charLength;
 						//oldText = text;
 						if (flags & MULTICELL_EDIT_EN) {
-							if (textArea.left < mce.x && textArea.right > mce.y) {
+							if (textArea.left < mce.x && textArea.right > mce.x) {
 								inputHandler.startTextInput(this);
 								break;
 							}

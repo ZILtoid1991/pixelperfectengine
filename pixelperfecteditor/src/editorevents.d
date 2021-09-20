@@ -645,6 +645,7 @@ public class ChangeLayerPriority : UndoableEvent {
 	public void redo() {
 		targetDoc.mainDoc.layerData[newPri] = targetDoc.mainDoc.layerData.remove(layer);
 		targetDoc.mainDoc.layeroutput[newPri] = targetDoc.mainDoc.layeroutput.remove(layer);
+		targetDoc.mainDoc.layerData[newPri].values[1] = Value(newPri);
 		targetDoc.selectedLayer = newPri;
 		targetDoc.updateLayerList();
 	}
@@ -652,6 +653,7 @@ public class ChangeLayerPriority : UndoableEvent {
 	public void undo() {
 		targetDoc.mainDoc.layerData[layer] = targetDoc.mainDoc.layerData.remove(newPri);
 		targetDoc.mainDoc.layeroutput[layer] = targetDoc.mainDoc.layeroutput.remove(newPri);
+		targetDoc.mainDoc.layerData[layer].values[1] = Value(layer);
 		targetDoc.selectedLayer = layer;
 		targetDoc.updateLayerList();
 	}

@@ -2,7 +2,7 @@ module windows.layerlist;
 
 import pixelperfectengine.concrete.window;
 import app;
-import std.utf : toUTF32;
+import std.utf : toUTF32, toUTF8;
 import std.conv : to;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.map.mapformat : LayerInfo;
@@ -88,6 +88,7 @@ public class LayerList : Window {
 			ListViewItem lbi = cast(ListViewItem)ev.aux;
 			const int selectedLayer = to!int(lbi.fields[0].text.text);
 			prg.selDoc.selectedLayer = selectedLayer;
+			prg.selDoc.updateMaterialList();
 		}
 	}
 	private void button_trash_onClick(Event ev){
@@ -128,12 +129,13 @@ public class LayerList : Window {
 		//listView_layers.(list);
 	}
 	private void layerList_TextEdit(Event ev) {
+		import pixelperfectengine.system.etc : isInteger;
 		CellEditEvent cee = cast(CellEditEvent)ev;
 		if (prg.selDoc !is null) {
 			if (cee.column == 2) {	//Rename
-				
-			} else {				//Set new priority
-	
+				prg.selDoc.renameLayer(toUTF8(cee.text.text));
+			} else if (isInteger(cee.text.text)) {				//Set new priority
+				prg.selDoc.changeLayerPriority(to!int(cee.text.text));
 			}
 		}
 	}
