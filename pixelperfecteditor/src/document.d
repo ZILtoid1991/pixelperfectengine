@@ -102,7 +102,7 @@ public class MapDocument : MouseEventReceptor {
 	 * Scrolls the selected layer by a given amount.
 	 */
 	public void scrollSelectedLayer (int x, int y) {
-		if (mainDoc[selectedLayer] !is null) {
+		if (selectedLayer in mainDoc.layeroutput) {
 			mainDoc[selectedLayer].relScroll(x, y);
 		}
 		outputWindow.updateRaster();
@@ -119,7 +119,7 @@ public class MapDocument : MouseEventReceptor {
 	 * Updates the selection on the raster window.
 	 */
 	public void updateSelection() {
-		if (mainDoc[selectedLayer] !is null) {
+		if (selectedLayer in mainDoc.layeroutput) {
 			const int sX = mainDoc[selectedLayer].getSX, sY = mainDoc[selectedLayer].getSY;
 			Box onscreen = Box(sX, sY, sX + outputWindow.rasterX - 1, sY + outputWindow.rasterY - 1);
 			if (onscreen.isBetween(areaSelection.cornerUL) || onscreen.isBetween(areaSelection.cornerUR) || 
@@ -159,7 +159,7 @@ public class MapDocument : MouseEventReceptor {
 	 * Updates the material list for the selected layer.
 	 */
 	public void updateMaterialList () {
-		if (mainDoc[selectedLayer] !is null) {
+		if (selectedLayer in mainDoc.layeroutput) {
 			if (prg.materialList !is null) {
 				TileInfo[] list = mainDoc.getTileInfo(selectedLayer);
 				//writeln(list.length);
@@ -215,6 +215,7 @@ public class MapDocument : MouseEventReceptor {
 				switch (mce.button) {
 					case MouseButton.Left:			//Tile placement
 						//Record the first cursor position upon mouse button press, then initialize either a single or zone write for the selected tile layer.
+						if (selectedLayer !in mainDoc.layeroutput) return;	//Safety protection
 						if (mce.state) {
 							prevMouseX = x;
 							prevMouseY = y;
