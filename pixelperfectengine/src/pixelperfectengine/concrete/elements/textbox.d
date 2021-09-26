@@ -12,6 +12,15 @@ public class TextBox : WindowElement, TextInputListener {
 	protected size_t cursorPos;
 	protected int horizTextOffset, select;
 	protected Text oldText;
+	///List of allowed characters if length is not null.
+	///Can be used for numeric-only inputs.
+	public dstring 			allowedChars;
+	///Symbols for positive integer inputs.
+	public static immutable dstring INTEGER_POS = "0123456789";
+	///Symbols for integer inputs.
+	public static immutable dstring INTEGER = "-0123456789";
+	///Symbols for decimal inputs.
+	public static immutable dstring DECIMAL = ".-0123456789";
 	//public int brush, textpos;
 	//public TextInputHandler tih;
 	public void delegate(Event ev) onTextInput;
@@ -132,7 +141,12 @@ public class TextBox : WindowElement, TextInputListener {
 	private void deleteCharacter(size_t n){
 		text.removeChar(n);
 	}
-	public void textInputEvent(uint timestamp, uint windowID, dstring text){
+	public void textInputEvent(uint timestamp, uint windowID, dstring text) {
+		import pixelperfectengine.system.etc : removeUnallowedSymbols;
+		if (allowedChars.length) {
+			text = removeUnallowedSymbols(text, allowedChars);
+			if (!text.length) return;
+		}
 		if (select) {
 			this.text.removeChar(cursorPos, select);
 			select = 0;
@@ -196,14 +210,27 @@ public class TextBox : WindowElement, TextInputListener {
 
 				break;
 			case TextInputKey.Backspace:
-				if(cursorPos > 0){
+				if (select) {
+					for (int i ; i < select ; i++) {
+						deleteCharacter(cursorPos - 1);
+						cursorPos--;
+					}
+					select = 0;
+				} else if (cursorPos > 0) {
 					deleteCharacter(cursorPos - 1);
 					cursorPos--;
 					draw();
 				}
 				break;
 			case TextInputKey.Delete:
-				deleteCharacter(cursorPos);
+				if (select) {
+					for (int i ; i < select ; i++) {
+						deleteCharacter(cursorPos);
+					}
+					select = 0;
+				} else {
+					deleteCharacter(cursorPos);
+				}
 				draw();
 				break;
 			case TextInputKey.CursorLeft:

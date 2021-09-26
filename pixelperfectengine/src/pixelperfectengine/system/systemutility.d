@@ -64,7 +64,7 @@ version(X86){
 /**
  * Loads the defaults for Concrete.
  */
-public void INIT_CONCRETE(WindowHandler wh){
+public void INIT_CONCRETE() {
 	import pixelperfectengine.concrete.window;
 	import pixelperfectengine.system.file;
 	//import pixelperfectengine.extbmp.extbmp;
@@ -94,6 +94,7 @@ public void INIT_CONCRETE(WindowHandler wh){
 	ss.setImage(ssOrigin[13],"leftArrowB");
 	ss.setImage(ssOrigin[14],"rightArrowA");
 	ss.setImage(ssOrigin[15],"rightArrowB");
+	ss.setImage(loadBitmapFromFile!Bitmap8Bit("../system/concreteBUIDisable.tga"), "ElementDisabledPtrn");
 	ss.addFontset(defaultFont, "default");
 	ss.addFontset(fixedWidthFont, "fixedWidth");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.leftJustify, 0, 0, 2),"default");

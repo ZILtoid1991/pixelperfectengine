@@ -10,6 +10,37 @@ The custom audio subsystem was recreated with the following principles:
 * It has to use MIDI 2.0 instead of some fancier and custom command set.
 * It has to be as simple as possible.
 
+It's still a work in progress, and at this version it's also untested. Also note that currently there're no file
+formats that are MIDI 2.0 capable, and a custom file format might need to be developed. 
+
+There are two synth modules that are being developed.
+
+* QM816, a quadrature modulation synth. It's algorithm is the same of what many digital FM synths used to have, and
+will create almost similar output as long as the modulator is a sine wave. However it can use custom waveforms (128 in
+total), and they don't need to be sine. It has 16 channels with 2 operators per channel and 2 algorithms, but channels
+can be paired up for 4 algorithm sounds with 12 possible algorithms.
+* PCM8, an eight channel PCM playback synth. Can play 8 and 16 bit linear PCM samples, but also Mu-Law and A-Law 
+codecs, and is also capable of decoding Dialogic and IMA ADPCM streams.
+
+### Timer
+
+A simple timer in the form of `CoarseTimer` has been added. It checks the time in a given interval through a function,
+then calls the registered delegate. It can be a bit inaccurate in many cases, like calling it on every VSYNC interval,
+but should be sufficient for many applications. See documentation in source code for more info on the possible 
+innacuracies.
+
+### Concrete Enhancements
+
+#### Text input restriction
+
+Text inputs now can restricted to certain types. Currently only integer and decimal types are supported, TextBox can
+however support any kind of character-based restriction as long as position is not important.
+
+#### Final implementation of element disabling
+
+Element disabling have been fully implemented. It was left unfinished for a while as I had to work on more important
+things, but those have been now mostly done.
+
 ## Fixed bugs
 
 * Drive button works again
@@ -25,6 +56,7 @@ updates on every redraw - my bad.
 * Clipboard
 * Right-click context menu
 * Tile and Layer renaming
+* CSV import and export 
 
 # 0.10.0-beta1
 ## New features

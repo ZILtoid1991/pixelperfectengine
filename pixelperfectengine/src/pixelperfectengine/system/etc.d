@@ -2,6 +2,7 @@ module pixelperfectengine.system.etc;
 
 import std.conv;
 import std.algorithm.mutation;
+import std.algorithm.searching;
 /*
  * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
  *
@@ -311,6 +312,17 @@ uint hashCalc(string src, const uint seed = 0) @nogc @safe pure nothrow {
 	h *= 0xc2b2ae35;
 	h ^= h >> 16;
 	return h;
+}
+/**
+ * Removes all symbols from the string that is not in the symbol pool.
+ */
+S removeUnallowedSymbols(S)(S input, S symbolList) @safe pure nothrow {
+	S result;
+	foreach (c ; input) {
+		if (count(symbolList, c))
+			result ~= c;
+	}
+	return result;
 }
 /**
  * Clamps a value between of two.

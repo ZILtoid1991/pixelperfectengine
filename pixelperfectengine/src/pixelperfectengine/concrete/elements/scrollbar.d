@@ -2,10 +2,12 @@ module pixelperfectengine.concrete.elements.scrollbar;
 
 public import pixelperfectengine.concrete.elements.base;
 import std.math : isNaN;
+import pixelperfectengine.system.timer;
 
 abstract class ScrollBar : WindowElement{
 	protected static enum 	PLUS_PRESSED = 1<<9;
 	protected static enum 	MINUS_PRESSED = 1<<10;
+	protected static enum 	SCROLLMATIC = 1<<11;
 	protected int _value, _maxValue, _barLength;
 	//protected double largeVal;							///Set to double.nan if value is less than travellength, or the ratio between 
 	protected double valRatio;							///Ratio between the travel length and the maximum value
@@ -59,6 +61,26 @@ abstract class ScrollBar : WindowElement{
 	public @property int barLength() @nogc @safe pure nothrow const {
 		return _barLength;
 	}
+	protected void timerEvent() nothrow {
+		try {
+			if (flags & PLUS_PRESSED) {
+				value = value + 1;
+				draw;
+				flags |= SCROLLMATIC;
+				registerTimer();
+			} else if (flags & MINUS_PRESSED) {
+				value = value - 1;
+				draw;
+				flags |= SCROLLMATIC;
+				registerTimer();
+			}
+		} catch (Exception e) {
+
+		}
+	}
+	protected void registerTimer() nothrow {
+		timer.register(&timerEvent, msecs(flags & SCROLLMATIC ? 50 : 1000));
+	}
 }
 /**
  * Vertical scroll bar.
@@ -102,20 +124,23 @@ public class VertScrollBar : ScrollBar {
 		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (state != ElementState.Enabled) return;
 		if (mce.button == MouseButton.Left) {
 			if (mce.y < position.width) {
 				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
 					value = _value - 1;
 					flags |= MINUS_PRESSED;
+					registerTimer();
 				} else if (flags & MINUS_PRESSED && mce.state == ButtonState.Released) {
-					flags &= ~MINUS_PRESSED;
+					flags &= ~(MINUS_PRESSED | SCROLLMATIC);
 				}
 			} else if (mce.y >= position.height - position.width) {
 				if (!(flags & PLUS_PRESSED) && mce.state == ButtonState.Pressed) {
 					value = _value + 1;
 					flags |= PLUS_PRESSED;
+					registerTimer();
 				} else if (flags & PLUS_PRESSED && mce.state == ButtonState.Released) {
-					flags &= ~PLUS_PRESSED;
+					flags &= ~(PLUS_PRESSED | SCROLLMATIC);
 				}
 			} else {
 				import std.math : nearbyint;
@@ -131,12 +156,15 @@ public class VertScrollBar : ScrollBar {
 		super.passMCE(mec, mce);
 	}
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
-		if (isPressed && mme.buttonState == 1 << MouseButton.Left) {
+		if (state != ElementState.Enabled) return;
+		if (mme.buttonState == MouseButtonFlags.Left && mme.y > position.height && mme.y < position.width - position.height) {
 			value = _value = mme.relY;
+			draw();
 		}
 		super.passMME(mec, mme);
 	}
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		if (state != ElementState.Enabled) return;
 		value = _value - mwe.y;
 		super.passMWE(mec, mwe);
 	}
@@ -177,11 +205,13 @@ public class HorizScrollBar : ScrollBar {
 		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (state != ElementState.Enabled) return;
 		if (mce.button == MouseButton.Left) {
 			if (mce.x < position.height) {
 				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
 					value = _value - 1;
 					flags |= MINUS_PRESSED;
+					registerTimer();
 				} else if (flags & MINUS_PRESSED && mce.state == ButtonState.Released) {
 					flags &= ~MINUS_PRESSED;
 				}
@@ -189,6 +219,7 @@ public class HorizScrollBar : ScrollBar {
 				if (!(flags & PLUS_PRESSED) && mce.state == ButtonState.Pressed) {
 					value = _value + 1;
 					flags |= PLUS_PRESSED;
+					registerTimer();
 				} else if (flags & PLUS_PRESSED && mce.state == ButtonState.Released) {
 					flags &= ~PLUS_PRESSED;
 				}
@@ -202,16 +233,21 @@ public class HorizScrollBar : ScrollBar {
 					value = cast(int)nearbyint((newVal) * valRatio);
 				}
 			}
+			flags &= ~SCROLLMATIC;
+
 		} 
 		super.passMCE(mec, mce);
 	}
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
-		if (isPressed && mme.buttonState == 1 << MouseButton.Left) {
+		if (state != ElementState.Enabled) return;
+		if (mme.buttonState == MouseButtonFlags.Left && mme.x > position.width && mme.x < position.height) {
 			value = _value + mme.relX;
+			draw();
 		}
 		super.passMME(mec, mme);
 	}
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		if (state != ElementState.Enabled) return;
 		value = _value + mwe.x;
 		super.passMWE(mec, mwe);
 	}

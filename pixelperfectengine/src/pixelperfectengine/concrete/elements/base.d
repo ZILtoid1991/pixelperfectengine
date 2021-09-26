@@ -209,6 +209,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		return flags & IS_CHECKED ? true : false;
 	}
 	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (state != ElementState.Enabled) return;
 		if (!mce.state && !(isPressed)) return;
 
 		parent.requestFocus(this);

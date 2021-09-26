@@ -74,6 +74,10 @@ public class NewTileLayerDialog : Window {
 		button_Create = new Button("Create"d, "button_Create", Box(70, 181, 160, 199));
 		addElement(button_Create);
 		button_Create.onMouseLClick = &button_Create_onClick;
+		textBox_MX.allowedChars = TextBox.INTEGER_POS;
+		textBox_MY.allowedChars = TextBox.INTEGER_POS;
+		textBox_TX.allowedChars = TextBox.INTEGER_POS;
+		textBox_TY.allowedChars = TextBox.INTEGER_POS;
 	}
 	/+private void button_TSBrowse_onClick(Event ev){
 		parent.addWindow(new FileDialog("Import Tile Source"d, "fileDialog_TSBrowse", &fileDialog_TSBrowse_event,
@@ -94,14 +98,6 @@ public class NewTileLayerDialog : Window {
 	private void fileDialog_MSBrowse_event(Event ev){
 		FileEvent fev = cast(FileEvent)ev;
 		textBox_MS.setText(toUTF32(fev.getFullPath));
-	}
-	private void checkTextBoxInput(Event ev){
-		import pixelperfectengine.system.etc : isInteger;
-		WindowElement we = cast(WindowElement)ev.sender;
-		if(!isInteger(we.getText.text)){
-			handler.message("Input error!", "Not a numeric value!");
-			we.setText("0");
-		}
 	}
 	private void button_Create_onClick(Event ev){
 		try{

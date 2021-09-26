@@ -4,13 +4,13 @@ import types;
 import serializer;
 import editorEvents;
 
-import PixelPerfectEngine.concrete.window;
-import PixelPerfectEngine.system.input;
-import PixelPerfectEngine.system.etc : csvParser, isInteger;
-import PixelPerfectEngine.graphics.layers;
-import PixelPerfectEngine.graphics.raster;
-import PixelPerfectEngine.graphics.outputScreen;
-import PixelPerfectEngine.system.config;
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.system.input;
+import pixelperfectengine.system.etc : csvParser, isInteger;
+import pixelperfectengine.graphics.layers;
+import pixelperfectengine.graphics.raster;
+import pixelperfectengine.graphics.outputscreen;
+import pixelperfectengine.system.config;
 import std.bitmanip : bitfields;
 public import collections.linkedhashmap;
 
@@ -22,7 +22,7 @@ public class TopLevelWindow : Window {
 	MenuBar mb;
 	Editor editor;
 	public this(int width, int height, Editor e) {
-		import PixelPerfectEngine.graphics.draw;
+		import pixelperfectengine.graphics.draw;
 		super(Box(0, 0, width, height), ""d, [], null);
 		editor = e;
 		PopUpMenuElement[] menuElements;
@@ -196,8 +196,8 @@ public class Editor : SystemEventListener, InputListener{
 
 	static string[ElementType] nameBases;
 	public this(){
-		import PixelPerfectEngine.system.systemUtility;
-		import PixelPerfectEngine.system.file;
+		import pixelperfectengine.system.systemutility;
+		import pixelperfectengine.system.file;
 		
 		sprtL = new SpriteLayer(RenderingMode.Copy);
 		outScrn = new OutputScreen("WindowMaker for PPE/Concrete",1696,960);
@@ -216,7 +216,7 @@ public class Editor : SystemEventListener, InputListener{
 		//ewh.setBaseWindow(new TopLevelWindow(848, 480, this));
 		config = new ConfigurationProfile("config_wmfc.sdl", "../system/config_wmfc.sdl");
 		{
-			import PixelPerfectEngine.system.input.scancode;
+			import pixelperfectengine.system.input.scancode;
 			inputH.addBinding(BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("sysesc"));
 		}
 		config.loadBindings(inputH);
@@ -284,7 +284,7 @@ public class Editor : SystemEventListener, InputListener{
 		CellEditEvent ev0 = cast(CellEditEvent)ev;
 		dstring t = ev0.text.text;
 		ListViewItem lbi = cast(ListViewItem) ev.aux;
-		if(selection == "window"){
+		if(selection == "Window"){
 			switch(lbi[0].text.text) {
 				case "name":
 					eventStack.addToTop(new WindowRenameEvent(conv.to!string(t)));
@@ -652,7 +652,7 @@ public class Editor : SystemEventListener, InputListener{
 
 	}
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
-		import PixelPerfectEngine.system.etc : hashCalc;
+		import pixelperfectengine.system.etc : hashCalc;
 		if (isPressed) {
 			switch(id){
 				case hashCalc("undo"):

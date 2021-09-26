@@ -54,6 +54,7 @@ public class MenuBar : WindowElement {
 	}
 	///Passes mouse click event
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (state != ElementState.Enabled) return;
 		if (mce.state) {
 			for (int i ; i < menus.length ; i++) {
 				if (menuWidths[i] < mce.x && menuWidths[i + 1] > mce.x) {

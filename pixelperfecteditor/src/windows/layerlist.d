@@ -122,6 +122,7 @@ public class LayerList : Window {
 			//list ~= new ListViewItem(16, [to!dstring(i.pri), to!dstring(i.type), toUTF32(i.name)]);
 			ListViewItem lvi = new ListViewItem(16, [to!dstring(i.pri), to!dstring(i.type), toUTF32(i.name)]);
 			lvi[0].editable = true;
+			lvi[0].integer = true;
 			lvi[2].editable = true;
 			listView_layers ~= lvi;
 		}

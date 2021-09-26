@@ -20,38 +20,27 @@ public class ListViewItem {
 		private uint		flags;		///Stores various flags (constraints, etc.)
 		public Text			text;		///Stores the text of this field if there's any.
 		public ABitmap		bitmap;		///Custom bitmap, can be 32 bit if target enables it.
-		static enum IS_EDITABLE = 1 << 0;///Set if field is text editable.
-		static enum INTEGER_ONLY = 1 << 1;///Set if field only accepts integer numbers.
-		static enum NUMERIC_ONLY = 1 << 2;///Set if field only accepts numeric values (integer or floating-point).
-		static enum FORCE_FP = 1 << 3;	///Forces number to be displayed as floating point.
-		static enum FORMAT_FLAGS = 0xF0;///Used to set and read formatting flags.
-		///Used to set numerical formatting styles
-		///NOTE: Not all formats support decimal types
-		enum FormatFlags : uint {
-			Context		= 0x00,			///Detected from input context
-			HexH 		= 0x10,			///Hexanumeric indicated by letter `h` at the end
-			HexX		= 0x20,			///Hexanumeric indicated by `0x` at the beginning
-			OctH 		= 0x30,			///Octonumeric indicated by letter `o` at the end
-			OctX		= 0x40,			///Octonumeric indicated by `0o` at the beginning
-			BinH 		= 0x50,			///Binary indicated by letter `b` at the end
-			BinX		= 0x60,			///Binary indicated by `0b` at the beginning
-			Dec			= 0x70,			///Decimal formatting
-		}
+		static enum IS_EDITABLE		= 1 << 0;///Set if field is text editable.
+		static enum INTEGER			= 1 << 1;///Set if field only accepts integer numbers.
+		static enum NUMERIC			= 1 << 3;///Set if field only accepts numeric values (integer or floating-point).
+		static enum POSITIVE_ONLY	= 1 << 4;///Set if field only accepts positive numeric values (integer or floating-point).
+		
 		/**
 		 * Default constructor.
 		 */
-		this(Text text, ABitmap bitmap, FormatFlags frmtFlags, bool editable = false, bool numOnly = false, bool fp = false) 
-				@nogc @safe pure nothrow {
+		this(Text text, ABitmap bitmap, bool editable = false, bool numOnly = false, bool fp = false, 
+				bool posOnly = false) @nogc @safe pure nothrow {
 			this.text = text;
 			this.bitmap = bitmap;
-			this.flags = frmtFlags;
 			if (editable) flags |= IS_EDITABLE;
 			if (numOnly) {
-				flags |= NUMERIC_ONLY;
 				if (fp) {
-					flags |= FORCE_FP;
+					flags |= NUMERIC;
 				} else {
-					flags |= INTEGER_ONLY;
+					flags |= INTEGER;
+				}
+				if (posOnly) {
+					flags |= POSITIVE_ONLY;
 				}
 			}
 		}
@@ -66,43 +55,34 @@ public class ListViewItem {
 			return flags & IS_EDITABLE ? true : false;
 		}
 		///Returns whether the field is integer only.
-		public @property bool integerOnly() @nogc @safe pure nothrow const {
-			return flags & INTEGER_ONLY ? true : false;
+		public @property bool integer() @nogc @safe pure nothrow const {
+			return flags & INTEGER ? true : false;
 		}
 		///Sets whether the field is integer only. Returns the new value.
-		public @property bool integerOnly(bool val) @nogc @safe pure nothrow {
-			if (val) flags |= INTEGER_ONLY;
-			else flags &= ~INTEGER_ONLY;
-			return flags & INTEGER_ONLY ? true : false;
+		public @property bool integer(bool val) @nogc @safe pure nothrow {
+			if (val) flags |= INTEGER;
+			else flags &= ~INTEGER;
+			return flags & INTEGER ? true : false;
 		}
 		///Returns whether the field is numeric only.
-		public @property bool numericOnly() @nogc @safe pure nothrow const {
-			return flags & NUMERIC_ONLY ? true : false;
+		public @property bool numeric() @nogc @safe pure nothrow const {
+			return flags & NUMERIC ? true : false;
 		}
 		///Sets whether the field is numeric only. Returns the new value.
-		public @property bool numericOnly(bool val) @nogc @safe pure nothrow {
-			if (val) flags |= NUMERIC_ONLY;
-			else flags &= ~NUMERIC_ONLY;
-			return flags & NUMERIC_ONLY ? true : false;
+		public @property bool numeric(bool val) @nogc @safe pure nothrow {
+			if (val) flags |= NUMERIC;
+			else flags &= ~NUMERIC;
+			return flags & NUMERIC ? true : false;
 		}
-		///Returns whether the field forces floating point.
-		public @property bool forceFP() @nogc @safe pure nothrow const {
-			return flags & FORCE_FP ? true : false;
+		///Returns whether the field is positive only.
+		public @property bool positiveOnly() @nogc @safe pure nothrow const {
+			return flags & POSITIVE_ONLY ? true : false;
 		}
-		///Sets whether the field forces floating point. Returns the new value.
-		public @property bool forceFP(bool val) @nogc @safe pure nothrow {
-			if (val) flags |= FORCE_FP;
-			else flags &= ~FORCE_FP;
-			return flags & FORCE_FP ? true : false;
-		}
-		///Returns the field's format flags.
-		public @property FormatFlags formatFlags() @nogc @safe pure nothrow const {
-			return cast(FormatFlags)(flags & FORMAT_FLAGS);
-		}
-		///Sets whether the field is editable. Returns the new value.
-		public @property FormatFlags formatFlags(FormatFlags val) @nogc @safe pure nothrow {
-			flags |= val;
-			return cast(FormatFlags)(flags & FORMAT_FLAGS);
+		///Sets whether the field is positive only. Returns the new value.
+		public @property bool positiveOnly(bool val) @nogc @safe pure nothrow {
+			if (val) flags |= POSITIVE_ONLY;
+			else flags &= ~POSITIVE_ONLY;
+			return flags & POSITIVE_ONLY ? true : false;
 		}
 	}
 	/**
@@ -118,7 +98,7 @@ public class ListViewItem {
 		this.height = height;
 		this.fields.reserve = fields.length;
 		foreach (Text key; fields) {
-			this.fields ~= Field(key, null, Field.FormatFlags.Context);
+			this.fields ~= Field(key, null);
 		}
 	}
 	/**
@@ -135,8 +115,7 @@ public class ListViewItem {
 		this.height = height;
 		fields.reserve = ds.length;
 		foreach (dstring key ; ds) {
-			this.fields ~= Field(new Text(key, globalDefaultStyle.getChrFormatting("ListViewHeader")), null, 
-					Field.FormatFlags.Context);
+			this.fields ~= Field(new Text(key, globalDefaultStyle.getChrFormatting("ListViewHeader")), null);
 		}
 	}
 	/**
@@ -147,33 +126,7 @@ public class ListViewItem {
 		fields.reserve = ds.length;
 		assert (ds.length == inputTypes.length, "Mismatch in inputTypes and text length");
 		for (size_t i ; i < ds.length ; i++) {
-			Field f = Field(new Text(ds[i], globalDefaultStyle.getChrFormatting("ListViewHeader")), null, 
-					Field.FormatFlags.Context);
-			final switch (inputTypes[i]) with (TextInputFieldType) {
-				case Text:
-					f.editable = true;
-					break;
-				case Numeric:
-					f.numericOnly = true;
-					goto case Text;
-				case Integer:
-					f.integerOnly = true;
-					goto case Text;
-				case Dec:
-					f.formatFlags = Field.FormatFlags.Dec;
-					goto case Integer;
-				case Hex:
-					f.formatFlags = Field.FormatFlags.HexH;
-					goto case Integer;
-				case Oct:
-					f.formatFlags = Field.FormatFlags.OctH;
-					goto case Integer;
-				case Bin:
-					f.formatFlags = Field.FormatFlags.BinH;
-					goto case Integer;
-				case None, ASCIIText:
-					break;
-			}
+			Field f = Field(new Text(ds[i], globalDefaultStyle.getChrFormatting("ListViewHeader")), null);
 			fields ~= f;
 		}
 	}
@@ -312,7 +265,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	protected int				horizTextOffset;///Horizontal text offset if text cannot fit the cell.
 	///Text editing area.
 	protected Box				textArea;
-	//protected Text				oldText;
+	///Stores an allowed list of characters for the currently edited field if not null.
+	protected dstring			allowedChars;
 	///Holds shared draw parameters that are used when the element is being drawn.
 	///Should be set to null otherwise.
 	public DrawParameters		drawParams;
@@ -700,7 +654,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	///Passes mouse click event
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		///TODO: Handle mouse click when in text editing mode
-
+		if (state != ElementState.Enabled) return;
 		if (vertSlider) {
 			const Box p = vertSlider.getPosition();
 			if (p.isBetween(mce.x, mce.y)) {
@@ -794,6 +748,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	}
 	///Passes mouse move event
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (state != ElementState.Enabled) return;
 		if (vertSlider) {
 			const Box p = vertSlider.getPosition();
 			if (p.isBetween(mme.x, mme.y)) {
@@ -815,6 +770,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	}
 	///Passes mouse scroll event
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		if (state != ElementState.Enabled) return;
 		if (horizSlider) horizSlider.passMWE(mec, mwe);
 		if (vertSlider) vertSlider.passMWE(mec, mwe);
 	}
@@ -847,6 +803,11 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 * Passes the inputted text to the target, alongside with a window ID and a timestamp.
 	 */
 	public void textInputEvent(uint timestamp, uint windowID, dstring text) {
+		import pixelperfectengine.system.etc : removeUnallowedSymbols;
+		if (allowedChars.length) {
+			text = removeUnallowedSymbols(text, allowedChars);
+			if (!text.length) return;
+		}
 		if (tselect) {
 			this.text.removeChar(cursorPos, tselect);
 			tselect = 0;
@@ -913,8 +874,13 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				break;
 			case TextInputKey.Delete:
 				if (tselect) {
-					
-				} else deleteCharacter(cursorPos);
+					for (int i ; i < tselect ; i++) {
+						deleteCharacter(cursorPos);
+					}
+					tselect = 0;
+				} else {
+					deleteCharacter(cursorPos);
+				}
 				draw();
 				break;
 			case TextInputKey.CursorLeft:
@@ -969,6 +935,16 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 */
 	public void initTextInput() {
 		flags |= TEXTINPUT_EN;
+		ListViewItem.Field f = opIndex(selection)[hSelection];
+		if (f.numeric) {
+			allowedChars = "0123456789";
+			if (!f.integer)
+				allowedChars ~= ".";
+			if (!f.positiveOnly)
+				allowedChars ~= "-";
+		} else {
+			allowedChars.length = 0;
+		}
 	}
 	private void deleteCharacter(size_t n){
 		text.removeChar(n);

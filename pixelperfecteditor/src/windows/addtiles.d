@@ -44,6 +44,7 @@ public class AddTiles : Window {
 		checkBox_embDat = new CheckBox("Use embedded mat data"d, "CheckBox1", Coordinate(5, 173, 160, 189));
 		label2 = new Label("paletteOffset:"d, "label2", Coordinate(5, 88, 99, 105));
 		textBox_palOffset = new TextBox("0"d, "textBox_palOffset", Coordinate(100, 86, 160, 106));
+		textBox_palOffset.allowedChars = TextBox.INTEGER_POS;
 		button_Ok = new Button("Ok"d, "button_Ok", Coordinate(91, 206, 161, 226));
 		label3 = new Label("name:"d, "label3", Coordinate(5, 110, 79, 126));
 		textBox_name = new TextBox(""d, "textBox_name", Coordinate(45, 108, 160, 128));
@@ -81,12 +82,9 @@ public class AddTiles : Window {
 	private void textBox_palShift_onTextInput(Event e) {
 		//validate input type
 		import pixelperfectengine.system.etc : isInteger;
-		if (!isInteger(textBox_palShift.getText.text)) {
-			handler.message("Bad format!"d, "Inputted value must be integer!"d);
-		}
 		const int value = to!int(textBox_palShift.getText.text);
 		if (value < 1 || value > 8) {
-			handler.message("Bad value!"d, "Inputted value must be between 1 and 8!"d);
+			handler.message("Bad value!"d, "Value must be between 1 and 8!"d);
 		}
 	}
 	private void fileDialog_TSBrowse_event(Event ev) {
@@ -136,6 +134,7 @@ public class AddTiles : Window {
 		if(source.isIndexed) {
 			checkBox_palImport.check();
 			const int paletteLengthPOw2 = cast(int)nextPow2(source.palette.length);
+			textBox_palShift.state = ElementState.Enabled;
 			switch (paletteLengthPOw2) {
 				case 2:
 					textBox_palShift.setText("1");
@@ -163,6 +162,9 @@ public class AddTiles : Window {
 					break;
 				default: break;
 			}
+		} else {
+			textBox_palShift.setText("");
+			textBox_palShift.state = ElementState.Disabled;
 		}
 		return 0;
 	}

@@ -28,6 +28,13 @@ public class Panel : WindowElement, ElementContainer {
 	public this(dstring text, string source, Coordinate position) {
 		this(new Text(text, getStyleSheet().getChrFormatting("panel")), source, position);
 	}
+	public override ElementState state(ElementState state) @property {
+		ElementState subst = state == ElementState.Enabled ? ElementState.Enabled : ElementState.DisabledWOGray;
+		foreach (WindowElement key; subElems) {
+			key.state = subst;
+		}
+		return super.state(state);
+	}
 	public override void draw() {
 		foreach (key; subElems) {
 			key.draw;
@@ -48,7 +55,7 @@ public class Panel : WindowElement, ElementContainer {
 			drawLine(offsetEdge.cornerUR, offsetEdge.cornerLR, ss.getColor("windowascent"));
 			drawTextSL(textPos, text, Point(0, 0));
 		}
-		if (state == ElementState.Disabled) {
+		if (super.state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
 		if (onDraw !is null) {
@@ -191,5 +198,31 @@ public class Panel : WindowElement, ElementContainer {
 	 */
 	public void closePopUp(PopUpElement p) {
 		parent.closePopUp(p);
+	}
+
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		foreach (WindowElement we; subElems) {
+			if (we.getPosition.isBetween(mce.x, mce.y)) {
+				we.passMCE(mec, mce);
+				focusedElem = subElems.which(we);
+				break;
+			}
+		}
+		super.passMCE(mec, mce);
+	}
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (focusedElem != -1) {
+			subElems[focusedElem].passMME(mec, mme);
+		}
+		super.passMME(mec, mme);
+	}
+	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		foreach (WindowElement we; subElems) {
+			if (we.getPosition.isBetween(lastMousePosition.x, lastMousePosition.y)) {
+				we.passMWE(mec, mwe);
+				break;
+			}
+		}
+		super.passMWE(mec, mwe);
 	}
 }

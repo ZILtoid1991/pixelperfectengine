@@ -3,8 +3,8 @@ module serializer;
 import sdlang;
 import editor;
 import types;
-import PixelPerfectEngine.graphics.common;
-import PixelPerfectEngine.concrete.elements;
+import pixelperfectengine.graphics.common;
+import pixelperfectengine.concrete.elements;
 import std.utf;
 import std.stdio;
 import conv = std.conv;
@@ -129,7 +129,7 @@ public class WindowSerializer {
 		e.updateElementList;
 	}
 	public void generateDCode(string outputFile){
-		string outputCode = "import PixelPerfectEngine.concrete.window; \n\n", windowCtor, elementCtors, typeDefs;
+		string outputCode = "import pixelperfectengine.concrete.window; \n\n", windowCtor, elementCtors, typeDefs;
 		foreach(t0; root.all.tags){
 			string typeName = t0.name;
 			switch (typeName) {

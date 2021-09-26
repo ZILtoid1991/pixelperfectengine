@@ -55,6 +55,7 @@ public class CheckBox : WindowElement, ISmallButton {
 	
 	
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (state != ElementState.Enabled) return;
 		mce.x -= position.left;
 		mce.y -= position.top;
 		const int width = getStyleSheet().getImage(iconChecked).width;

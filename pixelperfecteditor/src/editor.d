@@ -28,6 +28,7 @@ import bindbc.sdl;
 import pixelperfectengine.concrete.window;
 import pixelperfectengine.concrete.eventChainSystem;
 import pixelperfectengine.map.mapformat;
+import pixelperfectengine.system.timer;
 
 //import converterdialog;
 import windows.resizemap;
@@ -114,19 +115,24 @@ public class TopLevelWindow : Window {
 
 			menuElements ~= new PopUpMenuElement("view", mt("VIEW"));
 
-			menuElements[2].setLength(2);
-			menuElements[2][0] = new PopUpMenuElement("layerList", "Layers");
-			menuElements[2][1] = new PopUpMenuElement("materialList", "Materials");
+			//menuElements[2].setLength(2);
+			menuElements[2] ~= new PopUpMenuElement("layerList", "Layers");
+			menuElements[2] ~= new PopUpMenuElement("materialList", "Materials");
+			menuElements[2] ~= new PopUpMenuElement("viewgrid", "Grid");
+			menuElements[2] ~= new PopUpMenuElement("viewobj", "Objects");
 			//menuElements[2][2] = new PopUpMenuElement("layerTools", "Layer tools", "Alt + T");
 
 			menuElements ~= new PopUpMenuElement("layers", mt("LAYERS"));
 
-			menuElements[3].setLength(5);
-			menuElements[3][0] = new PopUpMenuElement("newLayer", "New layer");
-			menuElements[3][1] = new PopUpMenuElement("delLayer", "Delete layer");
-			menuElements[3][2] = new PopUpMenuElement("impLayer", "Import layer");
-			menuElements[3][3] = new PopUpMenuElement("layerSrc", "Layer resources");
-			menuElements[3][4] = new PopUpMenuElement("resizeLayer", "Resize layer");
+			//menuElements[3].setLength(5);
+			menuElements[3] ~= new PopUpMenuElement("newLayer", "New layer");
+			menuElements[3] ~= new PopUpMenuElement("delLayer", "Delete layer");
+			menuElements[3] ~= new PopUpMenuElement("impLayer", "Import layer");
+			menuElements[3][2] ~= new PopUpMenuElement("tiledcsvi", "Tiled CSV file");
+			menuElements[3] ~= new PopUpMenuElement("impLayer", "Export layer");
+			menuElements[3][3] ~= new PopUpMenuElement("tiledcsve", "Tiled CSV file");
+			menuElements[3] ~= new PopUpMenuElement("layerSrc", "Layer resources");
+			menuElements[3] ~= new PopUpMenuElement("resizeLayer", "Resize layer");
 
 			menuElements ~= new PopUpMenuElement("tools", mt("TOOLS"));
 
@@ -601,14 +607,16 @@ public class Editor : InputListener, SystemEventListener {
 		
 	}
 	public void onSave () {
-		if (selDoc.filename) {
-			try {
-				selDoc.mainDoc.save(selDoc.filename);
-			} catch (Exception e) {
-				debug writeln(e);
+		if (selDoc) {
+			if (selDoc.filename) {
+				try {
+					selDoc.mainDoc.save(selDoc.filename);
+				} catch (Exception e) {
+					debug writeln(e);
+				}
+			} else {
+				onSaveAs();
 			}
-		} else {
-			onSaveAs();
 		}
 	}
 	public void onSaveAs () {
@@ -696,7 +704,7 @@ public class Editor : InputListener, SystemEventListener {
 		//rasters.refresh();
 		while(!onexit){
 			input.test();
-
+			timer.test();
 			rasters.refresh();
 			if (selDoc) {
 				selDoc.contScrollLayer();
