@@ -53,18 +53,10 @@ Notation: [bit index in parameter settings]{bit index in the operator itself}
 
 * `FBMode`: Toggles the source of the feedback. L: After envelop generator, H: before envelop generator.[0]{7}
 * `FBNeg`: Inverts the feedback if set. [1]{8}
-* `ALFOAssign`: Assigns amplitude LFO to the operator output level control. [2]{9}
-* `VelOLAssign`: Assigns the velocity control parameter to the operator output level control. [3]{10}
-* `VelFBAssign`: Assigns the velocity control parameter to the feedback level control. [4]{11}
-* `VelAtkAssign`: Assigns the velocity control parameter to the attack time control. [5]{12}
-* `VelSusAssign`: Assigns the velocity control parameter to the sustain level control. [6]{13}
-* `VelAtkShp`: Assigns the velocity control parameter to the attack shape control. [7]{14}
-* `VelRelShp`: Assigns the velocity control parameter to the release shape control. [8]{15}
-* `VelNegative`: Inverts the velocity control for this operator. [9]{16}
-* `MWOLAssign`: Assigns the modulation wheel control parameter to the operator output level control. [10]{17}
-* `MWFBAssign`: Assigns the modulation wheel control parameter to the feedback control. [11]{18}
-* `EEGFBAssign`: Assigns the extra envelope to the feedback control. [12]{19}
-* `EGRelAdaptive`: Sets the release rate to be adaptive, and the time to be constant, when uning non-constant sustain levels. [13]{20}
+* `MWNeg`: Inverts the modulation wheel control if set. [2]{9}
+* `VelNeg`: Inverts the velocity control if set. [3]{10}
+* `EGRelAdaptive`: Makes the envelop generator release curve dependent on current output level. [4]{11}
+* `FixedPitch`: Enables the fixed pitch mode on the operator. This way, the frequency ratio will instead control which frequency the oscillator should operate at. Pitch will be still affected by LFO and EEG, but not by pitch-bend or key parameters.
 
 ## functions
 
