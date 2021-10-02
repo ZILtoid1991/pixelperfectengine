@@ -5,7 +5,7 @@ import pixelperfectengine.concrete.elements.scrollbar;
 
 import pixelperfectengine.system.etc : clamp, min, max;
 
-import pixelperfectengine.system.input.types : TextInputFieldType;
+//import pixelperfectengine.system.input.types : TextInputFieldType;
 
 /**
  * Defines a single item in the listview.
@@ -265,8 +265,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	protected int				horizTextOffset;///Horizontal text offset if text cannot fit the cell.
 	///Text editing area.
 	protected Box				textArea;
-	///Stores an allowed list of characters for the currently edited field if not null.
-	protected dstring			allowedChars;
+	///Filters the input to the cell if not null.
+	protected InputFilter		filter;
 	///Holds shared draw parameters that are used when the element is being drawn.
 	///Should be set to null otherwise.
 	public DrawParameters		drawParams;
@@ -717,7 +717,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 							right = min(textArea.right, position.right);
 							bottom = min(textArea.bottom, position.bottom);
 						}
-						text = entries[selection][hSelection].text;
+						text = new Text(entries[selection][hSelection].text);
 						cursorPos = 0;
 						tselect = cast(int)text.charLength;
 						//oldText = text;
@@ -804,8 +804,12 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 */
 	public void textInputEvent(uint timestamp, uint windowID, dstring text) {
 		import pixelperfectengine.system.etc : removeUnallowedSymbols;
-		if (allowedChars.length) {
+		/+if (allowedChars.length) {
 			text = removeUnallowedSymbols(text, allowedChars);
+			if (!text.length) return;
+		}+/
+		if (filter) {
+			filter.use(text);
 			if (!text.length) return;
 		}
 		if (tselect) {
@@ -937,13 +941,17 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		flags |= TEXTINPUT_EN;
 		ListViewItem.Field f = opIndex(selection)[hSelection];
 		if (f.numeric) {
-			allowedChars = "0123456789";
-			if (!f.integer)
-				allowedChars ~= ".";
-			if (!f.positiveOnly)
-				allowedChars ~= "-";
+			if (f.positiveOnly)
+				filter = new DecimalFilter!false(f.text);
+			else
+				filter = new DecimalFilter!true(f.text);
+		} else if (f.integer) {
+			if (f.positiveOnly)
+				filter = new IntegerFilter!false(f.text);
+			else
+				filter = new IntegerFilter!true(f.text);
 		} else {
-			allowedChars.length = 0;
+			filter = null;
 		}
 	}
 	private void deleteCharacter(size_t n){

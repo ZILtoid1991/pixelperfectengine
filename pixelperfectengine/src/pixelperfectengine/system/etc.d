@@ -162,11 +162,10 @@ int parseDec(S)(S s) pure @safe{
 	return result;
 }
 ///Parses a comma separated string into a single array.
-S[] csvParser(S)(S input, char separator = ',') pure @safe{
+S[] csvParser(S)(S input, char separator = ',') pure @safe {
 	S[] result;
-	int j;
-	for(int i ; i < input.length ; i++){
-		if(input[i] == separator){
+	for (int i, j ; i < input.length ; i++) {
+		if (input[i] == separator || i + 1 == input.length) {
 			result ~= input[j..i];
 			j = i + 1;
 		}
@@ -174,8 +173,17 @@ S[] csvParser(S)(S input, char separator = ',') pure @safe{
 
 	return result;
 }
+///Parses an array of string to an array of another value.
+T[] stringArrayParser(T, S)(S[] input) pure @safe {
+	T[] result;
+	result.length = input.length;
+	foreach (S key ; input) {
+		result ~= to!T(key);
+	}
+	return result;
+}
 ///Joins prettyprint strings to a single string for file storage.
-S stringArrayJoin(S)(S[] input) pure @safe{
+S stringArrayJoin(S)(S[] input) pure @safe {
 	S result;
 	foreach(s ; input){
 		result ~= s ~ "\n";

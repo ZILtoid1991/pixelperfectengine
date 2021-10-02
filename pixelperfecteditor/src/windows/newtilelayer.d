@@ -74,10 +74,10 @@ public class NewTileLayerDialog : Window {
 		button_Create = new Button("Create"d, "button_Create", Box(70, 181, 160, 199));
 		addElement(button_Create);
 		button_Create.onMouseLClick = &button_Create_onClick;
-		textBox_MX.allowedChars = TextBox.INTEGER_POS;
-		textBox_MY.allowedChars = TextBox.INTEGER_POS;
-		textBox_TX.allowedChars = TextBox.INTEGER_POS;
-		textBox_TY.allowedChars = TextBox.INTEGER_POS;
+		textBox_MX.setFilter(TextInputFieldType.IntegerP);
+		textBox_MY.setFilter(TextInputFieldType.IntegerP);
+		textBox_TX.setFilter(TextInputFieldType.IntegerP);
+		textBox_TY.setFilter(TextInputFieldType.IntegerP);
 	}
 	/+private void button_TSBrowse_onClick(Event ev){
 		parent.addWindow(new FileDialog("Import Tile Source"d, "fileDialog_TSBrowse", &fileDialog_TSBrowse_event,

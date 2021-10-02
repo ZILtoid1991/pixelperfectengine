@@ -255,7 +255,7 @@ public class Editor : InputListener, SystemEventListener {
 		//wh.ie = this;
 
 		//Initialize the Concrete framework
-		INIT_CONCRETE(wh);
+		INIT_CONCRETE();
 		//writeln(globalDefaultStyle.drawParameters);
 		//Initialize custom GUI elements
 		{

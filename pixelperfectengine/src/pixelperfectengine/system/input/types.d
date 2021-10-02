@@ -52,24 +52,6 @@ public enum TextInputKey {
 	PageDown	= 13
 }
 /**
- * Defines what kind of characters can be inputted into a given text field.
- * Special restrictions are not supported by this enumerator, and every
- * restriction must be implemented by the targeted text field by disallowing
- * the input of certain characters.
- */
-public enum TextInputFieldType : ubyte {
-	init,
-	None = init,
-	Text,
-	ASCIIText,
-	Numeric,
-	Integer,		///Has the ability of fields accepting hexadecimal, etc. integer numbers.
-	Dec,
-	Hex,
-	Oct,
-	Bin
-}
-/**
  * Mouse Buttons that are numbered by the engine.
  */
 public enum MouseButton : ubyte {

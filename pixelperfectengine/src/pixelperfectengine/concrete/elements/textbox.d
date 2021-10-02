@@ -3,7 +3,7 @@ module pixelperfectengine.concrete.elements.textbox;
 public import pixelperfectengine.concrete.elements.base;
 
 /**
- * Text input box
+ * Text input box.
  */
 public class TextBox : WindowElement, TextInputListener {
 	//protected bool enableEdit, insert;
@@ -12,15 +12,8 @@ public class TextBox : WindowElement, TextInputListener {
 	protected size_t cursorPos;
 	protected int horizTextOffset, select;
 	protected Text oldText;
-	///List of allowed characters if length is not null.
-	///Can be used for numeric-only inputs.
-	public dstring 			allowedChars;
-	///Symbols for positive integer inputs.
-	public static immutable dstring INTEGER_POS = "0123456789";
-	///Symbols for integer inputs.
-	public static immutable dstring INTEGER = "-0123456789";
-	///Symbols for decimal inputs.
-	public static immutable dstring DECIMAL = ".-0123456789";
+	///Contains an input filter. or null if no filter is used.
+	protected InputFilter filter;
 	//public int brush, textpos;
 	//public TextInputHandler tih;
 	public void delegate(Event ev) onTextInput;
@@ -35,46 +28,46 @@ public class TextBox : WindowElement, TextInputListener {
 		//insert = true;
 		//draw();
 	}
-	/+public override void onClick(int offsetX, int offsetY, int state, ubyte button){
-		if(button == MouseButton.RIGHT){
-			if(state == ButtonState.PRESSED){
-				if(onMouseRClickPre !is null){
-					onMouseRClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseRClickRel !is null){
-					onMouseRClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else if(button == MouseButton.MID){
-			if(state == ButtonState.PRESSED){
-				if(onMouseMClickPre !is null){
-					onMouseMClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseMClickRel !is null){
-					onMouseMClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
-		}else{
-			if(state == ButtonState.PRESSED){
-				if(onMouseLClickPre !is null){
-					onMouseLClickPre(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}else{
-				if(onMouseLClickRel !is null){
-					onMouseLClickRel(new Event(source, null, null, null, null, button, EventType.CLICK, null, this));
-				}
-			}
+	/**
+	 * Sets an external input filter.
+	 */
+	public void setFilter (InputFilter f) {
+		filter = f;
+		filter.target = text;
+	}
+	/**
+	 * Sets an internal input filter
+	 */
+	public void setFilter (TextInputFieldType t) {
+		final switch (t) with(TextInputFieldType) {
+			case None:
+				filter = null;
+				break;
+			case Text:
+				filter = null;
+				break;
+			case ASCIIText:
+				break;
+			case Decimal:
+				filter = new DecimalFilter!true(text);
+				break;
+			case Integer:
+				filter = new IntegerFilter!true(text);
+				break;
+			case DecimalP:
+				filter = new DecimalFilter!false(text);
+				break;
+			case IntegerP:
+				filter = new IntegerFilter!false(text);
+				break;
+			case Hex:
+				break;
+			case Oct:
+				break;
+			case Bin:
+				break;
 		}
-		if(!enableEdit && state == ButtonState.PRESSED && button == MouseButton.LEFT){
-			//invokeActionEvent(EventType.READYFORTEXTINPUT, 0);
-			enableEdit = true;
-			inputHandler.startTextInput(this);
-			oldText = new Text(text);
-			draw();
-		}
-	}+/
+	}
 	///Called when an object loses focus.
 	public void focusLost() {
 		flags &= ~IS_FOCUSED;
@@ -143,8 +136,8 @@ public class TextBox : WindowElement, TextInputListener {
 	}
 	public void textInputEvent(uint timestamp, uint windowID, dstring text) {
 		import pixelperfectengine.system.etc : removeUnallowedSymbols;
-		if (allowedChars.length) {
-			text = removeUnallowedSymbols(text, allowedChars);
+		if (filter) {
+			filter.use(text);
 			if (!text.length) return;
 		}
 		if (select) {

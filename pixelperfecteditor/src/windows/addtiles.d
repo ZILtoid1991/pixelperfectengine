@@ -44,7 +44,7 @@ public class AddTiles : Window {
 		checkBox_embDat = new CheckBox("Use embedded mat data"d, "CheckBox1", Coordinate(5, 173, 160, 189));
 		label2 = new Label("paletteOffset:"d, "label2", Coordinate(5, 88, 99, 105));
 		textBox_palOffset = new TextBox("0"d, "textBox_palOffset", Coordinate(100, 86, 160, 106));
-		textBox_palOffset.allowedChars = TextBox.INTEGER_POS;
+		textBox_palOffset.setFilter(TextInputFieldType.IntegerP);
 		button_Ok = new Button("Ok"d, "button_Ok", Coordinate(91, 206, 161, 226));
 		label3 = new Label("name:"d, "label3", Coordinate(5, 110, 79, 126));
 		textBox_name = new TextBox(""d, "textBox_name", Coordinate(45, 108, 160, 128));
@@ -69,6 +69,7 @@ public class AddTiles : Window {
 		addElement(textBox_name);
 		addElement(label4);
 		addElement(textBox_numStyle);
+		checkBox_embDat.state = ElementState.Disabled;
 		this.editor = editor;
 	}
 	private void button_Source_onClick(Event e) {

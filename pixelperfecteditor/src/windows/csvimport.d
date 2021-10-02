@@ -16,9 +16,9 @@ public class CSVImportWindow : Window {
 		label_width = new Label("Width:"d, "label0", Box(5, 20, 90, 40));
 		label_height = new Label("Height:"d, "label0", Box(5, 40, 90, 60));
 		textBox_width = new TextBox(""d, "textBox0", Box(90, 20, 150, 38));
-		textBox_width.allowedChars = TextBox.INTEGER_POS;
+		textBox_width.setFilter(TextInputFieldType.IntegerP);
 		textBox_height = new TextBox(""d, "textBox0", Box(90, 40, 150, 58));
-		textBox_height.allowedChars = TextBox.INTEGER_POS;
+		textBox_height.setFilter(TextInputFieldType.IntegerP);
 		button_import = new Button("Import"d, "button0", Box(90, 60, 150, 78));
 		this.filename = filename;
 	}

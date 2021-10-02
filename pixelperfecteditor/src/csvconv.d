@@ -11,6 +11,7 @@ import pixelperfectengine.map.mapdata;
 import pixelperfectengine.map.mapformat;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.system.exc;
+import pixelperfectengine.system.etc : csvParser, stringArrayParser;
 
 import std.stdio;
 import std.conv : to;
@@ -60,7 +61,7 @@ public void fromCSV(string source, ITileLayer dest, const int width, const int h
 	char[] input;
 	input.length = cast(size_t)sf.size;
 	sf.rawRead(input);
-	uint[] map;// = input.csvReader!uint;
+	int[] map = stringArrayParser!int(csvParser(input));
 	if (width * height != map.length) throw new CSVImportException("Size mismatch error!");
 	MappingElement[] nativeMap;
 	nativeMap.reserve(map.length);

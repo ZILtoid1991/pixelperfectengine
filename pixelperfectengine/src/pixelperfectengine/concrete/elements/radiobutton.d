@@ -50,7 +50,8 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 		}
 
 		if (state == ElementState.Disabled) {
-			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
+			parent.bitBLTPattern(Box(position.left, position.top, position.left + icon.width - 1, position.top + icon.height - 1
+					), ss.getImage("ElementDisabledPtrn"));
 		}
 		if (onDraw !is null) {
 			onDraw();
