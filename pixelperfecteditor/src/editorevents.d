@@ -658,3 +658,177 @@ public class ChangeLayerPriority : UndoableEvent {
 		targetDoc.updateLayerList();
 	}
 }
+/**
+ * Flips all selected tiles horizontally.
+ */
+public class FlipSelTilesH : UndoableEvent {
+	ITileLayer			target;
+	Box					area;
+	MappingElement[]	backup;
+
+	this (ITileLayer target, Box area) {
+		this.target = target;
+		this.area = area;
+	}
+
+	public void redo() {
+		backup.length = area.area;
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				MappingElement w = target.readMapping(x, y);
+				backup[x + (y * area.width)] = w;
+				w.attributes.horizMirror = !w.attributes.horizMirror;
+				target.writeMapping(x, y, w);
+			}
+		}
+	}
+
+	public void undo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				target.writeMapping(x, y, backup[x + (y * area.width)]);
+			}
+		}
+	}
+}
+/**
+ * Flips all selected tiles vertically.
+ */
+public class FlipSelTilesV : UndoableEvent {
+	ITileLayer			target;
+	Box					area;
+	MappingElement[]	backup;
+
+	this (ITileLayer target, Box area) {
+		this.target = target;
+		this.area = area;
+	}
+
+	public void redo() {
+		backup.length = area.area;
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				MappingElement w = target.readMapping(x, y);
+				backup[x + (y * area.width)] = w;
+				w.attributes.vertMirror = !w.attributes.vertMirror;
+				target.writeMapping(x, y, w);
+			}
+		}
+	}
+
+	public void undo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				target.writeMapping(x, y, backup[x + (y * area.width)]);
+			}
+		}
+	}
+}
+/**
+ * Mirrors selection horizontally. (Tile Layer)
+ */
+public class MirrorSelHTL : UndoableEvent {
+	ITileLayer			target;
+	Box					area;
+	MappingElement[]	backup;
+
+	this (ITileLayer target, Box area) {
+		this.target = target;
+		this.area = area;
+	}
+
+	public void redo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				backup[x + (y * area.width)] = target.readMapping(x, y);
+			}
+		}
+		for (int y0 = area.top ; y0 <= area.bottom ; y0++) {
+			for (int x0 = area.left, x1 = area.right ; x0 < x1 ; x0++, x1--) {
+				MappingElement w = target.readMapping(x0, y0);
+				target.writeMapping(x0, y0, target.readMapping(x1, y0));
+				target.writeMapping(x1, y0, w);
+			}
+		}
+	}
+
+	public void undo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				target.writeMapping(x, y, backup[x + (y * area.width)]);
+			}
+		}
+	}
+}
+/**
+ * Mirrors selection vertically. (Tile Layer)
+ */
+public class MirrorSelVTL : UndoableEvent {
+	ITileLayer			target;
+	Box					area;
+	MappingElement[]	backup;
+
+	this (ITileLayer target, Box area) {
+		this.target = target;
+		this.area = area;
+	}
+
+	public void redo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				backup[x + (y * area.width)] = target.readMapping(x, y);
+			}
+		}
+		for (int y0 = area.top, y1 = area.bottom ; y0 < y1 ; y0++, y1--) {
+			for (int x0 = area.left ; x0 <= area.right ; x0++) {
+				MappingElement w = target.readMapping(x0, y0);
+				target.writeMapping(x0, y0, target.readMapping(x0, y1));
+				target.writeMapping(x0, y1, w);
+			}
+		}
+	}
+
+	public void undo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				target.writeMapping(x, y, backup[x + (y * area.width)]);
+			}
+		}
+	}
+}
+/**
+ * Mirrors selection both horizontally and vertically. (Tile Layer)
+ */
+public class MirrorSelBTL : UndoableEvent {
+	ITileLayer			target;
+	Box					area;
+	MappingElement[]	backup;
+
+	this (ITileLayer target, Box area) {
+		this.target = target;
+		this.area = area;
+	}
+
+	public void redo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				backup[x + (y * area.width)] = target.readMapping(x, y);
+			}
+		}
+		for (int y0 = area.top, y1 = area.bottom ; y0 < y1 ; y0++, y1--) {
+			for (int x0 = area.left, x1 = area.right ; x0 < x1 ; x0++, x1--) {
+				MappingElement w = target.readMapping(x0, y0);
+				target.writeMapping(x0, y0, target.readMapping(x1, y1));
+				target.writeMapping(x1, y1, w);
+			}
+		}
+	}
+
+	public void undo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				target.writeMapping(x, y, backup[x + (y * area.width)]);
+			}
+		}
+	}
+}
