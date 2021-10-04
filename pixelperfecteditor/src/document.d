@@ -116,6 +116,19 @@ public class MapDocument : MouseEventReceptor {
 		sYAmount = y;
 	}
 	/**
+	 * Moves the selected area by the given amounts.
+	 */
+	public void moveSelection(int x, int y) {
+		if (selectedLayer in mainDoc.layeroutput) {
+			if (getLayerInfo(selectedLayer).type == LayerType.Tile) {
+				ITileLayer target = cast(ITileLayer)(mainDoc[selectedLayer]);
+				const int tileWidth = target.getTileWidth, tileHeight = target.getTileHeight;
+				areaSelection.relMove(x * tileWidth, y * tileHeight);
+				mapSelection.relMove(x, y);
+			}
+		}
+	}
+	/**
 	 * Updates the selection on the raster window.
 	 */
 	public void updateSelection() {
@@ -585,6 +598,60 @@ public class MapDocument : MouseEventReceptor {
 			prg.wh.message("Layer edit error!", "Layer priority is already in use or invalid!");
 		} else if (mainDoc.layeroutput[selectedLayer]) {
 			events.addToTop(new ChangeLayerPriority(this, selectedLayer, newPri));
+		}
+	}
+	/**
+	 * Mirrors selected items horizontally.
+	 */
+	public void selMirrorHoriz() {
+		switch (getLayerInfo(selectedLayer).type) {
+			case LayerType.Tile, LayerType.TransformableTile:
+				events.addToTop(new MirrorSelHTL(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
+				break;
+			default:
+				break;
+		}
+	}
+	/**
+	 * Mirrors selected items vertically.
+	 */
+	public void selMirrorVert() {
+		switch (getLayerInfo(selectedLayer).type) {
+			case LayerType.Tile, LayerType.TransformableTile:
+				events.addToTop(new MirrorSelVTL(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
+				break;
+			default:
+				break;
+		}
+	}
+	/**
+	 * Mirrors selected items horizontally and vertically.
+	 */
+	public void selMirrorBoth() {
+		switch (getLayerInfo(selectedLayer).type) {
+			case LayerType.Tile, LayerType.TransformableTile:
+				events.addToTop(new MirrorSelBTL(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
+				break;
+			default:
+				break;
+		}
+	}
+	/**
+	 * Flips selected tiles horizontally.
+	 */
+	public void flipTilesHoriz() {
+		if (getLayerInfo(selectedLayer).type == LayerType.Tile || 
+				getLayerInfo(selectedLayer).type == LayerType.TransformableTile) {
+			events.addToTop(new FlipSelTilesH(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
+		}
+	}
+	/**
+	 * Flips selected tiles vertically.
+	 */
+	public void flipTilesVert() {
+		if (getLayerInfo(selectedLayer).type == LayerType.Tile || 
+				getLayerInfo(selectedLayer).type == LayerType.TransformableTile) {
+			events.addToTop(new FlipSelTilesV(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
 		}
 	}
 }

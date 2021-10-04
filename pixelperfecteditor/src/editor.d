@@ -501,12 +501,20 @@ public class Editor : InputListener, SystemEventListener {
 			case hashCalc("prevTile"):
 				break;
 			case hashCalc("moveUp"):
+				if (selDoc && isPressed)
+					selDoc.moveSelection(0, -1);
 				break;
 			case hashCalc("moveDown"):
+				if (selDoc && isPressed)
+					selDoc.moveSelection(0, 1);
 				break;
 			case hashCalc("moveLeft"):
+				if (selDoc && isPressed)
+					selDoc.moveSelection(-1, 0);
 				break;
 			case hashCalc("moveRight"):
+				if (selDoc && isPressed)
+					selDoc.moveSelection(1, 0);
 				break;
 			case hashCalc("scrollUp"):
 				if (selDoc) {

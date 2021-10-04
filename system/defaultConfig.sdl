@@ -99,4 +99,5 @@ input {
  */
 etc {
     graphicsScaling 2 2
+    rasterSize 840 480
 }
