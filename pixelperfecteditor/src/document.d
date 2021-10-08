@@ -105,7 +105,7 @@ public class MapDocument : MouseEventReceptor {
 		if (selectedLayer in mainDoc.layeroutput) {
 			mainDoc[selectedLayer].relScroll(x, y);
 		}
-		outputWindow.updateRaster();
+		//outputWindow.updateRaster();
 		updateSelection();
 	}
 	/**
@@ -125,6 +125,7 @@ public class MapDocument : MouseEventReceptor {
 				const int tileWidth = target.getTileWidth, tileHeight = target.getTileHeight;
 				areaSelection.relMove(x * tileWidth, y * tileHeight);
 				mapSelection.relMove(x, y);
+				updateSelection();
 			}
 		}
 	}
@@ -197,12 +198,24 @@ public class MapDocument : MouseEventReceptor {
 	public void tileMaterial_FlipHorizontal(bool pos) {
 		selectedMappingElement.attributes.horizMirror = pos;
 	}
+	public void tileMaterial_FlipHorizontal() {
+		selectedMappingElement.attributes.horizMirror = !selectedMappingElement.attributes.horizMirror;
+	}
 	public void tileMaterial_FlipVertical(bool pos) {
 		selectedMappingElement.attributes.vertMirror = pos;
 	}
+	public void tileMaterial_FlipVertical() {
+		selectedMappingElement.attributes.vertMirror = !selectedMappingElement.attributes.vertMirror;
+	}
 	public void tileMaterial_Select(wchar id) {
 		selectedMappingElement.tileID = id;
-		mode = EditMode.tilePlacement;
+		//mode = EditMode.tilePlacement;
+	}
+	public void tileMaterial_Up() {
+		selectedMappingElement.tileID++;
+	}
+	public void tileMaterial_Down() {
+		selectedMappingElement.tileID--;
 	}
 	public ushort tileMaterial_PaletteUp() {
 		selectedMappingElement.paletteSel++;
@@ -513,6 +526,19 @@ public class MapDocument : MouseEventReceptor {
 		outputWindow.updateRaster();
 	}
 	/**
+	 * Deletes the selected area.
+	 */
+	public void deleteArea() {
+		switch (getLayerInfo(selectedLayer).type) {
+			case LayerType.Tile, LayerType.TransformableTile:
+				events.addToTop(new CutFromTileLayerEvent(cast(ITileLayer)mainDoc.layeroutput[selectedLayer], mapSelection));
+				break;
+			default:
+				break;
+		}
+		outputWindow.updateRaster();
+	}
+	/**
 	 * Creates a paste event if called.
 	 * Uses the internal states of this document.
 	 */
@@ -542,7 +568,17 @@ public class MapDocument : MouseEventReceptor {
 			case "paste":
 				paste;
 				break;
-			case "flp":
+			case "flph":
+				flipTilesHoriz();
+				break;
+			case "flpv":
+				flipTilesVert();
+				break;
+			case "mirh":
+				selMirrorHoriz();
+				break;
+			case "mirv":
+				selMirrorVert();
 				break;
 			case "shp":
 				break;
@@ -619,6 +655,7 @@ public class MapDocument : MouseEventReceptor {
 		switch (getLayerInfo(selectedLayer).type) {
 			case LayerType.Tile, LayerType.TransformableTile:
 				events.addToTop(new MirrorSelVTL(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
+				outputWindow.updateRaster();
 				break;
 			default:
 				break;
@@ -631,6 +668,7 @@ public class MapDocument : MouseEventReceptor {
 		switch (getLayerInfo(selectedLayer).type) {
 			case LayerType.Tile, LayerType.TransformableTile:
 				events.addToTop(new MirrorSelBTL(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
+				outputWindow.updateRaster();
 				break;
 			default:
 				break;
@@ -643,6 +681,7 @@ public class MapDocument : MouseEventReceptor {
 		if (getLayerInfo(selectedLayer).type == LayerType.Tile || 
 				getLayerInfo(selectedLayer).type == LayerType.TransformableTile) {
 			events.addToTop(new FlipSelTilesH(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
+			outputWindow.updateRaster();
 		}
 	}
 	/**
@@ -652,6 +691,7 @@ public class MapDocument : MouseEventReceptor {
 		if (getLayerInfo(selectedLayer).type == LayerType.Tile || 
 				getLayerInfo(selectedLayer).type == LayerType.TransformableTile) {
 			events.addToTop(new FlipSelTilesV(cast(ITileLayer)(mainDoc.layeroutput[selectedLayer]), mapSelection));
+			outputWindow.updateRaster();
 		}
 	}
 }

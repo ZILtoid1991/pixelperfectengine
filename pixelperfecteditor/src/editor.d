@@ -208,13 +208,6 @@ public class TopLevelWindow : Window {
 		}
 	}
 }
-/+public enum PlacementMode : uint{
-	NULL		=	0,
-	NORMAL		=	1,
-	VOIDFILL	=	2,
-	OVERWRITE	=	3,
-
-}+/
 
 public class Editor : InputListener, SystemEventListener {
 	public OutputScreen[] ow;
@@ -463,7 +456,8 @@ public class Editor : InputListener, SystemEventListener {
 				}
 				break;
 			case hashCalc("delArea"):
-				
+				if (selDoc && isPressed) 
+					selDoc.deleteArea();
 				break;
 			case hashCalc("palUp"):
 				if (isPressed) {
@@ -482,23 +476,55 @@ public class Editor : InputListener, SystemEventListener {
 				}
 				break;
 			case hashCalc("hMirror"):
-				if (!isPressed) {
+				if (selDoc && !isPressed) {
 					if (materialList)
 						materialList.horizMirror.toggle;
+					else
+						selDoc.tileMaterial_FlipHorizontal;
+				}
+				break;
+			case hashCalc("selFlipHoriz"):
+				if (selDoc && !isPressed) {
+					selDoc.flipTilesHoriz();
+				}
+				break;
+			case hashCalc("selFlipVert"):
+				if (selDoc && !isPressed) {
+					selDoc.flipTilesVert();
+				}
+				break;
+			case hashCalc("selMirrorHoriz"):
+				if (selDoc && !isPressed) {
+					selDoc.selMirrorHoriz();
+				}
+				break;
+			case hashCalc("selMirrorVert"):
+				if (selDoc && !isPressed) {
+					selDoc.selMirrorVert();
 				}
 				break;
 			case hashCalc("vMirror"):
 				if (!isPressed) {
 					if (materialList)
 						materialList.vertMirror.toggle;
+					else
+						selDoc.tileMaterial_FlipVertical;
 				}
 				break;
 			case hashCalc("place"):
 
 				break;
 			case hashCalc("nextTile"):
+				if (selDoc && isPressed) {
+					if (materialList) {
+
+					} 
+				}
 				break;
 			case hashCalc("prevTile"):
+				if (selDoc && isPressed) {
+					
+				}
 				break;
 			case hashCalc("moveUp"):
 				if (selDoc && isPressed)

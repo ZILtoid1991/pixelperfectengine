@@ -456,9 +456,11 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	}
 	/**
 	 * Sets the selected item and then does a redraw.
+	 * -1 sets selection to none.
 	 */
 	public @property int value(int val) {
 		selection = val;
+		clamp(val, -1, cast(int)(entries.length) - 1);
 		draw;
 		return selection;
 	}

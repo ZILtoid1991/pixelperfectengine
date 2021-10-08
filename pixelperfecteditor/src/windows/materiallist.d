@@ -141,6 +141,16 @@ public class MaterialList : Window {
 		string newName = toUTF8(cee.text().text());
 		prg.selDoc.renameTile(tiles[listView_materials.value].id, newName);
 	}
+	public void nextTile() {
+		listView_materials.value = listView_materials.value + 1;
+		if (listView_materials.value != -1)
+			prg.selDoc.tileMaterial_Select(tiles[listView_materials.value].id);
+	}
+	public void prevTile() {
+		listView_materials.value = listView_materials.value - 1;
+		if (listView_materials.value != -1)
+			prg.selDoc.tileMaterial_Select(tiles[listView_materials.value].id);
+	}
 }
 /**
  * Defines a single material.

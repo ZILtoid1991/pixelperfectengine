@@ -118,7 +118,7 @@ public class TileLayer : Layer, ITileLayer {
 	///Writes to the map. x , y : Position. w : ID of the tile.
 	public void writeMapping(int x, int y, MappingElement w) @nogc @safe pure nothrow {
 		if(x >= 0 && y >= 0 && x < mX && y < mY)
-			mapping[x+(mX*y)]=w;
+			mapping[x + (mX * y)] = w;
 	}
 	/**
 	 * Writes a text to the map.
