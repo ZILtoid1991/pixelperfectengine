@@ -93,7 +93,7 @@ public class FileEvent : Event {
 	 */
 	public string getFullPath() @safe pure nothrow const {
 		import std.path : extension;
-		if (extension(filename).length)
+		if (extension(filename) == this.extension)
 			return path ~ filename;
 		else
 			return path ~ filename ~ this.extension;

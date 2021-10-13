@@ -24,14 +24,19 @@ version(Windows){
 }
 
 public import pixelperfectengine.system.exc;
+
 /**
  * Contains the very basic data for the map binary file (*.mbf).
  */
 public struct MapDataHeader{
-	public uint flags;		///Currently unused
-	//public uint fileLength;	/// fileLength = sizeX * sizeY + MapDataHeader.sizeof;
+	public uint flags;		///Stores additional data about the binary map file as a boolean array. Bit 24-31 are user definable.
 	public int sizeX;		///width of the map
 	public int sizeY;		///Height of the map
+	public enum RegisteredFlags {
+		UD_PriorityField	=	1<<0,	///Priority field contains user-defined data
+		UD_PalShiftField	=	1<<1,	///Palette-shift field contains user defined data
+		Bit10AxisSwitch		=	1<<2,	///Bit 10 (bit 0 of priority field) switches X and Y axes
+	}
 	this(int sizeX, int sizeY){
 		//this.fileLength = cast(uint)(sizeX * sizeY + MapDataHeader.sizeof);
 		this.sizeX = sizeX;
@@ -41,6 +46,7 @@ public struct MapDataHeader{
 
 /**
  * Saves a map to an external file.
+ * Will be deprecated soon.
  */
 public void saveMapFile(MapDataHeader* header, ref MappingElement[] map, string name){
 	FILE* outputStream = fopen(toStringz(name), "wb");
@@ -59,7 +65,10 @@ public void saveMapFile(MapDataHeader* header, ref MappingElement[] map, string 
 
 	fclose(outputStream);
 }
-///Ditto, but safer.
+/**
+ * Saves a map to an external file.
+ * See documentation about the format.
+ */ 
 public void saveMapFile(F = File)(MapDataHeader header, MappingElement[] map, F file) @trusted {
 	ubyte[] writeBuf = toStream(header);
 	file.rawWrite(writeBuf);

@@ -290,7 +290,7 @@ public class FileDialog : Window {
 				directory = pathList[lw.value];
 				spanDir();
 			}else{
-				filename = stripExtension(pathList[lw.value]);
+				filename = baseName(stripExtension(pathList[lw.value]));
 				tb.setText(new Text(to!dstring(filename), tb.getText().formatting));
 			}
 		} catch(Exception e) {

@@ -468,7 +468,7 @@ public class MapDocument : MouseEventReceptor {
 			scrollSelectedLayer(mwe.x, mwe.y);
 	}
 	
-	protected LayerInfo getLayerInfo(int pri) nothrow {
+	public LayerInfo getLayerInfo(int pri) nothrow {
 		foreach (key; layerList) {
 			if (key.pri == pri)
 				return key;

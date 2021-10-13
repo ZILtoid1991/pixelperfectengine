@@ -393,7 +393,8 @@ public class ConfigurationProfile {
 		return videoModes.length;
 	}
 	public string videoModeToString(size_t n){
-		return to!string(videoModes[n].w) ~ "x" ~ to!string(videoModes[n].h) ~ "@" ~ to!string(videoModes[n].refresh_rate) ~ "Hz";
+		return to!string(videoModes[n].w) ~ "x" ~ to!string(videoModes[n].h) ~ "@" ~ to!string(videoModes[n].refresh_rate) ~ 
+				"Hz";
 	}
 	/**
 	 * Sets the the path where configuration files and etc. will be stored.
@@ -401,15 +402,23 @@ public class ConfigurationProfile {
 	 */
 	public static void setVaultPath(const char* developer, const char* application){
 		if (exists("../_debug/")) {
-			vaultPath = "../_debug/";
+			vaultPath = "../_debug/" ~ fromStringz(developer).idup ~ "_" ~ fromStringz(application).idup ~ "/";
+			if (!std.file.exists(vaultPath))
+				std.file.mkdir(vaultPath);
 		} else {
 			vaultPath = to!string(SDL_GetPrefPath(developer, application));
 		}
 	}
-	public static string getVaultPath(){
+	public static string getVaultPath() {
 		return vaultPath;
 	}
-
+	/**
+	 * Restores the default configuration.
+	 * Filename can be set if not the default name was used for the file.
+	 */
+	public static void restoreDefaults(string filename = "config.sdl") {
+		std.file.remove(vaultPath ~ filename);
+	}
 }
 /**
  * Default keywords to look up for common video settings

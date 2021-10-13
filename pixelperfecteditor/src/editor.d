@@ -127,10 +127,12 @@ public class TopLevelWindow : Window {
 			//menuElements[3].setLength(5);
 			menuElements[3] ~= new PopUpMenuElement("newLayer", "New layer");
 			menuElements[3] ~= new PopUpMenuElement("delLayer", "Delete layer");
-			menuElements[3] ~= new PopUpMenuElement("impLayer", "Import layer");
+			menuElements[3] ~= new PopUpMenuElement("\\submenu\\", "Import layer", ">");
 			menuElements[3][2] ~= new PopUpMenuElement("tiledcsvi", "Tiled CSV file");
-			menuElements[3] ~= new PopUpMenuElement("impLayer", "Export layer");
+			menuElements[3][2] ~= new PopUpMenuElement("ppebinmapi", "PPE binary map file");
+			menuElements[3] ~= new PopUpMenuElement("\\submenu\\", "Export layer", ">");
 			menuElements[3][3] ~= new PopUpMenuElement("tiledcsve", "Tiled CSV file");
+			menuElements[3][3] ~= new PopUpMenuElement("ppebinmape", "PPE binary map file");
 			menuElements[3] ~= new PopUpMenuElement("layerSrc", "Layer resources");
 			menuElements[3] ~= new PopUpMenuElement("resizeLayer", "Resize layer");
 
@@ -239,6 +241,11 @@ public class Editor : InputListener, SystemEventListener {
 	
 	public this(string[] args){
 		ConfigurationProfile.setVaultPath("ZILtoid1991","PixelPerfectEditor");
+		if (args.length > 1) {
+			if (args[1] == "--restore") {
+				ConfigurationProfile.restoreDefaults;
+			}
+		}
 		configFile = new ConfigurationProfile();
 
 		windowing = new SpriteLayer(RenderingMode.Copy);
@@ -394,6 +401,46 @@ public class Editor : InputListener, SystemEventListener {
 				case "materialList":
 					openMaterialList();
 					break;
+				case "tiledcsvi":
+					if (selDoc) {
+						if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+								selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+							import pixelperfectengine.concrete.dialogs.filedialog;
+							wh.addWindow(new FileDialog("Import layer from CSV", "tiledcsvi", &tiledCSVImport, 
+									[FileDialog.FileAssociationDescriptor("Tiled CSV file", ["*.csv"])], "./",));
+						}
+					}
+					break;
+				case "tiledcsve":
+					if (selDoc) {
+						if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+								selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+							import pixelperfectengine.concrete.dialogs.filedialog;
+							wh.addWindow(new FileDialog("Export layer as CSV", "tiledcsve", &tiledCSVExport, 
+									[FileDialog.FileAssociationDescriptor("Tiled CSV file", ["*.csv"])], "./", true));
+						}
+					}
+					break;
+				case "ppebinmapi":
+					if (selDoc) {
+						if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+								selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+							import pixelperfectengine.concrete.dialogs.filedialog;
+							wh.addWindow(new FileDialog("Import layer from MBF", "ppebinmapi", &ppeBinImport, 
+									[FileDialog.FileAssociationDescriptor("PixelPerfectEngine map binary file", ["*.mbf"])], "./",));
+						}
+					}
+					break;
+				case "ppebinmape":
+					if (selDoc) {
+						if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+								selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+							import pixelperfectengine.concrete.dialogs.filedialog;
+							wh.addWindow(new FileDialog("Export layer as MBF", "ppebinmape", &ppeBinExport, 
+									[FileDialog.FileAssociationDescriptor("PixelPerfectEngine map binary file", ["*.mbf"])], "./", true));
+						}
+					}
+					break;
 				case "copy":
 					onCopy();
 					break;
@@ -408,7 +455,71 @@ public class Editor : InputListener, SystemEventListener {
 			}
 		}
 	}
-	
+	private void tiledCSVImport(Event ev) {
+		import csvconv : fromCSV;
+		try {
+			if (selDoc) {
+				if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+						selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+					ITileLayer target = cast(ITileLayer)(selDoc.mainDoc.layeroutput[selDoc.selectedLayer]);
+					FileEvent fev = cast(FileEvent)ev;
+					fromCSV(fev.getFullPath, target);
+				}
+			}
+		} catch (Exception e) {
+			wh.message("CSV Import Error!", to!dstring(e.msg));
+		}
+	}
+	private void tiledCSVExport(Event ev) {
+		import csvconv : toCSV;
+		try {
+			if (selDoc) {
+				if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+						selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+					ITileLayer target = cast(ITileLayer)(selDoc.mainDoc.layeroutput[selDoc.selectedLayer]);
+					FileEvent fev = cast(FileEvent)ev;
+					toCSV(fev.getFullPath, target);
+				}
+			}
+		} catch (Exception e) {
+			wh.message("CSV Export Error!", to!dstring(e.msg));
+		}
+	}
+	private void ppeBinImport(Event ev) {
+		import pixelperfectengine.map.mapdata;
+		try {
+			if (selDoc) {
+				if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+						selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+					ITileLayer target = cast(ITileLayer)(selDoc.mainDoc.layeroutput[selDoc.selectedLayer]);
+					FileEvent fev = cast(FileEvent)ev;
+					File source = File(fev.getFullPath, "rb");
+					MapDataHeader header;
+					MappingElement[] map = loadMapFile(source, header);
+					target.loadMapping(header.sizeX, header.sizeY, map);
+				}
+			}
+		} catch (Exception e) {
+			wh.message("MBF Import Error!", to!dstring(e.msg));
+		}
+	}
+	private void ppeBinExport(Event ev) {
+		import pixelperfectengine.map.mapdata;
+		try {
+			if (selDoc) {
+				if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
+						selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
+					ITileLayer source = cast(ITileLayer)(selDoc.mainDoc.layeroutput[selDoc.selectedLayer]);
+					FileEvent fev = cast(FileEvent)ev;
+					File target = File(fev.getFullPath, "wb");
+					MapDataHeader header = MapDataHeader(source.getMX, source.getMY);
+					saveMapFile(header, source.getMapping, target);
+				}
+			}
+		} catch (Exception e) {
+			wh.message("MBF Export Error!", to!dstring(e.msg));
+		}
+	}
 	/**
 	 * Called when a keybinding event is generated.
 	 * The `id` should be generated from a string, usually the name of the binding.

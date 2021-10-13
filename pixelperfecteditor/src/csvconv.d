@@ -15,7 +15,6 @@ import pixelperfectengine.system.etc : csvParser, stringArrayParser;
 
 import std.stdio;
 import std.conv : to;
-import std.csv;
 
 /**
  * Defines CSV flags.
@@ -37,51 +36,121 @@ public void toCSV(string target, ITileLayer source) @trusted {
 	const int mX = source.getMX, mY = source.getMY;
 	for (int y ; y < mY ; y++) {
 		for (int x ; x < mX ; x++) {
-			uint element = mapping[(y * mX) + x].tileID == 0xFFFF ? uint.max : mapping[(y * mX) + x].tileID;
+			int element = mapping[(y * mX) + x].tileID == 0xFFFF ? -1 : mapping[(y * mX) + x].tileID;
 			if (mapping[(y * mX) + x].attributes.horizMirror && mapping[(y * mX) + x].attributes.vertMirror)
 				element |= CSVFlags.Diagonal;
 			else if (mapping[(y * mX) + x].attributes.horizMirror)
 				element |= CSVFlags.Horizontal;
 			else if (mapping[(y * mX) + x].attributes.vertMirror)
 				element |= CSVFlags.Vertical;
-			writeBuf = to!string(element).dup;
+			writeBuf ~= to!string(element).dup;
 			tf.rawWrite(writeBuf);
 			writeBuf.length = 0;
+			writeBuf = ",".dup;
 		}
 		writeBuf = "\n".dup;
 		tf.rawWrite(writeBuf);
+		writeBuf.length = 0;
 	}
+}
+/// Borrowed from Adam D. Ruppe, because the one in phobos is an abomination!
+/// Returns the array of csv rows from the given in-memory data (the argument is NOT a filename).
+package string[][] readCsv(string data) {
+	import std.array;
+	data = data.replace("\r\n", "\n");
+	data = data.replace("\r", "");
+
+	//auto idx = data.indexOf("\n");
+	//data = data[idx + 1 .. $]; // skip headers
+
+	string[] fields;
+	string[][] records;
+
+	string[] current;
+
+	int state = 0;
+	string field;
+	foreach(c; data) {
+		tryit: switch(state) {
+			default: assert(0);
+			case 0: // normal
+				if(c == '"')
+					state = 1;
+				else if(c == ',') {
+					// commit field
+					current ~= field;
+					field = null;
+				} else if(c == '\n') {
+					// commit record
+					current ~= field;
+
+					records ~= current;
+					current = null;
+					field = null;
+				} else
+					field ~= c;
+			break;
+			case 1: // in quote
+				if(c == '"') {
+					state = 2;
+				} else
+					field ~= c;
+			break;
+			case 2: // is it a closing quote or an escaped one?
+				if(c == '"') {
+					field ~= c;
+					state = 1;
+				} else {
+					state = 0;
+					goto tryit;
+				}
+		}
+	}
+
+	if(field !is null)
+		current ~= field;
+	if(current !is null)
+		records ~= current;
+
+
+	return records;
 }
 /**
  * Imports a CSV document to a layer.
  * NOTE: Named tiles are not supported.
  */
-public void fromCSV(string source, ITileLayer dest, const int width, const int height) @trusted {
-	File sf = File(source, "rb");
-	char[] input;
-	input.length = cast(size_t)sf.size;
-	sf.rawRead(input);
-	int[] map = stringArrayParser!int(csvParser(input));
-	if (width * height != map.length) throw new CSVImportException("Size mismatch error!");
+public void fromCSV(string source, ITileLayer dest) @trusted {
+	File sf = File(source, "rb+");
 	MappingElement[] nativeMap;
-	nativeMap.reserve(map.length);
-	foreach (uint e ; map) {
-		MappingElement me;
-		me.tileID = cast(ushort)(e & ~CSVFlags.Test);
-		switch (e & CSVFlags.Test) {
-			case CSVFlags.Diagonal:
-				me.attributes.horizMirror = true;
-				me.attributes.vertMirror = true;
-				break;
-			case CSVFlags.Horizontal:
-				me.attributes.horizMirror = true;
-				break;
-			case CSVFlags.Vertical:
-				me.attributes.vertMirror = true;
-				break;
-			default: break;
+	int width, height;
+	char[] readbuffer;
+	readbuffer.length = cast(size_t)sf.size();
+	sf.rawRead(readbuffer);
+	string[][] parsedData = readCsv(readbuffer.idup);
+	width = cast(int)parsedData[0].length;
+	height = cast(int)parsedData.length;
+	nativeMap.reserve(width * height);
+	foreach (string[] line; parsedData) {
+		foreach (string entry; line) {
+			int tile = to!int(entry);
+			MappingElement elem;
+			switch (tile & CSVFlags.Test) {
+				case CSVFlags.Horizontal:
+					elem.attributes.horizMirror = true;
+					break;
+				case CSVFlags.Vertical:
+					elem.attributes.vertMirror = true;
+					break;
+				case CSVFlags.Diagonal:
+					elem.attributes.horizMirror = true;
+					elem.attributes.vertMirror = true;
+					break;
+				default:
+					break;
+			}
+			elem.tileID = cast(wchar)(tile & ushort.max);
+			nativeMap ~= elem;
 		}
-		nativeMap ~= me;
 	}
 	dest.loadMapping(width, height, nativeMap);
 }
