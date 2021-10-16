@@ -13,6 +13,7 @@ import pixelperfectengine.graphics.layers;
 import pixelperfectengine.system.exc;
 import pixelperfectengine.system.etc : csvParser, stringArrayParser;
 
+import document;
 import std.stdio;
 import std.conv : to;
 
@@ -119,7 +120,7 @@ package string[][] readCsv(string data) {
  * Imports a CSV document to a layer.
  * NOTE: Named tiles are not supported.
  */
-public void fromCSV(string source, ITileLayer dest) @trusted {
+public void fromCSV(string source, MapDocument dest) @trusted {
 	File sf = File(source, "rb+");
 	MappingElement[] nativeMap;
 	int width, height;
@@ -152,7 +153,7 @@ public void fromCSV(string source, ITileLayer dest) @trusted {
 			nativeMap ~= elem;
 		}
 	}
-	dest.loadMapping(width, height, nativeMap);
+	dest.assignImportedTilemap(nativeMap, width, height);
 }
 /**
  * Thrown on import errors.

@@ -85,6 +85,11 @@ input {
         "prevLayer" name="pageDown" keyModIgnore="NumLock;CapsLock"
         "hideLayer" name="home" keyModIgnore="NumLock;CapsLock"
         "soloLayer" name="end" keyModIgnore="NumLock;CapsLock"
+        "modeSel" name="f4" keyModIgnore="NumLock;CapsLock"
+        "modeTile" name="f3" keyModIgnore="NumLock;CapsLock"
+        "modeObj" name="f2" keyModIgnore="NumLock;CapsLock"
+        "modeSprt" name="f1" keyModIgnore="NumLock;CapsLock"
+        "resetLayers" name="f9" keyMod="Shift" keyModIgnore="NumLock;CapsLock"
         /*
          * Other tags:
          *
@@ -99,5 +104,5 @@ input {
  */
 etc {
     graphicsScaling 2 2
-    rasterSize 840 480
+    rasterSize 848 480
 }

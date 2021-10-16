@@ -57,6 +57,7 @@ updates on every redraw - my bad.
 * Right-click context menu
 * Tile and Layer renaming
 * CSV import and export 
+* Better control from keyboard
 
 # 0.10.0-beta1
 ## New features

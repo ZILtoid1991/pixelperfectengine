@@ -12,6 +12,7 @@ import CPUblit.composing;
 static import CPUblit.draw;
 import CPUblit.colorlookup;
 import pixelperfectengine.system.input.types : MouseButton, ButtonState;
+import collections.sortedlist;
 
 import document;
 debug import std.stdio;
@@ -20,6 +21,9 @@ debug import std.stdio;
  * Implements a subraster using a window. Has the capability of skipping over individual layers.
  */
 public class RasterWindow : Window, PaletteContainer {
+	alias DisplayList = SortedList!(int, "a < b", false);
+	public DisplayList	hiddenLayers;	///List of hidden layers
+	public DisplayList	soloedLayers;	///List of soloed layers
 	protected Bitmap32Bit trueOutput, rasterOutput;
 	protected Color[] paletteLocal;
 	protected Color* paletteShared;
@@ -202,6 +206,13 @@ public class RasterWindow : Window, PaletteContainer {
 				paletteShared[ss.getColor("windowdescent")].base, ptr, trueOutput.width);
 	}
 	/**
+	 * Clears both displaylists.
+	 */
+	public void clearDisplayLists() {
+		hiddenLayers = DisplayList([]);
+		soloedLayers = DisplayList([]);
+	}
+	/**
 	 * Updates the raster of the window.
 	 */
 	public void updateRaster() {
@@ -212,8 +223,9 @@ public class RasterWindow : Window, PaletteContainer {
 			}
 		}
 		//update each layer individually
-		foreach (Layer l ; document.mainDoc.layeroutput) {
-			l.updateRaster((trueOutput.getPtr + (17 * trueOutput.width) + 1), trueOutput.width * 4, paletteLocal.ptr);
+		foreach (int i, Layer l ; document.mainDoc.layeroutput) {
+			if ((i !in hiddenLayers && !soloedLayers.length) || (i in soloedLayers && soloedLayers.length))
+				l.updateRaster((trueOutput.getPtr + (17 * trueOutput.width) + 1), trueOutput.width * 4, paletteLocal.ptr);
 		}
 		/+for(int i ; i < layerList.length ; i++){
 			//document.mainDoc[layerList[i]].updateRaster(rasterOutput.getPtr, rasterX * 4, paletteLocal.ptr);

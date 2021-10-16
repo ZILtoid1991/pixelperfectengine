@@ -120,6 +120,7 @@ public class TopLevelWindow : Window {
 			menuElements[2] ~= new PopUpMenuElement("materialList", "Materials");
 			menuElements[2] ~= new PopUpMenuElement("viewgrid", "Grid");
 			menuElements[2] ~= new PopUpMenuElement("viewobj", "Objects");
+			menuElements[2] ~= new PopUpMenuElement("resetLayers", "Reset layer display");
 			//menuElements[2][2] = new PopUpMenuElement("layerTools", "Layer tools", "Alt + T");
 
 			menuElements ~= new PopUpMenuElement("layers", mt("LAYERS"));
@@ -127,10 +128,10 @@ public class TopLevelWindow : Window {
 			//menuElements[3].setLength(5);
 			menuElements[3] ~= new PopUpMenuElement("newLayer", "New layer");
 			menuElements[3] ~= new PopUpMenuElement("delLayer", "Delete layer");
-			menuElements[3] ~= new PopUpMenuElement("\\submenu\\", "Import layer", ">");
+			menuElements[3] ~= new PopUpMenuElement("\\submenu\\", "Import layerdata", ">");
 			menuElements[3][2] ~= new PopUpMenuElement("tiledcsvi", "Tiled CSV file");
 			menuElements[3][2] ~= new PopUpMenuElement("ppebinmapi", "PPE binary map file");
-			menuElements[3] ~= new PopUpMenuElement("\\submenu\\", "Export layer", ">");
+			menuElements[3] ~= new PopUpMenuElement("\\submenu\\", "Export layerdata", ">");
 			menuElements[3][3] ~= new PopUpMenuElement("tiledcsve", "Tiled CSV file");
 			menuElements[3][3] ~= new PopUpMenuElement("ppebinmape", "PPE binary map file");
 			menuElements[3] ~= new PopUpMenuElement("layerSrc", "Layer resources");
@@ -331,8 +332,8 @@ public class Editor : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[11], "sprtPlacementButtonB");
 			//globalDefaultStyle.setImage(customGUIElems[12], "importMaterialDataButtonA");
 			//globalDefaultStyle.setImage(customGUIElems[13], "importMaterialDataButtonB");
-			//globalDefaultStyle.setImage(customGUIElems[14], "paletteButtonA");
-			//globalDefaultStyle.setImage(customGUIElems[15], "paletteButtonB");
+			globalDefaultStyle.setImage(customGUIElems[14], "soloButtonA");
+			globalDefaultStyle.setImage(customGUIElems[15], "soloButtonB");
 		}
 
 		//wh.initGUI();
@@ -441,6 +442,11 @@ public class Editor : InputListener, SystemEventListener {
 						}
 					}
 					break;
+				case "resetLayers":
+					if (selDoc) {
+						selDoc.outputWindow.clearDisplayLists();
+					}
+					break;
 				case "copy":
 					onCopy();
 					break;
@@ -463,7 +469,7 @@ public class Editor : InputListener, SystemEventListener {
 						selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
 					ITileLayer target = cast(ITileLayer)(selDoc.mainDoc.layeroutput[selDoc.selectedLayer]);
 					FileEvent fev = cast(FileEvent)ev;
-					fromCSV(fev.getFullPath, target);
+					fromCSV(fev.getFullPath, selDoc);
 				}
 			}
 		} catch (Exception e) {
@@ -491,12 +497,11 @@ public class Editor : InputListener, SystemEventListener {
 			if (selDoc) {
 				if (selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.Tile || 
 						selDoc.getLayerInfo(selDoc.selectedLayer).type == LayerType.TransformableTile) {
-					ITileLayer target = cast(ITileLayer)(selDoc.mainDoc.layeroutput[selDoc.selectedLayer]);
 					FileEvent fev = cast(FileEvent)ev;
 					File source = File(fev.getFullPath, "rb");
 					MapDataHeader header;
 					MappingElement[] map = loadMapFile(source, header);
-					target.loadMapping(header.sizeX, header.sizeY, map);
+					selDoc.assignImportedTilemap(map, header.sizeX, header.sizeY);
 				}
 			}
 		} catch (Exception e) {
@@ -615,26 +620,33 @@ public class Editor : InputListener, SystemEventListener {
 				}
 				break;
 			case hashCalc("vMirror"):
-				if (!isPressed) {
+				if (selDoc && !isPressed) {
 					if (materialList)
 						materialList.vertMirror.toggle;
-					else
+					else 
 						selDoc.tileMaterial_FlipVertical;
 				}
 				break;
 			case hashCalc("place"):
-
+				if (selDoc && !isPressed)
+					selDoc.fillSelectedArea();
 				break;
 			case hashCalc("nextTile"):
 				if (selDoc && isPressed) {
 					if (materialList) {
-
-					} 
+						materialList.nextTile();
+					} else {
+						selDoc.tileMaterial_Up();
+					}
 				}
 				break;
 			case hashCalc("prevTile"):
 				if (selDoc && isPressed) {
-					
+					if (materialList) {
+						materialList.prevTile();
+					} else {
+						selDoc.tileMaterial_Down();
+					}
 				}
 				break;
 			case hashCalc("moveUp"):
@@ -685,13 +697,34 @@ public class Editor : InputListener, SystemEventListener {
 						selDoc.sXAmount = 0;
 				}
 				break;
+			case hashCalc("resetLayers"):
+				if (selDoc && !isPressed) {
+					selDoc.outputWindow.clearDisplayLists();
+				}
+				break;
 			case hashCalc("nextLayer"):
+				if (selDoc && !isPressed) {
+					if (layerList)
+						layerList.nextLayer();
+				}
 				break;
 			case hashCalc("prevLayer"):
+				if (selDoc && !isPressed) {
+					if (layerList)
+						layerList.prevLayer();
+				}
 				break;
 			case hashCalc("hideLayer"):
+				if (selDoc && !isPressed) {
+					if (layerList)
+						layerList.checkBox_Hide.toggle();
+				}
 				break;
 			case hashCalc("soloLayer"):
+				if (selDoc && !isPressed) {
+					if (layerList)
+						layerList.checkBox_Solo.toggle();
+				}
 				break;
 			default:
 				break;

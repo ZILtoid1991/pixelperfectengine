@@ -669,15 +669,20 @@ public class FlipSelTilesH : UndoableEvent {
 	this (ITileLayer target, Box area) {
 		this.target = target;
 		this.area = area;
-	}
-
-	public void redo() {
 		backup.length = area.area;
 		int i;
 		for (int y = area.top ; y <= area.bottom ; y++) {
 			for (int x = area.left ; x <= area.right ; x++, i++) {
 				MappingElement w = target.readMapping(x, y);
 				backup[i] = w;
+			}
+		}
+	}
+
+	public void redo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				MappingElement w = target.readMapping(x, y);
 				w.attributes.horizMirror = !w.attributes.horizMirror;
 				target.writeMapping(x, y, w);
 			}
@@ -704,15 +709,20 @@ public class FlipSelTilesV : UndoableEvent {
 	this (ITileLayer target, Box area) {
 		this.target = target;
 		this.area = area;
-	}
-
-	public void redo() {
 		backup.length = area.area;
 		int i;
 		for (int y = area.top ; y <= area.bottom ; y++) {
 			for (int x = area.left ; x <= area.right ; x++, i++) {
 				MappingElement w = target.readMapping(x, y);
 				backup[i] = w;
+			}
+		}
+	}
+
+	public void redo() {
+		for (int y = area.top ; y <= area.bottom ; y++) {
+			for (int x = area.left ; x <= area.right ; x++) {
+				MappingElement w = target.readMapping(x, y);
 				w.attributes.vertMirror = !w.attributes.vertMirror;
 				target.writeMapping(x, y, w);
 			}
@@ -739,9 +749,6 @@ public class MirrorSelHTL : UndoableEvent {
 	this (ITileLayer target, Box area) {
 		this.target = target;
 		this.area = area;
-	}
-
-	public void redo() {
 		int i;
 		backup.length = area.area;
 		for (int y = area.top ; y <= area.bottom ; y++) {
@@ -749,6 +756,9 @@ public class MirrorSelHTL : UndoableEvent {
 				backup[i] = target.readMapping(x, y);
 			}
 		}
+	}
+
+	public void redo() {
 		for (int y0 = area.top ; y0 <= area.bottom ; y0++) {
 			for (int x0 = area.left, x1 = area.right ; x0 < x1 ; x0++, x1--) {
 				MappingElement w = target.readMapping(x0, y0);
@@ -778,9 +788,6 @@ public class MirrorSelVTL : UndoableEvent {
 	this (ITileLayer target, Box area) {
 		this.target = target;
 		this.area = area;
-	}
-
-	public void redo() {
 		int i;
 		backup.length = area.area;
 		for (int y = area.top ; y <= area.bottom ; y++) {
@@ -788,6 +795,9 @@ public class MirrorSelVTL : UndoableEvent {
 				backup[i] = target.readMapping(x, y);
 			}
 		}
+	}
+
+	public void redo() {
 		for (int y0 = area.top, y1 = area.bottom ; y0 < y1 ; y0++, y1--) {
 			for (int x0 = area.left ; x0 <= area.right ; x0++) {
 				MappingElement w = target.readMapping(x0, y0);
@@ -817,9 +827,6 @@ public class MirrorSelBTL : UndoableEvent {
 	this (ITileLayer target, Box area) {
 		this.target = target;
 		this.area = area;
-	}
-
-	public void redo() {
 		int i;
 		backup.length = area.area;
 		for (int y = area.top ; y <= area.bottom ; y++) {
@@ -827,6 +834,9 @@ public class MirrorSelBTL : UndoableEvent {
 				backup[i] = target.readMapping(x, y);
 			}
 		}
+	}
+
+	public void redo() {
 		for (int y0 = area.top, y1 = area.bottom ; y0 < y1 ; y0++, y1--) {
 			for (int x0 = area.left, x1 = area.right ; x0 < x1 ; x0++, x1--) {
 				MappingElement w = target.readMapping(x0, y0);
@@ -843,5 +853,39 @@ public class MirrorSelBTL : UndoableEvent {
 				target.writeMapping(x, y, backup[i]);
 			}
 		}
+	}
+}
+/**
+ * Imports mapping data to a layer.
+ */
+public class ImportLayerData : UndoableEvent {
+	ITileLayer target;
+	Tag dataTarget;
+	MappingElement[] newData;
+	MappingElement[] backup;
+	int width, height;
+	int buw, buh;
+
+	this(ITileLayer target, Tag dataTarget, MappingElement[] newData, int width, int height) {
+		this.target = target;
+		this.dataTarget = dataTarget;
+		this.newData = newData;
+		this.width = width;
+		this.height = height;
+		buw = target.getMX();
+		buh = target.getMY();
+		backup = target.getMapping();
+	}
+
+	public void redo() {
+		dataTarget.values[4] = Value(width);
+		dataTarget.values[5] = Value(height);
+		target.loadMapping(width, height, newData);
+	}
+
+	public void undo() {
+		dataTarget.values[4] = Value(buw);
+		dataTarget.values[5] = Value(buh);
+		target.loadMapping(buw, buh, backup);
 	}
 }

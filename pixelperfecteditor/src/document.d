@@ -694,4 +694,29 @@ public class MapDocument : MouseEventReceptor {
 			outputWindow.updateRaster();
 		}
 	}
+	/**
+	 * Fills selected area with selected tile, using overwrite rules defined by the materiallist.
+	 */
+	public void fillSelectedArea() {
+		if (getLayerInfo(selectedLayer).type == LayerType.Tile || 
+				getLayerInfo(selectedLayer).type == LayerType.TransformableTile) {
+			ITileLayer target = cast(ITileLayer)mainDoc.layeroutput[selectedLayer];
+			if (voidfill) {
+				events.addToTop(new WriteToMapVoidFill(target, mapSelection, selectedMappingElement));
+			} else {
+				events.addToTop(new WriteToMapOverwrite(target, mapSelection, selectedMappingElement));
+			}
+			outputWindow.updateRaster();
+		}
+	}
+	/**
+	 * Assigns an imported tilemap to the currently selected layer.
+	 */
+	public void assignImportedTilemap(MappingElement[] map, int w, int h) {
+		if (getLayerInfo(selectedLayer).type == LayerType.Tile || 
+				getLayerInfo(selectedLayer).type == LayerType.TransformableTile) {
+			events.addToTop(new ImportLayerData(cast(ITileLayer)mainDoc.layeroutput[selectedLayer], mainDoc.layerData[selectedLayer], map, w, 
+					h));
+		}
+	}
 }
