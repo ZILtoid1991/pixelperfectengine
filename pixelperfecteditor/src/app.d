@@ -33,6 +33,7 @@ import pixelperfectengine.system.etc;
 import pixelperfectengine.system.config;
 //import pixelperfectengine.system.binarySearchTree;
 import pixelperfectengine.system.common;
+import core.memory;
 
 public import editor;
 //import pixelperfectengine.extbmp.extbmp;
@@ -41,14 +42,15 @@ public Editor prg;
 
 int main(string[] args){
 	initialzeSDL();
-
+	GC.disable();
 	if (args.length > 1) {
 		if (args[1] == "--test") {
-			bool testTransformableTileLayer;
-			if (args.length > 2) 
-				if (args[2] == "transform")
-					testTransformableTileLayer = true;
-			TileLayerTest lprg = new TileLayerTest(testTransformableTileLayer, 8, 8);
+			int mapWidth = 8, mapHeight = 8;
+			if (args.length == 4) {
+				mapWidth = to!int(args[2]);
+				mapHeight = to!int(args[3]);
+			}
+			TileLayerTest lprg = new TileLayerTest(mapWidth, mapHeight);
 			lprg.whereTheMagicHappens;
 			return 0;
 		}
@@ -76,7 +78,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	ObjectCollisionDetector ocd;
 	float theta;
 	int framecounter;
-	this (bool testTransformableTileLayer, int mapWidth, int mapHeight) {
+	this (int mapWidth, int mapHeight) {
 		theta = 0;
 		isRunning = true;
 		Image tileSource = loadImage(File("../assets/sci-fi-tileset.png"));
@@ -91,11 +93,11 @@ class TileLayerTest : SystemEventListener, InputListener {
 		textLayer.paletteOffset = 512;
 		textLayer.masterVal = 127;
 		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
-		//tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(RenderingMode.Copy);
+		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(RenderingMode.AlphaBlend);
 		s = new SpriteLayer(RenderingMode.AlphaBlend);
-		if (testTransformableTileLayer) r.addLayer(tt, 0);
-		else r.addLayer(t, 0);
-		r.addLayer(s, 1);
+		r.addLayer(tt, 1);
+		r.addLayer(t, 0);
+		r.addLayer(s, 2);
 		r.addLayer(textLayer, 65_536);
 
 		Color[] localPal = loadPaletteFromImage(tileSource);
@@ -123,16 +125,15 @@ class TileLayerTest : SystemEventListener, InputListener {
 		}
 		
 		tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
-		//tiles = loadBitmapSheetFromFile!(Bitmap8Bit)("../assets/sci-fi-tileset.png", 16, 16);
-		if (testTransformableTileLayer) {
-			for (int i; i < tiles.length; i++) {
-				tt.addTile(tiles[i], cast(wchar)i);
-			}
-		} else {
-			for (int i; i < tiles.length; i++) {
-				t.addTile(tiles[i], cast(wchar)i);
-			}
+		
+		for (int i; i < tiles.length; i++) {
+			tt.addTile(tiles[i], cast(wchar)i);
 		}
+		
+		for (int i; i < tiles.length; i++) {
+			t.addTile(tiles[i], cast(wchar)i);
+		}
+		
 		{
 			Bitmap8Bit[] fontSet = loadBitmapSheetFromImage!Bitmap8Bit(fontSource, 8, 8);
 			for (ushort i; i < fontSet.length; i++) {
@@ -178,14 +179,16 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.addBinding(BindingCode(ScanCode.H, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("y0-"));
 			ih.addBinding(BindingCode(ScanCode.PAGEUP, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("alpha+"));
 			ih.addBinding(BindingCode(ScanCode.PAGEDOWN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("alpha-"));
+			ih.addBinding(BindingCode(ScanCode.HOME, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("hidettl"));
+			ih.addBinding(BindingCode(ScanCode.END, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("unhidettl"));
 		}
-		if (testTransformableTileLayer) {
-			tt.loadMapping(mapWidth, mapHeight, mapping);
-			tt.warpMode = WarpMode.TileRepeat;
-		} else {
-			t.loadMapping(mapWidth, mapHeight, mapping);
-			t.warpMode = WarpMode.TileRepeat;
-		}
+		
+		tt.loadMapping(mapWidth, mapHeight, mapping);
+		tt.warpMode = WarpMode.Off;
+		
+		t.loadMapping(mapWidth, mapHeight, mapping);
+		t.warpMode = WarpMode.TileRepeat;
+		
 		//t.setWrapMode(true);
 		//tt.D = -256;
 		//loadPaletteFromXMP(tileSource, "default", r);
@@ -198,7 +201,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		
 		//writeln(r.palette);
 		//r.palette[0].alpha = 255;
-		r.palette[256].base = 0;
+		//r.palette[256].base = 0;
 		//textLayer.writeTextToMap(2,2,0,"Hello world!",BitmapAttrib(true, false));
 		textLayer.writeTextToMap(0, 0, 0, "Framerate:", BitmapAttrib(true, false));
 		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false));
@@ -252,7 +255,9 @@ class TileLayerTest : SystemEventListener, InputListener {
 			
 			framecounter++;
 			if(framecounter == 10){
-				//textLayer.writeTextToMap(10,0,0,format("%3.3f"w,r.avgfps),BitmapAttrib(true, false));
+				float avgFPS = r.avgfps;
+				wstring fpsCounter = format(" %3.3f"w, avgFPS);
+				textLayer.writeTextToMap(10,0,0,fpsCounter,BitmapAttrib(true, false));
 				framecounter = 0;
 			}
 			//t.relScroll(1,0);
@@ -450,6 +455,12 @@ class TileLayerTest : SystemEventListener, InputListener {
 				break;
 			case 2733639921:	//y0-
 				tt.y_0 = cast(short)(tt.y_0 - 1);
+				break;
+			case hashCalc("hidettl"):
+				r.removeLayer(0);
+				break;
+			case hashCalc("unhidettl"):
+				r.addLayer(tt, 0);
 				break;
 			default:
 				break;

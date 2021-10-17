@@ -219,7 +219,7 @@ public class Bitmap(string S,T) : ABitmap {
 			_width = w;
 			_height = h;
 			pitch = w + (size_t.sizeof * 8 - (w % (size_t.sizeof * 8)));
-			pixels.length = pitch / (size_t.sizeof * 8);
+			pixels.length = pitch / (size_t.sizeof * 8) * h;
 			pixelAccess = BitArray(pixels, pitch * height);
 		}
 		/**
@@ -251,10 +251,12 @@ public class Bitmap(string S,T) : ABitmap {
 		}
 		///Returns the pixel at the given position.
 		@nogc public bool readPixel(int x, int y) @trusted pure {
+			assert (x >= 0 && x < _width && y >= 0 && y < _height);
 			return pixelAccess[(invertHoriz ? _width - x : x) + ((invertVert ? _height - y : y) * pitch)];
 		}
 		///Writes the pixel at the given position.
 	    @nogc public bool writePixel(int x, int y, bool val) @trusted pure {
+			assert (x >= 0 && x < _width && y >= 0 && y < _height);
 			return pixelAccess[(invertHoriz ? _width - x : x) + ((invertVert ? _height - y : y) * pitch)] = val;
 		}
 		/**
