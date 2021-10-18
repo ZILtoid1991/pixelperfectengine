@@ -207,7 +207,7 @@ public class Editor : SystemEventListener, InputListener{
 
 		ewh = new WindowHandler(1696,960,848,480,sprtL);
 		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
-		INIT_CONCRETE(ewh);
+		INIT_CONCRETE();
 		inputH = new InputHandler();
 		inputH.systemEventListener = this;
 		inputH.inputListener = this;
