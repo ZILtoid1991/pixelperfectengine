@@ -264,7 +264,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		}
 	}
 	public void onCollision(ObjectCollisionEvent event) {
-		//textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));
+		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));
 		final switch (event.type) with (ObjectCollisionEvent.Type) {
 			case None:
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));

@@ -49,6 +49,7 @@ things, but those have been now mostly done.
 * Radiobuttons now update correctly in window headers. Turns out all it's problem was that the raster window didn't do
 updates on every redraw - my bad.
 * Scrollbar behavior fixed. Now they jump immediately at the correct approximate location it's expected.
+* Memory leakage and corruption issues from blank `Bitmap1Bit` has been fixed.
 
 ## New editor features
 
