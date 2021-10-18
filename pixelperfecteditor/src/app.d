@@ -18,14 +18,14 @@ import bindbc.sdl;
 
 //import system.config;
 
-import pixelperfectengine.graphics.outputScreen;
+import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
 
 import pixelperfectengine.graphics.bitmap;
 
 import pixelperfectengine.collision.common;
-import pixelperfectengine.collision.objectCollision;
+import pixelperfectengine.collision.objectcollision;
 
 import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;

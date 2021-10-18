@@ -2,7 +2,7 @@ module windows.about;
 
 import pixelperfectengine.concrete.window;
 import pixelperfectengine.graphics.common;
-import pixelperfectengine.system.systemUtility;
+import pixelperfectengine.system.systemutility;
 
 immutable dstring verInfo = "0.10.0"d;
 

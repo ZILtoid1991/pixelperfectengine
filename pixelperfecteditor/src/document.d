@@ -6,7 +6,7 @@ import editorevents;
 import clipboard;
 import contmenu;
 import windows.rasterwindow;
-import pixelperfectengine.concrete.eventChainSystem;
+import pixelperfectengine.concrete.eventchainsystem;
 import pixelperfectengine.concrete.interfaces : MouseEventReceptor;
 import pixelperfectengine.concrete.types;
 import pixelperfectengine.graphics.common : Color, Coordinate;
