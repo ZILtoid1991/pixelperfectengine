@@ -521,7 +521,7 @@ public class Editor : SystemEventListener, InputListener{
 	}
 
 	public void menuEvent(Event ev){
-		import PixelPerfectEngine.concrete.dialogs.filedialog : FileDialog;
+		import pixelperfectengine.concrete.dialogs.filedialog : FileDialog;
 		string source = (cast(MenuEvent)ev).itemSource;
 		switch(source){
 			case "export":

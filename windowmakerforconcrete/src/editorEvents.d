@@ -8,8 +8,8 @@ import serializer;
 import types;
 import sdlang;
 
-public import PixelPerfectEngine.concrete.eventChainSystem;
-import PixelPerfectEngine.concrete.elements;
+public import pixelperfectengine.concrete.eventchainsystem;
+import pixelperfectengine.concrete.elements;
 
 import sdlang.token : Value;
 
