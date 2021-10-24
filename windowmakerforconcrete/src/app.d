@@ -1,5 +1,5 @@
 
-import PixelPerfectEngine.system.common;
+import pixelperfectengine.system.common;
 import editor;
 
 int main(string[] argv){

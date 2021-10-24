@@ -1,6 +1,6 @@
 module types;
 
-public import PixelPerfectEngine.concrete.elements;
+public import pixelperfectengine.concrete.elements;
 
 public enum ValueType {
 	String,
