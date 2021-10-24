@@ -131,8 +131,8 @@ public class ConfigurationProfile {
 						switch(t1.name){
 							case "driver": gfxdriver = t1.getValue!string("software"); break;
 							case "scaling": scalingQuality = t1.getValue!string("nearest"); break;
-							case "screenMode": gfxdriver = t1.getValue!string("windowed"); break;
-							case "resolution": gfxdriver = t1.getValue!string("0"); break;
+							case "screenMode": screenMode = t1.getValue!string("windowed"); break;
+							case "resolution": resolution = t1.getValue!string("0"); break;
 							case "threads": threads = t1.getValue!int(-1); break;
 							default: break;
 						}

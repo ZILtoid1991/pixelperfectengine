@@ -1,7 +1,7 @@
 name "pixelperfectengine"
 description "A 2D game engine for retro styled games"
 authors "Laszlo Szeremi"
-copyright "2015-2017"
+copyright "(C)2015-2021 Laszlo Szeremi"
 license "BSL-1.0"
 dependency "collections-d" version="==0.4.5"
 dependency "sdlang-d" version="*"
@@ -20,7 +20,7 @@ sourcePaths "./pixelperfectengine/src/"
 versions "SDL_2010" "BindSDL_Mixer"
 importPaths "./pixelperfectengine/src/"
 libs "z" platform="linux"
-subPackage {
+/*subPackage {
 	name "pixelperfecteditor"
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"
@@ -28,7 +28,7 @@ subPackage {
 	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_pixelperfecteditor.pdb" platform="windows"
 	sourcePaths "./pixelperfecteditor/src/"
 	importPaths "./pixelperfecteditor/src/"
-}
+}*/
 subPackage {
 	name "windowmakerforconcrete"
 	dependency "pixelperfectengine" version="*"
