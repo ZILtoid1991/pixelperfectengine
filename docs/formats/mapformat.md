@@ -1,24 +1,38 @@
-Prerequirements:
+# PixelPerfectEngine Extendible Map Format
+
+## Prerequirements
 
 * Knowledge of SDLang (https://sdlang.org/)
 * Basic knowledge of the engine architecture
 
 This document is not finished, although I plan to minimize changes that would break a lot of things.
 
-Currently the only change since its initial version is adding a constraint to tile IDs per layer, to avoid problems with ID collisions.
+Currently the only changes since its initial version are:
+* adding a constraint to tile IDs per layer, to avoid problems with ID collisions.  (1)
+* polyline objects. (2)
+* shared tile sources. (2)
+* compression. (2)
 
-Extension: `.XMF` (Extendible Map Format)
+Extensions: `.XMF` (Extendible Map Format) or `.ZMF` (Compressed Extendible Map format)
 
-Naming conventions:
+## Naming conventions
 
 * PascalCase for tags and namespaces.
 * camelCase for attributes.
 * Use of namespaces in attributes should be avoided.
 
-Conventions with value vs. attribute usage:
+## Conventions with value vs. attribute usage
 
 * Values are used for mandatory values.
 * Attributes are used for optional values.
+
+## Compression
+
+NOTE: DataPak can compress multiple files together. In that case, uncompressed files should be used since multiple 
+compression has diminishing returns, often resulting in bigger filesizes and slower access.
+
+The first four bytes are compression algorithm identifiers. `ZLIB` are used for ZLib, and `ZSTD` are used for 
+Zstandard. The rest is the compressed SDLang data.
 
 # Metadata
 
@@ -37,13 +51,15 @@ Contains the format version information. `value[0]` is the major version, `value
 
 `ExtType "nameOfYourGame" 1 1 7`
 
-Identifies what kind of extensions this file has. `value[0]` is universally a string, the other values are not bound, can be used for eg. version information of the given extension.
+Identifies what kind of extensions this file has. `value[0]` is universally a string, the other values are not bound,
+can be used for eg. version information of the given extension.
 
 ### Software
 
 `Software "PixelPerfectEditor" 0 9 4`
 
-Identifies the last software that was used to edit this file. `value[0]` is the name of the editor, values 1 through 3 are version numbers (major, minor, and revision).
+Identifies the last software that was used to edit this file. `value[0]` is the name of the editor, values 1 through 3
+are version numbers (major, minor, and revision).
 
 ### Resolution
 
@@ -53,7 +69,8 @@ Sets the resolution used to display the map.
 
 ### Other standardized tags that can appear in this chunk
 
-All of these tags are single value, so they will have a shorter explanation. If any of these are null, then they should be absent.
+All of these tags are single value, so they will have a shorter explanation. If any of these are null, then they 
+should be absent.
 
 * `Name`: Name of the map.
 * `Comment`: A comment about the map.
@@ -72,23 +89,29 @@ Contains data about the layers. First value is always the layer name, second val
 
 Contains data related to tile layers.
 
-As of version 1.0, TileLayers can have additional ancillary tags as long as they don't have a collision with others within a single layer. Within all those tags, there can be even more child tags with the same rule. Namespaces are restricted to internal use.
+As of version 1.0, TileLayers can have additional ancillary tags as long as they don't have a collision with others 
+within a single layer. Within all those tags, there can be even more child tags with the same rule. Namespaces are 
+restricted to internal use.
 
 `Layer:Tile "Background 0" 0 32 32 256 256`
 
-`value[0]` is the name of the layer, `value[2]` and `value[3]` are horizontal and vertical tile sizes, `value[4]` and `value[5]` are horizontal and vertical map sizes
+`value[0]` is the name of the layer, `value[2]` and `value[3]` are horizontal and vertical tile sizes, `value[4]` and 
+`value[5]` are horizontal and vertical map sizes
 
 ### RenderingMode
 
 `RenderingMode "AlphaBlending"`
 
-Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
+Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
+"Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
 
 ## Sprite
 
 Contains data related to sprite layers.
 
-As of version 1.0, SpriteLayers can have additional ancillary tags as long as they don't have a collision with others within a single layer. Within all those tags, there can be even more child tags with the same rule. Namespaces are restricted to internal use.
+As of version 1.0, SpriteLayers can have additional ancillary tags as long as they don't have a collision with others 
+within a single layer. Within all those tags, there can be even more child tags with the same rule. Namespaces are 
+restricted to internal use.
 
 `Layer:Sprite "Playfield A" 1`
 
@@ -96,13 +119,15 @@ As of version 1.0, SpriteLayers can have additional ancillary tags as long as th
 
 `RenderingMode "AlphaBlending"`
 
-Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", "Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".
+Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", 
+"Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".
 
 # Namespace 'Embed'
 
 * Position constraints: Within the tag of any layer and sometimes other tags, with no preferrence of order.
 
-Specifies data that is embedded within this file. These can be: Mapping data, names and IDs of individual tiles, scripting files, etc.
+Specifies data that is embedded within this file. These can be: Mapping data, names and IDs of individual tiles, 
+scripting files, etc.
 
 ## TileData
 
@@ -130,13 +155,24 @@ Stores embedded mapdata encoded in BASE64.
 
 `Embed:Palette [] offset=768`
 
-Stores palette embedded as BASE64 code. Can have the attribute `offset`, which determines where the palette should be loaded in the raster.
+Stores palette embedded as BASE64 code. Can have the attribute `offset`, which determines where the palette should be 
+loaded in the raster. Should be a root tag.
 
 ## Script
 
 `Embed:Script [] lang="dbasic"`
 
 Stores a script for a layer or an object.
+
+# Namespace 'Shared'
+
+Points to another layer/other to share embedded data between multiple layers, etc.
+
+A `Shared:TileData` will share tiledata between two layers, a `Shared:MapData` will share tilemap data.
+
+`Shared:TileData 0`
+
+`value[0]` points to the source layer's priority ID.
 
 # Namespace 'File'
 
@@ -154,31 +190,42 @@ Determines where the map file of the layer can be found. Must be part of a `Laye
 
 `File:Palette "../assets/sci-fi-tileset.tga" palShift=5 offset=32`
 
-Specifies the bitmap file that contains a palette needs to be loaded. Attribute `palShift` limits the size of the palette to avoid overwriting a previously loaded palette that comes after it, `offset` sets where the palette should be stored on the raster.
+Specifies the bitmap file that contains a palette needs to be loaded. Attribute `palShift` limits the size of the 
+palette to avoid overwriting a previously loaded palette that comes after it, `offset` sets where the palette should be
+stored on the raster.
 
 ## TileSource
 
 `File:TileSource "../assets/sci-fi-tileset.tga" palShift=5`
 
-Specifies the bitmap file that contains the tiles. Must be part of a `Layer:Tile` tag. Can contain the `Embed:TileInfo` tag if the file doesn't have some extension to contain the tileinfo. Attribute `palShift` sets the amount of palette shift for all imports from that file.
+Specifies the bitmap file that contains the tiles. Must be part of a `Layer:Tile` tag. Can contain the `Embed:TileInfo`
+tag if the file doesn't have some extension to contain the tileinfo. Attribute `palShift` sets the amount of palette 
+shift for all imports from that file.
 
 ## SpriteSource
 
-`File:SpriteSource 32 "../assets/dlangman.tga" name="dlangman" horizOffset=0 vertOffset=0 width=32 height=32` or `File:SpriteSource 32 "../assets/sprites.tga" name="dlangman" sprite="dlangman"` if file has sprite sheet or tile extensions.
+`File:SpriteSource 32 "../assets/dlangman.tga" name="dlangman" horizOffset=0 vertOffset=0 width=32 height=32` or 
+`File:SpriteSource 32 "../assets/sprites.tga" name="dlangman" sprite="dlangman"` if file has sprite sheet or tile 
+extensions.
 
-Specifies the bitmap for a sprite. 1st value contains the material ID, 2nd value contains the filename. The `name` attribute names the sprite. If the file doesn't have sprite sheet or tile extensions, then the attributes `horizOffset`, `vertOffset`, `width`, and `height` can specify such things; otherwise `sprite` attribute can be used with a name. 
+Specifies the bitmap for a sprite. 1st value contains the material ID, 2nd value contains the filename. The `name` 
+attribute names the sprite. If the file doesn't have sprite sheet or tile extensions, then the attributes 
+`horizOffset`, `vertOffset`, `width`, and `height` can specify such things; otherwise `sprite` attribute can be used 
+with a name. 
 
 ## SpriteSheet
 
 `File:SpriteSheet "../assets/sprites.tga"`
 
-Imports a whole spritesheet. If the target file doesn't have sprite or tile extensions, then this tag must have child tag(s) to describe the sprites, also can be used to override the file's own extension.
+Imports a whole spritesheet. If the target file doesn't have sprite or tile extensions, then this tag must have child
+tag(s) to describe the sprites, also can be used to override the file's own extension.
 
 ### SheetData
 
 `SheetData id=56 name="Spritesheet"`
 
-The `id` attribute sets the ID of the sheet (otherwise it's zero), the `name` sets the name of the spritesheet. Can be left out if needed.
+The `id` attribute sets the ID of the sheet (otherwise it's zero), the `name` sets the name of the spritesheet. Can be 
+left out if needed.
 
 The tag must have at least one unnamed child tag to describe sprites.
 
@@ -192,7 +239,8 @@ Value notation:
 4) Width of the sprite.
 5) Height of the sprite.
 
-Attributes `displayOffsetX` and `displayOffsetY` set the offset of the sprites when being displayed. `name` sets the name of the sprite, otherwise a generated name sill be used in the editor.
+Attributes `displayOffsetX` and `displayOffsetY` set the offset of the sprites when being displayed. `name` sets the 
+name of the sprite, otherwise a generated name sill be used in the editor.
 
 ## Script
 
@@ -204,17 +252,21 @@ Specifies a script for a layer or object.
 
 * Position constraints: Within the tag of any layer, with no preferrence of order.
 
-Contains data related to a single object. These objects can be used for collision detection, events, sprites (only on sprite layers), etc.
+Contains data related to a single object. These objects can be used for collision detection, events, sprites (only on 
+sprite layers), etc.
 
-First value is a string, the name of the instance, the second one is a priority ID (must be unique per layer!). Third value is usually the identifier of source.
+First value is a string, the name of the instance, the second one is a priority ID (must be unique per layer!). Third 
+value is usually the identifier of source.
 
-Ancilliary tags are currently handled differently than in layers, meaning that more complex tag structure can be used. Processing of those should be done by the end user.
+Ancilliary tags are currently handled differently than in layers, meaning that more complex tag structure can be used. 
+Processing of those should be done by the end user.
 
 ## Box
 
 `Object:Box "nameOfObject" 15 22 22 32 30`
 
-Defines a box object. Can be used for various purposes, e.g. event markdown, clipping on tile layers towards sprites, etc.
+Defines a box object. Can be used for various purposes, e.g. event markdown, clipping on tile layers towards sprites, 
+etc.
 
 Value notation:
 
@@ -224,6 +276,40 @@ Value notation:
 4) Top,
 5) Right,
 6) and Bottom coordinates of the object.
+
+## Polyline
+
+`Object:Polyline "nameOfObject" 9`
+
+Defines a polyline object. Can be either open, or closed.
+
+Value notation:
+
+1) The name of the object.
+2) Unique ID that belongs to the object.
+
+This tag must have at least two point-defining child tags to define the object, in drawing order.
+
+### Begin
+
+`Begin 2534 365`
+
+The first point must always be a `Begin` tag. Values are x and y coordinates respectively. Should only have point-
+related extra data tags.
+
+### Segment
+
+`Segment 8646 3214`
+
+All other points are named as `Segment`. Values are x and y coordinates respectively. Can have both point- and line-
+related extra data tags.
+
+### Close
+
+`Close`
+
+An optional final segment that is ensured to be connected to the first segment, or closes the polyline object. Can have
+both point- and line-related extra data tags.
 
 ## Sprite
 
@@ -239,10 +325,12 @@ Value notation:
 4) X coordinate.
 5) Y coordinate.
 
-`scaleHoriz` and `scaleVert` sets the horizontal and vertical scaling values with 1024 (1.0) being the default one. `masterAlpha` sets the master alpha value for rendering to the raster.
+`scaleHoriz` and `scaleVert` sets the horizontal and vertical scaling values with 1024 (1.0) being the default one. 
+`masterAlpha` sets the master alpha value for rendering to the raster.
 
 ### RenderingMode
 
 `RenderingMode "AlphaBlending"`
 
-Sets the rendering mode of the sprite. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", "Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".
+Sets the rendering mode of the sprite. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", 
+"Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".

@@ -1,5 +1,12 @@
 # Current
 
+## Moving PixelPerfectEditor to a separate repository
+
+The tilemap editor was moved to a separate project/repository, and will be updated on a different rate than the engine.
+This one will still have some testcases and the window layout editor (WindowMaker for PPE/Concrete).
+
+# 0.10.0-beta2
+
 ## New features
 
 ### Custom audio subsystem
