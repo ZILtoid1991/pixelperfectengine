@@ -5,6 +5,7 @@ public import pixelperfectengine.graphics.layers.base;
 import collections.treemap;
 import collections.sortedlist;
 import std.bitmanip : bitfields;
+import bitleveld.datatypes;
 
 /**
  * General-purpose sprite controller and renderer.
@@ -411,15 +412,15 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			const int offsetYA = sY > top ? sY - top : 0;		//top offset of sprite, zero if not obscured
 			const int offsetYB = sY + rasterY < bottom ? bottom - (sY + rasterY) + 1 : 1;	//bottom offset of sprite, zero if not obscured
 			//const int offsetYB0 = cast(int)scaleNearestLength(offsetYB, i.scaleVert);
-			const int sizeX = i.slice.width();		//total displayed width
+			const int sizeX = i.slice.width();		//total displayed width after slicing
 			const int offsetX = left - sX;
-			const int length = sizeX - offsetXA - offsetXB - 1;
+			const int length = sizeX - offsetXA - offsetXB - 1; //total displayed width after considering screen borders
 			//int lengthY = i.slice.height - offsetYA - offsetYB;
 			//const int lfour = length * 4;
 			const int offsetY = sY < top ? (top-sY)*pitch : 0;	//used if top portion of the sprite is off-screen
 			//offset = i.scaleVert % 1024;
 			const int scaleVertAbs = i.scaleVert * (i.scaleVert < 0 ? -1 : 1);	//absolute value of vertical scaling, used in various calculations
-			//int offset, prevOffset;
+			const int scaleHorizAbs = i.scaleHoriz * (i.scaleHoriz < 0 ? -1 : 1);
 			const int offsetAmount = scaleVertAbs <= 1024 ? 1024 : scaleVertAbs;	//used to limit the amount of re-rendering every line
 			//offset = offsetYA<<10;
 			const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));	//amount of skipped lines (I think) TODO: remove floating-point arithmetic
@@ -433,9 +434,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			final switch (i.bmpType) with (BitmapTypes) {
 				case Bmp4Bit:
 					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
+					const size_t pitch = i.width>>>1;
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-						horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
-								i.scaleHoriz);
+						/+horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
+								i.scaleHoriz);+/
+						horizontalScaleNearestAndCLU(QuadArray(p0[0..pitch], i.width), src.ptr, palette + (i.paletteSel<<i.paletteSh), 
+								length, i.scaleHoriz, offsetXA * scaleHorizAbs);
 						prevOffset += offsetAmount;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
@@ -449,7 +453,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				case Bmp8Bit:
 					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-						horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, i.scaleHoriz);
+						//horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, i.scaleHoriz);
+						horizontalScaleNearestAndCLU(p0[0..i.width], src.ptr, palette + (i.paletteSel<<i.paletteSh), length, i.scaleHoriz,
+								offsetXA * scaleHorizAbs);
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
@@ -462,7 +468,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				case Bmp16Bit:
 					ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-						horizontalScaleNearestAndCLU(p0, src.ptr, palette, scalelength, i.scaleHoriz);
+						//horizontalScaleNearestAndCLU(p0, src.ptr, palette, scalelength, i.scaleHoriz);
+						horizontalScaleNearestAndCLU(p0[0..i.width], src.ptr, palette, length, i.scaleHoriz, offsetXA * scaleHorizAbs);
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
@@ -475,7 +482,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				case Bmp32Bit:
 					Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
-						horizontalScaleNearest(p0, src.ptr, scalelength, i.scaleHoriz);
+						horizontalScaleNearest(p0[0..i.width], src, scalelength, i.scaleHoriz, offsetXA * scaleHorizAbs);
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
