@@ -394,7 +394,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	}
 	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {
 		/*
-		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack.
+		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack. (In progress!)
 		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches.
 		 */
 		foreach (priority ; displayedSprites) {
@@ -434,7 +434,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			final switch (i.bmpType) with (BitmapTypes) {
 				case Bmp4Bit:
 					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
-					const size_t pitch = i.width>>>1;
+					const size_t _pitch = i.width>>>1;
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
 						/+horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
 								i.scaleHoriz);+/
@@ -443,7 +443,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 						prevOffset += offsetAmount;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
-							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
+							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
 						p0 += sizeXOffset >> 1;
@@ -459,7 +459,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
-							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
+							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
 						p0 += sizeXOffset;
@@ -473,7 +473,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
-							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
+							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
 						p0 += sizeXOffset;
@@ -486,7 +486,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 						prevOffset += 1024;
 						for(; offset < prevOffset; offset += scaleVertAbs){
 							y++;
-							i.renderFunc(cast(uint*)src.ptr + p0offset, cast(uint*)dest, length, i.masterAlpha);
+							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
 						p0 += sizeXOffset;

@@ -28,6 +28,7 @@ import pixelperfectengine.system.config;
 import pixelperfectengine.system.common;
 
 int main() {
+	initialzeSDL();
     TileLayerTest tlt = new TileLayerTest(8, 8);
     tlt.whereTheMagicHappens();
     return 0;
@@ -90,7 +91,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 		s.addSprite(dlangMan, 65_536, 0, 0, 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
-		
+		s.addSprite(dlangMan, 0, 0, 0, 1, -1024, -1024);
+
 		for(int i = 1 ; i < 10 ; i++){
 			const int x = uniform(0,320), y = uniform(0,240);
 			s.addSprite(dlangMan, i, x, y, 1);
@@ -154,6 +156,10 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.addBinding(BindingCode(ScanCode.PAGEDOWN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("alpha-"));
 			ih.addBinding(BindingCode(ScanCode.HOME, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("hidettl"));
 			ih.addBinding(BindingCode(ScanCode.END, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("unhidettl"));
+			ih.addBinding(BindingCode(ScanCode.n1, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtH-"));
+			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtH+"));
+			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtV-"));
+			ih.addBinding(BindingCode(ScanCode.n4, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtV+"));
 		}
 		
 		tt.loadMapping(mapWidth, mapHeight, mapping);
@@ -434,6 +440,30 @@ class TileLayerTest : SystemEventListener, InputListener {
 				break;
 			case hashCalc("unhidettl"):
 				r.addLayer(tt, 0);
+				break;
+			case hashCalc("sprtH-"):
+				if(s.getScaleSpriteHoriz(0) == 16)
+					s.scaleSpriteHoriz(0,-16);
+				else
+					s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) - 16);
+				break;
+			case hashCalc("sprtH+"):
+				if(s.getScaleSpriteHoriz(0) == -16)
+					s.scaleSpriteHoriz(0,16);
+				else
+					s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) + 16);
+				break;
+			case hashCalc("sprtV-"):
+				if(s.getScaleSpriteVert(0) == 16)
+					s.scaleSpriteVert(0,-16);
+				else
+					s.scaleSpriteVert(0,s.getScaleSpriteVert(0) - 16);
+				break;
+			case hashCalc("sprtV+"):
+				if(s.getScaleSpriteVert(0) == -16)
+					s.scaleSpriteVert(0,16);
+				else
+					s.scaleSpriteVert(0,s.getScaleSpriteVert(0) + 16);
 				break;
 			default:
 				break;
