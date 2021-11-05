@@ -38,18 +38,28 @@ commercial applications. Be aware that many components are on different licenses
 
 # How to build
 
-PixelPerfectEngine actually requires ldc2 to build since that has better vector support than DMD, and vectors are used to speed up the rendering.
-I mainly have tested on 32 bit systems, so there's a few bugs left in, which I'm going to fix in the near future in the next prerelease.
-
-To compile pixelperfecteditor, launch a simple :
-```
-dub build :pixelperfecteditor --compiler=ldc2
-```
+PixelPerfectEngine actually requires ldc2 to build since that has better vector support than DMD, and vectors are used 
+to speed up the rendering.
 
 To compile windowmakerforconcrete, launch a simple :
 ```
 dub build :windowmakerforconcrete --compiler=ldc2
 ```
+
+## Test cases
+
+PixelPerfectEngine comes with multiple test cases, both to test various functionalities during development, and to 
+showcase the capabilities of the engine.
+
+### test0
+
+Displays an automatically generated tilemap pattern on two layers (one is transformable) and multiple sprites (art by
+arkark3). There's also a semi transparent text-layer displaying the framerate and collision information. This all can
+be controlled from the keyboard.
+
+### wallbreaker
+
+Arkanoid-clone game. Currently under development.
 
 # Features
 
@@ -63,6 +73,7 @@ dub build :windowmakerforconcrete --compiler=ldc2
 * Configuration file handling
 * Collision detection
 * Handling of multiple inputs
+* An audio subsystem capable of era-correct synthesis
 * ...and many more
 
 # Known issues:
@@ -75,10 +86,6 @@ replacement of SDL2's graphical side with something faster.
 (such as undo/redo, snapping to grid and components), then the latter can be developed without an issue.
 * Error handling isn't fully realized, so a lot of errors might happen. You can help me by reporting errors, testing on various 
 systems.
-* Upscaled sprites have a rather jerky, odd behavior when they're being partly obscured. This will be fixed, do not plan with it on
-the long run for a wacky effect.
-* Upscaled sprites wider than 2048 pixels will cause some serious memory leakage issues.
-* Sometimes sprites don't appear with the new system when placed in a well viewable place. Currently it can be fixed with a simple `s.relmove(nOfSprite, 0, 0)`.
 
 # Future plans:
 

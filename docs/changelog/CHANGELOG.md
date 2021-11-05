@@ -6,6 +6,32 @@ The tilemap editor was moved to a separate project/repository, and will be updat
 This one will still have some testcases and the window layout editor (WindowMaker for PPE/Concrete). Test cases are
 added to test engine functionality.
 
+The new repository can be found at: https://github.com/ZILtoid1991/pixelperfecteditor
+
+## Fixed bugs
+
+### No more sprite scaling issues!
+
+The following sprite-scaling issues were present in the engine:
+
+1) If the top portion of a sprite was obscured, it looked rather janky during movement when the top parts of it got 
+obscured.
+2) If a sprite ended up too wide (greater than 2048) , then it caused memory corruption.
+3) If a sprite was too tall, then it caused memory corruption.
+
+These all got fixed through a either some refinement of the architecture (horizontal scaling-related issues), or just
+adding a few more checks (#3) and better math (#2). A floating-point calculation was also removed and instead replaced 
+with integer.
+
+### Edge collision detection fix
+
+Due to some changes in the underlying architecture, collision detection was fine-tuned for the previous mode in which
+the Box structure worked. That was changed in order to standardize things, but not everything was updated at once. This
+issue got fixed now and should work properly.
+
+Box corner collisions are not detected as of now, but that will require a bit more reworking, while keeping previous
+functionality.
+
 # 0.10.0-beta2
 
 ## New features

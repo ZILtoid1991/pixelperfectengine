@@ -435,13 +435,13 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				case Bmp4Bit:
 					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
 					const size_t _pitch = i.width>>>1;
-					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+					for (int y = offsetYA ; y < i.slice.height - offsetYB ; ) {
 						/+horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
 								i.scaleHoriz);+/
 						horizontalScaleNearestAndCLU(QuadArray(p0[0.._pitch], i.width), src.ptr, palette + (i.paletteSel<<i.paletteSh), 
 								length, i.scaleHoriz, offsetXA * scaleHorizAbs);
 						offsetTarget += 1024;
-						for(; offset < offsetTarget; offset += scaleVertAbs){
+						for (; offset < offsetTarget && y < i.slice.height - offsetYB ; offset += scaleVertAbs) {
 							y++;
 							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
@@ -452,12 +452,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					break;
 				case Bmp8Bit:
 					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+					for (int y = offsetYA ; y < i.slice.height - offsetYB ; ) {
 						//horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, i.scaleHoriz);
 						horizontalScaleNearestAndCLU(p0[0..i.width], src.ptr, palette + (i.paletteSel<<i.paletteSh), length, i.scaleHoriz,
 								offsetXA * scaleHorizAbs);
 						offsetTarget += 1024;
-						for(; offset < offsetTarget; offset += scaleVertAbs){
+						for (; offset < offsetTarget && y < i.slice.height - offsetYB ; offset += scaleVertAbs) {
 							y++;
 							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
@@ -467,11 +467,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					break;
 				case Bmp16Bit:
 					ushort* p0 = cast(ushort*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+					for (int y = offsetYA ; y < i.slice.height - offsetYB ; ) {
 						//horizontalScaleNearestAndCLU(p0, src.ptr, palette, scalelength, i.scaleHoriz);
 						horizontalScaleNearestAndCLU(p0[0..i.width], src.ptr, palette, length, i.scaleHoriz, offsetXA * scaleHorizAbs);
 						offsetTarget += 1024;
-						for(; offset < offsetTarget; offset += scaleVertAbs){
+						for (; offset < offsetTarget && y < i.slice.height - offsetYB ; offset += scaleVertAbs) {
 							y++;
 							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
@@ -481,10 +481,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					break;
 				case Bmp32Bit:
 					Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
-					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
+					for (int y = offsetYA ; y < i.slice.height - offsetYB ; ) {
 						horizontalScaleNearest(p0[0..i.width], src, scalelength, i.scaleHoriz, offsetXA * scaleHorizAbs);
 						offsetTarget += 1024;
-						for(; offset < offsetTarget; offset += scaleVertAbs){
+						for (; offset < offsetTarget && y < i.slice.height - offsetYB; offset += scaleVertAbs) {
 							y++;
 							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
