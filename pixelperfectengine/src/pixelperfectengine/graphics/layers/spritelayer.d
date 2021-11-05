@@ -394,8 +394,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	}
 	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {
 		/*
-		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack. (In progress!)
-		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches.
+		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack. (Fixed!)
+		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches. (Fixed!!!)
 		 */
 		foreach (priority ; displayedSprites) {
 		//foreach(i ; displayList){
@@ -421,13 +421,13 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			//offset = i.scaleVert % 1024;
 			const int scaleVertAbs = i.scaleVert * (i.scaleVert < 0 ? -1 : 1);	//absolute value of vertical scaling, used in various calculations
 			const int scaleHorizAbs = i.scaleHoriz * (i.scaleHoriz < 0 ? -1 : 1);
-			const int offsetAmount = scaleVertAbs <= 1024 ? 1024 : scaleVertAbs;	//used to limit the amount of re-rendering every line
-			//offset = offsetYA<<10;
-			const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));	//amount of skipped lines (I think) TODO: remove floating-point arithmetic
+			//const int offsetAmount = scaleVertAbs;//= scaleVertAbs <= 1024 ? 1024 : scaleVertAbs;	//used to limit the amount of re-rendering every line
+			const int offsetYA0 = (offsetYA * scaleVertAbs)>>>10;		//amount of skipped lines in the bitmap source
+			//const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));	//amount of skipped lines (I think) TODO: remove floating-point arithmetic
 			const int sizeXOffset = i.width * (i.scaleVert < 0 ? -1 : 1);
-			int prevOffset = offsetYA0 * offsetAmount;		//
-			int offset = offsetYA0 * scaleVertAbs;
-			const size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB); //determines offset based on mirroring
+			int offsetTarget;													//the target fractional lines
+			int offset = (offsetYA * scaleVertAbs) & 1023;						//the current amount of fractional lines, also contains the fractional offset bias by defauls
+			//const size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB); //determines offset based on mirroring
 			// HACK: as I couldn't figure out a better method yet I decided to scale a whole line, which has a lot of problems
 			const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
 			void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
@@ -438,15 +438,15 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
 						/+horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
 								i.scaleHoriz);+/
-						horizontalScaleNearestAndCLU(QuadArray(p0[0..pitch], i.width), src.ptr, palette + (i.paletteSel<<i.paletteSh), 
+						horizontalScaleNearestAndCLU(QuadArray(p0[0.._pitch], i.width), src.ptr, palette + (i.paletteSel<<i.paletteSh), 
 								length, i.scaleHoriz, offsetXA * scaleHorizAbs);
-						prevOffset += offsetAmount;
-						for(; offset < prevOffset; offset += scaleVertAbs){
+						offsetTarget += 1024;
+						for(; offset < offsetTarget; offset += scaleVertAbs){
 							y++;
 							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
 						}
-						p0 += sizeXOffset >> 1;
+						p0 += _pitch;
 					}
 					//}
 					break;
@@ -456,8 +456,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 						//horizontalScaleNearestAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, i.scaleHoriz);
 						horizontalScaleNearestAndCLU(p0[0..i.width], src.ptr, palette + (i.paletteSel<<i.paletteSh), length, i.scaleHoriz,
 								offsetXA * scaleHorizAbs);
-						prevOffset += 1024;
-						for(; offset < prevOffset; offset += scaleVertAbs){
+						offsetTarget += 1024;
+						for(; offset < offsetTarget; offset += scaleVertAbs){
 							y++;
 							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
@@ -470,8 +470,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
 						//horizontalScaleNearestAndCLU(p0, src.ptr, palette, scalelength, i.scaleHoriz);
 						horizontalScaleNearestAndCLU(p0[0..i.width], src.ptr, palette, length, i.scaleHoriz, offsetXA * scaleHorizAbs);
-						prevOffset += 1024;
-						for(; offset < prevOffset; offset += scaleVertAbs){
+						offsetTarget += 1024;
+						for(; offset < offsetTarget; offset += scaleVertAbs){
 							y++;
 							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;
@@ -483,8 +483,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 					for(int y = offsetYA ; y < i.slice.height - offsetYB ; ){
 						horizontalScaleNearest(p0[0..i.width], src, scalelength, i.scaleHoriz, offsetXA * scaleHorizAbs);
-						prevOffset += 1024;
-						for(; offset < prevOffset; offset += scaleVertAbs){
+						offsetTarget += 1024;
+						for(; offset < offsetTarget; offset += scaleVertAbs){
 							y++;
 							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
 							dest += pitch;

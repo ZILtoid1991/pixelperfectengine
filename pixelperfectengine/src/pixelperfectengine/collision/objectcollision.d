@@ -60,8 +60,8 @@ public class ObjectCollisionDetector {
 	 * Tests two objects. Calls cl if collision have happened, with the appropriate values.
 	 */
 	protected final ObjectCollisionEvent testCollision(CollisionShape* shA, CollisionShape* shB) pure {
-		if (shA.position.bottom <= shB.position.top || shA.position.top >= shB.position.bottom || 
-				shA.position.right <= shB.position.left || shA.position.left >= shB.position.right){
+		if (shA.position.bottom < shB.position.top || shA.position.top > shB.position.bottom || 
+				shA.position.right < shB.position.left || shA.position.left > shB.position.right){
 			//test if edge collision have happened with side edges
 			if (shA.position.bottom >= shB.position.top && shA.position.top <= shB.position.bottom && 
 					(shA.position.right - shB.position.left == -1 || shA.position.left - shB.position.right == 1)) {

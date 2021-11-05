@@ -33,10 +33,11 @@ public class ObjectCollisionEvent {
 	 * Defines types of object collisions that can happen
 	 */
 	public enum Type : ubyte {
-		None,
-		BoxOverlap,
-		BoxEdge,
-		ShapeOverlap,
+		None,				///No collision have been occured
+		//BoxCorner,		//TODO: Implement
+		BoxOverlap,			///Two boxes are overlapping
+		BoxEdge,			///Two edges are one pixel apart
+		ShapeOverlap,		///Two shapes overlap each other
 	}
 	CollisionShape*	shA;		///The object that was tested against other objects
 	CollisionShape*	shB;		///The object that was found colliding with other objects

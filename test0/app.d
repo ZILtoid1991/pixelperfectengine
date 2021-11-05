@@ -160,6 +160,10 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtH+"));
 			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtV-"));
 			ih.addBinding(BindingCode(ScanCode.n4, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtV+"));
+			ih.addBinding(BindingCode(ScanCode.n5, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("2up"));
+			ih.addBinding(BindingCode(ScanCode.n6, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("2down"));
+			ih.addBinding(BindingCode(ScanCode.n7, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("2left"));
+			ih.addBinding(BindingCode(ScanCode.n8, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("2right"));
 		}
 		
 		tt.loadMapping(mapWidth, mapHeight, mapping);
@@ -199,15 +203,19 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.test();
 			if(up) {
 				s.relMoveSprite(65_536,0,-1);
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
 			}
 			if(down) {
 				s.relMoveSprite(65_536,0,1);
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
 			}
 			if(left) {
 				s.relMoveSprite(65_536,-1,0);
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
 			}
 			if(right) {
 				s.relMoveSprite(65_536,1,0);
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
 			}
 			ocd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
 			ocd.testSingle(65_536);
@@ -268,103 +276,6 @@ class TileLayerTest : SystemEventListener, InputListener {
 	public void controllerRemoved(uint id) {
 
 	}
-	/+override public void keyPressed(string ID,uint timestamp,uint devicenumber,uint devicetype) {
-		//writeln(ID);
-		import pixelperfectengine.graphics.transformFunctions;
-		switch(ID){
-			case "up": up = true; break;
-			case "down": down = true; break;
-			case "left": left = true; break;
-			case "right": right = true; break;
-			case "scrup": scrup = true; break;
-			case "scrdown": scrdown = true; break;
-			case "scrleft": scrleft = true; break;
-			case "scrright": scrright = true; break;
-			case "A+": tt.A = cast(short)(tt.A + 16); break;
-			case "A-": tt.A = cast(short)(tt.A - 16); break;
-			case "B+": tt.B = cast(short)(tt.B + 16); break;
-			case "B-": tt.B = cast(short)(tt.B - 16); break;
-			case "C+": tt.C = cast(short)(tt.C + 16); break;
-			case "C-": tt.C = cast(short)(tt.C - 16); break;
-			case "D+": tt.D = cast(short)(tt.D + 16); break;
-			case "D-": tt.D = cast(short)(tt.D - 16); break;
-			case "x0+": tt.x_0 = cast(short)(tt.x_0 + 1); break;
-			case "x0-": tt.x_0 = cast(short)(tt.x_0 - 1); break;
-			case "y0+": tt.y_0 = cast(short)(tt.y_0 + 1); break;
-			case "y0-": tt.y_0 = cast(short)(tt.y_0 - 1); break;
-			case "sH-":
-				if(s.getScaleSpriteHoriz(0) == 16){
-					s.scaleSpriteHoriz(0,-16);
-					return;
-				}
-				s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) - 16);
-				//writeln(s.getScaleSpriteHoriz(0));
-				break;
-			case "sH+":
-				if(s.getScaleSpriteHoriz(0) == -16){
-					s.scaleSpriteHoriz(0,16);
-					return;
-				}
-				s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) + 16);
-				//writeln(s.getScaleSpriteHoriz(0));
-				break;
-			case "sV-":
-				if(s.getScaleSpriteVert(0) == 16){
-					s.scaleSpriteVert(0,-16);
-					return;
-				}
-				s.scaleSpriteVert(0,s.getScaleSpriteVert(0) - 16);
-				break;
-			case "sV+":
-				if(s.getScaleSpriteVert(0) == -16){
-					s.scaleSpriteVert(0,16);
-					return;
-				}
-				s.scaleSpriteVert(0,s.getScaleSpriteVert(0) + 16);
-				break;
-			case "HM":
-				s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) * -1);
-				break;
-			case "VM":
-				s.scaleSpriteVert(0,s.getScaleSpriteVert(0) * -1);
-				break;
-			case "theta+":
-				theta += 1;
-				short[4] newTP = rotateFunction(theta);
-				tt.A = newTP[0];
-				tt.B = newTP[1];
-				tt.C = newTP[2];
-				tt.D = newTP[3];
-				break;
-			case "theta-":
-				theta -= 1;
-				short[4] newTP = rotateFunction(theta);
-				tt.A = newTP[0];
-				tt.B = newTP[1];
-				tt.C = newTP[2];
-				tt.D = newTP[3];
-				break;
-			default: break;
-		}
-	}
-	override public void keyReleased(string ID,uint timestamp,uint devicenumber,uint devicetype) {
-		switch(ID){
-			case "up": up = false; break;
-			case "down": down = false; break;
-			case "left": left = false; break;
-			case "right": right = false; break;
-			case "scrup": scrup = false; break;
-			case "scrdown": scrdown = false; break;
-			case "scrleft": scrleft = false; break;
-			case "scrright": scrright = false; break;
-			default: break;
-		}
-	}+/
-/*public void spriteCollision(CollisionEvent ce){
-		writeln("COLLISION!!!!11!1111!!!ONEONEONE!!!");
-	}
-
-	public void backgroundCollision(CollisionEvent ce){}*/
 	/**
 	 * Called when a keybinding event is generated.
 	 * The `id` should be generated from a string, usually the name of the binding.
@@ -375,64 +286,64 @@ class TileLayerTest : SystemEventListener, InputListener {
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		//writeln(id, ";", code, ";",timestamp, ";",isPressed, ";");
 		switch (id) {
-			case 1720810685:	//up
+			case hashCalc("up"):	//up
 				up = isPressed;
 				break;
-			case 1672064345:	//down
+			case hashCalc("down"):	//down
 				down = isPressed;
 				break;
-			case 2840212248:	//left
+			case hashCalc("left"):	//left
 				left = isPressed;
 				break;
-			case 1786548735:	//right
+			case hashCalc("right"):	//right
 				right = isPressed;
 				break;
-			case 3938104347:	//scrup
+			case hashCalc("scrup"):	//scrup
 				scrup = isPressed;
 				break;
-			case 131561283:		//scrdown
+			case hashCalc("scrdown"):		//scrdown
 				scrdown = isPressed;
 				break;
-			case 4011913815:	//scrleft
+			case hashCalc("scrleft"):	//scrleft
 				scrleft = isPressed;
 				break;
-			case 2073272778:	//scrright
+			case hashCalc("scrright"):	//scrright
 				scrright = isPressed;
 				break;
-			case 4284782897: 	//A+
+			case hashCalc("A+"): 	//A+
 				tt.A = cast(short)(tt.A + 16);
 				break;
-			case 142754382:		//A-
+			case hashCalc("A-"):	//A-
 				tt.A = cast(short)(tt.A - 16);
 				break;
-			case 2060572171:	//B+
+			case hashCalc("B+"):	//B+
 				tt.B = cast(short)(tt.B + 16);
 				break;
-			case 919786464:		//B-
+			case hashCalc("B-"):	//B-
 				tt.B = cast(short)(tt.B - 16);
 				break;
-			case 2857229774:	//C+
+			case hashCalc("C+"):	//C+
 				tt.C = cast(short)(tt.C + 16);
 				break;
-			case 1598464886:	//C-
+			case hashCalc("C-"):	//C-
 				tt.C = cast(short)(tt.C - 16);
 				break;
-			case 2476135441:	//D+
+			case hashCalc("D+"):	//D+
 				tt.D = cast(short)(tt.D + 16);
 				break;
-			case 3708187064:	//D-
+			case hashCalc("D-"):	//D-
 				tt.D = cast(short)(tt.D - 16);
 				break;
-			case 3238134781:	//x0+
+			case hashCalc("x0+"):	//x0+
 				tt.x_0 = cast(short)(tt.x_0 + 1);
 				break;
-			case 135027337:		//x0-
+			case hashCalc("x0-"):	//x0-
 				tt.x_0 = cast(short)(tt.x_0 - 1);
 				break;
-			case 983492653:		//y0+
+			case hashCalc("y0+"):	//y0+
 				tt.y_0 = cast(short)(tt.y_0 + 1);
 				break;
-			case 2733639921:	//y0-
+			case hashCalc("y0-"):	//y0-
 				tt.y_0 = cast(short)(tt.y_0 - 1);
 				break;
 			case hashCalc("hidettl"):
@@ -464,6 +375,18 @@ class TileLayerTest : SystemEventListener, InputListener {
 					s.scaleSpriteVert(0,16);
 				else
 					s.scaleSpriteVert(0,s.getScaleSpriteVert(0) + 16);
+				break;
+			case hashCalc("2up"):
+				s.relMoveSprite(0,0,-1);
+				break;
+			case hashCalc("2down"):
+				s.relMoveSprite(0,0,1);
+				break;
+			case hashCalc("2left"):
+				s.relMoveSprite(0,-1,0);
+				break;
+			case hashCalc("2right"):
+				s.relMoveSprite(0,1,0);
 				break;
 			default:
 				break;
