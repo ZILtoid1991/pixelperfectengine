@@ -17,11 +17,12 @@ import pixelperfectengine.audio.base.modulebase;
 
 import bindbc.sdl.bind.sdlaudio;
 import bindbc.sdl.bind.sdlerror : SDL_GetError;
+import bindbc.sdl.bind.sdl : SDL_Init, SDL_INIT_AUDIO;
 
 /**
  * Manages and initializes audio devices.
  *
- * Only one instance should be made.
+ * Important: Only one instance should be made.
  */
 public class AudioDeviceHandler {
 	protected const(char)*[]		devices;		///Names of the devices
@@ -39,6 +40,7 @@ public class AudioDeviceHandler {
 	 * Throws an AudioInitException if audio is failed to be initialized.
 	 */
 	public this(int slmpFreq, ubyte channels, ushort buffSize) {
+		SDL_Init(SDL_INIT_AUDIO);
 		const int nOfAudioDrivers = SDL_GetNumAudioDrivers();
 		//deviceNames.length = SDL_GetNumAudioDevices(0);
 		if (nOfAudioDrivers > 0) {
@@ -73,7 +75,7 @@ public class AudioDeviceHandler {
 			for (int i ; i < nOfAudioDevices ; i++) {
 				devices ~= SDL_GetAudioDeviceName(i, 0);
 			}
-		} else throw new AudioInitException("No audio devices found!");
+		}
 	}
 	/**
 	 * Opens a specific audio device for audio playback by ID, then sets the values for buffer sizes etc.
@@ -81,10 +83,9 @@ public class AudioDeviceHandler {
 	 * Throws an AudioInitException if audio failed to be initialized
 	 */
 	public void initAudioDevice(int id) {
-		if (id >= devices.length) throw new AudioInitException("Audio device not found");
-		openedDevice = SDL_OpenAudioDevice(id >= 0 ? devices[id] : null, 0, &req, &given, 
-				SDL_AUDIO_ALLOW_FORMAT_CHANGE | SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
-		if (openedDevice < 0) throw new AudioInitException("Audio device couldn't be opened. Error code: " ~ 
+		//if (id >= devices.length) throw new AudioInitException("Audio device not found");
+		openedDevice = SDL_OpenAudioDevice(id >= 0 ? devices[id] : null, 0, &req, &given,  SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
+		if (openedDevice == 0) throw new AudioInitException("Audio device couldn't be opened. Error code: " ~ 
 				to!string(openedDevice) ~ " ; SDL Error message: " ~ fromStringz(SDL_GetError()).idup);
 	}
 	/**

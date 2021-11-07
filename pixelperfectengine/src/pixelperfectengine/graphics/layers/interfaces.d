@@ -11,7 +11,7 @@ import pixelperfectengine.graphics.layers.base;
 /**
  * Tile interface, defines common functions.
  */
-public interface ITileLayer{
+public interface ITileLayer {
 	/// Retrieves the mapping from the tile layer.
 	/// Can be used to retrieve data, e.g. for editors, saving game states
 	public MappingElement[] getMapping() @nogc @safe pure nothrow;
@@ -46,11 +46,13 @@ public interface ITileLayer{
 	public WarpMode setWarpMode(WarpMode mode) @nogc @safe pure nothrow;
 	/// Returns the currently used warp mode.
 	public WarpMode getWarpMode() @nogc @safe pure nothrow const;
+	///Clears the tilemap
+	public void clearTilemap() @nogc @safe pure nothrow;
 }
 /**
  *General SpriteLayer interface.
  */
-public interface ISpriteLayer{
+public interface ISpriteLayer {
 	///Clears all sprite from the layer.
 	public void clear() @safe nothrow;
 	///Removes the sprite with the given ID.

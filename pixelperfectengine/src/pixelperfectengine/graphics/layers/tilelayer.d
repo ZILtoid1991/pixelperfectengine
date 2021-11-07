@@ -277,4 +277,9 @@ public class TileLayer : Layer, ITileLayer {
 	public WarpMode getWarpMode() @nogc @safe pure nothrow const {
 		return warpMode;
 	}
+	public void clearTilemap() @nogc @safe pure nothrow {
+		for (size_t i ; i < mapping.length ; i++) {
+			mapping[i] = MappingElement.init;
+		}
+	}
 }

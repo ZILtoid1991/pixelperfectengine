@@ -7,9 +7,7 @@ import std.format;
 import std.random;
 
 import bindbc.sdl;
-//import derelict.freeimage.freeimage;
 
-//import system.config;
 
 import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
@@ -24,7 +22,7 @@ import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.config;
-//import pixelperfectengine.system.binarySearchTree;
+
 import pixelperfectengine.system.common;
 
 int main() {

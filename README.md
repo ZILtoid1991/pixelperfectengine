@@ -46,7 +46,7 @@ To compile windowmakerforconcrete, launch a simple :
 dub build :windowmakerforconcrete --compiler=ldc2
 ```
 
-## Test cases
+## Test cases, demos, and tools
 
 PixelPerfectEngine comes with multiple test cases, both to test various functionalities during development, and to 
 showcase the capabilities of the engine.
@@ -57,9 +57,22 @@ Displays an automatically generated tilemap pattern on two layers (one is transf
 arkark3). There's also a semi transparent text-layer displaying the framerate and collision information. This all can
 be controlled from the keyboard.
 
+### test1
+
+Audio testcase. Tests audio initialization and plugins. Can play music by including an plugin-configuration file and
+MIDI files. Due to lack of MIDI 2.0 compatible file formats, it only plays MIDI 1.0 files.
+
+### test2
+
+Map format testcase. Tests most functionality of the Extendible Map Format (XMF). Can load any XMP files.
+
 ### wallbreaker
 
 Arkanoid-clone game. Currently under development.
+
+### Windowmaker for Concrete/PPE
+
+Window layout editor with code generation features.
 
 # Features
 

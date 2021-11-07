@@ -541,4 +541,9 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 		totalX=mX*TileX;
 		totalY=mY*TileY;
 	}
+	public void clearTilemap() @nogc @safe pure nothrow {
+		for (size_t i ; i < mapping.length ; i++) {
+			mapping[i] = MappingElement.init;
+		}
+	}
 }

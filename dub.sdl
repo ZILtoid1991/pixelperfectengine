@@ -39,6 +39,15 @@ subPackage {
 	importPaths "./test0/"
 }
 subPackage {
+	name "test1"
+	dependency "pixelperfectengine" version="*"
+	targetType "executable"
+	targetPath "./bin-$ARCH-$PLATFORM/"
+	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_test1.pdb" platform="windows"
+	sourcePaths "./test1/"
+	importPaths "./test1/"
+}
+subPackage {
 	name "windowmakerforconcrete"
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"

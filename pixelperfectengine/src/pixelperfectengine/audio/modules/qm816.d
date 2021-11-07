@@ -375,7 +375,8 @@ public class QM816 : AudioModule {
 			}
 			//Set decay phase
 			if (decX) {
-				eeg.decayRate = calculateRate(ADSR_TIME_TABLE[decX] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, eeg.sustainLevel);
+				eeg.decayRate = calculateRate(ADSR_TIME_TABLE[decX] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, 
+						eeg.sustainLevel);
 			} else {
 				eeg.decayRate = 1.0;
 			}
@@ -2421,5 +2422,34 @@ public class QM816 : AudioModule {
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
 		}
+	}
+
+	/**
+	 * Restores a parameter to the given preset.
+	 * Returns an errorcode on failure.
+	 */
+	public override int recallParam_int(uint presetID, uint paramID, int value) @nogc nothrow {
+		return 0;
+	}
+	/**
+	 * Restores a parameter to the given preset.
+	 * Returns an errorcode on failure.
+	 */
+	public override int recallParam_uint(uint presetID, uint paramID, uint value) @nogc nothrow {
+		return 0;
+	}
+	/**
+	 * Restores a parameter to the given preset.
+	 * Returns an errorcode on failure.
+	 */
+	public override int recallParam_double(uint presetID, uint paramID, double value) @nogc nothrow {
+		return 0;
+	}
+	/**
+	 * Restores a parameter to the given preset.
+	 * Returns an errorcode on failure.
+	 */
+	public override int recallParam_string(uint presetID, uint paramID, string value) @nogc nothrow {
+		return 0;
 	}
 }
