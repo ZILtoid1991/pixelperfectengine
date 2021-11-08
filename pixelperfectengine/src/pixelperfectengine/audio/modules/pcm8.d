@@ -82,17 +82,6 @@ public class PCM8 : AudioModule {
 		///0, if looppoint is not available.
 		uint		loopEnd;
 	}
-	/**
-	Defines a single channel's statuses.
-	*/
-	protected struct Channel {
-		Workpad			decoderWorkpad;
-		ubyte			currNote;
-		ubyte			presetNum;
-		ushort			bankNum;
-		float			velocity;
-		float			modWheel;
-	}
 	/** 
 	Stores preset information.
 	*/
@@ -121,6 +110,24 @@ public class PCM8 : AudioModule {
 		modwheelToALFO		=	1<<1,		///Assigns modulation wheel to amplitude LFO levels
 		modwheelToPLFO		=	1<<2,		///Assigns modulation wheel to pitch LFO levels
 		panningALFO			=	1<<3,		///Sets amplitude LFO to panning on this channel
+	}
+	/**
+	Defines a single channel's statuses.
+	*/
+	protected struct Channel {
+		int[1024]		decoderBuffer;		///Stores a 1ks of decoded samples.
+		Preset			presetCopy;			///The copy of the preset.
+		Workpad			decoderWorkpad;		///Stores the current state of the decoder.
+		Workpad			savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
+		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
+		WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
+		ubyte			currNote;			///The currently played note.
+		ubyte			presetNum;			///Selected preset.
+		ushort			bankNum;			///Bank select number.
+		float			velocity;			///Velocity normalized between 0 and 1
+		float			modWheel;			///Modulation wheel normalized between 0 and 1
+		float			currShpA;			///The current attack shape
+		float			currShpR;			///The current release shape
 	}
 	alias SampleMap = TreeMap!(uint, Sample);
 	alias PresetMap = TreeMap!(uint, Preset);
