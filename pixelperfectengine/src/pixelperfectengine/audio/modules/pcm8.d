@@ -4,6 +4,7 @@ import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.types;
 import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.func;
+import pixelperfectengine.audio.base.envgen;
 
 import collections.treemap;
 
@@ -110,6 +111,7 @@ public class PCM8 : AudioModule {
 		modwheelToALFO		=	1<<1,		///Assigns modulation wheel to amplitude LFO levels
 		modwheelToPLFO		=	1<<2,		///Assigns modulation wheel to pitch LFO levels
 		panningALFO			=	1<<3,		///Sets amplitude LFO to panning on this channel
+		disableADSRonVol	=	1<<4,
 	}
 	/**
 	Defines a single channel's statuses.
@@ -121,6 +123,7 @@ public class PCM8 : AudioModule {
 		Workpad			savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
+		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
 		ubyte			currNote;			///The currently played note.
 		ubyte			presetNum;			///Selected preset.
 		ushort			bankNum;			///Bank select number.
