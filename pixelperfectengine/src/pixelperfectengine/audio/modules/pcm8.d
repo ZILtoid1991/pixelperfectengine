@@ -5,6 +5,8 @@ import pixelperfectengine.audio.base.types;
 import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.func;
 import pixelperfectengine.audio.base.envgen;
+import pixelperfectengine.audio.base.osc;
+
 
 import collections.treemap;
 
@@ -136,6 +138,9 @@ public class PCM8 : AudioModule {
 	alias PresetMap = TreeMap!(uint, Preset);
 	protected SampleMap		sampleBank;			///Stores all current samples.
 	protected PresetMap		presetBank;			///Stores all current presets. (bits: 0-6: preset number, 7-13: bank lsb, 14-20: bank msb)
+	protected Channel[8]	channels;			///Channel status data.
+	protected Oscillator[2]	lfo;				///Low frequency oscillators to modify values in real-time
+	protected float[][2]	lfoOut;				///LFO output buffers
 
 	public this(ModuleManager handler) @safe nothrow {
 		this.handler = handler;
@@ -147,7 +152,19 @@ public class PCM8 : AudioModule {
 		info.hasMidiOut = true;
 		info.midiSendback = true;
 	}
-
+	/**
+	 * Sets the module up.
+	 *
+	 * Can be overridden in child classes to allow resets.
+	 */
+	public override void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize) @safe {
+		enabledInputs = StreamIDSet(inputs);
+		enabledOutputs = StreamIDSet(outputs);
+		this.sampleRate = sampleRate;
+		this.bufferSize = bufferSize;
+		lfoOut[0].length = bufferSize;
+		lfoOut[1].length = bufferSize;
+	}
 	/**
 	 * MIDI 2.0 data received here.
 	 *
