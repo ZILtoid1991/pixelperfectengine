@@ -105,12 +105,16 @@ public class QM816 : AudioModule {
 	`shape` controls the shape of the triangular waveform, allowing it to be morphed between triangle, saw, and ramp.
 	``
 	*/
-	public static short[1024] generateTriangularWave(real shape = 0.5) @nogc @safe pure nothrow {
+	public static short[1024] generateTriangularWave(int shape = 512) @nogc @safe pure nothrow {
+		import pixelperfectengine.system.etc : clamp;
 		short[1024] result;
 		real state = short.min;
-		const real upwardSlope = (ushort.max / 1024.0) + short.min;
+		const real upwardSlope = (ushort.max / shape) + short.min;
+		const real downwardSlope = (ushort.max / (1024 - shape)) + short.min;
 		for (int i ; i < 1024 ; i++) {
-			
+			state += i < shape ? upwardSlope : downwardSlope;
+			clamp(state, cast(real)short.min, cast(real)short.max);
+			result[i] = cast(short)state;
 		}
 		return result;
 	}
@@ -238,23 +242,14 @@ public class QM816 : AudioModule {
 	Contains an oscillator, an ADSR envelop generator, and locals.
 	*/
 	public struct Operator {
+		///Local copy of operator preset data.
+		Preset.Op		presetCopy;
 		///The envelop generator of the operator.
 		ADSREnvelopGenerator	eg;
 		///The current position of the oscillator, including fractions.
 		uint			pos;	
 		///The amount the oscillator must be stepped forward each cycle, including fractions.
-		uint			step;
-		///Operator tuning
-		///Bit 31-25: Coarse detuning (-24 to +103 seminotes)
-		///Bit 24-0: Fine detuning (-100 to 100 cents), 0x1_00_00_00 is center
-		///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
-		uint			tune	=	0x31_00_00_00;
-		enum TuneCtrlFlags : uint {
-			FineTuneMidPoint	=	0x1_00_00_00,
-			CorTuneMidPoint		=	0x30_00_00_00,
-			FineTuneTest		=	0x1_FF_FF_FF,
-			CorTuneTest			=	0xFE_00_00_00,
-		}
+		uint			step;	
 		///Input register.
 		///The amount which the oscillator will be offsetted.
 		int				input;
@@ -264,17 +259,8 @@ public class QM816 : AudioModule {
 		int				feedback;
 		///Output register.
 		///Not affected by either level or EG
+		///Might be used for ring modulation.
 		int				output;
-		///Output level (between 0.0 and 1.0)
-		float			outL	=	1.0;
-		///Feedback level (between 0.0 and 1.0)
-		float			fbL		=	0.0;
-		///Output level controller assignment
-		///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: unused
-		__m128			outLCtrl=	__m128(0.0);
-		///Feedback level controller assignment
-		///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: Extra envelop generator
-		__m128			fbLCtrl	=	__m128(0.0);
 		///Live calculated out of shpA
 		float			shpA0	=	0.0;
 		///Live calculated out of shpR
@@ -282,38 +268,6 @@ public class QM816 : AudioModule {
 		///Output affected by EEG and level.
 		///Either used for audible output, or to modulate other operators
 		int				output_0;
-		///Control flags and Wavetable selector
-		uint			opCtrl;
-		///Defines control values
-		enum OpCtrlFlags {
-			WavetableSelect	=	127,		///Wavetable select flags
-			FBMode			=	1 << 7,		///Feedback mode (L: After Envelop Generator, H: Before Envelop Generator)
-			FBNeg			=	1 << 8,		///Feedback mode (L: Positive, H: Negative)
-			MWNeg			=	1 << 9,		///Invert modulation wheel control
-			VelNeg			=	1 << 10,	///Invert velocity control
-			EGRelAdaptive	=	1 << 11,	///Adaptive release time based on current output level
-			FixedPitch		=	1 << 12,	///Enables fixed pitch mode
-		}
-		///Attack time control (between 0 and 127)
-		ubyte			atk;
-		///Decay time control (between 0 and 127)
-		ubyte			dec;
-		///Release time control (between 0 and 127)
-		ubyte			rel;
-		///Sustain curve control (between 0 and 127)
-		///0: Percussive mode
-		///1 - 63: Descending over time
-		///64: Constant
-		///65 - 127: Ascending over time
-		ubyte			susCC;
-		///ADSR shaping parameter (for the attack phase)
-		float			shpA	=	0.5;
-		///ADSR shaping parameter (for the decay/release phase)
-		float			shpR	=	0.5;
-		///Assigns velocity to shpA
-		float			shpAVel	=	0.0;
-		///Assigns velocity to shpR
-		float			shpRVel =	0.0;
 
 		///Sets the frequency of the operator
 		void setFrequency(int slmpFreq, ubyte note, double pitchBend, double tuning) @nogc @safe pure nothrow {
@@ -369,22 +323,7 @@ public class QM816 : AudioModule {
 				eg.releaseRate = 1.0;
 			}
 		}
-		auto opAssign(Preset.Op value) @nogc @safe pure nothrow {
-			eg.sustainLevel = value.susLevel;
-			tune = value.tune;
-			outL = value.outL;
-			fbL = value.fbL;
-			for (int i ; i < 4 ; i++)
-				outLCtrl[i] = value.outLCtrl[i];
-			for (int i ; i < 4 ; i++)
-				fbLCtrl[i] = value.fbLCtrl[i];
-			opCtrl = value.opCtrl;
-			atk = value.atk;
-			dec = value.dec;
-			susCC = value.susCC;
-			rel = value.rel;
-			return this;
-		}
+		
 	}
 	/**
 	Defines channel common parameters.
@@ -498,36 +437,7 @@ public class QM816 : AudioModule {
 				eeg.releaseRate = 1.0;
 			}
 		}
-		auto opAssign(Preset.Ch value) @nogc @safe pure nothrow {
-			eeg.sustainLevel = value.susLevel;
-			shpAX = value.shpAX;
-			shpRX = value.shpRX;
-			eegDetuneAm = value.eegDetuneAm;
-			pitchBendSens = value.pitchBendSens;
-			chnlTun = value.chnlTun;
-			chCtrl = value.chCtrl;
-			masterVol = value.masterVol;
-			masterBal = value.masterBal;
-			outLevels[2] = value.auxSendA;
-			outLevels[3] = value.auxSendB;
-			for (int i ; i < 4 ; i++)
-				eegLevels[i] = value.eegLevels[i];
-			for (int i ; i < 4 ; i++)
-				aLFOlevels[i] = value.aLFOlevels[i];
-			rmAmount = value.rmAmount;
-			pLFOlevel = value.pLFOlevel;
-			atkX = value.atkX;
-			decX = value.decX;
-			relX = value.relX;
-			susCCX = value.susCCX;
-			if (chCtrl & ChCtrlFlags.IndivOutChLev) {
-				outLevels[1] = masterBal * masterBal;
-			} else {
-				outLevels[0] = masterVol - masterBal;
-				outLevels[1] = masterVol - (1.0 - masterBal);
-			}
-			return this;
-		}
+		
 	}
 	/**
 	Stores channel controller values (modwheel, velocity, etc.)
@@ -557,14 +467,14 @@ public class QM816 : AudioModule {
 			float			outL;
 			///Feedback level (between 0.0 and 1.0)
 			float			fbL;
-			///Output level controller assignment
-			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: unused
-			float[4]		outLCtrl;
-			///Feedback level controller assignment
-			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: Extra envelop generator
-			float[4]		fbLCtrl;
 			///Control flags and Wavetable selector
 			uint			opCtrl;
+			///Output level controller assignment
+			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: unused
+			__m128			outLCtrl;
+			///Feedback level controller assignment
+			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: Extra envelop generator
+			__m128			fbLCtrl;
 			///Attack time control (between 0 and 127)
 			ubyte			atk;
 			///Decay time control (between 0 and 127)
@@ -587,6 +497,10 @@ public class QM816 : AudioModule {
 			float			shpAVel	=	0.0;
 			///Assigns velocity to shpR
 			float			shpRVel =	0.0;
+			///Sets control level for X controller affecting this operator
+			float			ctrlXLevel = 0.5;
+			///Sets control level for X controller affecting this operator
+			float			ctrlYLevel = 0.5;
 		}
 		///Defines parameters of a single channel.
 		public struct Ch {
@@ -614,12 +528,16 @@ public class QM816 : AudioModule {
 			float			auxSendA;
 			///Aux send B
 			float			auxSendB;
+			///X and Y controller assign
+			ushort[2]		xyCtrlAssign0;
+			///X and Y controller assign (secondary)
+			ushort[2]		xyCtrlAssign1;
 			///EEG assign levels
 			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
-			float[4]		eegLevels;
+			__m128[4]		eegLevels;
 			///Amplitude LFO assign levels
 			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
-			float[4]		aLFOlevels;
+			__m128[4]		aLFOlevels;
 			///Ring modulation amount
 			///Only available on select algorithms
 			int				rmAmount;
@@ -752,17 +670,27 @@ public class QM816 : AudioModule {
 			buffer = generateSinewave([0x01, 0x09, 0x1f, 0x1f]);
 			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Resonant sine 7
 			buffer = generatePulseWave(768);
-			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Pulse wave 75%
+			waveformDataReceive(17, reinterpretCast!ubyte(buffer), f);		///Pulse wave 75%
 			buffer = generatePulseWave(512);
-			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Pulse wave 50%
+			waveformDataReceive(18, reinterpretCast!ubyte(buffer), f);		///Pulse wave 50%
 			buffer = generatePulseWave(256);
-			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Pulse wave 25%
+			waveformDataReceive(19, reinterpretCast!ubyte(buffer), f);		///Pulse wave 25%
 			buffer = generatePulseWave(128);
-			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Pulse wave 12.5%
+			waveformDataReceive(20, reinterpretCast!ubyte(buffer), f);		///Pulse wave 12.5%
 			buffer = generatePulseWave(100);
-			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Pulse wave 10%
+			waveformDataReceive(21, reinterpretCast!ubyte(buffer), f);		///Pulse wave 10%
 			buffer = generatePulseWave(50);
-			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Pulse wave 5%
+			waveformDataReceive(22, reinterpretCast!ubyte(buffer), f);		///Pulse wave 5%
+			buffer = generateTriangularWave(1023);
+			waveformDataReceive(23, reinterpretCast!ubyte(buffer), f);		///Ramp wave
+			buffer = generateTriangularWave(768);
+			waveformDataReceive(24, reinterpretCast!ubyte(buffer), f);		///Morphed ramp
+			buffer = generateTriangularWave(512);
+			waveformDataReceive(25, reinterpretCast!ubyte(buffer), f);		///Triangle wave
+			buffer = generateTriangularWave(256);
+			waveformDataReceive(26, reinterpretCast!ubyte(buffer), f);		///Morphed saw
+			buffer = generateTriangularWave(1);
+			waveformDataReceive(27, reinterpretCast!ubyte(buffer), f);		///Saw wave
 		} catch (Exception e) {
 
 		}
