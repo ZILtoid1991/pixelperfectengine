@@ -236,6 +236,22 @@ public class QM816 : AudioModule {
 		FilterBCFreq=	10,
 		FilterBCQ	=	11,
 	}
+	enum TuneCtrlFlags : uint {
+		FineTuneMidPoint	=	0x1_00_00_00,
+		CorTuneMidPoint		=	0x30_00_00_00,
+		FineTuneTest		=	0x1_FF_FF_FF,
+		CorTuneTest			=	0xFE_00_00_00,
+	}
+	///Defines control values
+	enum OpCtrlFlags {
+		WavetableSelect	=	127,		///Wavetable select flags
+		FBMode			=	1 << 7,		///Feedback mode (L: After Envelop Generator, H: Before Envelop Generator)
+		FBNeg			=	1 << 8,		///Feedback mode (L: Positive, H: Negative)
+		MWNeg			=	1 << 9,		///Invert modulation wheel control
+		VelNeg			=	1 << 10,	///Invert velocity control
+		EGRelAdaptive	=	1 << 11,	///Adaptive release time based on current output level
+		FixedPitch		=	1 << 12,	///Enables fixed pitch mode
+	}
 	/**
 	Implements a single operator.
 	
@@ -243,7 +259,7 @@ public class QM816 : AudioModule {
 	*/
 	public struct Operator {
 		///Local copy of operator preset data.
-		Preset.Op		presetCopy;
+		Preset.Op		preset;
 		///The envelop generator of the operator.
 		ADSREnvelopGenerator	eg;
 		///The current position of the oscillator, including fractions.
@@ -275,12 +291,13 @@ public class QM816 : AudioModule {
 					(tune>>25) + ((cast(double)(tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
 					TuneCtrlFlags.FineTuneTest) : pitchBend + note ;+/
 			double actualNote;
-			if (opCtrl & OpCtrlFlags.FixedPitch) {
-				actualNote = (tune>>25) + ((cast(double)(tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
-						TuneCtrlFlags.FineTuneTest);
+			if (preset.opCtrl & OpCtrlFlags.FixedPitch) {
+				actualNote = (preset.tune>>25) + ((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest) - 
+						TuneCtrlFlags.FineTuneMidPoint) / TuneCtrlFlags.FineTuneTest);
 			} else {
-				actualNote = pitchBend + note + cast(int)((tune>>25) - TuneCtrlFlags.CorTuneMidPoint) + ((cast(double)(tune & 
-						TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / TuneCtrlFlags.FineTuneTest);
+				actualNote = pitchBend + note + cast(int)((preset.tune>>25) - TuneCtrlFlags.CorTuneMidPoint) + 
+						((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
+						TuneCtrlFlags.FineTuneTest);
 			}
 			const double oscFreq = noteToFreq(actualNote, tuning);
 			const double cycLen = oscFreq / (slmpFreq / 1024.0);
@@ -289,150 +306,108 @@ public class QM816 : AudioModule {
 		///Resets the Envelop generator
 		void resetEG(int sampleRate) @nogc @safe pure nothrow {
 			//Set attack phase
-			if (atk) {
-				eg.attackRate = calculateRate(ADSR_TIME_TABLE[atk], sampleRate);
+			if (preset.atk) {
+				eg.attackRate = calculateRate(ADSR_TIME_TABLE[preset.atk], sampleRate);
 			} else {
 				eg.attackRate = 1.0;
 			}
 			//Set decay phase
-			if (dec) {
-				eg.decayRate = calculateRate(ADSR_TIME_TABLE[dec] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, eg.sustainLevel);
+			if (preset.dec) {
+				eg.decayRate = calculateRate(ADSR_TIME_TABLE[preset.dec] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, eg.sustainLevel);
 			} else {
 				eg.decayRate = 1.0;
 			}
 			//Set sustain phase
-			if (susCC) {
+			if (preset.susCC) {
 				eg.isPercussive = false;
-				if (susCC == 64) {
+				if (preset.susCC == 64) {
 					eg.sustainControl = 0.0;
-				} else if (susCC < 64) {
+				} else if (preset.susCC < 64) {
 					eg.sustainControl = -1.0 * 
-							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[susCC - 1], sampleRate);
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCC - 1], sampleRate);
 				} else {
 					eg.sustainControl = 
-							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[susCC - 64], sampleRate);
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCC - 64], sampleRate);
 				}
 			} else {
 				eg.isPercussive = true;
 				eg.sustainControl = 0.0;
 			}
 			//Set release phase
-			if (rel) {
-				eg.releaseRate = calculateRate(ADSR_TIME_TABLE[rel] * 2, sampleRate, eg.sustainLevel);
+			if (preset.rel) {
+				eg.releaseRate = calculateRate(ADSR_TIME_TABLE[preset.rel] * 2, sampleRate, eg.sustainLevel);
 			} else {
 				eg.releaseRate = 1.0;
 			}
 		}
 		
 	}
+	///Defines channel control flags.
+	enum ChCtrlFlags {
+		///Channel combination turned off, the channel pair is independent
+		ComboModeOff	=	0b0000,	
+		///Channel combination mode 1: Secondary channel's output is fed into primary operator 0.
+		ComboMode1		=	0b0001,
+		///Channel combination mode 2: Secondary channel's output is fed into primary operator 1 if primary 
+		///is in serial mode, or into both if primary is in parallel mode.
+		ComboMode2		=	0b0010,
+		///Channel combination mode 3: Secondary channel's output is fed into main output, except if primary 
+		///channel set to parallel and secondary set to serial, then S1, P0, and P1 are connected to output, while
+		///S0 is modulating all of them.
+		ComboMode3		=	0b0011,
+		///Used for testing combo mode.
+		ComboModeTest	=	ComboMode3,
+		Algorithm		=	1<<2,	///Channel algorithm (H: Parallel, L: Series)
+		IndivOutChLev	=	1<<3,	///Enables the setting of individual output channel levels
+		LFOPan			=	1<<4,	///Enables LFO Panning
+		EEGPan			=	1<<5,	///Enables EEG Panning
+		MWToTrem		=	1<<6,	///Assigns modwheel to amplitude LFO
+		MWToVibr		=	1<<7,	///Assigns modwheel to pitch LFO
+		MWToAux			=	1<<8,	///Assigns modwheel to aux levels
+	}
 	/**
 	Defines channel common parameters.
 	*/
 	public struct Channel {
+		///Copy of channel relevant preset data
+		Preset.Ch		preset;
 		///Extra envelop generator that can be assigned for multiple purpose.
 		ADSREnvelopGenerator	eeg;
-		///ADSR shaping parameter (for the attack phase)
-		float			shpAX;
-		///ADSR shaping parameter (for the decay/release phase)
-		float			shpRX;
-		///Pitch amount for EEG
-		///Bit 31-25: Coarse (-64 to +63 seminotes)
-		///Bit 24-0: Fine (0 to 100 cents)
-		uint			eegDetuneAm;
-		///Pitch bend sensitivity
-		///Bit 31-25: Coarse (0 to 127 seminotes)
-		///Bit 24-0: Fine (0 to 100 cents)
-		uint			pitchBendSens;
-		///A-4 channel tuning in hertz.
-		float			chnlTun = 440.0;
-		///Stores channel control flags.
-		uint			chCtrl;
-		///Defines channel control flags.
-		enum ChCtrlFlags {
-			///Channel combination turned off, the channel pair is independent
-			ComboModeOff	=	0b0000,	
-			///Channel combination mode 1: Secondary channel's output is fed into primary operator 0.
-			ComboMode1		=	0b0001,
-			///Channel combination mode 2: Secondary channel's output is fed into primary operator 1 if primary 
-			///is in serial mode, or into both if primary is in parallel mode.
-			ComboMode2		=	0b0010,
-			///Channel combination mode 3: Secondary channel's output is fed into main output, except if primary 
-			///channel set to parallel and secondary set to serial, then S1, P0, and P1 are connected to output, while
-			///S0 is modulating all of them.
-			ComboMode3		=	0b0011,
-			///Used for testing combo mode.
-			ComboModeTest	=	ComboMode3,
-			Algorithm		=	1<<2,	///Channel algorithm (H: Parallel, L: Series)
-			IndivOutChLev	=	1<<3,	///Enables the setting of individual output channel levels
-			LFOPan			=	1<<4,	///Enables LFO Panning
-			EEGPan			=	1<<5,	///Enables EEG Panning
-			MWToTrem		=	1<<6,	///Assigns modwheel to amplitude LFO
-			MWToVibr		=	1<<7,	///Assigns modwheel to pitch LFO
-			MWToAux			=	1<<8,	///Assigns modwheel to aux levels
-		}
-		///Master volume (0.0 to 1.0)
-		float			masterVol;
-		///Master balance (0.0 to 1.0)
-		float			masterBal;
 		///Calculated output level controls + aux send levels
 		///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
 		__m128			outLevels;
-		///EEG assign levels
-		///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
-		__m128			eegLevels;
-		///Amplitude LFO assign levels
-		///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
-		__m128			aLFOlevels;
-		///Ring modulation amount
-		///Only available on select algorithms
-		int				rmAmount;
-		///Pitch LFO level
-		float			pLFOlevel;
-		///Amplitude LFO to 
-		///Attack time control (between 0 and 127)
-		ubyte			atkX;
-		///Decay time control (between 0 and 127)
-		ubyte			decX;
-		///Release time control (between 0 and 127)
-		ubyte			relX;
-		///Sustain curve control (between 0 and 127)
-		///0: Percussive mode
-		///1 - 63: Descending over time
-		///64: Constant
-		///65 - 127: Ascending over time
-		ubyte			susCCX;
 		///Resets the Extra Envelop generator
 		void resetEEG(int sampleRate) @nogc @safe pure nothrow {
 			//Set attack phase
-			if (atkX) {
-				eeg.attackRate = calculateRate(ADSR_TIME_TABLE[atkX], sampleRate);
+			if (preset.atkX) {
+				eeg.attackRate = calculateRate(ADSR_TIME_TABLE[preset.atkX], sampleRate);
 			} else {
 				eeg.attackRate = 1.0;
 			}
 			//Set decay phase
-			if (decX) {
-				eeg.decayRate = calculateRate(ADSR_TIME_TABLE[decX] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, 
+			if (preset.decX) {
+				eeg.decayRate = calculateRate(ADSR_TIME_TABLE[preset.decX] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, 
 						eeg.sustainLevel);
 			} else {
 				eeg.decayRate = 1.0;
 			}
 			//Set sustain phase
-			if (susCCX) {
+			if (preset.susCCX) {
 				eeg.isPercussive = false;
-				if (susCCX == 64) {
+				if (preset.susCCX == 64) {
 					eeg.sustainControl = 0.0;
-				} else if (susCCX < 64) {
-					eeg.sustainControl = -1.0 * calculateRate(SUSTAIN_CONTROL_TIME_TABLE[susCCX - 1], sampleRate);
+				} else if (preset.susCCX < 64) {
+					eeg.sustainControl = -1.0 * calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCCX - 1], sampleRate);
 				} else {
-					eeg.sustainControl = calculateRate(SUSTAIN_CONTROL_TIME_TABLE[susCCX - 64], sampleRate);
+					eeg.sustainControl = calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCCX - 64], sampleRate);
 				}
 			} else {
 				eeg.isPercussive = true;
 				eeg.sustainControl = 0.0;
 			}
 			//Set release phase
-			if (relX) {
-				eeg.releaseRate = calculateRate(ADSR_TIME_TABLE[relX] * 2, sampleRate, eeg.sustainLevel);
+			if (preset.relX) {
+				eeg.releaseRate = calculateRate(ADSR_TIME_TABLE[preset.relX] * 2, sampleRate, eeg.sustainLevel);
 			} else {
 				eeg.releaseRate = 1.0;
 			}
@@ -464,17 +439,17 @@ public class QM816 : AudioModule {
 			///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
 			uint			tune	=	0x31_00_00_00;
 			///Output level (between 0.0 and 1.0)
-			float			outL;
+			float			outL	=	1.0;
 			///Feedback level (between 0.0 and 1.0)
-			float			fbL;
+			float			fbL		=	0.0;
 			///Control flags and Wavetable selector
 			uint			opCtrl;
 			///Output level controller assignment
 			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: unused
-			__m128			outLCtrl;
+			__m128			outLCtrl=	[0,0,0,0];
 			///Feedback level controller assignment
 			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: Extra envelop generator
-			__m128			fbLCtrl;
+			__m128			fbLCtrl	=	[0,0,0,0];
 			///Attack time control (between 0 and 127)
 			ubyte			atk;
 			///Decay time control (between 0 and 127)
@@ -488,7 +463,7 @@ public class QM816 : AudioModule {
 			///65 - 127: Ascending over time
 			ubyte			susCC;
 			///Sustain level for the EG
-			float			susLevel;
+			float			susLevel=	1.0;
 			///ADSR shaping parameter (for the attack phase)
 			float			shpA	=	0.5;
 			///ADSR shaping parameter (for the decay/release phase)
@@ -505,9 +480,9 @@ public class QM816 : AudioModule {
 		///Defines parameters of a single channel.
 		public struct Ch {
 			///ADSR shaping parameter (for the attack phase)
-			float			shpAX;
+			float			shpAX	=	0.5;
 			///ADSR shaping parameter (for the decay/release phase)
-			float			shpRX;
+			float			shpRX	=	0.5;
 			///Pitch amount for EEG
 			///Bit 31-25: Coarse (-64 to +63 seminotes)
 			///Bit 24-0: Fine (0 to 100 cents)
@@ -515,34 +490,34 @@ public class QM816 : AudioModule {
 			///Pitch bend sensitivity
 			///Bit 31-25: Coarse (0 to 127 seminotes)
 			///Bit 24-0: Fine (0 to 100 cents)
-			uint			pitchBendSens;
+			uint			pitchBendSens = 2<<24;
 			///A-4 channel tuning in hertz.
 			float			chnlTun = 440.0;
 			///Stores channel control flags.
 			uint			chCtrl;
 			///Master volume (0.0 to 1.0)
-			float			masterVol;
+			float			masterVol=	1;
 			///Master balance (0.0 to 1.0)
-			float			masterBal;
+			float			masterBal=	0.5;
 			///Aux send A
-			float			auxSendA;
+			float			auxSendA =	0;
 			///Aux send B
-			float			auxSendB;
+			float			auxSendB =	0;
 			///X and Y controller assign
 			ushort[2]		xyCtrlAssign0;
 			///X and Y controller assign (secondary)
 			ushort[2]		xyCtrlAssign1;
 			///EEG assign levels
 			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
-			__m128[4]		eegLevels;
+			__m128			eegLevels=	[0,0,0,0];
 			///Amplitude LFO assign levels
 			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
-			__m128[4]		aLFOlevels;
+			__m128			aLFOlevels=	[0,0,0,0];
 			///Ring modulation amount
 			///Only available on select algorithms
 			int				rmAmount;
 			///Pitch LFO level
-			float			pLFOlevel;
+			float			pLFOlevel=	1;
 			///Amplitude LFO to 
 			///Attack time control (between 0 and 127)
 			ubyte			atkX;
@@ -557,7 +532,7 @@ public class QM816 : AudioModule {
 			///65 - 127: Ascending over time
 			ubyte			susCCX;
 			///Sustain level
-			float			susLevel;
+			float			susLevel	=	1;
 		}
 		Op[2]			operators;		///The operators belonging to this channel
 		Ch				channel;		///Channel common values
@@ -584,11 +559,13 @@ public class QM816 : AudioModule {
 	protected ubyte[16]			presetNum;
 	///Bank numbers per channels.
 	protected ubyte[16]			bankNum;
-	///Keeps the registered/unregistered parameter positions (LSB = 0).
+	///Keeps the registered/unregistered parameter positions (LSB = 1).
 	protected ubyte[2]			paramNum;
 	///Stores LFO waveform selection. 1: Amplitude; 0: Pitch
 	protected ubyte[2]			lfoWaveform;
-	///Stores temporary parameter values
+	///Stores temporary parameter values 
+	///0: MSB of sel unregistered param 1: LSB of sel unregistered param 
+	///2: MSB of sel registered param 3: LSB of sel registered param
 	protected ubyte[4]			paramTemp;
 	///Stores ALFO position
 	protected uint				aLFOPos;
@@ -599,7 +576,7 @@ public class QM816 : AudioModule {
 	protected __m128[10]		filterVals;
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
-	protected float[8]			filterCtrl;
+	protected float[8]			filterCtrl	=	[17_000, 0.707, 17_000, 0.707, 17_000, 0.707, 17_000, 0.707];
 	///Initial mixing buffers
 	///Output is directed there before filtering
 	///Layout is: LRAB
@@ -610,7 +587,7 @@ public class QM816 : AudioModule {
 	///Amplitude LFO buffer. Values are between 0.0 and 1.0
 	protected float[]			aLFOBuf;
 	///Pitch LFO output. Values are between -1.0 and 1.0
-	protected float				pLFOOut;
+	protected float				pLFOOut	=	0;
 	///Stores PLFO position
 	protected uint				pLFOPos;
 	///Stores PLFO rate
@@ -624,8 +601,7 @@ public class QM816 : AudioModule {
 	/**
 	Creates an instance of QM816
 	*/
-	public this(ModuleManager handler) @trusted nothrow {
-		this.handler = handler;
+	public this() @trusted nothrow {
 		info.nOfAudioInput = 0;
 		info.nOfAudioOutput = 4;
 		info.outputChNames = ["mainL", "mainR", "auxSendA", "auxSendB"];
@@ -696,6 +672,26 @@ public class QM816 : AudioModule {
 		}
 	}
 	/**
+	 * Sets the module up.
+	 *
+	 * Can be overridden in child classes to allow resets.
+	 */
+	public override void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize, 
+			ModuleManager handler) @safe nothrow {
+		enabledInputs = StreamIDSet(inputs);
+		enabledOutputs = StreamIDSet(outputs);
+		this.sampleRate = sampleRate;
+		this.bufferSize = bufferSize;
+		this.handler = handler;
+		//set up and reset buffers
+		initBuffers.length = bufferSize * 4;
+		resetBuffer(initBuffers);
+		dummyBuf.length = bufferSize;
+		resetBuffer(dummyBuf);
+		aLFOBuf.length = bufferSize;
+		resetBuffer(aLFOBuf);
+	}
+	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
 	 * errorcode.
 	 *
@@ -719,7 +715,7 @@ public class QM816 : AudioModule {
 			if (rawData.length == 128 * 1024 * 2)
 				memcpy(wavetables.ptr, rawData.ptr, 128 * 1024 * 2);
 			else
-				memcpy(wavetables.ptr + (1024 * 2 * id), rawData.ptr, 1024 * 2);
+				memcpy(wavetables[id].ptr, rawData.ptr, 1024 * 2);
 			return 0;
 		}
 	}
@@ -741,22 +737,29 @@ public class QM816 : AudioModule {
 					case MIDI1_0Cmd.CtrlCh:	//Process MIDI 1.0 control change messages
 						switch (firstPacket.note) {
 							case 0, 32:			//Bank select
-								bankNum[firstPacket.channel] = firstPacket.value;
+								bankNum[firstPacket.channel] = firstPacket.value & 7;
 								break;
 							case 1:				//Modulation wheel
 								chCtrls[firstPacket.channel].modwheel = cast(double)(firstPacket.value) / byte.max;
 								break;
 							case 6:			//Data Entry MSB
-								paramNum[1] = firstPacket.value;
+								paramNum[0] = firstPacket.value;
+								paramTemp = [0xFF,0xFF,0xFF,0xFF];
 								break;
 							case 38:		//Data Entry LSB
-								paramNum[0] = firstPacket.value;
+								paramNum[1] = firstPacket.value;
+								paramTemp = [0xFF,0xFF,0xFF,0xFF];
 								break;
-							case 98:		//Non Registered Parameter Number LSB
-								setUnregisteredParam(firstPacket.value, paramNum, 0, firstPacket.channel);
+							case 98:		//Non Registered Parameter Number MSB (handle through MIDI 2.0)
+								//setUnregisteredParam(firstPacket.value, paramNum, 0, firstPacket.channel);
+								paramTemp[0] = firstPacket.value;
+								setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), paramNum, firstPacket.channel);
 								break;
-							case 99:		//Non Registered Parameter Number LSB
-								setUnregisteredParam(firstPacket.value, paramNum, 0, firstPacket.channel);
+							case 99:		//Non Registered Parameter Number LSB (handle through MIDI 2.0)
+								//setUnregisteredParam(firstPacket.value, paramNum, 0, firstPacket.channel);
+								paramTemp[1] = firstPacket.value;
+								if (paramTemp[0] != 0xFF)
+									setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), paramNum, firstPacket.channel);
 								break;
 							default:
 								break;
@@ -764,60 +767,60 @@ public class QM816 : AudioModule {
 						break;
 					case MIDI1_0Cmd.NoteOn:	//Note on command
 						const uint ch = firstPacket.channel;
-						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch > 7) return;
+						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
 						chCtrls[ch].note = firstPacket.note;
 						chCtrls[ch].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
 						channels[ch].eeg.keyOn();
 						operators[ch].eg.keyOn();
-						operators[ch].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+						operators[ch].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 						operators[ch + 1].eg.keyOn();
-						operators[ch + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[ch + 1].pitchBend, channels[ch].chnlTun);
-						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch <= 7) {
+						operators[ch + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
+						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 							channels[ch + 8].eeg.keyOn();
 							operators[ch + 16].eg.keyOn();
-							operators[ch + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+							operators[ch + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 							operators[ch + 17].eg.keyOn();
-							operators[ch + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+							operators[ch + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 						}
 						break;
 					case MIDI1_0Cmd.NoteOff://Note off command
 						const uint ch = firstPacket.channel;
-						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch > 7) return;
+						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
 						chCtrls[ch].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
 						channels[ch].eeg.keyOff();
 						operators[ch].eg.keyOff();
-						if (operators[ch].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
-							if (operators[ch].rel) {
-								operators[ch].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch].rel] * 2, sampleRate, 
+						if (operators[ch].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
+							if (operators[ch].preset.rel) {
+								operators[ch].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch].preset.rel] * 2, sampleRate, 
 										operators[ch].eg.sustainLevel);
 							} else {
 								operators[ch].eg.releaseRate = 1.0;
 							}
 						}
 						operators[ch + 1].eg.keyOff();
-						if (operators[ch + 1].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
-							if (operators[ch + 1].rel) {
-								operators[ch + 1].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 1].rel] * 2, sampleRate, 
+						if (operators[ch + 1].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
+							if (operators[ch + 1].preset.rel) {
+								operators[ch + 1].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 1].preset.rel] * 2, sampleRate, 
 										operators[ch + 1].eg.sustainLevel);
 							} else {
 								operators[ch + 1].eg.releaseRate = 1.0;
 							}
 						}
-						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch <= 7) {
+						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 							channels[ch + 8].eeg.keyOff();
 							operators[ch + 16].eg.keyOff();
-							if (operators[ch + 16].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
-								if (operators[ch + 16].rel) {
-									operators[ch + 16].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 16].rel] * 2, sampleRate, 
+							if (operators[ch + 16].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
+								if (operators[ch + 16].preset.rel) {
+									operators[ch + 16].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 16].preset.rel] * 2, sampleRate, 
 											operators[ch + 16].eg.sustainLevel);
 								} else {
 									operators[ch + 16].eg.releaseRate = 1.0;
 								}
 							}
 							operators[ch + 17].eg.keyOff();
-							if (operators[ch + 17].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
-								if (operators[ch + 17].rel) {
-									operators[ch + 17].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 17].rel] * 2, sampleRate, 
+							if (operators[ch + 17].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
+								if (operators[ch + 17].preset.rel) {
+									operators[ch + 17].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 17].preset.rel] * 2, sampleRate, 
 											operators[ch + 17].eg.sustainLevel);
 								} else {
 									operators[ch + 17].eg.releaseRate = 1.0;
@@ -834,7 +837,7 @@ public class QM816 : AudioModule {
 					case MIDI1_0Cmd.PrgCh:	//Program change
 						const uint chOffset = firstPacket.channel;
 						const uint chCtrl = soundBank[bankNum[chOffset] & 7][presetNum[chOffset]].channel.chCtrl;
-						if (chCtrl & Channel.ChCtrlFlags.ComboModeTest) {
+						if (chCtrl & ChCtrlFlags.ComboModeTest) {
 							const uint chX = chOffset & 7, bankX = bankNum[chOffset] & 7 & ~1;
 							prgRecall(chX, presetNum[chX], bankX);
 							prgRecall(chX + 8, presetNum[chX], bankX + 1);
@@ -844,8 +847,8 @@ public class QM816 : AudioModule {
 						break;
 					case MIDI1_0Cmd.PitchBend:
 						const uint ch = firstPacket.channel;
-						const double pitchBendSens = (channels[ch].pitchBendSens>>25) + 
-								(cast(double)(channels[ch].pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
+						const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
+								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
 						chCtrls[ch].pitchBend = pitchBendSens * ((cast(double)firstPacket.bend - 0x20_00) / 0x3F_FF);
 						break;
 					default:
@@ -855,10 +858,10 @@ public class QM816 : AudioModule {
 			case MessageType.MIDI2:
 				switch (firstPacket.status) {
 					case MIDI2_0Cmd.CtrlCh:	//Control change
-						setUnregisteredParam(data[1], [firstPacket.index, firstPacket.value], 0, firstPacket.channel);
+						setUnregisteredParam(data[1], [firstPacket.index, firstPacket.value], firstPacket.channel);
 						break;
 					case MIDI2_0Cmd.CtrlChR://Registered control change
-						setRegisteredParam(data[1], [firstPacket.index, firstPacket.value], 0, firstPacket.channel);
+						//setRegisteredParam(data[1], [firstPacket.index, firstPacket.value], firstPacket.channel);
 						break;
 					case MIDI2_0Cmd.PrgCh:	//Program change
 						const uint chOffset = firstPacket.channel;
@@ -866,7 +869,7 @@ public class QM816 : AudioModule {
 						presetNum[chOffset] = cast(ubyte)(data[1]>>24);
 						if (firstPacket.value & 1) bankNum[chOffset] = cast(ubyte)(data[1] & 7);
 						const uint chCtrl = soundBank[bankNum[chOffset] & 7][presetNum[chOffset]].channel.chCtrl;
-						if (chCtrl & Channel.ChCtrlFlags.ComboModeTest) {
+						if (chCtrl & ChCtrlFlags.ComboModeTest) {
 							const uint chX = chOffset & 7, bankX = bankNum[chOffset] & 7 & ~1;
 							prgRecall(chX, presetNum[chX], bankX);
 							prgRecall(chX + 8, presetNum[chX], bankX + 1);
@@ -877,62 +880,62 @@ public class QM816 : AudioModule {
 					case MIDI2_0Cmd.NoteOn:
 						NoteVals v = *cast(NoteVals*)(&data[1]);
 						const uint ch = firstPacket.channel;
-						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch > 7) return;
+						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
 						chCtrls[ch].note = firstPacket.note;
 						chCtrls[ch].velocity = v.velocity / cast(double)ushort.max;
 						channels[ch].eeg.keyOn();
 						operators[ch].eg.keyOn();
-						operators[ch].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+						operators[ch].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 						operators[ch + 1].eg.keyOn();
-						operators[ch + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[ch + 1].pitchBend, channels[ch].chnlTun);
-						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch <= 7) {
+						operators[ch + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
+						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 							channels[ch + 8].eeg.keyOn();
 							operators[ch + 16].eg.keyOn();
-							operators[ch + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+							operators[ch + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 							operators[ch + 17].eg.keyOn();
-							operators[ch + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].chnlTun);
+							operators[ch + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 						}
 						break;
 					case MIDI2_0Cmd.NoteOff:
 						NoteVals v = *cast(NoteVals*)(&data[1]);
 						const uint ch = firstPacket.channel;
-						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch > 7) return;
+						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
 						//chCtrls[ch].note = firstPacket.note;
 						chCtrls[ch].velocity = v.velocity / cast(double)ushort.max;
 						channels[ch].eeg.keyOff();
 						operators[ch].eg.keyOff();
-						if (operators[ch].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
-							if (operators[ch].rel) {
-								operators[ch].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch].rel] * 2, sampleRate, 
+						if (operators[ch].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
+							if (operators[ch].preset.rel) {
+								operators[ch].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch].preset.rel] * 2, sampleRate, 
 										operators[ch].eg.sustainLevel);
 							} else {
 								operators[ch].eg.releaseRate = 1.0;
 							}
 						}
 						operators[ch + 1].eg.keyOff();
-						if (operators[ch + 1].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
-							if (operators[ch + 1].rel) {
-								operators[ch + 1].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 1].rel] * 2, sampleRate, 
+						if (operators[ch + 1].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
+							if (operators[ch + 1].preset.rel) {
+								operators[ch + 1].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 1].preset.rel] * 2, sampleRate, 
 										operators[ch + 1].eg.sustainLevel);
 							} else {
 								operators[ch + 1].eg.releaseRate = 1.0;
 							}
 						}
-						if ((channels[ch].chCtrl & Channel.ChCtrlFlags.ComboModeTest) && ch <= 7) {
+						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 							channels[ch + 8].eeg.keyOff();
 							operators[ch + 16].eg.keyOff();
-							if (operators[ch + 16].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
-								if (operators[ch + 16].rel) {
-									operators[ch + 16].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 16].rel] * 2, sampleRate, 
+							if (operators[ch + 16].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
+								if (operators[ch + 16].preset.rel) {
+									operators[ch + 16].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 16].preset.rel] * 2, sampleRate, 
 											operators[ch + 16].eg.sustainLevel);
 								} else {
 									operators[ch + 16].eg.releaseRate = 1.0;
 								}
 							}
 							operators[ch + 17].eg.keyOff();
-							if (operators[ch + 17].opCtrl & Operator.OpCtrlFlags.EGRelAdaptive) {
-								if (operators[ch + 17].rel) {
-									operators[ch + 17].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 17].rel] * 2, sampleRate, 
+							if (operators[ch + 17].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
+								if (operators[ch + 17].preset.rel) {
+									operators[ch + 17].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[ch + 17].preset.rel] * 2, sampleRate, 
 											operators[ch + 17].eg.sustainLevel);
 								} else {
 									operators[ch + 17].eg.releaseRate = 1.0;
@@ -942,8 +945,8 @@ public class QM816 : AudioModule {
 						break;
 					case MIDI2_0Cmd.PitchBend:
 						const uint ch = firstPacket.channel;
-						const double pitchBendSens = (channels[ch].pitchBendSens>>25) + 
-								(cast(double)(channels[ch].pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
+						const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
+								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
 						chCtrls[ch].pitchBend = pitchBendSens * (cast(double)(firstPacket.bend - (uint.max / 2)) / (uint.max / 2));
 						break;
 					default:
@@ -958,47 +961,47 @@ public class QM816 : AudioModule {
 	Sets the channel delegates
 	*/
 	protected void setChDeleg(uint chCtrl, uint chNum, uint chCtrl0 = 0) @nogc @safe pure nothrow {
-		if (chCtrl & Channel.ChCtrlFlags.ComboModeTest) {	//Test if channel is combined or not
+		if (chCtrl & ChCtrlFlags.ComboModeTest) {	//Test if channel is combined or not
 			if (chNum < 8) {
-				const uint algID = chCtrl & (Channel.ChCtrlFlags.ComboModeTest & Channel.ChCtrlFlags.Algorithm) | 
-						((chCtrl0 & Channel.ChCtrlFlags.Algorithm)<<1);
-				enum priChAlg = Channel.ChCtrlFlags.Algorithm;
-				enum secChAlg = Channel.ChCtrlFlags.Algorithm<<1;
+				const uint algID = chCtrl & (ChCtrlFlags.ComboModeTest & ChCtrlFlags.Algorithm) | 
+						((chCtrl0 & ChCtrlFlags.Algorithm)<<1);
+				enum priChAlg = ChCtrlFlags.Algorithm;
+				enum secChAlg = ChCtrlFlags.Algorithm<<1;
 				switch (algID) {
-					case Channel.ChCtrlFlags.ComboMode1:
+					case ChCtrlFlags.ComboMode1:
 						chDeleg[chNum] = &updateChannelM100;
 						break;
-					case Channel.ChCtrlFlags.ComboMode1 | secChAlg:
+					case ChCtrlFlags.ComboMode1 | secChAlg:
 						chDeleg[chNum] = &updateChannelM110;
 						break;
-					case Channel.ChCtrlFlags.ComboMode1 | priChAlg:
+					case ChCtrlFlags.ComboMode1 | priChAlg:
 						chDeleg[chNum] = &updateChannelM101;
 						break;
-					case Channel.ChCtrlFlags.ComboMode1 | secChAlg | priChAlg:
+					case ChCtrlFlags.ComboMode1 | secChAlg | priChAlg:
 						chDeleg[chNum] = &updateChannelM111;
 						break;
-					case Channel.ChCtrlFlags.ComboMode2:
+					case ChCtrlFlags.ComboMode2:
 						chDeleg[chNum] = &updateChannelM200;
 						break;
-					case Channel.ChCtrlFlags.ComboMode2 | secChAlg:
+					case ChCtrlFlags.ComboMode2 | secChAlg:
 						chDeleg[chNum] = &updateChannelM210;
 						break;
-					case Channel.ChCtrlFlags.ComboMode2 | priChAlg:
+					case ChCtrlFlags.ComboMode2 | priChAlg:
 						chDeleg[chNum] = &updateChannelM201;
 						break;
-					case Channel.ChCtrlFlags.ComboMode2 | secChAlg | priChAlg:
+					case ChCtrlFlags.ComboMode2 | secChAlg | priChAlg:
 						chDeleg[chNum] = &updateChannelM211;
 						break;
-					case Channel.ChCtrlFlags.ComboMode3:
+					case ChCtrlFlags.ComboMode3:
 						chDeleg[chNum] = &updateChannelM300;
 						break;
-					case Channel.ChCtrlFlags.ComboMode3 | secChAlg:
+					case ChCtrlFlags.ComboMode3 | secChAlg:
 						chDeleg[chNum] = &updateChannelM310;
 						break;
-					case Channel.ChCtrlFlags.ComboMode3 | priChAlg:
+					case ChCtrlFlags.ComboMode3 | priChAlg:
 						chDeleg[chNum] = &updateChannelM301;
 						break;
-					case Channel.ChCtrlFlags.ComboMode3 | secChAlg | priChAlg:
+					case ChCtrlFlags.ComboMode3 | secChAlg | priChAlg:
 						chDeleg[chNum] = &updateChannelM311;
 						break;
 					default:
@@ -1009,7 +1012,7 @@ public class QM816 : AudioModule {
 				chDeleg[chNum] = &updateChannelMD;
 			}
 		} else {
-			if (chCtrl & Channel.ChCtrlFlags.Algorithm) 
+			if (chCtrl & ChCtrlFlags.Algorithm) 
 				chDeleg[chNum] = &updateChannelM01;
 			else
 				chDeleg[chNum] = &updateChannelM00;
@@ -1020,11 +1023,11 @@ public class QM816 : AudioModule {
 	*/
 	protected void prgRecall(ubyte ch, ubyte prg, ubyte bank) @nogc @safe pure nothrow {
 		Preset p = soundBank[bank & 7][prg];
-		operators[ch] = p.operators[0];
+		operators[ch].preset = p.operators[0];
 		operators[ch].resetEG(sampleRate);
-		operators[ch + 1] = p.operators[1];
+		operators[ch + 1].preset = p.operators[1];
 		operators[ch + 1].resetEG(sampleRate);
-		channels[ch] = p.channel;
+		channels[ch].preset = p.channel;
 		channels[ch].resetEEG(sampleRate);
 	}
 	/**
@@ -1055,147 +1058,70 @@ public class QM816 : AudioModule {
 		}
 	}
 	/**
-	Sets an unregistered parameter
+	Sets an unregistered parameter (MIDI 2.0)
 
 	If type is not zero, then the MSB is being set, otherwise the LSB will be used
 	*/
-	protected void setUnregisteredParam(T)(T val, ubyte[2] paramNum, ubyte type, ubyte chNum) @nogc @safe pure nothrow {
+	protected void setUnregisteredParam(uint val, ubyte[2] paramNum, ubyte chNum) @nogc @safe pure nothrow {
 		void setOpParam(int chNum) {
 			switch (paramNum[0]) {
 				case OperatorParamNums.Attack:
-					static if (is(T == uint)) {
-						operators[chNum].atk = cast(ubyte)(val >> 25);
-					} else static if (is(T == ubyte)) {
-						operators[chNum].atk = val;
-					}
-					if (operators[chNum].atk) {
-						operators[chNum].eg.attackRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].atk], sampleRate);
+					operators[chNum].preset.atk = cast(ubyte)(val >> 25);
+					
+					if (operators[chNum].preset.atk) {
+						operators[chNum].eg.attackRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.atk], sampleRate);
 					} else {
 						operators[chNum].eg.attackRate = 1.0;
 					}
 					break;
 				case OperatorParamNums.Decay:
-					static if (is(T == uint)) {
-						operators[chNum].dec = cast(ubyte)(val >> 25);
-					} else static if (is(T == ubyte)) {
-						operators[chNum].dec = val;
-					}
-					if (operators[chNum].dec) {
-						operators[chNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].dec] * 2, sampleRate, 
+					operators[chNum].preset.dec = cast(ubyte)(val >> 25);
+					
+					if (operators[chNum].preset.dec) {
+						operators[chNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.dec] * 2, sampleRate, 
 								ADSREnvelopGenerator.maxOutput, operators[chNum].eg.sustainLevel);
 					} else {
 						operators[chNum].eg.decayRate = 1.0;
 					}
 					break;
 				case OperatorParamNums.Feedback:
-					static if (is(T == uint)) {
-						const double valF = cast(double)val / uint.max;
-						operators[chNum].fbL = valF * valF;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-							operators[chNum].fbL = valF * valF;
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					const double valF = cast(double)val / uint.max;
+					operators[chNum].preset.fbL = valF * valF;
 					break;
 				case OperatorParamNums.Level:
-					static if (is(T == uint)) {
-						const double valF = cast(double)val / uint.max;
-						operators[chNum].outL = valF * valF;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-							operators[chNum].outL = valF * valF;
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					const double valF = cast(double)val / uint.max;
+					operators[chNum].preset.outL = valF * valF;
 					break;
 				case OperatorParamNums.OpCtrl:
-					static if (is(T == uint)) {
-						operators[chNum].opCtrl = val;
-					} else static if (is(T == ubyte)) {
-						operators[chNum].opCtrl &= ~(byte.max<<7);
-						operators[chNum].opCtrl |= val<<7;
-					}
+					operators[chNum].preset.opCtrl = val;
 					break;
 				case OperatorParamNums.Release:
-					static if (is(T == uint)) {
-						operators[chNum].rel = cast(ubyte)(val >> 25);
-					} else static if (is(T == ubyte)) {
-						operators[chNum].rel = val;
-					}
-					if (operators[chNum].rel) {
-						operators[chNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].rel] * 2, sampleRate, 
+					operators[chNum].preset.rel = cast(ubyte)(val >> 25);
+					if (operators[chNum].preset.rel) {
+						operators[chNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.rel] * 2, sampleRate, 
 								operators[chNum].eg.sustainLevel);
 					} else {
 						operators[chNum].eg.releaseRate = 1.0;
 					}
 					break;
 				case OperatorParamNums.ShpA:
-					static if (is(T == uint)) {
-						operators[chNum].shpA = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].shpA = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.shpA = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.ShpR:
-					static if (is(T == uint)) {
-						operators[chNum].shpR = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].shpR = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.shpR = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.SusCtrl:
-					static if (is(T == uint)) {
-						operators[chNum].susCC = cast(ubyte)(val >> 25);
-					} else static if (is(T == ubyte)) {
-						operators[chNum].susCC = val;
-					}
-					if (operators[chNum].susCC) {
+					operators[chNum].preset.susCC = cast(ubyte)(val >> 25);
+					if (operators[chNum].preset.susCC) {
 						operators[chNum].eg.isPercussive = false;
-						if (operators[chNum].susCC == 64) {
+						if (operators[chNum].preset.susCC == 64) {
 							operators[chNum].eg.sustainControl = 0.0;
-						} else if (operators[chNum].susCC < 64) {
+						} else if (operators[chNum].preset.susCC < 64) {
 							operators[chNum].eg.sustainControl = -1.0 * 
-									calculateRate(SUSTAIN_CONTROL_TIME_TABLE[operators[chNum].susCC - 1], sampleRate);
+									calculateRate(SUSTAIN_CONTROL_TIME_TABLE[operators[chNum].preset.susCC - 1], sampleRate);
 						} else {
 							operators[chNum].eg.sustainControl = 
-									calculateRate(SUSTAIN_CONTROL_TIME_TABLE[operators[chNum].susCC - 64], sampleRate);
+									calculateRate(SUSTAIN_CONTROL_TIME_TABLE[operators[chNum].preset.susCC - 64], sampleRate);
 						}
 					} else {
 						operators[chNum].eg.isPercussive = true;
@@ -1203,233 +1129,59 @@ public class QM816 : AudioModule {
 					}
 					break;
 				case OperatorParamNums.SusLevel:
-					static if (is(T == uint)) {
-						operators[chNum].eg.sustainLevel = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].eg.sustainLevel = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-						
-					}
+					operators[chNum].eg.sustainLevel = cast(double)val / uint.max;
 					//Recalculate decay and release rates to new sustain levels
-					if (operators[chNum].dec) {
-						operators[chNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].dec] * 2, sampleRate, 
+					if (operators[chNum].preset.dec) {
+						operators[chNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.dec] * 2, sampleRate, 
 								ADSREnvelopGenerator.maxOutput, operators[chNum].eg.sustainLevel);
 					} else {
 						operators[chNum].eg.decayRate = 1.0;
 					}
-					if (operators[chNum].rel) {
-						operators[chNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].rel] * 2, sampleRate, 
+					if (operators[chNum].preset.rel) {
+						operators[chNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.rel] * 2, sampleRate, 
 								operators[chNum].eg.sustainLevel);
 					} else {
 						operators[chNum].eg.releaseRate = 1.0;
 					}
 					break;
 				case OperatorParamNums.TuneCor:
-					static if (is(T == uint)) {
-						operators[chNum].tune = val;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							//operators[chNum].velAm = val32 / ushort.max>>2;
-							operators[chNum].tune &= ~(uint.max<<18);
-							operators[chNum].tune |= val32<<18;
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.tune = val;
+					
 					break;
 				case OperatorParamNums.TuneFine:
-					operators[chNum].tune &= uint.max>>7;
-					static if (is(T == uint)) {
-						operators[chNum].tune |= val>>7;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].tune |= val32<<10 | val32>>5;
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.tune &= ~uint.max>>7;
+					operators[chNum].preset.tune |= val>>7;
 					break;
 				case OperatorParamNums.VelToLevel:
-					static if (is(T == uint)) {
-						operators[chNum].outLCtrl[0] = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].outLCtrl[0] = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.outLCtrl[0] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.MWToLevel:
-					static if (is(T == uint)) {
-						operators[chNum].outLCtrl[1] = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].outLCtrl[1] = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.outLCtrl[1] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.LFOToLevel:
-					static if (is(T == uint)) {
-						operators[chNum].outLCtrl[2] = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].outLCtrl[2] = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.outLCtrl[2] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.VelToFB:
-					static if (is(T == uint)) {
-						operators[chNum].fbLCtrl[0] = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].fbLCtrl[0] = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.fbLCtrl[0] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.MWToFB:
-					static if (is(T == uint)) {
-						operators[chNum].fbLCtrl[1] = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].fbLCtrl[1] = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.fbLCtrl[1] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.LFOToFB:
-					static if (is(T == uint)) {
-						operators[chNum].fbLCtrl[2] = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].fbLCtrl[2] = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.fbLCtrl[2] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.EEGToFB:
-					static if (is(T == uint)) {
-						operators[chNum].fbLCtrl[3] = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].fbLCtrl[3] = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.fbLCtrl[3] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.VelToShpA:
-					static if (is(T == uint)) {
-						operators[chNum].shpAVel = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].shpAVel = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.shpAVel = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.VelToShpR:
-					static if (is(T == uint)) {
-						operators[chNum].shpRVel = cast(double)val / uint.max;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							operators[chNum].shpRVel = cast(double)(val32) / cast(double)(ushort.max>>2);
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					operators[chNum].preset.shpRVel = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.Waveform:
-					operators[chNum].opCtrl &= ~Operator.OpCtrlFlags.WavetableSelect;
-					static if (is(T == uint)) {
-						operators[chNum].opCtrl |= cast(ubyte)(val >> 25);
-					} else static if (is(T == ubyte)) {
-						operators[chNum].opCtrl |= val;
-					}
+					operators[chNum].preset.opCtrl &= ~OpCtrlFlags.WavetableSelect;
+					operators[chNum].preset.opCtrl |= cast(ubyte)(val >> 25);
 					break;
 				default: break;
 			}
@@ -1447,233 +1199,94 @@ public class QM816 : AudioModule {
 				switch (paramNum[0]) { 
 					//case ChannelParamNums.ALFO: break;
 					case ChannelParamNums.Attack:
-						static if (is(T == uint)) {
-							channels[chNum].atkX = cast(ubyte)(val >> 25);
-						} else static if (is(T == ubyte)) {
-							channels[chNum].atkX = val;
-						}
-						if (channels[chNum].atkX) {
-							channels[chNum].eeg.attackRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].atkX], sampleRate);
+						channels[chNum].preset.atkX = cast(ubyte)(val >> 25);
+						if (channels[chNum].preset.atkX) {
+							channels[chNum].eeg.attackRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.atkX], sampleRate);
 						} else {
 							channels[chNum].eeg.attackRate = 1.0;
 						}
 						break;
 					case ChannelParamNums.AuxSLA:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].outLevels[2] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].outLevels[2] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].outLevels[2] = valF * valF;
+						channels[chNum].preset.auxSendA = channels[chNum].outLevels[2];
 						break;
 					case ChannelParamNums.AuxSLB: 
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].outLevels[2] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].outLevels[2] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].outLevels[2] = valF * valF;
+						channels[chNum].preset.auxSendB = channels[chNum].outLevels[3];
 						break;
 					case ChannelParamNums.Bal: 
-						static if (is(T == uint)) {
-							channels[chNum].masterBal = cast(double)val / uint.max;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								channels[chNum].masterBal = cast(double)(val32) / cast(double)(ushort.max>>2);
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-								return;
-							}
-						}
-						if (channels[chNum].chCtrl & Channel.ChCtrlFlags.IndivOutChLev) {
-							channels[chNum].outLevels[1] = channels[chNum].masterBal * channels[chNum].masterBal;
+						channels[chNum].preset.masterBal = cast(double)val / uint.max;
+						if (channels[chNum].preset.chCtrl & ChCtrlFlags.IndivOutChLev) {
+							channels[chNum].outLevels[1] = channels[chNum].preset.masterBal * channels[chNum].preset.masterBal;
 						} else {
-							channels[chNum].outLevels[0] = channels[chNum].masterVol - channels[chNum].masterBal;
-							channels[chNum].outLevels[1] = channels[chNum].masterVol - (1.0 - channels[chNum].masterBal);
+							channels[chNum].outLevels[0] = channels[chNum].preset.masterVol - channels[chNum].preset.masterBal;
+							channels[chNum].outLevels[1] = channels[chNum].preset.masterVol - (1.0 - channels[chNum].preset.masterBal);
 						}
 						break;
 					case ChannelParamNums.ChCtrl:
-						static if (is(T == uint)) {
-							channels[chNum].chCtrl = val;
-						} else static if (is(T == ubyte)) {
-							if (type) {
-								channels[chNum].chCtrl &= ~(byte.max<<7);
-								channels[chNum].chCtrl |= val<<7;
-							} else {
-								channels[chNum].chCtrl &= ~(cast(uint)byte.max);
-								channels[chNum].chCtrl |= val;
-							}
-						}
+						channels[chNum].preset.chCtrl = val;
 						//mirror operator configuration parameters between paired channels
 						if (chNum < 8) {
-							channels[chNum + 8].chCtrl &= ~Channel.ChCtrlFlags.ComboModeTest;
-							channels[chNum + 8].chCtrl |= Channel.ChCtrlFlags.ComboModeTest & channels[chNum].chCtrl;
+							channels[chNum + 8].preset.chCtrl &= ~ChCtrlFlags.ComboModeTest;
+							channels[chNum + 8].preset.chCtrl |= ChCtrlFlags.ComboModeTest & channels[chNum].preset.chCtrl;
 						} else {
-							channels[chNum - 8].chCtrl &= ~Channel.ChCtrlFlags.ComboModeTest;
-							channels[chNum - 8].chCtrl |= Channel.ChCtrlFlags.ComboModeTest & channels[chNum].chCtrl;
+							channels[chNum - 8].preset.chCtrl &= ~ChCtrlFlags.ComboModeTest;
+							channels[chNum - 8].preset.chCtrl |= ChCtrlFlags.ComboModeTest & channels[chNum].preset.chCtrl;
 						}
 						break;
 					//case ChannelParamNums.ChCtrlL: break;
 					case ChannelParamNums.Decay:
-						static if (is(T == uint)) {
-							channels[chNum].decX = cast(ubyte)(val >> 25);
-						} else static if (is(T == ubyte)) {
-							channels[chNum].decX = val;
-						}
-						if (channels[chNum].decX) {
-							channels[chNum].eeg.decayRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].decX] * 2, sampleRate);
+						channels[chNum].preset.decX = cast(ubyte)(val >> 25);
+						if (channels[chNum].preset.decX) {
+							channels[chNum].eeg.decayRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.decX] * 2, sampleRate);
 						} else {
 							channels[chNum].eeg.decayRate = 1.0;
 						}
 						break;
 					case ChannelParamNums.EEGDetune:
-						static if (is(T == uint)) {
-							channels[chNum].eegDetuneAm = val;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								channels[chNum].eegDetuneAm = paramTemp[3] | paramTemp[2]<<7;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						channels[chNum].preset.eegDetuneAm = val;
 						break;
 					case ChannelParamNums.MasterVol: 
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].outLevels[2] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].outLevels[2] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
-						if (channels[chNum].chCtrl & Channel.ChCtrlFlags.IndivOutChLev) {
-							channels[chNum].outLevels[1] = channels[chNum].masterBal * channels[chNum].masterBal;
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].outLevels[2] = valF * valF;
+						if (channels[chNum].preset.chCtrl & ChCtrlFlags.IndivOutChLev) {
+							channels[chNum].outLevels[1] = channels[chNum].preset.masterBal * channels[chNum].preset.masterBal;
 						} else {
-							channels[chNum].outLevels[0] = channels[chNum].masterVol - channels[chNum].masterBal;
-							channels[chNum].outLevels[1] = channels[chNum].masterVol - (1.0 - channels[chNum].masterBal);
+							channels[chNum].outLevels[0] = channels[chNum].preset.masterVol - channels[chNum].preset.masterBal;
+							channels[chNum].outLevels[1] = channels[chNum].preset.masterVol - (1.0 - channels[chNum].preset.masterBal);
 						}
 						break;
 					case ChannelParamNums.PLFO: 
-						static if (is(T == uint)) {
-							channels[chNum].pLFOlevel = cast(double)val / uint.max;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								channels[chNum].pLFOlevel = cast(double)(val32) / cast(double)(ushort.max>>2);
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						channels[chNum].preset.pLFOlevel = cast(double)val / uint.max;
 						break;
 					case ChannelParamNums.Release: 
-						static if (is(T == uint)) {
-							channels[chNum].relX = cast(ubyte)(val >> 25);
-						} else static if (is(T == ubyte)) {
-							channels[chNum].relX = val;
-						}
-						if (channels[chNum].relX) {
-							channels[chNum].eeg.releaseRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].relX] * 2, sampleRate);
+						channels[chNum].preset.relX = cast(ubyte)(val >> 25);
+						if (channels[chNum].preset.relX) {
+							channels[chNum].eeg.releaseRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.relX] * 2, sampleRate);
 						} else {
 							channels[chNum].eeg.releaseRate = 1.0;
 						}
 						break;
 					case ChannelParamNums.ShpA:
-						static if (is(T == uint)) {
-							channels[chNum].shpAX = cast(double)val / uint.max;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								channels[chNum].shpAX = cast(double)(val32) / cast(double)(ushort.max>>2);
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						channels[chNum].preset.shpAX = cast(double)val / uint.max;
 						break;
 					case ChannelParamNums.ShpR:
-						static if (is(T == uint)) {
-							channels[chNum].shpRX = cast(double)val / uint.max;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								channels[chNum].shpRX = cast(double)(val32) / cast(double)(ushort.max>>2);
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						channels[chNum].preset.shpRX = cast(double)val / uint.max;
 						break;
 					case ChannelParamNums.SusCtrl: 
-						static if (is(T == uint)) {
-							channels[chNum].susCCX = cast(ubyte)(val >> 25);
-						} else static if (is(T == ubyte)) {
-							channels[chNum].susCCX = val;
-						}
-						if (channels[chNum].susCCX) {
+						channels[chNum].preset.susCCX = cast(ubyte)(val >> 25);
+						if (channels[chNum].preset.susCCX) {
 							channels[chNum].eeg.isPercussive = false;
-							if (channels[chNum].susCCX == 64) {
+							if (channels[chNum].preset.susCCX == 64) {
 								channels[chNum].eeg.sustainControl = 0.0;
-							} else if (channels[chNum].susCCX < 64) {
+							} else if (channels[chNum].preset.susCCX < 64) {
 								channels[chNum].eeg.sustainControl = -1.0 * 
-										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].susCCX - 1], sampleRate);
+										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].preset.susCCX - 1], sampleRate);
 							} else {
 								channels[chNum].eeg.sustainControl = 
-										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].susCCX - 64], sampleRate);
+										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].preset.susCCX - 64], sampleRate);
 							}
 						} else {
 							channels[chNum].eeg.isPercussive = true;
@@ -1681,190 +1294,44 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case ChannelParamNums.SusLevel: 
-						static if (is(T == uint)) {
-							channels[chNum].eeg.sustainLevel = cast(double)val / uint.max;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								channels[chNum].eeg.sustainLevel = cast(double)(val32) / cast(double)(ushort.max>>2);
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						channels[chNum].eeg.sustainLevel = cast(double)val / uint.max;
+						channels[chNum].preset.susLevel = channels[chNum].eeg.sustainLevel;
 						break;
 					case ChannelParamNums.RingMod: 
-						static if (is(T == uint)) {
-							channels[chNum].rmAmount = val>>16;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								channels[chNum].eeg.sustainLevel = val32<<2 | val32>>12;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						channels[chNum].preset.rmAmount = val>>16;
 						break;
 					case ChannelParamNums.EEGToLeft:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].eegLevels[0] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].eegLevels[0] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.eegLevels[0] = valF * valF;
 						break;
 					case ChannelParamNums.EEGToRight:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].eegLevels[1] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].eegLevels[1] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.eegLevels[1] = valF * valF;
 						break;
 					case ChannelParamNums.EEGToAuxA:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].eegLevels[2] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].eegLevels[2] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.eegLevels[2] = valF * valF;
 						break;
 					case ChannelParamNums.EEGToAuxB:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].eegLevels[3] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].eegLevels[3] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.eegLevels[3] = valF * valF;
 						break;
 					case ChannelParamNums.LFOToLeft:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].aLFOlevels[0] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].aLFOlevels[0] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.aLFOlevels[0] = valF * valF;
+						
 						break;
 					case ChannelParamNums.LFOToRight:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].aLFOlevels[1] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].aLFOlevels[1] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.aLFOlevels[1] = valF * valF;
 						break;
 					case ChannelParamNums.LFOToAuxA:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].aLFOlevels[2] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].aLFOlevels[2] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.aLFOlevels[2] = valF * valF;
 						break;
 					case ChannelParamNums.LFOToAuxB:
-						static if (is(T == uint)) {
-							const double valF = cast(double)val / uint.max;
-							channels[chNum].aLFOlevels[3] = valF * valF;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-								channels[chNum].aLFOlevels[3] = valF * valF;
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-							}
-						}
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.aLFOlevels[3] = valF * valF;
 						break;
 					default:
 						break;
@@ -1872,101 +1339,34 @@ public class QM816 : AudioModule {
 				break;
 			case 16:		//LFO and master filter settings
 				void setFilterFreq(int num) @nogc @safe pure nothrow {
-					static if (is(T == uint)) {
-						const double valF = cast(double)val / uint.max;
-						filterCtrl[num] = valF * valF * 22_000;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-							filterCtrl[num] = valF * valF * 22_000;
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					const double valF = cast(double)val / uint.max;
+					filterCtrl[num] = valF * valF * 20_000;
+
 				}
 				void setFilterQ(int num) @nogc @safe pure nothrow {
-					static if (is(T == uint)) {
-						const double valF = cast(double)val / uint.max;
-						filterCtrl[num] = valF * 2;
-					} else static if (is(T == ubyte)) {
-						if (type)
-							paramTemp[2] = val;
-						else
-							paramTemp[3] = val;
-						if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-							const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-							const double valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-							filterCtrl[num] = valF * 2;
-						} else {		//Set temp for next command (assume MSB-LSB order)
-							paramNum[0] = paramTemp[0];
-							paramNum[1] = paramTemp[1];
-						}
-					}
+					const double valF = cast(double)val / uint.max;
+					filterCtrl[num] = valF * 2;
 				}
 				switch (paramNum[0]) {
 					case GlobalParamNums.PLFORate:
 						double valF;
-						static if (is(T == uint)) {
-							valF = cast(double)val / uint.max;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-								return;
-							}
-						}
+						valF = cast(double)val / uint.max;
 						valF *= 16;
 						const double cycleLen = sampleRate / (1.0 / valF);
 						pLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0) * bufferSize);
 						break;
 					case GlobalParamNums.PLFOWF:
-						static if (is(T == uint)) {
-							lfoWaveform[0] = cast(ubyte)(val >> 25);
-						} else static if (is(T == ubyte)) {
-							lfoWaveform[0] = val;
-						}
+						lfoWaveform[0] = cast(ubyte)(val >> 25);
 						break;
 					case GlobalParamNums.ALFORate:
 						double valF;
-						static if (is(T == uint)) {
-							valF = cast(double)val / uint.max;
-						} else static if (is(T == ubyte)) {
-							if (type)
-								paramTemp[2] = val;
-							else
-								paramTemp[3] = val;
-							if (paramNum[0] == paramTemp[0] && paramNum[1] == paramTemp[1]) {	//Set parameter if  found.
-								const uint val32 = paramTemp[3] | paramTemp[2]<<7;
-								valF = cast(double)(val32) / cast(double)(ushort.max>>2);
-							} else {		//Set temp for next command (assume MSB-LSB order)
-								paramNum[0] = paramTemp[0];
-								paramNum[1] = paramTemp[1];
-								return;
-							}
-						}
+						valF = cast(double)val / uint.max;
 						valF *= 16;
 						const double cycleLen = sampleRate / (1.0 / valF);
 						aLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0));
 						break;
 					case GlobalParamNums.ALFOWF:
-						static if (is(T == uint)) {
-							lfoWaveform[1] = cast(ubyte)(val >> 25);
-						} else static if (is(T == ubyte)) {
-							lfoWaveform[1] = val;
-						}
+						lfoWaveform[1] = cast(ubyte)(val >> 25);
 						break;
 					case GlobalParamNums.FilterLCFreq:
 						setFilterFreq(0);
@@ -2054,18 +1454,18 @@ public class QM816 : AudioModule {
 	///chCtrl index notation: 0: velocity, 1: modulation wheel, 2: Amplitude LFO, 3: Extra Envelop Generator
 	pragma(inline, true)
 	protected final void updateOperator(ref Operator op, __m128 chCtrl) @nogc @safe pure nothrow {
-		op.output = wavetables[op.opCtrl & Operator.OpCtrlFlags.WavetableSelect][(op.pos>>20 + op.input>>4 + op.feedback>>3) 
+		op.output = wavetables[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][(op.pos>>20 + op.input>>4 + op.feedback>>3) 
 				& 0x3_FF];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		const double out0 = op.output;
-		__m128 outCtrl = (op.outLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.outLCtrl));
-		__m128 fbCtrl = (op.fbLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.fbLCtrl));
+		__m128 outCtrl = (op.preset.outLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.preset.outLCtrl));
+		__m128 fbCtrl = (op.preset.fbLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.preset.fbLCtrl));
 		const double out1 = out0 * egOut;
-		//vel = op.opCtrl & Operator.OpCtrlFlags.VelNegative ? 1.0 - vel : vel;
-		op.feedback = cast(int)((op.opCtrl & Operator.OpCtrlFlags.FBMode ? out0 : out1) * op.fbL * fbCtrl[0] * fbCtrl[1] * 
+		//vel = op.opCtrl & OpCtrlFlags.VelNegative ? 1.0 - vel : vel;
+		op.feedback = cast(int)((op.preset.opCtrl & OpCtrlFlags.FBMode ? out0 : out1) * op.preset.fbL * fbCtrl[0] * fbCtrl[1] * 
 				fbCtrl[2] * fbCtrl[3]);
-		//op.feedback *= op.opCtrl & Operator.OpCtrlFlags.FBNeg ? -1 : 1;
-		op.output_0 = cast(int)(out1 * op.outL * outCtrl[0] * outCtrl[1] * outCtrl[2]);
+		//op.feedback *= op.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1;
+		op.output_0 = cast(int)(out1 * op.preset.outL * outCtrl[0] * outCtrl[1] * outCtrl[2]);
 		op.pos += op.step;
 		//op.input = 0;
 		op.eg.advance();
@@ -2073,84 +1473,97 @@ public class QM816 : AudioModule {
 	///Macro for channel update constants that need to be calculated once per frame
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS =
-		`const int opOffset = chNum * 2;` ~
-		`__m128 aLFOOutMW = __m128(channels[chNum].chCtrl & Channel.ChCtrlFlags.MWToTrem ? chCtrls[chNum].modwheel : 1.0);` ~
-		`const float auxSendAmMW = (channels[chNum].chCtrl & Channel.ChCtrlFlags.MWToAux ? chCtrls[chNum].modwheel : 1.0);` ~
-		`__m128 opCtrl0, opCtrl1, mwAuxCtrl;` ~
-		`opCtrl0[0] = operators[opOffset].opCtrl & Operator.OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : ` ~
-				`chCtrls[chNum].velocity;` ~
-		`opCtrl1[0] = operators[opOffset + 1].opCtrl & Operator.OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : ` ~
-				`chCtrls[chNum].velocity;` ~
-		`opCtrl0[1] = operators[opOffset].opCtrl & Operator.OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : ` ~
-				`chCtrls[chNum].modwheel;` ~
-		`opCtrl1[1] = operators[opOffset + 1].opCtrl & Operator.OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : ` ~
-				`chCtrls[chNum].modwheel;` ~
-		`mwAuxCtrl[0] = 1.0;` ~
-		`mwAuxCtrl[1] = 1.0;` ~
-		`mwAuxCtrl[2] = auxSendAmMW;` ~
-		`mwAuxCtrl[3] = auxSendAmMW;` ~
-		`const float lfopan = (channels[chNum].chCtrl & Channel.ChCtrlFlags.LFOPan ? 1.0 : 0);` ~
-		`const float eegpan = (channels[chNum].chCtrl & Channel.ChCtrlFlags.EEGPan ? 1.0 : 0);`
-		;
+		q{
+			const int opOffset = chNum * 2;
+			__m128 aLFOOutMW = __m128(channels[chNum].preset.chCtrl & ChCtrlFlags.MWToTrem ? 
+					chCtrls[chNum].modwheel : 1.0);
+			const float auxSendAmMW = (channels[chNum].preset.chCtrl & ChCtrlFlags.MWToAux ? 
+					chCtrls[chNum].modwheel : 1.0);
+			__m128 opCtrl0, opCtrl1, mwAuxCtrl;
+			opCtrl0[0] = operators[opOffset].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
+					chCtrls[chNum].velocity;
+			opCtrl1[0] = operators[opOffset + 1].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
+					chCtrls[chNum].velocity;
+			opCtrl0[1] = operators[opOffset].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : 
+					chCtrls[chNum].modwheel;
+			opCtrl1[1] = operators[opOffset + 1].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : 
+					chCtrls[chNum].modwheel;
+			mwAuxCtrl[0] = 1.0;
+			mwAuxCtrl[1] = 1.0;
+			mwAuxCtrl[2] = auxSendAmMW;
+			mwAuxCtrl[3] = auxSendAmMW;
+			const float lfopan = (channels[chNum].preset.chCtrl & ChCtrlFlags.LFOPan ? 1.0 : 0);
+			const float eegpan = (channels[chNum].preset.chCtrl & ChCtrlFlags.EEGPan ? 1.0 : 0);
+		};
 	///Macro for channel update constants that need to be calculated once per frame, for combined channels' second half
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS0 =
-		`__m128 opCtrl2, opCtrl3;` ~
-		`opCtrl2[0] = operators[opOffset + 16].opCtrl & Operator.OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : ` ~
-				`chCtrls[chNum].velocity;` ~
-		`opCtrl3[0] = operators[opOffset + 17].opCtrl & Operator.OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : ` ~
-				`chCtrls[chNum].velocity;` ~
-		`opCtrl2[1] = operators[opOffset + 16].opCtrl & Operator.OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : ` ~
-				`chCtrls[chNum].modwheel;` ~
-		`opCtrl3[1] = operators[opOffset + 17].opCtrl & Operator.OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : ` ~
-				`chCtrls[chNum].modwheel;` ~
-		`const float eegpan0 = (channels[chNum + 8].chCtrl & Channel.ChCtrlFlags.EEGPan ? 1.0 : 0);`
-		;
+		q{
+			__m128 opCtrl2, opCtrl3;
+			opCtrl2[0] = operators[opOffset + 16].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
+					chCtrls[chNum].velocity;
+			opCtrl3[0] = operators[opOffset + 17].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
+					chCtrls[chNum].velocity;
+			opCtrl2[1] = operators[opOffset + 16].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : 
+					chCtrls[chNum].modwheel;
+			opCtrl3[1] = operators[opOffset + 17].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : 
+					chCtrls[chNum].modwheel;
+			const float eegpan0 = (channels[chNum + 8].preset.chCtrl & ChCtrlFlags.EEGPan ? 1.0 : 0);
+		};
 	///Macro for channel update constants that need to be calculated for each cycle
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS_CYCL = 
-		`const float eegOut = channels[chNum].eeg.shp(channels[chNum].eeg.position == ADSREnvelopGenerator.Stage.Attack ? ` ~
-				`channels[chNum].shpAX : channels[chNum].shpRX);` ~
-		`__m128 eegToMast = __m128(eegOut), lfoToMast = __m128(aLFOBuf[i]);` ~
-		`eegToMast[0] = abs(eegpan - eegToMast[0]);` ~
-		`lfoToMast[0] = abs(lfopan - lfoToMast[0]);` ~
-		`opCtrl0[2] = aLFOBuf[i];` ~
-		`opCtrl1[2] = aLFOBuf[i];` ~
-		`opCtrl0[3] = eegOut;` ~
-		`opCtrl1[3] = eegOut;`
-		;
+		q{
+			const float eegOut = channels[chNum].eeg.shp(channels[chNum].eeg.position == 
+					ADSREnvelopGenerator.Stage.Attack ? channels[chNum].preset.shpAX : channels[chNum].preset.shpRX);
+			__m128 eegToMast = __m128(eegOut), lfoToMast = __m128(aLFOBuf[i]);
+			eegToMast[0] = abs(eegpan - eegToMast[0]);
+			lfoToMast[0] = abs(lfopan - lfoToMast[0]);
+			opCtrl0[2] = aLFOBuf[i];
+			opCtrl1[2] = aLFOBuf[i];
+			opCtrl0[3] = eegOut;
+			opCtrl1[3] = eegOut;
+		};
 	
 	///Macro for channel update constants that need to be calculated for each cycle for combined channels' second half
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS_CYCL0 = 
-		`const float eegOut0 = channels[chNum + 8].eeg.shp(channels[chNum + 8].eeg.position == ` ~
-				`ADSREnvelopGenerator.Stage.Attack ? channels[chNum + 8].shpAX : channels[chNum + 8].shpRX);` ~
-		`__m128 eegToMast0 = __m128(eegOut0);` ~
-		`eegToMast0[0] = abs(eegpan0 - eegToMast0[0]);` ~
-		`opCtrl2[2] = aLFOBuf[i];` ~
-		`opCtrl3[2] = aLFOBuf[i];` ~
-		`opCtrl2[3] = eegOut0;` ~
-		`opCtrl3[3] = eegOut0;`
-		;
+		q{
+			const float eegOut0 = channels[chNum + 8].eeg.shp(channels[chNum + 8].eeg.position == 
+					ADSREnvelopGenerator.Stage.Attack ? channels[chNum + 8].preset.shpAX : 
+					channels[chNum + 8].preset.shpRX);
+			__m128 eegToMast0 = __m128(eegOut0);
+			eegToMast0[0] = abs(eegpan0 - eegToMast0[0]);
+			opCtrl2[2] = aLFOBuf[i];
+			opCtrl3[2] = aLFOBuf[i];
+			opCtrl2[3] = eegOut0;
+			opCtrl3[3] = eegOut0;
+		};
 			
 	///Macro for output mixing
 	static immutable string CHNL_UPDATE_MIX =
-		"__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;" ~
-		"outlevels *= (channels[chNum].eegLevels * eegToMast) + (__m128(1.0) - (__m128(1.0) * channels[chNum].eegLevels));" ~
-		"outlevels *= (channels[chNum].aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * channels[chNum].aLFOlevels));"~
-		"_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *" ~ 
-		"		_mm_cvtepi32_ps(outSum));"
-		;
+		q{
+			__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;
+			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - (__m128(1.0) * 
+					channels[chNum].preset.eegLevels));
+			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * 
+					channels[chNum].preset.aLFOlevels));
+			_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *
+					_mm_cvtepi32_ps(outSum));
+		};
 	///Macro for output mixing in case of combo modes
 	static immutable string CHNL_UPDATE_MIX0 =
-		"__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;" ~
-		"outlevels *= (channels[chNum].eegLevels * eegToMast) + (__m128(1.0) - (__m128(1.0) * channels[chNum].eegLevels));" ~
-		"outlevels *= (channels[chNum + 8].eegLevels * eegToMast0) + (__m128(1.0) - " ~
-		" (__m128(1.0) * channels[chNum + 8].eegLevels));" ~
-		"outlevels *= (channels[chNum].aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * channels[chNum].aLFOlevels));"~
-		"_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *" ~ 
-		"		_mm_cvtepi32_ps(outSum));"
-		;
+		q{
+			__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;
+			outlevels *= (channels[chNum].eegLevels * eegToMast) + (__m128(1.0) - (__m128(1.0) * 
+					channels[chNum].eegLevels));
+			outlevels *= (channels[chNum + 8].eegLevels * eegToMast0) + (__m128(1.0) - 
+			 (__m128(1.0) * channels[chNum + 8].eegLevels));
+			outlevels *= (channels[chNum].aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * 
+					channels[chNum].aLFOlevels);
+			_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *
+					_mm_cvtepi32_ps(outSum));
+		};
 	
 
 	///Algorithm Mode 0/0 (Serial)
@@ -2176,7 +1589,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);
 			//const int outSum = operators[opOffset].output_0 + operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
-					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 		}
@@ -2252,7 +1665,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
-					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2279,7 +1692,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
-					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2359,7 +1772,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0 + 
-					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2386,7 +1799,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0 + 
-					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset].output_0 * operators[opOffset + 1].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2412,7 +1825,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
-					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2440,7 +1853,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
 					operators[opOffset + 16].output_0 + 
-					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2468,7 +1881,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
 					operators[opOffset + 17].output_0 + 
-					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2497,7 +1910,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset].output_0 +
 					operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0 + 
-					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].rmAmount)>>16);
+					((operators[opOffset + 1].output_0 * operators[opOffset + 17].output)>>16 * channels[chNum].preset.rmAmount)>>16);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();

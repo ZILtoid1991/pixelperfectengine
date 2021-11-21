@@ -128,11 +128,17 @@ public class AudioDeviceHandler {
 	public ubyte getChannels() @nogc @safe pure nothrow const {
 		return given.channels;
 	}
+	/**
+	 * Returns the buffer size in units.
+	 */
+	public int getBufferSize() @nogc @safe pure nothrow const {
+		return given.samples;
+	}
 }
 /**
  * Manages all audio modules complete with routing, MIDI2.0, etc.
  */
-public class ModuleManager : Thread {
+public class ModuleManager {
 	/**
 	 * Output buffer size in samples.
 	 *
@@ -190,7 +196,28 @@ public class ModuleManager : Thread {
 	 * May be null, if frame length is equal with output buffer length.
 	 */
 	protected float[][]		finalBuffers;
-
+	/** 
+	 * Creates an instance of a module handler.
+	 *Params:
+	 * handler = The AudioDeviceHandler that contains the data about 
+	 */
+	public this(AudioDeviceHandler handler, int bufferSize) {
+		import pixelperfectengine.audio.base.func : resetBuffer;
+		devHandler = handler;
+		this.bufferSize = bufferSize;
+		assert(handler.getBufferSize % bufferSize == 0, "`bufferSize` is not power of 2!");
+		nOfFrames = handler.getBufferSize / bufferSize;
+		finalBuffers.length = handler.getChannels();
+		for (int i ; i < finalBuffers.length ; i++) {
+			finalBuffers[i].length = handler.getBufferSize;
+			resetBuffer(finalBuffers[i]);
+		}
+		buffers.length = handler.getChannels();
+		for (int i ; i < buffers.length ; i++) {
+			buffers[i].length = bufferSize;
+			resetBuffer(buffers[i]);
+		}
+	}
 	/**
 	 * Puts the output to the final destination.
 	 *
@@ -242,8 +269,15 @@ public class ModuleManager : Thread {
 	}
 	/**
 	 * Adds a plugin to the list.
+	 *Params: 
+	 * md = The audio module to be added. Automatic set-up is done upon addition.
+	 * inBuffs = list of the audio inputs to be added, or null if none.
+	 * inCfg = list of audio input IDs to be used. Must be matched with `inBuffs`
+	 * outBuffs - list of the audio outputs to be added, of null if none.
+	 * outCfg = list of audio output IDs to be used. Must be matched with `outBuffs`
 	 */
-	public void addModule(AudioModule md, size_t[] inBuffs, size_t[] outBuffs) nothrow {
+	public void addModule(AudioModule md, size_t[] inBuffs, ubyte[] inCfg, size_t[] outBuffs, ubyte[] outCfg) nothrow {
+		md.moduleSetup(inCfg, outCfg, devHandler.getSamplingFrequency, bufferSize, this);
 		moduleList ~= md;
 		float*[] buffList0, buffList1;
 		buffList0.length = inBuffs.length;
@@ -257,6 +291,7 @@ public class ModuleManager : Thread {
 		inBufferList ~= buffList0;
 		outBufferList ~= buffList1;
 	}
+	
 	/**
 	 * Locks the manager and all audio modules within it to avoid interference from GC.
 	 *
@@ -283,9 +318,18 @@ static CallBackDeleg audioCallbackDeleg;
  * A function that handles callbacks from SDL2's audio system.
  */
 extern(C) void callbacksFromSDL(void* userdata, ubyte* stream, int len) @nogc nothrow {
-	audioCallbackDeleg(userdata, stream, len);
+	if (audioCallbackDeleg !is null)
+		audioCallbackDeleg(userdata, stream, len);
 }
+/** 
+ * Sets up the module manager to be used with SDL2's audio output.
+ * Params:
+ *   mm = The target module manager.
+ */
+void setupModuleManager(ModuleManager mm) {
+	audioCallbackDeleg = &mm.put;
 
+}
 /**
  * Thrown on audio initialization errors.
  */

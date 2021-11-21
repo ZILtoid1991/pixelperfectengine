@@ -314,3 +314,24 @@ alias ADPCMStream = NibbleArray;
 		result.a2 = 1 - alpha;
 		return result;
 	}
+	/** 
+	 * Converts MIDI 1.0 14 bit control values to MIDI 2.0 32 bit. Might not work the best with certain values.
+	 * Params:
+	 *   msb = most significant 7 bits
+	 *   lsb = least significant 7 bits
+	 * Returns: The 32 bit control value.
+	 */
+	public uint convertM1CtrlValToM2(ubyte msb, ubyte lsb) @safe {
+		const uint addedTotal = msb<<7 | lsb;
+		return cast(uint)(uint.max * (cast(real)(addedTotal) / (ushort.max>>2)));
+	}
+	/** 
+	 * Sets an array (buffer) to all zeros.
+	 * Params:
+	 *   targetBuffer = The buffer to be reset.
+	 */
+	public void resetBuffer(T)(ref T[] targetBuffer) @nogc @safe pure nothrow {
+		for (size_t i ; i < targetBuffer.length ; i++) {
+			targetBuffer[i] = 0;
+		}
+	}

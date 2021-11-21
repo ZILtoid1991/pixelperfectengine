@@ -23,6 +23,9 @@ import pixelperfectengine.system.config;
 import pixelperfectengine.system.common;
 
 import pixelperfectengine.audio.base.handler;
+import pixelperfectengine.audio.base.modulebase;
+import pixelperfectengine.audio.modules.qm816;
+
 
 /** 
  * Audio subsystem test.
@@ -41,6 +44,7 @@ int main(string[] args) {
 public class TestAudio : InputListener, SystemEventListener {
 	AudioDeviceHandler adh;
 	ModuleManager	mm;
+	QM816			fmsynth;
 	OutputScreen	output;
 	InputHandler	ih;
 	Raster			r;
@@ -78,6 +82,7 @@ public class TestAudio : InputListener, SystemEventListener {
 		
 		{
 			import pixelperfectengine.system.input.scancode;
+			ih.addBinding(BindingCode(ScanCode.GRAVE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("grave"));
 			ih.addBinding(BindingCode(ScanCode.n1, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num1"));
 			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num2"));
 			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num3"));
@@ -88,7 +93,22 @@ public class TestAudio : InputListener, SystemEventListener {
 			ih.addBinding(BindingCode(ScanCode.n8, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num8"));
 			ih.addBinding(BindingCode(ScanCode.n9, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num9"));
 			ih.addBinding(BindingCode(ScanCode.n0, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num0"));
-			ih.addBinding(BindingCode(ScanCode.GRAVE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("grave"));
+			ih.addBinding(BindingCode(ScanCode.MINUS, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("minus"));
+			ih.addBinding(BindingCode(ScanCode.EQUALS, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("equals"));
+			ih.addBinding(BindingCode(ScanCode.Q, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("q"));
+			ih.addBinding(BindingCode(ScanCode.W, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("w"));
+			ih.addBinding(BindingCode(ScanCode.E, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("e"));
+			ih.addBinding(BindingCode(ScanCode.R, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("r"));
+			ih.addBinding(BindingCode(ScanCode.T, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("t"));
+			ih.addBinding(BindingCode(ScanCode.Y, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("y"));
+			ih.addBinding(BindingCode(ScanCode.U, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("u"));
+			ih.addBinding(BindingCode(ScanCode.I, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("i"));
+			ih.addBinding(BindingCode(ScanCode.O, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("o"));
+			ih.addBinding(BindingCode(ScanCode.P, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("p"));
+			ih.addBinding(BindingCode(ScanCode.LEFTBRACKET, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("["));
+			ih.addBinding(BindingCode(ScanCode.RIGHTBRACKET, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("]"));
+			//ih.addBinding(BindingCode(ScanCode.GRAVE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("grave"));
+
 		}
 
 		adh = new AudioDeviceHandler(48_000, 2, 1024);
@@ -145,9 +165,14 @@ public class TestAudio : InputListener, SystemEventListener {
 			textOut.writeTextToMap(31, 0, 0, to!wstring(adh.getChannels));
 			textOut.writeTextToMap(35, 0, 0, "Bits:");
 			textOut.writeTextToMap(40, 0, 0, to!wstring(adh.getFormat & 0xFF));
+			textOut.writeTextToMap(0, 1, 0, "Synth:");
+			textOut.writeTextToMap(7, 1, 0, "QM816");
 		} catch (AudioInitException e) {
 			textOut.writeTextToMap(14, 0, 0, to!wstring(e.msg));
 		}
+		mm = new ModuleManager(adh, 256);
+		fmsynth = new QM816();
+		mm.addModule(fmsynth, null, null, [0,1], [0,1]);
 	}
 
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {

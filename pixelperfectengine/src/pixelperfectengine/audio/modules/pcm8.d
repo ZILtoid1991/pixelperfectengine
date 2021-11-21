@@ -142,8 +142,7 @@ public class PCM8 : AudioModule {
 	protected Oscillator[2]	lfo;				///Low frequency oscillators to modify values in real-time
 	protected float[][2]	lfoOut;				///LFO output buffers
 
-	public this(ModuleManager handler) @safe nothrow {
-		this.handler = handler;
+	public this() @safe nothrow {
 		info.nOfAudioInput = 0;
 		info.nOfAudioOutput = 4;
 		info.outputChNames = ["mainL", "mainR", "auxSendA", "auxSendB"];
@@ -157,13 +156,15 @@ public class PCM8 : AudioModule {
 	 *
 	 * Can be overridden in child classes to allow resets.
 	 */
-	public override void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize) @safe {
+	public override void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize, 
+			ModuleManager handler) @safe nothrow {
 		enabledInputs = StreamIDSet(inputs);
 		enabledOutputs = StreamIDSet(outputs);
 		this.sampleRate = sampleRate;
 		this.bufferSize = bufferSize;
 		lfoOut[0].length = bufferSize;
 		lfoOut[1].length = bufferSize;
+		this.handler = handler;
 	}
 	/**
 	 * MIDI 2.0 data received here.

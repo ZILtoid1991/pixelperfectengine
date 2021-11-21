@@ -59,11 +59,13 @@ public abstract class AudioModule {
 	 *
 	 * Can be overridden in child classes to allow resets.
 	 */
-	public void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize) @safe {
+	public void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize, ModuleManager handler) 
+			@safe nothrow {
 		enabledInputs = StreamIDSet(inputs);
 		enabledOutputs = StreamIDSet(outputs);
 		this.sampleRate = sampleRate;
 		this.bufferSize = bufferSize;
+		this.handler = handler;
 	}
 	/**
 	 * MIDI 2.0 data received here.
