@@ -34,34 +34,34 @@ compression has diminishing returns, often resulting in bigger filesizes and slo
 The first four bytes are compression algorithm identifiers. `ZLIB` are used for ZLib, and `ZSTD` are used for 
 Zstandard. The rest is the compressed SDLang data.
 
-# Metadata
+# 'Metadata'
 
 * Has no namespace
 * Position restraint: in root tag, preferrably the first tag in the file if the file doesn't start with a comment
 
 Contains various metadata for the map.
 
-### Version
+### 'Version'
 
 `Version 1 0`
 
 Contains the format version information. `value[0]` is the major version, `value[1]` is the minor version.
 
-### ExtType
+### 'ExtType'
 
 `ExtType "nameOfYourGame" 1 1 7`
 
 Identifies what kind of extensions this file has. `value[0]` is universally a string, the other values are not bound,
 can be used for eg. version information of the given extension.
 
-### Software
+### 'Software'
 
 `Software "PixelPerfectEditor" 0 9 4`
 
 Identifies the last software that was used to edit this file. `value[0]` is the name of the editor, values 1 through 3
 are version numbers (major, minor, and revision).
 
-### Resolution
+### 'Resolution'
 
 `Resolution 424 240`
 
@@ -85,7 +85,7 @@ should be absent.
 
 Contains data about the layers. First value is always the layer name, second value is always the priority.
 
-## Tile
+## 'Tile'
 
 Contains data related to tile layers.
 
@@ -98,14 +98,28 @@ restricted to internal use.
 `value[0]` is the name of the layer, `value[2]` and `value[3]` are horizontal and vertical tile sizes, `value[4]` and 
 `value[5]` are horizontal and vertical map sizes
 
-### RenderingMode
+## 'TransformableTile'
 
-`RenderingMode "AlphaBlending"`
+`Layer:TransformableTile "Background 0" 0 32 32 256 256`
 
-Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
-"Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
+The same as tile, but can be transformed. Has power of two limitations on tile and map sizes.
 
-## Sprite
+### 'TransformParams'
+
+`TransformParams 1.0 0.0 0.0 1.0 0 0`
+
+or
+
+`TransformParams 256 0 0 256 0 0`
+
+Defines transform parameters for the whole layer. Parameters in order are: A, B, C, D, x₀, y₀.
+
+First four can be either floating point or integer. See engine reference on Transformable tile layers for more info on
+what those values do.
+
+Per-scanline modification of the layer must be done in code.
+
+## 'Sprite'
 
 Contains data related to sprite layers.
 
@@ -115,12 +129,20 @@ restricted to internal use.
 
 `Layer:Sprite "Playfield A" 1`
 
-### RenderingMode
+## Common subtags
+
+### 'RenderingMode'
 
 `RenderingMode "AlphaBlending"`
 
-Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", 
-"Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".
+Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
+"Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
+
+## Reserved tags
+
+* `EffectsLayer`
+* `VectorizedTileLayer`
+* `TransformableSpriteLayer`
 
 # Namespace 'Embed'
 
@@ -129,7 +151,7 @@ Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Bl
 Specifies data that is embedded within this file. These can be: Mapping data, names and IDs of individual tiles, 
 scripting files, etc.
 
-## TileData
+## 'TileData'
 
 `Embed:TileData`
 
@@ -145,20 +167,20 @@ Explanations for values in order:
 2) Determines which tile is requested from the sheet in left-to-right top-to-bottom order.
 3) The name of the tile.
 
-## MapData
+## 'MapData'
 
 `Embed:MapData []`
 
 Stores embedded mapdata encoded in BASE64.
 
-## Palette
+## 'Palette'
 
 `Embed:Palette [] offset=768`
 
 Stores palette embedded as BASE64 code. Can have the attribute `offset`, which determines where the palette should be 
 loaded in the raster. Should be a root tag.
 
-## Script
+## 'Script'
 
 `Embed:Script [] lang="dbasic"`
 
@@ -180,13 +202,13 @@ Defines external file sources for the map.
 
 Tags in the `File` namespace can have the `dataPakSrc` attribute, which specifies the datapak file the file is in.
 
-## MapData
+## 'MapData'
 
 `File:MapData "64.map"`
 
 Determines where the map file of the layer can be found. Must be part of a `Layer:Tile` tag.
 
-## Palette
+## 'Palette'
 
 `File:Palette "../assets/sci-fi-tileset.tga" palShift=5 offset=32`
 
@@ -194,7 +216,7 @@ Specifies the bitmap file that contains a palette needs to be loaded. Attribute 
 palette to avoid overwriting a previously loaded palette that comes after it, `offset` sets where the palette should be
 stored on the raster.
 
-## TileSource
+## 'TileSource'
 
 `File:TileSource "../assets/sci-fi-tileset.tga" palShift=5`
 
@@ -202,7 +224,7 @@ Specifies the bitmap file that contains the tiles. Must be part of a `Layer:Tile
 tag if the file doesn't have some extension to contain the tileinfo. Attribute `palShift` sets the amount of palette 
 shift for all imports from that file.
 
-## SpriteSource
+## 'SpriteSource'
 
 `File:SpriteSource 32 "../assets/dlangman.tga" name="dlangman" horizOffset=0 vertOffset=0 width=32 height=32` or 
 `File:SpriteSource 32 "../assets/sprites.tga" name="dlangman" sprite="dlangman"` if file has sprite sheet or tile 
@@ -213,14 +235,14 @@ attribute names the sprite. If the file doesn't have sprite sheet or tile extens
 `horizOffset`, `vertOffset`, `width`, and `height` can specify such things; otherwise `sprite` attribute can be used 
 with a name. 
 
-## SpriteSheet
+## 'SpriteSheet'
 
 `File:SpriteSheet "../assets/sprites.tga"`
 
 Imports a whole spritesheet. If the target file doesn't have sprite or tile extensions, then this tag must have child
 tag(s) to describe the sprites, also can be used to override the file's own extension.
 
-### SheetData
+### 'SheetData'
 
 `SheetData id=56 name="Spritesheet"`
 
@@ -242,7 +264,7 @@ Value notation:
 Attributes `displayOffsetX` and `displayOffsetY` set the offset of the sprites when being displayed. `name` sets the 
 name of the sprite, otherwise a generated name sill be used in the editor.
 
-## Script
+## 'Script'
 
 `File:Script "../script/something" lang="qscript"`
 
@@ -261,7 +283,7 @@ value is usually the identifier of source.
 Ancilliary tags are currently handled differently than in layers, meaning that more complex tag structure can be used. 
 Processing of those should be done by the end user.
 
-## Box
+## 'Box'
 
 `Object:Box "nameOfObject" 15 22 22 32 30`
 
@@ -277,7 +299,7 @@ Value notation:
 5) Right,
 6) and Bottom coordinates of the object.
 
-## Polyline
+## 'Polyline'
 
 `Object:Polyline "nameOfObject" 9`
 
@@ -290,28 +312,42 @@ Value notation:
 
 This tag must have at least two point-defining child tags to define the object, in drawing order.
 
-### Begin
+### 'Begin'
 
 `Begin 2534 365`
 
 The first point must always be a `Begin` tag. Values are x and y coordinates respectively. Should only have point-
 related extra data tags.
 
-### Segment
+### 'Segment'
 
 `Segment 8646 3214`
 
 All other points are named as `Segment`. Values are x and y coordinates respectively. Can have both point- and line-
 related extra data tags.
 
-### Close
+Standardized segment-related extra tags:
+
+#### 'Bezier'
+
+`Bezier 864 213`
+
+or
+
+`Bezier0 87 84; Bezier1 84 87`
+
+`Bezier` defines 3-point a bezier curve, and the `Bezier0` and `Bezier1` pairs define a 4-point bezier curve.
+
+Values are x and y coordinates.
+
+### 'Close'
 
 `Close`
 
 An optional final segment that is ensured to be connected to the first segment, or closes the polyline object. Can have
 both point- and line-related extra data tags.
 
-## Sprite
+## 'Sprite'
 
 `Object:Sprite "playerObject" 0 0 200 200 scaleHoriz=1024 scaleVert=1024 masterAlpha=250`
 
@@ -328,9 +364,9 @@ Value notation:
 `scaleHoriz` and `scaleVert` sets the horizontal and vertical scaling values with 1024 (1.0) being the default one. 
 `masterAlpha` sets the master alpha value for rendering to the raster.
 
-### RenderingMode
+### 'RenderingMode'
 
 `RenderingMode "AlphaBlending"`
 
-Sets the rendering mode of the sprite. Currently accepted values are: "Copy", "Blitter", "AlphaBlending", "Add", 
-"Multiply", "Subtract", "Diff", "Screen", "AND", "OR", "XOR".
+Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
+"Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
