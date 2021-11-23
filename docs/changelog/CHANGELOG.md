@@ -1,5 +1,9 @@
 # Current
 
+
+
+# 0.10.0-beta3
+
 ## Moving PixelPerfectEditor to a separate repository
 
 The tilemap editor was moved to a separate project/repository, and will be updated on a different rate than the engine.

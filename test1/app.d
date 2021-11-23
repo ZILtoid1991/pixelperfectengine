@@ -8,6 +8,8 @@ import std.random;
 
 import bindbc.sdl;
 
+import midi2.types.structs;
+import midi2.types.enums;
 
 import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
@@ -50,6 +52,7 @@ public class TestAudio : InputListener, SystemEventListener {
 	Raster			r;
 	TileLayer		textOut;
 	uint			state;
+	ubyte			noteBase = 60;
 	enum StateFlags {
 		isRunning		=	1<<0,
 		driverInitialized=	1<<1,
@@ -252,6 +255,75 @@ public class TestAudio : InputListener, SystemEventListener {
 						break;
 					default:
 						break;
+				}
+			} else {
+				UMP midipacket;
+				switch (id) {
+					case hashCalc("q"):		//C
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("num2"):	//C#
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 1, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("w"):		//D
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 2, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("num3"):	//D#
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 3, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("e"):		//E
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 4, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("r"):		//F
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 5, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("num5"):	//F#
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 6, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("t"):		//G
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 7, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("num6"):	//G#
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 8, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("y"):		//A
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 9, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("num7"):	//A#
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 10, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("u"):		//B
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 11, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("i"):		//C+
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 12, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("num9"):	//C#+
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 13, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("o"):		//D+
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 14, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("num0"):	//D#+
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 15, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("p"):		//E+
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 16, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("["):		//F+
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 17, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("equals")://F#+
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 18, MIDI2_0NoteAttrTyp.None);
+						break;
+					case hashCalc("]"):		//G+
+						midipacket = UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.NoteOn, 0, noteBase + 19, MIDI2_0NoteAttrTyp.None);
+						break;
+					default:
+						break;
+				}
+				if (midipacket.msgType == MessageType.MIDI2) {
+					fmsynth.midiReceive([midipacket.base, uint.max, 0, 0],0);
 				}
 			}
 		}
