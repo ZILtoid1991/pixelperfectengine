@@ -53,7 +53,7 @@ public class AudioDeviceHandler {
 		req.format = SDL_AudioFormat.AUDIO_F32;
 		req.channels = channels;
 		req.samples = buffSize;
-		req.callback = &callbacksFromSDL;
+		//req.callback = &callbacksFromSDL;
 	}
 	///Destructor
 	~this() {
@@ -110,6 +110,12 @@ public class AudioDeviceHandler {
 		}
 		return result;
 	}
+	/** 
+	 * Returns the ID of the opened audio device.
+	 */
+	public SDL_AudioDeviceID getAudioDeviceID() @safe @nogc pure nothrow const {
+		return openedDevice;
+	}
 	/**
 	 * Returns the available sampling frequency.
 	 */
@@ -138,7 +144,7 @@ public class AudioDeviceHandler {
 /**
  * Manages all audio modules complete with routing, MIDI2.0, etc.
  */
-public class ModuleManager {
+public class ModuleManager : Thread {
 	/**
 	 * Output buffer size in samples.
 	 *
@@ -191,11 +197,11 @@ public class ModuleManager {
 	 */
 	protected float[][]		buffers;
 	/**
-	 * Final buffers.
+	 * Final output buffer.
 	 *
-	 * May be null, if frame length is equal with output buffer length.
+	 * Words are in LRLRLR... order, or similar, depending on number of channels.
 	 */
-	protected float[][]		finalBuffers;
+	protected float[]		finalBuffer;
 	/** 
 	 * Creates an instance of a module handler.
 	 *Params:
@@ -207,45 +213,41 @@ public class ModuleManager {
 		this.bufferSize = bufferSize;
 		assert(handler.getBufferSize % bufferSize == 0, "`bufferSize` is not power of 2!");
 		nOfFrames = handler.getBufferSize / bufferSize;
-		finalBuffers.length = handler.getChannels();
-		for (int i ; i < finalBuffers.length ; i++) {
-			finalBuffers[i].length = handler.getBufferSize;
-			resetBuffer(finalBuffers[i]);
-		}
+		finalBuffer.length = handler.getChannels() * handler.getBufferSize();
+		resetBuffer(finalBuffer);
+		
 		buffers.length = handler.getChannels();
 		for (int i ; i < buffers.length ; i++) {
 			buffers[i].length = bufferSize;
 			resetBuffer(buffers[i]);
 		}
+		super(&render);
 	}
 	/**
 	 * Puts the output to the final destination.
-	 *
-	 * Currently only stereo output is supported.
 	 */
-	public void put(void* userdata, ubyte* stream, int len) @nogc nothrow {
-		import pixelperfectengine.audio.base.func : interleave;
+	public void render() @nogc nothrow {
 		while (currFrame < nOfFrames)
 			renderFrame();
-		if (finalBuffers.length == 2) {
-			interleave(len, finalBuffers[0].ptr, finalBuffers[1].ptr, cast(float*)stream);
-		}
 		currFrame = 0;
+		SDL_QueueAudio(devHandler.getAudioDeviceID(), cast(const void*)finalBuffer.ptr, cast(uint)(finalBuffer.length * 
+				float.sizeof));
 	}
 	/**
 	 * Renders a single frame of audio.
 	 */
 	public void renderFrame() @nogc nothrow {
-		import core.stdc.string : memcpy;
+		import pixelperfectengine.audio.base.func : interleave, resetBuffer;
 		if (currFrame >= nOfFrames)
 			return;
+		foreach (ref key; buffers) {
+			resetBuffer(key);
+		}
 		foreach (size_t i, AudioModule am; moduleList) {
 			am.renderFrame(inBufferList[i], outBufferList[i]);
 		}
 		const size_t offset = currFrame * bufferSize;
-		for (int i ; i < devHandler.getChannels() ; i++) {
-			memcpy(finalBuffers[i].ptr + offset, buffers[i].ptr, bufferSize * float.sizeof);
-		}
+		interleave(bufferSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
 		currFrame++;
 	}
 	/**
@@ -310,6 +312,7 @@ public class ModuleManager {
 
 	}
 }
+/+
 alias CallBackDeleg = void delegate(void* userdata, ubyte* stream, int len) @nogc nothrow;
 ///Privides a way for delegates to be called from SDL2.
 ///Must be set up before audio device initialization.
@@ -320,16 +323,16 @@ static CallBackDeleg audioCallbackDeleg;
 extern(C) void callbacksFromSDL(void* userdata, ubyte* stream, int len) @nogc nothrow {
 	if (audioCallbackDeleg !is null)
 		audioCallbackDeleg(userdata, stream, len);
-}
+}+/
 /** 
  * Sets up the module manager to be used with SDL2's audio output.
  * Params:
  *   mm = The target module manager.
  */
-void setupModuleManager(ModuleManager mm) {
+/+void setupModuleManager(ModuleManager mm) {
 	audioCallbackDeleg = &mm.put;
 
-}
+}+/
 /**
  * Thrown on audio initialization errors.
  */

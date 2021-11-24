@@ -670,6 +670,20 @@ public class QM816 : AudioModule {
 		} catch (Exception e) {
 
 		}
+		//Reset filters
+		for (int i ; i < 4 ; i++) {
+			BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
+			filterVals[0][i] = vals.a0;
+			filterVals[1][i] = vals.a1;
+			filterVals[2][i] = vals.a2;
+			filterVals[3][i] = vals.b0;
+			filterVals[4][i] = vals.b1;
+			filterVals[5][i] = vals.b2;
+			filterVals[6][i] = 0;
+			filterVals[7][i] = 0;
+			filterVals[8][i] = 0;
+			filterVals[9][i] = 0;
+		}
 	}
 	/**
 	 * Sets the module up.
