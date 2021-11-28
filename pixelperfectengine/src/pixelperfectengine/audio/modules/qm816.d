@@ -419,11 +419,11 @@ public class QM816 : AudioModule {
 	*/
 	public struct ChControllers {
 		///Modulation wheel parameter, normalized between 0.0 and 1.0
-		float			modwheel;
+		float			modwheel	=	0;
 		///Velocity parameter, normalized between 0.0 and 1.0
-		float			velocity;
+		float			velocity	=	0;
 		///Pitch bend parameter, with the amount of pitch shifting in semitones + fractions
-		float			pitchBend;
+		float			pitchBend	=	0;
 		///The note that is currently being played
 		ubyte			note;
 	}
@@ -670,19 +670,9 @@ public class QM816 : AudioModule {
 		} catch (Exception e) {
 
 		}
-		//Reset filters
-		for (int i ; i < 4 ; i++) {
-			BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
-			filterVals[0][i] = vals.a0;
-			filterVals[1][i] = vals.a1;
-			filterVals[2][i] = vals.a2;
-			filterVals[3][i] = vals.b0;
-			filterVals[4][i] = vals.b1;
-			filterVals[5][i] = vals.b2;
-			filterVals[6][i] = 0;
-			filterVals[7][i] = 0;
-			filterVals[8][i] = 0;
-			filterVals[9][i] = 0;
+		//Reset delegates
+		for (int i ; i < chDeleg.length ; i++) {
+			chDeleg[i] = &updateChannelM00;
 		}
 	}
 	/**
@@ -704,6 +694,28 @@ public class QM816 : AudioModule {
 		resetBuffer(dummyBuf);
 		aLFOBuf.length = bufferSize;
 		resetBuffer(aLFOBuf);
+		//Reset filters
+		for (int i ; i < 4 ; i++) {
+			BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
+			filterVals[0][i] = vals.a0;
+			filterVals[1][i] = vals.a1;
+			filterVals[2][i] = vals.a2;
+			filterVals[3][i] = vals.b0;
+			filterVals[4][i] = vals.b1;
+			filterVals[5][i] = vals.b2;
+			filterVals[6][i] = 0;
+			filterVals[7][i] = 0;
+			filterVals[8][i] = 0;
+			filterVals[9][i] = 0;
+		}
+		//Reset operator EGs
+		for (int i ; i < operators.length ; i++) {
+			operators[i].resetEG(sampleRate);
+		}
+		//Reset channel EGs
+		for (int i ; i < channels.length ; i++) {
+			channels[i].resetEEG(sampleRate);
+		}
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
@@ -1450,7 +1462,7 @@ public class QM816 : AudioModule {
 		const __m128 b0_a0 = filterVals[3] / filterVals[0], b1_a0 = filterVals[4] / filterVals[0], 
 				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];
 		for (int i ; i < bufferSize ; i++) {
-			__m128 input0 = _mm_load_ps(initBuffers.ptr + i);
+			__m128 input0 = _mm_load_ps(initBuffers.ptr + (i * 4));
 			input0 *= __m128(mixdownVal);
 			input0 = _mm_max_ps(input0, __m128(-1.0));
 			input0 = _mm_min_ps(input0, __m128(1.0));
@@ -1584,6 +1596,7 @@ public class QM816 : AudioModule {
 	protected void updateChannelM00(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		for (size_t i ; i < length ; i++) {
+			channels[chNum].eeg.advance();
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			updateOperator(operators[opOffset], opCtrl0);
 			operators[opOffset + 1].input = operators[opOffset].output_0;
@@ -1591,7 +1604,6 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
-			channels[chNum].eeg.advance();
 		}
 	}
 	///Algorithm Mode0/1 (Parallel)

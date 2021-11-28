@@ -39,7 +39,7 @@ public struct ADSREnvelopGenerator {
 	public double		releaseRate = 1.0;	///Sets how long the release phase will last (less = longer)
 	
 	//mostly internal status values
-	protected double	counter;		///The current position of the counter + unshaped output
+	protected double	counter	=	0;	///The current position of the counter + unshaped output
 	protected ubyte		currStage;		///The current stage of the envelop generator
 	protected bool		_keyState;		///If key is on, then it's set to true
 	protected bool		_isRunning;		///If set, then the envelop is running

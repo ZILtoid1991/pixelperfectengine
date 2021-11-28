@@ -6,7 +6,8 @@ module pixelperfectengine.audio.base.handler;
  * Pixel Perfect Engine, audio.base.handler module.
  */
 
-import core.thread.osthread;
+import core.thread;
+import core.time;
 
 import std.conv : to;
 import std.string : fromStringz;
@@ -15,9 +16,11 @@ import std.bitmanip : bitfields;
 import pixelperfectengine.system.exc;
 import pixelperfectengine.audio.base.modulebase;
 
-import bindbc.sdl.bind.sdlaudio;
+/+import bindbc.sdl.bind.sdlaudio;
 import bindbc.sdl.bind.sdlerror : SDL_GetError;
-import bindbc.sdl.bind.sdl : SDL_Init, SDL_INIT_AUDIO;
+import bindbc.sdl.bind.sdl : SDL_Init, SDL_INIT_AUDIO;+/
+
+import soundio;
 
 /**
  * Manages and initializes audio devices.
@@ -25,56 +28,48 @@ import bindbc.sdl.bind.sdl : SDL_Init, SDL_INIT_AUDIO;
  * Important: Only one instance should be made.
  */
 public class AudioDeviceHandler {
-	protected const(char)*[]		devices;		///Names of the devices
-	protected const(char)*[]		drivers;		///Names of the drivers
-	protected SDL_AudioDeviceID		openedDevice;	///The ID of the opened audio device
-	protected SDL_AudioSpec			req;			///Requested audio specs
-	protected SDL_AudioSpec			given;			///Given audio specs
+	protected SoundIoDevice*[]		outDevices;		///Contains the names of the output devices
+	protected SoundIo*				context;		///Context for libsoundio
+	protected SoundIoDevice*		openedDevice;	///The device that is being used for audio input/output
+	SoundIoOutStream*				outStream;		///The opened output stream.
+	protected int					channelLayout;	///Requested channel layout
+	protected int					slmpFreq;		///Requested/given sampling frequency
+	protected int					frameSize;		///Requested/given buffer base size / frame length (in samples)
+	protected int					nOfFrames;		///Requested/given number of frames before they get sent to the output
 	/** 
 	 * Creates an instance, and detects all drivers.
-	 *
-	 * slmpFreq: Sampling frequency
+	 *Params: 
+	 * slmpFreq: Requested sampling frequency. If not available, a nearby will be used instead.
 	 * channels: Number of channels
 	 * buffSize: The size of the buffer in samples
 	 *
 	 * Throws an AudioInitException if audio is failed to be initialized.
 	 */
-	public this(int slmpFreq, ubyte channels, ushort buffSize) {
-		SDL_Init(SDL_INIT_AUDIO);
-		const int nOfAudioDrivers = SDL_GetNumAudioDrivers();
-		//deviceNames.length = SDL_GetNumAudioDevices(0);
-		if (nOfAudioDrivers > 0) {
-			drivers.reserve(nOfAudioDrivers);
-			for (int i ; i < nOfAudioDrivers ; i++) {
-				drivers ~= SDL_GetAudioDriver(i);
-			}
-		} else throw new AudioInitException("No audio drivers were found on this system!");
-		req.freq = slmpFreq;
-		req.format = SDL_AudioFormat.AUDIO_F32;
-		req.channels = channels;
-		req.samples = buffSize;
+	public this(int channelLayout, int slmpFreq, int frameSize, int nOfFrames) {
+		context = soundio_create();
+		if (!context) throw new AudioInitException("No enough memory to initialize audio!", SoundIoError.NoMem);
+		this.channelLayout = channelLayout;
+		this.slmpFreq = slmpFreq;
+		this.frameSize = frameSize;
+		this.nOfFrames = nOfFrames;
 		//req.callback = &callbacksFromSDL;
 	}
 	///Destructor
 	~this() {
-		SDL_AudioQuit();
+		soundio_destroy(context);
 	}
 	/**
 	 * Initializes an audio driver by ID.
 	 *
 	 * Throws an AudioInitException if audio failed to be initialized.
 	 */
-	public void initAudioDriver(int id) {
-		if (id >= drivers.length) throw new AudioInitException("Audio driver not found!");
-		const int audioStatusCode = SDL_AudioInit(id >= 0 ? drivers[id] : null);
-		if (audioStatusCode) throw new AudioInitException("Audio driver failed to be initialized. Error code: " ~ 
-				to!string(audioStatusCode) ~ " ; SDL Error message: " ~ fromStringz(SDL_GetError()).idup);
-		const int nOfAudioDevices = SDL_GetNumAudioDevices(0);
-		if (nOfAudioDevices > 0) {
-			devices.reserve(nOfAudioDevices);
-			for (int i ; i < nOfAudioDevices ; i++) {
-				devices ~= SDL_GetAudioDeviceName(i, 0);
-			}
+	public void initAudioDriver(SoundIoBackend backend) {
+		int error = soundio_connect_backend(context, backend);
+		if (error) throw new AudioInitException("Could not connect to audio backend!", cast(SoundIoError)error);
+
+		outDevices.length = soundio_output_device_count(context);
+		for (int i ; i < outDevices.length ; i++) {
+			outDevices[i] = soundio_get_output_device(context, i);
 		}
 	}
 	/**
@@ -83,30 +78,26 @@ public class AudioDeviceHandler {
 	 * Throws an AudioInitException if audio failed to be initialized
 	 */
 	public void initAudioDevice(int id) {
-		//if (id >= devices.length) throw new AudioInitException("Audio device not found");
-		openedDevice = SDL_OpenAudioDevice(id >= 0 ? devices[id] : null, 0, &req, &given,  SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
-		if (openedDevice == 0) throw new AudioInitException("Audio device couldn't be opened. Error code: " ~ 
-				to!string(openedDevice) ~ " ; SDL Error message: " ~ fromStringz(SDL_GetError()).idup);
-	}
-	/**
-	 * Returns an array with the names of the available audio drivers.
-	 */
-	public string[] getDrivers() @trusted pure nothrow const {
-		string[] result;
-		result.reserve(drivers.length);
-		for (int i ; i < drivers.length ; i++) {
-			result ~= fromStringz(drivers[i]).idup;
-		}
-		return result;
+		if (id = -1) id = soundio_default_output_device_index(context);
+		if (soundio_device_supports_format(outDevices[id], SoundIoFormatFloat32NE) && 
+				soundio_device_supports_layout(outDevices[id]), soundio_channel_layout_get_builtin(channelLayout)) {
+			if (!soundio_device_supports_sample_rate(outDevices[id], slmpFreq)) 
+				slmpFreq = soundio_device_nearest_sample_rate(outDevices[id], slmpFreq);
+			outStream = soundio_outstream_create(outDevices[id]);
+			outStream.sample_rate = slmpFreq;
+			outStream.layout = soundio_channel_layout_get_builtin(channelLayout);
+			
+		} else throw new AudioInitException("Audio format not supported!");
 	}
 	/**
 	 * Return an array with the names of the available audio devices.
 	 */
 	public string[] getDevices() @trusted pure nothrow const {
 		string[] result;
-		result.reserve(devices.length);
-		for (int i ; i < devices.length ; i++) {
-			result ~= fromStringz(devices[i]).idup;
+		result.length = outDevices.length;
+		for (int i ; i < outDevices.length ; i++) {
+			if (outDevices[i])
+				result[i] = fromStringz(outDevices[i].name).idup;
 		}
 		return result;
 	}
@@ -120,51 +111,40 @@ public class AudioDeviceHandler {
 	 * Returns the available sampling frequency.
 	 */
 	public int getSamplingFrequency() @nogc @safe pure nothrow const {
-		return given.freq;
-	}
-	/**
-	 * Returns the available format.
-	 */
-	public SDL_AudioFormat getFormat() @nogc @safe pure nothrow const {
-		return given.format;
+		return slmpFreq;
 	}
 	/**
 	 * Returns the number of audio channels.
 	 */
-	public ubyte getChannels() @nogc @safe pure nothrow const {
+	public int getChannels() @nogc @safe pure nothrow const {
 		return given.channels;
 	}
 	/**
 	 * Returns the buffer size in units.
 	 */
-	public int getBufferSize() @nogc @safe pure nothrow const {
-		return given.samples;
+	public size_t getBufferSize() @nogc @safe pure nothrow const {
+		return frameSize * nOfFrames;
 	}
 }
 /**
  * Manages all audio modules complete with routing, MIDI2.0, etc.
  */
-public class ModuleManager : Thread {
-	/**
-	 * Output buffer size in samples.
-	 *
-	 * Must be set upon initialization.
+public class ModuleManager {
+	protected int			bufferSize;		///Rendering buffer size in samples, also the length of a single frame.
+	protected int			nOfFrames;		///Number of maximum frames that can be put into the output buffer.
+	protected int			currFrame;		///Current audio frame.
+	protected uint			statusFlags;	///Status flags of the module manager.
+	protected TickDuration	timeStamp;		///Timestamp that is used for scheduling the audio thread.
+	protected const TickDuration	timeDelta;///Amount of time that the buffer can hold.
+	protected ThreadID		threadID;		///Low-level thread ID.
+	/** 
+	 * Status flags for the module manager.
 	 */
-	protected int			outBufferSize;
-	/**
-	 * Rendering buffer size in samples, also the length of a single frame.
-	 *
-	 * Must be less than outBufferSize, and power of two.
-	 */
-	protected int			bufferSize;
-	/**
-	 * Number of maximum frames that can be put into the output buffer.
-	 */
-	protected int			nOfFrames;
-	/**
-	 * Current audio frame.
-	 */
-	protected int			currFrame;
+	public enum Flags {
+		IsRunning			=	1<<0,		///Set if thread is running.
+		BufferUnderrunError	=	1<<16,		///Set if a buffer underrun error have been occured.
+		AudioQueueError		=	1<<17,		///Set if the SDL_QueueAudio function returns with an error code.
+	}
 	///Pointer to the audio device handler.
 	public AudioDeviceHandler	devHandler;
 	/**
@@ -205,50 +185,59 @@ public class ModuleManager : Thread {
 	/** 
 	 * Creates an instance of a module handler.
 	 *Params:
-	 * handler = The AudioDeviceHandler that contains the data about 
+	 * handler = The AudioDeviceHandler that contains the data about the audio device.
+	 * bufferSize = The size of the buffer in samples.
+	 * nOfFrames = The number of frames before they get queued to the audio device.
 	 */
-	public this(AudioDeviceHandler handler, int bufferSize) {
+	public this(AudioDeviceHandler handler, int bufferSize, int nOfFrames) {
 		import pixelperfectengine.audio.base.func : resetBuffer;
 		devHandler = handler;
 		this.bufferSize = bufferSize;
-		assert(handler.getBufferSize % bufferSize == 0, "`bufferSize` is not power of 2!");
-		nOfFrames = handler.getBufferSize / bufferSize;
-		finalBuffer.length = handler.getChannels() * handler.getBufferSize();
+		//assert(handler.getBufferSize % bufferSize == 0, "`bufferSize` is not power of 2!");
+		//nOfFrames = handler.getBufferSize / bufferSize;
+		this.nOfFrames = nOfFrames;
+		finalBuffer.length = handler.getChannels() * bufferSize * nOfFrames;
 		resetBuffer(finalBuffer);
 		
+		const real td = (1.0 / handler.getSamplingFrequency()) * bufferSize * nOfFrames;
+		timeDelta = TickDuration.from!"usecs"(cast(long)(td * 1_000_000));
+
 		buffers.length = handler.getChannels();
 		for (int i ; i < buffers.length ; i++) {
 			buffers[i].length = bufferSize;
 			resetBuffer(buffers[i]);
 		}
-		super(&render);
+		//super(&render);
 	}
 	/**
-	 * Puts the output to the final destination.
+	 * Runs the audio thread.
 	 */
-	public void render() @nogc nothrow {
-		while (currFrame < nOfFrames)
-			renderFrame();
-		currFrame = 0;
-		SDL_QueueAudio(devHandler.getAudioDeviceID(), cast(const void*)finalBuffer.ptr, cast(uint)(finalBuffer.length * 
-				float.sizeof));
-	}
-	/**
-	 * Renders a single frame of audio.
-	 */
-	public void renderFrame() @nogc nothrow {
+	protected void run() @nogc nothrow {
 		import pixelperfectengine.audio.base.func : interleave, resetBuffer;
-		if (currFrame >= nOfFrames)
-			return;
-		foreach (ref key; buffers) {
-			resetBuffer(key);
+		statusFlags = Flags.IsRunning;	//reset status flags
+		while (statusFlags & Flags.IsRunning) {
+			/+if (SDL_QueueAudio(devHandler.getAudioDeviceID(), cast(const void*)finalBuffer.ptr, cast(uint)(finalBuffer.length * 
+					float.sizeof))) statusFlags |= Flags.AudioQueueError;+/
+			while (currFrame < nOfFrames) {
+				foreach (ref key; buffers) {
+					resetBuffer(key);
+				}
+				foreach (size_t i, AudioModule am; moduleList) {
+					am.renderFrame(inBufferList[i], outBufferList[i]);
+				}
+				const size_t offset = currFrame * bufferSize;
+				interleave(bufferSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
+				currFrame++;
+			}
+			currFrame = 0;
+			//Put thread to sleep
+			TickDuration newTimeStamp = TickDuration.currSystemTick();
+			if (newTimeStamp > timeStamp + timeDelta)
+				statusFlags |= Flags.BufferUnderrunError;
+			else
+				Thread.sleep(cast(Duration)(timeDelta - (newTimeStamp - timeStamp)));
+			timeStamp = TickDuration.currSystemTick();
 		}
-		foreach (size_t i, AudioModule am; moduleList) {
-			am.renderFrame(inBufferList[i], outBufferList[i]);
-		}
-		const size_t offset = currFrame * bufferSize;
-		interleave(bufferSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
-		currFrame++;
 	}
 	/**
 	 * MIDI commands are received here from modules.
@@ -263,10 +252,12 @@ public class ModuleManager : Thread {
 	/**
 	 * Sets up a specific number of buffers.
 	 */
-	public void setBuffers(size_t num) nothrow {
+	public void setBuffers(size_t num) @safe nothrow {
+		import pixelperfectengine.audio.base.func : resetBuffer;
 		buffers.length = num;
 		for (size_t i ; i < buffers.length ; i++) {
 			buffers[i].length = bufferSize;
+			resetBuffer(buffers[i]);
 		}
 	}
 	/**
@@ -295,52 +286,55 @@ public class ModuleManager : Thread {
 	}
 	
 	/**
-	 * Locks the manager and all audio modules within it to avoid interference from GC.
-	 *
-	 * This will however disable any further memory allocation until thread is unlocked.
+	 * Creates a low-level thread (exempt from garbage collection), and starts the audio rendering.
+	 * Use function `suspendAudioThread()` to suspend the thread safely.
+	 * Returns: The ID of the thread, or ThreadID.init in the case of an error.
+	 * Warning: DO NOT JOIN THIS THREAD! It doesn't suspend itself normally, and runs until it's externally suspended.
 	 */
-	public void lockAudioThread() {
-		
+	public ThreadID runAudioThread() @nogc nothrow {
+		timeStamp = TickDuration.currSystemTick();
+		return createLowLevelThread(&run);
 	}
 	/**
-	 * Unlocks the manager and all audio modules within it to allow GC allocation, which is needed for loading, etc.
-	 *
-	 * Note that this will probably result in the GC regularly stopping the audio thread, resulting in audio glitches,
-	 * etc.
+	 * Safely suspends the audio thread by allowing it to escape from the infinite loop.
+	 * Returns: The last status code of the audio thread.
 	 */
-	public void unlockAudioThread() {
-
+	public uint suspendAudioThread() {
+		uint result = statusFlags;
+		statusFlags ^= Flags.IsRunning;
+		return result;
 	}
 }
-/+
-alias CallBackDeleg = void delegate(void* userdata, ubyte* stream, int len) @nogc nothrow;
-///Privides a way for delegates to be called from SDL2.
-///Must be set up before audio device initialization.
-static CallBackDeleg audioCallbackDeleg;
-/**
- * A function that handles callbacks from SDL2's audio system.
- */
-extern(C) void callbacksFromSDL(void* userdata, ubyte* stream, int len) @nogc nothrow {
-	if (audioCallbackDeleg !is null)
-		audioCallbackDeleg(userdata, stream, len);
-}+/
 /** 
- * Sets up the module manager to be used with SDL2's audio output.
- * Params:
- *   mm = The target module manager.
+ * Called by libsoundio when the list of devices change, then it sets a global parameter to indicate that.
  */
-/+void setupModuleManager(ModuleManager mm) {
-	audioCallbackDeleg = &mm.put;
+extern(C) @nogc nothrow void callback_OnDevicesChange(SoundIo* context) {
 
-}+/
+}
+/** 
+ * Called by libsoundio when the backend disconnects, then it sets a global parameter to indicate that.
+ */
+extern(C) @nogc nothrow void callback_OnBackendDisconnect(SoundIo* context, int err) {
+
+}
+
 /**
  * Thrown on audio initialization errors.
  */
 public class AudioInitException : PPEException {
+	/// Errorcode from libsoundIO
+	SoundIoError		errorCode;
 	///
 	@nogc @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
     {
         super(msg, file, line, nextInChain);
+    }
+	///
+	@nogc @safe pure nothrow this(string msg, SoundIoError errorCode, string file = __FILE__, size_t line = __LINE__, 
+			Throwable nextInChain = null)
+    {
+		this.errorCode = errorCode;
+        super(msg ~ fromStringz(soundio_strerror(errorCode)).idup, file, line, nextInChain);
     }
 	///
     @nogc @safe pure nothrow this(string msg, Throwable nextInChain, string file = __FILE__, size_t line = __LINE__)

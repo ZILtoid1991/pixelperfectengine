@@ -27,6 +27,7 @@ import pixelperfectengine.system.common;
 import pixelperfectengine.audio.base.handler;
 import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.modules.qm816;
+import core.thread;
 
 
 /** 
@@ -129,6 +130,9 @@ public class TestAudio : InputListener, SystemEventListener {
 			r.refresh();
 			ih.test();
 		}
+		if (mm !is null) {
+			writeln(mm.suspendAudioThread());
+		}
 	}
 
 	public void clearScreen() {
@@ -173,9 +177,16 @@ public class TestAudio : InputListener, SystemEventListener {
 		} catch (AudioInitException e) {
 			textOut.writeTextToMap(14, 0, 0, to!wstring(e.msg));
 		}
-		mm = new ModuleManager(adh, 256);
+		mm = new ModuleManager(adh, 192, 10);
 		fmsynth = new QM816();
 		mm.addModule(fmsynth, null, null, [0,1], [0,1]);
+
+		//Initialize audio thread
+		ThreadID status = mm.runAudioThread();
+		if (status == ThreadID.init)
+			throw new Exception("Audio thread error!");
+
+		state |= StateFlags.deviceInitialized;
 	}
 
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
