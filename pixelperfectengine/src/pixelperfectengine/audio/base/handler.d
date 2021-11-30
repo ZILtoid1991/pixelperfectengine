@@ -56,6 +56,7 @@ public class AudioDeviceHandler {
 	}
 	///Destructor
 	~this() {
+		soundio_outstream_destroy(outStream);
 		soundio_destroy(context);
 	}
 	/**
@@ -80,7 +81,7 @@ public class AudioDeviceHandler {
 	public void initAudioDevice(int id) {
 		if (id = -1) id = soundio_default_output_device_index(context);
 		if (soundio_device_supports_format(outDevices[id], SoundIoFormatFloat32NE) && 
-				soundio_device_supports_layout(outDevices[id]), soundio_channel_layout_get_builtin(channelLayout)) {
+				soundio_device_supports_layout(outDevices[id], soundio_channel_layout_get_builtin(channelLayout)) {
 			if (!soundio_device_supports_sample_rate(outDevices[id], slmpFreq)) 
 				slmpFreq = soundio_device_nearest_sample_rate(outDevices[id], slmpFreq);
 			outStream = soundio_outstream_create(outDevices[id]);
@@ -100,12 +101,6 @@ public class AudioDeviceHandler {
 				result[i] = fromStringz(outDevices[i].name).idup;
 		}
 		return result;
-	}
-	/** 
-	 * Returns the ID of the opened audio device.
-	 */
-	public SDL_AudioDeviceID getAudioDeviceID() @safe @nogc pure nothrow const {
-		return openedDevice;
 	}
 	/**
 	 * Returns the available sampling frequency.
@@ -209,6 +204,14 @@ public class ModuleManager {
 		}
 		//super(&render);
 	}
+	/** 
+	 * Renders audio to the
+	 */
+	protected void render(SoundIoOutStream* stream, int frameCountMin, int frameCountMax) @nogc nothrow {
+		import pixelperfectengine.system.etc : clamp;
+
+	}
+	/+
 	/**
 	 * Runs the audio thread.
 	 */
@@ -238,7 +241,7 @@ public class ModuleManager {
 				Thread.sleep(cast(Duration)(timeDelta - (newTimeStamp - timeStamp)));
 			timeStamp = TickDuration.currSystemTick();
 		}
-	}
+	}+/
 	/**
 	 * MIDI commands are received here from modules.
 	 *
@@ -286,25 +289,20 @@ public class ModuleManager {
 	}
 	
 	/**
-	 * Creates a low-level thread (exempt from garbage collection), and starts the audio rendering.
-	 * Use function `suspendAudioThread()` to suspend the thread safely.
-	 * Returns: The ID of the thread, or ThreadID.init in the case of an error.
-	 * Warning: DO NOT JOIN THIS THREAD! It doesn't suspend itself normally, and runs until it's externally suspended.
+	 * 
 	 */
-	public ThreadID runAudioThread() @nogc nothrow {
-		timeStamp = TickDuration.currSystemTick();
-		return createLowLevelThread(&run);
+	public void runAudioThread() @nogc nothrow {
+		
 	}
 	/**
-	 * Safely suspends the audio thread by allowing it to escape from the infinite loop.
-	 * Returns: The last status code of the audio thread.
+	 * Stops all audio output.
+	 * 
 	 */
 	public uint suspendAudioThread() {
-		uint result = statusFlags;
-		statusFlags ^= Flags.IsRunning;
-		return result;
+		
 	}
 }
+package static ModuleManager audioOutput;
 /** 
  * Called by libsoundio when the list of devices change, then it sets a global parameter to indicate that.
  */
@@ -317,7 +315,12 @@ extern(C) @nogc nothrow void callback_OnDevicesChange(SoundIo* context) {
 extern(C) @nogc nothrow void callback_OnBackendDisconnect(SoundIo* context, int err) {
 
 }
-
+/** 
+ * Called by libsoundio every time when audio data is needed.
+ */
+extern(C) @nogc nothrow void callback_OnWriteRequest(SoundIoOutStream* stream, int frameCountMin, int frameCountMax) {
+	audioOutput.render(stream, frameCountMin, frameCountMax);
+}
 /**
  * Thrown on audio initialization errors.
  */

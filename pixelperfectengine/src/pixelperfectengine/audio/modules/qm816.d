@@ -1430,7 +1430,6 @@ public class QM816 : AudioModule {
 	 * 
 	 * input: the input buffers if any, null if none.
 	 * output: the output buffers if any, null if none.
-	 * length: the lenth of the current audio frame in samples.
 	 *
 	 * NOTE: Buffers must have matching sizes.
 	 */
