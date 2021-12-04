@@ -126,7 +126,8 @@ public class ListViewItem {
 		fields.reserve = ds.length;
 		assert (ds.length == inputTypes.length, "Mismatch in inputTypes and text length");
 		for (size_t i ; i < ds.length ; i++) {
-			Field f = Field(new Text(ds[i], globalDefaultStyle.getChrFormatting("ListViewHeader")), null);
+			Field f = Field(new Text(ds[i], globalDefaultStyle.getChrFormatting("ListViewHeader")), null, 
+					inputTypes[i] != TextInputFieldType.None);
 			fields ~= f;
 		}
 	}
@@ -702,7 +703,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			} else if (selection == pos && (flags & EDIT_EN)) {
 				//Calculate horizontal selection for Multicell editing if needed
 				/+if (flags & MULTICELL_EDIT_EN) {
-					
+				
 				} else {+/
 				textArea.top += _header.height;
 				foreach (size_t i, ListViewItem.Field f ; entries[selection].fields) {

@@ -28,10 +28,7 @@ import soundio;
  * Important: Only one instance should be made.
  */
 public class AudioDeviceHandler {
-	protected SoundIoDevice*[]		outDevices;		///Contains the names of the output devices
-	protected SoundIo*				context;		///Context for libsoundio
-	protected SoundIoDevice*		openedDevice;	///The device that is being used for audio input/output
-	SoundIoOutStream*				outStream;		///The opened output stream.
+	
 	protected int					channelLayout;	///Requested channel layout
 	protected int					slmpFreq;		///Requested/given sampling frequency
 	protected int					frameSize;		///Requested/given buffer base size / frame length (in samples)
@@ -46,8 +43,8 @@ public class AudioDeviceHandler {
 	 * Throws an AudioInitException if audio is failed to be initialized.
 	 */
 	public this(int channelLayout, int slmpFreq, int frameSize, int nOfFrames) {
-		context = soundio_create();
-		if (!context) throw new AudioInitException("No enough memory to initialize audio!", SoundIoError.NoMem);
+		//context = soundio_create();
+		
 		this.channelLayout = channelLayout;
 		this.slmpFreq = slmpFreq;
 		this.frameSize = frameSize;
@@ -56,8 +53,7 @@ public class AudioDeviceHandler {
 	}
 	///Destructor
 	~this() {
-		soundio_outstream_destroy(outStream);
-		soundio_destroy(context);
+		
 	}
 	/**
 	 * Initializes an audio driver by ID.
@@ -65,13 +61,7 @@ public class AudioDeviceHandler {
 	 * Throws an AudioInitException if audio failed to be initialized.
 	 */
 	public void initAudioDriver(SoundIoBackend backend) {
-		int error = soundio_connect_backend(context, backend);
-		if (error) throw new AudioInitException("Could not connect to audio backend!", cast(SoundIoError)error);
-
-		outDevices.length = soundio_output_device_count(context);
-		for (int i ; i < outDevices.length ; i++) {
-			outDevices[i] = soundio_get_output_device(context, i);
-		}
+		
 	}
 	/**
 	 * Opens a specific audio device for audio playback by ID, then sets the values for buffer sizes etc.
@@ -79,27 +69,14 @@ public class AudioDeviceHandler {
 	 * Throws an AudioInitException if audio failed to be initialized
 	 */
 	public void initAudioDevice(int id) {
-		if (id = -1) id = soundio_default_output_device_index(context);
-		if (soundio_device_supports_format(outDevices[id], SoundIoFormatFloat32NE) && 
-				soundio_device_supports_layout(outDevices[id], soundio_channel_layout_get_builtin(channelLayout)) {
-			if (!soundio_device_supports_sample_rate(outDevices[id], slmpFreq)) 
-				slmpFreq = soundio_device_nearest_sample_rate(outDevices[id], slmpFreq);
-			outStream = soundio_outstream_create(outDevices[id]);
-			outStream.sample_rate = slmpFreq;
-			outStream.layout = soundio_channel_layout_get_builtin(channelLayout);
-			
-		} else throw new AudioInitException("Audio format not supported!");
+		
 	}
 	/**
 	 * Return an array with the names of the available audio devices.
 	 */
 	public string[] getDevices() @trusted pure nothrow const {
 		string[] result;
-		result.length = outDevices.length;
-		for (int i ; i < outDevices.length ; i++) {
-			if (outDevices[i])
-				result[i] = fromStringz(outDevices[i].name).idup;
-		}
+		
 		return result;
 	}
 	/**
@@ -112,7 +89,7 @@ public class AudioDeviceHandler {
 	 * Returns the number of audio channels.
 	 */
 	public int getChannels() @nogc @safe pure nothrow const {
-		return given.channels;
+		return 0;
 	}
 	/**
 	 * Returns the buffer size in units.
@@ -129,8 +106,6 @@ public class ModuleManager {
 	protected int			nOfFrames;		///Number of maximum frames that can be put into the output buffer.
 	protected int			currFrame;		///Current audio frame.
 	protected uint			statusFlags;	///Status flags of the module manager.
-	protected TickDuration	timeStamp;		///Timestamp that is used for scheduling the audio thread.
-	protected const TickDuration	timeDelta;///Amount of time that the buffer can hold.
 	protected ThreadID		threadID;		///Low-level thread ID.
 	/** 
 	 * Status flags for the module manager.
@@ -193,9 +168,6 @@ public class ModuleManager {
 		this.nOfFrames = nOfFrames;
 		finalBuffer.length = handler.getChannels() * bufferSize * nOfFrames;
 		resetBuffer(finalBuffer);
-		
-		const real td = (1.0 / handler.getSamplingFrequency()) * bufferSize * nOfFrames;
-		timeDelta = TickDuration.from!"usecs"(cast(long)(td * 1_000_000));
 
 		buffers.length = handler.getChannels();
 		for (int i ; i < buffers.length ; i++) {
@@ -299,45 +271,18 @@ public class ModuleManager {
 	 * 
 	 */
 	public uint suspendAudioThread() {
-		
+		return uint.init;
 	}
 }
-package static ModuleManager audioOutput;
-/** 
- * Called by libsoundio when the list of devices change, then it sets a global parameter to indicate that.
- */
-extern(C) @nogc nothrow void callback_OnDevicesChange(SoundIo* context) {
 
-}
-/** 
- * Called by libsoundio when the backend disconnects, then it sets a global parameter to indicate that.
- */
-extern(C) @nogc nothrow void callback_OnBackendDisconnect(SoundIo* context, int err) {
-
-}
-/** 
- * Called by libsoundio every time when audio data is needed.
- */
-extern(C) @nogc nothrow void callback_OnWriteRequest(SoundIoOutStream* stream, int frameCountMin, int frameCountMax) {
-	audioOutput.render(stream, frameCountMin, frameCountMax);
-}
 /**
  * Thrown on audio initialization errors.
  */
 public class AudioInitException : PPEException {
-	/// Errorcode from libsoundIO
-	SoundIoError		errorCode;
 	///
 	@nogc @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
     {
         super(msg, file, line, nextInChain);
-    }
-	///
-	@nogc @safe pure nothrow this(string msg, SoundIoError errorCode, string file = __FILE__, size_t line = __LINE__, 
-			Throwable nextInChain = null)
-    {
-		this.errorCode = errorCode;
-        super(msg ~ fromStringz(soundio_strerror(errorCode)).idup, file, line, nextInChain);
     }
 	///
     @nogc @safe pure nothrow this(string msg, Throwable nextInChain, string file = __FILE__, size_t line = __LINE__)

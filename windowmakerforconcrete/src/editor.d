@@ -462,9 +462,9 @@ public class Editor : SystemEventListener, InputListener{
 		tlw.propList.clear();
 		if(elements.getPtr(selection) !is null){
 			string classname = elements[selection].type;
-			tlw.propList ~= [new ListViewItem(16, ["name"d, conv.to!dstring(selection)], [TextInputFieldType.None, TextInputFieldType.Text]),
-					new ListViewItem(16, ["source"d, conv.to!dstring(wserializer.getValue(selection, "source")[0].get!string())],
-					[TextInputFieldType.None, TextInputFieldType.Text])];
+			tlw.propList ~= [new ListViewItem(16, ["name"d, conv.to!dstring(selection)], [TextInputFieldType.None, 
+					TextInputFieldType.Text]), new ListViewItem(16, ["source"d, conv.to!dstring(wserializer.getValue(selection, 
+					"source")[0].get!string())], [TextInputFieldType.None, TextInputFieldType.Text])];
 			if(classname == "Label" || classname == "TextBox" || classname == "Button" || classname == "CheckBox" ||
 					classname == "RadioButton"){
 				tlw.propList ~= new ListViewItem(16, ["text", toUTF32(wserializer.getValue(selection, "text")[0].get!string())], 
