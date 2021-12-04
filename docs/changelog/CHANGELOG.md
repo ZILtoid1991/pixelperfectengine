@@ -1,6 +1,17 @@
 # Current
 
+## Fixed bugs
 
+### Bug causing Windowmaker to not work has been fixed
+
+Due to lack of manpower on testing (pls help me!), I introduced a bug in the previous version, that disabled the
+listview's editing capabilities through a constructor. This has been fixed now.
+
+## Known issues
+
+Due to the massive lack of usable audio libraries, I have to write my own, so the custom audio engine's debut will be
+further delayed. However, this will also mean the beginning of finally deprecating SDL in favor of in-house (and 
+better) solutions.
 
 # 0.10.0-beta3
 
