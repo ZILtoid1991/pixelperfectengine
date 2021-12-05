@@ -20,8 +20,6 @@ import pixelperfectengine.audio.base.modulebase;
 import bindbc.sdl.bind.sdlerror : SDL_GetError;
 import bindbc.sdl.bind.sdl : SDL_Init, SDL_INIT_AUDIO;+/
 
-import soundio;
-
 /**
  * Manages and initializes audio devices.
  *
@@ -54,7 +52,7 @@ public class AudioDeviceHandler {
 	///Destructor
 	~this() {
 		
-	}
+	}/+
 	/**
 	 * Initializes an audio driver by ID.
 	 *
@@ -62,7 +60,7 @@ public class AudioDeviceHandler {
 	 */
 	public void initAudioDriver(SoundIoBackend backend) {
 		
-	}
+	}+/
 	/**
 	 * Opens a specific audio device for audio playback by ID, then sets the values for buffer sizes etc.
 	 *
@@ -176,13 +174,14 @@ public class ModuleManager {
 		}
 		//super(&render);
 	}
+	/+
 	/** 
 	 * Renders audio to the
 	 */
 	protected void render(SoundIoOutStream* stream, int frameCountMin, int frameCountMax) @nogc nothrow {
 		import pixelperfectengine.system.etc : clamp;
 
-	}
+	}+/
 	/+
 	/**
 	 * Runs the audio thread.

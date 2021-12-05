@@ -126,8 +126,13 @@ public class ListViewItem {
 		fields.reserve = ds.length;
 		assert (ds.length == inputTypes.length, "Mismatch in inputTypes and text length");
 		for (size_t i ; i < ds.length ; i++) {
+			const bool isNumeric = inputTypes[i] == TextInputFieldType.Hex || inputTypes[i] == TextInputFieldType.Integer ||
+					inputTypes[i] == TextInputFieldType.IntegerP || inputTypes[i] == TextInputFieldType.Decimal ||
+					inputTypes[i] == TextInputFieldType.DecimalP;
 			Field f = Field(new Text(ds[i], globalDefaultStyle.getChrFormatting("ListViewHeader")), null, 
-					inputTypes[i] != TextInputFieldType.None);
+					inputTypes[i] != TextInputFieldType.None, isNumeric, inputTypes[i] == TextInputFieldType.Decimal ||
+					inputTypes[i] == TextInputFieldType.DecimalP, inputTypes[i] == TextInputFieldType.IntegerP ||
+					inputTypes[i] == TextInputFieldType.DecimalP);
 			fields ~= f;
 		}
 	}

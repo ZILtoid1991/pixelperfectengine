@@ -30,10 +30,11 @@ public class BitmapDrawer{
 		output = new Bitmap8Bit(x, y);
 
 	}
+	/+
 	///Draws a single line. DEPRECATED!
 	deprecated public void drawLine(int xa, int xb, int ya, int yb, ubyte color) pure {
 		draw.drawLine(xa, ya, xb, yb, color, output.getPtr(), output.width);
-	}
+	}+/
 	///Draws a single line.
 	public void drawLine(Point from, Point to, ubyte color) pure {
 		draw.drawLine(from.x, from.y, to.x, to.y, color, output.getPtr(), output.width);
@@ -91,12 +92,12 @@ public class BitmapDrawer{
 				bitBLT(Point(pos.left + (x * pattern.width), pos.top + (y * pattern.height)), pattern);
 			if(targetX0) 
 				bitBLT(Point(pos.left + (pattern.width * targetX), pos.top + (y * pattern.height)), pattern,
-						Coordinate(0, 0, targetX0, pattern.height));
+						Coordinate(0, 0, targetX0, pattern.height + 1));
 		}
 		if(targetY0) {
 			for(int x ; x < targetX; x++) 
 				bitBLT(Point(pos.left + (x * pattern.width), pos.top + (targetY * pattern.height)), pattern,
-						Coordinate(0, 0, pattern.width, targetY0));
+						Coordinate(0, 0, pattern.width + 1, targetY0));
 			if(targetX0) 
 				bitBLT(Point(pos.left + (pattern.width * targetX), pos.top + (targetY * pattern.height)), pattern,
 						Coordinate(0, 0, targetX0, targetY0));
@@ -122,17 +123,7 @@ public class BitmapDrawer{
 			xorBlitter(dest + output.width * y, target.width, color);
 		}
 	}
-	///Inserts a bitmap using blitter. DEPRECATED
-	deprecated public void insertBitmap(int x, int y, Bitmap8Bit bitmap) pure {
-		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
-		pdest += x + output.width * y;
-		int length = bitmap.width;
-		for(int iy ; iy < bitmap.height ; iy++){
-			compose.blitter(psrc,pdest,length);
-			psrc += length;
-			pdest += output.width;
-		}
-	}
+	
 	///Inserts a color letter.
 	public void insertColorLetter(int x, int y, Bitmap8Bit bitmap, ubyte color) pure {
 		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
@@ -172,13 +163,14 @@ public class BitmapDrawer{
 			pdest += output.width;
 		}
 	}
+	/+
 	///Draws a rectangle. DEPRECATED!
 	deprecated public void drawRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
 		drawLine(xa, xa, ya, yb, color);
 		drawLine(xb, xb, ya, yb, color);
 		drawLine(xa, xb, ya, ya, color);
 		drawLine(xa, xb, yb, yb, color);
-	}
+	}+/
 	/+
 	deprecated public void drawRectangle(int xa, int xb, int ya, int yb, Bitmap8Bit brush) pure {
 		xa = xa + brush.width;
@@ -189,33 +181,12 @@ public class BitmapDrawer{
 		drawLine(xb, xb, ya, yb, brush);
 		drawLine(xa, xb, ya, ya, brush);
 		drawLine(xa, xb, yb, yb, brush);
-	}+/
+	}
 	///Draws a filled rectangle. DEPRECATED!
 	deprecated public void drawFilledRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
 		draw.drawFilledRectangle(xa, ya, xb, yb, color, output.getPtr(), output.width);
-	}
+	}+/
 	
-	///Draws text to the given point. DEPRECATED!
-	public void drawText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, uint style = 0) pure {
-		const int length = fontset.getTextLength(text);
-		//writeln(text);
-		/+if(style == 0){
-			x = x - (length / 2);
-			y -= fontset.getSize() / 2;
-		}else if(style == 2){
-			y -= fontset.getSize();
-		}+/
-		if(style & FontFormat.HorizCentered)
-			x = x - (length / 2);
-		if(style & FontFormat.VertCentered)
-			y -= fontset.size / 2;
-		foreach(dchar c ; text){
-			const Font.Char chinfo = fontset.chars(c);
-			const Coordinate letterSlice = Coordinate(chinfo.x, chinfo.y, chinfo.x + chinfo.width, chinfo.y + chinfo.height);
-			insertBitmapSlice(x + chinfo.xoffset, y + chinfo.yoffset, fontset.pages[chinfo.page], letterSlice);
-			x += chinfo.xadvance;
-		}
-	}
 	///Draws colored text from monocromatic font.
 	public void drawColorText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, ubyte color, uint style = 0) pure {
 		//color = 1;
@@ -385,6 +356,38 @@ public class BitmapDrawer{
 		if (textSlice.width > 0 && textSlice.height > 0)
 			bitBLT(renderTarget, workPad, textSlice);
 		return status;
+	}
+	///Draws text to the given point. DEPRECATED!
+	deprecated public void drawText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, uint style = 0) pure {
+		const int length = fontset.getTextLength(text);
+		//writeln(text);
+		/+if(style == 0){
+			x = x - (length / 2);
+			y -= fontset.getSize() / 2;
+		}else if(style == 2){
+			y -= fontset.getSize();
+		}+/
+		if(style & FontFormat.HorizCentered)
+			x = x - (length / 2);
+		if(style & FontFormat.VertCentered)
+			y -= fontset.size / 2;
+		foreach(dchar c ; text){
+			const Font.Char chinfo = fontset.chars(c);
+			const Coordinate letterSlice = Coordinate(chinfo.x, chinfo.y, chinfo.x + chinfo.width, chinfo.y + chinfo.height);
+			insertBitmapSlice(x + chinfo.xoffset, y + chinfo.yoffset, fontset.pages[chinfo.page], letterSlice);
+			x += chinfo.xadvance;
+		}
+	}
+	///Inserts a bitmap using blitter. DEPRECATED
+	deprecated public void insertBitmap(int x, int y, Bitmap8Bit bitmap) pure {
+		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
+		pdest += x + output.width * y;
+		int length = bitmap.width;
+		for(int iy ; iy < bitmap.height ; iy++){
+			compose.blitter(psrc,pdest,length);
+			psrc += length;
+			pdest += output.width;
+		}
 	}
 }
 /**

@@ -11,7 +11,7 @@ import collections.linkedlist;
 public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 	protected IRadioButtonGroup		group;		///The group which this object belongs to.
 	//protected bool					_isLatched;		///The state of the RadioButton
-	public string					iconLatched = "radioButtonB";		///Sets the icon for latched positions
+	public string					iconLatched = "radioButtonB";	///Sets the icon for latched positions
 	public string					iconUnlatched = "radioButtonA";	///Sets the icon for unlatched positions
 	public this(Text text, string source, Box position, IRadioButtonGroup group = null) {
 		this.position = position;
@@ -131,7 +131,7 @@ public class RadioButtonGroup : IRadioButtonGroup {
 	 */
 	public this(R)(R range) @safe {
 		foreach (key; range) {
-			radioButtons.put(key);
+			add(key);
 		}
 	}
 	/**
