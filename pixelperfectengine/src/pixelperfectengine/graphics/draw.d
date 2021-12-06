@@ -35,33 +35,65 @@ public class BitmapDrawer{
 	deprecated public void drawLine(int xa, int xb, int ya, int yb, ubyte color) pure {
 		draw.drawLine(xa, ya, xb, yb, color, output.getPtr(), output.width);
 	}+/
-	///Draws a single line.
+	/**
+	 * Draws a single line.
+	 * Parameters:
+	 *  from = The beginning of the line.
+	 *  to = The endpoint of the line.
+	 *  color = The color index to be used for the line.
+	 */
 	public void drawLine(Point from, Point to, ubyte color) pure {
 		draw.drawLine(from.x, from.y, to.x, to.y, color, output.getPtr(), output.width);
 	}
-	///Draws a line with a pattern.
+	/**
+	 * Draws a line with a pattern.
+	 * Parameters:
+	 *  from = The beginning of the line.
+	 *  to = The end of the line.
+	 *  pattern = Contains the color indexes for the line, to draw the pattern.
+	 */
 	public void drawLinePattern(Point from, Point to, ubyte[] pattern) pure {
 		draw.drawLinePattern(from.x, from.y, to.x, to.y, pattern, output.getPtr(), output.width);
 	}
-	///Draws a box.
-	public void drawBox(Coordinate target, ubyte color) pure {
+	/**
+	 * Draws a box.
+	 * Parameters:
+	 *  target = Containst the coordinates of the box to be drawn.
+	 *  color = The color index which the box will be drawn.
+	 */
+	public void drawBox(Box target, ubyte color) pure {
 		draw.drawLine(target.left, target.top, target.right, target.top, color, output.getPtr(), output.width);
 		draw.drawLine(target.left, target.top, target.left, target.bottom, color, output.getPtr(), output.width);
 		draw.drawLine(target.left, target.bottom, target.right, target.bottom, color, output.getPtr(), output.width);
 		draw.drawLine(target.right, target.top, target.right, target.bottom, color, output.getPtr(), output.width);
 	}
-	///Draws a box with line pattern.
+	/**
+	 * Draws a box with the supplied pattern as the 
+	 * Parameters:
+	 *  target = Containst the coordinates of the box to be drawn.
+	 *  color = The color index which the box will be drawn.
+	 */
 	public void drawBox(Coordinate target, ubyte[] pattern) pure {
 		draw.drawLinePattern(target.left, target.top, target.right, target.top, pattern, output.getPtr(), output.width);
 		draw.drawLinePattern(target.left, target.top, target.left, target.bottom, pattern, output.getPtr(), output.width);
 		draw.drawLinePattern(target.left, target.bottom, target.right, target.bottom, pattern, output.getPtr(), output.width);
 		draw.drawLinePattern(target.right, target.top, target.right, target.bottom, pattern, output.getPtr(), output.width);
 	}
-	///Draws a filled box.
+	/**
+	 * Draws a filled box.
+	 * Parameters:
+	 *  target = The position of the box.
+	 *  color = The color of the box (both the line and fill color).
+	 */
 	public void drawFilledBox(Coordinate target, ubyte color) pure {
 		draw.drawFilledRectangle(target.left, target.top, target.right, target.bottom, color, output.getPtr(), output.width);
 	}
-	///Copies a bitmap to the canvas using 0th index transparency.
+	/**
+	 * Copies a bitmap to the canvas using 0th index transparency.
+	 * Parameters:
+	 *  target = Where the top-left corner should fall.
+	 *  source = The bitmap to be copied into the output.
+	 */
 	public void bitBLT(Point target, Bitmap8Bit source) pure {
 		ubyte* src = source.getPtr;
 		ubyte* dest = output.getPtr + (output.width * target.y) + target.x;
@@ -71,7 +103,13 @@ public class BitmapDrawer{
 			dest += output.width;
 		}
 	}
-	///Copies a bitmap slice to the canvas using 0th index transparency.
+	/**
+	 * Copies a bitmap slice to the canvas using 0th index transparency.
+	 * Parameters:
+	 *  target = Where the top-left corner should fall.
+	 *  source = The bitmap to be copied into the output.
+	 *  slice = Defines what  part of the bitmap should be copied.
+	 */
 	public void bitBLT(Point target, Bitmap8Bit source, Coordinate slice) pure {
 		ubyte* src = source.getPtr + (source.width * slice.top) + slice.left;
 		ubyte* dest = output.getPtr + (output.width * target.y) + target.x;
@@ -81,8 +119,13 @@ public class BitmapDrawer{
 			dest += output.width;
 		}
 	}
-	///Fills the area with a pattern.
-	public void bitBLTPattern(Coordinate pos, Bitmap8Bit pattern) pure {
+	/**
+	 * Fills the specified area with a pattern.
+	 * Parameters:
+	 *  pos = The area that needs to be filled with the pattern.
+	 *  pattern = The pattern to be used.
+	 */
+	public void bitBLTPattern(Box pos, Bitmap8Bit pattern) pure {
 		const int targetX = pos.width / pattern.width;
 		const int targetX0 = pos.width % pattern.width;
 		const int targetY = pos.height / pattern.height;
@@ -103,8 +146,13 @@ public class BitmapDrawer{
 						Coordinate(0, 0, targetX0, targetY0));
 		}
 	}
-	///XOR blits a repeated bitmap pattern over the specified area.
-	public void xorBitBLT(Coordinate target, Bitmap8Bit pattern) pure {
+	/**
+	 * XOR blits a repeated bitmap pattern over the specified area.
+	 * Parameters:
+	 *  target = The area to be XOR blitted.
+	 *  pattern = Specifies the pattern to be used.
+	 */
+	public void xorBitBLT(Box target, Bitmap8Bit pattern) pure {
 		import CPUblit.composing.specblt;
 		ubyte* dest = output.getPtr + target.left + (target.top * output.width);
 		for (int y ; y < target.height ; y++) {
@@ -115,7 +163,12 @@ public class BitmapDrawer{
 			}
 		}
 	}
-	///XOR blits a color index over a specified area.
+	/**
+	 * XOR blits a color index over a specified area.
+	 * Parameters:
+	 *  target = The area to be XOR blitted.
+	 *  color = The color index to be used.
+	 */
 	public void xorBitBLT(Coordinate target, ubyte color) pure {
 		import CPUblit.composing.specblt;
 		ubyte* dest = output.getPtr + target.left + (target.top * output.width);
@@ -135,7 +188,7 @@ public class BitmapDrawer{
 			pdest += output.width;
 		}
 	}
-	///Inserts a midsection of the bitmap defined by slice
+	///Inserts a midsection of the bitmap defined by slice (DEPRECATED)
 	public void insertBitmapSlice(int x, int y, Bitmap8Bit bitmap, Coordinate slice) pure {
 		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
 		pdest += x + output.width * y;
@@ -148,7 +201,7 @@ public class BitmapDrawer{
 			pdest += output.width;
 		}
 	}
-	///Inserts a midsection of the bitmap defined by slice as a color letter
+	///Inserts a midsection of the bitmap defined by slice as a color letter (DEPRECATED)
 	public void insertColorLetter(int x, int y, Bitmap8Bit bitmap, ubyte color, Coordinate slice) pure {
 		if(slice.width - 1 <= 0) return;
 		if(slice.height - 1 <= 0) return;
