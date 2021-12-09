@@ -93,6 +93,9 @@ public class ListViewItem {
 	public int			height;
 	/**
 	 * Creates a list view item from texts.
+	 * Parameters:
+	 *  height = the height of the entry in pixels.
+	 *  fields = automatically defined text input fields.
 	 */
 	this (int height, Text[] fields) @safe pure nothrow {
 		this.height = height;
@@ -103,6 +106,9 @@ public class ListViewItem {
 	}
 	/**
 	 * Creates a ListViewItem from fields directly.
+	 * Parameters:
+	 *  height = the height of the entry in pixels.
+	 *  fields = each field directly defined through a Field struct.
 	 */
 	this (int height, Field[] fields) @nogc @safe pure nothrow {
 		this.height = height;
@@ -110,6 +116,9 @@ public class ListViewItem {
 	}
 	/**
 	 * Creates a ListViewItem with default text formatting.
+	 * Parameters:
+	 *  height = the height of the entry in pixels.
+	 *  ds = a string array containing the text of each field. Default formatting will be used.
 	 */
 	this (int height, dstring[] ds) @safe nothrow {
 		this.height = height;
@@ -120,6 +129,10 @@ public class ListViewItem {
 	}
 	/**
 	 * Creates a ListViewItem with default text formatting and input type.
+	 * Parameters:
+	 *  height = the height of the entry in pixels.
+	 *  ds = a string array containing the text of each field. Default formatting will be used.
+	 *  inputTypes = specifies each field's input type. Mus be the same length as parameter `ds`.
 	 */
 	this (int height, dstring[] ds, TextInputFieldType[] inputTypes) @safe nothrow {
 		this.height = height;
@@ -155,6 +168,8 @@ public class ListViewItem {
 	}
 	/**
 	 * Draws the ListViewItem. Draw parameters are supplied via a nested class found in ListView.
+	 * Parameters:
+	 *  parent: the ListView this instance belongs to.
 	 */
 	public void draw(ListView parent) {
 		StyleSheet ss = parent.drawParams.ss;
@@ -178,13 +193,24 @@ public class ListViewItem {
  */
 public class ListViewHeader : ListViewItem {
 	public int[]				columnWidths;	///Width of each columns
-	///Default CTOR
+	/**
+	 * Default CTOR.
+	 * Parameters:
+	 *  height = the height of the header.
+	 *  columnWidths = the width of each column. Array must match the length of the next parameter
+	 *  fields: specifies the text of each field. Custom formatting is supported
+	 */
 	this(int height, int[] columnWidths, Text[] fields) @safe pure nothrow {
 		assert (columnWidths.length == fields.length, "Lenght mismatch between the two arrays!");
 		this.columnWidths = columnWidths;
 		super(height, fields);
 	}
-	///CTOR for creating fields with default text formatting
+	/**
+	 * CTOR for creating fields with default text formatting
+	 * Parameters:
+	 *  height = the height of the header.
+	 *  columnWidths = the width of each column. Array must match the length of the next parameter
+	 */
 	this(int height, int[] columnWidths, dstring[] ds) @safe nothrow {
 		Text[] fields;
 		fields.reserve = ds.length;
@@ -195,6 +221,8 @@ public class ListViewHeader : ListViewItem {
 	}
 	/**
 	 * Draws the header. Draw parameters are supplied via a nested class found in ListView.
+	 * Parameters:
+	 *  parent: the ListView this instance belongs to.
 	 */
 	public override void draw(ListView parent) {
 		if (!height) return;
@@ -284,7 +312,14 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	protected static enum	MULTICELL_EDIT_EN = 1<<10;
 	protected static enum	TEXTINPUT_EN = 1<<11;
 	protected static enum	INSERT = 1<<12;
-	///Standard CTOR
+	/**
+	 * Creates an instance of a ListView with the supplied parameters.
+	 * Parameters:
+	 *  header: Specifies an initial header for the element. Null if there's none.
+	 *  entries: Specifies initial entries for the element. Null if there're none.
+	 *  source: Sets all event output's source parameter.
+	 *  position: Tells where the element should be drawn on the window.
+	 */
 	public this(ListViewHeader header, ListViewItem[] entries, string source, Box position) {
 		_header = header;
 		this.entries = entries;
