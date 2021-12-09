@@ -144,6 +144,9 @@ public struct Box {
 		return "Coordinate: Left: " ~ to!string(left) ~ " Top: " ~ to!string(top) ~ " Right: " ~ to!string(right) ~
 				" Bottom: " ~ to!string(bottom) ~ " Width: " ~ to!string(width()) ~ " Height: " ~ to!string(height());
 	}
+	public static Box bySize(int x, int y, int w, int h) @nogc @safe pure nothrow {
+		return Box(x, y, x + w - 1, y + h - 1);
+	}
 }
 alias Coordinate = Box;
 /**
