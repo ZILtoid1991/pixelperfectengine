@@ -413,19 +413,18 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			Point lower = Point(0, position.bottom);
 			{	///Calculate first column stuff
 				int offsetP, offsetC, targetC, targetP;
-				if (horizSlider) { 
+				if (horizSlider) {
 					offsetP = horizSlider.value();
-					//int offsetC;
 					for (; _header.columnWidths[offsetC] < offsetP ; offsetC++) {
 						offsetP -= _header.columnWidths[offsetC];
 					}
+					offsetP = max(0, offsetP);
 					///Calculate last column number
-					//int targetC;
 					targetP = horizSlider.value() + position.width;
-					for (; _header.columnWidths[targetC] < targetP ; targetC++) {
+					for (; _header.columnWidths.length > targetC && _header.columnWidths[targetC] < targetP ; targetC++) {
 						targetP -= _header.columnWidths[targetC];
 					}
-					//targetP = _header.columnWidths[targetC] - targetP;
+					targetC = min(cast(int)(_header.columnWidths.length) - 1, targetC);
 					lower.y -= horizSlider.getPosition().height;
 				} else {
 					targetC = cast(int)_header.columnWidths.length - 1;
@@ -454,9 +453,10 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				pixelsTotal -= _header.height;
 				if (horizSlider) pixelsTotal -= horizSlider.getPosition().height;
 				lastRow = firstRow;
-				for (; entries[lastRow].height < pixelsTotal ; lastRow++) {
+				for (; entries.length > lastRow && entries[lastRow].height < pixelsTotal ; lastRow++) {
 					pixelsTotal -= entries[lastRow].height;
 				}
+				lastRow = min(cast(int)(entries.length) - 1, lastRow);
 			} else {
 				lastRow = cast(int)entries.length - 1;
 			}
@@ -597,17 +597,17 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			needsVSB = true;
 		totalHeight -= _header.height;
 		if (needsVSB) {
-			const int maxvalue = needsHSB ? totalHeight - position.height - ss.drawParameters["HorizScrollBarSize"] : 
-					totalHeight - position.height;
+			const int maxvalue = needsHSB ? totalHeight - (position.height - ss.drawParameters["HorizScrollBarSize"]
+					- _header.height) : totalHeight - (position.height - _header.height);
 			
 			const Box target = Box(position.right - ss.drawParameters["HorizScrollBarSize"] + 2, position.top, 
-					position.right, needsVSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] : position.bottom);
+					position.right, needsHSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] : position.bottom);
 			vertSlider = new VertScrollBar(maxvalue, source ~ "VSB", target);
 			vertSlider.setParent(this);
 			vertSlider.onScrolling = &scrollBarEventOut;
 		} else vertSlider = null;
 		if (needsHSB){
-			const int maxvalue = needsVSB ? totalWidth - position.width - ss.drawParameters["VertScrollBarSize"] : 
+			const int maxvalue = needsVSB ? totalWidth - (position.width - ss.drawParameters["VertScrollBarSize"]) : 
 					totalWidth - position.width;
 			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"] + 2, 
 					needsVSB ? position.right - ss.drawParameters["HorizScrollBarSize"] : position.right,

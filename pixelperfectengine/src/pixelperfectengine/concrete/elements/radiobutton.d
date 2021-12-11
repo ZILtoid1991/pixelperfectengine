@@ -117,7 +117,7 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
  * Can send events via it's delegates.
  */
 public class RadioButtonGroup : IRadioButtonGroup {
-	alias RadioButtonSet = LinkedList!(IRadioButton, false, "a.equals(b)");
+	alias RadioButtonSet = LinkedList!(IRadioButton, false, "a is b");
 	protected RadioButtonSet	radioButtons;
 	protected IRadioButton		latchedButton;
 	protected size_t 			_latchPos;
@@ -131,7 +131,8 @@ public class RadioButtonGroup : IRadioButtonGroup {
 	 */
 	public this(R)(R range) @safe {
 		foreach (key; range) {
-			add(key);
+			synchronized
+				add(key);
 		}
 	}
 	/**

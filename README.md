@@ -66,6 +66,10 @@ MIDI files. Due to lack of MIDI 2.0 compatible file formats, it only plays MIDI 
 
 Map format testcase. Tests most functionality of the Extendible Map Format (XMF). Can load any XMP files.
 
+### test3
+
+GUI elements testcase. Tests if GUI elements work correctly.
+
 ### wallbreaker
 
 Arkanoid-clone game. Currently under development.

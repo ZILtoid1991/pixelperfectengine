@@ -135,15 +135,15 @@ public class BitmapDrawer{
 				bitBLT(Point(pos.left + (x * pattern.width), pos.top + (y * pattern.height)), pattern);
 			if(targetX0) 
 				bitBLT(Point(pos.left + (pattern.width * targetX), pos.top + (y * pattern.height)), pattern,
-						Coordinate(0, 0, targetX0, pattern.height + 1));
+						Box(0, 0, targetX0, pattern.height + 1));
 		}
 		if(targetY0) {
 			for(int x ; x < targetX; x++) 
 				bitBLT(Point(pos.left + (x * pattern.width), pos.top + (targetY * pattern.height)), pattern,
-						Coordinate(0, 0, pattern.width + 1, targetY0));
+						Box(0, 0, pattern.width - 1, targetY0));
 			if(targetX0) 
 				bitBLT(Point(pos.left + (pattern.width * targetX), pos.top + (targetY * pattern.height)), pattern,
-						Coordinate(0, 0, targetX0, targetY0));
+						Box(0, 0, targetX0, targetY0));
 		}
 	}
 	/**

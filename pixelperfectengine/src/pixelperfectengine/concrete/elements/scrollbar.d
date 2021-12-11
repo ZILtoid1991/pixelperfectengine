@@ -1,7 +1,7 @@
 module pixelperfectengine.concrete.elements.scrollbar;
 
 public import pixelperfectengine.concrete.elements.base;
-import std.math : isNaN;
+import std.math : isNaN, nearbyint;
 import pixelperfectengine.system.timer;
 
 abstract class ScrollBar : WindowElement{
@@ -11,6 +11,7 @@ abstract class ScrollBar : WindowElement{
 	protected int _value, _maxValue, _barLength;
 	//protected double largeVal;							///Set to double.nan if value is less than travellength, or the ratio between 
 	protected double valRatio;							///Ratio between the travel length and the maximum value
+	protected double barLength0;
 	public void delegate(Event ev) onScrolling;			///Called shen the scrollbar's value is changed
 
 	/**
@@ -43,12 +44,13 @@ abstract class ScrollBar : WindowElement{
 	 * Position is kept or lowered if maximum is reached.
 	 */
 	public @property int maxValue(int val) {
+		assert(val >= 0, "Value must be positive!");
 		const int iconSize = position.width < position.height ? position.width : position.height;
 		const int length = position.width > position.height ? position.width : position.height;
 		_maxValue = val;
 		if (_value > _maxValue) _value = _maxValue;
-		const double barLength0 = (length - iconSize * 2) / cast(double)val;
-		_barLength = barLength0 < 1.0 ? 1 : cast(int)barLength0;
+		barLength0 = (length - iconSize * 2) / cast(double)(val + 1);
+		_barLength = barLength0 < 1.0 ? 1 : cast(int)nearbyint(barLength0);
 		//largeVal = barLength0 < 1.0 ? 1.0 / barLength0 : double.nan;
 		valRatio = 1.0 / barLength0;
 		return _maxValue;
@@ -105,7 +107,7 @@ public class VertScrollBar : ScrollBar {
 		const int value0 = valRatio < 1.0 ? value : cast(int)(value / valRatio);
 		slider.left = position.left;
 		slider.right = position.right;
-		slider.top = position.top + position.width + (_barLength * value0);
+		slider.top = position.top + position.width + cast(int)nearbyint(barLength0 * value0);
 		slider.bottom = slider.top + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
 		if (isFocused) {
@@ -189,7 +191,7 @@ public class HorizScrollBar : ScrollBar {
 		Box slider;
 		slider.top = position.top;
 		slider.bottom = position.bottom;
-		slider.left = position.left + position.height + (_barLength * value0);
+		slider.left = position.left + position.height + cast(int)nearbyint(barLength0 * value0);
 		slider.right = slider.left + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
 		if (isFocused) {

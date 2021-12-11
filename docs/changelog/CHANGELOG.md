@@ -7,6 +7,13 @@
 Due to lack of manpower on testing (pls help me!), I introduced a bug in the previous version, that disabled the
 listview's editing capabilities through a constructor. This has been fixed now.
 
+### Concrete
+
+* Slider behavior has been fixed through moving some calculations to floating-point.
+* Graphical glitches related to pattern blitting have been fixed.
+* Graphical glitching and possible memory corruption when using ListViews have been fixed, also issue that disallowed 
+the viewing of the last elements.
+
 ## Known issues
 
 Due to the massive lack of usable audio libraries, I have to write my own, so the custom audio engine's debut will be
