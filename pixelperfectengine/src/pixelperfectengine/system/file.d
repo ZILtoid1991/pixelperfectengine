@@ -115,29 +115,29 @@ public T[] loadBitmapSheetFromFile(T)(string filename, int x, int y)
 public T[] loadBitmapSheetFromImage(T)(Image img, int x, int y)
 		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
 	T source = loadBitmapFromImage!T(img);
-	if(source.width % x == 0 && source.height % y == 0){
+	if (source.width % x == 0 && source.height % y == 0) {
 		T[] output;
 		static if (is(T == Bitmap4Bit))
-			const size_t length = x / 2, pitch = source.width / 2;
+			const size_t length = x / 2, length0 = x / 2, pitch = source.width / 2;
 		else static if (is(T == Bitmap8Bit))
-			const size_t length = x, pitch = source.width;
+			const size_t length = x, length0 = x, pitch = source.width;
 		else static if (is(T == Bitmap16Bit))
-			const size_t length = x * 2, pitch = source.width * 2;
+			const size_t length = x, length0 = x * 2, pitch = source.width;
 		else static if (is(T == Bitmap32Bit))
-			const size_t length = x * 4, pitch = source.width * 4;
+			const size_t length = x, length0 = x * 4, pitch = source.width;
 		const size_t pitch0 = pitch * y;
 		output.reserve(source.height / y * source.width / x);
 		for (int mY ; mY < source.height / y ; mY++){
 			for (int mX ; mX < source.width / x ; mX++){
 				T next = new T(x, y);
 				for (int lY ; lY < y ; lY++){
-					memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch0 * mY) + (length * mX), length);
+					memcpy(next.getPtr + (lY * length), source.getPtr + (pitch * lY) + (pitch0 * mY) + (length * mX), length0);
 				}
 				output ~= next;
 			}
 		}
 		return output;
-	}else throw new Exception("Requested size cannot be divided by input file's sizes!");
+	} else throw new Exception("Requested size cannot be divided by input file's sizes!");
 }
 /**
  * Loads a palette from a file.
