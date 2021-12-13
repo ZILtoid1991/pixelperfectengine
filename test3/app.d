@@ -81,6 +81,7 @@ public class TestWindow : Window {
     RadioButtonGroup    radioButtonTestGr;
     ListView            listViewTest;
     Button              buttonTest0, buttonTest1;
+    VertScrollBar       vScrollBarTest;
     public this() {
         super(Box.bySize(0, 0, 848, 480), "Test");
         panelTest = new Panel("Selections", "", Box(5, 20, 200, 200));
@@ -101,6 +102,9 @@ public class TestWindow : Window {
             new ListViewItem(16, ["Last", "000000000000000000000"]),
         ], "", Box(5, 220, 105, 313));
         addElement(listViewTest);
+
+        vScrollBarTest = new VertScrollBar(1000, "", Box.bySize(110, 220, 16, 120));
+        addElement(vScrollBarTest);
 
         buttonTest0 = new Button("A", "", Box(205, 20, 205 + 39, 20 + 39));
         addElement(buttonTest0);

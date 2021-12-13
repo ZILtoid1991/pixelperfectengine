@@ -9,6 +9,7 @@ abstract class ScrollBar : WindowElement{
 	protected static enum 	MINUS_PRESSED = 1<<10;
 	protected static enum 	SCROLLMATIC = 1<<11;
 	protected int _value, _maxValue, _barLength;
+	public int				scrollSpeed = 1;			///Sets the scrollspeed for the given instance, can be useful for large number of items.
 	//protected double largeVal;							///Set to double.nan if value is less than travellength, or the ratio between 
 	protected double valRatio;							///Ratio between the travel length and the maximum value
 	protected double barLength0;
@@ -104,15 +105,12 @@ public class VertScrollBar : ScrollBar {
 		//draw slider
 		//const int travelLength = position.height - (position.width * 2) - _barLength;
 		Box slider;
-		const int value0 = valRatio < 1.0 ? value : cast(int)(value / valRatio);
+		//const int value0 = valRatio < 1.0 ? value : cast(int)(value / valRatio);
 		slider.left = position.left;
 		slider.right = position.right;
-		slider.top = position.top + position.width + cast(int)nearbyint(barLength0 * value0);
+		slider.top = position.top + position.width + cast(int)nearbyint(barLength0 * _value);
 		slider.bottom = slider.top + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
-		if (isFocused) {
-			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
-		}
 		//draw buttons
 		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("upArrowB") : ss.getImage("upArrowA"));
 		Point lower = position.cornerLL;
@@ -121,12 +119,17 @@ public class VertScrollBar : ScrollBar {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
+		/+if (isFocused) {
+			parent.drawBoxPattern(position, ss.pattern["blackDottedLine"]);
+		}+/
 		if (onDraw !is null) {
 			onDraw();
 		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (state != ElementState.Enabled) return;
+		mce.x -= position.left;
+		mce.y -= position.top;
 		if (mce.button == MouseButton.Left) {
 			if (mce.y < position.width) {
 				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
@@ -167,7 +170,7 @@ public class VertScrollBar : ScrollBar {
 	}
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
 		if (state != ElementState.Enabled) return;
-		value = _value - mwe.y;
+		value = _value - mwe.y * scrollSpeed;
 		super.passMWE(mec, mwe);
 	}
 	
@@ -194,20 +197,23 @@ public class HorizScrollBar : ScrollBar {
 		slider.left = position.left + position.height + cast(int)nearbyint(barLength0 * value0);
 		slider.right = slider.left + _barLength;
 		parent.drawFilledBox(slider, ss.getColor("SliderColor"));
-		if (isFocused) {
-			parent.drawBoxPattern(slider, ss.pattern["blackDottedLine"]);
-		}
+		
 		//draw buttons
 		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("leftArrowB") : ss.getImage("leftArrowA"));
 		Point lower = position.cornerUR;
 		lower.x -= position.height;
 		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("rightArrowB") : ss.getImage("rightArrowA"));
+		/+if (isFocused) {
+			parent.drawBoxPattern(position, ss.pattern["blackDottedLine"]);
+		}+/
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (state != ElementState.Enabled) return;
+		mce.x -= position.left;
+		mce.y -= position.top;
 		if (mce.button == MouseButton.Left) {
 			if (mce.x < position.height) {
 				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
@@ -250,7 +256,7 @@ public class HorizScrollBar : ScrollBar {
 	}
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
 		if (state != ElementState.Enabled) return;
-		value = _value + mwe.x;
+		value = _value + mwe.x * scrollSpeed;
 		super.passMWE(mec, mwe);
 	}
 }

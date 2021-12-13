@@ -86,7 +86,8 @@ public class BitmapDrawer{
 	 *  color = The color of the box (both the line and fill color).
 	 */
 	public void drawFilledBox(Coordinate target, ubyte color) pure {
-		draw.drawFilledRectangle(target.left, target.top, target.right, target.bottom, color, output.getPtr(), output.width);
+		draw.drawFilledRectangle(target.left, target.top, target.right + 1, target.bottom - 1, color, output.getPtr(), 
+				output.width);
 	}
 	/**
 	 * Copies a bitmap to the canvas using 0th index transparency.

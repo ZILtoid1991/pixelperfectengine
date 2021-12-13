@@ -1,5 +1,12 @@
 # Current
 
+## Fixed bugs
+
+### Concrete
+
+* Fixed some remaining graphical bugs with ListView and pattern blitting.
+* Fixed scrollbar behavior in case of large values.
+
 # 0.10.0-beta4
 
 ## Fixed bugs
