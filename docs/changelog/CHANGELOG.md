@@ -1,5 +1,7 @@
 # Current
 
+# 0.10.0-beta4
+
 ## Fixed bugs
 
 ### Bug causing Windowmaker to not work has been fixed
