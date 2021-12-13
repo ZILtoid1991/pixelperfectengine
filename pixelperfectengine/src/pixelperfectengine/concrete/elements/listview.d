@@ -229,6 +229,7 @@ public class ListViewHeader : ListViewItem {
 		StyleSheet ss = parent.drawParams.ss;
 		Box target = parent.drawParams.target;
 		Box t = Box(target.left, target.top, target.left, target.bottom);
+		t.bottom = min (t.bottom, parent.getPosition. bottom);
 		Point offset = Point(parent.drawParams.offsetP, 0);
 		for (int i = parent.drawParams.offsetC ; i <= parent.drawParams.targetC ; i++) {
 			t.right = min(t.left + parent.drawParams.columnWidths[i] - offset.x, target.right);
