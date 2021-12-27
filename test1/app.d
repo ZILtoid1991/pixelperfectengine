@@ -117,12 +117,7 @@ public class TestAudio : InputListener, SystemEventListener {
 
 		adh = new AudioDeviceHandler(48_000, 2, 1024);
 		
-		int line;
-		textOut.writeTextToMap(0, line++, 0, "Available drivers:");
-		foreach (i, key; adh.getDrivers) {
-			textOut.writeTextToMap(0, line, 0, to!wstring(i + 1));
-			textOut.writeTextToMap(2, line++, 0, to!wstring(key));
-		}
+		initDriver(OS_PREFERRED_DRIVER);
 		
 	}
 	void whereTheMagicHappens() {
@@ -148,13 +143,11 @@ public class TestAudio : InputListener, SystemEventListener {
 
 		int line;
 		textOut.writeTextToMap(0, line++, 0, "Available devices:");
+		textOut.writeTextToMap(0, line, 0, "` ");
+		textOut.writeTextToMap(2, line++, 0, "Default");
 		foreach (i, key; adh.getDevices) {
 			textOut.writeTextToMap(0, line, 0, to!wstring(i + 1));
 			textOut.writeTextToMap(2, line++, 0, to!wstring(key));
-		}
-		if (line == 1) {
-			textOut.writeTextToMap(0, line, 0, "` ");
-			textOut.writeTextToMap(2, line++, 0, "Default");
 		}
 
 		state |= StateFlags.driverInitialized;

@@ -14,11 +14,12 @@ import std.string : fromStringz;
 import std.bitmanip : bitfields;
 
 import pixelperfectengine.system.exc;
+//import pixelperfectengine.system.etc : isPowerOf2;
 import pixelperfectengine.audio.base.modulebase;
 
-/+import bindbc.sdl.bind.sdlaudio;
-import bindbc.sdl.bind.sdlerror : SDL_GetError;
-import bindbc.sdl.bind.sdl : SDL_Init, SDL_INIT_AUDIO;+/
+import iota.audio.output;
+import iota.audio.device;
+public import iota.audio.types;
 
 /**
  * Manages and initializes audio devices.
@@ -26,95 +27,95 @@ import bindbc.sdl.bind.sdl : SDL_Init, SDL_INIT_AUDIO;+/
  * Important: Only one instance should be made.
  */
 public class AudioDeviceHandler {
-	
-	protected int					channelLayout;	///Requested channel layout
-	protected int					slmpFreq;		///Requested/given sampling frequency
-	protected int					frameSize;		///Requested/given buffer base size / frame length (in samples)
-	protected int					nOfFrames;		///Requested/given number of frames before they get sent to the output
+	package AudioDevice				device;			///Contains the initialized audio device
+	protected AudioSpecs			specs;			///Contains the requested/given audio specs
+	package int						blockSize;		///Requested/given buffer base size / block length (in samples)
+	package int						nOfBlocks;		///Requested/given number of blocks before they get sent to the output
 	/** 
 	 * Creates an instance, and detects all drivers.
 	 *Params: 
-	 * slmpFreq: Requested sampling frequency. If not available, a nearby will be used instead.
+	 * specs: Requested audio specifications. If not available, a nearby will be used instead.
 	 * channels: Number of channels
 	 * buffSize: The size of the buffer in samples
 	 *
 	 * Throws an AudioInitException if audio is failed to be initialized.
 	 */
-	public this(int channelLayout, int slmpFreq, int frameSize, int nOfFrames) {
+	public this(AudioSpecs specs, int blockSize, int nOfBlocks) {
 		//context = soundio_create();
-		
-		this.channelLayout = channelLayout;
-		this.slmpFreq = slmpFreq;
-		this.frameSize = frameSize;
-		this.nOfFrames = nOfFrames;
+		this.specs = specs;
+		this.blockSize = blockSize;
+		this.nOfBlocks = nOfBlocks;
 		//req.callback = &callbacksFromSDL;
 	}
 	///Destructor
 	~this() {
 		
-	}/+
+	}
 	/**
 	 * Initializes an audio driver by ID.
 	 *
 	 * Throws an AudioInitException if audio failed to be initialized.
 	 */
-	public void initAudioDriver(SoundIoBackend backend) {
-		
-	}+/
+	public void initAudioDriver(DriverType backend) {
+		int errCode = initDriver(backend);
+		if (errCode) throw new AudioInitException("Failed to initialize audio driver. Error code: " ~ errCode.to!string);
+	}
 	/**
 	 * Opens a specific audio device for audio playback by ID, then sets the values for buffer sizes etc.
 	 *
 	 * Throws an AudioInitException if audio failed to be initialized
 	 */
-	public void initAudioDevice(int id) {
-		
+	public void initAudioDevice(int id = -1) {
+		int errCode = openDevice(id, device);
+		if (errCode) throw new AudioInitException("Failed to initialize audio device. Error code: " ~ errCode.to!string);
+		specs = device.requestSpecs(specs);
+		// Recalculate block sizes if buffer size changed
+		if (specs.bufferSize_slmp != blockSize * nOfBlocks) {
+			if (!(specs.bufferSize_slmp % 4)) {
+				blockSize = specs.bufferSize_slmp / 4;
+				nOfBlocks = 4;
+			} else {
+				blockSize = specs.bufferSize_slmp;
+				nOfBlocks = 1;
+			}
+		}
 	}
 	/**
 	 * Return an array with the names of the available audio devices.
 	 */
-	public string[] getDevices() @trusted pure nothrow const {
-		string[] result;
-		
-		return result;
+	public string[] getDevices() {
+		return getOutputDeviceNames();
 	}
 	/**
 	 * Returns the available sampling frequency.
 	 */
 	public int getSamplingFrequency() @nogc @safe pure nothrow const {
-		return slmpFreq;
+		return specs.sampleRate;
 	}
 	/**
 	 * Returns the number of audio channels.
 	 */
 	public int getChannels() @nogc @safe pure nothrow const {
-		return 0;
+		return specs.outputChannels;
 	}
 	/**
 	 * Returns the buffer size in units.
 	 */
 	public size_t getBufferSize() @nogc @safe pure nothrow const {
-		return frameSize * nOfFrames;
+		return blockSize * nOfBlocks;
 	}
+	
 }
 /**
  * Manages all audio modules complete with routing, MIDI2.0, etc.
  */
 public class ModuleManager {
-	protected int			bufferSize;		///Rendering buffer size in samples, also the length of a single frame.
-	protected int			nOfFrames;		///Number of maximum frames that can be put into the output buffer.
-	protected int			currFrame;		///Current audio frame.
-	protected uint			statusFlags;	///Status flags of the module manager.
-	protected ThreadID		threadID;		///Low-level thread ID.
-	/** 
-	 * Status flags for the module manager.
-	 */
-	public enum Flags {
-		IsRunning			=	1<<0,		///Set if thread is running.
-		BufferUnderrunError	=	1<<16,		///Set if a buffer underrun error have been occured.
-		AudioQueueError		=	1<<17,		///Set if the SDL_QueueAudio function returns with an error code.
-	}
+	protected int			blockSize;		///Rendering buffer size in samples, also the length of a single frame.
+	protected int			nOfBlocks;		///Number of maximum frames that can be put into the output buffer.
+	protected int			currBlock;		///Current audio frame.
 	///Pointer to the audio device handler.
 	public AudioDeviceHandler	devHandler;
+	protected OutputStream	outStrm;		///Output stream handling.
 	/**
 	 * List of modules.
 	 *
@@ -140,7 +141,7 @@ public class ModuleManager {
 	 * List of the buffers themselves.
 	 *
 	 * One buffer can be shared between multiple input and/or output for mixing, etc.
-	 * All buffers must have the same size, defined by the variable `bufferSize`
+	 * All buffers must have the same size, defined by the variable `blockSize`
 	 * The first buffers are used for output rendering.
 	 */
 	protected float[][]		buffers;
@@ -154,65 +155,50 @@ public class ModuleManager {
 	 * Creates an instance of a module handler.
 	 *Params:
 	 * handler = The AudioDeviceHandler that contains the data about the audio device.
-	 * bufferSize = The size of the buffer in samples.
-	 * nOfFrames = The number of frames before they get queued to the audio device.
+	 * blockSize = The size of the buffer in samples.
+	 * nOfBlocks = The number of frames before they get queued to the audio device.
 	 */
-	public this(AudioDeviceHandler handler, int bufferSize, int nOfFrames) {
+	public this(AudioDeviceHandler handler) {
 		import pixelperfectengine.audio.base.func : resetBuffer;
 		devHandler = handler;
-		this.bufferSize = bufferSize;
-		//assert(handler.getBufferSize % bufferSize == 0, "`bufferSize` is not power of 2!");
-		//nOfFrames = handler.getBufferSize / bufferSize;
-		this.nOfFrames = nOfFrames;
-		finalBuffer.length = handler.getChannels() * bufferSize * nOfFrames;
+		this.blockSize = handler.blockSize;
+		outStrm = handler.device.createOutputStream();
+		if (outStrm is null) throw new AudioInitException("Audio stream couldn't be opened.");
+		this.nOfBlocks = handler.nOfBlocks;
+		finalBuffer.length = handler.getChannels() * blockSize * nOfBlocks;
 		resetBuffer(finalBuffer);
 
 		buffers.length = handler.getChannels();
 		for (int i ; i < buffers.length ; i++) {
-			buffers[i].length = bufferSize;
+			buffers[i].length = blockSize;
 			resetBuffer(buffers[i]);
 		}
 		//super(&render);
 	}
-	/+
-	/** 
-	 * Renders audio to the
-	 */
-	protected void render(SoundIoOutStream* stream, int frameCountMin, int frameCountMax) @nogc nothrow {
-		import pixelperfectengine.system.etc : clamp;
-
-	}+/
-	/+
 	/**
-	 * Runs the audio thread.
+	 * Audio callback function.
+	 * Renders the audio, then it copies to the destination buffer. If needed, it'll do floating point to integer conversion.
 	 */
-	protected void run() @nogc nothrow {
+	protected void audioCallback(ubyte[] destbuffer) @nogc nothrow {
 		import pixelperfectengine.audio.base.func : interleave, resetBuffer;
-		statusFlags = Flags.IsRunning;	//reset status flags
-		while (statusFlags & Flags.IsRunning) {
-			/+if (SDL_QueueAudio(devHandler.getAudioDeviceID(), cast(const void*)finalBuffer.ptr, cast(uint)(finalBuffer.length * 
-					float.sizeof))) statusFlags |= Flags.AudioQueueError;+/
-			while (currFrame < nOfFrames) {
-				foreach (ref key; buffers) {
-					resetBuffer(key);
-				}
-				foreach (size_t i, AudioModule am; moduleList) {
-					am.renderFrame(inBufferList[i], outBufferList[i]);
-				}
-				const size_t offset = currFrame * bufferSize;
-				interleave(bufferSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
-				currFrame++;
+		import core.stdc.string : memcpy;
+
+		while (currBlock < nOfBlocks) {
+			foreach (ref key; buffers) {
+				resetBuffer(key);
 			}
-			currFrame = 0;
-			//Put thread to sleep
-			TickDuration newTimeStamp = TickDuration.currSystemTick();
-			if (newTimeStamp > timeStamp + timeDelta)
-				statusFlags |= Flags.BufferUnderrunError;
-			else
-				Thread.sleep(cast(Duration)(timeDelta - (newTimeStamp - timeStamp)));
-			timeStamp = TickDuration.currSystemTick();
+			foreach (size_t i, AudioModule am; moduleList) {
+				am.renderFrame(inBufferList[i], outBufferList[i]);
+			}
+			const size_t offset = currBlock * blockSize;
+			interleave(blockSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
+			currBlock++;
 		}
-	}+/
+		currBlock = 0;
+		
+		memcpy(destbuffer.ptr, finalBuffer.ptr, destbuffer.length);
+		
+	}
 	/**
 	 * MIDI commands are received here from modules.
 	 *
@@ -230,7 +216,7 @@ public class ModuleManager {
 		import pixelperfectengine.audio.base.func : resetBuffer;
 		buffers.length = num;
 		for (size_t i ; i < buffers.length ; i++) {
-			buffers[i].length = bufferSize;
+			buffers[i].length = blockSize;
 			resetBuffer(buffers[i]);
 		}
 	}
@@ -244,7 +230,7 @@ public class ModuleManager {
 	 * outCfg = list of audio output IDs to be used. Must be matched with `outBuffs`
 	 */
 	public void addModule(AudioModule md, size_t[] inBuffs, ubyte[] inCfg, size_t[] outBuffs, ubyte[] outCfg) nothrow {
-		md.moduleSetup(inCfg, outCfg, devHandler.getSamplingFrequency, bufferSize, this);
+		md.moduleSetup(inCfg, outCfg, devHandler.getSamplingFrequency, blockSize, this);
 		moduleList ~= md;
 		float*[] buffList0, buffList1;
 		buffList0.length = inBuffs.length;
@@ -262,15 +248,15 @@ public class ModuleManager {
 	/**
 	 * 
 	 */
-	public void runAudioThread() @nogc nothrow {
-		
+	public int runAudioThread() @nogc nothrow {
+		return outStrm.runAudioThread();
 	}
 	/**
 	 * Stops all audio output.
 	 * 
 	 */
-	public uint suspendAudioThread() {
-		return uint.init;
+	public int suspendAudioThread() {
+		return outStrm.suspendAudioThread();
 	}
 }
 

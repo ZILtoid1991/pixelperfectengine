@@ -1,5 +1,13 @@
 # Current
 
+## Audio output via iota
+
+## Deprecated features
+
+* PaletteManager: Was a bad idea to begin with.
+
+# 0.10.0-beta5
+
 ## Fixed bugs
 
 ### Concrete
