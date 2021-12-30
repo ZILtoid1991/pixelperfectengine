@@ -2,7 +2,9 @@
 
 ## Audio output via iota
 
-## Deprecated features
+There's now multi-threaded audio support for the engine, allowing me to finally test audio related functions.
+
+## Removed features
 
 * PaletteManager: Was a bad idea to begin with.
 

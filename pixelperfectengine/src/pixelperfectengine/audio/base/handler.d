@@ -173,6 +173,7 @@ public class ModuleManager {
 			buffers[i].length = blockSize;
 			resetBuffer(buffers[i]);
 		}
+		outStrm.callback_buffer = &audioCallback;
 		//super(&render);
 	}
 	/**

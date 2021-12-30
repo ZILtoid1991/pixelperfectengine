@@ -412,7 +412,20 @@ public class QM816 : AudioModule {
 				eeg.releaseRate = 1.0;
 			}
 		}
-		
+		/** 
+		 * Recalculates the output levels for the channel.
+		 */
+		void recalculateOutLevels() @nogc @safe pure nothrow {
+			if (preset.chCtrl == ChCtrlFlags.IndivOutChLev) {
+				outLevels[0] = preset.masterVol;
+				outLevels[1] = preset.masterBal;
+			} else {
+				outLevels[0] = preset.masterVol * preset.masterBal;
+				outLevels[1] = preset.masterVol * (1 - preset.masterBal);
+			}
+			outLevels[2] = preset.auxSendA;
+			outLevels[3] = preset.auxSendB;
+		}
 	}
 	/**
 	Stores channel controller values (modwheel, velocity, etc.)
@@ -439,7 +452,7 @@ public class QM816 : AudioModule {
 			///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
 			uint			tune	=	0x31_00_00_00;
 			///Output level (between 0.0 and 1.0)
-			float			outL	=	0.25;
+			float			outL	=	0.1;
 			///Feedback level (between 0.0 and 1.0)
 			float			fbL		=	0.0;
 			///Control flags and Wavetable selector
@@ -594,7 +607,7 @@ public class QM816 : AudioModule {
 	protected uint				pLFORate;
 	///Mixdown value.
 	///Used for final mixing.
-	protected float				mixdownVal = 1.0 / (ushort.max);
+	protected float				mixdownVal = ushort.max;
 	alias ChFun = void delegate(int chNum, size_t length) @nogc pure nothrow;
 	///Channel update delegates
 	protected ChFun[16]			chDeleg;
@@ -672,7 +685,7 @@ public class QM816 : AudioModule {
 		}
 		//Reset delegates
 		for (int i ; i < chDeleg.length ; i++) {
-			chDeleg[i] = &updateChannelM00;
+			chDeleg[i] = &updateChannelM01;
 		}
 	}
 	/**
@@ -715,6 +728,7 @@ public class QM816 : AudioModule {
 		//Reset channel EGs
 		for (int i ; i < channels.length ; i++) {
 			channels[i].resetEEG(sampleRate);
+			channels[i].recalculateOutLevels();
 		}
 	}
 	/**
@@ -753,8 +767,7 @@ public class QM816 : AudioModule {
 	 * sequencer and the audio plugin system.
 	 */
 	public override void midiReceive(uint[4] data, uint offset) @nogc nothrow {
-		UMP firstPacket;
-		firstPacket.base = data[0];
+		UMP firstPacket = *(cast(UMP*)(data.ptr));
 		switch (firstPacket.msgType) {
 			case MessageType.SysCommMsg:	//Process system common message
 				break;
@@ -1448,6 +1461,7 @@ public class QM816 : AudioModule {
 		foreach (size_t i, ChFun fun ; chDeleg) {
 			fun(cast(int)i, bufferSize);
 		}
+		//chDeleg[0](0, bufferSize);
 		//Filter and mix outputs
 		float*[4] outBuf;
 		for (ubyte i, j ; i < 4 ; i++) {
@@ -1462,9 +1476,9 @@ public class QM816 : AudioModule {
 				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];
 		for (int i ; i < bufferSize ; i++) {
 			__m128 input0 = _mm_load_ps(initBuffers.ptr + (i * 4));
-			input0 *= __m128(mixdownVal);
-			input0 = _mm_max_ps(input0, __m128(-1.0));
-			input0 = _mm_min_ps(input0, __m128(1.0));
+			input0 /= __m128(mixdownVal);
+			//input0 = _mm_max_ps(input0, __m128(1.0));
+			//input0 = _mm_min_ps(input0, __m128(-1.0));
 			__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
 					a2_a0 * filterVals[9];
 			for (int j ; j < 4 ; j++)
