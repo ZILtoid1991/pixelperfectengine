@@ -127,7 +127,8 @@ public class TestAudio : InputListener, SystemEventListener {
 			ih.test();
 		}
 		if (mm !is null) {
-			writeln(mm.suspendAudioThread());
+			synchronized
+				writeln(mm.suspendAudioThread());
 		}
 	}
 
@@ -398,7 +399,7 @@ public class TestAudio : InputListener, SystemEventListener {
 					break;
 			}
 			if (midipacket.msgType == MessageType.MIDI2) {
-				fmsynth.midiReceive([midipacket.base, uint.max, 0, 0],0);
+				fmsynth.midiReceive(midipacket.base, uint.max);
 			}
 		}
 	}

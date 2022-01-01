@@ -2,6 +2,7 @@ module pixelperfectengine.audio.base.modulebase;
 
 import std.bitmanip;
 import collections.sortedlist;
+import midi2.types.structs;
 
 public import pixelperfectengine.audio.base.types;
 public import pixelperfectengine.audio.base.handler;
@@ -70,11 +71,10 @@ public abstract class AudioModule {
 	/**
 	 * MIDI 2.0 data received here.
 	 *
-	 * data: up to 128 bits of MIDI 2.0 commands. Any packets that are shorter should be padded with zeros.
-	 * offset: time offset of the command. This can reduce jitter caused by the asynchronous operation of the 
-	 * sequencer and the audio plugin system.
+	 * data0: Header of the up to 128 bit MIDI 2.0 data.
+	 * data1-3: Other packets if needed.
 	 */
-	public abstract void midiReceive(uint[4] data, uint offset) @nogc nothrow;
+	public abstract void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow;
 	/**
 	 * Renders the current audio frame.
 	 * 

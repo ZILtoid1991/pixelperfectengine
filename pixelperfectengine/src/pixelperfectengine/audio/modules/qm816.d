@@ -762,70 +762,68 @@ public class QM816 : AudioModule {
 	/**
 	 * MIDI 2.0 data received here.
 	 *
-	 * data: up to 128 bits of MIDI 2.0 commands. Any packets that are shorter should be padded with zeros.
-	 * offset: time offset of the command. This can reduce jitter caused by the asynchronous operation of the 
-	 * sequencer and the audio plugin system.
+	 * data0: Header of the up to 128 bit MIDI 2.0 data.
+	 * data1-3: Other packets if needed.
 	 */
-	public override void midiReceive(uint[4] data, uint offset) @nogc nothrow {
-		UMP firstPacket = *(cast(UMP*)(data.ptr));
-		switch (firstPacket.msgType) {
+	public override void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
+		switch (data0.msgType) {
 			case MessageType.SysCommMsg:	//Process system common message
 				break;
 			case MessageType.MIDI1:			//Process MIDI 1.0 messages
-				switch (firstPacket.status) {
+				switch (data0.status) {
 					case MIDI1_0Cmd.CtrlCh:	//Process MIDI 1.0 control change messages
-						switch (firstPacket.note) {
+						switch (data0.note) {
 							case 0, 32:			//Bank select
-								bankNum[firstPacket.channel] = firstPacket.value & 7;
+								bankNum[data0.channel] = data0.value & 7;
 								break;
 							case 1:				//Modulation wheel
-								chCtrls[firstPacket.channel].modwheel = cast(double)(firstPacket.value) / byte.max;
+								chCtrls[data0.channel].modwheel = cast(double)(data0.value) / byte.max;
 								break;
 							case 6:			//Data Entry MSB
-								paramNum[0] = firstPacket.value;
+								paramNum[0] = data0.value;
 								paramTemp = [0xFF,0xFF,0xFF,0xFF];
 								break;
 							case 38:		//Data Entry LSB
-								paramNum[1] = firstPacket.value;
+								paramNum[1] = data0.value;
 								paramTemp = [0xFF,0xFF,0xFF,0xFF];
 								break;
 							case 98:		//Non Registered Parameter Number MSB (handle through MIDI 2.0)
-								//setUnregisteredParam(firstPacket.value, paramNum, 0, firstPacket.channel);
-								paramTemp[0] = firstPacket.value;
-								setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), paramNum, firstPacket.channel);
+								//setUnregisteredParam(data0.value, paramNum, 0, data0.channel);
+								paramTemp[0] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), paramNum, data0.channel);
 								break;
 							case 99:		//Non Registered Parameter Number LSB (handle through MIDI 2.0)
-								//setUnregisteredParam(firstPacket.value, paramNum, 0, firstPacket.channel);
-								paramTemp[1] = firstPacket.value;
+								//setUnregisteredParam(data0.value, paramNum, 0, data0.channel);
+								paramTemp[1] = data0.value;
 								if (paramTemp[0] != 0xFF)
-									setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), paramNum, firstPacket.channel);
+									setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), paramNum, data0.channel);
 								break;
 							default:
 								break;
 						}
 						break;
 					case MIDI1_0Cmd.NoteOn:	//Note on command
-						const uint ch = firstPacket.channel;
+						const uint ch = data0.channel;
 						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
-						chCtrls[ch].note = firstPacket.note;
-						chCtrls[ch].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
+						chCtrls[ch].note = data0.note;
+						chCtrls[ch].velocity = cast(double)data0.velocity / cast(double)byte.max;
 						channels[ch].eeg.keyOn();
 						operators[ch].eg.keyOn();
-						operators[ch].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+						operators[ch].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 						operators[ch + 1].eg.keyOn();
-						operators[ch + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
+						operators[ch + 1].setFrequency(sampleRate, data0.note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
 						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 							channels[ch + 8].eeg.keyOn();
 							operators[ch + 16].eg.keyOn();
-							operators[ch + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+							operators[ch + 16].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 							operators[ch + 17].eg.keyOn();
-							operators[ch + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+							operators[ch + 17].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 						}
 						break;
 					case MIDI1_0Cmd.NoteOff://Note off command
-						const uint ch = firstPacket.channel;
+						const uint ch = data0.channel;
 						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
-						chCtrls[ch].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
+						chCtrls[ch].velocity = cast(double)data0.velocity / cast(double)byte.max;
 						channels[ch].eeg.keyOff();
 						operators[ch].eg.keyOff();
 						if (operators[ch].preset.opCtrl & OpCtrlFlags.EGRelAdaptive) {
@@ -868,13 +866,13 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case MIDI1_0Cmd.ChAftrTch:
-						chCtrls[firstPacket.channel].velocity = cast(double)firstPacket.note / cast(double)byte.max;
+						chCtrls[data0.channel].velocity = cast(double)data0.note / cast(double)byte.max;
 						break;
 					case MIDI1_0Cmd.PolyAftrTch:
-						chCtrls[firstPacket.channel].velocity = cast(double)firstPacket.velocity / cast(double)byte.max;
+						chCtrls[data0.channel].velocity = cast(double)data0.velocity / cast(double)byte.max;
 						break;
 					case MIDI1_0Cmd.PrgCh:	//Program change
-						const uint chOffset = firstPacket.channel;
+						const uint chOffset = data0.channel;
 						const uint chCtrl = soundBank[bankNum[chOffset] & 7][presetNum[chOffset]].channel.chCtrl;
 						if (chCtrl & ChCtrlFlags.ComboModeTest) {
 							const uint chX = chOffset & 7, bankX = bankNum[chOffset] & 7 & ~1;
@@ -885,28 +883,28 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case MIDI1_0Cmd.PitchBend:
-						const uint ch = firstPacket.channel;
+						const uint ch = data0.channel;
 						const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
 								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
-						chCtrls[ch].pitchBend = pitchBendSens * ((cast(double)firstPacket.bend - 0x20_00) / 0x3F_FF);
+						chCtrls[ch].pitchBend = pitchBendSens * ((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
 						break;
 					default:
 						break;
 				}
 				break;
 			case MessageType.MIDI2:
-				switch (firstPacket.status) {
+				switch (data0.status) {
 					case MIDI2_0Cmd.CtrlCh:	//Control change
-						setUnregisteredParam(data[1], [firstPacket.index, firstPacket.value], firstPacket.channel);
+						setUnregisteredParam(data1, [data0.index, data0.value], data0.channel);
 						break;
 					case MIDI2_0Cmd.CtrlChR://Registered control change
-						//setRegisteredParam(data[1], [firstPacket.index, firstPacket.value], firstPacket.channel);
+						//setRegisteredParam(data[1], [data0.index, data0.value], data0.channel);
 						break;
 					case MIDI2_0Cmd.PrgCh:	//Program change
-						const uint chOffset = firstPacket.channel;
+						const uint chOffset = data0.channel;
 						//const uint prg = data[1]>>24, bank = data[1] & 7;
-						presetNum[chOffset] = cast(ubyte)(data[1]>>24);
-						if (firstPacket.value & 1) bankNum[chOffset] = cast(ubyte)(data[1] & 7);
+						presetNum[chOffset] = cast(ubyte)(data1>>24);
+						if (data0.value & 1) bankNum[chOffset] = cast(ubyte)(data1 & 7);
 						const uint chCtrl = soundBank[bankNum[chOffset] & 7][presetNum[chOffset]].channel.chCtrl;
 						if (chCtrl & ChCtrlFlags.ComboModeTest) {
 							const uint chX = chOffset & 7, bankX = bankNum[chOffset] & 7 & ~1;
@@ -917,29 +915,29 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case MIDI2_0Cmd.NoteOn:
-						NoteVals v = *cast(NoteVals*)(&data[1]);
-						const uint ch = firstPacket.channel;
+						NoteVals v = *cast(NoteVals*)(&data1);
+						const uint ch = data0.channel;
 						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
-						chCtrls[ch].note = firstPacket.note;
+						chCtrls[ch].note = data0.note;
 						chCtrls[ch].velocity = v.velocity / cast(double)ushort.max;
 						channels[ch].eeg.keyOn();
 						operators[ch].eg.keyOn();
-						operators[ch].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+						operators[ch].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 						operators[ch + 1].eg.keyOn();
-						operators[ch + 1].setFrequency(sampleRate, firstPacket.note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
+						operators[ch + 1].setFrequency(sampleRate, data0.note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
 						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 							channels[ch + 8].eeg.keyOn();
 							operators[ch + 16].eg.keyOn();
-							operators[ch + 16].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+							operators[ch + 16].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 							operators[ch + 17].eg.keyOn();
-							operators[ch + 17].setFrequency(sampleRate, firstPacket.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+							operators[ch + 17].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
 						}
 						break;
 					case MIDI2_0Cmd.NoteOff:
-						NoteVals v = *cast(NoteVals*)(&data[1]);
-						const uint ch = firstPacket.channel;
+						NoteVals v = *cast(NoteVals*)(&data1);
+						const uint ch = data0.channel;
 						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
-						//chCtrls[ch].note = firstPacket.note;
+						//chCtrls[ch].note = data0.note;
 						chCtrls[ch].velocity = v.velocity / cast(double)ushort.max;
 						channels[ch].eeg.keyOff();
 						operators[ch].eg.keyOff();
@@ -983,10 +981,10 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case MIDI2_0Cmd.PitchBend:
-						const uint ch = firstPacket.channel;
+						const uint ch = data0.channel;
 						const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
 								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
-						chCtrls[ch].pitchBend = pitchBendSens * (cast(double)(firstPacket.bend - (uint.max / 2)) / (uint.max / 2));
+						chCtrls[ch].pitchBend = pitchBendSens * (cast(double)(data0.bend - (uint.max / 2)) / (uint.max / 2));
 						break;
 					default:
 						break;
