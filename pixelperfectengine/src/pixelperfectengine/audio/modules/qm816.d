@@ -766,6 +766,7 @@ public class QM816 : AudioModule {
 	 * data1-3: Other packets if needed.
 	 */
 	public override void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
+		data0 = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, 0x3f, 0x0);
 		switch (data0.msgType) {
 			case MessageType.SysCommMsg:	//Process system common message
 				break;

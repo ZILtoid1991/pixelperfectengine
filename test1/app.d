@@ -329,7 +329,7 @@ public class TestAudio : InputListener, SystemEventListener {
 						break;
 				}
 				if (midipacket.msgType == MessageType.MIDI2) {
-					fmsynth.midiReceive([midipacket.base, uint.max, 0, 0],0);
+					fmsynth.midiReceive(midipacket, uint.max);
 				}
 			}
 		} else if (state & StateFlags.deviceInitialized) {
@@ -399,7 +399,7 @@ public class TestAudio : InputListener, SystemEventListener {
 					break;
 			}
 			if (midipacket.msgType == MessageType.MIDI2) {
-				fmsynth.midiReceive(midipacket.base, uint.max);
+				fmsynth.midiReceive(midipacket, uint.max);
 			}
 		}
 	}
