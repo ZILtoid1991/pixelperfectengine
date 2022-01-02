@@ -474,7 +474,7 @@ public class QM816 : AudioModule {
 			///1 - 63: Descending over time
 			///64: Constant
 			///65 - 127: Ascending over time
-			ubyte			susCC;
+			ubyte			susCC = 64;
 			///Sustain level for the EG
 			float			susLevel=	1.0;
 			///ADSR shaping parameter (for the attack phase)
@@ -695,6 +695,9 @@ public class QM816 : AudioModule {
 	 */
 	public override void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize, 
 			ModuleManager handler) @safe nothrow {
+		// void test() @trusted nothrow {
+			// midiReceive(UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, 0x3f, 0x0));
+		// }
 		enabledInputs = StreamIDSet(inputs);
 		enabledOutputs = StreamIDSet(outputs);
 		this.sampleRate = sampleRate;
@@ -730,6 +733,7 @@ public class QM816 : AudioModule {
 			channels[i].resetEEG(sampleRate);
 			channels[i].recalculateOutLevels();
 		}
+		//test();
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
@@ -766,7 +770,7 @@ public class QM816 : AudioModule {
 	 * data1-3: Other packets if needed.
 	 */
 	public override void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
-		data0 = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, 0x3f, 0x0);
+		//data0 = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, 0x3f, 0x0);
 		switch (data0.msgType) {
 			case MessageType.SysCommMsg:	//Process system common message
 				break;
@@ -890,7 +894,8 @@ public class QM816 : AudioModule {
 						chCtrls[ch].pitchBend = pitchBendSens * ((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
 						break;
 					default:
-						break;
+						assert(0, "MIDI 1.0 data error!");
+						//break;
 				}
 				break;
 			case MessageType.MIDI2:
@@ -988,11 +993,13 @@ public class QM816 : AudioModule {
 						chCtrls[ch].pitchBend = pitchBendSens * (cast(double)(data0.bend - (uint.max / 2)) / (uint.max / 2));
 						break;
 					default:
-						break;
+						assert(0, "MIDI 2.0 data error!");
+						//break;
 				}
 				break;
 			default:
-				break;
+				assert(0, "Something went really wrong!");
+				// break;
 		}
 	}
 	/**

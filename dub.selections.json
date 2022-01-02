@@ -18,7 +18,7 @@
 		"libsoundio-d": "1.1.0",
 		"lzwford": "1.0.0",
 		"midi-di": "0.0.1",
-		"midi2": "0.1.2",
+		"midi2": "0.1.3",
 		"sdlang-d": "0.10.6",
 		"std-experimental-xml": "0.1.7",
 		"stdx-allocator": "2.77.5",
