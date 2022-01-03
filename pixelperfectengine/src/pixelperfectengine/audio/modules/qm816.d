@@ -454,7 +454,7 @@ public class QM816 : AudioModule {
 			///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
 			uint			tune	=	0x31_00_00_00;
 			///Output level (between 0.0 and 1.0)
-			float			outL	=	0.1;
+			float			outL	=	0.25;
 			///Feedback level (between 0.0 and 1.0)
 			float			fbL		=	0.0;
 			///Control flags and Wavetable selector
@@ -1496,6 +1496,7 @@ public class QM816 : AudioModule {
 			filterVals[9] = filterVals[8];
 			filterVals[8] = output0;
 		}
+		resetBuffer(initBuffers);
 	}
 	///Updates an operator for a cycle
 	///chCtrl index notation: 0: velocity, 1: modulation wheel, 2: Amplitude LFO, 3: Extra Envelop Generator
