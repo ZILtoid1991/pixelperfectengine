@@ -291,13 +291,15 @@ public class QM816 : AudioModule {
 					(tune>>25) + ((cast(double)(tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
 					TuneCtrlFlags.FineTuneTest) : pitchBend + note ;+/
 			double actualNote;
+			const double tuneOffset = ((preset.tune - TuneCtrlFlags.CorTuneMidPoint)>>25)  // Coarse tune amount
+				+ (((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest)) - TuneCtrlFlags.FineTuneMidPoint) / TuneCtrlFlags.FineTuneMidPoint);
 			if (preset.opCtrl & OpCtrlFlags.FixedPitch) {
-				actualNote = (preset.tune>>25) + ((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest) - 
-						TuneCtrlFlags.FineTuneMidPoint) / TuneCtrlFlags.FineTuneTest);
+				actualNote = tuneOffset + 24;
 			} else {
-				actualNote = pitchBend + note + cast(int)((preset.tune>>25) - TuneCtrlFlags.CorTuneMidPoint) + 
+				actualNote = note + pitchBend + tuneOffset;
+				/+actualNote = pitchBend + note + cast(int)((preset.tune>>25) - TuneCtrlFlags.CorTuneMidPoint) + 
 						((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
-						TuneCtrlFlags.FineTuneTest);
+						TuneCtrlFlags.FineTuneTest);+/
 			}
 			const double oscFreq = noteToFreq(actualNote, tuning);
 			const double cycLen = oscFreq / (slmpFreq / 1024.0);
