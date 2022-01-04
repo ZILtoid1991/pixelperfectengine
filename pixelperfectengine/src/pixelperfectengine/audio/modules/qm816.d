@@ -287,9 +287,6 @@ public class QM816 : AudioModule {
 
 		///Sets the frequency of the operator
 		void setFrequency(int slmpFreq, ubyte note, double pitchBend, double tuning) @nogc @safe pure nothrow {
-			/+const double actualNote = (opCtrl & OpCtrlFlags.FixedPitch) ? 
-					(tune>>25) + ((cast(double)(tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
-					TuneCtrlFlags.FineTuneTest) : pitchBend + note ;+/
 			double actualNote;
 			const double tuneOffset = ((preset.tune - TuneCtrlFlags.CorTuneMidPoint)>>25)  // Coarse tune amount
 				+ (((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest)) - TuneCtrlFlags.FineTuneMidPoint) / TuneCtrlFlags.FineTuneMidPoint);
@@ -297,13 +294,10 @@ public class QM816 : AudioModule {
 				actualNote = tuneOffset + 24;
 			} else {
 				actualNote = note + pitchBend + tuneOffset;
-				/+actualNote = pitchBend + note + cast(int)((preset.tune>>25) - TuneCtrlFlags.CorTuneMidPoint) + 
-						((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest) - TuneCtrlFlags.FineTuneMidPoint) / 
-						TuneCtrlFlags.FineTuneTest);+/
 			}
 			const double oscFreq = noteToFreq(actualNote, tuning);
 			const double cycLen = oscFreq / (slmpFreq / 1024.0);
-			step = cast(uint)(cast(double)(1<<20) / cycLen);
+			step = cast(uint)(cast(double)(1<<20) * cycLen);
 		}
 		///Resets the Envelop generator
 		void resetEG(int sampleRate) @nogc @safe pure nothrow {
@@ -609,7 +603,7 @@ public class QM816 : AudioModule {
 	protected uint				pLFORate;
 	///Mixdown value.
 	///Used for final mixing.
-	protected float				mixdownVal = ushort.max;
+	protected float				mixdownVal = 4096;//short.max + 1;
 	alias ChFun = void delegate(int chNum, size_t length) @nogc pure nothrow;
 	///Channel update delegates
 	protected ChFun[16]			chDeleg;
@@ -1485,8 +1479,8 @@ public class QM816 : AudioModule {
 		for (int i ; i < bufferSize ; i++) {
 			__m128 input0 = _mm_load_ps(initBuffers.ptr + (i * 4));
 			input0 /= __m128(mixdownVal);
-			//input0 = _mm_max_ps(input0, __m128(1.0));
-			//input0 = _mm_min_ps(input0, __m128(-1.0));
+			input0 = _mm_max_ps(input0, __m128(-1.0));
+			input0 = _mm_min_ps(input0, __m128(1.0));
 			__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
 					a2_a0 * filterVals[9];
 			for (int j ; j < 4 ; j++)

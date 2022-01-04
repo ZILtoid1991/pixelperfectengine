@@ -151,6 +151,7 @@ public class ModuleManager {
 	 * Words are in LRLRLR... order, or similar, depending on number of channels.
 	 */
 	protected float[]		finalBuffer;
+	protected int			channels;
 	/** 
 	 * Creates an instance of a module handler.
 	 *Params:
@@ -166,6 +167,7 @@ public class ModuleManager {
 		if (outStrm is null) throw new AudioInitException("Audio stream couldn't be opened.");
 		this.nOfBlocks = handler.nOfBlocks;
 		finalBuffer.length = handler.getChannels() * blockSize * nOfBlocks;
+		this.channels = handler.getChannels();
 		resetBuffer(finalBuffer);
 
 		buffers.length = handler.getChannels();
@@ -191,7 +193,7 @@ public class ModuleManager {
 			foreach (size_t i, AudioModule am; moduleList) {
 				am.renderFrame(inBufferList[i], outBufferList[i]);
 			}
-			const size_t offset = currBlock * blockSize;
+			const size_t offset = currBlock * blockSize * channels;
 			interleave(blockSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
 			currBlock++;
 		}

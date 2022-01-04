@@ -58,6 +58,7 @@ public class TestAudio : InputListener, SystemEventListener {
 		isRunning		=	1<<0,
 		driverInitialized=	1<<1,
 		deviceInitialized=	1<<2,
+		keyPressed		=	1<<8,
 	}
 	
 	public this(string[] args) {
@@ -186,45 +187,7 @@ public class TestAudio : InputListener, SystemEventListener {
 
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		if (isPressed) {
-			/* if (!(state & StateFlags.driverInitialized)) {
-				switch (id) {
-					case hashCalc("num1"):
-						initDriver(0);
-						break;
-					case hashCalc("num2"):
-						initDriver(1);
-						break;
-					case hashCalc("num3"):
-						initDriver(2);
-						break;
-					case hashCalc("num4"):
-						initDriver(3);
-						break;
-					case hashCalc("num5"):
-						initDriver(4);
-						break;
-					case hashCalc("num6"):
-						initDriver(5);
-						break;
-					case hashCalc("num7"):
-						initDriver(6);
-						break;
-					case hashCalc("num8"):
-						initDriver(7);
-						break;
-					case hashCalc("num9"):
-						initDriver(8);
-						break;
-					case hashCalc("num0"):
-						initDriver(9);
-						break;
-					case hashCalc("grave"):
-						initDriver(-1);
-						break;
-					default:
-						break;
-				}
-			} else  */if (!(state & StateFlags.deviceInitialized)) {
+			if (!(state & StateFlags.deviceInitialized)) {
 				switch (id) {
 					case hashCalc("num1"):
 						initDevice(0);
@@ -262,7 +225,8 @@ public class TestAudio : InputListener, SystemEventListener {
 					default:
 						break;
 				}
-			} else {
+			} else if(!(state & StateFlags.keyPressed)) {
+				state |= StateFlags.keyPressed;
 				UMP midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, noteBase, MIDI2_0NoteAttrTyp.None);
 				switch (id) {
 					case hashCalc("q"):		//C
@@ -332,7 +296,8 @@ public class TestAudio : InputListener, SystemEventListener {
 					fmsynth.midiReceive(midipacket, uint.max);
 				}
 			}
-		} else if (state & StateFlags.deviceInitialized) {
+		} else if ((state & StateFlags.deviceInitialized) && (state & StateFlags.keyPressed)) {
+			state ^= StateFlags.keyPressed;
 			UMP midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, noteBase, MIDI2_0NoteAttrTyp.None);
 			switch (id) {
 				case hashCalc("q"):		//C
