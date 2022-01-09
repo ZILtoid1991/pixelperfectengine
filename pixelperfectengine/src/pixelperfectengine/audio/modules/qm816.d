@@ -238,7 +238,7 @@ public class QM816 : AudioModule {
 	}
 	enum TuneCtrlFlags : uint {
 		FineTuneMidPoint	=	0x1_00_00_00,
-		CorTuneMidPoint		=	0x30_00_00_00,
+		CorTuneMidPoint		=	0x42_00_00_00,
 		FineTuneTest		=	0x1_FF_FF_FF,
 		CorTuneTest			=	0xFE_00_00_00,
 	}
@@ -251,6 +251,7 @@ public class QM816 : AudioModule {
 		VelNeg			=	1 << 10,	///Invert velocity control
 		EGRelAdaptive	=	1 << 11,	///Adaptive release time based on current output level
 		FixedPitch		=	1 << 12,	///Enables fixed pitch mode
+		EasyTune		=	1 << 13,	///Enables easy tune mode
 	}
 	/**
 	Implements a single operator.
@@ -287,15 +288,84 @@ public class QM816 : AudioModule {
 
 		///Sets the frequency of the operator
 		void setFrequency(int slmpFreq, ubyte note, double pitchBend, double tuning) @nogc @safe pure nothrow {
-			double actualNote;
-			const double tuneOffset = ((preset.tune - TuneCtrlFlags.CorTuneMidPoint)>>25)  // Coarse tune amount
-				+ (((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest)) - TuneCtrlFlags.FineTuneMidPoint) / TuneCtrlFlags.FineTuneMidPoint);
-			if (preset.opCtrl & OpCtrlFlags.FixedPitch) {
-				actualNote = tuneOffset + 24;
+			double actualNote, oscFreq;
+			if (preset.opCtrl & OpCtrlFlags.EasyTune) {
+				double ratio;
+				const int tuneAm = (preset.tune>>25) - (TuneCtrlFlags.CorTuneMidPoint>>25);
+				switch (tuneAm) {
+					case -36:
+						ratio = 1/8;
+						break;
+					case -35: .. case -24:
+						ratio = 1/4;
+						break;
+					case -23: .. case -12:
+						ratio = 1/2;
+						break;
+					case -11: .. case 6:
+						ratio = 1;
+						break;
+					case 7: .. case 11:
+						ratio = 1 + 1/2;
+						break;
+					case 12: .. case 18:
+						ratio = 2;
+						break;
+					case 19: .. case 23:
+						ratio = 3;
+						break;
+					case 24: .. case 27:
+						ratio = 4;
+						break;
+					case 28: .. case 30:
+						ratio = 5;
+						break;
+					case 31: .. case 33:
+						ratio = 6;
+						break;
+					case 34, 35:
+						ratio = 7;
+						break;
+					case 36, 37:
+						ratio = 8;
+						break;
+					case 38, 39:
+						ratio = 9;
+						break;
+					case 40, 41:
+						ratio = 10;
+						break;
+					case 42:
+						ratio = 11;
+						break;
+					case 43, 44:
+						ratio = 12;
+						break;
+					case 45:
+						ratio = 13;
+						break;
+					case 46:
+						ratio = 14;
+						break;
+					case 47:
+						ratio = 15;
+						break;
+					default:
+						ratio = 16;
+						break;
+				}
+				oscFreq = noteToFreq(note + pitchBend, tuning) * ratio;
 			} else {
-				actualNote = note + pitchBend + tuneOffset;
+				const double tuneOffset = ((preset.tune - TuneCtrlFlags.CorTuneMidPoint)>>25)  // Coarse tune amount
+					+ (((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest)) - TuneCtrlFlags.FineTuneMidPoint) / // Fine tune amount
+					TuneCtrlFlags.FineTuneMidPoint);
+				if (preset.opCtrl & OpCtrlFlags.FixedPitch) {
+					actualNote = tuneOffset + 36;
+				} else {
+					actualNote = note + pitchBend + tuneOffset;
+				}
+				oscFreq = noteToFreq(actualNote, tuning);
 			}
-			const double oscFreq = noteToFreq(actualNote, tuning);
 			const double cycLen = oscFreq / (slmpFreq / 1024.0);
 			step = cast(uint)(cast(double)(1<<21) * cycLen);
 		}
@@ -485,6 +555,10 @@ public class QM816 : AudioModule {
 			float			ctrlXLevel = 0.5;
 			///Sets control level for X controller affecting this operator
 			float			ctrlYLevel = 0.5;
+			///Key Scale Level attenuation amount (0 = 0.0db/Oct ; 255 = 6.0db/oct)
+			ubyte			kslAtten;
+			///Key Scale Level beginning point
+			ubyte			kslBegin;
 		}
 		///Defines parameters of a single channel.
 		public struct Ch {
@@ -512,10 +586,13 @@ public class QM816 : AudioModule {
 			float			auxSendA =	0;
 			///Aux send B
 			float			auxSendB =	0;
-			///X and Y controller assign
-			ushort[2]		xyCtrlAssign0;
-			///X and Y controller assign (secondary)
-			ushort[2]		xyCtrlAssign1;
+			///X control assign
+			ubyte			ctrlXAssign;
+			///Y control assign
+			ubyte			ctrlYAssign;
+			///Global feedback
+			///Only available on certain algorithms
+			float			globalFb;
 			///EEG assign levels
 			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
 			__m128			eegLevels=	[0,0,0,0];
@@ -539,7 +616,7 @@ public class QM816 : AudioModule {
 			///1 - 63: Descending over time
 			///64: Constant
 			///65 - 127: Ascending over time
-			ubyte			susCCX;
+			ubyte			susCCX	=	64;
 			///Sustain level
 			float			susLevel	=	1;
 		}

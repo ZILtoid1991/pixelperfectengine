@@ -112,7 +112,8 @@ In this mode, each channel has two algorithms:
 
 ```
 algorithm 0:
-[O0]->[O1]
+ ┌──────┐
+[O0]->[O1]->
 
 algorithm 1:
 [O0]->
@@ -124,40 +125,48 @@ By combining channels, one can trade poliphony for more complex algorithms:
 Combination mode 1:
 
 algorithm 00:
+ ┌──────────────────┐
 [S0]->[S1]->[P0]->[P1]->
 
 algorithm 10:
-[S0]\
+ ┌─────────────┐
+[S0]\          │
      ->[P0]->[P1]->
 [S1]/
 
 algorithm 01:
+ ┌────────────┐
 [S0]->[S1]->[P0]->
             [P1]->
 
 algorithm 11
-[S0]\
+┌────────┐
+[S0]\    │
      ->[P0]->
 [S1]/  [P1]->
 
 Combination mode 2:
 
 algorithm 00:
-[S0]->[S1]\
+ ┌─────────────┐
+[S0]->[S1]\    │
            ->[P1]->
       [P0]/
 
 algorithm 10:
-[S0]\
+ ┌───────┐
+[S0]\    │
 [S1]-->[P1]->
 [P0]/
 
 algorithm 01:
-          /[P0]->
+ ┌───────────┐
+ │        /[P0]->
 [S0]->[S1]
           \[P1]->
 
 algorithm 11:
+ ┌───────┐
 [S0]\ /[P0]->
      -
 [S1]/ \[P1]->
@@ -165,6 +174,7 @@ algorithm 11:
 combination mode 3:
 
 algorithm 00:
+ ┌──────┐
 [S0]->[S1]->
 [P0]->[P1]->
 
@@ -172,9 +182,11 @@ algorithm 10:
       [S0]->
       [S1]->
 [P0]->[P1]->
+ └──────┘
 
 algorithm 01:
-    />[S1]->
+ ┌──────┐
+ │  />[S1]->
 [S0]->[P0]->
     \>[P1]->
 
