@@ -278,15 +278,20 @@ public class QM816 : AudioModule {
 		///Not affected by either level or EG
 		///Might be used for ring modulation.
 		int				output;
+		///Output affected by EEG and level.
+		///Either used for audible output, or to modulate other operators
+		int				output_0;
+		///Calculated output level containing KSL damping
+		float			outL;
+		///Calculated feedback level containing KSL damping
+		float			fbL;
 		///Live calculated out of shpA
 		float			shpA0	=	0.0;
 		///Live calculated out of shpR
 		float			shpR0	=	0.0;
-		///Output affected by EEG and level.
-		///Either used for audible output, or to modulate other operators
-		int				output_0;
 
 		///Sets the frequency of the operator
+		///Also calculates KSL levels
 		void setFrequency(int slmpFreq, ubyte note, double pitchBend, double tuning) @nogc @safe pure nothrow {
 			double actualNote, oscFreq;
 			if (preset.opCtrl & OpCtrlFlags.EasyTune) {
@@ -366,8 +371,20 @@ public class QM816 : AudioModule {
 				}
 				oscFreq = noteToFreq(actualNote, tuning);
 			}
+			calculateKSL(note);
 			const double cycLen = oscFreq / (slmpFreq / 1024.0);
 			step = cast(uint)(cast(double)(1<<21) * cycLen);
+		}
+		///Calculates KSL values
+		void calculateKSL(ubyte note) @nogc @safe pure nothrow {
+			if (!(preset.opCtrl & OpCtrlFlags.FixedPitch) && preset.kslBegin < note) {
+				const double octaves = (note - preset.kslBegin) / 12.0;
+				outL = preset.outL * (1.0 - (octaves * ((preset.kslAttenOut / ubyte.max) * 0.75)));
+				fbL = preset.fbL * (1.0 - (octaves * ((preset.kslAttenFB / ubyte.max) * 0.75)));
+			} else {
+				outL = preset.outL;
+				fbL = preset.fbL;
+			}
 		}
 		///Resets the Envelop generator
 		void resetEG(int sampleRate) @nogc @safe pure nothrow {
@@ -430,6 +447,8 @@ public class QM816 : AudioModule {
 		MWToTrem		=	1<<6,	///Assigns modwheel to amplitude LFO
 		MWToVibr		=	1<<7,	///Assigns modwheel to pitch LFO
 		MWToAux			=	1<<8,	///Assigns modwheel to aux levels
+		ResetOnKeyOn	=	1<<9,	///Resets all operators and envelops belonging to this channel on key on event
+		ResetMode		=	1<<10,	///If set, then reset only occurs of all envelops have reached `Off` state after a keyOff event
 	}
 	/**
 	Defines channel common parameters.
@@ -551,14 +570,12 @@ public class QM816 : AudioModule {
 			float			shpAVel	=	0.0;
 			///Assigns velocity to shpR
 			float			shpRVel =	0.0;
-			///Sets control level for X controller affecting this operator
-			float			ctrlXLevel = 0.5;
-			///Sets control level for X controller affecting this operator
-			float			ctrlYLevel = 0.5;
-			///Key Scale Level attenuation amount (0 = 0.0db/Oct ; 255 = 6.0db/oct)
-			ubyte			kslAtten;
 			///Key Scale Level beginning point
-			ubyte			kslBegin;
+			ubyte			kslBegin = ubyte.max;
+			///Key Scale Level attenuation amount for output (0 = 0.0db/Oct ; 255 = 6.0db/oct)
+			ubyte			kslAttenOut;
+			///Key Scale Level attenuation amount for feedback (0 = 0.0db/Oct ; 255 = 6.0db/oct)
+			ubyte			kslAttenFB;
 		}
 		///Defines parameters of a single channel.
 		public struct Ch {
