@@ -1088,8 +1088,8 @@ public class QM816 : AudioModule {
 				}
 				break;
 			default:
-				assert(0, "Something went really wrong!");
-				// break;
+				//assert(0, "Something went really wrong!");
+				break;
 		}
 	}
 	/**
@@ -1598,10 +1598,10 @@ public class QM816 : AudioModule {
 		__m128 fbCtrl = (op.preset.fbLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.preset.fbLCtrl));
 		const double out1 = out0 * egOut;
 		//vel = op.opCtrl & OpCtrlFlags.VelNegative ? 1.0 - vel : vel;
-		op.feedback = cast(int)((op.preset.opCtrl & OpCtrlFlags.FBMode ? out0 : out1) * op.preset.fbL * fbCtrl[0] * 
+		op.feedback = cast(int)((op.preset.opCtrl & OpCtrlFlags.FBMode ? out0 : out1) * op.fbL * fbCtrl[0] * 
 				fbCtrl[1] * fbCtrl[2] * fbCtrl[3]);
 		//op.feedback *= op.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1;
-		op.output_0 = cast(int)(out1 * op.preset.outL * outCtrl[0] * outCtrl[1] * outCtrl[2]);
+		op.output_0 = cast(int)(out1 * op.outL * outCtrl[0] * outCtrl[1] * outCtrl[2]);
 		op.pos += op.step;
 		//op.input = 0;
 		op.eg.advance();
