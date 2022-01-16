@@ -97,6 +97,13 @@ public struct ADSREnvelopGenerator {
 		currStage = Stage.Attack;
 	}
 	/**
+	 * Sets the key position to on (no reset of counter).
+	 */
+	public void keyOnNoReset() @nogc @safe pure nothrow {
+		_keyState = true;
+		currStage = Stage.Attack;
+	}
+	/**
 	 * Sets the key position to off.
 	 */
 	public void keyOff() @nogc @safe pure nothrow {

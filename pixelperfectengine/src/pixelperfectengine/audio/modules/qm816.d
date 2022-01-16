@@ -387,17 +387,20 @@ public class QM816 : AudioModule {
 				fbL = (preset.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1) * preset.fbL;
 			}
 		}
-		///Resets the Envelop generator
-		void resetEG(int sampleRate) @nogc @safe pure nothrow {
+		///Sets the Envelop generator
+		void setEG(int sampleRate, ubyte note) @nogc @safe pure nothrow {
+			const double timeAmount = (!(preset.opCtrl & OpCtrlFlags.FixedPitch) && preset.kslBegin < note) ?
+					1 - ((note - preset.kslBegin) * (0.04 * (preset.kslAttenADSR / 255))) : 1;
 			//Set attack phase
 			if (preset.atk) {
-				eg.attackRate = calculateRate(ADSR_TIME_TABLE[preset.atk], sampleRate);
+				eg.attackRate = calculateRate(ADSR_TIME_TABLE[preset.atk] * timeAmount, sampleRate);
 			} else {
 				eg.attackRate = 1.0;
 			}
 			//Set decay phase
 			if (preset.dec) {
-				eg.decayRate = calculateRate(ADSR_TIME_TABLE[preset.dec] * 2, sampleRate, ADSREnvelopGenerator.maxOutput, eg.sustainLevel);
+				eg.decayRate = calculateRate(ADSR_TIME_TABLE[preset.dec] * 2 * timeAmount, sampleRate, 
+						ADSREnvelopGenerator.maxOutput, eg.sustainLevel);
 			} else {
 				eg.decayRate = 1.0;
 			}
@@ -450,7 +453,8 @@ public class QM816 : AudioModule {
 		MWToAux			=	1<<8,	///Assigns modwheel to aux levels
 		ResetOnKeyOn	=	1<<9,	///Resets all operators and envelops belonging to this channel on key on event
 		ResetMode		=	1<<10,	///If set, then reset only occurs of all envelops have reached `Off` state after a keyOff event
-		EEGToFB			=	1<<11,	///Applies EEG to global feedback
+		FBMode			=	1<<11,	///Feedback mode (L: After Envelop Generator, H: Before Envelop Generator)
+		FBNeg			=	1<<12,	///Feedback mode (L: Positive, H: Negative)
 	}
 	/**
 	Defines channel common parameters.
@@ -463,8 +467,8 @@ public class QM816 : AudioModule {
 		///Calculated output level controls + aux send levels
 		///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
 		__m128			outLevels;
-		///Resets the Extra Envelop generator
-		void resetEEG(int sampleRate) @nogc @safe pure nothrow {
+		///Sets the Extra Envelop generator
+		void setEEG(int sampleRate) @nogc @safe pure nothrow {
 			//Set attack phase
 			if (preset.atkX) {
 				eeg.attackRate = calculateRate(ADSR_TIME_TABLE[preset.atkX], sampleRate);
@@ -574,10 +578,12 @@ public class QM816 : AudioModule {
 			float			shpRVel =	0.0;
 			///Key Scale Level beginning point
 			ubyte			kslBegin = ubyte.max;
-			///Key Scale Level attenuation amount for output (0 = 0.0db/Oct ; 255 = 6.0db/oct)
+			///Key Scale Level attenuation amount for output (0 = 0.0db/Oct ; 255 = 6.0db/Oct)
 			ubyte			kslAttenOut;
-			///Key Scale Level attenuation amount for feedback (0 = 0.0db/Oct ; 255 = 6.0db/oct)
+			///Key Scale Level attenuation amount for feedback (0 = 0.0db/Oct ; 255 = 6.0db/Oct)
 			ubyte			kslAttenFB;
+			///Key Scale Level attenuation amount for attack/decay times (0 = 0%/Oct ; 255 = 4%/Oct)
+			ubyte			kslAttenADSR;
 		}
 		///Defines parameters of a single channel.
 		public struct Ch {
@@ -592,7 +598,7 @@ public class QM816 : AudioModule {
 			///Pitch bend sensitivity
 			///Bit 31-25: Coarse (0 to 127 seminotes)
 			///Bit 24-0: Fine (0 to 100 cents)
-			uint			pitchBendSens = 2<<24;
+			uint			pitchBendSens = 2<<24;//
 			///A-4 channel tuning in hertz.
 			float			chnlTun = 440.0;
 			///Stores channel control flags.
@@ -600,7 +606,7 @@ public class QM816 : AudioModule {
 			///Master volume (0.0 to 1.0)
 			float			masterVol=	1;
 			///Master balance (0.0 to 1.0)
-			float			masterBal=	0.5;
+			float			masterBal=	0.5;//
 			///Aux send A
 			float			auxSendA =	0;
 			///Aux send B
@@ -608,7 +614,7 @@ public class QM816 : AudioModule {
 			///Modwheel to global feedback
 			float			mwToGFB;
 			///Velocity to global feedback
-			float			velToGFB;
+			float			velToGFB;//
 			///EEG assign levels
 			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
 			__m128			eegLevels=	[0,0,0,0];
@@ -815,11 +821,11 @@ public class QM816 : AudioModule {
 		}
 		//Reset operator EGs
 		for (int i ; i < operators.length ; i++) {
-			operators[i].resetEG(sampleRate);
+			operators[i].setEG(sampleRate, 40);
 		}
 		//Reset channel EGs
 		for (int i ; i < channels.length ; i++) {
-			channels[i].resetEEG(sampleRate);
+			channels[i].setEEG(sampleRate);
 			channels[i].recalculateOutLevels();
 		}
 		//test();
@@ -897,22 +903,7 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case MIDI1_0Cmd.NoteOn:	//Note on command
-						const uint ch = data0.channel;
-						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
-						chCtrls[ch].note = data0.note;
-						chCtrls[ch].velocity = cast(double)data0.velocity / cast(double)byte.max;
-						channels[ch].eeg.keyOn();
-						operators[ch].eg.keyOn();
-						operators[ch].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-						operators[ch + 1].eg.keyOn();
-						operators[ch + 1].setFrequency(sampleRate, data0.note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
-						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
-							channels[ch + 8].eeg.keyOn();
-							operators[ch + 16].eg.keyOn();
-							operators[ch + 16].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-							operators[ch + 17].eg.keyOn();
-							operators[ch + 17].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-						}
+						keyOn(data0.note, data0.channel, data0.value/127.0);
 						break;
 					case MIDI1_0Cmd.NoteOff://Note off command
 						const uint ch = data0.channel;
@@ -1011,22 +1002,7 @@ public class QM816 : AudioModule {
 						break;
 					case MIDI2_0Cmd.NoteOn:
 						NoteVals v = *cast(NoteVals*)(&data1);
-						const uint ch = data0.channel;
-						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
-						chCtrls[ch].note = data0.note;
-						chCtrls[ch].velocity = v.velocity / cast(double)ushort.max;
-						channels[ch].eeg.keyOn();
-						operators[ch].eg.keyOn();
-						operators[ch].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-						operators[ch + 1].eg.keyOn();
-						operators[ch + 1].setFrequency(sampleRate, data0.note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
-						if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
-							channels[ch + 8].eeg.keyOn();
-							operators[ch + 16].eg.keyOn();
-							operators[ch + 16].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-							operators[ch + 17].eg.keyOn();
-							operators[ch + 17].setFrequency(sampleRate, data0.note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-						}
+						keyOn(data0.note, data0.channel, v.velocity/65_535.0);
 						break;
 					case MIDI2_0Cmd.NoteOff:
 						NoteVals v = *cast(NoteVals*)(&data1);
@@ -1092,17 +1068,85 @@ public class QM816 : AudioModule {
 		}
 	}
 	/** 
-	 * 
+	 * Implements a key-on event.
 	 * Params:
-	 *   note = 
-	 *   ch = 
-	 *   vel = 
+	 *   note = identifies which key is being pressed. Affects KSL control parameters
+	 *   ch = channel number
+	 *   vel = key velocity
+	 *   bend = amount of initial bend (MIDI 2.0 only)
 	 */
-	protected void keyOn(ubyte note, ubyte ch, float vel, float bend = 0) @nogc pure nothrow {
-
+	protected void keyOn(ubyte note, ubyte ch, float vel, float bend = float.nan) @nogc pure nothrow {
+		void hardReset() @safe @nogc pure nothrow {
+			channels[ch].eeg.keyOn();
+			operators[ch].eg.keyOn();
+			operators[ch + 1].eg.keyOn();
+			operators[ch].pos = 0;
+			operators[ch + 1].pos = 0;
+		}
+		void softReset() @safe @nogc pure nothrow {
+			channels[ch].eeg.keyOnNoReset();
+			operators[ch].eg.keyOnNoReset();
+			operators[ch + 1].eg.keyOnNoReset();
+		}
+		void hardResetCmb() @safe @nogc pure nothrow {
+			channels[ch + 8].eeg.keyOn();
+			operators[ch + 16].eg.keyOn();
+			operators[ch + 17].eg.keyOn();
+			operators[ch + 16].pos = 0;
+			operators[ch + 17].pos = 0;
+		}
+		void softResetCmb() @safe @nogc pure nothrow {
+			channels[ch + 8].eeg.keyOnNoReset();
+			operators[ch + 16].eg.keyOnNoReset();
+			operators[ch + 17].eg.keyOnNoReset();
+		}
+		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
+		chCtrls[ch].note = note;
+		chCtrls[ch].velocity = vel;
+		if (!isNaN(bend)) chCtrls[ch].pitchBend = bend;
+		operators[ch].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+		operators[ch].setEG(sampleRate, note);
+		operators[ch + 1].setFrequency(sampleRate, note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
+		operators[ch + 1].setEG(sampleRate, note);
+		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
+			operators[ch + 16].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+			operators[ch + 16].setEG(sampleRate, note);
+			operators[ch + 17].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+			operators[ch + 17].setEG(sampleRate, note);
+			if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetOnKeyOn) {
+				hardReset();
+				hardResetCmb();
+			} else if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetMode) {
+				if ((channels[ch].eeg.position | channels[ch + 8].eeg.position | operators[ch].eg.position |
+						operators[ch + 1].eg.position | operators[ch + 16].eg.position | operators[ch + 17].eg.position) == 
+						ADSREnvelopGenerator.Stage.Off) {
+					hardReset();
+					hardResetCmb();
+				} else {
+					softReset();
+					softResetCmb();
+				}
+			} else {
+				softReset();
+				softResetCmb();
+			}
+		} else {
+			if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetOnKeyOn) {
+				hardReset();
+			} else if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetMode) {
+				if ((channels[ch].eeg.position | operators[ch].eg.position | operators[ch + 1].eg.position) == 
+						ADSREnvelopGenerator.Stage.Off) {
+					hardReset();
+				} else {
+					softReset();
+				}
+			} else {
+				softReset();
+			}
+		}
 	}
 	/** 
-	 * 
+	 * Implements a key-off event.
 	 * Params:
 	 *   note = 
 	 *   ch = 
@@ -1178,11 +1222,11 @@ public class QM816 : AudioModule {
 	protected void prgRecall(ubyte ch, ubyte prg, ubyte bank) @nogc @safe pure nothrow {
 		Preset p = soundBank[bank & 7][prg];
 		operators[ch].preset = p.operators[0];
-		operators[ch].resetEG(sampleRate);
+		operators[ch].setEG(sampleRate, 40);
 		operators[ch + 1].preset = p.operators[1];
-		operators[ch + 1].resetEG(sampleRate);
+		operators[ch + 1].setEG(sampleRate, 40);
 		channels[ch].preset = p.channel;
-		channels[ch].resetEEG(sampleRate);
+		channels[ch].setEEG(sampleRate);
 	}
 	/**
 	Sets a registered parameter
@@ -1733,7 +1777,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);
 			operators[opOffset].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
 		}
@@ -1767,7 +1811,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -1800,7 +1844,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -1829,7 +1873,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
@@ -1858,7 +1902,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
@@ -1887,7 +1931,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
@@ -1916,7 +1960,7 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			//const int outSum = operators[opOffset + 1].output_0;
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -1946,7 +1990,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
@@ -1975,7 +2019,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset].output_0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
@@ -2003,7 +2047,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 17].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
@@ -2032,7 +2076,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
 					operators[opOffset + 16].output_0);
 			mixin(CHNL_UPDATE_MIX);
@@ -2062,7 +2106,7 @@ public class QM816 : AudioModule {
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 17].output_0 * channels[chNum].preset.globalFb * 
-				(channels[chNum].preset.chCtrl & ChCtrlFlags.EEGToFB ? eegOut : 1));
+				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			__m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
 					operators[opOffset + 17].output_0);
 			mixin(CHNL_UPDATE_MIX);
