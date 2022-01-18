@@ -182,6 +182,10 @@ public class QM816 : AudioModule {
 		EEGToFB		=	19,
 		VelToShpA	=	20,
 		VelToShpR	=	21,
+		KSLBegin	=	22,
+		KSLAttenOut	=	23,
+		KSLAttenFB	=	24,
+		KSLAttenADSR=	25,
 	}
 	/**
 	Defines channel parameter numbers, within the unregistered namespace.
@@ -210,6 +214,8 @@ public class QM816 : AudioModule {
 		LFOToRight	=	23,
 		LFOToAuxA	=	24,
 		LFOToAuxB	=	25,
+		MWToGFB		=	26,
+		VelToGFB	=	27,
 	}
 	/**
 	Defines channel parameters within the registered namespace
@@ -282,9 +288,9 @@ public class QM816 : AudioModule {
 		///Either used for audible output, or to modulate other operators
 		int				output_0;
 		///Calculated output level containing KSL damping
-		float			outL;
+		float			outL	=	0;
 		///Calculated feedback level containing KSL damping
-		float			fbL;
+		float			fbL		=	0;
 		///Live calculated out of shpA
 		float			shpA0	=	0.0;
 		///Live calculated out of shpR
@@ -301,10 +307,19 @@ public class QM816 : AudioModule {
 					case -36:
 						ratio = 1/8;
 						break;
-					case -35: .. case -24:
+					case -35: .. case -31:
+						ratio = 1/6;
+						break;
+					case -30: .. case -28:
+						ratio = 1/5;
+						break;
+					case -27: .. case -24:
 						ratio = 1/4;
 						break;
-					case -23: .. case -12:
+					case -23: .. case -18:
+						ratio = 1/3;
+						break;
+					case -17: .. case -12:
 						ratio = 1/2;
 						break;
 					case -11: .. case 6:
@@ -541,7 +556,7 @@ public class QM816 : AudioModule {
 			///Bit 31-25: Coarse detuning (-24 to +103 seminotes)
 			///Bit 24-0: Fine detuning (-100 to 100 cents), 0x1_00_00_00 is center
 			///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
-			uint			tune	=	0x31_00_00_00;
+			uint			tune	=	0x43_00_00_00;
 			///Output level (between 0.0 and 1.0)
 			float			outL	=	0.50;
 			///Feedback level (between 0.0 and 1.0)
@@ -608,13 +623,13 @@ public class QM816 : AudioModule {
 			///Master balance (0.0 to 1.0)
 			float			masterBal=	0.5;//
 			///Aux send A
-			float			auxSendA =	0;
+			float			auxSendA=	0;
 			///Aux send B
-			float			auxSendB =	0;
+			float			auxSendB=	0;
 			///Modwheel to global feedback
-			float			mwToGFB;
+			float			mwToGFB	=	0;
 			///Velocity to global feedback
-			float			velToGFB;//
+			float			velToGFB=	0;//
 			///EEG assign levels
 			///Index notation: 0: Left channel 1: Right channel 2: Aux send A, 3: Aux send B
 			__m128			eegLevels=	[0,0,0,0];
@@ -625,7 +640,7 @@ public class QM816 : AudioModule {
 			///Only available on certain algorithms
 			float			globalFb	=	0;
 			///Pitch LFO level
-			float			pLFOlevel=	1;
+			float			pLFOlevel	=	1;
 			///Amplitude LFO to 
 			///Attack time control (between 0 and 127)
 			ubyte			atkX;
@@ -1265,22 +1280,11 @@ public class QM816 : AudioModule {
 			switch (paramNum[0]) {
 				case OperatorParamNums.Attack:
 					operators[chNum].preset.atk = cast(ubyte)(val >> 25);
-					
-					if (operators[chNum].preset.atk) {
-						operators[chNum].eg.attackRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.atk], sampleRate);
-					} else {
-						operators[chNum].eg.attackRate = 1.0;
-					}
+					operators[chNum].setEG(sampleRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.Decay:
 					operators[chNum].preset.dec = cast(ubyte)(val >> 25);
-					
-					if (operators[chNum].preset.dec) {
-						operators[chNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.dec] * 2, sampleRate, 
-								ADSREnvelopGenerator.maxOutput, operators[chNum].eg.sustainLevel);
-					} else {
-						operators[chNum].eg.decayRate = 1.0;
-					}
+					operators[chNum].setEG(sampleRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.Feedback:
 					const double valF = cast(double)val / uint.max;
@@ -1295,12 +1299,7 @@ public class QM816 : AudioModule {
 					break;
 				case OperatorParamNums.Release:
 					operators[chNum].preset.rel = cast(ubyte)(val >> 25);
-					if (operators[chNum].preset.rel) {
-						operators[chNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.rel] * 2, sampleRate, 
-								operators[chNum].eg.sustainLevel);
-					} else {
-						operators[chNum].eg.releaseRate = 1.0;
-					}
+					operators[chNum].setEG(sampleRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.ShpA:
 					operators[chNum].preset.shpA = cast(double)val / uint.max;
@@ -1310,21 +1309,7 @@ public class QM816 : AudioModule {
 					break;
 				case OperatorParamNums.SusCtrl:
 					operators[chNum].preset.susCC = cast(ubyte)(val >> 25);
-					if (operators[chNum].preset.susCC) {
-						operators[chNum].eg.isPercussive = false;
-						if (operators[chNum].preset.susCC == 64) {
-							operators[chNum].eg.sustainControl = 0.0;
-						} else if (operators[chNum].preset.susCC < 64) {
-							operators[chNum].eg.sustainControl = -1.0 * 
-									calculateRate(SUSTAIN_CONTROL_TIME_TABLE[operators[chNum].preset.susCC - 1], sampleRate);
-						} else {
-							operators[chNum].eg.sustainControl = 
-									calculateRate(SUSTAIN_CONTROL_TIME_TABLE[operators[chNum].preset.susCC - 64], sampleRate);
-						}
-					} else {
-						operators[chNum].eg.isPercussive = true;
-						operators[chNum].eg.sustainControl = 0.0;
-					}
+					operators[chNum].setEG(sampleRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.SusLevel:
 					operators[chNum].eg.sustainLevel = cast(double)val / uint.max;
@@ -1380,6 +1365,22 @@ public class QM816 : AudioModule {
 				case OperatorParamNums.Waveform:
 					operators[chNum].preset.opCtrl &= ~OpCtrlFlags.WavetableSelect;
 					operators[chNum].preset.opCtrl |= cast(ubyte)(val >> 25);
+					break;
+				case OperatorParamNums.KSLBegin:
+					const ubyte newval = cast(ubyte)(val>>25);
+					if (newval == 127)
+						operators[chNum].preset.kslBegin = ubyte.max;
+					else
+						operators[chNum].preset.kslBegin = newval;
+					break;
+				case OperatorParamNums.KSLAttenOut:
+					operators[chNum].preset.kslAttenOut = cast(ubyte)(val>>24);
+					break;
+				case OperatorParamNums.KSLAttenFB:
+					operators[chNum].preset.kslAttenFB = cast(ubyte)(val>>24);
+					break;
+				case OperatorParamNums.KSLAttenADSR:
+					operators[chNum].preset.kslAttenADSR = cast(ubyte)(val>>24);
 					break;
 				default: break;
 			}
@@ -1518,7 +1519,6 @@ public class QM816 : AudioModule {
 					case ChannelParamNums.LFOToLeft:
 						const double valF = cast(double)val / uint.max;
 						channels[chNum].preset.aLFOlevels[0] = valF * valF;
-						
 						break;
 					case ChannelParamNums.LFOToRight:
 						const double valF = cast(double)val / uint.max;
@@ -1531,6 +1531,14 @@ public class QM816 : AudioModule {
 					case ChannelParamNums.LFOToAuxB:
 						const double valF = cast(double)val / uint.max;
 						channels[chNum].preset.aLFOlevels[3] = valF * valF;
+						break;
+					case ChannelParamNums.MWToGFB:
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.mwToGFB = valF;
+						break;
+					case ChannelParamNums.VelToGFB:
+						const double valF = cast(double)val / uint.max;
+						channels[chNum].preset.velToGFB = valF;
 						break;
 					default:
 						break;

@@ -2,6 +2,8 @@ module pixelperfectengine.concrete.elements.encoder;
 
 public import pixelperfectengine.concrete.elements.base;
 
+import std.math;
+
 /** 
  * Implements a sliding encoder for various data-entry purposes.
  */
@@ -78,7 +80,7 @@ public class SlidingEncoder : WindowElement {
 			if (position <= 0) value = 0;
 			else if (position >= trackLength) value = _maxValue;
 			else {
-				
+				value = cast(uint)nearbyint(value * valRatio);
 			}
 			if (onValueChange !is null)
 				onValueChange(new Event(this, EventType.MouseScroll, SourceType.WindowElement));
@@ -91,9 +93,17 @@ public class SlidingEncoder : WindowElement {
 			onValueChange(new Event(this, EventType.MouseScroll, SourceType.WindowElement));
 	}
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
-		const int diff = mwe.x + cast(int)(mwe.y / valRatio);
+		const int diff = mwe.x + cast(int)nearbyint(mwe.y / valRatio);
 		value(_value + diff);
 		if (onValueChange !is null)
 			onValueChange(new Event(this, EventType.MouseScroll, SourceType.WindowElement));
+	}
+}
+public class RotaryEncoder : WindowElement {
+	protected Bitmap8Bit		dot;
+	protected Bitmap8Bit		knob;
+
+	override public void draw() {
+
 	}
 }
