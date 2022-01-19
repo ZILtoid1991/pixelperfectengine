@@ -376,7 +376,7 @@ public class QM816 : AudioModule {
 				}
 				oscFreq = noteToFreq(note + pitchBend, tuning) * ratio;
 			} else {
-				const double tuneOffset = ((preset.tune - TuneCtrlFlags.CorTuneMidPoint)>>25)  // Coarse tune amount
+				const double tuneOffset = (cast(double)(preset.tune>>25) - (TuneCtrlFlags.CorTuneMidPoint>>25))  // Coarse tune amount
 					+ (((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest)) - TuneCtrlFlags.FineTuneMidPoint) / // Fine tune amount
 					TuneCtrlFlags.FineTuneMidPoint);
 				if (preset.opCtrl & OpCtrlFlags.FixedPitch) {
