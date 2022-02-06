@@ -204,8 +204,8 @@ public class QM816 : AudioModule {
 		Release		=	10,
 		ShpA		=	11,
 		ShpR		=	12,
+		GlobalFB	=	13,
 		ChCtrl		=	16,
-		GlobalFB	=	17,
 		EEGToLeft	=	18,
 		EEGToRight	=	19,
 		EEGToAuxA	=	20,
@@ -1295,7 +1295,8 @@ public class QM816 : AudioModule {
 					operators[chNum].preset.outL = valF * valF;
 					break;
 				case OperatorParamNums.OpCtrl:
-					operators[chNum].preset.opCtrl = val;
+					operators[chNum].preset.opCtrl &= OpCtrlFlags.WavetableSelect;
+					operators[chNum].preset.opCtrl |= val<<7;
 					break;
 				case OperatorParamNums.Release:
 					operators[chNum].preset.rel = cast(ubyte)(val >> 25);
@@ -1328,7 +1329,8 @@ public class QM816 : AudioModule {
 					}
 					break;
 				case OperatorParamNums.TuneCor:
-					operators[chNum].preset.tune = val;
+					operators[chNum].preset.tune &= ~TuneCtrlFlags.CorTuneTest; 
+					operators[chNum].preset.tune |= val & TuneCtrlFlags.CorTuneTest;
 					
 					break;
 				case OperatorParamNums.TuneFine:
@@ -1663,7 +1665,7 @@ public class QM816 : AudioModule {
 	pragma(inline, true)
 	protected final void updateOperator(ref Operator op, __m128 chCtrl) @nogc @safe pure nothrow {
 		op.output = wavetables
-				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][((op.pos>>21) + (op.input>>2) + op.feedback) & 1023];
+				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][((op.pos>>21) + (op.input>>2) + (op.feedback>>2)) & 1023];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		const double out0 = op.output;
 		__m128 outCtrl = (op.preset.outLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.preset.outLCtrl));
