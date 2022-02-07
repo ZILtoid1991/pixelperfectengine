@@ -244,7 +244,7 @@ public class QM816 : AudioModule {
 	}
 	enum TuneCtrlFlags : uint {
 		FineTuneMidPoint	=	0x1_00_00_00,
-		CorTuneMidPoint		=	0x42_00_00_00,
+		CorTuneMidPoint		=	36<<25,
 		FineTuneTest		=	0x1_FF_FF_FF,
 		CorTuneTest			=	0xFE_00_00_00,
 	}
@@ -403,7 +403,7 @@ public class QM816 : AudioModule {
 			}
 		}
 		///Sets the Envelop generator
-		void setEG(int sampleRate, ubyte note) @nogc @safe pure nothrow {
+		void setEG(int sampleRate, ubyte note, float vel = 1.0) @nogc @safe pure nothrow {
 			const double timeAmount = (!(preset.opCtrl & OpCtrlFlags.FixedPitch) && preset.kslBegin < note) ?
 					1 - ((note - preset.kslBegin) * (0.04 * (preset.kslAttenADSR / 255))) : 1;
 			//Set attack phase
@@ -441,6 +441,8 @@ public class QM816 : AudioModule {
 			} else {
 				eg.releaseRate = 1.0;
 			}
+			shpA0 = preset.shpA + (preset.shpAVel * vel);
+			shpR0 = preset.shpR + (preset.shpRVel * vel);
 		}
 		
 	}
@@ -553,10 +555,10 @@ public class QM816 : AudioModule {
 		///Defines parameters of a single operator
 		public struct Op {
 			///Operator tuning
-			///Bit 31-25: Coarse detuning (-24 to +103 seminotes)
+			///Bit 31-25: Coarse detuning (-36 to +91 seminotes)
 			///Bit 24-0: Fine detuning (-100 to 100 cents), 0x1_00_00_00 is center
 			///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
-			uint			tune	=	0x43_00_00_00;
+			uint			tune	=	TuneCtrlFlags.CorTuneMidPoint | TuneCtrlFlags.FineTuneMidPoint;
 			///Output level (between 0.0 and 1.0)
 			float			outL	=	0.50;
 			///Feedback level (between 0.0 and 1.0)
@@ -1120,14 +1122,14 @@ public class QM816 : AudioModule {
 		chCtrls[ch].velocity = vel;
 		if (!isNaN(bend)) chCtrls[ch].pitchBend = bend;
 		operators[ch].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-		operators[ch].setEG(sampleRate, note);
+		operators[ch].setEG(sampleRate, note, vel);
 		operators[ch + 1].setFrequency(sampleRate, note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
-		operators[ch + 1].setEG(sampleRate, note);
+		operators[ch + 1].setEG(sampleRate, note, vel);
 		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 			operators[ch + 16].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-			operators[ch + 16].setEG(sampleRate, note);
+			operators[ch + 16].setEG(sampleRate, note, vel);
 			operators[ch + 17].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-			operators[ch + 17].setEG(sampleRate, note);
+			operators[ch + 17].setEG(sampleRate, note, vel);
 			if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetOnKeyOn) {
 				hardReset();
 				hardResetCmb();
@@ -1396,7 +1398,11 @@ public class QM816 : AudioModule {
 				chNum *= 2;
 				setOpParam(chNum + 1);
 				break;
-			case 2:			//Channel common values
+			case 2:			//Channel operator 0 flags
+				break;
+			case 3:			//Channel operator 0 flags
+				break;
+			case 9:			//Channel common values
 				switch (paramNum[0]) { 
 					//case ChannelParamNums.ALFO: break;
 					case ChannelParamNums.Attack:
@@ -1545,6 +1551,8 @@ public class QM816 : AudioModule {
 					default:
 						break;
 				}
+				break;
+			case 10:		//Channel common flags
 				break;
 			case 16:		//LFO and master filter settings
 				void setFilterFreq(int num) @nogc @safe pure nothrow {

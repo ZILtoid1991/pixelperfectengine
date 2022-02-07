@@ -57,6 +57,7 @@ public class TestAudio : InputListener, SystemEventListener {
 	ubyte			bank0;
 	ubyte			bank1;
 	ubyte			level;
+	ubyte[32][6]	vals;
 	enum StateFlags {
 		isRunning		=	1<<0,
 		driverInitialized=	1<<1,
