@@ -441,10 +441,13 @@ public class QM816 : AudioModule {
 			} else {
 				eg.releaseRate = 1.0;
 			}
-			shpA0 = preset.shpA + (preset.shpAVel * vel);
-			shpR0 = preset.shpR + (preset.shpRVel * vel);
+			setShpVals(vel);
 		}
-		
+		///Recalculates shape params.
+		void setShpVals(float vel = 1.0) @nogc @safe pure nothrow {
+			shpA0 = preset.shpA - (preset.shpA * preset.shpAVel) + (preset.shpA * preset.shpAVel * vel);
+			shpR0 = preset.shpR - (preset.shpR * preset.shpRVel) + (preset.shpR * preset.shpRVel * vel);
+		}
 	}
 	///Defines channel control flags.
 	enum ChCtrlFlags {
@@ -1278,131 +1281,141 @@ public class QM816 : AudioModule {
 	If type is not zero, then the MSB is being set, otherwise the LSB will be used
 	*/
 	protected void setUnregisteredParam(uint val, ubyte[2] paramNum, ubyte chNum) @nogc @safe pure nothrow {
-		void setOpParam(int chNum) {
+		void setOpParam(int opNum) {
 			switch (paramNum[0]) {
 				case OperatorParamNums.Attack:
-					operators[chNum].preset.atk = cast(ubyte)(val >> 25);
-					operators[chNum].setEG(sampleRate, chCtrls[chNum].note);
+					operators[opNum].preset.atk = cast(ubyte)(val >> 25);
+					operators[opNum].setEG(sampleRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.Decay:
-					operators[chNum].preset.dec = cast(ubyte)(val >> 25);
-					operators[chNum].setEG(sampleRate, chCtrls[chNum].note);
+					operators[opNum].preset.dec = cast(ubyte)(val >> 25);
+					operators[opNum].setEG(sampleRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.Feedback:
 					const double valF = cast(double)val / uint.max;
-					operators[chNum].preset.fbL = valF * valF;
+					operators[opNum].preset.fbL = valF * valF;
 					break;
 				case OperatorParamNums.Level:
 					const double valF = cast(double)val / uint.max;
-					operators[chNum].preset.outL = valF * valF;
+					operators[opNum].preset.outL = valF * valF;
 					break;
 				case OperatorParamNums.OpCtrl:
-					operators[chNum].preset.opCtrl &= OpCtrlFlags.WavetableSelect;
-					operators[chNum].preset.opCtrl |= val<<7;
+					operators[opNum].preset.opCtrl &= OpCtrlFlags.WavetableSelect;
+					operators[opNum].preset.opCtrl |= val<<7;
 					break;
 				case OperatorParamNums.Release:
-					operators[chNum].preset.rel = cast(ubyte)(val >> 25);
-					operators[chNum].setEG(sampleRate, chCtrls[chNum].note);
+					operators[opNum].preset.rel = cast(ubyte)(val >> 25);
+					operators[opNum].setEG(sampleRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.ShpA:
-					operators[chNum].preset.shpA = cast(double)val / uint.max;
+					operators[opNum].preset.shpA = cast(double)val / uint.max;
+					operators[opNum].setShpVals(chCtrls[chNum].velocity);
 					break;
 				case OperatorParamNums.ShpR:
-					operators[chNum].preset.shpR = cast(double)val / uint.max;
+					operators[opNum].preset.shpR = cast(double)val / uint.max;
+					operators[opNum].setShpVals(chCtrls[chNum].velocity);
 					break;
 				case OperatorParamNums.SusCtrl:
-					operators[chNum].preset.susCC = cast(ubyte)(val >> 25);
-					operators[chNum].setEG(sampleRate, chCtrls[chNum].note);
+					operators[opNum].preset.susCC = cast(ubyte)(val >> 25);
+					operators[opNum].setEG(sampleRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.SusLevel:
-					operators[chNum].eg.sustainLevel = cast(double)val / uint.max;
+					operators[opNum].eg.sustainLevel = cast(double)val / uint.max;
 					//Recalculate decay and release rates to new sustain levels
-					if (operators[chNum].preset.dec) {
-						operators[chNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.dec] * 2, sampleRate, 
-								ADSREnvelopGenerator.maxOutput, operators[chNum].eg.sustainLevel);
+					if (operators[opNum].preset.dec) {
+						operators[opNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[opNum].preset.dec] * 2, sampleRate, 
+								ADSREnvelopGenerator.maxOutput, operators[opNum].eg.sustainLevel);
 					} else {
-						operators[chNum].eg.decayRate = 1.0;
+						operators[opNum].eg.decayRate = 1.0;
 					}
-					if (operators[chNum].preset.rel) {
-						operators[chNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[chNum].preset.rel] * 2, sampleRate, 
-								operators[chNum].eg.sustainLevel);
+					if (operators[opNum].preset.rel) {
+						operators[opNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[opNum].preset.rel] * 2, sampleRate, 
+								operators[opNum].eg.sustainLevel);
 					} else {
-						operators[chNum].eg.releaseRate = 1.0;
+						operators[opNum].eg.releaseRate = 1.0;
 					}
 					break;
 				case OperatorParamNums.TuneCor:
-					operators[chNum].preset.tune &= ~TuneCtrlFlags.CorTuneTest; 
-					operators[chNum].preset.tune |= val & TuneCtrlFlags.CorTuneTest;
+					operators[opNum].preset.tune &= ~TuneCtrlFlags.CorTuneTest; 
+					operators[opNum].preset.tune |= val & TuneCtrlFlags.CorTuneTest;
 					
 					break;
 				case OperatorParamNums.TuneFine:
-					operators[chNum].preset.tune &= ~uint.max>>7;
-					operators[chNum].preset.tune |= val>>7;
+					operators[opNum].preset.tune &= ~uint.max>>7;
+					operators[opNum].preset.tune |= val>>7;
 					break;
 				case OperatorParamNums.VelToLevel:
-					operators[chNum].preset.outLCtrl[0] = cast(double)val / uint.max;
+					operators[opNum].preset.outLCtrl[0] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.MWToLevel:
-					operators[chNum].preset.outLCtrl[1] = cast(double)val / uint.max;
+					operators[opNum].preset.outLCtrl[1] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.LFOToLevel:
-					operators[chNum].preset.outLCtrl[2] = cast(double)val / uint.max;
+					operators[opNum].preset.outLCtrl[2] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.VelToFB:
-					operators[chNum].preset.fbLCtrl[0] = cast(double)val / uint.max;
+					operators[opNum].preset.fbLCtrl[0] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.MWToFB:
-					operators[chNum].preset.fbLCtrl[1] = cast(double)val / uint.max;
+					operators[opNum].preset.fbLCtrl[1] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.LFOToFB:
-					operators[chNum].preset.fbLCtrl[2] = cast(double)val / uint.max;
+					operators[opNum].preset.fbLCtrl[2] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.EEGToFB:
-					operators[chNum].preset.fbLCtrl[3] = cast(double)val / uint.max;
+					operators[opNum].preset.fbLCtrl[3] = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.VelToShpA:
-					operators[chNum].preset.shpAVel = cast(double)val / uint.max;
+					operators[opNum].preset.shpAVel = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.VelToShpR:
-					operators[chNum].preset.shpRVel = cast(double)val / uint.max;
+					operators[opNum].preset.shpRVel = cast(double)val / uint.max;
 					break;
 				case OperatorParamNums.Waveform:
-					operators[chNum].preset.opCtrl &= ~OpCtrlFlags.WavetableSelect;
-					operators[chNum].preset.opCtrl |= cast(ubyte)(val >> 25);
+					operators[opNum].preset.opCtrl &= ~OpCtrlFlags.WavetableSelect;
+					operators[opNum].preset.opCtrl |= cast(ubyte)(val >> 25);
 					break;
 				case OperatorParamNums.KSLBegin:
 					const ubyte newval = cast(ubyte)(val>>25);
 					if (newval == 127)
-						operators[chNum].preset.kslBegin = ubyte.max;
+						operators[opNum].preset.kslBegin = ubyte.max;
 					else
-						operators[chNum].preset.kslBegin = newval;
+						operators[opNum].preset.kslBegin = newval;
 					break;
 				case OperatorParamNums.KSLAttenOut:
-					operators[chNum].preset.kslAttenOut = cast(ubyte)(val>>24);
+					operators[opNum].preset.kslAttenOut = cast(ubyte)(val>>24);
 					break;
 				case OperatorParamNums.KSLAttenFB:
-					operators[chNum].preset.kslAttenFB = cast(ubyte)(val>>24);
+					operators[opNum].preset.kslAttenFB = cast(ubyte)(val>>24);
 					break;
 				case OperatorParamNums.KSLAttenADSR:
-					operators[chNum].preset.kslAttenADSR = cast(ubyte)(val>>24);
+					operators[opNum].preset.kslAttenADSR = cast(ubyte)(val>>24);
 					break;
 				default: break;
 			}
 		}
+		void setOpFlag(int opNum){
+			if (val) 
+				operators[opNum].preset.opCtrl |= 1<<(paramNum[0] + 7);
+			else
+				operators[opNum].preset.opCtrl &= ~(1<<(paramNum[0] + 7));
+		}
 		switch (paramNum[1]) {
 			case 0:			//Channel operator 0
-				chNum *= 2;
-				setOpParam(chNum);
+				//chNum *= 2;
+				setOpParam(chNum * 2);
 				break;
 			case 1:			//Channel operator 1
-				chNum *= 2;
-				setOpParam(chNum + 1);
+				//chNum *= 2;
+				setOpParam((chNum * 2) + 1);
 				break;
 			case 2:			//Channel operator 0 flags
+				setOpFlag(chNum * 2);
 				break;
-			case 3:			//Channel operator 0 flags
+			case 3:			//Channel operator 1 flags
+				setOpFlag((chNum * 2) + 1);
 				break;
-			case 9:			//Channel common values
+			case 4:			//Channel common values
 				switch (paramNum[0]) { 
 					//case ChannelParamNums.ALFO: break;
 					case ChannelParamNums.Attack:
@@ -1552,7 +1565,11 @@ public class QM816 : AudioModule {
 						break;
 				}
 				break;
-			case 10:		//Channel common flags
+			case 5:		//Channel common flags
+				if (val)
+					channels[chNum].preset.chCtrl |= 1<<paramNum[0];
+				else
+					channels[chNum].preset.chCtrl &= ~(1<<paramNum[0]);
 				break;
 			case 16:		//LFO and master filter settings
 				void setFilterFreq(int num) @nogc @safe pure nothrow {
