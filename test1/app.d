@@ -56,8 +56,8 @@ public class TestAudio : InputListener, SystemEventListener {
 	ubyte			noteBase = 60;
 	ubyte			bank0;
 	ubyte			bank1;
-	ubyte			level;
-	ubyte[32][6]	vals;
+	
+	ubyte[32][6][2]	level;
 	enum StateFlags {
 		isRunning		=	1<<0,
 		driverInitialized=	1<<1,
@@ -186,12 +186,7 @@ public class TestAudio : InputListener, SystemEventListener {
 			//textOut.writeTextToMap(40, 0, 0, to!wstring(adh..bits & 0xFF));
 			textOut.writeTextToMap(0, 1, 0, "Synth:");
 			textOut.writeTextToMap(7, 1, 0, "QM816");
-			textOut.writeTextToMap(0, 2, 0, "VBank0:");
-			textOut.writeTextToMap(8, 2, 0, to!wstring(bank0));
-			textOut.writeTextToMap(16, 2, 0, "VBank1:");
-			textOut.writeTextToMap(24, 2, 0, to!wstring(bank1));
-			textOut.writeTextToMap(32, 2, 0, "Val:");
-			textOut.writeTextToMap(38, 2, 0, to!wstring(level));
+			
 		} catch (AudioInitException e) {
 			textOut.writeTextToMap(14, 0, 0, to!wstring(e.msg));
 		}
@@ -213,9 +208,9 @@ public class TestAudio : InputListener, SystemEventListener {
 		textOut.writeTextToMap(16, 2, 0, "VBank1:");
 		textOut.writeTextToMap(24, 2, 0, to!wstring(bank1));
 		textOut.writeTextToMap(32, 2, 0, "Half:");
-		textOut.writeTextToMap(36, 2, 0, state & StateFlags.upperHalf ? "Hi" : "Lo");
-		textOut.writeTextToMap(40, 2, 0, "Val:");
-		textOut.writeTextToMap(46, 2, 0, to!wstring(level));
+		textOut.writeTextToMap(38, 2, 0, state & StateFlags.upperHalf ? "Hi" : "Lo");
+		textOut.writeTextToMap(42, 2, 0, "Val:");
+		textOut.writeTextToMap(48, 2, 0, to!wstring(level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0]));
 	}
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		if (isPressed) {
@@ -395,48 +390,46 @@ public class TestAudio : InputListener, SystemEventListener {
 					break;
 				case hashCalc("F1"):
 					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.CtrlCh, state & StateFlags.upperHalf ? 0x8 : 0x0, bank0, bank1);
-					level += 1;
-					if (bank1 == 2 && bank0 == 16) 
-						val = level;
-					else
-						val = level * 0x01_01_01_01;
+					level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] += 1;
+					val = level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] * 0x01_01_01_01;
 					refreshDisplay();
 					break;
 				case hashCalc("F2"):
 					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.CtrlCh, state & StateFlags.upperHalf ? 0x8 : 0x0, bank0, bank1);
-					level -= 1;
-					if (bank1 == 2 && bank0 == 16) 
-						val = level;
-					else
-						val = level * 0x01_01_01_01;
+					level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] -= 1;
+					val = level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] * 0x01_01_01_01;
 					refreshDisplay();
 					break;
 				case hashCalc("F3"):
 					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.CtrlCh, state & StateFlags.upperHalf ? 0x8 : 0x0, bank0, bank1);
-					level += 8;
-					val = level * 0x01_01_01_01;
+					level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] += 8;
+					val = level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] * 0x01_01_01_01;
 					refreshDisplay();
 					break;
 				case hashCalc("F4"):
 					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.CtrlCh, state & StateFlags.upperHalf ? 0x8 : 0x0, bank0, bank1);
-					level -= 8;
-					val = level * 0x01_01_01_01;
+					level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] -= 8;
+					val = level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] * 0x01_01_01_01;
 					refreshDisplay();
 					break;
 				case hashCalc("F5"):
 					bank0++;
+					if (bank0 > 31) bank0 = 31 ;
 					refreshDisplay();
 					break;
 				case hashCalc("F6"):
 					bank0--;
+					if (bank0 > 31) bank0 = 31 ;
 					refreshDisplay();
 					break;
 				case hashCalc("F7"):
 					bank1++;
+					if (bank1 > 5) bank1 = 5 ;
 					refreshDisplay();
 					break;
 				case hashCalc("F8"):
 					bank1--;
+					if (bank1 > 5) bank1 = 5 ;
 					refreshDisplay();
 					break;
 				case hashCalc("F9"):

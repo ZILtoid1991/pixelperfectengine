@@ -1570,6 +1570,13 @@ public class QM816 : AudioModule {
 					channels[chNum].preset.chCtrl |= 1<<paramNum[0];
 				else
 					channels[chNum].preset.chCtrl &= ~(1<<paramNum[0]);
+				if (chNum < 8) {
+					channels[chNum + 8].preset.chCtrl &= ~ChCtrlFlags.ComboModeTest;
+					channels[chNum + 8].preset.chCtrl |= ChCtrlFlags.ComboModeTest & channels[chNum].preset.chCtrl;
+					setChDeleg(channels[chNum].preset.chCtrl, chNum, channels[chNum + 8].preset.chCtrl);
+				} else {
+					setChDeleg(channels[chNum].preset.chCtrl, chNum);
+				}
 				break;
 			case 16:		//LFO and master filter settings
 				void setFilterFreq(int num) @nogc @safe pure nothrow {
