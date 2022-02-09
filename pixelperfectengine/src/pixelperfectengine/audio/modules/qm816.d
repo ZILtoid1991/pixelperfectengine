@@ -704,7 +704,7 @@ public class QM816 : AudioModule {
 	protected __m128[10]		filterVals;
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
-	protected float[8]			filterCtrl	=	[17_000, 0.5, 17_000, 0.5, 17_000, 0.5, 17_000, 0.5];
+	protected float[8]			filterCtrl	=	[17_000, 0.2, 17_000, 0.2, 17_000, 0.2, 17_000, 0.2];
 	///Initial mixing buffers
 	///Output is directed there before filtering
 	///Layout is: LRAB
