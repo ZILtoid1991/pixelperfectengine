@@ -1293,7 +1293,7 @@ public class QM816 : AudioModule {
 					break;
 				case OperatorParamNums.Feedback:
 					const double valF = cast(double)val / uint.max;
-					operators[opNum].preset.fbL = valF * valF;
+					operators[opNum].preset.fbL = valF * valF * valF * valF;
 					break;
 				case OperatorParamNums.Level:
 					const double valF = cast(double)val / uint.max;
@@ -1697,7 +1697,7 @@ public class QM816 : AudioModule {
 	pragma(inline, true)
 	protected final void updateOperator(ref Operator op, __m128 chCtrl) @nogc @safe pure nothrow {
 		op.output = wavetables
-				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][((op.pos>>21) + (op.input>>2) + (op.feedback>>2)) & 1023];
+				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][((op.pos>>21) + (op.input>>2) + (op.feedback>>3)) & 1023];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		const double out0 = op.output;
 		__m128 outCtrl = (op.preset.outLCtrl * chCtrl) + (__m128(1.0) - op.preset.outLCtrl);

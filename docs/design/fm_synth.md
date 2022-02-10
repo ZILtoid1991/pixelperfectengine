@@ -28,35 +28,46 @@
 ```
 ## operator controllers
 
-Note: unregistered parameter bank 0 is belonging to operator 0 and bank 1 is belonging to operator 1. Single-byte only parameters only use the top 7 bits of 32 bit control change commands of MIDI2.0.
+Unregistered parameter bank 0 and 1 belong to operator controls. Numbers in square brackets mean number of unregistered parameter.
 
-* `waveform`: Selects a waveform from the 128, externally loaded ones. The wavetable itself is a 16 bit table, with 1024 long waveforms. Controlled by either unregistered parameter 6 (single-byte only), or cc70(0)/cc75(1).
-* `atk`: Selects a predefined attack time, and it'll be applied to the envelop generator. Controlled by either unregistered parameter 1 (single-byte only), or cc73(0)/cc78.
-* `dec`: Selects a predefined decay time, and it'll be applied to the envelop generator. Controlled by either unregistered parameter 2 (single-byte only), or cc74(0)/cc79.
-* `rel`: Selects a predefined release time, and it'll be applied to the envelop generator. Controlled by either unregistered parameter 5 (single-byte only), or cc72(0)/cc77.
-* `sus`: Sets the sustain level. Controlled by either unregistered parameter 3, or cc16(0)/cc24(1).
-* `susC`: Controls how the envelop will behave during the sustain phase. 0 means the envelop is percussive, the moment the envelop reaches the sustain level it switches to release phase. 1-63 will choose a descending curve, 64 sets the sustain constant 65-127 will choose an ascending curve. Controlled by either unregistered parameter 4 (single-byte only), or by cc81(0)/cc83(1)
-* `outLevel`: Controls the output level of the operator. Controlled by either unregistered parameter 0, or cc17(0)/cc25(1)
-* `fbAmount`: Controls how much feedback the operator has. Controlled by either unregistered parameter 7, or cc71(0)/cc76(1)
-* `opCtrl`: ubyte. If bit 0 is set, feedback will be taken directly from the output of the oscillator, otherwise the envelop generator affected level will be used. If bit 1 is set, then the amplitude LFO will modify the output level of the operator. Bit 2 enables the velocity control of the output level, bit 3 is for the feedback level. Controlled by cc80 on O0, and cc82 on O1.
-* `shpA`: Controls the shape of the envolop during the attack phase. 50% creates a mostly linear output. Controlled by either unregistered parameter 10, or cc18(0)/cc26(1).
-* `shpR`: Controls the shape of the envolop outside the attack phase. 50% creates a mostly linear output. Controlled by either unregistered parameter 10, or cc19(0)/cc27(1).
-* `tuneCor`: Sets the coarse tuning of the oscillator. The most significant 7 bits are on a whoe note basis, with the range of -24 to +103 semitones. The remaining bits tune up or down by a whole semitone. Controlled by unregistered parameter 8, or cc20(0)/cc28(1). Note on MIDI2.0: Control change here have enough precision to take care of fine tuning too.
-* `tuneFine`: Sets the fine tuning of the oscillator. Controlled by unregistered parameter 9, or cc21(0)/cc29(1).
-* `opCtrl`: Operator control flags. Controlled by unregistered parameter 15. See "Operator control flags" for further info.
+* `Level` [0]: Controls the output level of the operator. Exponential (`y = ²`). 
+* `Attack` [1]: Controls the attack time of the operator's attack time.
+* `Decay`:
+* `SusLevel`:
+* `SusCtrl`:
+* `Release`:
+* `Waveform`:
+* `Feedback`:
+* `TuneCor`:
+* `TuneFine`:
+* `ShpA`:
+* `ShpR`:
+* `VelToLevel`:
+* `MWToLevel`:
+* `LFOToLevel`:
+* `OpCtrl`:
+* `VelToFB`:
+* `MWToFB`:
+* `LFOToFB`:
+* `EEGToFB`:
+* `VelToShpA`:
+* `VelToShpR`:
+* `KSLBegin`:
+* `KSLAttenOut`:
+* `KSLAttenFB`:
+* `KSLAttenADSR`:
 
-Note: cc0 through cc31 are 14 bit controllers if a second control change offsetted by 32 (cc32-63) is sent. 
-
-## Operator control flags
+### Operator control flags
 
 Notation: [bit index in parameter settings]{bit index in the operator itself}
 
-* `FBMode`: Toggles the source of the feedback. L: After envelop generator, H: before envelop generator.[0]{7}
-* `FBNeg`: Inverts the feedback if set. [1]{8}
-* `MWNeg`: Inverts the modulation wheel control if set. [2]{9}
-* `VelNeg`: Inverts the velocity control if set. [3]{10}
-* `EGRelAdaptive`: Makes the envelop generator release curve dependent on current output level. [4]{11}
-* `FixedPitch`: Enables the fixed pitch mode on the operator. This way, the frequency ratio will instead control which frequency the oscillator should operate at. Pitch will be still affected by LFO and EEG, but not by pitch-bend or key parameters.
+* `FBMode`:
+* `FBNeg`:
+* `MWNeg`:
+* `VelNeg`:
+* `EGRelAdaptive`:
+* `FixedPitch`:
+* `EasyTune`:
 
 ## functions
 
@@ -80,29 +91,50 @@ A single channel consists of:
 
 ## master controls
 
-Registered paramerers 0, 1, and 2 work as in the Midi specification, the rest are unsupported.
+### registered parameters
 
-Other master controls:
+### unregistered parameters
 
-* `vol`: channel volume. Converted to a logarithmic scale. cc07 [m2]
-* `bal`: channel balance. cc08 [m2]
-* `shpAX`: double, between 0.3 and 3.0. Controls the shape of the extra envelop during the attack curve. cc14 [m2]
-* `shpRX`: double, between 0.3 and 3.0. Controls the shape of the extra envelop outside the attack curve. cc15 [m2]
-* `atkX`: ubyte, between 0 and 127. Selects a predefined attack time, and it'll be applied to the extra envelope generator. cc85
-* `decX`: ubyte, between 0 and 127. Selects a predefined decay time (attack time * 3), and it'll be applied to the extra envelope generator. cc86
-* `relX`: ubyte, between 0 and 127. Selects a predefined release time (attack time * 3), and it'll be applied to the extra envelope generator. cc87
-* `susX`: uint. Sets the sustain level of the extra envelope. cc12 [m2]
-* `susCX`: int. Controls how the EEG will behave in the sustain phase. cc88 [m2]
-* `pitchAm`: uint. Sets the amount the EEG can detune the channel (coarse: +63/-64). cc13 [m2] (note on channel combination: only one channel's EEG can affect the pitch of the channel)
-* `eegAssign`: ubyte. Bit 0 enables the EEG to modify the feedback loop of O0, bit 1 the feedback loop of O1, bit 2 the channel volume, bit 3 the channel balance, bit 4 the pitch LFO, bit 5 the volume/level LFO, bit 6 both aux send controls. cc89
-* `aLFOAssign`: ubyte. If bit 0 is set, then the master volume can be affected by the amplitude LFO. Bit 1 enables this for the channel balance. Bit 2 for aux send levels. cc90
-* `aux0Send`: double. Converted to a logarithmic scale. Controls the amount of sound sent to the aux0 output. cc91 [m2]
-* `aux1Send`: double. Converted to a logarithmic scale. Controls the amount of sound sent to the aux1 output. cc92 [m2]
-* `aLFOamount`: double. Controls how much the amplitude levels will be affected by the amplitude LFO. cc93 [m2]
-* `pLFOamount`: double. Controls how much the pitch will be affected by the pitch LFO. cc94 [m2]
-* `channelCtrl`: ubyte. Controls the channel. Bit 0 selects an algorithm. Bit 1 and 2 on a secondary channel can combine it with a primary one. cc102
-* `velCtrlAssign`: ubyte. Controls what parameters the velocity control can affect. Bit 0 is the amplitude, bit 1 is the pitch amount assignment. cc103.
-* `velCtrlAm`: double. Controls how much the velocity should affect the control parameters. cc104 [m2]
+* `MasterVol` [0]:
+* `Bal` [1]:
+* `AuxSLA` [2]:
+* `AuxSLB` [3]:
+* `EEGDetune` [4]:
+* `PLFO` [5]:
+* `Attack` [6]:
+* `Decay` [7]:
+* `SusLevel` [8]:
+* `SusCtrl` [9]:
+* `Release` [10]:
+* `ShpA` [11]:
+* `ShpR` [12]:
+* `GlobalFB` [13]:
+* `ChCtrl` [16]:
+* `EEGToLeft` [18]:
+* `EEGToRight` [19]:
+* `EEGToAuxA` [20]:
+* `EEGToAuxB` [21]:
+* `LFOToLeft` [22]:
+* `LFOToRight` [23]:
+* `LFOToAuxA` [24]:
+* `LFOToAuxB` [25]:
+* `MWToGFB` [26]:
+* `VelToGFB` [27]:
+
+#### channel control flags
+
+* `ComboMode` [0-1]:
+* `Algorithm` [2]:
+* `IndivOutChLev` [3]:
+* `LFOPan` [4]:
+* `EEGPan` [5]:
+* `MWToTrem` [6]:
+* `MWToVibr` [7]:
+* `MWToAux` [8]:
+* `ResetOnKeyOn` [9]:
+* `ResetMode` [10]:
+* `FBMode` [11]:
+* `FBNeg` [12]:
 
 ## channel combination
 

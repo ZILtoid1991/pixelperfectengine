@@ -414,7 +414,7 @@ public class TestAudio : InputListener, SystemEventListener {
 					break;
 				case hashCalc("F5"):
 					bank0++;
-					if (bank0 > 31) bank0 = 31 ;
+					if (bank0 > 31) bank0 = 0 ;
 					refreshDisplay();
 					break;
 				case hashCalc("F6"):
@@ -424,7 +424,7 @@ public class TestAudio : InputListener, SystemEventListener {
 					break;
 				case hashCalc("F7"):
 					bank1++;
-					if (bank1 > 5) bank1 = 5 ;
+					if (bank1 > 5) bank1 = 0 ;
 					refreshDisplay();
 					break;
 				case hashCalc("F8"):
