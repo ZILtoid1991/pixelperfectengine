@@ -1700,13 +1700,13 @@ public class QM816 : AudioModule {
 				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][((op.pos>>21) + (op.input>>2) + (op.feedback>>2)) & 1023];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		const double out0 = op.output;
-		__m128 outCtrl = (op.preset.outLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.preset.outLCtrl));
-		__m128 fbCtrl = (op.preset.fbLCtrl * chCtrl) + (__m128(1.0) - (__m128(1.0) * op.preset.fbLCtrl));
+		__m128 outCtrl = (op.preset.outLCtrl * chCtrl) + (__m128(1.0) - op.preset.outLCtrl);
+		__m128 fbCtrl = (op.preset.fbLCtrl * chCtrl) + (__m128(1.0) - op.preset.fbLCtrl);
 		const double out1 = out0 * egOut;
-		//vel = op.opCtrl & OpCtrlFlags.VelNegative ? 1.0 - vel : vel;
+		
 		op.feedback = cast(int)((op.preset.opCtrl & OpCtrlFlags.FBMode ? out0 : out1) * op.fbL * fbCtrl[0] * 
 				fbCtrl[1] * fbCtrl[2] * fbCtrl[3]);
-		//op.feedback *= op.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1;
+		
 		op.output_0 = cast(int)(out1 * op.outL * outCtrl[0] * outCtrl[1] * outCtrl[2]);
 		op.pos += op.step;
 		//op.input = 0;
