@@ -31,6 +31,9 @@ public class QM816 : AudioModule {
 		for (int i ; i < 256 ; i++) {
 			SINEWAVE_FRAGMENT[i] = cast(short)(sin((PI_2 / 256) * i) * short.max);
 		}
+		for (int i ; i < 128 ; i++) {
+			ADSR_TIME_TABLE[i] = pow(i / 64.0, 1.8);
+		}
 	}
 	/**
 	Generates a waveform from a sinewave fragment (quarter).
@@ -123,19 +126,12 @@ public class QM816 : AudioModule {
 
 	All values are seconds with factions. Actual values are live-calculated depending on sustain-level and sampling
 	frequency.
+
+	Current formula for the ADSR time table:
+
+	yn = (x/64)^1.8
 	*/
-	public static immutable float[128] ADSR_TIME_TABLE = [
-	//	0     |1     |2     |3     |4     |5     |6     |7     |8     |9     |A     |B     |C     |D     |E     |F
-		0.000, 0.0005,0.001, 0.0015,0.002, 0.0025,0.003, 0.0035,0.004, 0.0045,0.005, 0.006, 0.007, 0.008, 0.009, 0.010,//0
-		0.011, 0.012, 0.013, 0.014, 0.015, 0.017, 0.019, 0.021, 0.023, 0.025, 0.028, 0.031, 0.034, 0.038, 0.042, 0.047,//1
-		0.052, 0.057, 0.062, 0.067, 0.073, 0.079, 0.085, 0.092, 0.099, 0.107, 0.116, 0.126, 0.137, 0.149, 0.162, 0.176,//2
-		0.191, 0.207, 0.224, 0.242, 0.261, 0.281, 0.302, 0.324, 0.347, 0.371, 0.396, 0.422, 0.449, 0.477, 0.506, 0.536,//3
-		0.567, 0.599, 0.632, 0.666, 0.701, 0.737, 0.774, 0.812, 0.851, 0.891, 0.932, 0.974, 1.017, 1.061, 1.106, 1.152,//4
-		1.199, 1.247, 1.296, 1.346, 1.397, 1.499, 1.502, 1.556, 1.611, 1.667, 1.724, 1.782, 1.841, 1.901, 1.962, 2.024,//5
-		2.087, 2.151, 2.216, 2.282, 2.349, 2.417, 2.486, 2.556, 2.627, 2.699, 2.772, 2.846, 2.921, 2.997, 3.074, 3.152,//6
-		3.231, 3.331, 3.392, 3.474, 3.557, 3.621, 3.726, 3.812, 3.899, 3.987, 4.076, 4.166, 4.257, 4.349, 4.442, 4.535,//7
-		
-	];
+	public static immutable float[128] ADSR_TIME_TABLE;
 	/**
 	Contains a table to calculate Sustain control values.
 
@@ -326,7 +322,7 @@ public class QM816 : AudioModule {
 						ratio = 1;
 						break;
 					case 7: .. case 11:
-						ratio = 1 + 1/2;
+						ratio = 1.5;
 						break;
 					case 12: .. case 18:
 						ratio = 2;
@@ -425,10 +421,10 @@ public class QM816 : AudioModule {
 				if (preset.susCC == 64) {
 					eg.sustainControl = 0.0;
 				} else if (preset.susCC < 64) {
-					eg.sustainControl = -1.0 * 
-							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCC - 1], sampleRate);
+					eg.sustainControl =  
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[62 - (preset.susCC - 1)], sampleRate);
 				} else {
-					eg.sustainControl = 
+					eg.sustainControl = -1.0 *
 							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCC - 64], sampleRate);
 				}
 			} else {
@@ -447,6 +443,13 @@ public class QM816 : AudioModule {
 		void setShpVals(float vel = 1.0) @nogc @safe pure nothrow {
 			shpA0 = preset.shpA - (preset.shpA * preset.shpAVel) + (preset.shpA * preset.shpAVel * vel);
 			shpR0 = preset.shpR - (preset.shpR * preset.shpRVel) + (preset.shpR * preset.shpRVel * vel);
+		}
+		///Sets the key to off on this channel. Also calculates adaptive release rates if needed.
+		void keyOff(int sampleRate) @nogc @safe pure nothrow {
+			eg.keyOff();
+			if (preset.rel && (preset.opCtrl & OpCtrlFlags.EGRelAdaptive)) {
+				eg.releaseRate = calculateRate(ADSR_TIME_TABLE[preset.rel] * 2, sampleRate, eg.sustainLevel);
+			}
 		}
 	}
 	///Defines channel control flags.
@@ -508,9 +511,11 @@ public class QM816 : AudioModule {
 				if (preset.susCCX == 64) {
 					eeg.sustainControl = 0.0;
 				} else if (preset.susCCX < 64) {
-					eeg.sustainControl = -1.0 * calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCCX - 1], sampleRate);
+					eeg.sustainControl =  
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[62 - (preset.susCCX - 1)], sampleRate);
 				} else {
-					eeg.sustainControl = calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCCX - 64], sampleRate);
+					eeg.sustainControl = -1.0 *
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCCX - 64], sampleRate);
 				}
 			} else {
 				eeg.isPercussive = true;
@@ -567,7 +572,7 @@ public class QM816 : AudioModule {
 			///Feedback level (between 0.0 and 1.0)
 			float			fbL		=	0.0;
 			///Control flags and Wavetable selector
-			uint			opCtrl;
+			uint			opCtrl = OpCtrlFlags.EasyTune;
 			///Output level controller assignment
 			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: unused
 			__m128			outLCtrl=	[0,0,0,0];
@@ -579,7 +584,7 @@ public class QM816 : AudioModule {
 			///Decay time control (between 0 and 127)
 			ubyte			dec;
 			///Release time control (between 0 and 127)
-			ubyte			rel;
+			ubyte			rel = 1;
 			///Sustain curve control (between 0 and 127)
 			///0: Percussive mode
 			///1 - 63: Descending over time
@@ -612,17 +617,14 @@ public class QM816 : AudioModule {
 			///ADSR shaping parameter (for the decay/release phase)
 			float			shpRX	=	0.5;
 			///Pitch amount for EEG
-			///Bit 31-25: Coarse (-64 to +63 seminotes)
-			///Bit 24-0: Fine (0 to 100 cents)
-			uint			eegDetuneAm;
+			float			eegDetuneAm	=	0;
 			///Pitch bend sensitivity
-			///Bit 31-25: Coarse (0 to 127 seminotes)
-			///Bit 24-0: Fine (0 to 100 cents)
-			uint			pitchBendSens = 2<<24;//
+			///Up to +/-2 octaves
+			float			pitchBendSens = 0;
 			///A-4 channel tuning in hertz.
 			float			chnlTun = 440.0;
 			///Stores channel control flags.
-			uint			chCtrl;
+			uint			chCtrl = ChCtrlFlags.ResetMode;
 			///Master volume (0.0 to 1.0)
 			float			masterVol=	1;
 			///Master balance (0.0 to 1.0)
@@ -645,7 +647,7 @@ public class QM816 : AudioModule {
 			///Only available on certain algorithms
 			float			globalFb	=	0;
 			///Pitch LFO level
-			float			pLFOlevel	=	1;
+			float			pLFOlevel	=	0;
 			///Amplitude LFO to 
 			///Attack time control (between 0 and 127)
 			ubyte			atkX;
@@ -989,9 +991,9 @@ public class QM816 : AudioModule {
 						break;
 					case MIDI1_0Cmd.PitchBend:
 						const uint ch = data0.channel;
-						const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
-								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
-						chCtrls[ch].pitchBend = pitchBendSens * ((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
+						/+const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
+								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);+/
+						chCtrls[ch].pitchBend = channels[ch].preset.pitchBendSens * ((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
 						break;
 					default:
 						assert(0, "MIDI 1.0 data error!");
@@ -1073,9 +1075,9 @@ public class QM816 : AudioModule {
 						break;
 					case MIDI2_0Cmd.PitchBend:
 						const uint ch = data0.channel;
-						const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
-								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);
-						chCtrls[ch].pitchBend = pitchBendSens * (cast(double)(data0.bend - (uint.max / 2)) / (uint.max / 2));
+						/+const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
+								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);+/
+						chCtrls[ch].pitchBend = channels[ch].preset.pitchBendSens * (cast(double)(data0.bend - (uint.max / 2)) / (uint.max / 2));
 						break;
 					default:
 						assert(0, "MIDI 2.0 data error!");
@@ -1173,7 +1175,17 @@ public class QM816 : AudioModule {
 	 *   vel = 
 	 */
 	protected void keyOff(ubyte note, ubyte ch, float vel, float bend = 0) @nogc pure nothrow {
-		
+		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
+		chCtrls[ch].note = note;
+		chCtrls[ch].velocity = vel;
+		channels[ch].eeg.keyOff();
+		operators[ch].keyOff(sampleRate);
+		operators[ch + 1].keyOff(sampleRate);
+		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
+			channels[ch + 8].eeg.keyOff();
+			operators[ch + 16].keyOff(sampleRate);
+			operators[ch + 17].keyOff(sampleRate);
+		}
 	}
 	/**
 	Sets the channel delegates
@@ -1181,7 +1193,7 @@ public class QM816 : AudioModule {
 	protected void setChDeleg(uint chCtrl, uint chNum, uint chCtrl0 = 0) @nogc @safe pure nothrow {
 		if (chCtrl & ChCtrlFlags.ComboModeTest) {	//Test if channel is combined or not
 			if (chNum < 8) {
-				const uint algID = chCtrl & (ChCtrlFlags.ComboModeTest & ChCtrlFlags.Algorithm) | 
+				const uint algID = (chCtrl & (ChCtrlFlags.ComboModeTest | ChCtrlFlags.Algorithm)) | 
 						((chCtrl0 & ChCtrlFlags.Algorithm)<<1);
 				enum priChAlg = ChCtrlFlags.Algorithm;
 				enum secChAlg = ChCtrlFlags.Algorithm<<1;
@@ -1257,14 +1269,13 @@ public class QM816 : AudioModule {
 		switch (paramNum[0]) {
 			case ChannelRegParams.PitchBendSens:
 				static if (is(T == uint)) {
-					channels[chNum].pitchBendSens = val;
+					channels[chNum].pitchBendSens = (cast(double)val / (uint.max / 127.0));
 				} else static if (is(T == ubyte)) {
+					const int whole = cast(int)(channels[chNum].pitchBendSens);
 					if (type) {
-						channels[chNum].pitchBendSens &= ~(byte.max<<25);
-						channels[chNum].pitchBendSens |= val<<25;
+						channels[chNum].pitchBendSens = whole + (val / byte.max);
 					} else {
-						channels[chNum].pitchBendSens &= ~(byte.max<<18);
-						channels[chNum].pitchBendSens |= val<<18;
+						channels[chNum].pitchBendSens = (channels[chNum].pitchBendSens - whole) * val;
 					}
 				}
 				break;
@@ -1466,7 +1477,7 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case ChannelParamNums.EEGDetune:
-						channels[chNum].preset.eegDetuneAm = val;
+						channels[chNum].preset.eegDetuneAm = ((cast(double)(uint.max>>1) - cast(double)val) / (uint.max>>1)) * 24;
 						break;
 					case ChannelParamNums.MasterVol: 
 						const double valF = cast(double)val / uint.max;
@@ -1574,7 +1585,11 @@ public class QM816 : AudioModule {
 					channels[chNum + 8].preset.chCtrl &= ~ChCtrlFlags.ComboModeTest;
 					channels[chNum + 8].preset.chCtrl |= ChCtrlFlags.ComboModeTest & channels[chNum].preset.chCtrl;
 					setChDeleg(channels[chNum].preset.chCtrl, chNum, channels[chNum + 8].preset.chCtrl);
+					setChDeleg(channels[chNum + 8].preset.chCtrl, chNum + 8);
 				} else {
+					channels[chNum - 8].preset.chCtrl &= ~ChCtrlFlags.ComboModeTest;
+					channels[chNum - 8].preset.chCtrl |= ChCtrlFlags.ComboModeTest & channels[chNum].preset.chCtrl;
+					setChDeleg(channels[chNum - 8].preset.chCtrl, chNum - 8, channels[chNum].preset.chCtrl);
 					setChDeleg(channels[chNum].preset.chCtrl, chNum);
 				}
 				break;
@@ -1661,6 +1676,7 @@ public class QM816 : AudioModule {
 		}
 		//Render each channel
 		foreach (size_t i, ChFun fun ; chDeleg) {
+			
 			fun(cast(int)i, bufferSize);
 		}
 		//chDeleg[0](0, bufferSize);
@@ -1711,6 +1727,36 @@ public class QM816 : AudioModule {
 		op.pos += op.step;
 		//op.input = 0;
 		op.eg.advance();
+	}
+	///Updates automatic and manual pitchbend values (channel-assignable envelop, LFO, pitchbend CTRL) for 2 operators.
+	pragma(inline, true)
+	protected final void updatePitchbend2Op(ref Operator op0, ref Operator op1, ref Channel ch, ref ChControllers chCtrl) 
+			@nogc @safe pure nothrow {
+		if (!isClose(ch.preset.eegDetuneAm, 0.0, 0.1) || !isClose(ch.preset.pLFOlevel, 0.0, 0.01)
+				|| !isClose(chCtrl.pitchBend, 0.0, 0.01)) {
+			const float eegOut = ch.eeg.shp(ch.eeg.position == ADSREnvelopGenerator.Stage.Attack ? 
+					ch.preset.shpAX : ch.preset.shpRX);
+			const float vibrAm = pLFOOut * ch.preset.pLFOlevel * 
+					(ch.preset.chCtrl & ChCtrlFlags.MWToVibr ? chCtrl.pitchBend : 1.0);
+			op0.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op1.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+		}
+	}
+	///Updates automatic and manual pitchbend values (channel-assignable envelop, LFO, pitchbend CTRL) for 4 operators.
+	pragma(inline, true)
+	protected final void updatePitchbend4Op(ref Operator op0, ref Operator op1, ref Operator op2, ref Operator op3, 
+			ref Channel ch, ref ChControllers chCtrl) @nogc @safe pure nothrow {
+		if (!isClose(ch.preset.eegDetuneAm, 0.0, 0.1) || !isClose(ch.preset.pLFOlevel, 0.0, 0.01)
+				|| !isClose(chCtrl.pitchBend, 0.0, 0.01)) {
+			const float eegOut = ch.eeg.shp(ch.eeg.position == ADSREnvelopGenerator.Stage.Attack ? 
+					ch.preset.shpAX : ch.preset.shpRX);
+			const float vibrAm = pLFOOut * ch.preset.pLFOlevel * 
+					(ch.preset.chCtrl & ChCtrlFlags.MWToVibr ? chCtrl.pitchBend : 1.0);
+			op0.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op1.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op2.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op3.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+		}
 	}
 	///Macro for channel update constants that need to be calculated once per frame
 	///Kept in at one place to make updates easier and more consistent
@@ -1811,6 +1857,7 @@ public class QM816 : AudioModule {
 	///Algorithm Mode 0/0 (Serial)
 	protected void updateChannelM00(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
+		updatePitchbend2Op(operators[opOffset], operators[opOffset + 1], channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			channels[chNum].eeg.advance();
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
@@ -1827,6 +1874,7 @@ public class QM816 : AudioModule {
 	///Algorithm Mode0/1 (Parallel)
 	protected void updateChannelM01(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
+		updatePitchbend2Op(operators[opOffset], operators[opOffset + 1], channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			updateOperator(operators[opOffset], opCtrl0);
@@ -1841,6 +1889,7 @@ public class QM816 : AudioModule {
 	protected void updateChannelM100(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);

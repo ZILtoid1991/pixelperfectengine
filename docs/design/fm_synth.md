@@ -19,7 +19,7 @@
      |          \  /      | [amp]|/   [out_a]
      |           \/       |       |
      |--------------------|       |
-        [wavetable]               |
+        [wavetable osc.]          |
     |------------------|          |
     |      /\___       |          |
     |     /     \      |---->-----|
@@ -28,59 +28,88 @@
 ```
 ## operator controllers
 
-Unregistered parameter bank 0 and 1 belong to operator controls. Numbers in square brackets mean number of unregistered parameter.
+Operator control parameters can be set through the Control Change command. However, the original (1.0) MIDI implementation has limited public namespace, with many defaults posing other limitations. So to avoid running out from controls without breaking standards, the unregistered parameter bank is being used to extend the available namespace as well as adding 14 bit precision for many values. Also every value between 0-31 has extended precision (LSB) in the 32-63 region with control numbers shifted by 32. In case of MIDI 2.0, there's enough for everything.
 
-* `Level` [0]: Controls the output level of the operator. Exponential (`y = ²`). 
-* `Attack` [1]: Controls the attack time of the operator's attack time.
-* `Decay`:
-* `SusLevel`:
-* `SusCtrl`:
-* `Release`:
-* `Waveform`:
-* `Feedback`:
-* `TuneCor`:
-* `TuneFine`:
-* `ShpA`:
-* `ShpR`:
-* `VelToLevel`:
-* `MWToLevel`:
-* `LFOToLevel`:
-* `OpCtrl`:
-* `VelToFB`:
-* `MWToFB`:
-* `LFOToFB`:
-* `EEGToFB`:
-* `VelToShpA`:
-* `VelToShpR`:
-* `KSLBegin`:
-* `KSLAttenOut`:
-* `KSLAttenFB`:
-* `KSLAttenADSR`:
+Unregistered parameter bank 0 and 1 belong to operator controls. Numbers in square brackets mean number of unregistered parameter. Curly brackets contain legacy control change numbers if available.
+
+All time values are exponential (y = x¹∙⁸)
+
+* `Level` [0]: Controls the output level of the operator. Exponential (y = x²). {O0: 18 ; O1: 19}
+* `Attack` [1]: Controls the attack time of the operator. Range is between 0s to ~3.5s. {O0: 78 ; O1: 73}
+* `Decay` [2]: Controls the decay time of the operator. Range is between 0s to ~7s. {O0: 79 ; O1: 74}
+* `SusLevel` [3]: Controls the sustain level of the operator. Actual value is affected by ShpR. {O0: 16 ; O1: 17}
+* `SusCtrl` [4]: Controls how the sustain phase behaves. 0 sets the envelop generator into percussive mode (no sustain), 1-63 selects a descending curve, 64 selects a continuous output (infinite sustain), 65-127 selects an ascending curve (swell). {O0: 85 ; O1: 86}
+* `Release` [5]: Controls the release time of the operator. Range is between 0s to ~7s. {O0: 77 ; O1: 72}
+* `Waveform` [6]: Selects which waveform will be used from the 128 shared ones. {O0: 75 ; O1: 70}
+* `Feedback` [7]: Controls the feedback of this operator. Exponential (y = x⁴). Up to around half way, it can be used to add timbre to the sound, after that point the signal becomes noisier. {O0: 76 ; O1: 71}
+* `TuneCor` [8]: Sets the coarse tuning. By default, it uses a so called "EasyTune" system, allowing the user to select integer multiples of the base note's frequency. Turning it off the operator then can be tuned at this point by whole steps, or precisely if "ContiTune" is enabled. {O0: 87 ; O1: 88}
+* `TuneFine` [9]: Sets the fine tuning within a seminote. Disabled with "EasyTune". {O0: 30 ; O1: 31}
+* `ShpA` [10]: Sets the envelop-shape for the attack phase between (y = x⁴) and (y =⁴√x) if (0 ≤ x ≤ 1).
+* `ShpR` [11]: Sets the envelop-shape for the decay, sustain, and release phase between (y = x⁴) and (y =⁴√x) if (0 ≤ x ≤ 1).
+* `VelToLevel` [12]: Sets how much velocity is affecting the output level of the operator.
+* `MWToLevel` [13]: Sets how much the MW/Expr is affecting the output level of the operator.
+* `LFOToLevel` [14]: Sets how much the amplitude LFO is affecting the output level of the operator.
+* `OpCtrl` [15]: Sets the operator control flags at once directly.
+* `VelToFB` [16]: Sets how much velocity is affecting the feedback level of the operator.
+* `MWToFB` [17]: Sets how much the MW/Expr is affecting the feedback level of the operator.
+* `LFOToFB` [18]: Sets how much the amplitude LFO is affecting the feedback level of the operator.
+* `EEGToFB` [19]: Sets how much the channel-assignable envelop generator is affecting the feedback level of the operator.
+* `VelToShpA` [20]: Sets how much velocity is affecting the attack portion of the EG's output curve.
+* `VelToShpR` [21]: Sets how much velocity is affecting the decay, sustain, and release portion of the EG's output curve.
+* `KSLBegin` [22]: Selects where the Key Scale Level (KSL) attennuation begins. Many instruments in real life has less timbre, less amplitude, etc as played in higher pitches, this can emulate this behavior.
+* `KSLAttenOut` [23]: Sets the amount of attennuation on the output level (up to 6db/oct).
+* `KSLAttenFB` [24]: Sets the amount of attennuation on the feedback level (up to 6db/oct).
+* `KSLAttenADSR` [25]: Sets the amount of how much shorter the attack and decay phases of the envelop must be (up to 4% per note).
 
 ### Operator control flags
 
 Notation: [bit index in parameter settings]{bit index in the operator itself}
 
-* `FBMode`:
-* `FBNeg`:
-* `MWNeg`:
-* `VelNeg`:
-* `EGRelAdaptive`:
-* `FixedPitch`:
-* `EasyTune`:
+* `FBMode` [0]{7}: If set, then feedback bypasses the operator's envelop generator. Channel EG can still be used.
+* `FBNeg` [1]{8}: Inverts the feedback output.
+* `MWNeg` [2]{9}: Inverts the modulation wheel.
+* `VelNeg` [3]{10}: Inverts the velocity.
+* `EGRelAdaptive` [4]{11}: Sets the release to be at a fixed time regardless of sustain level. Otherwise release time might be affected how the sustain changes.
+* `FixedPitch` [5]{12}: Sets the operator into fixed pitch mode, thus not being affected by key pitch changes.
+* `EasyTune` [6]{13}: Sets the operator into a fixed frequency ratio tune mode. Enabled by default.
+* `ContiTune` [7]{14}: Enables the use extra precision for TuneCor, which enables the continuous tuning of the operator from a single data source.
+* `ExprToMW` [8]{15}: Replaces MW controls with expression value controls for this operator.
 
-## functions
+### EasyTune prelimiters
 
-out = wavetable[((step>>20) + (in>>4) + (fb>>3)) & 1023]
-out_a = (out * (amp + 1)) >> 12
-amp = (ADSREnvGen.shpI(ADSREnvGen.stage == attack ? shpA : shpR) * (outLevel/65536)^2 * 4096
-fb = ((fbMode ? out(n-1) : out_a(n-1)) * (fbAmp + 1)) >> 10
-fbAmp{if extra ADSREnvGen not assigned to fb} = (fbAmount/256)^2 * 8192
-fbAmp{if extra ADSREnvGen is assigned to fb} = (exADSREnvGen.gammaI(ADSREnvGen.stage == attack ? shpAX : shpRX) * (fbAmount/256)^2 * 8192
+* 0: ×1/8
+* 1 - 4: ×1/6
+* 5 - 7: ×1/5
+* 8 - 12: ×1/4
+* 13 - 18: ×1/3
+* 19 - 24: ×1/2
+* 25 - 42: ×1
+* 43 - 47: ×1.5
+* 48 - 54: ×2
+* 55 - 59: ×3
+* 60 - 63: ×4
+* 64 - 66: ×5
+* 67 - 69: ×6
+* 70 - 71: ×7
+* 72 - 73: ×8
+* 74 - 75: ×9
+* 76 - 77: ×10
+* 78: ×11
+* 79 - 80: ×12
+* 81: ×13
+* 82: ×14
+* 83: ×15
+* 84 - 128: ×16
 
-For each cycle, increment `step` by `rate`, and let it overflow.
+## Formula
 
-Note for operator input: This might be need to be divided by a certain amount, but this will be revealed during testing.
+The operators use the following formula to generate tone:
+
+`out = wavetable[((step>>21) + (in>>2) + (fb>>3)) & 1023]`
+
+where `wavetable` is a waveform selected from 128 waveforms shared between the operators (both predefined and user-supplied), `step` is the current position of the the oscillator with 21 bits of fraction, `in` is the input from other operators (if any), `fb` is feedback (global feedback also goes there).
+
+For each cycle, increment `step` by `rate`, and let it overflow, generating a continuous cycle.
 
 # Channel
 
@@ -229,17 +258,9 @@ algorithm 11:
 [P1]->
 ```
 
-# sysex strings
+# Global settings
 
-MIDI 1.0 Sysex command `01` enables the setting of global parameters, such as LFO frequencies and waveforms. Command `02 <chnum>` work on both 1.0 and 2.0 implementation, and saves the current preset to the current position. Command `03 <chnum>` will cause the synth to send a single command back to the host, if the channel runs out.
+# Setting guidelines
 
-## Control parameters
-
-* 01: LFOp frequency MSB
-* 02: LFOp frequency LSB
-* 03: LFOp waveform select
-* 04: LFOa frequency MSB
-* 05: LFOa frequency LSB
-* 06: LFOa waveform select
- 
-For MIDI 2.0, these values can be found on page 16 of any non-registered parameter CC, except that 02, and 05 are invalid, and instead a single 32 bit value can set the LFO frequency.
+* Small amounts of release times can function as a pop filter.
+* Feedback adds tibre up to half way, then it adds various types of noises, some are very cyclic by nature.
