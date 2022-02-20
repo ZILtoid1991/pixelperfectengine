@@ -4,6 +4,20 @@
 
 There's now multi-threaded audio support for the engine, allowing me to finally test audio related functions.
 
+## QM816 works and tested for the most part
+
+Using phase modulation synthesis (often mislabeled as frequency modulation), QM816 generates sounds from both user-
+supplied and pre-defined wavetables, by rapidly shifting the wavetable ofset (modulating the phase). Every channel has
+two operators by default, but channels can be paired up individually to trade off some polyphony for more complex 
+sounds.
+
+Aux outputs, LFOs, and channel envelops are not tested as of now, and both ring modulation and LFO filtering are 
+unimplemented.
+
+## Other new features:
+
+* Encoder: New GUI element in work, mainly for synths.
+
 ## Removed features
 
 * PaletteManager: Was a bad idea to begin with.
