@@ -28,9 +28,9 @@ supplied with the synth's code.
 */
 public class QM816 : AudioModule {
 	shared static this() {
-		for (int i ; i < 256 ; i++) {
+		/+for (int i ; i < 256 ; i++) {
 			SINEWAVE_FRAGMENT[i] = cast(short)(sin((PI_2 / 256) * i) * short.max);
-		}
+		}+/
 		for (int i ; i < 128 ; i++) {
 			ADSR_TIME_TABLE[i] = pow(i / 64.0, 1.8);
 		}
@@ -47,10 +47,16 @@ public class QM816 : AudioModule {
 		3 = The second half is all zeros, the sine fragment is effectively "stuffed" into an eight of the waveform.
 	bit 3 = Horizontal mirroring of the cycle.
 	bit 4 = Vertical mirroring of the cycle.
+	bit 5 = Modifies the curve of the sinewave to better suit FM emulation.
 	*/
 	public static short[1024] generateSinewave(ubyte[4] q) @nogc @safe pure nothrow {
-		short sineWave(int i) @nogc @safe pure nothrow {
-			return cast(short)(sin((PI_2 / 256) * i) * short.max);
+		short sineWave(int i, bool shape) @nogc @safe pure nothrow {
+			real val = sin((PI_2 / 256) * i);
+			if (shape) {
+				if (val > 0) return cast(short)(sqrt(val) * short.max);
+				else if (val < 0) return cast(short)(sqrt(val * -1) * short.max * -1);
+				else return 0;
+			} else return cast(short)(val * short.max);
 		}
 		short[1024] result;
 		for (int j ; j < 4 ; j++) {
@@ -60,29 +66,30 @@ public class QM816 : AudioModule {
 				//int hBegin = q[j] & 0x8 ? 255 : 0;
 				//const int vOffset = q[j] & 0x10 ? -1 : 0;
 				const int vMir = q[j] & 0x10 ? 512 : 0;
+				const bool shape = q[j] & 0x20 ? true : false;
 				//const short[256] fragment = SINEWAVE_FRAGMENT;
 				switch (q[j]>>1 & 3) {
 					case 1:
 						for (int i ; i < 256 ; i++) {
-							result[offset + i] = sineWave(((i * 2) & 255) + hMir + vMir);
+							result[offset + i] = sineWave(((i * 2) & 255) + hMir + vMir, shape);
 						}
 						break;
 					case 2:
 						for (int i ; i < 128 ; i++) {
-							result[offset + i] = sineWave(((i * 2) & 255) + hMir + vMir);
+							result[offset + i] = sineWave(((i * 2) & 255) + hMir + vMir, shape);
 						}
 						for (int i ; i < 128 ; i++) {
-							result[offset + i + 128] = sineWave((((127 - i) * 2) & 255) + hMir + vMir);
+							result[offset + i + 128] = sineWave((((127 - i) * 2) & 255) + hMir + vMir, shape);
 						}
 						break;
 					case 3:
 						for (int i ; i < 128 ; i++) {
-							result[offset + i] = sineWave(((i * 2) & 255) + hMir + vMir);
+							result[offset + i] = sineWave(((i * 2) & 255) + hMir + vMir, shape);
 						}
 						break;
 					default:
 						for (int i ; i < 256 ; i++) {
-							result[offset + i] = sineWave(i + hMir + vMir);
+							result[offset + i] = sineWave(i + hMir + vMir, shape);
 						}
 						break;
 				}

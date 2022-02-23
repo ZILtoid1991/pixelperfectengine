@@ -126,13 +126,10 @@ public struct ADSREnvelopGenerator {
 	public bool keypos() @nogc @safe pure nothrow const {
 		return _keyState;
 	}
-	///Changes the shape of the output using optimized mathematics
+	///Changes the shape of the output using optimized (modified Bézier) mathematics
 	///Output is returned as a floating-point value between 0.0 and 1.0
 	public double shp(double g) @nogc @safe pure nothrow const {
-		//return (sqrt(sqrt(outF)) * g) + (outF * outF * outF * outF * (1.0 - g));
-		const double outL = counter * counter * counter * counter;
-		const double outH = counter + (counter - outL);
-		return (outL * g) + (outH * (1.0 - g));
+		return g + (1 - counter) * (1 - counter) * (0 - g) + counter * counter * (1 - g);
 	}
 	
 }
