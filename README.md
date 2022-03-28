@@ -9,7 +9,7 @@ which is influenced by the looks of old graphical operating systems' (Amiga Work
 
 ## Authentic pixel graphics
 
-I was looking for a project idea to present something for Object-Oriented Programming exams, that whould be doable by a 
+I was looking for a project idea to present something for Object-Oriented Programming exams, that would be doable by a 
 single person, yet fun enough to keep me occupied to work on it. While I underestimated the complexity and the work that should
 go into an engine (especially as a rookie), I noticed a few odd things about 2D retro games. As modern engines often use 3D
 polygons for sprites, there are often many errors:
