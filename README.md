@@ -59,8 +59,8 @@ be controlled from the keyboard.
 
 ### test1
 
-Audio testcase. Tests audio initialization and plugins. Can play music by including an plugin-configuration file and
-MIDI files. Due to lack of MIDI 2.0 compatible file formats, it only plays MIDI 1.0 files.
+Audio testcase. Tests audio initialization and plugins, also intended as part of an audio development kit (ADK). In the
+future, it'll also be able to play MIDI files.
 
 ### test2
 

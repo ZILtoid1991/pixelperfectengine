@@ -28,7 +28,8 @@ import pixelperfectengine.audio.base.handler;
 import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.modules.qm816;
 import core.thread;
-
+import iota.audio.midi;
+import iota.audio.midiin;
 
 /** 
  * Audio subsystem test.
@@ -52,6 +53,9 @@ public class TestAudio : InputListener, SystemEventListener {
 	InputHandler	ih;
 	Raster			r;
 	TileLayer		textOut;
+	MIDIInput		midiIn;
+	int				audioDev;
+	int				midiDev = -1;
 	uint			state;
 	ubyte			noteBase = 60;
 	ubyte			bank0;
@@ -60,8 +64,9 @@ public class TestAudio : InputListener, SystemEventListener {
 	ubyte[32][6][2]	level;
 	enum StateFlags {
 		isRunning		=	1<<0,
-		driverInitialized=	1<<1,
+		deviceSelected	=	1<<1,
 		deviceInitialized=	1<<2,
+		midiInitialized	=	1<<3,
 		keyPressed		=	1<<8,
 		upperHalf		=	1<<9,
 	}
@@ -139,9 +144,11 @@ public class TestAudio : InputListener, SystemEventListener {
 		
 	}
 	void whereTheMagicHappens() {
+		ubyte[] midiData;
 		while (state & StateFlags.isRunning) {
 			r.refresh();
 			ih.test();
+			
 		}
 		if (mm !is null) {
 			synchronized
@@ -169,7 +176,26 @@ public class TestAudio : InputListener, SystemEventListener {
 			textOut.writeTextToMap(2, line++, 0, to!wstring(key));
 		}
 
-		state |= StateFlags.driverInitialized;
+		//state |= StateFlags.driverInitialized;
+	}
+
+	public void initMidiDev() {
+		initMIDI();
+		string[] inDevs = getMIDIInputDevs();
+		if (inDevs.length) {
+			clearScreen();
+
+			int line;
+			textOut.writeTextToMap(0, line++, 0, "Available MIDI input devices:");
+			textOut.writeTextToMap(0, line, 0, "` ");
+			textOut.writeTextToMap(2, line++, 0, "None");
+			foreach (i, key; inDevs) {
+				textOut.writeTextToMap(0, line, 0, to!wstring(i + 1));
+				textOut.writeTextToMap(2, line++, 0, to!wstring(key));
+			}
+		} else {
+			state |= StateFlags.midiInitialized;
+		}
 	}
 
 	public void initDevice(int num) {
@@ -214,44 +240,93 @@ public class TestAudio : InputListener, SystemEventListener {
 	}
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		if (isPressed) {
-			if (!(state & StateFlags.deviceInitialized)) {
+			if ((state & StateFlags.deviceSelected) == 0) {
 				switch (id) {
 					case hashCalc("num1"):
-						initDevice(0);
+						audioDev = 0;
 						break;
 					case hashCalc("num2"):
-						initDevice(1);
+						audioDev = 1;
 						break;
 					case hashCalc("num3"):
-						initDevice(2);
+						audioDev = 2;
 						break;
 					case hashCalc("num4"):
-						initDevice(3);
+						audioDev = 3;
 						break;
 					case hashCalc("num5"):
-						initDevice(4);
+						audioDev = 4;
 						break;
 					case hashCalc("num6"):
-						initDevice(5);
+						audioDev = 5;
 						break;
 					case hashCalc("num7"):
-						initDevice(6);
+						audioDev = 6;
 						break;
 					case hashCalc("num8"):
-						initDevice(7);
+						audioDev = 7;
 						break;
 					case hashCalc("num9"):
-						initDevice(8);
+						audioDev = 8;
 						break;
 					case hashCalc("num0"):
-						initDevice(9);
+						audioDev = 9;
 						break;
 					case hashCalc("grave"):
-						initDevice(-1);
+						audioDev = -1;
 						break;
 					default:
 						break;
 				}
+				initMidiDev();
+				state |= StateFlags.deviceSelected;
+				if (state & StateFlags.midiInitialized)
+					initDevice(audioDev);
+			} else if ((state & StateFlags.midiInitialized) == 0) {
+				switch (id) {
+					case hashCalc("num1"):
+						midiDev = 0;
+						break;
+					case hashCalc("num2"):
+						midiDev = 1;
+						break;
+					case hashCalc("num3"):
+						midiDev = 2;
+						break;
+					case hashCalc("num4"):
+						midiDev = 3;
+						break;
+					case hashCalc("num5"):
+						midiDev = 4;
+						break;
+					case hashCalc("num6"):
+						midiDev = 5;
+						break;
+					case hashCalc("num7"):
+						midiDev = 6;
+						break;
+					case hashCalc("num8"):
+						midiDev = 7;
+						break;
+					case hashCalc("num9"):
+						midiDev = 8;
+						break;
+					case hashCalc("num0"):
+						midiDev = 9;
+						break;
+					case hashCalc("grave"):
+						
+						break;
+					default:
+						break;
+				}
+				initDevice(audioDev);
+				if (midiDev != -1)
+					openMIDIInput(midiIn, midiDev);
+				if (midiIn)
+					midiIn.midiInCallback = &midiInCallback;
+				midiIn.start();
+				state |= StateFlags.midiInitialized;
 			} else if(!(state & StateFlags.keyPressed)) {
 				state |= StateFlags.keyPressed;
 				UMP midipacket; //UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, noteBase, MIDI2_0NoteAttrTyp.None);
@@ -450,7 +525,14 @@ public class TestAudio : InputListener, SystemEventListener {
 			}
 		}
 	}
-	
+	public void midiInCallback(ubyte[] data, size_t timestamp) @nogc nothrow {
+		UMP midipkt = UMP(MessageType.MIDI1, 0, data[0]>>4, data[0 & 0xF]);
+		if (data.length > 1)
+			midipkt.bytes[2] = data[1];
+		if (data.length > 2)
+			midipkt.bytes[3] = data[2];
+		fmsynth.midiReceive(midipkt);
+	}
 	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
 		
 	}
