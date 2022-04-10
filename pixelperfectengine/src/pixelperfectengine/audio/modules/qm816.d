@@ -752,7 +752,7 @@ public class QM816 : AudioModule {
 	protected __m128[10]		filterVals;
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
-	protected float[8]			filterCtrl	=	[16_000, 0, 16_000, 0, 16_000, 0, 16_000, 0];
+	protected float[8]			filterCtrl	=	[16_000, 1, 16_000, 1, 16_000, 1, 16_000, 1];
 	///Initial mixing buffers
 	///Output is directed there before filtering
 	///Layout is: LRAB
@@ -1396,7 +1396,7 @@ public class QM816 : AudioModule {
 					break;
 				case OperatorParamNums.Feedback:
 					const double valF = cast(double)val / uint.max;
-					operators[opNum].preset.fbL = valF * valF * valF * valF;
+					operators[opNum].preset.fbL = pow(valF, 2.5) * (operators[opNum].preset.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1);
 					break;
 				case OperatorParamNums.Level:
 					const double valF = cast(double)val / uint.max;
@@ -1783,21 +1783,22 @@ public class QM816 : AudioModule {
 				outBuf[i] = dummyBuf.ptr;
 			}
 		}
-		/+const __m128 b0_a0 = filterVals[3] / filterVals[0], b1_a0 = filterVals[4] / filterVals[0], 
-				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];+/
+		const __m128 b0_a0 = filterVals[3] / filterVals[0], b1_a0 = filterVals[4] / filterVals[0], 
+				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];
 		for (int i ; i < bufferSize ; i++) {
 			__m128 input0 = _mm_load_ps(initBuffers.ptr + (i * 4));
 			input0 /= __m128(mixdownVal);
 			input0 = _mm_max_ps(input0, __m128(-1.0));
 			input0 = _mm_min_ps(input0, __m128(1.0));
-			/+__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
-					a2_a0 * filterVals[9];+/
+			__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
+					a2_a0 * filterVals[9];
 			for (int j ; j < 4 ; j++)
-				outBuf[j][i] += input0[j];// outBuf[j][i] += output0[j];
-			/+filterVals[7] = filterVals[6];
+				outBuf[j][i] += output0[j];
+			//	outBuf[j][i] += input0[j];
+			filterVals[7] = filterVals[6];
 			filterVals[6] = input0;
 			filterVals[9] = filterVals[8];
-			filterVals[8] = output0;+/
+			filterVals[8] = output0;
 		}
 		resetBuffer(initBuffers);
 	}
@@ -1805,8 +1806,10 @@ public class QM816 : AudioModule {
 	///chCtrl index notation: 0: velocity, 1: modulation wheel, 2: Amplitude LFO, 3: Extra Envelop Generator
 	pragma(inline, true)
 	protected final void updateOperator(ref Operator op, __m128 chCtrl) @nogc @safe pure nothrow {
+		/+op.output = wavetables
+				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][((op.pos>>21) + (op.input>>2) + (op.feedback>>3)) & 1023];+/
 		op.output = wavetables
-				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][((op.pos>>21) + (op.input>>2) + (op.feedback>>3)) & 1023];
+				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][(op.pos + (op.input<<19) + (op.feedback<<17))>>21 & 1023];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		const double out0 = op.output;
 		__m128 outCtrl = (op.preset.outLCtrl * chCtrl) + (__m128(1.0) - op.preset.outLCtrl);
@@ -2331,28 +2334,28 @@ public class QM816 : AudioModule {
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_int(uint presetID, uint paramID, int value) @nogc nothrow {
+	public override int recallParam_int(uint presetID, uint paramID, int value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_uint(uint presetID, uint paramID, uint value) @nogc nothrow {
+	public override int recallParam_uint(uint presetID, uint paramID, uint value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_double(uint presetID, uint paramID, double value) @nogc nothrow {
+	public override int recallParam_double(uint presetID, uint paramID, double value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_string(uint presetID, uint paramID, string value) @nogc nothrow {
+	public override int recallParam_string(uint presetID, uint paramID, string value) nothrow {
 		return 0;
 	}
 }

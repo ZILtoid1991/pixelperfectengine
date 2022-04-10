@@ -99,20 +99,20 @@ public abstract class AudioModule {
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public abstract int recallParam_int(uint presetID, uint paramID, int value) @nogc nothrow;
+	public abstract int recallParam_int(uint presetID, uint paramID, int value) nothrow;
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public abstract int recallParam_uint(uint presetID, uint paramID, uint value) @nogc nothrow;
+	public abstract int recallParam_uint(uint presetID, uint paramID, uint value) nothrow;
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public abstract int recallParam_double(uint presetID, uint paramID, double value) @nogc nothrow;
+	public abstract int recallParam_double(uint presetID, uint paramID, double value) nothrow;
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public abstract int recallParam_string(uint presetID, uint paramID, string value) @nogc nothrow;
+	public abstract int recallParam_string(uint presetID, uint paramID, string value) nothrow;
 }

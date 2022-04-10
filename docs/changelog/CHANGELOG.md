@@ -1,5 +1,14 @@
 # Current
 
+## MIDI input via iota
+
+## Audio subsystem changes
+
+* QM816: finetuning.
+* `@nogc` removed from all parameter recall functions.
+
+# 0.10.0-beta6
+
 ## Audio output via iota
 
 There's now multi-threaded audio support for the engine, allowing me to finally test audio related functions.

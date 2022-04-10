@@ -32,7 +32,7 @@ Operator control parameters can be set through the Control Change command. Howev
 
 Unregistered parameter bank 0 and 1 belong to operator controls. Numbers in square brackets mean number of unregistered parameter. Curly brackets contain legacy control change numbers if available.
 
-All time values are exponential (y = x¹∙⁸)
+All time values are exponential (y = x¹∙⁸ if 0⩽x⩽2)
 
 * `Level` [0]: Controls the output level of the operator. Exponential (y = x²). {O0: 18 ; O1: 19}
 * `Attack` [1]: Controls the attack time of the operator. Range is between 0s to ~3.5s. {O0: 78 ; O1: 73}
@@ -41,7 +41,7 @@ All time values are exponential (y = x¹∙⁸)
 * `SusCtrl` [4]: Controls how the sustain phase behaves. 0 sets the envelop generator into percussive mode (no sustain), 1-63 selects a descending curve, 64 selects a continuous output (infinite sustain), 65-127 selects an ascending curve (swell). {O0: 85 ; O1: 86}
 * `Release` [5]: Controls the release time of the operator. Range is between 0s to ~7s. {O0: 77 ; O1: 72}
 * `Waveform` [6]: Selects which waveform will be used from the 128 shared ones. {O0: 75 ; O1: 70}
-* `Feedback` [7]: Controls the feedback of this operator. Exponential (y = x⁴). Up to around half way, it can be used to add timbre to the sound, after that point the signal becomes noisier. {O0: 76 ; O1: 71}
+* `Feedback` [7]: Controls the feedback of this operator. Exponential (y = ²∙⁵). Up to around half way, it can be used to add timbre to the sound, after that point the signal becomes noisier. {O0: 76 ; O1: 71}
 * `TuneCor` [8]: Sets the coarse tuning. By default, it uses a so called "EasyTune" system, allowing the user to select integer multiples of the base note's frequency. Turning it off the operator then can be tuned at this point by whole steps, or precisely if "ContiTune" is enabled. {O0: 87 ; O1: 88}
 * `TuneFine` [9]: Sets the fine tuning within a seminote. Disabled with "EasyTune". {O0: 30 ; O1: 31}
 * `ShpA` [10]: Sets the envelop-shape for the attack phase between (y = x⁴) and (y =⁴√x) if (0 ≤ x ≤ 1). {O0: 20 ; O1: 22}
@@ -293,10 +293,11 @@ The synth shares two LFOs (tremolo and vibrato) and four filters between channel
 * Small amounts of release times can function as a pop filter.
 * Feedback control works in conjunction with the output level in many cases, unless the envelop generator is bypassed.
 * Some overtones will naturally occur due to the lack of an aliasing filter and using a nearest interpolation. This must be taken into account when designing sounds, some of it can be filtered out.
+* There's an artifact with the operators when using high amount of feedback. It causes the outputted noise to become cyclic due to lack of extra precision. This can be easily remedied by detuning the note or operator just enough to stop causing this artifact. This is noticeable on most A-notes with 48kHz sampling frequency and with 440Hz tuning. The artifact also can be triggered manually if its effect is something desired for certain times.
 
 ## General differences from other phase modulation-based synthesis engines
 
-* Use of linear sinewaves. Math of Yamaha's logarithmic sine waves are complicated enough to drag the project on too long, and otherwise regular sine waves can do the job just fine, with sonic differences.
+* Use of linear sinewaves. Math of Yamaha's logarithmic sine waves are complicated enough to drag the project on too long, and otherwise regular sine waves can do the job just fine, with some sonic differences.
 * Use of both user- and pre-defined wavetables.
-* All operators have feedback capabilities, for both more tonal capabilities and to ease the confusions around algorithms where the main difference is different operators having the feedback loop.
+* All operators have feedback capabilities, for both to have more tonal capabilities and to ease the confusions around algorithms where the main difference is different operators having the feedback loop.
 * Almost all algorithms have one "channel feedback" instead of often having to choose between a single operator or channel feedback.

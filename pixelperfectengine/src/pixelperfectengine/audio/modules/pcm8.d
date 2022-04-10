@@ -110,10 +110,10 @@ public class PCM8 : AudioModule {
 	}
 	protected enum PresetFlags {
 		cutoffOnKeyOff		=	1<<0,		///If set, the sample playback will cut off on every key off event
-		modwheelToALFO		=	1<<1,		///Assigns modulation wheel to amplitude LFO levels
-		modwheelToPLFO		=	1<<2,		///Assigns modulation wheel to pitch LFO levels
-		panningALFO			=	1<<3,		///Sets amplitude LFO to panning on this channel
-		disableADSRonVol	=	1<<4,
+		modwheelToLFO		=	1<<1,		///Assigns modulation wheel to amplitude LFO levels
+		panningLFO			=	1<<2,		///Sets amplitude LFO to panning on this channel
+		ADSRtoVol			=	1<<3,
+		ADSRtoPitch			=	1<<4,
 	}
 	/**
 	Defines a single channel's statuses.
@@ -213,28 +213,28 @@ public class PCM8 : AudioModule {
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_int(uint presetID, uint paramID, int value) @nogc nothrow {
+	public override int recallParam_int(uint presetID, uint paramID, int value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_uint(uint presetID, uint paramID, uint value) @nogc nothrow {
+	public override int recallParam_uint(uint presetID, uint paramID, uint value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_double(uint presetID, uint paramID, double value) @nogc nothrow {
+	public override int recallParam_double(uint presetID, uint paramID, double value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_string(uint presetID, uint paramID, string value) @nogc nothrow {
+	public override int recallParam_string(uint presetID, uint paramID, string value) nothrow {
 		return 0;
 	}
 }
