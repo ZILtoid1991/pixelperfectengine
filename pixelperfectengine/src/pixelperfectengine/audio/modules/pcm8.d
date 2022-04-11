@@ -119,18 +119,20 @@ public class PCM8 : AudioModule {
 	Defines a single channel's statuses.
 	*/
 	protected struct Channel {
-		int[1024]		decoderBuffer;		///Stores a 1ks of decoded samples.
+		int[]			decoderBuffer;		///Stores decoded samples.
 		Preset			presetCopy;			///The copy of the preset.
 		Workpad			decoderWorkpad;		///Stores the current state of the decoder.
 		Workpad			savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
-		ubyte			currNote;			///The currently played note.
+
+		ubyte			currNote;			///The currently played note, or 255 if note ran out.
 		ubyte			presetNum;			///Selected preset.
 		ushort			bankNum;			///Bank select number.
 		float			velocity;			///Velocity normalized between 0 and 1
 		float			modWheel;			///Modulation wheel normalized between 0 and 1
+
 		float			currShpA;			///The current attack shape
 		float			currShpR;			///The current release shape
 	}
@@ -162,6 +164,9 @@ public class PCM8 : AudioModule {
 		enabledOutputs = StreamIDSet(outputs);
 		this.sampleRate = sampleRate;
 		this.bufferSize = bufferSize;
+		for (int i ; i < 8 ; i++) {
+			channels[i].decoderBuffer.length = bufferSize * 2;
+		}
 		lfoOut[0].length = bufferSize;
 		lfoOut[1].length = bufferSize;
 		this.handler = handler;
@@ -173,6 +178,32 @@ public class PCM8 : AudioModule {
 	 * data1-3: Other packets if needed.
 	 */
 	public override void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
+		switch (data0.msgType) {
+			case MessageType.MIDI1:
+				if (data0.channel < 8) {
+
+				}
+				break;
+			case MessageType.MIDI2:
+				if (data0.channel < 8) {
+					switch (data0.status) {
+						case MIDI2_0Cmd.NoteOn:
+							break;
+						case MIDI2_0Cmd.NoteOff:
+							break;
+						default:
+							break;
+					}
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	protected void keyOn(ubyte note, ubyte ch, float vel, float bend = float.nan) @nogc pure nothrow {
+
+	}
+	protected void keyOff(ubyte note, ubyte ch, float vel, float bend = float.nan) @nogc pure nothrow {
 
 	}
 	/**
@@ -184,7 +215,31 @@ public class PCM8 : AudioModule {
 	 * NOTE: Buffers must have matching sizes.
 	 */
 	public override void renderFrame(float*[] input, float*[] output) @nogc nothrow {
+		for (int i ; i < 8 ; i++) {
+			if (channels[i].currNote == 255) continue;
+			//get the data for the sample
+			SampleAssignment slmp = channels[i].presetCopy.sampleMapping[channels[i].currNote];
+			//set up an amount for the looppoint entry for decoding.
+			sizediff_t samplesToDecode = bufferSize;
+			while (samplesToDecode > 0) {
+				//test if there's a loopoint within this frame, if yes, then adjust things accordingly. Also test for sample runout.
+				const bool isLoopEntryPoint = slmp.loopEnd && (channels[i].decoderWorkpad.pos + samplesToDecode >= slmp.loopBegin);
+				const bool isLoopPoint = slmp.loopEnd && (channels[i].decoderWorkpad.pos + samplesToDecode >= slmp.loopEnd);
+				const size_t samplesNeeded = isLoopPoint ? (channels[i].decoderWorkpad.pos + samplesToDecode) - slmp.loopEnd : 
+						(isLoopEntryPoint ? (channels[i].decoderWorkpad.pos + samplesToDecode) - slmp.loopBegin : samplesToDecode);
+				//decode enough sample for the current frame
 
+				//timestretch it
+
+				//save or restore state if needed
+				if (isLoopPoint)
+					channels[i].decoderWorkpad = channels[i].savedDWState;
+				else if (isLoopEntryPoint)
+					channels[i].savedDWState = channels[i].decoderWorkpad;
+				
+				samplesToDecode -= samplesNeeded;
+			}
+		}
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
