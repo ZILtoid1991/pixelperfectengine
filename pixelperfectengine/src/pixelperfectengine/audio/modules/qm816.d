@@ -430,7 +430,8 @@ public class QM816 : AudioModule {
 			}
 			calculateKSL(note);
 			const double cycLen = oscFreq / (slmpFreq / 1024.0);
-			step = cast(uint)(cast(double)(1<<21) * cycLen);
+			//step = cast(uint)(cast(double)(1<<21) * cycLen);
+			step = cast(uint)(cast(double)(1<<22) * cycLen);
 		}
 		///Calculates KSL values
 		void calculateKSL(ubyte note) @nogc @safe pure nothrow {
@@ -1808,8 +1809,10 @@ public class QM816 : AudioModule {
 	protected final void updateOperator(ref Operator op, __m128 chCtrl) @nogc @safe pure nothrow {
 		/+op.output = wavetables
 				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][((op.pos>>21) + (op.input>>2) + (op.feedback>>3)) & 1023];+/
+		/+op.output = wavetables
+				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][(op.pos + (op.input<<19) + (op.feedback<<17))>>21 & 1023];+/
 		op.output = wavetables
-				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][(op.pos + (op.input<<19) + (op.feedback<<17))>>21 & 1023];
+				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][(op.pos + (op.input<<20) + (op.feedback<<18))>>22 & 1023];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		const double out0 = op.output;
 		__m128 outCtrl = (op.preset.outLCtrl * chCtrl) + (__m128(1.0) - op.preset.outLCtrl);
