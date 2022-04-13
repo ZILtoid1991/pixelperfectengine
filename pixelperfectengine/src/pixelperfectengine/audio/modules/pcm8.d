@@ -119,7 +119,7 @@ public class PCM8 : AudioModule {
 	Defines a single channel's statuses.
 	*/
 	protected struct Channel {
-		int[]			decoderBuffer;		///Stores decoded samples.
+		//int[]			decoderBuffer;		///Stores decoded samples.
 		Preset			presetCopy;			///The copy of the preset.
 		Workpad			decoderWorkpad;		///Stores the current state of the decoder.
 		Workpad			savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
@@ -141,8 +141,9 @@ public class PCM8 : AudioModule {
 	protected SampleMap		sampleBank;			///Stores all current samples.
 	protected PresetMap		presetBank;			///Stores all current presets. (bits: 0-6: preset number, 7-13: bank lsb, 14-20: bank msb)
 	protected Channel[8]	channels;			///Channel status data.
-	protected Oscillator[2]	lfo;				///Low frequency oscillators to modify values in real-time
-	protected float[][2]	lfoOut;				///LFO output buffers
+	protected Oscillator	lfo;				///Low frequency oscillator to modify values in real-time
+	protected float[]		lfoOut;				///LFO output buffer
+	protected int[]			iBuf0, iBuf1;		///Integer output buffers
 
 	public this() @safe nothrow {
 		info.nOfAudioInput = 0;
@@ -164,11 +165,12 @@ public class PCM8 : AudioModule {
 		enabledOutputs = StreamIDSet(outputs);
 		this.sampleRate = sampleRate;
 		this.bufferSize = bufferSize;
-		for (int i ; i < 8 ; i++) {
+		/+for (int i ; i < 8 ; i++) {
 			channels[i].decoderBuffer.length = bufferSize * 2;
-		}
-		lfoOut[0].length = bufferSize;
-		lfoOut[1].length = bufferSize;
+		}+/
+		iBuf0.length = (bufferSize * 2) + 1;
+		iBuf1.length = bufferSize;
+		lfoOut.length = bufferSize;
 		this.handler = handler;
 	}
 	/**
@@ -219,27 +221,58 @@ public class PCM8 : AudioModule {
 			if (channels[i].currNote == 255) continue;
 			//get the data for the sample
 			SampleAssignment slmp = channels[i].presetCopy.sampleMapping[channels[i].currNote];
+			Sample slm = sampleBank[slmp.sampleNum];
+			if (!slm.sampleData.length) continue;
+			const double freqRatio = slmp.baseFreq / sampleRate;
+			const uint jumpAm = cast(uint)(0x1_00_00_00 * freqRatio);
 			//set up an amount for the looppoint entry for decoding.
-			sizediff_t samplesToDecode = bufferSize;
-			while (samplesToDecode > 0) {
+			sizediff_t samplesNeeded = bufferSize;
+			//test for outrun. If occurs, lower the amount of samples needed.
+			while (samplesNeeded > 0) {
 				//test if there's a loopoint within this frame, if yes, then adjust things accordingly. Also test for sample runout.
-				const bool isLoopEntryPoint = slmp.loopEnd && (channels[i].decoderWorkpad.pos + samplesToDecode >= slmp.loopBegin);
-				const bool isLoopPoint = slmp.loopEnd && (channels[i].decoderWorkpad.pos + samplesToDecode >= slmp.loopEnd);
-				const size_t samplesNeeded = isLoopPoint ? (channels[i].decoderWorkpad.pos + samplesToDecode) - slmp.loopEnd : 
-						(isLoopEntryPoint ? (channels[i].decoderWorkpad.pos + samplesToDecode) - slmp.loopBegin : samplesToDecode);
+				const bool isLoopEntryPoint = slmp.loopEnd && (channels[i].decoderWorkpad.pos + samplesNeeded >= slmp.loopBegin);
+				const bool isLoopPoint = slmp.loopEnd && (channels[i].decoderWorkpad.pos + samplesNeeded >= slmp.loopEnd);
+				const size_t samplesAmount = isLoopPoint ? (channels[i].decoderWorkpad.pos + samplesNeeded) - slmp.loopEnd : 
+						(isLoopEntryPoint ? (channels[i].decoderWorkpad.pos + samplesNeeded) - slmp.loopBegin : samplesNeeded);
+				const size_t samplesToDecode = cast(size_t)(samplesAmount * freqRatio);
 				//decode enough sample for the current frame
-
+				switch (slm.format.format) {		//Hope this branching won't impact performance too much
+					case AudioFormat.PCM:
+						if (slm.format.bitsPerSample == 8)
+							decode8bitPCM(cast(const(ubyte)[])slm.sampleData, iBuf0[1..(1 + samplesToDecode)], channels[i].decoderWorkpad);
+						else if (slm.format.bitsPerSample == 16)
+							decode16bitPCM(cast(const(short)[])slm.sampleData, iBuf0[1..(1 + samplesToDecode)], channels[i].decoderWorkpad);
+						break;
+					case AudioFormat.ADPCM:
+						decode4bitIMAADPCM(ADPCMStream(slm.sampleData, slm.sampleData.length/2), iBuf0[1..(1 + samplesToDecode)], 
+								channels[i].decoderWorkpad);
+						break;
+					case AudioFormat.DIALOGIC_OKI_ADPCM:
+						decode4bitDialogicADPCM(ADPCMStream(slm.sampleData, slm.sampleData.length/2), iBuf0[1..(1 + samplesToDecode)], 
+								channels[i].decoderWorkpad);
+						break;
+					case AudioFormat.MULAW:
+						decodeMuLawStream(cast(const(ubyte)[])slm.sampleData,iBuf0[1..(1 + samplesToDecode)], channels[i].decoderWorkpad);
+						break;
+					case AudioFormat.ALAW:
+						decodeALawStream(cast(const(ubyte)[])slm.sampleData, iBuf0[1..(1 + samplesToDecode)], channels[i].decoderWorkpad);
+						break;
+					default:
+						continue;
+				}
 				//timestretch it
-
+				stretchAudioNoIterpol(cast(const(int)[])iBuf0, iBuf1, channels[i].waveModWorkpad, jumpAm);
 				//save or restore state if needed
 				if (isLoopPoint)
 					channels[i].decoderWorkpad = channels[i].savedDWState;
 				else if (isLoopEntryPoint)
 					channels[i].savedDWState = channels[i].decoderWorkpad;
-				
-				samplesToDecode -= samplesNeeded;
+				iBuf0[0] = iBuf0[1 + samplesToDecode];
+				samplesNeeded -= samplesAmount;
 			}
+			//apply envelop (if needed) and volume, then mix it to the local buffer
 		}
+		//apply filtering and mix to destination
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 

@@ -270,10 +270,11 @@ alias ADPCMStream = NibbleArray;
 	 * Streches a buffer to the given amount using no interpolation.
 	 * Can be used to pitch the sample.
 	 */
-	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, ref WavemodWorkpad wp, uint modifier = 0x10_00_00) 
+	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, ref WavemodWorkpad wp, uint modifier = 0x1_00_00_00) 
 			@safe {
+		wp.lookupVal &= 0x_FF_FF_FF;
 		for (size_t i ; i < dest.length ; i++) {
-			dest[i] = src[cast(size_t)(wp.lookupVal>>20)];
+			dest[i] = src[cast(size_t)(wp.lookupVal>>24)];
 			wp.lookupVal += modifier;
 		}
 	}
