@@ -29,24 +29,8 @@ It has support for
 The module has 8 sample-based channels with looping capabilities and each has an ADSR envelop, and 4 outputs with a filter.
 */
 public class PCM8 : AudioModule {
-	/** 
-	Contains a table to calculate Attack, Decay, and Release values.
-
-	All values are seconds with factions. Actual values are live-calculated depending on sustain-level and sampling
-	frequency.
-	*/
-	public static immutable float[128] ADSR_TIME_TABLE = [
-	//	0     |1     |2     |3     |4     |5     |6     |7     |8     |9     |A     |B     |C     |D     |E     |F
-		0.000, 0.0005,0.001, 0.0015,0.002, 0.0025,0.003, 0.0035,0.004, 0.0045,0.005, 0.006, 0.007, 0.008, 0.009, 0.010,//0
-		0.011, 0.012, 0.013, 0.014, 0.015, 0.017, 0.019, 0.021, 0.023, 0.025, 0.028, 0.031, 0.034, 0.038, 0.042, 0.047,//1
-		0.052, 0.057, 0.062, 0.067, 0.073, 0.079, 0.085, 0.092, 0.099, 0.107, 0.116, 0.126, 0.137, 0.149, 0.162, 0.176,//2
-		0.191, 0.207, 0.224, 0.242, 0.261, 0.281, 0.302, 0.324, 0.347, 0.371, 0.396, 0.422, 0.449, 0.477, 0.506, 0.536,//3
-		0.567, 0.599, 0.632, 0.666, 0.701, 0.737, 0.774, 0.812, 0.851, 0.891, 0.932, 0.974, 1.017, 1.061, 1.106, 1.152,//4
-		1.199, 1.247, 1.296, 1.346, 1.397, 1.499, 1.502, 1.556, 1.611, 1.667, 1.724, 1.782, 1.841, 1.901, 1.962, 2.024,//5
-		2.087, 2.151, 2.216, 2.282, 2.349, 2.417, 2.486, 2.556, 2.627, 2.699, 2.772, 2.846, 2.921, 2.997, 3.074, 3.152,//6
-		3.231, 3.331, 3.392, 3.474, 3.557, 3.621, 3.726, 3.812, 3.899, 3.987, 4.076, 4.166, 4.257, 4.349, 4.442, 4.535,//7
-		
-	];
+	
+	public static immutable float[128] ADSR_TIME_TABLE;
 	/**
 	Contains a table to calculate Sustain control values.
 
@@ -60,6 +44,7 @@ public class PCM8 : AudioModule {
 		12.00, 11.75, 11.50, 11.25, 11.00, 10.75, 10.50, 10.25, 10.00, 9.750, 9.500, 9.250, 9.000, 8.750, 8.500, 8.250,//2
 		8.000, 7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500        //3
 	];
+	alias DecodeFunc = void function(ubyte[] src, int[] dest, ref Workpad wp) @nogc nothrow pure;
 	/**
 	Defines a single sample.
 	*/
@@ -68,6 +53,11 @@ public class PCM8 : AudioModule {
 		ubyte[]		sampleData;
 		///Stores what kind of format the sample has
 		WaveFormat	format;
+		///Points to the decoder function
+		DecodeFunc	decode;
+		size_t samplesLength() @nogc @safe pure nothrow const {
+			return (sampleData.length * 8) / format.bitsPerSample;
+		}
 	}
 	/**
 	Defines a single sample-to-note assignment.
@@ -79,11 +69,11 @@ public class PCM8 : AudioModule {
 		///Overrides the format definition.
 		float		baseFreq;
 		///Start of a looppoint.
-		///0, if looppoint is not available.
-		uint		loopBegin;
+		///-1, if looppoint is not available.
+		int			loopBegin	=	-1;
 		///End of a looppoint.
-		///0, if looppoint is not available.
-		uint		loopEnd;
+		///-1, if looppoint is not available.
+		int			loopEnd		=	-1;
 	}
 	/** 
 	Stores preset information.
@@ -112,29 +102,79 @@ public class PCM8 : AudioModule {
 		cutoffOnKeyOff		=	1<<0,		///If set, the sample playback will cut off on every key off event
 		modwheelToLFO		=	1<<1,		///Assigns modulation wheel to amplitude LFO levels
 		panningLFO			=	1<<2,		///Sets amplitude LFO to panning on this channel
-		ADSRtoVol			=	1<<3,
-		ADSRtoPitch			=	1<<4,
+		ADSRtoVol			=	1<<3,		///If set, then envGen will control the volume
+	}
+	protected enum ChannelStatusFlags {
+		noteOn				=	1<<0,
+		sampleRunout		=	1<<1,
+		inLoop				=	1<<2,
 	}
 	/**
 	Defines a single channel's statuses.
 	*/
 	protected struct Channel {
-		//int[]			decoderBuffer;		///Stores decoded samples.
+		int[257]		decoderBuffer;		///Stores decoded samples.
 		Preset			presetCopy;			///The copy of the preset.
 		Workpad			decoderWorkpad;		///Stores the current state of the decoder.
 		Workpad			savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
-		WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
+		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
+		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
+		uint			outPos;				///Position in decoded amount.
+		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
 
-		ubyte			currNote;			///The currently played note, or 255 if note ran out.
+		ubyte			currNote;			///The currently played note, or 255 if samples ran out.
 		ubyte			presetNum;			///Selected preset.
 		ushort			bankNum;			///Bank select number.
+		uint			status;				///Channel status flags. Bit 1: Note on, Bit 2: Sample run out approaching, Bit 3: In loop
+
 		float			velocity;			///Velocity normalized between 0 and 1
 		float			modWheel;			///Modulation wheel normalized between 0 and 1
 
 		float			currShpA;			///The current attack shape
 		float			currShpR;			///The current release shape
+		/**
+		Decodes one more block worth of samples, depending on internal state.
+		*/
+		void decodeMore(ref SampleAssignment sa, ref Sample slmp) @nogc nothrow pure {
+			if (status & 2) currNote = 255;
+			if (currNote == 255) return;
+			//Save final sample in case we will need it later on during resampling.
+			decoderBuffer[0] = decoderBuffer[256];
+			//Determine how much samples we will need.
+			int samplesNeeded = 256;
+			
+			//SampleAssignment sa = presetCopy.sampleMapping[currNote];
+			//Sample slmp = sampleBank[sa.sampleNum];
+			const bool keyOn = (status & 1) == 1;
+			const bool isLooping = !(sa.loopBegin == -1 || sa.loopEnd == -1) && keyOn;
+			
+			//Case 1: sample is running out, and there are no looppoints.
+			if (!isLooping && (decoderWorkpad.pos + samplesNeeded >= slmp.samplesLength())) {
+				samplesNeeded = cast(int)(decoderWorkpad.pos + samplesNeeded - slmp.samplesLength());
+				status |= 2;
+				for (int i = samplesNeeded ; i <= 256 ; i++) 
+					decoderBuffer[i] = 0;
+			}
+			while (samplesNeeded > 0) {
+				//Case 2: sample might enter the beginning or the end of the loop.
+				//If loop is short enough, it can happen multiple times
+				const bool loopBegin = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopBegin) && 
+						!(status & ChannelStatusFlags.inLoop);
+				const bool loopEnd = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopEnd);
+				const size_t samplesToDecode = loopBegin ? decoderWorkpad.pos + samplesNeeded - sa.loopBegin : (loopEnd ? 
+						decoderWorkpad.pos + samplesNeeded - sa.loopEnd : samplesNeeded);
+				slmp.decode(slmp.sampleData, decoderBuffer[1..samplesNeeded + 1], decoderWorkpad);
+				if (loopBegin) {
+					status |= ChannelStatusFlags.inLoop;
+					savedDWState = decoderWorkpad;
+				} else if (loopEnd)
+					decoderWorkpad = savedDWState;
+				samplesNeeded -= samplesToDecode;
+			}
+			
+		}
 	}
 	alias SampleMap = TreeMap!(uint, Sample);
 	alias PresetMap = TreeMap!(uint, Preset);
@@ -143,7 +183,8 @@ public class PCM8 : AudioModule {
 	protected Channel[8]	channels;			///Channel status data.
 	protected Oscillator	lfo;				///Low frequency oscillator to modify values in real-time
 	protected float[]		lfoOut;				///LFO output buffer
-	protected int[]			iBuf0, iBuf1;		///Integer output buffers
+	protected int[]			iBuf;				///Integer output buffers
+	protected __m128[]		lBuf;				///Local output buffer
 
 	public this() @safe nothrow {
 		info.nOfAudioInput = 0;
@@ -168,8 +209,9 @@ public class PCM8 : AudioModule {
 		/+for (int i ; i < 8 ; i++) {
 			channels[i].decoderBuffer.length = bufferSize * 2;
 		}+/
-		iBuf0.length = (bufferSize * 2) + 1;
-		iBuf1.length = bufferSize;
+		
+		iBuf.length = bufferSize;
+		lBuf.length = bufferSize;
 		lfoOut.length = bufferSize;
 		this.handler = handler;
 	}
@@ -208,6 +250,36 @@ public class PCM8 : AudioModule {
 	protected void keyOff(ubyte note, ubyte ch, float vel, float bend = float.nan) @nogc pure nothrow {
 
 	}
+	/** 
+	 * Creates a decoder function.
+	 * Params:
+	 *   fmt = the format of the sample.
+	 * Returns: The decoder function, or null if format not supported.
+	 */
+	protected DecodeFunc getDecoderFunction(WaveFormat fmt) @nogc pure nothrow {
+		switch (fmt.format) {		//Hope this branching won't impact performance too much
+			case AudioFormat.PCM:
+				if (fmt.bitsPerSample == 8)
+					return (ubyte[] src, int[] dest, ref Workpad wp) {decode8bitPCM(cast(const(ubyte)[])src, dest, wp);};
+				else if (fmt.bitsPerSample == 16)
+					return (ubyte[] src, int[] dest, ref Workpad wp) {decode16bitPCM(cast(const(short)[])src, dest, wp);};
+				return null;
+			case AudioFormat.ADPCM:
+				return (ubyte[] src, int[] dest, ref Workpad wp) {decode4bitIMAADPCM(ADPCMStream(src, src.length/2), dest, wp);};
+				
+			case AudioFormat.DIALOGIC_OKI_ADPCM:
+				return (ubyte[] src, int[] dest,ref Workpad wp){decode4bitDialogicADPCM(ADPCMStream(src, src.length/2), dest, wp);};
+				
+			case AudioFormat.MULAW:
+				return (ubyte[] src, int[] dest, ref Workpad wp) {decodeMuLawStream(cast(const(ubyte)[])src, dest, wp);};
+				
+			case AudioFormat.ALAW:
+				return (ubyte[] src, int[] dest, ref Workpad wp) {decodeALawStream(cast(const(ubyte)[])src, dest, wp);};
+				
+			default:
+				return null;
+		}
+	}
 	/**
 	 * Renders the current audio frame.
 	 * 
@@ -220,57 +292,34 @@ public class PCM8 : AudioModule {
 		for (int i ; i < 8 ; i++) {
 			if (channels[i].currNote == 255) continue;
 			//get the data for the sample
-			SampleAssignment slmp = channels[i].presetCopy.sampleMapping[channels[i].currNote];
-			Sample slm = sampleBank[slmp.sampleNum];
-			if (!slm.sampleData.length) continue;
-			const double freqRatio = slmp.baseFreq / sampleRate;
-			const uint jumpAm = cast(uint)(0x1_00_00_00 * freqRatio);
-			//set up an amount for the looppoint entry for decoding.
-			sizediff_t samplesNeeded = bufferSize;
-			//test for outrun. If occurs, lower the amount of samples needed.
-			while (samplesNeeded > 0) {
-				//test if there's a loopoint within this frame, if yes, then adjust things accordingly. Also test for sample runout.
-				const bool isLoopEntryPoint = slmp.loopEnd && (channels[i].decoderWorkpad.pos + samplesNeeded >= slmp.loopBegin);
-				const bool isLoopPoint = slmp.loopEnd && (channels[i].decoderWorkpad.pos + samplesNeeded >= slmp.loopEnd);
-				const size_t samplesAmount = isLoopPoint ? (channels[i].decoderWorkpad.pos + samplesNeeded) - slmp.loopEnd : 
-						(isLoopEntryPoint ? (channels[i].decoderWorkpad.pos + samplesNeeded) - slmp.loopBegin : samplesNeeded);
-				const size_t samplesToDecode = cast(size_t)(samplesAmount * freqRatio);
-				//decode enough sample for the current frame
-				switch (slm.format.format) {		//Hope this branching won't impact performance too much
-					case AudioFormat.PCM:
-						if (slm.format.bitsPerSample == 8)
-							decode8bitPCM(cast(const(ubyte)[])slm.sampleData, iBuf0[1..(1 + samplesToDecode)], channels[i].decoderWorkpad);
-						else if (slm.format.bitsPerSample == 16)
-							decode16bitPCM(cast(const(short)[])slm.sampleData, iBuf0[1..(1 + samplesToDecode)], channels[i].decoderWorkpad);
-						break;
-					case AudioFormat.ADPCM:
-						decode4bitIMAADPCM(ADPCMStream(slm.sampleData, slm.sampleData.length/2), iBuf0[1..(1 + samplesToDecode)], 
-								channels[i].decoderWorkpad);
-						break;
-					case AudioFormat.DIALOGIC_OKI_ADPCM:
-						decode4bitDialogicADPCM(ADPCMStream(slm.sampleData, slm.sampleData.length/2), iBuf0[1..(1 + samplesToDecode)], 
-								channels[i].decoderWorkpad);
-						break;
-					case AudioFormat.MULAW:
-						decodeMuLawStream(cast(const(ubyte)[])slm.sampleData,iBuf0[1..(1 + samplesToDecode)], channels[i].decoderWorkpad);
-						break;
-					case AudioFormat.ALAW:
-						decodeALawStream(cast(const(ubyte)[])slm.sampleData, iBuf0[1..(1 + samplesToDecode)], channels[i].decoderWorkpad);
-						break;
-					default:
-						continue;
+			SampleAssignment sa = channels[i].presetCopy.sampleMapping[channels[i].currNote];
+			Sample slmp = sampleBank[sa.sampleNum];
+			if (!slmp.sampleData.length) continue;
+			int samplesNeeded = cast(int)bufferSize;
+			while (samplesNeeded) {
+				///Calculate the amount of samples that are needed for this block
+				uint samplesToAdvance = cast(uint)((channels[i].waveModWorkpad.lookupVal + (channels[i].jumpAm * samplesNeeded))
+						>>24);
+				const uint decoderBufPos = channels[i].outPos & 255;
+				///Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
+				if (256 - decoderBufPos <= samplesToAdvance){
+					samplesToAdvance = 256 - decoderBufPos;
 				}
-				//timestretch it
-				stretchAudioNoIterpol(cast(const(int)[])iBuf0, iBuf1, channels[i].waveModWorkpad, jumpAm);
-				//save or restore state if needed
-				if (isLoopPoint)
-					channels[i].decoderWorkpad = channels[i].savedDWState;
-				else if (isLoopEntryPoint)
-					channels[i].savedDWState = channels[i].decoderWorkpad;
-				iBuf0[0] = iBuf0[1 + samplesToDecode];
-				samplesNeeded -= samplesAmount;
+				const uint samplesOutputted = cast(uint)(samplesToAdvance / channels[i].freqRatio);
+				const int bias = channels[i].waveModWorkpad.lookupVal & 0x_FF_FF_FF ? 0 : 1;
+				stretchAudioNoIterpol(channels[i].decoderBuffer[bias + decoderBufPos..$], iBuf[0..samplesOutputted], 
+						channels[i].waveModWorkpad, channels[i].jumpAm);
+				samplesNeeded -= samplesOutputted;
+				if (samplesNeeded) channels[i].decodeMore(sa, slmp);
 			}
 			//apply envelop (if needed) and volume, then mix it to the local buffer
+			__m128 levels;
+			levels[0] = channels[i].presetCopy.masterVol - channels[i].presetCopy.balance;
+			levels[1] = channels[i].presetCopy.masterVol - (1 - channels[i].presetCopy.balance);
+			for (int j ; j < bufferSize ; j++) {
+				__m128 sample = _mm_cvtepi32_ps(__m128i(iBuf[j]));
+
+			}
 		}
 		//apply filtering and mix to destination
 	}
@@ -293,7 +342,7 @@ public class PCM8 : AudioModule {
 		if (result) {
 			return result; 
 		} else {
-			sampleBank[id] = Sample(rawData, format);
+			sampleBank[id] = Sample(rawData, format, getDecoderFunction(format));
 			return 0;
 		}
 	}
