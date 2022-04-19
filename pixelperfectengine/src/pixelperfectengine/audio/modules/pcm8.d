@@ -96,6 +96,9 @@ public class PCM8 : AudioModule {
 		float			velToAuxSendAm = 0;///Assigns velocity to aux send levels
 		float			velToAtkShp = 0;///Assigns velocity to attack shape of envelop generator
 		float			velToRelShp = 0;///Assigns velocity to release shape of envelop generator
+		float			lfoToVol;	///Tremolo level (LFO to volume)
+		float			adsrToVol;	///ADSR amount 
+
 		uint			flags;		///Contains various binary settings
 	}
 	protected enum PresetFlags {
@@ -316,9 +319,16 @@ public class PCM8 : AudioModule {
 			__m128 levels;
 			levels[0] = channels[i].presetCopy.masterVol - channels[i].presetCopy.balance;
 			levels[1] = channels[i].presetCopy.masterVol - (1 - channels[i].presetCopy.balance);
+			levels[2] = channels[i].presetCopy.auxSendA;
+			levels[3] = channels[i].presetCopy.auxSendB;
 			for (int j ; j < bufferSize ; j++) {
 				__m128 sample = _mm_cvtepi32_ps(__m128i(iBuf[j]));
-
+				/+const float adsrEnv = (channels[i].presetCopy.flags & PresetFlags.ADSRtoVol ? 
+						channels[i].envGen.shp(channels[i].envGen.currStage == ADSREnvelopGenerator.Stage.Attack ? 
+						channels[i].currShpA : channels[i].currShpR) : 
+						1.0) / ushort.max;
+				channels[i].envGen.advance();
+				sample *= __m128(adsrEnv) * __m128(lfoOut[j]);+/
 			}
 		}
 		//apply filtering and mix to destination
