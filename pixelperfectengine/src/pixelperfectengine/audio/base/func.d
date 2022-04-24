@@ -317,6 +317,20 @@ alias ADPCMStream = NibbleArray;
 		return result;
 	}
 	/** 
+	 * Calculates the time factor for an LP6 filter (one of the simplest kind of filters).
+	 * Filter formula:
+	 * `y[n] = y[n-1] + (x[n] - y[n-1]) * factor`
+	 * Where factor is:
+	 * `1.0 - exp(-1.0 / (timeConstantInSeconds * samplerate))`
+	 * Params:
+	 *   fs = Sampling frequency.
+	 *   f0 = Cutting frequency.
+	 * Returns: 
+	 */
+	public double calculateLP6factor(float fs, float f0) @safe {
+		return 1.0 - exp(-1.0 / ((1 / f0) * fs));
+	}
+	/** 
 	 * Converts MIDI 1.0 14 bit control values to MIDI 2.0 32 bit. Might not work the best with certain values.
 	 * Params:
 	 *   msb = most significant 7 bits

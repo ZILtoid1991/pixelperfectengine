@@ -286,7 +286,11 @@ The synth shares two LFOs (tremolo and vibrato) and four filters between channel
 `FilterACQ` [9]: Sets the filter resonance for the Aux A channel.
 `FilterBCFreq` [10]: Sets the filter frequency for the Aux B channel (0-20 000Hz).
 `FilterBCQ` [11]: Sets the filter resonance for the Aux B channel.
-`Ringmod` [12]: Enables ring modulation, by setting the tremolo frequency into audible territory and bypassing the aliasing filter.
+`HPFLFreq` [12]: Sets the high-pass filter frequency for the left channel (0-20 000Hz)
+`HPFRFreq` [13]: Sets the high-pass filter frequency for the right channel (0-20 000Hz)
+`HPFAFreq` [14]: Sets the high-pass filter frequency for the Aux A channel (0-20 000Hz)
+`HPFBFreq` [15]: Sets the high-pass filter frequency for the Aux B channel (0-20 000Hz)
+`Ringmod` [16]: Enables ring modulation, by setting the tremolo frequency into audible territory and bypassing the aliasing filter.
 
 # Setting guidelines
 

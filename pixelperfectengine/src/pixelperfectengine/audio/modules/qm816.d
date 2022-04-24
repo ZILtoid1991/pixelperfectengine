@@ -738,7 +738,7 @@ public class QM816 : AudioModule {
 	protected ubyte[16]			bankNum;
 	///Keeps the registered/unregistered parameter positions (LSB = 1).
 	//protected ubyte[2]			paramNum;
-	///Stores LFO waveform selection. 1: Amplitude; 0: Pitch
+	///Stores LFO waveform selection. 0: Pitch; 1: Amplitude/Ringmod (if bit 7 is set)
 	protected ubyte[2]			lfoWaveform;
 	///Stores temporary parameter values 
 	///0: MSB of sel unregistered param 1: LSB of sel unregistered param 
@@ -748,12 +748,16 @@ public class QM816 : AudioModule {
 	protected uint				aLFOPos;
 	///Stores ALFO rate
 	protected uint				aLFORate;
+	///ALFO filter y[n-1]
+	protected float				aLFO_y1;
+	///ALFO filter factor 0 to 1
+	protected float				aLFOff;
 	///Stores output filter values.
 	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: x[n-1]; 7: x[n-2]; 8: y[n-1] 9: y[n-2]
 	protected __m128[10]		filterVals;
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
-	protected float[8]			filterCtrl	=	[16_000, 1, 16_000, 1, 16_000, 1, 16_000, 1];
+	protected float[8]			filterCtrl	=	[16_000, 0.707, 16_000, 0.707, 16_000, 0.707, 16_000, 0.707];
 	///Initial mixing buffers
 	///Output is directed there before filtering
 	///Layout is: LRAB
@@ -1710,8 +1714,14 @@ public class QM816 : AudioModule {
 						break;
 					case GlobalParamNums.ALFORate:
 						double valF;
-						valF = cast(double)val / uint.max;
-						valF *= 16;
+						if (lfoWaveform[1 & 0x80]) {
+							valF = noteToFreq((cast(double)val) / 0x03_FF_FF_FF, 440);
+						} else {
+							valF = cast(double)val / uint.max;
+							valF *= 16;
+						}
+
+						aLFOff = calculateLP6factor(sampleRate, valF);
 						const double cycleLen = sampleRate / (1.0 / valF);
 						aLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0));
 						break;
@@ -1758,10 +1768,13 @@ public class QM816 : AudioModule {
 	 * NOTE: Buffers must have matching sizes.
 	 */
 	public override void renderFrame(float*[] input, float*[] output) @nogc nothrow {
-		//Generate aLFO table
+		//Generate aLFO table with filtering
 		for (int i ; i < bufferSize ; i++) {
-			aLFOBuf[i] = (wavetables[lfoWaveform[1]][(aLFOPos>>20) & 1023] - short.min) * (1 / cast(float)(ushort.max));
+			const float x = (wavetables[lfoWaveform[1]][(aLFOPos>>20) & 1023] - short.min) * (1 / cast(float)(ushort.max));
+			const float y = aLFO_y1 + (x - aLFO_y1) * aLFOff;
+			aLFOBuf[i] = y;
 			aLFOPos += aLFORate;
+			aLFO_y1 = y;
 		}
 		//Generate pLFO out
 		{

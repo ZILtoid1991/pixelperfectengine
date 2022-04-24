@@ -186,8 +186,16 @@ public class PCM8 : AudioModule {
 	protected Channel[8]	channels;			///Channel status data.
 	protected Oscillator	lfo;				///Low frequency oscillator to modify values in real-time
 	protected float[]		lfoOut;				///LFO output buffer
+	protected float[]		dummyBuf;			///Dummy buffer if one or more output aren't used
 	protected int[]			iBuf;				///Integer output buffers
 	protected __m128[]		lBuf;				///Local output buffer
+	///Stores output filter values.
+	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: x[n-1]; 7: x[n-2]; 8: y[n-1] 9: y[n-2]
+	protected __m128[10]		filterVals;
+	///Stores control values of the output values.
+	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
+	protected float[8]			filterCtrl	=	[16_000, 0.707, 16_000, 0.707, 16_000, 0.707, 16_000, 0.707];
+	protected float				mixdownVal = short.max + 1;
 
 	public this() @safe nothrow {
 		info.nOfAudioInput = 0;
@@ -217,6 +225,20 @@ public class PCM8 : AudioModule {
 		lBuf.length = bufferSize;
 		lfoOut.length = bufferSize;
 		this.handler = handler;
+		//Reset filters
+		for (int i ; i < 4 ; i++) {
+			BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
+			filterVals[0][i] = vals.a0;
+			filterVals[1][i] = vals.a1;
+			filterVals[2][i] = vals.a2;
+			filterVals[3][i] = vals.b0;
+			filterVals[4][i] = vals.b1;
+			filterVals[5][i] = vals.b2;
+			filterVals[6][i] = 0;
+			filterVals[7][i] = 0;
+			filterVals[8][i] = 0;
+			filterVals[9][i] = 0;
+		}
 	}
 	/**
 	 * MIDI 2.0 data received here.
@@ -292,6 +314,7 @@ public class PCM8 : AudioModule {
 	 * NOTE: Buffers must have matching sizes.
 	 */
 	public override void renderFrame(float*[] input, float*[] output) @nogc nothrow {
+		
 		for (int i ; i < 8 ; i++) {
 			if (channels[i].currNote == 255) continue;
 			//get the data for the sample
@@ -323,15 +346,41 @@ public class PCM8 : AudioModule {
 			levels[3] = channels[i].presetCopy.auxSendB;
 			for (int j ; j < bufferSize ; j++) {
 				__m128 sample = _mm_cvtepi32_ps(__m128i(iBuf[j]));
-				/+const float adsrEnv = (channels[i].presetCopy.flags & PresetFlags.ADSRtoVol ? 
-						channels[i].envGen.shp(channels[i].envGen.currStage == ADSREnvelopGenerator.Stage.Attack ? 
-						channels[i].currShpA : channels[i].currShpR) : 
-						1.0) / ushort.max;
+				const float adsrEnv = channels[i].envGen.shp(channels[i].envGen.position == ADSREnvelopGenerator.Stage.Attack ? 
+						channels[i].currShpA : channels[i].currShpR) * channels[i].presetCopy.adsrToVol;
 				channels[i].envGen.advance();
-				sample *= __m128(adsrEnv) * __m128(lfoOut[j]);+/
+				sample *= __m128((1 - channels[i].presetCopy.adsrToVol) + adsrEnv) * __m128((1 - channels[i].presetCopy.lfoToVol) + 
+						(lfoOut[j] * channels[i].presetCopy.lfoToVol)) * levels;
+				lBuf[j] = sample;
+			}
+		}
+		float*[4] outBuf;
+		for (ubyte i, j ; i < 4 ; i++) {
+			if (enabledOutputs.has(i)) {
+				outBuf[i] = output[j];
+				j++;
+			} else {
+				outBuf[i] = dummyBuf.ptr;
 			}
 		}
 		//apply filtering and mix to destination
+		const __m128 b0_a0 = filterVals[3] / filterVals[0], b1_a0 = filterVals[4] / filterVals[0], 
+				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];
+		for (int i ; i < bufferSize ; i++) {
+			__m128 input0 = iBuf[i];
+			input0 /= __m128(mixdownVal);
+			input0 = _mm_max_ps(input0, __m128(-1.0));
+			input0 = _mm_min_ps(input0, __m128(1.0));
+			__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
+					a2_a0 * filterVals[9];
+			for (int j ; j < 4 ; j++)
+				outBuf[j][i] += output0[j];
+			//	outBuf[j][i] += input0[j];
+			filterVals[7] = filterVals[6];
+			filterVals[6] = input0;
+			filterVals[9] = filterVals[8];
+			filterVals[8] = output0;
+		}
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
