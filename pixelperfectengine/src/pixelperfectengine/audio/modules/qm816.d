@@ -1721,7 +1721,7 @@ public class QM816 : AudioModule {
 							valF *= 16;
 						}
 
-						aLFOff = calculateLP6factor(sampleRate, valF);
+						aLFOff = calculateLP6factor(sampleRate, valF * 256);
 						const double cycleLen = sampleRate / (1.0 / valF);
 						aLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0));
 						break;
