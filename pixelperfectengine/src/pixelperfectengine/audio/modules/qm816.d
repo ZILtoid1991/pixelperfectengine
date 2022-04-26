@@ -751,13 +751,16 @@ public class QM816 : AudioModule {
 	///ALFO filter y[n-1]
 	protected float				aLFO_y1;
 	///ALFO filter factor 0 to 1
-	protected float				aLFOff;
+	protected float				aLFOff	=	1;
 	///Stores output filter values.
 	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: x[n-1]; 7: x[n-2]; 8: y[n-1] 9: y[n-2]
 	protected __m128[10]		filterVals;
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
 	protected float[8]			filterCtrl	=	[16_000, 0.707, 16_000, 0.707, 16_000, 0.707, 16_000, 0.707];
+	protected __m128			hpfY1, hpfAlpha;
+	///Stores high-pass filter values.
+	protected float[4]			hpfCtrl	=	[30, 30, 30, 30];
 	///Initial mixing buffers
 	///Output is directed there before filtering
 	///Layout is: LRAB
@@ -893,7 +896,11 @@ public class QM816 : AudioModule {
 			filterVals[7][i] = 0;
 			filterVals[8][i] = 0;
 			filterVals[9][i] = 0;
+			hpfAlpha[i] = calculateHP20alpha(sampleRate, hpfCtrl[i]);
+			hpfY1[i] = 0;
 		}
+		aLFO_y1 = 0;
+		setUnregisteredParam(0x03_FF_FF_FF, [16, 2], 0);
 		//Reset operator EGs
 		for (int i ; i < operators.length ; i++) {
 			operators[i].setEG(sampleRate, 40);
@@ -1770,7 +1777,7 @@ public class QM816 : AudioModule {
 	public override void renderFrame(float*[] input, float*[] output) @nogc nothrow {
 		//Generate aLFO table with filtering
 		for (int i ; i < bufferSize ; i++) {
-			const float x = (wavetables[lfoWaveform[1]][(aLFOPos>>20) & 1023] - short.min) * (1 / cast(float)(ushort.max));
+			const float x = (wavetables[lfoWaveform[1] & byte.max][(aLFOPos>>20) & 1023] - short.min) * (1 / cast(float)(ushort.max));
 			const float y = aLFO_y1 + (x - aLFO_y1) * aLFOff;
 			aLFOBuf[i] = y;
 			aLFOPos += aLFORate;
@@ -1806,13 +1813,15 @@ public class QM816 : AudioModule {
 			input0 = _mm_min_ps(input0, __m128(1.0));
 			__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
 					a2_a0 * filterVals[9];
+			__m128 output1 = hpfAlpha * (hpfY1 + output0 - filterVals[8]);
 			for (int j ; j < 4 ; j++)
-				outBuf[j][i] += output0[j];
+				outBuf[j][i] += output1[j];
 			//	outBuf[j][i] += input0[j];
 			filterVals[7] = filterVals[6];
 			filterVals[6] = input0;
 			filterVals[9] = filterVals[8];
 			filterVals[8] = output0;
+			hpfY1 = output1;
 		}
 		resetBuffer(initBuffers);
 	}

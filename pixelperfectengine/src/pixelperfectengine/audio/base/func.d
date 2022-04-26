@@ -317,18 +317,32 @@ alias ADPCMStream = NibbleArray;
 		return result;
 	}
 	/** 
-	 * Calculates the time factor for an LP6 filter (one of the simplest kind of filters).
+	 * Calculates the time factor for an LP6 filter.
 	 * Filter formula:
 	 * `y[n] = y[n-1] + (x[n] - y[n-1]) * factor`
 	 * Where factor is:
 	 * `1.0 - exp(-1.0 / (timeConstantInSeconds * samplerate))`
 	 * Params:
 	 *   fs = Sampling frequency.
-	 *   f0 = Cutting frequency.
-	 * Returns: 
+	 *   f0 = Cutoff frequency.
+	 * Returns: The `factor` value.
 	 */
 	public double calculateLP6factor(float fs, float f0) @safe {
 		return 1.0 - exp(-1.0 / ((1 / f0) * fs));
+	}
+	/** 
+	 * Creates the alpha value for a HP20 filter.
+	 * Filter formula:
+	 * `y[n] = (y[n-1] + x[n] - x[n-1]) * alpha`
+	 * Where alpha is:
+	 * `1 / (1 + 2 * pi * timeConstantInSeconds * samplerate)`
+	 * Params:
+	 *   fs = Sampling frequency.
+	 *   f0 = Cutoff frequency.
+	 * Returns: The `alpha` value.
+	 */
+	public double calculateHP20alpha(float fs, float f0) @safe {
+		return 1 / (1 + 2 * PI * (1 / f0) * fs);
 	}
 	/** 
 	 * Converts MIDI 1.0 14 bit control values to MIDI 2.0 32 bit. Might not work the best with certain values.
