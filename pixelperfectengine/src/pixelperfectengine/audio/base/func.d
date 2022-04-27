@@ -298,11 +298,11 @@ alias ADPCMStream = NibbleArray;
 		return r * baseFreq;
 	}
 	/**
-	 * Calculates biquad low-pass filter values from the supplied values.
+	 * Calculates biquad low-pass filter coefficients from the supplied values.
 	 *
-	 * fs: sampling frequency.
-	 * f0: cutting frequency.
-	 * q: the Q factor of the filter.
+	 * fs: Sampling frequency.
+	 * f0: Corner frequency.
+	 * q: The Q factor of the filter.
 	 */
 	public BiquadFilterValues createLPF(float fs, float f0, float q) @safe {
 		BiquadFilterValues result;
@@ -311,6 +311,78 @@ alias ADPCMStream = NibbleArray;
 		result.b1 = 1 - cos(w0);
 		result.b0 = result.b1 / 2;
 		result.b2 = result.b0;
+		result.a0 = 1 + alpha;
+		result.a1 = -2 * cos(w0);
+		result.a2 = 1 - alpha;
+		return result;
+	}
+	/** 
+	 * Calculates biquad high-pass filter coefficients from the supplied values.
+	 * Params:
+	 *   fs = Sampling frequency.
+	 *   f0 = Corner frequency.
+	 *   q = The Q factor of the filter.
+	 * Returns: A struct with the coefficient values for the filter.
+	 */
+	public BiquadFilterValues createHPF(float fs, float f0, float q) @safe {
+		BiquadFilterValues result;
+		const float w0 = 2 * PI * f0 / fs;
+		const float alpha = sin(w0) / (2 * q);
+		result.b1 = (1 + cos(w0)) * -1;
+		result.b0 = (1 + cos(w0)) / 2;
+		result.b2 = result.b0;
+		result.a0 = 1 + alpha;
+		result.a1 = -2 * cos(w0);
+		result.a2 = 1 - alpha;
+		return result;
+	}
+	/** 
+	 * Calculates biquad band pass filter (constant skirt gain, peak gain = Q) filter coefficients from the supplied values.
+	 * Params:
+	 *   fs = Sampling frequency.
+	 *   f0 = Corner frequency.
+	 *   q = Peak gain.
+	 * Returns: A struct with the coefficient values for the filter.
+	 */
+	public BiquadFilterValues createBPF0(float fs, float f0, float q) @safe {
+		BiquadFilterValues result;
+		const float w0 = 2 * PI * f0 / fs;
+		const float alpha = sin(w0) / (2 * q);
+		result.b1 = 0;
+		result.b0 = q * alpha;
+		result.b2 = result.b0 * -1;
+		result.a0 = 1 + alpha;
+		result.a1 = -2 * cos(w0);
+		result.a2 = 1 - alpha;
+		return result;
+	}
+	/** 
+	 * Calculates biquad band pass filter (constant 0 db peak gain) filter coefficients from the supplied values.
+	 * Params:
+	 *   fs = Sampling frequency.
+	 *   f0 = Corner frequency.
+	 *   q = Peak gain.
+	 * Returns: A struct with the coefficient values for the filter.
+	 */
+	public BiquadFilterValues createBPF1(float fs, float f0, float q) @safe {
+		BiquadFilterValues result;
+		const float w0 = 2 * PI * f0 / fs;
+		const float alpha = sin(w0) / (2 * q);
+		result.b1 = 0;
+		result.b0 = alpha;
+		result.b2 = alpha * -1;
+		result.a0 = 1 + alpha;
+		result.a1 = -2 * cos(w0);
+		result.a2 = 1 - alpha;
+		return result;
+	}
+	public BiquadFilterValues createNotchFilt(float fs, float f0, float q) @safe {
+		BiquadFilterValues result;
+		const float w0 = 2 * PI * f0 / fs;
+		const float alpha = sin(w0) / (2 * q);
+		result.b1 = 0;
+		result.b0 = alpha;
+		result.b2 = alpha * -1;
 		result.a0 = 1 + alpha;
 		result.a1 = -2 * cos(w0);
 		result.a2 = 1 - alpha;

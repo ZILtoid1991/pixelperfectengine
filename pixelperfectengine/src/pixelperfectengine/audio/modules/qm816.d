@@ -28,9 +28,7 @@ supplied with the synth's code.
 */
 public class QM816 : AudioModule {
 	shared static this() {
-		/+for (int i ; i < 256 ; i++) {
-			SINEWAVE_FRAGMENT[i] = cast(short)(sin((PI_2 / 256) * i) * short.max);
-		}+/
+		
 		for (int i ; i < 128 ; i++) {
 			ADSR_TIME_TABLE[i] = pow(i / 64.0, 1.8);
 		}
@@ -758,9 +756,11 @@ public class QM816 : AudioModule {
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
 	protected float[8]			filterCtrl	=	[16_000, 0.707, 16_000, 0.707, 16_000, 0.707, 16_000, 0.707];
-	protected __m128			hpfY1, hpfAlpha;
 	///Stores high-pass filter values.
-	protected float[4]			hpfCtrl	=	[30, 30, 30, 30];
+	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: y[n-1] 7: y[n-2]
+	protected __m128[8]			hpfVals;
+	///Stores high-pass filter control values
+	protected float[8]			hpfCtrl	=	[40, 0.707, 40, 0.707, 40, 0.707, 40, 0.707];
 	///Initial mixing buffers
 	///Output is directed there before filtering
 	///Layout is: LRAB
@@ -896,11 +896,18 @@ public class QM816 : AudioModule {
 			filterVals[7][i] = 0;
 			filterVals[8][i] = 0;
 			filterVals[9][i] = 0;
-			hpfAlpha[i] = calculateHP20alpha(sampleRate, hpfCtrl[i]);
-			hpfY1[i] = 0;
+			BiquadFilterValues hpf = createHPF(sampleRate, hpfCtrl[i * 2], hpfCtrl[(i * 2) + 1]);
+			hpfVals[0][i] = hpf.a0;
+			hpfVals[1][i] = hpf.a1;
+			hpfVals[2][i] = hpf.a2;
+			hpfVals[3][i] = hpf.b0;
+			hpfVals[4][i] = hpf.b1;
+			hpfVals[5][i] = hpf.b2;
+			hpfVals[6][i] = 0;
+			hpfVals[7][i] = 0;
 		}
 		aLFO_y1 = 0;
-		setUnregisteredParam(0x03_FF_FF_FF, [16, 2], 0);
+		setUnregisteredParam(0x03_FF_FF_FF, [2, 16], 0);
 		//Reset operator EGs
 		for (int i ; i < operators.length ; i++) {
 			operators[i].setEG(sampleRate, 40);
@@ -1804,16 +1811,20 @@ public class QM816 : AudioModule {
 				outBuf[i] = dummyBuf.ptr;
 			}
 		}
-		const __m128 b0_a0 = filterVals[3] / filterVals[0], b1_a0 = filterVals[4] / filterVals[0], 
-				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];
+		const __m128 b0_a0l = filterVals[3] / filterVals[0], b1_a0l = filterVals[4] / filterVals[0], 
+				b2_a0l = filterVals[5] / filterVals[0], a1_a0l = filterVals[1] / filterVals[0], 
+				a2_a0l = filterVals[2] / filterVals[0],
+				b0_a0h = hpfVals[3] / hpfVals[0], b1_a0h = hpfVals[4] / hpfVals[0], b2_a0h = hpfVals[5] / hpfVals[0],
+				a1_a0h = hpfVals[1] / hpfVals[0], a2_a0h = hpfVals[2] / hpfVals[0];
 		for (int i ; i < bufferSize ; i++) {
 			__m128 input0 = _mm_load_ps(initBuffers.ptr + (i * 4));
 			input0 /= __m128(mixdownVal);
 			input0 = _mm_max_ps(input0, __m128(-1.0));
 			input0 = _mm_min_ps(input0, __m128(1.0));
-			__m128 output0 = b0_a0 * input0 + b1_a0 * filterVals[6] + b2_a0 * filterVals[7] - a1_a0 * filterVals[8] - 
-					a2_a0 * filterVals[9];
-			__m128 output1 = hpfAlpha * (hpfY1 + output0 - filterVals[8]);
+			__m128 output0 = b0_a0l * input0 + b1_a0l * filterVals[6] + b2_a0l * filterVals[7] - a1_a0l * filterVals[8] - 
+					a2_a0l * filterVals[9];
+			__m128 output1 = b0_a0h * output0 + b1_a0h * filterVals[8] + b2_a0h * filterVals[9] - a1_a0h * hpfVals[6] -
+					a2_a0h * hpfVals[7];
 			for (int j ; j < 4 ; j++)
 				outBuf[j][i] += output1[j];
 			//	outBuf[j][i] += input0[j];
@@ -1821,7 +1832,9 @@ public class QM816 : AudioModule {
 			filterVals[6] = input0;
 			filterVals[9] = filterVals[8];
 			filterVals[8] = output0;
-			hpfY1 = output1;
+			hpfVals[7] = hpfVals[6];
+			hpfVals[6] = output1;
+			
 		}
 		resetBuffer(initBuffers);
 	}
