@@ -1837,8 +1837,8 @@ public class QM816 : AudioModule {
 				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][(op.pos + (op.input<<20) + (op.feedback<<18))>>22 & 1023];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		const double out0 = op.output;
-		__m128 outCtrl = (op.preset.outLCtrl * chCtrl) + (__m128(1.0) - op.preset.outLCtrl);
-		__m128 fbCtrl = (op.preset.fbLCtrl * chCtrl) + (__m128(1.0) - op.preset.fbLCtrl);
+		__m128 outCtrl = (__m128(1.0) - op.preset.outLCtrl) + (op.preset.outLCtrl * chCtrl);
+		__m128 fbCtrl = (__m128(1.0) - op.preset.fbLCtrl) + (op.preset.fbLCtrl * chCtrl);
 		const double out1 = out0 * egOut;
 		
 		op.feedback = cast(int)((op.preset.opCtrl & OpCtrlFlags.FBMode ? out0 : out1) * op.fbL * fbCtrl[0] * 
