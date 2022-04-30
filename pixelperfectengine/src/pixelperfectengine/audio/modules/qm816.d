@@ -4,6 +4,8 @@ import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.func;
 
+import pixelperfectengine.system.etc : hashCalc;
+
 import midi2.types.structs;
 import midi2.types.enums;
 
@@ -298,6 +300,7 @@ public class QM816 : AudioModule {
 		EGRelAdaptive	=	1 << 11,	///Adaptive release time based on current output level
 		FixedPitch		=	1 << 12,	///Enables fixed pitch mode
 		EasyTune		=	1 << 13,	///Enables easy tune mode
+		ContiTune		=	1 << 14,	///Enables continuous tuning through the coarsetune parameter
 	}
 	/**
 	Implements a single operator.
@@ -340,9 +343,9 @@ public class QM816 : AudioModule {
 		///Also calculates KSL levels
 		void setFrequency(int slmpFreq, ubyte note, double pitchBend, double tuning) @nogc @safe pure nothrow {
 			double actualNote, oscFreq;
+			const int tuneAm = (preset.opCtrl>>>25) - 36;
 			if (preset.opCtrl & OpCtrlFlags.EasyTune) {
 				double ratio;
-				const int tuneAm = (preset.tune>>25) - (TuneCtrlFlags.CorTuneMidPoint>>25);
 				switch (tuneAm) {
 					case -36:
 						ratio = 1/8;
@@ -415,13 +418,16 @@ public class QM816 : AudioModule {
 						break;
 				}
 				oscFreq = noteToFreq(note + pitchBend, tuning) * ratio;
-			} else {
-				const double tuneOffset = (cast(double)(preset.tune>>25) - (TuneCtrlFlags.CorTuneMidPoint>>25))  // Coarse tune amount
-					+ (((cast(double)(preset.tune & TuneCtrlFlags.FineTuneTest)) - TuneCtrlFlags.FineTuneMidPoint) / // Fine tune amount
-					TuneCtrlFlags.FineTuneMidPoint);
+			} else if (preset.opCtrl & OpCtrlFlags.ContiTune) {
 				if (preset.opCtrl & OpCtrlFlags.FixedPitch) {
-					actualNote = tuneOffset + 36;
+					actualNote = preset.tune;
 				} else {
+					actualNote = note + pitchBend + preset.tune;
+				}
+				oscFreq = noteToFreq(actualNote, tuning);
+			} else {
+				const double tuneOffset = tuneAm + preset.tune;
+				if (!(preset.opCtrl & OpCtrlFlags.FixedPitch)) {
 					actualNote = note + pitchBend + tuneOffset;
 				}
 				oscFreq = noteToFreq(actualNote, tuning);
@@ -607,17 +613,19 @@ public class QM816 : AudioModule {
 	public struct Preset {
 		///Defines parameters of a single operator
 		public struct Op {
-			///Operator tuning
+			/+ ///Operator tuning
 			///Bit 31-25: Coarse detuning (-36 to +91 seminotes)
 			///Bit 24-0: Fine detuning (-100 to 100 cents), 0x1_00_00_00 is center
 			///If fixed mode is being used, then top 7 bits are the note, the rest are fine tuning.
-			uint			tune	=	TuneCtrlFlags.CorTuneMidPoint | TuneCtrlFlags.FineTuneMidPoint;
+			uint			tune	=	TuneCtrlFlags.CorTuneMidPoint | TuneCtrlFlags.FineTuneMidPoint;+/
+			///Sets the fine detuning or the whole tuning of the operator depending on tuning mode.
+			float			tune	=	0.0;
 			///Output level (between 0.0 and 1.0)
 			float			outL	=	0.50;
 			///Feedback level (between 0.0 and 1.0)
 			float			fbL		=	0.0;
 			///Control flags and Wavetable selector
-			uint			opCtrl = OpCtrlFlags.EasyTune;
+			uint			opCtrl = OpCtrlFlags.EasyTune | TuneCtrlFlags.CorTuneMidPoint;
 			///Output level controller assignment
 			///Index notation: 0: velocity 1: modulation wheel 2: Amplitude LFO 3: unused
 			__m128			outLCtrl=	[0,0,0,0];
@@ -1459,13 +1467,17 @@ public class QM816 : AudioModule {
 					}
 					break;
 				case OperatorParamNums.TuneCor:
-					operators[opNum].preset.tune &= ~TuneCtrlFlags.CorTuneTest; 
-					operators[opNum].preset.tune |= val & TuneCtrlFlags.CorTuneTest;
+					if (operators[opNum].preset.opCtrl & OpCtrlFlags.ContiTune) {
+						operators[opNum].preset.tune = cast(double)val / 0x02_00_00_00;
+					} else {
+						operators[opNum].preset.opCtrl &= ~TuneCtrlFlags.CorTuneTest; 
+						operators[opNum].preset.opCtrl |= val & TuneCtrlFlags.CorTuneTest;
+					}
 					
 					break;
 				case OperatorParamNums.TuneFine:
-					operators[opNum].preset.tune &= ~uint.max>>7;
-					operators[opNum].preset.tune |= val>>7;
+					if (!(operators[opNum].preset.opCtrl & OpCtrlFlags.ContiTune))
+						operators[opNum].preset.tune = (cast(double)val - int.min) / int.max;
 					break;
 				case OperatorParamNums.VelToLevel:
 					operators[opNum].preset.outLCtrl[0] = cast(double)val / uint.max;
@@ -2372,28 +2384,293 @@ public class QM816 : AudioModule {
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_int(uint presetID, uint paramID, int value) nothrow {
+	public override int writeParam_int(uint presetID, uint paramID, int value) nothrow {
+		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
+		switch (paramID) {
+			case hashCalc(`op0_Attack`):break;
+			case hashCalc(`op0_Decay`):break;
+			case hashCalc(`op0_SusCtrl`):break;
+			case hashCalc(`op0_Release`):break;
+			case hashCalc(`op0_Waveform`):break;
+			case hashCalc(`op0_TuneCor`):break;
+			case hashCalc(`op0_KSLBegin`):break;
+			case hashCalc(`op0_KSLAttenOut`):break;
+			case hashCalc(`op0_KSLAttenFB`):break;
+			case hashCalc(`op0_KSLAttenADSR`):break;
+
+			case hashCalc(`op1_Attack`):break;
+			case hashCalc(`op1_Decay`):break;
+			case hashCalc(`op1_SusCtrl`):break;
+			case hashCalc(`op1_Release`):break;
+			case hashCalc(`op1_Waveform`):break;
+			case hashCalc(`op1_TuneCor`):break;
+			case hashCalc(`op1_KSLBegin`):break;
+			case hashCalc(`op1_KSLAttenOut`):break;
+			case hashCalc(`op1_KSLAttenFB`):break;
+			case hashCalc(`op1_KSLAttenADSR`):break;
+
+			case hashCalc(`op0f_FBMode`):break;
+			case hashCalc(`op0f_FBNeg`):break;
+			case hashCalc(`op0f_MWNeg`):break;
+			case hashCalc(`op0f_VelNeg`):break;
+			case hashCalc(`op0f_EGRelAdaptive`):break;
+			case hashCalc(`op0f_FixedPitch`):break;
+			case hashCalc(`op0f_EasyTune`):break;
+			case hashCalc(`op0f_ContiTune`):break;
+			case hashCalc(`op0f_ExprToMW`):break;
+
+			case hashCalc(`op1f_FBMode`):break;
+			case hashCalc(`op1f_FBNeg`):break;
+			case hashCalc(`op1f_MWNeg`):break;
+			case hashCalc(`op1f_VelNeg`):break;
+			case hashCalc(`op1f_EGRelAdaptive`):break;
+			case hashCalc(`op1f_FixedPitch`):break;
+			case hashCalc(`op1f_EasyTune`):break;
+			case hashCalc(`op1f_ContiTune`):break;
+			case hashCalc(`op1f_ExprToMW`):break;
+
+			case hashCalc(`ch_Attack`):break;
+			case hashCalc(`ch_Decay`):break;
+			case hashCalc(`ch_SusCtrl`):break;
+
+			case hashCalc(`chf_ComboMode`):break;
+			case hashCalc(`chf_Algorithm`):break;
+			case hashCalc(`chf_IndivOutChLev`):break;
+			case hashCalc(`chf_LFOPan`):break;
+			case hashCalc(`chf_EEGPan`):break;
+			case hashCalc(`chf_MWToTrem`):break;
+			case hashCalc(`chf_MWToVibr`):break;
+			case hashCalc(`chf_MWToAux`):break;
+			case hashCalc(`chf_ResetOnKeyOn`):break;
+			case hashCalc(`chf_ResetMode`):break;
+			case hashCalc(`chf_FBMode`):break;
+			case hashCalc(`chf_FBNeg`):break;
+			default:
+				return 1;
+		}
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_uint(uint presetID, uint paramID, uint value) nothrow {
+	public override int writeParam_long(uint presetID, uint paramID, long value) nothrow {
+		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
+		switch (paramID) {
+			case hashCalc(`op0_Tune`):break;
+			case hashCalc(`op0_OpCtrl`):break;
+
+			case hashCalc(`op1_Tune`):break;
+			case hashCalc(`op1_OpCtrl`):break;
+
+			case hashCalc(`ch_ChCtrl`):break;
+			default:
+				return 1;
+		}
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_double(uint presetID, uint paramID, double value) nothrow {
+	public override int writeParam_double(uint presetID, uint paramID, double value) nothrow {
+		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
+		switch (paramID) {
+			case hashCalc(`op0_Level`):break;
+			case hashCalc(`op0_SusLevel`):break;
+			case hashCalc(`op0_Feedback`):break;
+			case hashCalc(`op0_Tune`):break;
+			case hashCalc(`op0_FreqRate`):break;
+			case hashCalc(`op0_ShpA`):break;
+			case hashCalc(`op0_ShpR`):break;
+			case hashCalc(`op0_VelToLevel`):break;
+			case hashCalc(`op0_MWToLevel`):break;
+			case hashCalc(`op0_LFOToLevel`):break;
+			case hashCalc(`op0_VelToFB`):break;
+			case hashCalc(`op0_MWToFB`):break;
+			case hashCalc(`op0_LFOToFB`):break;
+			case hashCalc(`op0_EEGToFB`):break;
+			case hashCalc(`op0_VelToShpA`):break;
+			case hashCalc(`op0_VelToShpR`):break;
+
+			case hashCalc(`op1_Level`):break;
+			case hashCalc(`op1_SusLevel`):break;
+			case hashCalc(`op1_Feedback`):break;
+			case hashCalc(`op1_Tune`):break;
+			case hashCalc(`op1_FreqRate`):break;
+			case hashCalc(`op1_ShpA`):break;
+			case hashCalc(`op1_ShpR`):break;
+			case hashCalc(`op1_VelToLevel`):break;
+			case hashCalc(`op1_MWToLevel`):break;
+			case hashCalc(`op1_LFOToLevel`):break;
+			case hashCalc(`op1_VelToFB`):break;
+			case hashCalc(`op1_MWToFB`):break;
+			case hashCalc(`op1_LFOToFB`):break;
+			case hashCalc(`op1_EEGToFB`):break;
+			case hashCalc(`op1_VelToShpA`):break;
+			case hashCalc(`op1_VelToShpR`):break;
+
+			case hashCalc(`ch_MasterVol`):break;
+			case hashCalc(`ch_Bal`):break;
+			case hashCalc(`ch_AuxSLA`):break;
+			case hashCalc(`ch_AuxSLB`):break;
+			case hashCalc(`ch_EEGDetune`):break;
+			case hashCalc(`ch_PLFO`):break;
+			case hashCalc(`ch_SusLevel`):break;
+			case hashCalc(`ch_ShpA`):break;
+			case hashCalc(`ch_ShpR`):break;
+			case hashCalc(`ch_GlobalFB`):break;
+			case hashCalc(`ch_EEGToLeft`):break;
+			case hashCalc(`ch_EEGToRight`):break;
+			case hashCalc(`ch_EEGToAuxA`):break;
+			case hashCalc(`ch_EEGToAuxB`):break;
+			case hashCalc(`ch_LFOToLeft`):break;
+			case hashCalc(`ch_LFOToRight`):break;
+			case hashCalc(`ch_LFOToAuxA`):break;
+			case hashCalc(`ch_LFOToAuxB`):break;
+			case hashCalc(`ch_MWToGFB`):break;
+			case hashCalc(`ch_VelToGFB`):break;
+
+			
+			default:
+				return 1;
+		}
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_string(uint presetID, uint paramID, string value) nothrow {
+	public override int writeParam_string(uint presetID, uint paramID, string value) nothrow {
 		return 0;
+	}
+	/** 
+	 * Returns all the possible parameters this module has.
+	 */
+	public override MValue[] getParameters() nothrow {
+		return [
+			MValue(MValueType.Float,`op0_Level`), MValue(MValueType.Int32,`op0_Attack`), MValue(MValueType.Int32,`op0_Decay`), 
+			MValue(MValueType.Float,`op0_SusLevel`), MValue(MValueType.Int32,`op0_SusCtrl`), 
+			MValue(MValueType.Int32,`op0_Release`), MValue(MValueType.Int32,`op0_Waveform`), 
+			MValue(MValueType.Float,`op0_Feedback`), MValue(MValueType.Int32,`op0_TuneCor`), 
+			MValue(MValueType.Float,`op0_TuneFine`), MValue(MValueType.Float,`op0_ShpA`),
+			MValue(MValueType.Float,`op0_0ShpR`), MValue(MValueType.Float,`op0_VelToLevel`), 
+			MValue(MValueType.Float,`op0_MWToLevel`), MValue(MValueType.Float,`op0_LFOToLevel`), 
+			MValue(MValueType.Int64,`op0_OpCtrl`), MValue(MValueType.Float,`op0_VelToFB`), MValue(MValueType.Float,`op0_MWToFB`), 
+			MValue(MValueType.Float,`op0_LFOToFB`), MValue(MValueType.Float,`op0_EEGToFB`),
+			MValue(MValueType.Float,`op0_VelToShpA`), MValue(MValueType.Float,`op0_VelToShpR`), 
+			MValue(MValueType.Int32,`op0_KSLBegin`), MValue(MValueType.Int32,`op0_KSLAttenOut`), 
+			MValue(MValueType.Int32,`op0_KSLAttenFB`), MValue(MValueType.Int32,`op0_KSLAttenADSR`),
+			MValue(MValueType.Boolean,`op0f_FBMode`),
+			MValue(MValueType.Boolean,`op0f_FBNeg`),
+			MValue(MValueType.Boolean,`op0f_MWNeg`),
+			MValue(MValueType.Boolean,`op0f_VelNeg`),
+			MValue(MValueType.Boolean,`op0f_EGRelAdaptive`),
+			MValue(MValueType.Boolean,`op0f_FixedPitch`),
+			MValue(MValueType.Boolean,`op0f_EasyTune`),
+			MValue(MValueType.Boolean,`op0f_ContiTune`),
+			MValue(MValueType.Boolean,`op0f_ExprToMW`),
+
+			MValue(MValueType.Float,`op1_Level`), MValue(MValueType.Int32,`op1_Attack`), MValue(MValueType.Int32,`op1_Decay`), 
+			MValue(MValueType.Float,`op1_SusLevel`), MValue(MValueType.Int32,`op1_SusCtrl`), 
+			MValue(MValueType.Int32,`op1_Release`), MValue(MValueType.Int32,`op1_Waveform`), 
+			MValue(MValueType.Float,`op1_Feedback`), MValue(MValueType.Int32,`op1_TuneCor`), 
+			MValue(MValueType.Float,`op1_TuneFine`), MValue(MValueType.Float,`op1_ShpA`),
+			MValue(MValueType.Float,`op1_0ShpR`), MValue(MValueType.Float,`op1_VelToLevel`), 
+			MValue(MValueType.Float,`op1_MWToLevel`), MValue(MValueType.Float,`op1_LFOToLevel`), 
+			MValue(MValueType.Int64,`op1_OpCtrl`), MValue(MValueType.Float,`op1_VelToFB`), MValue(MValueType.Float,`op1_MWToFB`), 
+			MValue(MValueType.Float,`op1_LFOToFB`), MValue(MValueType.Float,`op1_EEGToFB`),
+			MValue(MValueType.Float,`op1_VelToShpA`), MValue(MValueType.Float,`op1_VelToShpR`), 
+			MValue(MValueType.Int32,`op1_KSLBegin`), MValue(MValueType.Int32,`op1_KSLAttenOut`), 
+			MValue(MValueType.Int32,`op1_KSLAttenFB`), MValue(MValueType.Int32,`op1_KSLAttenADSR`),
+			MValue(MValueType.Boolean,`op1f_FBMode`),
+			MValue(MValueType.Boolean,`op1f_FBNeg`),
+			MValue(MValueType.Boolean,`op1f_MWNeg`),
+			MValue(MValueType.Boolean,`op1f_VelNeg`),
+			MValue(MValueType.Boolean,`op1f_EGRelAdaptive`),
+			MValue(MValueType.Boolean,`op1f_FixedPitch`),
+			MValue(MValueType.Boolean,`op1f_EasyTune`),
+			MValue(MValueType.Boolean,`op1f_ContiTune`),
+			MValue(MValueType.Boolean,`op1f_ExprToMW`),
+
+			MValue(MValueType.Float,`ch_MasterVol`),
+			MValue(MValueType.Float,`ch_Bal`),
+			MValue(MValueType.Float,`ch_AuxSLA`),
+			MValue(MValueType.Float,`ch_AuxSLB`),
+			MValue(MValueType.Float,`ch_EEGDetune`),
+			MValue(MValueType.Float,`ch_PLFO`),
+			MValue(MValueType.Int32,`ch_Attack`),
+			MValue(MValueType.Int32,`ch_Decay`),
+			MValue(MValueType.Float,`ch_SusLevel`),
+			MValue(MValueType.Int32,`ch_SusCtrl`),
+			MValue(MValueType.Int32,`ch_Release`),
+			MValue(MValueType.Float,`ch_ShpA`),
+			MValue(MValueType.Float,`ch_ShpR`),
+			MValue(MValueType.Float,`ch_GlobalFB`),
+			MValue(MValueType.Int64,`ch_ChCtrl`),
+			MValue(MValueType.Float,`ch_EEGToLeft`),
+			MValue(MValueType.Float,`ch_EEGToRight`),
+			MValue(MValueType.Float,`ch_EEGToAuxA`),
+			MValue(MValueType.Float,`ch_EEGToAuxB`),
+			MValue(MValueType.Float,`ch_LFOToLeft`),
+			MValue(MValueType.Float,`ch_LFOToRight`),
+			MValue(MValueType.Float,`ch_LFOToAuxA`),
+			MValue(MValueType.Float,`ch_LFOToAuxB`),
+			MValue(MValueType.Float,`ch_MWToGFB`),
+			MValue(MValueType.Float,`ch_VelToGFB`),
+
+			MValue(MValueType.Int32,`chf_ComboMode`),
+			MValue(MValueType.Boolean,`chf_Algorithm`),
+			MValue(MValueType.Boolean,`chf_IndivOutChLev`),
+			MValue(MValueType.Boolean,`chf_LFOPan`),
+			MValue(MValueType.Boolean,`chf_EEGPan`),
+			MValue(MValueType.Boolean,`chf_MWToTrem`),
+			MValue(MValueType.Boolean,`chf_MWToVibr`),
+			MValue(MValueType.Boolean,`chf_MWToAux`),
+			MValue(MValueType.Boolean,`chf_ResetOnKeyOn`),
+			MValue(MValueType.Boolean,`chf_ResetMode`),
+			MValue(MValueType.Boolean,`chf_FBMode`),
+			MValue(MValueType.Boolean,`chf_FBNeg`),
+			];
+	}
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public override int readParam_int(uint presetID, uint paramID) nothrow {
+		return 0;
+	}
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public override long readParam_long(uint presetID, uint paramID) nothrow {
+		return 0;
+	}
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public override double readParam_double(uint presetID, uint paramID) nothrow {
+		return 0;
+	}
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public override string readParam_string(uint presetID, uint paramID) nothrow {
+		return null;
 	}
 }

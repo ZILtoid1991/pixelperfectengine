@@ -153,10 +153,21 @@ public class WindowSerializer {
 							t0.getTagValue!string("source") ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
 				case "HorizScrollBar", "VertScrollBar":
-					elementCtors ~= "new " ~ typeName ~ "(\"" ~ conv.to!string(t0.getTagValue!int("maxValue")) ~ ", " ~ 
+					elementCtors ~= "new " ~ typeName ~ "(\"" ~ conv.to!string(t0.getTagValue!int("maxValue")) ~ ", \"" ~ 
 							t0.getTagValue!string("source") ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
-				
+				case "ListView":
+					elementCtors ~= "new ListView(new ListViewHeader(" ~ conv.to!string(t0.getTagValue!int("header")) ~ "16, ";
+					string intArr = "[", strArr = "[";
+					foreach (t1 ; t0.expectTag("header").tags) {
+						intArr ~= conv.to!string(t1.getValue!int()) ~ " ,";
+						strArr ~= "\"" ~ t1.getValue!string() ~ "\" ,";
+					}
+					intArr = intArr[0..$-2] ~ "]";
+					strArr = strArr[0..$-2] ~ "]";
+					elementCtors ~= intArr ~ ", " ~ strArr ~ ", null, " ~  ", \"" ~ 
+							t0.getTagValue!string("source") ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
+					break;
 				case "Window":
 					outputCode ~= "public class " ~ t0.getValue!string() ~ " : Window {\n";
 					//string extraButtons;

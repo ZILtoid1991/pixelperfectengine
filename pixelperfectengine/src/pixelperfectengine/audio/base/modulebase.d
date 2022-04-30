@@ -99,20 +99,56 @@ public abstract class AudioModule {
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public abstract int recallParam_int(uint presetID, uint paramID, int value) nothrow;
+	public abstract int writeParam_int(uint presetID, uint paramID, int value) nothrow;
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public abstract int recallParam_uint(uint presetID, uint paramID, uint value) nothrow;
+	public abstract int writeParam_long(uint presetID, uint paramID, long value) nothrow;
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public abstract int recallParam_double(uint presetID, uint paramID, double value) nothrow;
+	public abstract int writeParam_double(uint presetID, uint paramID, double value) nothrow;
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public abstract int recallParam_string(uint presetID, uint paramID, string value) nothrow;
+	public abstract int writeParam_string(uint presetID, uint paramID, string value) nothrow;
+	/** 
+	 * Returns all the possible parameters this module has.
+	 */
+	public abstract MValue[] getParameters() nothrow;
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public abstract int readParam_int(uint presetID, uint paramID) nothrow;
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public abstract long readParam_long(uint presetID, uint paramID) nothrow;
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public abstract double readParam_double(uint presetID, uint paramID) nothrow;
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public abstract string readParam_string(uint presetID, uint paramID) nothrow;
 }

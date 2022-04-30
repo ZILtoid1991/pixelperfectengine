@@ -62,7 +62,7 @@ Modules can be created by condition if needed.
 To load a sample into the module, just simply use:
 
 ```s
-loadSample "drum.wav" 56U dpk="instruments.dpk"
+loadSample "drum.wav" 56L dpk="instruments.dpk"
 ```
 
 Where the first parameter is the filename in string format (can be unicode), the second parameter is the sample ID in 
@@ -92,7 +92,7 @@ To recall preset parameters, just simply use:
 ```s
 paramRecall {
     "level" 81 1.0
-    87923045U 81 0.56
+    87923045L 81 0.56
     ...
 }
 ```

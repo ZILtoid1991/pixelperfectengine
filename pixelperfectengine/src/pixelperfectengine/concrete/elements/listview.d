@@ -201,7 +201,7 @@ public class ListViewHeader : ListViewItem {
 	 *  fields: specifies the text of each field. Custom formatting is supported
 	 */
 	this(int height, int[] columnWidths, Text[] fields) @safe pure nothrow {
-		assert (columnWidths.length == fields.length, "Lenght mismatch between the two arrays!");
+		assert (columnWidths.length == fields.length, "Length mismatch between the two arrays!");
 		this.columnWidths = columnWidths;
 		super(height, fields);
 	}

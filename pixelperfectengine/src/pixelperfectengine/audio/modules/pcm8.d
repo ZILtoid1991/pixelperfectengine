@@ -409,28 +409,74 @@ public class PCM8 : AudioModule {
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_int(uint presetID, uint paramID, int value) nothrow {
+	public override int writeParam_int(uint presetID, uint paramID, int value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_uint(uint presetID, uint paramID, uint value) nothrow {
+	public override int writeParam_long(uint presetID, uint paramID, long value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_double(uint presetID, uint paramID, double value) nothrow {
+	public override int writeParam_double(uint presetID, uint paramID, double value) nothrow {
 		return 0;
 	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
 	 */
-	public override int recallParam_string(uint presetID, uint paramID, string value) nothrow {
+	public override int writeParam_string(uint presetID, uint paramID, string value) nothrow {
 		return 0;
+	}
+	/** 
+	 * Returns all the possible parameters this module has.
+	 */
+	public override MValue[] getParameters() nothrow {
+		return null;
+	}
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public override int readParam_int(uint presetID, uint paramID) nothrow {
+		return 0;
+	}
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public override long readParam_long(uint presetID, uint paramID) nothrow {
+		return 0;
+	}
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public override double readParam_double(uint presetID, uint paramID) nothrow {
+		return 0;
+	}
+	/** 
+	 * Reads the given value (int).
+	 * Params:
+	 *   presetID = The preset ID, or uint.max for global module values.
+	 *   paramID = The parameter ID.
+	 * Returns: The value of the given preset and parameter
+	 */
+	public override string readParam_string(uint presetID, uint paramID) nothrow {
+		return null;
 	}
 }

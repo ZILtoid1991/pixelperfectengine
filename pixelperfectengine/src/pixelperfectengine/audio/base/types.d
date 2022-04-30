@@ -200,3 +200,21 @@ struct BiquadFilterValues {
 	float	b1;
 	float	b2;
 }
+/** 
+ * Defines the type of a module parameter.
+ */
+public enum MValueType {
+	init,
+	String,
+	Int32,
+	Int64,
+	Float,			///Set in the form of a double
+	Boolean,		///Set in the form of a 32 bit integer
+}
+/** 
+ * Defines the type and the name of a module's parameters.
+ */
+public struct MValue {
+	MValueType		type;
+	string			name;
+}
