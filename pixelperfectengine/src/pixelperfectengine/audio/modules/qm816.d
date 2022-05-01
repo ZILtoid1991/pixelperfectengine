@@ -197,6 +197,12 @@ public class QM816 : AudioModule {
 		12.00, 11.75, 11.50, 11.25, 11.00, 10.75, 10.50, 10.25, 10.00, 9.750, 9.500, 9.250, 9.000, 8.750, 8.500, 8.250,//2
 		8.000, 7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500        //3
 	];
+	public static immutable __m128[2][4] RESAMPLING_TABLE = [
+		[__m128([0.80, 0.80, 0.80, 0.80]), __m128([0.20, 0.20, 0.20, 0.20])],
+		[__m128([0.60, 0.60, 0.60, 0.60]), __m128([0.40, 0.40, 0.40, 0.40])],
+		[__m128([0.40, 0.40, 0.40, 0.40]), __m128([0.60, 0.60, 0.60, 0.60])],
+		[__m128([0.20, 0.20, 0.20, 0.20]), __m128([0.80, 0.80, 0.80, 0.80])],
+	];
 	/**
 	Defines operator parameter numbers, within the unregistered namespace.
 	*/
@@ -433,7 +439,7 @@ public class QM816 : AudioModule {
 				oscFreq = noteToFreq(actualNote, tuning);
 			}
 			calculateKSL(note);
-			const double cycLen = oscFreq / (slmpFreq / 1024.0);
+			const double cycLen = oscFreq / ((slmpFreq + 1) / 1024.0);
 			//step = cast(uint)(cast(double)(1<<21) * cycLen);
 			step = cast(uint)(cast(double)(1<<22) * cycLen);
 		}
@@ -772,7 +778,7 @@ public class QM816 : AudioModule {
 	///Initial mixing buffers
 	///Output is directed there before filtering
 	///Layout is: LRAB
-	protected float[]			initBuffers;
+	protected __m128[]			initBuffers;
 	///Dummy buffer
 	///Only used if one or more outputs haven't been defined
 	protected float[]			dummyBuf;
@@ -787,6 +793,10 @@ public class QM816 : AudioModule {
 	///Mixdown value.
 	///Used for final mixing.
 	protected float				mixdownVal = short.max + 1;//4096;
+	///Internal sampling frequency
+	protected int				intSlmpRate;
+	///Internal buffer sizes
+	protected size_t			intBufSize;
 	alias ChFun = void delegate(int chNum, size_t length) @nogc pure nothrow;
 	///Channel update delegates
 	protected ChFun[16]			chDeleg;
@@ -884,12 +894,15 @@ public class QM816 : AudioModule {
 		this.sampleRate = sampleRate;
 		this.bufferSize = bufferSize;
 		this.handler = handler;
+		//set up internal sample rate and buffer sizes
+		intBufSize = bufferSize + (bufferSize / 4);
+		intSlmpRate = sampleRate + (sampleRate / 4);
 		//set up and reset buffers
-		initBuffers.length = bufferSize * 4;
+		initBuffers.length = intBufSize;
 		resetBuffer(initBuffers);
 		dummyBuf.length = bufferSize;
 		resetBuffer(dummyBuf);
-		aLFOBuf.length = bufferSize;
+		aLFOBuf.length = intBufSize;
 		resetBuffer(aLFOBuf);
 		//Reset filters
 		for (int i ; i < 4 ; i++) {
@@ -918,11 +931,11 @@ public class QM816 : AudioModule {
 		setUnregisteredParam(0x03_FF_FF_FF, [2, 16], 0);
 		//Reset operator EGs
 		for (int i ; i < operators.length ; i++) {
-			operators[i].setEG(sampleRate, 40);
+			operators[i].setEG(intSlmpRate, 40);
 		}
 		//Reset channel EGs
 		for (int i ; i < channels.length ; i++) {
-			channels[i].setEEG(sampleRate);
+			channels[i].setEEG(intSlmpRate);
 			channels[i].recalculateOutLevels();
 		}
 		//test();
@@ -1245,15 +1258,15 @@ public class QM816 : AudioModule {
 		chCtrls[ch].note = note;
 		chCtrls[ch].velocity = vel;
 		if (!isNaN(bend)) chCtrls[ch].pitchBend = bend;
-		operators[ch].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-		operators[ch].setEG(sampleRate, note, vel);
-		operators[ch + 1].setFrequency(sampleRate, note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
-		operators[ch + 1].setEG(sampleRate, note, vel);
+		operators[ch].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+		operators[ch].setEG(intSlmpRate, note, vel);
+		operators[ch + 1].setFrequency(intSlmpRate, note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
+		operators[ch + 1].setEG(intSlmpRate, note, vel);
 		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
-			operators[ch + 16].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-			operators[ch + 16].setEG(sampleRate, note, vel);
-			operators[ch + 17].setFrequency(sampleRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-			operators[ch + 17].setEG(sampleRate, note, vel);
+			operators[ch + 16].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+			operators[ch + 16].setEG(intSlmpRate, note, vel);
+			operators[ch + 17].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+			operators[ch + 17].setEG(intSlmpRate, note, vel);
 			if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetOnKeyOn) {
 				hardReset();
 				hardResetCmb();
@@ -1298,12 +1311,12 @@ public class QM816 : AudioModule {
 		chCtrls[ch].note = note;
 		chCtrls[ch].velocity = vel;
 		channels[ch].eeg.keyOff();
-		operators[ch].keyOff(sampleRate);
-		operators[ch + 1].keyOff(sampleRate);
+		operators[ch].keyOff(intSlmpRate);
+		operators[ch + 1].keyOff(intSlmpRate);
 		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 			channels[ch + 8].eeg.keyOff();
-			operators[ch + 16].keyOff(sampleRate);
-			operators[ch + 17].keyOff(sampleRate);
+			operators[ch + 16].keyOff(intSlmpRate);
+			operators[ch + 17].keyOff(intSlmpRate);
 		}
 	}
 	/**
@@ -1373,11 +1386,11 @@ public class QM816 : AudioModule {
 	protected void prgRecall(ubyte ch, ubyte prg, ubyte bank) @nogc @safe pure nothrow {
 		Preset p = soundBank[bank & 7][prg];
 		operators[ch].preset = p.operators[0];
-		operators[ch].setEG(sampleRate, 40);
+		operators[ch].setEG(intSlmpRate, 40);
 		operators[ch + 1].preset = p.operators[1];
-		operators[ch + 1].setEG(sampleRate, 40);
+		operators[ch + 1].setEG(intSlmpRate, 40);
 		channels[ch].preset = p.channel;
-		channels[ch].setEEG(sampleRate);
+		channels[ch].setEEG(intSlmpRate);
 	}
 	/**
 	Sets a registered parameter
@@ -1415,11 +1428,11 @@ public class QM816 : AudioModule {
 			switch (paramNum[0]) {
 				case OperatorParamNums.Attack:
 					operators[opNum].preset.atk = cast(ubyte)(val >> 25);
-					operators[opNum].setEG(sampleRate, chCtrls[chNum].note);
+					operators[opNum].setEG(intSlmpRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.Decay:
 					operators[opNum].preset.dec = cast(ubyte)(val >> 25);
-					operators[opNum].setEG(sampleRate, chCtrls[chNum].note);
+					operators[opNum].setEG(intSlmpRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.Feedback:
 					const double valF = cast(double)val / uint.max;
@@ -1436,7 +1449,7 @@ public class QM816 : AudioModule {
 					break;
 				case OperatorParamNums.Release:
 					operators[opNum].preset.rel = cast(ubyte)(val >> 25);
-					operators[opNum].setEG(sampleRate, chCtrls[chNum].note);
+					operators[opNum].setEG(intSlmpRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.ShpA:
 					operators[opNum].preset.shpA = cast(double)val / uint.max;
@@ -1448,19 +1461,19 @@ public class QM816 : AudioModule {
 					break;
 				case OperatorParamNums.SusCtrl:
 					operators[opNum].preset.susCC = cast(ubyte)(val >> 25);
-					operators[opNum].setEG(sampleRate, chCtrls[chNum].note);
+					operators[opNum].setEG(intSlmpRate, chCtrls[chNum].note);
 					break;
 				case OperatorParamNums.SusLevel:
 					operators[opNum].eg.sustainLevel = cast(double)val / uint.max;
 					//Recalculate decay and release rates to new sustain levels
 					if (operators[opNum].preset.dec) {
-						operators[opNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[opNum].preset.dec] * 2, sampleRate, 
+						operators[opNum].eg.decayRate = calculateRate(ADSR_TIME_TABLE[operators[opNum].preset.dec] * 2, intSlmpRate, 
 								ADSREnvelopGenerator.maxOutput, operators[opNum].eg.sustainLevel);
 					} else {
 						operators[opNum].eg.decayRate = 1.0;
 					}
 					if (operators[opNum].preset.rel) {
-						operators[opNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[opNum].preset.rel] * 2, sampleRate, 
+						operators[opNum].eg.releaseRate = calculateRate(ADSR_TIME_TABLE[operators[opNum].preset.rel] * 2, intSlmpRate, 
 								operators[opNum].eg.sustainLevel);
 					} else {
 						operators[opNum].eg.releaseRate = 1.0;
@@ -1556,7 +1569,7 @@ public class QM816 : AudioModule {
 					case ChannelParamNums.Attack:
 						channels[chNum].preset.atkX = cast(ubyte)(val >> 25);
 						if (channels[chNum].preset.atkX) {
-							channels[chNum].eeg.attackRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.atkX], sampleRate);
+							channels[chNum].eeg.attackRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.atkX], intSlmpRate);
 						} else {
 							channels[chNum].eeg.attackRate = 1.0;
 						}
@@ -1595,7 +1608,7 @@ public class QM816 : AudioModule {
 					case ChannelParamNums.Decay:
 						channels[chNum].preset.decX = cast(ubyte)(val >> 25);
 						if (channels[chNum].preset.decX) {
-							channels[chNum].eeg.decayRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.decX] * 2, sampleRate);
+							channels[chNum].eeg.decayRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.decX] * 2, intSlmpRate);
 						} else {
 							channels[chNum].eeg.decayRate = 1.0;
 						}
@@ -1619,7 +1632,7 @@ public class QM816 : AudioModule {
 					case ChannelParamNums.Release: 
 						channels[chNum].preset.relX = cast(ubyte)(val >> 25);
 						if (channels[chNum].preset.relX) {
-							channels[chNum].eeg.releaseRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.relX] * 2, sampleRate);
+							channels[chNum].eeg.releaseRate = calculateRate(ADSR_TIME_TABLE[channels[chNum].preset.relX] * 2, intSlmpRate);
 						} else {
 							channels[chNum].eeg.releaseRate = 1.0;
 						}
@@ -1638,10 +1651,10 @@ public class QM816 : AudioModule {
 								channels[chNum].eeg.sustainControl = 0.0;
 							} else if (channels[chNum].preset.susCCX < 64) {
 								channels[chNum].eeg.sustainControl = -1.0 * 
-										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].preset.susCCX - 1], sampleRate);
+										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].preset.susCCX - 1], intSlmpRate);
 							} else {
 								channels[chNum].eeg.sustainControl = 
-										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].preset.susCCX - 64], sampleRate);
+										calculateRate(SUSTAIN_CONTROL_TIME_TABLE[channels[chNum].preset.susCCX - 64], intSlmpRate);
 							}
 						} else {
 							channels[chNum].eeg.isPercussive = true;
@@ -1732,8 +1745,8 @@ public class QM816 : AudioModule {
 						double valF;
 						valF = cast(double)val / uint.max;
 						valF *= 16;
-						const double cycleLen = sampleRate / (1.0 / valF);
-						pLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0) * bufferSize);
+						const double cycleLen = intSlmpRate / (1.0 / valF);
+						pLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0) * intBufSize);
 						break;
 					case GlobalParamNums.PLFOWF:
 						lfoWaveform[0] = cast(ubyte)(val >> 25);
@@ -1747,8 +1760,8 @@ public class QM816 : AudioModule {
 							valF *= 16;
 						}
 
-						aLFOff = calculateLP6factor(sampleRate, valF * 256);
-						const double cycleLen = sampleRate / (1.0 / valF);
+						aLFOff = calculateLP6factor(intSlmpRate, valF * 256);
+						const double cycleLen = intSlmpRate / (1.0 / valF);
 						aLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0));
 						break;
 					case GlobalParamNums.ALFOWF:
@@ -1795,8 +1808,9 @@ public class QM816 : AudioModule {
 	 */
 	public override void renderFrame(float*[] input, float*[] output) @nogc nothrow {
 		//Generate aLFO table with filtering
-		for (int i ; i < bufferSize ; i++) {
-			const float x = (wavetables[lfoWaveform[1] & byte.max][(aLFOPos>>20) & 1023] - short.min) * (1 / cast(float)(ushort.max));
+		for (int i ; i < intBufSize ; i++) {
+			const float x = (wavetables[lfoWaveform[1] & byte.max][(aLFOPos>>20) & 1023] - short.min) * 
+					(1 / cast(float)(ushort.max));
 			const float y = aLFO_y1 + (x - aLFO_y1) * aLFOff;
 			aLFOBuf[i] = y;
 			aLFOPos += aLFORate;
@@ -1810,7 +1824,7 @@ public class QM816 : AudioModule {
 		//Render each channel
 		foreach (size_t i, ChFun fun ; chDeleg) {
 			
-			fun(cast(int)i, bufferSize);
+			fun(cast(int)i, intBufSize);
 		}
 		//chDeleg[0](0, bufferSize);
 		//Filter and mix outputs
@@ -1829,7 +1843,10 @@ public class QM816 : AudioModule {
 				b0_a0h = hpfVals[3] / hpfVals[0], b1_a0h = hpfVals[4] / hpfVals[0], b2_a0h = hpfVals[5] / hpfVals[0],
 				a1_a0h = hpfVals[1] / hpfVals[0], a2_a0h = hpfVals[2] / hpfVals[0];
 		for (int i ; i < bufferSize ; i++) {
-			__m128 input0 = _mm_load_ps(initBuffers.ptr + (i * 4));
+			const int intBufPos = (i>>2) * 5;
+			const int intBP0 = intBufPos + (i & 3);
+			__m128 input0 = (initBuffers[intBP0] * RESAMPLING_TABLE[i & 3][0]) + 
+					(initBuffers[intBP0 + 1] * RESAMPLING_TABLE[i & 3][1]);
 			input0 /= __m128(mixdownVal);
 			input0 = _mm_max_ps(input0, __m128(-1.0));
 			input0 = _mm_min_ps(input0, __m128(1.0));
@@ -1884,8 +1901,8 @@ public class QM816 : AudioModule {
 					ch.preset.shpAX : ch.preset.shpRX);
 			const float vibrAm = pLFOOut * ch.preset.pLFOlevel * 
 					(ch.preset.chCtrl & ChCtrlFlags.MWToVibr ? chCtrl.pitchBend : 1.0);
-			op0.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
-			op1.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op0.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op1.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
 		}
 	}
 	///Updates automatic and manual pitchbend values (channel-assignable envelop, LFO, pitchbend CTRL) for 4 operators.
@@ -1898,10 +1915,10 @@ public class QM816 : AudioModule {
 					ch.preset.shpAX : ch.preset.shpRX);
 			const float vibrAm = pLFOOut * ch.preset.pLFOlevel * 
 					(ch.preset.chCtrl & ChCtrlFlags.MWToVibr ? chCtrl.pitchBend : 1.0);
-			op0.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
-			op1.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
-			op2.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
-			op3.setFrequency(sampleRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op0.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op1.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op2.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op3.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
 		}
 	}
 	///Macro for channel update constants that need to be calculated once per frame
@@ -1982,8 +1999,7 @@ public class QM816 : AudioModule {
 					channels[chNum].preset.eegLevels));
 			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * 
 					channels[chNum].preset.aLFOlevels));
-			_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *
-					_mm_cvtepi32_ps(outSum));
+			initBuffers[i] += outlevels * _mm_cvtepi32_ps(outSum);
 		};
 	///Macro for output mixing in case of combo modes
 	static immutable string CHNL_UPDATE_MIX0 =
@@ -1995,8 +2011,7 @@ public class QM816 : AudioModule {
 			 (__m128(1.0) * channels[chNum + 8].eegLevels));
 			outlevels *= (channels[chNum].aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * 
 					channels[chNum].aLFOlevels);
-			_mm_store1_ps(initBuffers.ptr + (i<<2), _mm_load_ps(initBuffers.ptr + (i<<2)) + outlevels *
-					_mm_cvtepi32_ps(outSum));
+			initBuffers[i] += outlevels * _mm_cvtepi32_ps(outSum);
 		};
 	
 

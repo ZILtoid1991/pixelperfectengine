@@ -52,8 +52,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 			}
 			this.ID = ID;
 			this.tile = tile;
-			static if (BMPType.mangleof == Bitmap4Bit.mangleof) this.palShift = paletteSh ? paletteSh : 4;
-			else static if (BMPType.mangleof == Bitmap8Bit.mangleof) this.palShift = paletteSh ? paletteSh : 8;
+			static if (is(BMPType == Bitmap4Bit)) this.palShift = paletteSh ? paletteSh : 4;
+			else static if (is(BMPType == Bitmap8Bit)) this.palShift = paletteSh ? paletteSh : 8;
 			_systemWrapper;
 		}
 		string toString() const {
@@ -109,7 +109,8 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	protected __m128i _mapAmpersand;    ///Used for quick modulo by power of two to read maps
 	//protected __m128i _mapShift;		///Used for quick divide by power of two to read maps
 	
-	alias HBIDelegate = @nogc nothrow void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y);
+	alias HBIDelegate = 
+			@nogc nothrow void delegate(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y);
 	/**
 	 * Called before each line being redrawn. Can modify global values for each lines.
 	 */
