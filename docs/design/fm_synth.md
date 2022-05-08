@@ -297,7 +297,7 @@ The synth shares two LFOs (tremolo and vibrato) and four filters between channel
 * Small amounts of release times can function as a pop filter.
 * Feedback control works in conjunction with the output level in many cases, unless the envelop generator is bypassed.
 * Some overtones will naturally occur due to the lack of an aliasing filter and using a nearest interpolation. This must be taken into account when designing sounds, some of it can be filtered out.
-* There's an artifact with the operators when using high amount of feedback. It causes the outputted noise to become cyclic due to lack of extra precision. This can be easily remedied by detuning the note or operator just enough to stop causing this artifact. This is noticeable on most A-notes with 48kHz sampling frequency and with 440Hz tuning. The artifact also can be triggered manually if its effect is something desired for certain times.
+* There used to be some nasty artifacting at every A note when high amounts of feedback was applied to oscillators. This seems to have been fixed by introducing an inaudible tuning error, but I cannot guarantee it won't reappear with pitch-bends or whatever.
 
 ## General differences from other phase modulation-based synthesis engines
 
