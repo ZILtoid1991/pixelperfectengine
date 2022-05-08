@@ -197,6 +197,11 @@ public class QM816 : AudioModule {
 		12.00, 11.75, 11.50, 11.25, 11.00, 10.75, 10.50, 10.25, 10.00, 9.750, 9.500, 9.250, 9.000, 8.750, 8.500, 8.250,//2
 		8.000, 7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500        //3
 	];
+	/**
+	Used for quick resampling of the 55.5/60kHz output to 44.4/48kHz.
+
+	So far this has the best results.
+	*/
 	public static immutable __m128[2][4] RESAMPLING_TABLE = [
 		[__m128([1.00, 1.00, 1.00, 1.00]), __m128([0.00, 0.00, 0.00, 0.00])],
 		[__m128([0.75, 0.75, 0.75, 0.75]), __m128([0.25, 0.25, 0.25, 0.25])],
@@ -289,6 +294,15 @@ public class QM816 : AudioModule {
 		FilterACQ	=	9,
 		FilterBCFreq=	10,
 		FilterBCQ	=	11,
+		HPFLCFreq	=	12,
+		HPFLCQ		=	13,
+		HPFRCFreq	=	14,
+		HPFRCQ		=	15,
+		HPFACFreq	=	16,
+		HPFACQ		=	17,
+		HPFBCFreq	=	18,
+		HPFBCQ		=	19,
+		RingMod		=	20,
 	}
 	enum TuneCtrlFlags : uint {
 		FineTuneMidPoint	=	0x1_00_00_00,
@@ -307,6 +321,7 @@ public class QM816 : AudioModule {
 		FixedPitch		=	1 << 12,	///Enables fixed pitch mode
 		EasyTune		=	1 << 13,	///Enables easy tune mode
 		ContiTune		=	1 << 14,	///Enables continuous tuning through the coarsetune parameter
+		ExprToMW		=	1 << 15,	///
 	}
 	/**
 	Implements a single operator.
@@ -349,74 +364,74 @@ public class QM816 : AudioModule {
 		///Also calculates KSL levels
 		void setFrequency(int slmpFreq, ubyte note, double pitchBend, double tuning) @nogc @safe pure nothrow {
 			double actualNote, oscFreq;
-			const int tuneAm = (preset.opCtrl>>>25) - 36;
+			const int tuneAm = preset.opCtrl>>>25;//const int tuneAm = (preset.opCtrl>>>25) - 36;
 			if (preset.opCtrl & OpCtrlFlags.EasyTune) {
 				double ratio;
 				switch (tuneAm) {
-					case -36:
-						ratio = 1/8;
+					case 0:
+						ratio = 1.0/8;
 						break;
-					case -35: .. case -31:
-						ratio = 1/6;
+					case 1: .. case 5:
+						ratio = 1.0/6;
 						break;
-					case -30: .. case -28:
-						ratio = 1/5;
+					case 6: .. case 8:
+						ratio = 1.0/5;
 						break;
-					case -27: .. case -24:
-						ratio = 1/4;
+					case 9: .. case 12:
+						ratio = 1.0/4;
 						break;
-					case -23: .. case -18:
-						ratio = 1/3;
+					case 13: .. case 18:
+						ratio = 1.0/3;
 						break;
-					case -17: .. case -12:
-						ratio = 1/2;
+					case 19: .. case 24:
+						ratio = 1.0/2;
 						break;
-					case -11: .. case 6:
+					case 25: .. case 42:
 						ratio = 1;
 						break;
-					case 7: .. case 11:
+					case 43: .. case 47:
 						ratio = 1.5;
 						break;
-					case 12: .. case 18:
+					case 48: .. case 54:
 						ratio = 2;
 						break;
-					case 19: .. case 23:
+					case 55: .. case 59:
 						ratio = 3;
 						break;
-					case 24: .. case 27:
+					case 60: .. case 63:
 						ratio = 4;
 						break;
-					case 28: .. case 30:
+					case 64: .. case 66:
 						ratio = 5;
 						break;
-					case 31: .. case 33:
+					case 67: .. case 69:
 						ratio = 6;
 						break;
-					case 34, 35:
+					case 70, 71:
 						ratio = 7;
 						break;
-					case 36, 37:
+					case 72, 73:
 						ratio = 8;
 						break;
-					case 38, 39:
+					case 74, 75:
 						ratio = 9;
 						break;
-					case 40, 41:
+					case 76, 77:
 						ratio = 10;
 						break;
-					case 42:
+					case 78:
 						ratio = 11;
 						break;
-					case 43, 44:
+					case 79, 80:
 						ratio = 12;
 						break;
-					case 45:
+					case 81:
 						ratio = 13;
 						break;
-					case 46:
+					case 82:
 						ratio = 14;
 						break;
-					case 47:
+					case 83:
 						ratio = 15;
 						break;
 					default:
@@ -458,7 +473,7 @@ public class QM816 : AudioModule {
 		///Sets the Envelop generator
 		void setEG(int sampleRate, ubyte note, float vel = 1.0) @nogc @safe pure nothrow {
 			const double timeAmount = (!(preset.opCtrl & OpCtrlFlags.FixedPitch) && preset.kslBegin < note) ?
-					1 - ((note - preset.kslBegin) * (0.04 * (preset.kslAttenADSR / 255))) : 1;
+					1 - ((note - preset.kslBegin) * (0.1 * (preset.kslAttenADSR / 255))) : 1;
 			//Set attack phase
 			if (preset.atk) {
 				eg.attackRate = calculateRate(ADSR_TIME_TABLE[preset.atk] * timeAmount, sampleRate);
@@ -666,7 +681,7 @@ public class QM816 : AudioModule {
 			ubyte			kslAttenOut;
 			///Key Scale Level attenuation amount for feedback (0 = 0.0db/Oct ; 255 = 6.0db/Oct)
 			ubyte			kslAttenFB;
-			///Key Scale Level attenuation amount for attack/decay times (0 = 0%/Oct ; 255 = 4%/Oct)
+			///Key Scale Level attenuation amount for attack/decay times (0 = 0%/Oct ; 255 = 10%/Oct)
 			ubyte			kslAttenADSR;
 		}
 		///Defines parameters of a single channel.
@@ -764,6 +779,8 @@ public class QM816 : AudioModule {
 	protected float				aLFO_y1;
 	///ALFO filter factor 0 to 1
 	protected float				aLFOff	=	1;
+	///ALFO frequency
+	protected float				aLFOFreq = 6;
 	///Stores output filter values.
 	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: x[n-1]; 7: x[n-2]; 8: y[n-1] 9: y[n-2]
 	protected __m128[10]		filterVals;
@@ -790,6 +807,8 @@ public class QM816 : AudioModule {
 	protected uint				pLFOPos;
 	///Stores PLFO rate
 	protected uint				pLFORate;
+	///Current frequency of PLFO
+	protected float				pLFOFreq = 6;
 	///Mixdown value.
 	///Used for final mixing.
 	protected float				mixdownVal = short.max + 1;//4096;
@@ -906,29 +925,12 @@ public class QM816 : AudioModule {
 		resetBuffer(aLFOBuf);
 		//Reset filters
 		for (int i ; i < 4 ; i++) {
-			BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
-			filterVals[0][i] = vals.a0;
-			filterVals[1][i] = vals.a1;
-			filterVals[2][i] = vals.a2;
-			filterVals[3][i] = vals.b0;
-			filterVals[4][i] = vals.b1;
-			filterVals[5][i] = vals.b2;
-			filterVals[6][i] = 0;
-			filterVals[7][i] = 0;
-			filterVals[8][i] = 0;
-			filterVals[9][i] = 0;
-			BiquadFilterValues hpf = createHPF(sampleRate, hpfCtrl[i * 2], hpfCtrl[(i * 2) + 1]);
-			hpfVals[0][i] = hpf.a0;
-			hpfVals[1][i] = hpf.a1;
-			hpfVals[2][i] = hpf.a2;
-			hpfVals[3][i] = hpf.b0;
-			hpfVals[4][i] = hpf.b1;
-			hpfVals[5][i] = hpf.b2;
-			hpfVals[6][i] = 0;
-			hpfVals[7][i] = 0;
+			resetLPF(i);
+			resetHPF(i);
 		}
 		aLFO_y1 = 0;
-		setUnregisteredParam(0x03_FF_FF_FF, [2, 16], 0);
+		setALFO();
+		setPLFO();
 		//Reset operator EGs
 		for (int i ; i < operators.length ; i++) {
 			operators[i].setEG(intSlmpRate, 40);
@@ -939,6 +941,30 @@ public class QM816 : AudioModule {
 			channels[i].recalculateOutLevels();
 		}
 		//test();
+	}
+	protected void resetLPF(int i) @nogc @safe pure nothrow {
+		BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
+		filterVals[0][i] = vals.a0;
+		filterVals[1][i] = vals.a1;
+		filterVals[2][i] = vals.a2;
+		filterVals[3][i] = vals.b0;
+		filterVals[4][i] = vals.b1;
+		filterVals[5][i] = vals.b2;
+		filterVals[6][i] = 0;
+		filterVals[7][i] = 0;
+		filterVals[8][i] = 0;
+		filterVals[9][i] = 0;
+	}
+	protected void resetHPF(int i) @nogc @safe pure nothrow {
+		BiquadFilterValues hpf = createHPF(sampleRate, hpfCtrl[i * 2], hpfCtrl[(i * 2) + 1]);
+		hpfVals[0][i] = hpf.a0;
+		hpfVals[1][i] = hpf.a1;
+		hpfVals[2][i] = hpf.a2;
+		hpfVals[3][i] = hpf.b0;
+		hpfVals[4][i] = hpf.b1;
+		hpfVals[5][i] = hpf.b2;
+		hpfVals[6][i] = 0;
+		hpfVals[7][i] = 0;
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
@@ -1392,6 +1418,15 @@ public class QM816 : AudioModule {
 		channels[ch].preset = p.channel;
 		channels[ch].setEEG(intSlmpRate);
 	}
+	protected void setALFO() @nogc @safe pure nothrow {
+		aLFOff = calculateLP6factor(intSlmpRate, aLFOFreq * 512);
+		const double cycleLen = aLFOFreq / intSlmpRate / 1024;
+		aLFORate = cast(uint)(cycleLen * (1<<22));
+	}
+	protected void setPLFO() @nogc @safe pure nothrow {
+		const double cycleLen = pLFOFreq / intSlmpRate / 1024;
+		pLFORate = cast(uint)(cycleLen * (1<<22) * intBufSize);
+	}
 	/**
 	Sets a registered parameter
 
@@ -1734,62 +1769,120 @@ public class QM816 : AudioModule {
 				void setFilterFreq(int num) @nogc @safe pure nothrow {
 					const double valF = cast(double)val / uint.max;
 					filterCtrl[num] = valF * valF * 20_000;
-
 				}
+
 				void setFilterQ(int num) @nogc @safe pure nothrow {
 					const double valF = cast(double)val / uint.max;
 					filterCtrl[num] = valF * 2;
 				}
+
 				switch (paramNum[0]) {
 					case GlobalParamNums.PLFORate:
 						double valF;
 						valF = cast(double)val / uint.max;
 						valF *= 16;
-						const double cycleLen = intSlmpRate / (1.0 / valF);
-						pLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0) * intBufSize);
+						setPLFO();
 						break;
 					case GlobalParamNums.PLFOWF:
 						lfoWaveform[0] = cast(ubyte)(val >> 25);
 						break;
 					case GlobalParamNums.ALFORate:
-						double valF;
 						if (lfoWaveform[1 & 0x80]) {
-							valF = noteToFreq((cast(double)val) / 0x03_FF_FF_FF, 440);
+							aLFOFreq = noteToFreq((cast(double)val) / 0x02_00_00_00, 440);
 						} else {
-							valF = cast(double)val / uint.max;
-							valF *= 16;
+							aLFOFreq = cast(double)val / uint.max;
+							aLFOFreq *= 16;
 						}
-
-						aLFOff = calculateLP6factor(intSlmpRate, valF * 256);
-						const double cycleLen = intSlmpRate / (1.0 / valF);
-						aLFORate = cast(int)(cycleLen * ((1<<20) / 1024.0));
+						setALFO();
 						break;
 					case GlobalParamNums.ALFOWF:
 						lfoWaveform[1] = cast(ubyte)(val >> 25);
 						break;
 					case GlobalParamNums.FilterLCFreq:
-						setFilterFreq(0);
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[0] = valF * valF * 20_000;
+						resetLPF(0);
 						break;
 					case GlobalParamNums.FilterLCQ: 
-						setFilterQ(1);
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[1] = valF * 2;
+						resetLPF(0);
 						break;
 					case GlobalParamNums.FilterRCFreq: 
-						setFilterFreq(2);
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[2] = valF * valF * 20_000;
+						resetLPF(1);
 						break;
 					case GlobalParamNums.FilterRCQ: 
-						setFilterQ(3);
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[3] = valF * 2;
+						resetLPF(1);
 						break;
 					case GlobalParamNums.FilterACFreq:
-						setFilterFreq(4);
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[4] = valF * valF * 20_000;
+						resetLPF(2);
 						break;
 					case GlobalParamNums.FilterACQ: 
-						setFilterQ(5);
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[5] = valF * 2;
+						resetLPF(2);
 						break;
 					case GlobalParamNums.FilterBCFreq: 
-						setFilterFreq(6);
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[6] = valF * valF * 20_000;
+						resetLPF(3);
 						break;
 					case GlobalParamNums.FilterBCQ: 
-						setFilterQ(7);
+						const double valF = cast(double)val / uint.max;
+						filterCtrl[7] = valF * 2;
+						resetLPF(3);
+						break;
+					case GlobalParamNums.HPFLCFreq:
+						const double valF = cast(double)val / uint.max;
+						hpfCtrl[0] = valF * valF * 20_000;
+						resetHPF(0);
+						break;
+					case GlobalParamNums.HPFLCQ: 
+						const double valF = cast(double)val / uint.max;
+						hpfCtrl[1] = valF * 2;
+						resetHPF(0);
+						break;
+					case GlobalParamNums.HPFRCFreq: 
+						const double valF = cast(double)val / uint.max;
+						hpfCtrl[2] = valF * valF * 20_000;
+						resetHPF(1);
+						break;
+					case GlobalParamNums.HPFRCQ: 
+						const double valF = cast(double)val / uint.max;
+						hpfCtrl[3] = valF * 2;
+						resetHPF(1);
+						break;
+					case GlobalParamNums.HPFACFreq:
+						const double valF = cast(double)val / uint.max;
+						hpfCtrl[4] = valF * valF * 20_000;
+						resetHPF(2);
+						break;
+					case GlobalParamNums.HPFACQ: 
+						const double valF = cast(double)val / uint.max;
+						hpfCtrl[5] = valF * 2;
+						resetHPF(2);
+						break;
+					case GlobalParamNums.HPFBCFreq: 
+						const double valF = cast(double)val / uint.max;
+						hpfCtrl[6] = valF * valF * 20_000;
+						resetHPF(3);
+						break;
+					case GlobalParamNums.HPFBCQ: 
+						const double valF = cast(double)val / uint.max;
+						hpfCtrl[7] = valF * 2;
+						resetHPF(3);
+						break;
+					case GlobalParamNums.RingMod:
+						if (val)
+							lfoWaveform[1] |= 0b1000_0000;
+						else
+							lfoWaveform[1] &= 0b0111_1111;
 						break;
 					default:
 						break;
@@ -1809,7 +1902,7 @@ public class QM816 : AudioModule {
 	public override void renderFrame(float*[] input, float*[] output) @nogc nothrow {
 		//Generate aLFO table with filtering
 		for (int i ; i < intBufSize ; i++) {
-			const float x = (wavetables[lfoWaveform[1] & byte.max][(aLFOPos>>20) & 1023] - short.min) * 
+			const float x = (wavetables[lfoWaveform[1] & byte.max][aLFOPos>>22] - short.min) * 
 					(1 / cast(float)(ushort.max));
 			const float y = aLFO_y1 + (x - aLFO_y1) * aLFOff;
 			aLFOBuf[i] = y;
@@ -1818,7 +1911,7 @@ public class QM816 : AudioModule {
 		}
 		//Generate pLFO out
 		{
-			pLFOOut = (wavetables[lfoWaveform[0]][(pLFOPos>>20) & 1023]) * (1 / cast(float)(short.max));
+			pLFOOut = (wavetables[lfoWaveform[0]][pLFOPos>>22]) * (1 / cast(float)(short.max));
 			pLFOPos += pLFORate;
 		}
 		//Render each channel
@@ -2402,68 +2495,407 @@ public class QM816 : AudioModule {
 	public override int writeParam_int(uint presetID, uint paramID, int value) nothrow {
 		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
 		switch (paramID) {
-			case hashCalc(`op0_Attack`):break;
-			case hashCalc(`op0_Decay`):break;
-			case hashCalc(`op0_SusCtrl`):break;
-			case hashCalc(`op0_Release`):break;
-			case hashCalc(`op0_Waveform`):break;
-			case hashCalc(`op0_TuneCor`):break;
-			case hashCalc(`op0_KSLBegin`):break;
-			case hashCalc(`op0_KSLAttenOut`):break;
-			case hashCalc(`op0_KSLAttenFB`):break;
-			case hashCalc(`op0_KSLAttenADSR`):break;
+			//op0 begin
+			case hashCalc(`op0_Attack`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[0].atk = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_Decay`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[0].dec = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_SusCtrl`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[0].susCC = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_Release`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[0].rel = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_Waveform`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.WavetableSelect;
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_TuneCor`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~TuneCtrlFlags.CorTuneTest;
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= (cast(ubyte)value)<<25;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_KSLBegin`):
+				if (value >=0 && value <= 255) {
+					soundBank[bankNum][presetNum].operators[0].kslBegin = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_KSLAttenOut`):
+				if (value >=0 && value <= 255) {
+					soundBank[bankNum][presetNum].operators[0].kslAttenOut = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_KSLAttenFB`):
+				if (value >=0 && value <= 255) {
+					soundBank[bankNum][presetNum].operators[1].kslAttenFB = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_KSLAttenADSR`):
+				if (value >=0 && value <= 255) {
+					soundBank[bankNum][presetNum].operators[1].kslAttenADSR = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			//op0 end
 
-			case hashCalc(`op1_Attack`):break;
-			case hashCalc(`op1_Decay`):break;
-			case hashCalc(`op1_SusCtrl`):break;
-			case hashCalc(`op1_Release`):break;
-			case hashCalc(`op1_Waveform`):break;
-			case hashCalc(`op1_TuneCor`):break;
-			case hashCalc(`op1_KSLBegin`):break;
-			case hashCalc(`op1_KSLAttenOut`):break;
-			case hashCalc(`op1_KSLAttenFB`):break;
-			case hashCalc(`op1_KSLAttenADSR`):break;
+			//op1 begin
+			case hashCalc(`op1_Attack`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[1].atk = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_Decay`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[1].dec = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_SusCtrl`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[1].susCC = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_Release`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[1].rel = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_Waveform`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.WavetableSelect;
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_TuneCor`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~TuneCtrlFlags.CorTuneTest;
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= (cast(ubyte)value)<<25;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_KSLBegin`):
+				if (value >=0 && value <= 255) {
+					soundBank[bankNum][presetNum].operators[1].kslBegin = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_KSLAttenOut`):
+				if (value >=0 && value <= 255) {
+					soundBank[bankNum][presetNum].operators[1].kslAttenOut = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_KSLAttenFB`):
+				if (value >=0 && value <= 255) {
+					soundBank[bankNum][presetNum].operators[1].kslAttenFB = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_KSLAttenADSR`):
+				if (value >=0 && value <= 255) {
+					soundBank[bankNum][presetNum].operators[1].kslAttenADSR = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			//op1 end
 
-			case hashCalc(`op0f_FBMode`):break;
-			case hashCalc(`op0f_FBNeg`):break;
-			case hashCalc(`op0f_MWNeg`):break;
-			case hashCalc(`op0f_VelNeg`):break;
-			case hashCalc(`op0f_EGRelAdaptive`):break;
-			case hashCalc(`op0f_FixedPitch`):break;
-			case hashCalc(`op0f_EasyTune`):break;
-			case hashCalc(`op0f_ContiTune`):break;
-			case hashCalc(`op0f_ExprToMW`):break;
+			//op0 flags begin
+			case hashCalc(`op0f_FBMode`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.FBMode;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.FBMode;
+				}
+				return 0;
+			case hashCalc(`op0f_FBNeg`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.FBNeg;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.FBNeg;
+				}
+				return 0;
+			case hashCalc(`op0f_MWNeg`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.MWNeg;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.MWNeg;
+				}
+				return 0;
+			case hashCalc(`op0f_VelNeg`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.VelNeg;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.VelNeg;
+				}
+				return 0;
+			case hashCalc(`op0f_EGRelAdaptive`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.EGRelAdaptive;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.EGRelAdaptive;
+				}
+				return 0;
+			case hashCalc(`op0f_FixedPitch`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.FixedPitch;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.FixedPitch;
+				}
+				return 0;
+			case hashCalc(`op0f_EasyTune`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.EasyTune;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.EasyTune;
+				}
+				return 0;
+			case hashCalc(`op0f_ContiTune`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.ContiTune;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.ContiTune;
+				}
+				return 0;
+			case hashCalc(`op0f_ExprToMW`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[0].opCtrl &= ~OpCtrlFlags.ExprToMW;
+				} else {
+					soundBank[bankNum][presetNum].operators[0].opCtrl |= OpCtrlFlags.ExprToMW;
+				}
+				return 0;
+			//op0 flags end
 
-			case hashCalc(`op1f_FBMode`):break;
-			case hashCalc(`op1f_FBNeg`):break;
-			case hashCalc(`op1f_MWNeg`):break;
-			case hashCalc(`op1f_VelNeg`):break;
-			case hashCalc(`op1f_EGRelAdaptive`):break;
-			case hashCalc(`op1f_FixedPitch`):break;
-			case hashCalc(`op1f_EasyTune`):break;
-			case hashCalc(`op1f_ContiTune`):break;
-			case hashCalc(`op1f_ExprToMW`):break;
+			//op1 flags begin
+			case hashCalc(`op1f_FBMode`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.FBMode;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.FBMode;
+				}
+				return 0;
+			case hashCalc(`op1f_FBNeg`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.FBNeg;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.FBNeg;
+				}
+				return 0;
+			case hashCalc(`op1f_MWNeg`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.MWNeg;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.MWNeg;
+				}
+				return 0;
+			case hashCalc(`op1f_VelNeg`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.VelNeg;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.VelNeg;
+				}
+				return 0;
+			case hashCalc(`op1f_EGRelAdaptive`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.EGRelAdaptive;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.EGRelAdaptive;
+				}
+				return 0;
+			case hashCalc(`op1f_FixedPitch`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.FixedPitch;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.FixedPitch;
+				}
+				return 0;
+			case hashCalc(`op1f_EasyTune`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.EasyTune;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.EasyTune;
+				}
+				return 0;
+			case hashCalc(`op1f_ContiTune`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.ContiTune;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.ContiTune;
+				}
+				return 0;
+			case hashCalc(`op1f_ExprToMW`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].operators[1].opCtrl &= ~OpCtrlFlags.ExprToMW;
+				} else {
+					soundBank[bankNum][presetNum].operators[1].opCtrl |= OpCtrlFlags.ExprToMW;
+				}
+				return 0;
+			//op1 flags end
 
-			case hashCalc(`ch_Attack`):break;
-			case hashCalc(`ch_Decay`):break;
-			case hashCalc(`ch_SusCtrl`):break;
+			//ch begin
+			case hashCalc(`ch_Attack`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].channel.atkX = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_Decay`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].channel.decX = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_SusCtrl`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].channel.susCCX = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_Release`):
+				if (value >=0 && value <= 127) {
+					soundBank[bankNum][presetNum].channel.relX = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			//ch end
 
-			case hashCalc(`chf_ComboMode`):break;
-			case hashCalc(`chf_Algorithm`):break;
-			case hashCalc(`chf_IndivOutChLev`):break;
-			case hashCalc(`chf_LFOPan`):break;
-			case hashCalc(`chf_EEGPan`):break;
-			case hashCalc(`chf_MWToTrem`):break;
-			case hashCalc(`chf_MWToVibr`):break;
-			case hashCalc(`chf_MWToAux`):break;
-			case hashCalc(`chf_ResetOnKeyOn`):break;
-			case hashCalc(`chf_ResetMode`):break;
-			case hashCalc(`chf_FBMode`):break;
-			case hashCalc(`chf_FBNeg`):break;
+			//ch flags begins
+			case hashCalc(`chf_ComboMode`):
+				if (value >= 0 && value <=3) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.ComboModeTest;
+					soundBank[bankNum][presetNum].channel.chCtrl |= value;
+					return 0;
+				}
+				break;
+			case hashCalc(`chf_Algorithm`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.Algorithm;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.Algorithm;
+				}
+				return 0;
+			case hashCalc(`chf_IndivOutChLev`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.IndivOutChLev;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.IndivOutChLev;
+				}
+				return 0;
+			case hashCalc(`chf_LFOPan`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.LFOPan;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.LFOPan;
+				}
+				return 0;
+			case hashCalc(`chf_EEGPan`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.EEGPan;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.EEGPan;
+				}
+				return 0;
+			case hashCalc(`chf_MWToTrem`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.MWToTrem;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.MWToTrem;
+				}
+				return 0;
+			case hashCalc(`chf_MWToVibr`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.MWToVibr;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.MWToVibr;
+				}
+				return 0;
+			case hashCalc(`chf_MWToAux`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.MWToAux;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.MWToAux;
+				}
+				return 0;
+			case hashCalc(`chf_ResetOnKeyOn`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.ResetOnKeyOn;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.ResetOnKeyOn;
+				}
+				return 0;
+			case hashCalc(`chf_ResetMode`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.ResetMode;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.ResetMode;
+				}
+				return 0;
+			case hashCalc(`chf_FBMode`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.FBMode;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.FBMode;
+				}
+				return 0;
+			case hashCalc(`chf_FBNeg`):
+				if (value == 0) {
+					soundBank[bankNum][presetNum].channel.chCtrl &= ~ChCtrlFlags.FBNeg;
+				} else {
+					soundBank[bankNum][presetNum].channel.chCtrl |= ChCtrlFlags.FBNeg;
+				}
+				return 0;
+			//ch flags end
+
+			//common values begin
+			case hashCalc(`_PLFOWF`):
+				if (value >=0 && value <= 127){
+					lfoWaveform[0] = cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`_ALFOWF`):
+				if (value >=0 && value <= 127) {
+					lfoWaveform[1] &= 0b1000_0000;
+					lfoWaveform[1] |= cast(ubyte)value;
+					return 0;
+				}
+				break;
+			case hashCalc(`_Ringmod`):
+				if (value == 0)
+					lfoWaveform[1] &= 0b0111_1111;
+				else
+					lfoWaveform[1] |= 0b1000_0000;
+				return 0;
+			//common values end
 			default:
 				return 1;
 		}
-		return 0;
+		return 2;
 	}
 	/**
 	 * Restores a parameter to the given preset.
@@ -2472,13 +2904,19 @@ public class QM816 : AudioModule {
 	public override int writeParam_long(uint presetID, uint paramID, long value) nothrow {
 		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
 		switch (paramID) {
-			case hashCalc(`op0_Tune`):break;
-			case hashCalc(`op0_OpCtrl`):break;
+			//case hashCalc(`op0_Tune`):break;
+			case hashCalc(`op0_OpCtrl`):
+				soundBank[bankNum][presetNum].operators[0].opCtrl = cast(uint)value;
+				break;
 
-			case hashCalc(`op1_Tune`):break;
-			case hashCalc(`op1_OpCtrl`):break;
+			//case hashCalc(`op1_Tune`):break;
+			case hashCalc(`op1_OpCtrl`):
+				soundBank[bankNum][presetNum].operators[1].opCtrl = cast(uint)value;
+				break;
 
-			case hashCalc(`ch_ChCtrl`):break;
+			case hashCalc(`ch_ChCtrl`):
+				soundBank[bankNum][presetNum].channel.chCtrl = cast(uint)value;
+				break;
 			default:
 				return 1;
 		}
@@ -2491,66 +2929,383 @@ public class QM816 : AudioModule {
 	public override int writeParam_double(uint presetID, uint paramID, double value) nothrow {
 		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
 		switch (paramID) {
-			case hashCalc(`op0_Level`):break;
-			case hashCalc(`op0_SusLevel`):break;
-			case hashCalc(`op0_Feedback`):break;
-			case hashCalc(`op0_Tune`):break;
-			case hashCalc(`op0_FreqRate`):break;
-			case hashCalc(`op0_ShpA`):break;
-			case hashCalc(`op0_ShpR`):break;
-			case hashCalc(`op0_VelToLevel`):break;
-			case hashCalc(`op0_MWToLevel`):break;
-			case hashCalc(`op0_LFOToLevel`):break;
-			case hashCalc(`op0_VelToFB`):break;
-			case hashCalc(`op0_MWToFB`):break;
-			case hashCalc(`op0_LFOToFB`):break;
-			case hashCalc(`op0_EEGToFB`):break;
-			case hashCalc(`op0_VelToShpA`):break;
-			case hashCalc(`op0_VelToShpR`):break;
+			//op0 begin
+			case hashCalc(`op0_Level`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].outL = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_SusLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].susLevel = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_Feedback`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].fbL = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_Tune`):
+				soundBank[bankNum][presetNum].operators[0].tune = value;
+				
+				return 0;
+			//case hashCalc(`op0_FreqRate`):break;
+			case hashCalc(`op0_ShpA`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].shpA = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_ShpR`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].shpR = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_VelToLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].outLCtrl[0] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_MWToLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].outLCtrl[1] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_LFOToLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].outLCtrl[2] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_VelToFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].fbLCtrl[0] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_MWToFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].fbLCtrl[1] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_LFOToFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].fbLCtrl[2] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_EEGToFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].fbLCtrl[3] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_VelToShpA`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].shpAVel = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op0_VelToShpR`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[0].shpRVel = value;
+					return 0;
+				}
+				break;
+			//op0 end
 
-			case hashCalc(`op1_Level`):break;
-			case hashCalc(`op1_SusLevel`):break;
-			case hashCalc(`op1_Feedback`):break;
-			case hashCalc(`op1_Tune`):break;
-			case hashCalc(`op1_FreqRate`):break;
-			case hashCalc(`op1_ShpA`):break;
-			case hashCalc(`op1_ShpR`):break;
-			case hashCalc(`op1_VelToLevel`):break;
-			case hashCalc(`op1_MWToLevel`):break;
-			case hashCalc(`op1_LFOToLevel`):break;
-			case hashCalc(`op1_VelToFB`):break;
-			case hashCalc(`op1_MWToFB`):break;
-			case hashCalc(`op1_LFOToFB`):break;
-			case hashCalc(`op1_EEGToFB`):break;
-			case hashCalc(`op1_VelToShpA`):break;
-			case hashCalc(`op1_VelToShpR`):break;
+			//op1 begin
+			case hashCalc(`op1_Level`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].outL = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_SusLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].susLevel = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_Feedback`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].fbL = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_Tune`):
+				soundBank[bankNum][presetNum].operators[1].tune = value;
+				
+				return 0;
+			//case hashCalc(`op1_FreqRate`):break;
+			case hashCalc(`op1_ShpA`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].shpA = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_ShpR`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].shpR = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_VelToLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].outLCtrl[0] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_MWToLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].outLCtrl[1] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_LFOToLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].outLCtrl[2] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_VelToFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].fbLCtrl[0] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_MWToFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].fbLCtrl[1] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_LFOToFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].fbLCtrl[2] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_EEGToFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].fbLCtrl[3] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_VelToShpA`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].shpAVel = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`op1_VelToShpR`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].operators[1].shpRVel = value;
+					return 0;
+				}
+				break;
+			//op1 end
 
-			case hashCalc(`ch_MasterVol`):break;
-			case hashCalc(`ch_Bal`):break;
-			case hashCalc(`ch_AuxSLA`):break;
-			case hashCalc(`ch_AuxSLB`):break;
-			case hashCalc(`ch_EEGDetune`):break;
-			case hashCalc(`ch_PLFO`):break;
-			case hashCalc(`ch_SusLevel`):break;
-			case hashCalc(`ch_ShpA`):break;
-			case hashCalc(`ch_ShpR`):break;
-			case hashCalc(`ch_GlobalFB`):break;
-			case hashCalc(`ch_EEGToLeft`):break;
-			case hashCalc(`ch_EEGToRight`):break;
-			case hashCalc(`ch_EEGToAuxA`):break;
-			case hashCalc(`ch_EEGToAuxB`):break;
-			case hashCalc(`ch_LFOToLeft`):break;
-			case hashCalc(`ch_LFOToRight`):break;
-			case hashCalc(`ch_LFOToAuxA`):break;
-			case hashCalc(`ch_LFOToAuxB`):break;
-			case hashCalc(`ch_MWToGFB`):break;
-			case hashCalc(`ch_VelToGFB`):break;
+			//ch begin
+			case hashCalc(`ch_MasterVol`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.masterVol = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_Bal`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.masterBal = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_AuxSLA`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.auxSendA = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_AuxSLB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.auxSendB = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_EEGDetune`):
+				soundBank[bankNum][presetNum].channel.eegDetuneAm = value;
+				return 0;
+			case hashCalc(`ch_PitchBendSens`):
+				soundBank[bankNum][presetNum].channel.pitchBendSens = value;
+				return 0;
+			case hashCalc(`ch_Tune`):
+				soundBank[bankNum][presetNum].channel.chnlTun = value;
+				return 0;
+			case hashCalc(`ch_PLFO`):
+				soundBank[bankNum][presetNum].channel.pLFOlevel = value;
+				return 0;
+			case hashCalc(`ch_SusLevel`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.susLevel = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_ShpA`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.shpAX = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_ShpR`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.shpRX = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_GlobalFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.globalFb = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_EEGToLeft`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.eegLevels[0] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_EEGToRight`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.eegLevels[1] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_EEGToAuxA`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.eegLevels[2] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_EEGToAuxB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.eegLevels[3] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_LFOToLeft`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.aLFOlevels[0] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_LFOToRight`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.aLFOlevels[1] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_LFOToAuxA`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.aLFOlevels[2] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_LFOToAuxB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.aLFOlevels[3] = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_MWToGFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.mwToGFB = value;
+					return 0;
+				}
+				break;
+			case hashCalc(`ch_VelToGFB`):
+				if (value >= 0 && value <= 1) {
+					soundBank[bankNum][presetNum].channel.velToGFB = value;
+					return 0;
+				}
+				break;
+			//ch end
 
-			
+			//commons begin
+			case hashCalc(`_PLFORate`):
+				pLFOFreq = value;
+				setPLFO();
+				return 0;
+			case hashCalc(`_ALFORate`):
+				aLFOFreq = value;
+				setALFO();
+				return 0;
+			case hashCalc(`_FilterLCFreq`):
+				filterCtrl[0] = value;
+				return 0;
+			case hashCalc(`_FilterLCQ`):
+				filterCtrl[1] = value;
+				return 0;
+			case hashCalc(`_FilterRCFreq`):
+				filterCtrl[2] = value;
+				return 0;
+			case hashCalc(`_FilterRCQ`):
+				filterCtrl[3] = value;
+				return 0;
+			case hashCalc(`_FilterACFreq`):
+				filterCtrl[4] = value;
+				return 0;
+			case hashCalc(`_FilterACQ`):
+				filterCtrl[5] = value;
+				return 0;
+			case hashCalc(`_FilterBCFreq`):
+				filterCtrl[6] = value;
+				return 0;
+			case hashCalc(`_FilterBCQ`):
+				filterCtrl[7] = value;
+				return 0;
+			case hashCalc(`_HPFLCFreq`):
+				hpfCtrl[0] = value;
+				resetHPF(0);
+				return 0;
+			case hashCalc(`_HPFLCQ`):
+				hpfCtrl[1] = value;
+				resetHPF(0);
+				return 0;
+			case hashCalc(`_HPFRCFreq`):
+				hpfCtrl[2] = value;
+				resetHPF(1);
+				return 0;
+			case hashCalc(`_HPFRCQ`):
+				hpfCtrl[3] = value;
+				resetHPF(1);
+				return 0;
+			case hashCalc(`_HPFACFreq`):
+				hpfCtrl[4] = value;
+				resetHPF(2);
+				return 0;
+			case hashCalc(`_HPFACQ`):
+				hpfCtrl[5] = value;
+				resetHPF(2);
+				return 0;
+			case hashCalc(`_HPFBCFreq`):
+				hpfCtrl[6] = value;
+				resetHPF(3);
+				return 0;
+			case hashCalc(`_HPFBCQ`):
+				hpfCtrl[6] = value;
+				resetHPF(3);
+				return 0;
+			//commons end
 			default:
 				return 1;
 		}
-		return 0;
+		return 2;
 	}
 	/**
 	 * Restores a parameter to the given preset.
@@ -2576,14 +3331,11 @@ public class QM816 : AudioModule {
 			MValue(MValueType.Float,`op0_VelToShpA`), MValue(MValueType.Float,`op0_VelToShpR`), 
 			MValue(MValueType.Int32,`op0_KSLBegin`), MValue(MValueType.Int32,`op0_KSLAttenOut`), 
 			MValue(MValueType.Int32,`op0_KSLAttenFB`), MValue(MValueType.Int32,`op0_KSLAttenADSR`),
-			MValue(MValueType.Boolean,`op0f_FBMode`),
-			MValue(MValueType.Boolean,`op0f_FBNeg`),
-			MValue(MValueType.Boolean,`op0f_MWNeg`),
-			MValue(MValueType.Boolean,`op0f_VelNeg`),
-			MValue(MValueType.Boolean,`op0f_EGRelAdaptive`),
-			MValue(MValueType.Boolean,`op0f_FixedPitch`),
-			MValue(MValueType.Boolean,`op0f_EasyTune`),
-			MValue(MValueType.Boolean,`op0f_ContiTune`),
+
+			MValue(MValueType.Boolean,`op0f_FBMode`), MValue(MValueType.Boolean,`op0f_FBNeg`), 
+			MValue(MValueType.Boolean,`op0f_MWNeg`), MValue(MValueType.Boolean,`op0f_VelNeg`), 
+			MValue(MValueType.Boolean,`op0f_EGRelAdaptive`), MValue(MValueType.Boolean,`op0f_FixedPitch`),
+			MValue(MValueType.Boolean,`op0f_EasyTune`), MValue(MValueType.Boolean,`op0f_ContiTune`),
 			MValue(MValueType.Boolean,`op0f_ExprToMW`),
 
 			MValue(MValueType.Float,`op1_Level`), MValue(MValueType.Int32,`op1_Attack`), MValue(MValueType.Int32,`op1_Decay`), 
@@ -2598,54 +3350,42 @@ public class QM816 : AudioModule {
 			MValue(MValueType.Float,`op1_VelToShpA`), MValue(MValueType.Float,`op1_VelToShpR`), 
 			MValue(MValueType.Int32,`op1_KSLBegin`), MValue(MValueType.Int32,`op1_KSLAttenOut`), 
 			MValue(MValueType.Int32,`op1_KSLAttenFB`), MValue(MValueType.Int32,`op1_KSLAttenADSR`),
-			MValue(MValueType.Boolean,`op1f_FBMode`),
-			MValue(MValueType.Boolean,`op1f_FBNeg`),
-			MValue(MValueType.Boolean,`op1f_MWNeg`),
-			MValue(MValueType.Boolean,`op1f_VelNeg`),
-			MValue(MValueType.Boolean,`op1f_EGRelAdaptive`),
-			MValue(MValueType.Boolean,`op1f_FixedPitch`),
-			MValue(MValueType.Boolean,`op1f_EasyTune`),
-			MValue(MValueType.Boolean,`op1f_ContiTune`),
+
+			MValue(MValueType.Boolean,`op1f_FBMode`), MValue(MValueType.Boolean,`op1f_FBNeg`),
+			MValue(MValueType.Boolean,`op1f_MWNeg`), MValue(MValueType.Boolean,`op1f_VelNeg`),
+			MValue(MValueType.Boolean,`op1f_EGRelAdaptive`), MValue(MValueType.Boolean,`op1f_FixedPitch`),
+			MValue(MValueType.Boolean,`op1f_EasyTune`), MValue(MValueType.Boolean,`op1f_ContiTune`),
 			MValue(MValueType.Boolean,`op1f_ExprToMW`),
 
-			MValue(MValueType.Float,`ch_MasterVol`),
-			MValue(MValueType.Float,`ch_Bal`),
-			MValue(MValueType.Float,`ch_AuxSLA`),
-			MValue(MValueType.Float,`ch_AuxSLB`),
-			MValue(MValueType.Float,`ch_EEGDetune`),
-			MValue(MValueType.Float,`ch_PLFO`),
-			MValue(MValueType.Int32,`ch_Attack`),
-			MValue(MValueType.Int32,`ch_Decay`),
-			MValue(MValueType.Float,`ch_SusLevel`),
-			MValue(MValueType.Int32,`ch_SusCtrl`),
-			MValue(MValueType.Int32,`ch_Release`),
-			MValue(MValueType.Float,`ch_ShpA`),
-			MValue(MValueType.Float,`ch_ShpR`),
-			MValue(MValueType.Float,`ch_GlobalFB`),
-			MValue(MValueType.Int64,`ch_ChCtrl`),
-			MValue(MValueType.Float,`ch_EEGToLeft`),
-			MValue(MValueType.Float,`ch_EEGToRight`),
-			MValue(MValueType.Float,`ch_EEGToAuxA`),
-			MValue(MValueType.Float,`ch_EEGToAuxB`),
-			MValue(MValueType.Float,`ch_LFOToLeft`),
-			MValue(MValueType.Float,`ch_LFOToRight`),
-			MValue(MValueType.Float,`ch_LFOToAuxA`),
-			MValue(MValueType.Float,`ch_LFOToAuxB`),
-			MValue(MValueType.Float,`ch_MWToGFB`),
-			MValue(MValueType.Float,`ch_VelToGFB`),
+			MValue(MValueType.Float,`ch_MasterVol`), MValue(MValueType.Float,`ch_Bal`), MValue(MValueType.Float,`ch_AuxSLA`),
+			MValue(MValueType.Float,`ch_AuxSLB`), MValue(MValueType.Float,`ch_EEGDetune`), MValue(MValueType.Float,`ch_PLFO`),
+			MValue(MValueType.Int32,`ch_Attack`), MValue(MValueType.Int32,`ch_Decay`), MValue(MValueType.Float,`ch_SusLevel`),
+			MValue(MValueType.Int32,`ch_SusCtrl`), MValue(MValueType.Int32,`ch_Release`), MValue(MValueType.Float,`ch_ShpA`),
+			MValue(MValueType.Float,`ch_ShpR`), MValue(MValueType.Float,`ch_GlobalFB`), MValue(MValueType.Int64,`ch_ChCtrl`),
+			MValue(MValueType.Float,`ch_EEGToLeft`), MValue(MValueType.Float,`ch_EEGToRight`), 
+			MValue(MValueType.Float,`ch_EEGToAuxA`), MValue(MValueType.Float,`ch_EEGToAuxB`), 
+			MValue(MValueType.Float,`ch_LFOToLeft`), MValue(MValueType.Float,`ch_LFOToRight`),
+			MValue(MValueType.Float,`ch_LFOToAuxA`), MValue(MValueType.Float,`ch_LFOToAuxB`),
+			MValue(MValueType.Float,`ch_MWToGFB`), MValue(MValueType.Float,`ch_VelToGFB`),
 
-			MValue(MValueType.Int32,`chf_ComboMode`),
-			MValue(MValueType.Boolean,`chf_Algorithm`),
-			MValue(MValueType.Boolean,`chf_IndivOutChLev`),
-			MValue(MValueType.Boolean,`chf_LFOPan`),
-			MValue(MValueType.Boolean,`chf_EEGPan`),
-			MValue(MValueType.Boolean,`chf_MWToTrem`),
-			MValue(MValueType.Boolean,`chf_MWToVibr`),
-			MValue(MValueType.Boolean,`chf_MWToAux`),
-			MValue(MValueType.Boolean,`chf_ResetOnKeyOn`),
-			MValue(MValueType.Boolean,`chf_ResetMode`),
-			MValue(MValueType.Boolean,`chf_FBMode`),
-			MValue(MValueType.Boolean,`chf_FBNeg`),
+			MValue(MValueType.Int32,`chf_ComboMode`), MValue(MValueType.Boolean,`chf_Algorithm`),
+			MValue(MValueType.Boolean,`chf_IndivOutChLev`), MValue(MValueType.Boolean,`chf_LFOPan`),
+			MValue(MValueType.Boolean,`chf_EEGPan`), MValue(MValueType.Boolean,`chf_MWToTrem`), 
+			MValue(MValueType.Boolean,`chf_MWToVibr`), MValue(MValueType.Boolean,`chf_MWToAux`),
+			MValue(MValueType.Boolean,`chf_ResetOnKeyOn`), MValue(MValueType.Boolean,`chf_ResetMode`),
+			MValue(MValueType.Boolean,`chf_FBMode`), MValue(MValueType.Boolean,`chf_FBNeg`),
+
+			MValue(MValueType.Float,`_PLFORate`), MValue(MValueType.Int32,`_PLFOWF`),
+			MValue(MValueType.Float,`_ALFORate`), MValue(MValueType.Int32,`_ALFOWF`),
+			MValue(MValueType.Float,`_FilterLCFreq`),MValue(MValueType.Float,`_FilterLCQ`),
+			MValue(MValueType.Float,`_FilterRCFreq`),MValue(MValueType.Float,`_FilterRCQ`),
+			MValue(MValueType.Float,`_FilterACFreq`),MValue(MValueType.Float,`_FilterACQ`),
+			MValue(MValueType.Float,`_FilterBCFreq`),MValue(MValueType.Float,`_FilterBCQ`),
+			MValue(MValueType.Float,`_HPFLCFreq`),MValue(MValueType.Float,`_HPFLCQ`),
+			MValue(MValueType.Float,`_HPFRCFreq`),MValue(MValueType.Float,`_HPFRCQ`),
+			MValue(MValueType.Float,`_HPFACFreq`),MValue(MValueType.Float,`_HPFACQ`),
+			MValue(MValueType.Float,`_HPFBCFreq`),MValue(MValueType.Float,`_HPFBCQ`),
+			MValue(MValueType.Boolean,`_Ringmod`),
 			];
 	}
 	/** 
@@ -2656,7 +3396,145 @@ public class QM816 : AudioModule {
 	 * Returns: The value of the given preset and parameter
 	 */
 	public override int readParam_int(uint presetID, uint paramID) nothrow {
-		return 0;
+		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
+		switch (paramID) {
+			//op0 begin
+			case hashCalc(`op0_Attack`):
+				return soundBank[bankNum][presetNum].operators[0].atk;
+			case hashCalc(`op0_Decay`):
+				return soundBank[bankNum][presetNum].operators[0].dec;
+			case hashCalc(`op0_SusCtrl`):
+				return soundBank[bankNum][presetNum].operators[0].susCC;
+			case hashCalc(`op0_Release`):
+				return soundBank[bankNum][presetNum].operators[0].rel;
+			case hashCalc(`op0_Waveform`):
+				return soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.WavetableSelect;
+			case hashCalc(`op0_TuneCor`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & TuneCtrlFlags.CorTuneTest)>>>25;
+			case hashCalc(`op0_KSLBegin`):
+				return soundBank[bankNum][presetNum].operators[0].kslBegin;
+			case hashCalc(`op0_KSLAttenOut`):
+				return soundBank[bankNum][presetNum].operators[0].kslAttenOut;
+			case hashCalc(`op0_KSLAttenFB`):
+				return soundBank[bankNum][presetNum].operators[1].kslAttenFB;
+			case hashCalc(`op0_KSLAttenADSR`):
+				return soundBank[bankNum][presetNum].operators[1].kslAttenADSR;
+			//op0 end
+
+			//op1 begin
+			case hashCalc(`op1_Attack`):
+				return soundBank[bankNum][presetNum].operators[1].atk;
+			case hashCalc(`op1_Decay`):
+				return soundBank[bankNum][presetNum].operators[1].dec;
+			case hashCalc(`op1_SusCtrl`):
+				return soundBank[bankNum][presetNum].operators[1].susCC;
+			case hashCalc(`op1_Release`):
+				return soundBank[bankNum][presetNum].operators[1].rel;
+			case hashCalc(`op1_Waveform`):
+				return soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.WavetableSelect;
+			case hashCalc(`op1_TuneCor`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & TuneCtrlFlags.CorTuneTest)>>25;
+			case hashCalc(`op1_KSLBegin`):
+				return soundBank[bankNum][presetNum].operators[1].kslBegin;
+			case hashCalc(`op1_KSLAttenOut`):
+				return soundBank[bankNum][presetNum].operators[1].kslAttenOut;
+			case hashCalc(`op1_KSLAttenFB`):
+				return soundBank[bankNum][presetNum].operators[1].kslAttenFB;
+			case hashCalc(`op1_KSLAttenADSR`):
+				return soundBank[bankNum][presetNum].operators[1].kslAttenADSR;
+			//op1 end
+
+			//op0 flags begin
+			case hashCalc(`op0f_FBMode`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.FBMode) ? 1 : 0;
+			case hashCalc(`op0f_FBNeg`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.FBNeg) ? 1 : 0;
+			case hashCalc(`op0f_MWNeg`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.MWNeg) ? 1 : 0;
+			case hashCalc(`op0f_VelNeg`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.VelNeg) ? 1 : 0;
+			case hashCalc(`op0f_EGRelAdaptive`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.EGRelAdaptive) ? 1 : 0;
+			case hashCalc(`op0f_FixedPitch`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.FixedPitch) ? 1 : 0;
+			case hashCalc(`op0f_EasyTune`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.EasyTune) ? 1 : 0;
+			case hashCalc(`op0f_ContiTune`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.ContiTune) ? 1 : 0;
+			case hashCalc(`op0f_ExprToMW`):
+				return (soundBank[bankNum][presetNum].operators[0].opCtrl & OpCtrlFlags.ExprToMW) ? 1 : 0;
+			//op0 flags end
+
+			//op1 flags begin
+			case hashCalc(`op1f_FBMode`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.FBMode) ? 1 : 0;
+			case hashCalc(`op1f_FBNeg`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.FBNeg) ? 1 : 0;
+			case hashCalc(`op1f_MWNeg`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.MWNeg) ? 1 : 0;
+			case hashCalc(`op1f_VelNeg`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.VelNeg) ? 1 : 0;
+			case hashCalc(`op1f_EGRelAdaptive`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.EGRelAdaptive) ? 1 : 0;
+			case hashCalc(`op1f_FixedPitch`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.FixedPitch) ? 1 : 0;
+			case hashCalc(`op1f_EasyTune`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.EasyTune) ? 1 : 0;
+			case hashCalc(`op1f_ContiTune`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.ContiTune) ? 1 : 0;
+			case hashCalc(`op1f_ExprToMW`):
+				return (soundBank[bankNum][presetNum].operators[1].opCtrl & OpCtrlFlags.ExprToMW) ? 1 : 0;
+			//op1 flags end
+
+			//ch begin
+			case hashCalc(`ch_Attack`):
+				return soundBank[bankNum][presetNum].channel.atkX;
+			case hashCalc(`ch_Decay`):
+				return soundBank[bankNum][presetNum].channel.decX;
+			case hashCalc(`ch_SusCtrl`):
+				return soundBank[bankNum][presetNum].channel.susCCX;
+			case hashCalc(`ch_Release`):
+				return soundBank[bankNum][presetNum].channel.relX;
+			//ch end
+
+			//ch flags begins
+			case hashCalc(`chf_ComboMode`):
+				return soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.ComboModeTest;
+			case hashCalc(`chf_Algorithm`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.Algorithm) ? 1 : 0;
+			case hashCalc(`chf_IndivOutChLev`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.IndivOutChLev) ? 1 : 0;
+			case hashCalc(`chf_LFOPan`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.LFOPan) ? 1 : 0;
+			case hashCalc(`chf_EEGPan`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.EEGPan) ? 1 : 0;
+			case hashCalc(`chf_MWToTrem`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.MWToTrem) ? 1 : 0;
+			case hashCalc(`chf_MWToVibr`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.MWToVibr) ? 1 : 0;
+			case hashCalc(`chf_MWToAux`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.MWToAux) ? 1 : 0;
+			case hashCalc(`chf_ResetOnKeyOn`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.ResetOnKeyOn) ? 1 : 0;
+			case hashCalc(`chf_ResetMode`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.ResetMode) ? 1 : 0;
+			case hashCalc(`chf_FBMode`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.FBMode) ? 1 : 0;
+			case hashCalc(`chf_FBNeg`):
+				return (soundBank[bankNum][presetNum].channel.chCtrl & ChCtrlFlags.FBNeg) ? 1 : 0;
+			//ch flags end
+
+			//common values begin
+			case hashCalc(`_PLFOWF`):
+				return lfoWaveform[0];
+			case hashCalc(`_ALFOWF`):
+				return lfoWaveform[1] & 0b0111_1111;
+			case hashCalc(`_Ringmod`):
+				return (lfoWaveform[1] & 0b1000_0000) ? 1 : 0;
+			//common values end
+			default:
+				return 0;
+		}
 	}
 	/** 
 	 * Reads the given value (int).
@@ -2666,7 +3544,21 @@ public class QM816 : AudioModule {
 	 * Returns: The value of the given preset and parameter
 	 */
 	public override long readParam_long(uint presetID, uint paramID) nothrow {
-		return 0;
+		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
+		switch (paramID) {
+			//case hashCalc(`op0_Tune`):break;
+			case hashCalc(`op0_OpCtrl`):
+				return soundBank[bankNum][presetNum].operators[0].opCtrl;
+
+			//case hashCalc(`op1_Tune`):break;
+			case hashCalc(`op1_OpCtrl`):
+				return soundBank[bankNum][presetNum].operators[1].opCtrl;
+
+			case hashCalc(`ch_ChCtrl`):
+				return soundBank[bankNum][presetNum].channel.chCtrl;
+			default:
+				return 0;
+		}
 	}
 	/** 
 	 * Reads the given value (int).
@@ -2676,7 +3568,164 @@ public class QM816 : AudioModule {
 	 * Returns: The value of the given preset and parameter
 	 */
 	public override double readParam_double(uint presetID, uint paramID) nothrow {
-		return 0;
+		const ubyte bankNum = cast(ubyte)(presetID>>7), presetNum = cast(ubyte)(presetID & 127);
+		switch (paramID) {
+			//op0 begin
+			case hashCalc(`op0_Level`):
+				return soundBank[bankNum][presetNum].operators[0].outL;
+			case hashCalc(`op0_SusLevel`):
+				return soundBank[bankNum][presetNum].operators[0].susLevel;
+			case hashCalc(`op0_Feedback`):
+				return soundBank[bankNum][presetNum].operators[0].fbL;
+			case hashCalc(`op0_Tune`):
+				return soundBank[bankNum][presetNum].operators[0].tune;
+			//case hashCalc(`op0_FreqRate`):break;
+			case hashCalc(`op0_ShpA`):
+				return soundBank[bankNum][presetNum].operators[0].shpA;
+			case hashCalc(`op0_ShpR`):
+				return soundBank[bankNum][presetNum].operators[0].shpR;
+			case hashCalc(`op0_VelToLevel`):
+				return soundBank[bankNum][presetNum].operators[0].outLCtrl[0];
+			case hashCalc(`op0_MWToLevel`):
+				return soundBank[bankNum][presetNum].operators[0].outLCtrl[1];
+			case hashCalc(`op0_LFOToLevel`):
+				return soundBank[bankNum][presetNum].operators[0].outLCtrl[2];
+			case hashCalc(`op0_VelToFB`):
+				return soundBank[bankNum][presetNum].operators[0].fbLCtrl[0];
+			case hashCalc(`op0_MWToFB`):
+				return soundBank[bankNum][presetNum].operators[0].fbLCtrl[1];
+
+			case hashCalc(`op0_LFOToFB`):
+				return soundBank[bankNum][presetNum].operators[0].fbLCtrl[2];
+			case hashCalc(`op0_EEGToFB`):
+				return soundBank[bankNum][presetNum].operators[0].fbLCtrl[3];
+			case hashCalc(`op0_VelToShpA`):
+				return soundBank[bankNum][presetNum].operators[0].shpAVel;
+			case hashCalc(`op0_VelToShpR`):
+				return soundBank[bankNum][presetNum].operators[0].shpRVel;
+			//op0 end
+
+			//op1 begin
+			case hashCalc(`op1_Level`):
+				return soundBank[bankNum][presetNum].operators[1].outL;
+			case hashCalc(`op1_SusLevel`):
+				return soundBank[bankNum][presetNum].operators[1].susLevel;
+			case hashCalc(`op1_Feedback`):
+				return soundBank[bankNum][presetNum].operators[1].fbL;
+			case hashCalc(`op1_Tune`):
+				return soundBank[bankNum][presetNum].operators[1].tune;
+			//case hashCalc(`op1_FreqRate`):break;
+			case hashCalc(`op1_ShpA`):
+				return soundBank[bankNum][presetNum].operators[1].shpA;
+			case hashCalc(`op1_ShpR`):
+				return soundBank[bankNum][presetNum].operators[1].shpR;
+			case hashCalc(`op1_VelToLevel`):
+				return soundBank[bankNum][presetNum].operators[1].outLCtrl[0];
+			case hashCalc(`op1_MWToLevel`):
+				return soundBank[bankNum][presetNum].operators[1].outLCtrl[1];
+			case hashCalc(`op1_LFOToLevel`):
+				return soundBank[bankNum][presetNum].operators[1].outLCtrl[2];
+			case hashCalc(`op1_VelToFB`):
+				return soundBank[bankNum][presetNum].operators[1].fbLCtrl[0];
+			case hashCalc(`op1_MWToFB`):
+				return soundBank[bankNum][presetNum].operators[1].fbLCtrl[1];
+			case hashCalc(`op1_LFOToFB`):
+				return soundBank[bankNum][presetNum].operators[1].fbLCtrl[2];
+			case hashCalc(`op1_EEGToFB`):
+				return soundBank[bankNum][presetNum].operators[1].fbLCtrl[3];
+			case hashCalc(`op1_VelToShpA`):
+				return soundBank[bankNum][presetNum].operators[1].shpAVel;
+			case hashCalc(`op1_VelToShpR`):
+				return soundBank[bankNum][presetNum].operators[1].shpRVel;
+			//op1 end
+
+			//ch begin
+			case hashCalc(`ch_MasterVol`):
+				return soundBank[bankNum][presetNum].channel.masterVol;
+			case hashCalc(`ch_Bal`):
+				return soundBank[bankNum][presetNum].channel.masterBal;
+			case hashCalc(`ch_AuxSLA`):
+				return soundBank[bankNum][presetNum].channel.auxSendA;
+			case hashCalc(`ch_AuxSLB`):
+				return soundBank[bankNum][presetNum].channel.auxSendB;
+			case hashCalc(`ch_EEGDetune`):
+				return soundBank[bankNum][presetNum].channel.eegDetuneAm;
+			case hashCalc(`ch_PitchBendSens`):
+				return soundBank[bankNum][presetNum].channel.pitchBendSens;
+			case hashCalc(`ch_Tune`):
+				return soundBank[bankNum][presetNum].channel.chnlTun;
+			case hashCalc(`ch_PLFO`):
+				return soundBank[bankNum][presetNum].channel.pLFOlevel;
+			case hashCalc(`ch_SusLevel`):
+				return soundBank[bankNum][presetNum].channel.susLevel;
+			case hashCalc(`ch_ShpA`):
+				return soundBank[bankNum][presetNum].channel.shpAX;
+			case hashCalc(`ch_ShpR`):
+				return soundBank[bankNum][presetNum].channel.shpRX;
+			case hashCalc(`ch_GlobalFB`):
+				return soundBank[bankNum][presetNum].channel.globalFb;
+			case hashCalc(`ch_EEGToLeft`):
+				return soundBank[bankNum][presetNum].channel.eegLevels[0];
+			case hashCalc(`ch_EEGToRight`):
+				return soundBank[bankNum][presetNum].channel.eegLevels[1];
+			case hashCalc(`ch_EEGToAuxA`):
+				return soundBank[bankNum][presetNum].channel.eegLevels[2];
+			case hashCalc(`ch_EEGToAuxB`):
+				return soundBank[bankNum][presetNum].channel.eegLevels[3];
+			case hashCalc(`ch_LFOToLeft`):
+				return soundBank[bankNum][presetNum].channel.aLFOlevels[0];
+			case hashCalc(`ch_LFOToRight`):
+				return soundBank[bankNum][presetNum].channel.aLFOlevels[1];
+			case hashCalc(`ch_LFOToAuxA`):
+				return soundBank[bankNum][presetNum].channel.aLFOlevels[2];
+			case hashCalc(`ch_LFOToAuxB`):
+				return soundBank[bankNum][presetNum].channel.aLFOlevels[3];
+			case hashCalc(`ch_MWToGFB`):
+				return soundBank[bankNum][presetNum].channel.mwToGFB;
+			case hashCalc(`ch_VelToGFB`):
+				return soundBank[bankNum][presetNum].channel.velToGFB;
+			//ch end
+
+			//commons begin
+			case hashCalc(`_PLFORate`): return pLFOFreq;
+			case hashCalc(`_ALFORate`): return aLFOFreq;
+			case hashCalc(`_FilterLCFreq`):
+				return filterCtrl[0];
+			case hashCalc(`_FilterLCQ`):
+				return filterCtrl[1];
+			case hashCalc(`_FilterRCFreq`):
+				return filterCtrl[2];
+			case hashCalc(`_FilterRCQ`):
+				return filterCtrl[3];
+			case hashCalc(`_FilterACFreq`):
+				return filterCtrl[4];
+			case hashCalc(`_FilterACQ`):
+				return filterCtrl[5];
+			case hashCalc(`_FilterBCFreq`):
+				return filterCtrl[6];
+			case hashCalc(`_FilterBCQ`):
+				return filterCtrl[7];
+			case hashCalc(`_HPFLCFreq`):
+				return hpfCtrl[0];
+			case hashCalc(`_HPFLCQ`):
+				return hpfCtrl[1];
+			case hashCalc(`_HPFRCFreq`):
+				return hpfCtrl[2];
+			case hashCalc(`_HPFRCQ`):
+				return hpfCtrl[3];
+			case hashCalc(`_HPFACFreq`):
+				return hpfCtrl[4];
+			case hashCalc(`_HPFACQ`):
+				return hpfCtrl[5];
+			case hashCalc(`_HPFBCFreq`):
+				return hpfCtrl[6];
+			case hashCalc(`_HPFBCQ`):
+				return hpfCtrl[6];
+			//commons end
+			default:
+				return double.nan;
+		}
+		
 	}
 	/** 
 	 * Reads the given value (int).
