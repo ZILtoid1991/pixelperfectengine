@@ -131,7 +131,7 @@ public @nogc short[4] rotateFunction(double theta, short[4] input = [256,256,256
  * sXsY:
  * Scrolling point. sX:0/2 sY:1/3
  */
-public @nogc int[2] transformFunctionFP(int[2] xy, float[4] ABCD, float[4] x0y0, int[4] sXsY){
+/+public @nogc int[2] transformFunctionFP(int[2] xy, float[4] ABCD, float[4] x0y0, int[4] sXsY){
 	version(X86){
 		int[2] result;
 		asm @nogc{
@@ -271,4 +271,4 @@ public @nogc int[2] reverseTransformFunctionFP(int[2] xy, float[4] ABCD, int[4] 
 	}else{
 			
 	}
-}
+}+/
