@@ -2,11 +2,11 @@
 	"fileVersion": 1,
 	"versions": {
 		"bindbc-loader": "1.0.1",
-		"bindbc-sdl": "1.1.0",
+		"bindbc-sdl": "1.1.1",
 		"bitleveld": "0.1.0",
 		"bmfont": "0.1.0",
 		"collections-d": "0.4.5",
-		"cpublit": "0.5.0",
+		"cpublit": "0.5.1",
 		"derelict-fi": "2.0.3",
 		"derelict-sdl2": "2.1.4",
 		"derelict-util": "2.0.6",
@@ -23,7 +23,7 @@
 		"std-experimental-xml": "0.1.7",
 		"stdx-allocator": "2.77.5",
 		"taggedalgebraic": "0.11.22",
-		"undead": "1.1.6",
+		"undead": "1.1.7",
 		"unit-threaded": "0.7.55",
 		"vfile": "0.1.2"
 	}

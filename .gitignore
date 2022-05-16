@@ -15,4 +15,6 @@ bin/
 bin-x86-windows/
 bin-x86_64-windows/
 bin-x86_64-linux/
+bin-aarch64-linux/
+dub.selections.json
 _debug/
