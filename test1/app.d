@@ -11,6 +11,9 @@ import bindbc.sdl;
 import midi2.types.structs;
 import midi2.types.enums;
 
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.concrete.windowhandler;
+
 import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
@@ -52,8 +55,10 @@ public class TestAudio : InputListener, SystemEventListener {
 	OutputScreen	output;
 	InputHandler	ih;
 	Raster			r;
-	TileLayer		textOut;
+	//TileLayer		textOut;
+	SpriteLayer		windowing;
 	MIDIInput		midiIn;
+	WindowHandler	wh;
 	int				audioDev;
 	int				midiDev = -1;
 	uint			state;
@@ -61,7 +66,7 @@ public class TestAudio : InputListener, SystemEventListener {
 	ubyte			bank0;
 	ubyte			bank1;
 	
-	ubyte[32][6][2]	level;
+	//ubyte[32][6][2]	level;
 	enum StateFlags {
 		isRunning		=	1<<0,
 		deviceSelected	=	1<<1,
@@ -73,69 +78,14 @@ public class TestAudio : InputListener, SystemEventListener {
 	
 	public this(string[] args) {
 		state |= StateFlags.isRunning;
-		Image fontSource = loadImage(File("../system/cp437_8x16.png"));
-		output = new OutputScreen("Audio test", 848 * 2, 480 * 2);
+		//Image fontSource = loadImage(File("../system/cp437_8x16.png"));
+		output = new OutputScreen("PixelPerfectEngine Audio Development Kit", 848 * 2, 480 * 2);
 		r = new Raster(848,480,output,0);
-		output.setMainRaster(r);
-		textOut = new TileLayer(8, 16, RenderingMode.Copy);
-		r.addPaletteChunk(loadPaletteFromImage(fontSource));
-		r.addLayer(textOut, 0);
+		windowing = new SpriteLayer(RenderingMode.Copy);
+		wh = new WindowHandler(1696,960,848,480,windowing);
+		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
+		INIT_CONCRETE();
 
-		{
-			MappingElement[] map;
-			map.length = 106 * 30;
-			textOut.loadMapping(106,30, map);
-			Bitmap8Bit[] tiles = loadBitmapSheetFromImage!Bitmap8Bit(fontSource, 8, 16);
-			foreach (i, key; tiles) {
-				textOut.addTile(key, to!wchar(i),1);
-			}
-		}
-
-		ih = new InputHandler();
-		ih.systemEventListener = this;
-		ih.inputListener = this;
-		
-		{
-			import pixelperfectengine.system.input.scancode;
-			ih.addBinding(BindingCode(ScanCode.GRAVE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("grave"));
-			ih.addBinding(BindingCode(ScanCode.n1, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num1"));
-			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num2"));
-			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num3"));
-			ih.addBinding(BindingCode(ScanCode.n4, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num4"));
-			ih.addBinding(BindingCode(ScanCode.n5, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num5"));
-			ih.addBinding(BindingCode(ScanCode.n6, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num6"));
-			ih.addBinding(BindingCode(ScanCode.n7, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num7"));
-			ih.addBinding(BindingCode(ScanCode.n8, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num8"));
-			ih.addBinding(BindingCode(ScanCode.n9, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num9"));
-			ih.addBinding(BindingCode(ScanCode.n0, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("num0"));
-			ih.addBinding(BindingCode(ScanCode.MINUS, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("minus"));
-			ih.addBinding(BindingCode(ScanCode.EQUALS, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("equals"));
-			ih.addBinding(BindingCode(ScanCode.Q, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("q"));
-			ih.addBinding(BindingCode(ScanCode.W, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("w"));
-			ih.addBinding(BindingCode(ScanCode.E, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("e"));
-			ih.addBinding(BindingCode(ScanCode.R, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("r"));
-			ih.addBinding(BindingCode(ScanCode.T, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("t"));
-			ih.addBinding(BindingCode(ScanCode.Y, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("y"));
-			ih.addBinding(BindingCode(ScanCode.U, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("u"));
-			ih.addBinding(BindingCode(ScanCode.I, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("i"));
-			ih.addBinding(BindingCode(ScanCode.O, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("o"));
-			ih.addBinding(BindingCode(ScanCode.P, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("p"));
-			ih.addBinding(BindingCode(ScanCode.LEFTBRACKET, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("["));
-			ih.addBinding(BindingCode(ScanCode.RIGHTBRACKET, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("]"));
-			ih.addBinding(BindingCode(ScanCode.F1, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F1"));
-			ih.addBinding(BindingCode(ScanCode.F2, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F2"));
-			ih.addBinding(BindingCode(ScanCode.F3, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F3"));
-			ih.addBinding(BindingCode(ScanCode.F4, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F4"));
-			ih.addBinding(BindingCode(ScanCode.F5, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F5"));
-			ih.addBinding(BindingCode(ScanCode.F6, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F6"));
-			ih.addBinding(BindingCode(ScanCode.F7, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F7"));
-			ih.addBinding(BindingCode(ScanCode.F8, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F8"));
-			ih.addBinding(BindingCode(ScanCode.F9, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("F9"));
-			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("OctUp"));
-			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("OctDown"));
-			//ih.addBinding(BindingCode(ScanCode.GRAVE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("grave"));
-
-		}
 
 		adh = new AudioDeviceHandler(AudioSpecs(predefinedFormats[PredefinedFormats.FP32], 48_000, 0, 2, 512, Duration.init), 
 				64, 8);
@@ -144,7 +94,6 @@ public class TestAudio : InputListener, SystemEventListener {
 		
 	}
 	void whereTheMagicHappens() {
-		ubyte[] midiData;
 		while (state & StateFlags.isRunning) {
 			r.refresh();
 			ih.test();
@@ -156,11 +105,7 @@ public class TestAudio : InputListener, SystemEventListener {
 		}
 	}
 
-	public void clearScreen() {
-		for (int y ; y < 30 ; y++)
-			for (int x ; x < 106 ; x++)
-				textOut.writeMapping(x, y, MappingElement(' '));
-	}
+	
 	
 	public void initDriver() {
 		clearScreen();

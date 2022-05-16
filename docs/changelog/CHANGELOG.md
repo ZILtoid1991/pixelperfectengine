@@ -1,11 +1,29 @@
 # Current
 
+## Tested and working under Raspberry Pi
+
+So far, Raspberry Pi 400 is supported officially, regular 4B models should be also sufficient, and there's a good 
+chance it can run on other single-board and/or low-cost computers.
+
+However there are many caveats and precautions:
+
+* One needs OpenGL support, this leaves out most boards with Mali GPUs, since ARM refuses to open-source their drivers,
+and other single-board computer manufacturers don't have the money to license them. Community-driven open-source
+drivers might work, especially since the engine don't need too many fancy features.
+* So far, only 64 bit has been tested, especially as many NEON commands aren't available under 32 bit. It's unknown 
+however how much the rendering would use them in actuality.
+* 64 bit is still in experimental support in Raspberry Pi OS, however it's usable as long as legacy GPU drivers are
+enabled.
+* A5x CPUs might not have the cache nor the execution capability to sufficiently run the engine. The rendering is using
+a method that is very CPU cache bound.
+
 ## MIDI input via iota
 
 ## Audio subsystem changes
 
-* QM816: finetuning.
-* `@nogc` removed from all parameter recall functions.
+* QM816: finetuning. Added high-pass filtering, artifacts from applying feedback eliminated.
+* QM816: Fixes to previously untested functionality.
+* `@nogc` removed from all parameter recall functions, parameter editing functionality added.
 
 # 0.10.0-beta6
 

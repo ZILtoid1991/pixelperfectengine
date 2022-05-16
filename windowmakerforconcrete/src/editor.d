@@ -586,8 +586,10 @@ public class Editor : SystemEventListener, InputListener{
 		}
 	}
 	public void delElement() {
-		if(selection != "Window" && selection.length)
+		if(selection != "Window" && selection.length) {
 			eventStack.addToTop(new DeleteEvent(elements[selection]));
+			selection = "Window";
+		}
 	}
 	public void initElemMove() {
 		if(selection != "Window" && selection.length) {
@@ -661,10 +663,9 @@ public class Editor : SystemEventListener, InputListener{
 				case hashCalc("redo"):
 					eventStack.redo;
 					break;
-				case hashCalc("del"):
-					const string prevSelection = selection;
-					selection = "window";
-					eventStack.addToTop(new DeleteEvent(elements[prevSelection]));
+				case hashCalc("delete"):
+					delElement();
+
 					break;
 				case hashCalc("sysesc"):
 					deinitElemMove;
