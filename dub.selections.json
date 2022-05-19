@@ -2,7 +2,7 @@
 	"fileVersion": 1,
 	"versions": {
 		"bindbc-loader": "1.0.1",
-		"bindbc-sdl": "1.1.1",
+		"bindbc-sdl": "1.1.2",
 		"bitleveld": "0.1.0",
 		"bmfont": "0.1.0",
 		"collections-d": "0.4.5",
