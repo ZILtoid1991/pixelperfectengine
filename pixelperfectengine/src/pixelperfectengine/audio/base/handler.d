@@ -16,6 +16,7 @@ import std.bitmanip : bitfields;
 import pixelperfectengine.system.exc;
 //import pixelperfectengine.system.etc : isPowerOf2;
 import pixelperfectengine.audio.base.modulebase;
+import pixelperfectengine.audio.base.midiseq;
 
 import iota.audio.output;
 import iota.audio.device;
@@ -104,7 +105,12 @@ public class AudioDeviceHandler {
 	public size_t getBufferSize() @nogc @safe pure nothrow const {
 		return blockSize * nOfBlocks;
 	}
-	
+	/** 
+	 * Returns the buffer length in time, in `Duration` format.
+	 */
+	public Duration getBufferDelay() @nogc @safe pure nothrow const {
+		return specs.bufferSize_time;
+	}
 }
 /**
  * Manages all audio modules complete with routing, MIDI2.0, etc.
@@ -115,6 +121,8 @@ public class ModuleManager {
 	protected int			currBlock;		///Current audio frame.
 	///Pointer to the audio device handler.
 	public AudioDeviceHandler	devHandler;
+	///Pointer to a MIDI sequencer, for synchronizing it with the audio stream.
+	public Sequencer		midiSeq;
 	protected OutputStream	outStrm;		///Output stream handling.
 	/**
 	 * List of modules.
@@ -193,6 +201,8 @@ public class ModuleManager {
 			foreach (size_t i, AudioModule am; moduleList) {
 				am.renderFrame(inBufferList[i], outBufferList[i]);
 			}
+			if (midiSeq !is null)
+				midiSeq.lapseTime(devHandler.getBufferDelay);
 			const size_t offset = currBlock * blockSize * channels;
 			interleave(blockSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
 			currBlock++;

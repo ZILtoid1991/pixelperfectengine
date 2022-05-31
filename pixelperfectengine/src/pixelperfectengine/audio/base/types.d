@@ -216,5 +216,17 @@ public enum MValueType {
  */
 public struct MValue {
 	MValueType		type;
+	uint			id;			///Ideally the MurMurHashV3/32 value of the name, but other numbers also can be used if needed, e.g. it's too complex to rely on hash values
 	string			name;
+	this (MValueType type, uint id, string name) @nogc @safe pure nothrow {
+		this.type = type;
+		this.id = id;
+		this.name = name;
+	}
+	this (MValueType type, string name) @nogc @safe pure nothrow {
+		import pixelperfectengine.system.etc : hashCalc;
+		this.type = type;
+		this.id = hashCalc(name);
+		this.name = name;
+	}
 }
