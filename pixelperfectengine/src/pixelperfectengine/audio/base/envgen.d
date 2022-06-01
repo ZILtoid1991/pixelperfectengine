@@ -1,6 +1,6 @@
 module pixelperfectengine.audio.base.envgen;
 
-import std.math : sqrt;
+import std.math : sqrt, pow;
 
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
@@ -129,7 +129,9 @@ public struct ADSREnvelopGenerator {
 	///Changes the shape of the output using optimized (modified Bézier) mathematics
 	///Output is returned as a floating-point value between 0.0 and 1.0
 	public double shp(double g) @nogc @safe pure nothrow const {
-		return g + (1 - counter) * (1 - counter) * (0 - g) + counter * counter * (1 - g);
+		//return g + (1 - counter) * (1 - counter) * (0 - g) + counter * counter * (1 - g);
+		const double c_2 = counter * counter;
+		return -2 * c_2 * g + c_2 + 2 * counter * g;
 	}
 	
 }
