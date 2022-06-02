@@ -4,8 +4,8 @@ module pixelperfectengine.system.rng;
  * Implements a pseudo-random number generator using a 64 bit Fibonacci LFSR.
  *
  * Example uses:
- * * `seed() % probabilityOfEvent`
- * * `(seed() % 100) > probabilityOfEvent`
+ * * `rng.seed() % maxAmount`
+ * * `(rng.seed() % 100) < probabilityOfEvent`
  */
 public struct RandomNumberGenerator {
 	protected ulong     reg;
