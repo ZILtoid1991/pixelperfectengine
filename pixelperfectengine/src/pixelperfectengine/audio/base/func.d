@@ -187,7 +187,7 @@ alias ADPCMStream = NibbleArray;
 	 * Decodes an amount of 8 bit unsigned PCM to extended 32 bit.
 	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
 	 */
-	public void decode8bitPCM(const(ubyte)[] src, int[] dest, ref Workpad wp) @safe {
+	public void decode8bitPCM(const(ubyte)[] src, int[] dest, ref DecoderWorkpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			const ubyte val = src[wp.pos + i];
 			dest[i] = (val + val<<8) + short.min;
@@ -198,7 +198,7 @@ alias ADPCMStream = NibbleArray;
 	 * Decodes an amount of 16 bit signed PCM to extended 32 bit.
 	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
 	 */
-	public void decode16bitPCM(const(short)[] src, int[] dest, ref Workpad wp) @safe {
+	public void decode16bitPCM(const(short)[] src, int[] dest, ref DecoderWorkpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			dest[i] = src[wp.pos + i];
 		}
@@ -208,7 +208,7 @@ alias ADPCMStream = NibbleArray;
 	 * Decodes an amount of 4 bit IMA ADPCM stream to extended 32 bit.
 	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
 	 */
-	public void decode4bitIMAADPCM(ADPCMStream src, int[] dest, ref Workpad wp) @safe {
+	public void decode4bitIMAADPCM(ADPCMStream src, int[] dest, ref DecoderWorkpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			const ubyte index = src[i];
 			uint stepSize;
@@ -230,7 +230,7 @@ alias ADPCMStream = NibbleArray;
 	 * Decodes an amount of 4 bit Oki/Dialogic ADPCM stream to extended 32 bit.
 	 * Amount is decided by dest.length. `src` is a full waveform. Position is stored in wp.pos.
 	 */
-	public void decode4bitDialogicADPCM(ADPCMStream src, int[] dest, ref Workpad wp) @safe {
+	public void decode4bitDialogicADPCM(ADPCMStream src, int[] dest, ref DecoderWorkpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			const ubyte index = src[i];
 			uint stepSize;
@@ -251,7 +251,7 @@ alias ADPCMStream = NibbleArray;
 	/**
 	 * Decodes a Mu-Law encoded stream.
 	 */
-	public void decodeMuLawStream(const(ubyte)[]src, int[] dest, ref Workpad wp) @safe {
+	public void decodeMuLawStream(const(ubyte)[]src, int[] dest, ref DecoderWorkpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			dest[i] = MU_LAW_DECODER_TABLE[src[wp.pos + i]];
 		}
@@ -260,7 +260,7 @@ alias ADPCMStream = NibbleArray;
 	/**
 	 * Decodes an A-Law encoded stream.
 	 */
-	public void decodeALawStream(const(ubyte)[]src, int[] dest, ref Workpad wp) @safe {
+	public void decodeALawStream(const(ubyte)[]src, int[] dest, ref DecoderWorkpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			dest[i] = A_LAW_DECODER_TABLE[src[wp.pos + i]];
 		}

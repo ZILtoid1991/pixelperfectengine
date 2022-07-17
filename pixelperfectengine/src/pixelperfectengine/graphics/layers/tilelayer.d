@@ -131,14 +131,11 @@ public class TileLayer : Layer, ITileLayer {
 			writeMapping(x + i, y, MappingElement(text[i], atrb, color));
 		}
 	}
-	///Writes to the map. x , y : Position. w : ID of the tile.
-	/*@nogc public void writeTileAttribute(int x, int y, BitmapAttrib ba){
-		tileAttributes[x+(mX*y)]=ba;
-	}*/
 	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
 	///x*y=map.length
 	public void loadMapping(int x, int y, MappingElement[] mapping) @safe pure {
-		assert (x * y == mapping.length);
+		if (x * y != mapping.length)
+			throw new MapFormatException("Incorrect map size!");
 		mX=x;
 		mY=y;
 		this.mapping = mapping;

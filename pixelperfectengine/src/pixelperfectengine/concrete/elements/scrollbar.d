@@ -64,7 +64,7 @@ abstract class ScrollBar : WindowElement{
 	public @property int barLength() @nogc @safe pure nothrow const {
 		return _barLength;
 	}
-	protected void timerEvent() nothrow {
+	protected void timerEvent(Duration jitter) nothrow {
 		try {
 			if (flags & PLUS_PRESSED) {
 				value = value + 1;

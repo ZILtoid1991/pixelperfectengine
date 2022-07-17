@@ -1,5 +1,9 @@
 # Current
 
+## Added Random number generator
+
+The engine now has its own RNG using a 64 bit Fibonacci LFSR.
+
 ## Tested and working under Raspberry Pi
 
 So far, Raspberry Pi 400 is supported officially, regular 4B models should be also sufficient, and there's a good 
@@ -24,6 +28,11 @@ a method that is very CPU cache bound.
 * QM816: finetuning. Added high-pass filtering, artifacts from applying feedback eliminated.
 * QM816: Fixes to previously untested functionality.
 * `@nogc` removed from all parameter recall functions, parameter editing functionality added.
+
+## Other changes
+
+* The CoarseTimer's callback delegate now can be throwing, and passes a Duration called `jitter` that can be used to
+correct jitter errors.
 
 # 0.10.0-beta6
 

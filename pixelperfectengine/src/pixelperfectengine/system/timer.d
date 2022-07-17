@@ -18,10 +18,10 @@ static this() {
  * Is fast and can effectively test for multiple elements, but is inaccurate which can even fluctuate if tests are done
  * on VSYNC intervals. This will make the duration longer in every case (up to 16.7ms on 60Hz displays), but this
  * still should be accurate enough for many cases.
- * Delegates must take no arguments and  nothrow to avoid issues from that.
+ * Delegates take the `jitter` argument, which is the overshoot of the time.
  */
 public class CoarseTimer {
-	alias TimerReceiver = nothrow void delegate();
+	alias TimerReceiver = void delegate(Duration jitter);
 	/**
 	 * A timer entry.
 	 */
@@ -59,11 +59,11 @@ public class CoarseTimer {
 	 * Tests the entries.
 	 * If enough time has passed, then those entries will be called and deleted.
 	 */
-	public void test() nothrow {
+	public void test() {
 		status = 1;
 		while (timerList.length) {
 			if (MonoTime.currTime >= timerList[0].when) {
-				timerList[0].onLapse();
+				timerList[0].onLapse(MonoTime.currTime - timerList[0].when);
  				timerList.remove(0);
 			} else {
 				break;

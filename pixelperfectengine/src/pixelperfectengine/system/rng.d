@@ -26,4 +26,7 @@ public struct RandomNumberGenerator {
 		reg = (reg>>1) | (bit<<63);
 		return reg;
 	}
+	public ulong opCall() @nogc @safe pure nothrow {
+		return seed();
+	}
 }

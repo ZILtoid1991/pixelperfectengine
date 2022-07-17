@@ -54,7 +54,7 @@ public class FileAccessException : Exception{
 
 }
 
-public class TileFormatException : Exception{
+public class TileFormatException : PPEException {
 	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
@@ -73,13 +73,13 @@ public class ConfigFileException : Exception{
 	}
 }
 
-public class MapFileException : Exception{
+public class MapFileException : PPEException {
 	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}
 }
 
-public class MapFormatException : Exception {
+public class MapFormatException : PPEException {
 	public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) @safe pure @nogc {
 		super(msg, file, line, next);
 	}

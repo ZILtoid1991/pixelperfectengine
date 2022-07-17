@@ -68,10 +68,18 @@ subPackage {
 	importPaths "./windowmakerforconcrete/src/"
 }
 subPackage {
-	name "wallbreaker"
+	name "snake"
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"
-	targetPath "./wallbreaker/bin-$ARCH-$PLATFORM/"
-	sourcePaths "./wallbreaker/src/"
-	importPaths "./wallbreaker/src/"
+	targetPath "./bin-$ARCH-$PLATFORM/"
+	sourcePaths "./snake/src/"
+	importPaths "./snake/src/"
+}
+subPackage {
+	name "icebreaker"
+	dependency "pixelperfectengine" version="*"
+	targetType "executable"
+	targetPath "./bin-$ARCH-$PLATFORM/"
+	sourcePaths "./icebreaker/src/"
+	importPaths "./icebreaker/src/"
 }

@@ -19,7 +19,14 @@ public interface ITileLayer {
 	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const;
 	/// Writes the given element into the mapping at the given location.
 	public void writeMapping(int x, int y, MappingElement w) @nogc @safe pure nothrow;
-	/// Loads the mapping, primarily used for deserialization.
+	/** 
+	 * 
+	 * Params:
+	 *   x = width of the map.
+	 *   y = height of the map.
+	 *   mapping = an array representing the map.
+	 * Throws: MapFormatException if width and height doesn't represent the map.
+	 */
 	public void loadMapping(int x, int y, MappingElement[] mapping) @safe pure;
 	/// Removes the tile from the display list with the given ID.
 	public void removeTile(wchar id) pure;

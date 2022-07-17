@@ -173,7 +173,7 @@ public enum SampleLoadErrorCode : int {
 /**
  * Defines a workpad for many simple audio codecs
  */
-public struct Workpad {
+public struct DecoderWorkpad {
 	size_t			pos;		///Position of the decoder
 	int				outn1;		///Previous output sample
 	int				pred;		///Predictor for ADPCM

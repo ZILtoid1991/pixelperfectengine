@@ -321,7 +321,7 @@ public class QM816 : AudioModule {
 		FixedPitch		=	1 << 12,	///Enables fixed pitch mode
 		EasyTune		=	1 << 13,	///Enables easy tune mode
 		ContiTune		=	1 << 14,	///Enables continuous tuning through the coarsetune parameter
-		ExprToMW		=	1 << 15,	///
+		ExprToMW		=	1 << 15,	///Switches modwheel to auxilliary control on this operator
 	}
 	/**
 	Implements a single operator.
@@ -621,6 +621,8 @@ public class QM816 : AudioModule {
 	public struct ChControllers {
 		///Modulation wheel parameter, normalized between 0.0 and 1.0
 		float			modwheel	=	0;
+		///Auxilliary controller parameter, normalized between 0.0 and 1.0
+		float			auxCtrl		=	0;
 		///Velocity parameter, normalized between 0.0 and 1.0
 		float			velocity	=	0;
 		///Pitch bend parameter, with the amount of pitch shifting in semitones + fractions
@@ -1016,6 +1018,10 @@ public class QM816 : AudioModule {
 								ccLow[data0.note] = data0.value;
 								chCtrls[data0.channel].modwheel = cast(double)((ccLow[1]<<7) + ccLow[33]) / (ushort.max>>2);
 								break;
+							case 2, 34:
+								ccLow[data0.note] = data0.value;
+								chCtrls[data0.channel].auxCtrl = cast(double)((ccLow[2]<<7) + ccLow[34]) / (ushort.max>>2);
+								break;
 							case 6, 38:			//Data Entry
 								ccLow[data0.note] = data0.value;
 								paramTemp = [0xFF,0xFF,0xFF,0xFF];
@@ -1192,8 +1198,6 @@ public class QM816 : AudioModule {
 						break;
 					case MIDI1_0Cmd.PitchBend:
 						const uint ch = data0.channel;
-						/+const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
-								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);+/
 						chCtrls[ch].pitchBend = channels[ch].preset.pitchBendSens * ((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
 						break;
 					default:
@@ -1203,6 +1207,18 @@ public class QM816 : AudioModule {
 				break;
 			case MessageType.MIDI2:
 				switch (data0.status) {
+					case MIDI2_0Cmd.CtrlChOld:
+						switch (data0.index) {
+							case 1:
+								chCtrls[data0.channel].modwheel = cast(double)data1 / uint.max;
+								break;
+							case 2:
+								chCtrls[data0.channel].auxCtrl = cast(double)data1 / uint.max;
+								break;
+							default:
+								break;
+						}
+						break;
 					case MIDI2_0Cmd.CtrlCh:	//Control change
 						setUnregisteredParam(data1, [data0.index, data0.value], data0.channel);
 						break;
@@ -1235,7 +1251,7 @@ public class QM816 : AudioModule {
 						const uint ch = data0.channel;
 						/+const double pitchBendSens = (channels[ch].preset.pitchBendSens>>25) + 
 								(cast(double)(channels[ch].preset.pitchBendSens & 0x01_FF_FF_FF) / 0x01_FF_FF_FF);+/
-						chCtrls[ch].pitchBend = channels[ch].preset.pitchBendSens * (cast(double)(data0.bend - (uint.max / 2)) / (uint.max / 2));
+						chCtrls[ch].pitchBend = channels[ch].preset.pitchBendSens * ((cast(double)data1 - int.max) / (int.max));
 						break;
 					default:
 						assert(0, "MIDI 2.0 data error!");
@@ -2028,10 +2044,12 @@ public class QM816 : AudioModule {
 					chCtrls[chNum].velocity;
 			opCtrl1[0] = operators[opOffset + 1].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
 					chCtrls[chNum].velocity;
-			opCtrl0[1] = operators[opOffset].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : 
+			opCtrl0[1] = operators[opOffset].preset.opCtrl & OpCtrlFlags.ExprToMW ? chCtrls[chNum].auxCtrl : 
 					chCtrls[chNum].modwheel;
-			opCtrl1[1] = operators[opOffset + 1].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : 
+			opCtrl1[1] = operators[opOffset + 1].preset.opCtrl & OpCtrlFlags.ExprToMW ? chCtrls[chNum].auxCtrl : 
 					chCtrls[chNum].modwheel;
+			opCtrl0[1] = operators[opOffset].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - opCtrl0[1] : opCtrl0[1];
+			opCtrl1[1] = operators[opOffset + 1].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - opCtrl0[1] : opCtrl0[1];
 			mwAuxCtrl[0] = 1.0;
 			mwAuxCtrl[1] = 1.0;
 			mwAuxCtrl[2] = auxSendAmMW;
@@ -2048,10 +2066,12 @@ public class QM816 : AudioModule {
 					chCtrls[chNum].velocity;
 			opCtrl3[0] = operators[opOffset + 17].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
 					chCtrls[chNum].velocity;
-			opCtrl2[1] = operators[opOffset + 16].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : 
+			opCtrl2[1] = operators[opOffset + 16].preset.opCtrl & OpCtrlFlags.ExprToMW ? chCtrls[chNum].auxCtrl : 
 					chCtrls[chNum].modwheel;
-			opCtrl3[1] = operators[opOffset + 17].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - chCtrls[chNum].modwheel : 
+			opCtrl3[1] = operators[opOffset + 17].preset.opCtrl & OpCtrlFlags.ExprToMW ? chCtrls[chNum].auxCtrl : 
 					chCtrls[chNum].modwheel;
+			opCtrl2[1] = operators[opOffset + 16].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - opCtrl0[1] : opCtrl0[1];
+			opCtrl3[1] = operators[opOffset + 17].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - opCtrl0[1] : opCtrl0[1];
 			const float eegpan0 = (channels[chNum + 8].preset.chCtrl & ChCtrlFlags.EEGPan ? 1.0 : 0);
 		};
 	///Macro for channel update constants that need to be calculated for each cycle

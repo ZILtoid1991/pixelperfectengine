@@ -7,6 +7,7 @@ import pixelperfectengine.audio.base.func;
 import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.osc;
 
+import std.math;
 
 import collections.treemap;
 
@@ -29,7 +30,21 @@ It has support for
 The module has 8 sample-based channels with looping capabilities and each has an ADSR envelop, and 4 outputs with a filter.
 */
 public class PCM8 : AudioModule {
-	
+	shared static this () {
+		import std.range : iota;
+		import std.conv : to;
+		//TODO: Make a version to leave this out, otherwise it'll just consume memory for the end user.
+		for (uint i ; i < 128 ; i++) {
+			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x10_00, "Sample"~to!string(i)~"_Select");
+			SAMPLE_SET_VALS ~= MValue(MValueType.Float, i | 0x11_00, "Sample"~to!string(i)~"_SlmpFreq");
+			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x12_00, "Sample"~to!string(i)~"_LoopBegin");
+			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x13_00, "Sample"~to!string(i)~"_LoopEnd");
+		}
+		for (int i ; i < 128 ; i++) {
+			ADSR_TIME_TABLE[i] = pow(i / 64.0, 1.8);
+		}
+	}
+	protected static immutable MValue[] SAMPLE_SET_VALS;
 	public static immutable float[128] ADSR_TIME_TABLE;
 	/**
 	Contains a table to calculate Sustain control values.
@@ -44,7 +59,7 @@ public class PCM8 : AudioModule {
 		12.00, 11.75, 11.50, 11.25, 11.00, 10.75, 10.50, 10.25, 10.00, 9.750, 9.500, 9.250, 9.000, 8.750, 8.500, 8.250,//2
 		8.000, 7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500        //3
 	];
-	alias DecodeFunc = void function(ubyte[] src, int[] dest, ref Workpad wp) @nogc nothrow pure;
+	alias DecodeFunc = void function(ubyte[] src, int[] dest, ref DecoderWorkpad wp) @nogc nothrow pure;
 	/**
 	Defines a single sample.
 	*/
@@ -96,8 +111,11 @@ public class PCM8 : AudioModule {
 		float			velToAuxSendAm = 0;///Assigns velocity to aux send levels
 		float			velToAtkShp = 0;///Assigns velocity to attack shape of envelop generator
 		float			velToRelShp = 0;///Assigns velocity to release shape of envelop generator
-		float			lfoToVol;	///Tremolo level (LFO to volume)
-		float			adsrToVol;	///ADSR amount 
+		float			lfoToVol = 0;	///Tremolo level (LFO to volume)
+		float			adsrToVol = 0;	///ADSR amount 
+
+		float			pitchBendAm = 2;///Pitch bend range
+		float			detuneAm = 0;///Master detune amount
 
 		uint			flags;		///Contains various binary settings
 	}
@@ -118,8 +136,8 @@ public class PCM8 : AudioModule {
 	protected struct Channel {
 		int[257]		decoderBuffer;		///Stores decoded samples.
 		Preset			presetCopy;			///The copy of the preset.
-		Workpad			decoderWorkpad;		///Stores the current state of the decoder.
-		Workpad			savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
+		DecoderWorkpad	decoderWorkpad;		///Stores the current state of the decoder.
+		DecoderWorkpad	savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
 		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
@@ -131,6 +149,8 @@ public class PCM8 : AudioModule {
 		ubyte			presetNum;			///Selected preset.
 		ushort			bankNum;			///Bank select number.
 		uint			status;				///Channel status flags. Bit 1: Note on, Bit 2: Sample run out approaching, Bit 3: In loop
+
+		float			pitchBend;			///Current amount of pitch bend.
 
 		float			velocity;			///Velocity normalized between 0 and 1
 		float			modWheel;			///Modulation wheel normalized between 0 and 1
@@ -177,6 +197,13 @@ public class PCM8 : AudioModule {
 				samplesNeeded -= samplesToDecode;
 			}
 			
+		}
+		void reset() @nogc @safe pure nothrow {
+			outPos = 0;
+			status = 0;
+			decoderWorkpad = DecoderWorkpad.init;
+			savedDWState = DecoderWorkpad.init;
+			waveModWorkpad = WavemodWorkpad.init;
 		}
 	}
 	alias SampleMap = TreeMap!(uint, Sample);
@@ -250,15 +277,36 @@ public class PCM8 : AudioModule {
 		switch (data0.msgType) {
 			case MessageType.MIDI1:
 				if (data0.channel < 8) {
-
+					switch (data0.status) {
+						case MIDI1_0Cmd.PitchBend:
+							channels[data0.channel].pitchBend = channels[data0.channel].presetCopy.pitchBendAm * 
+									((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
+							break;
+						case MIDI1_0Cmd.NoteOn:
+							keyOn(data0.note, data0.channel, data0.value/127.0);
+							break;
+						case MIDI1_0Cmd.NoteOff:
+							keyOff(data0.note, data0.channel, data0.value/127.0);
+							break;
+						default:
+							break;
+					}
 				}
 				break;
 			case MessageType.MIDI2:
 				if (data0.channel < 8) {
 					switch (data0.status) {
+						case MIDI2_0Cmd.PitchBend:
+							channels[data0.channel].pitchBend = channels[data0.channel].presetCopy.pitchBendAm * 
+									((cast(double)data1 - int.max) / (int.max));
+							break;
 						case MIDI2_0Cmd.NoteOn:
+							NoteVals nv = *cast(NoteVals*)&data1;
+							keyOn(data0.note, data0.channel, nv.velocity / ushort.max);
 							break;
 						case MIDI2_0Cmd.NoteOff:
+							NoteVals nv = *cast(NoteVals*)&data1;
+							keyOff(data0.note, data0.channel, nv.velocity / ushort.max);
 							break;
 						default:
 							break;
@@ -269,11 +317,25 @@ public class PCM8 : AudioModule {
 				break;
 		}
 	}
-	protected void keyOn(ubyte note, ubyte ch, float vel, float bend = float.nan) @nogc pure nothrow {
-
+	protected void keyOn(ubyte note, ubyte ch, float vel) @nogc pure nothrow {
+		channels[ch].currNote = note;
+		channels[ch].freqRatio = sampleRate / channels[ch].presetCopy.sampleMapping[note].baseFreq;
+		channels[ch].jumpAm = cast(uint)((1<<24) * (1 / channels[ch].freqRatio));
+		channels[ch].velocity = vel;
+		//reset all on channel
+		channels[ch].reset();
+		//set noteOn status flag
+		channels[ch].status |= ChannelStatusFlags.noteOn;
 	}
-	protected void keyOff(ubyte note, ubyte ch, float vel, float bend = float.nan) @nogc pure nothrow {
-
+	protected void keyOff(ubyte note, ubyte ch, float vel) @nogc pure nothrow {
+		channels[ch].currNote = note;
+		channels[ch].freqRatio = sampleRate / channels[ch].presetCopy.sampleMapping[note].baseFreq;
+		channels[ch].jumpAm = cast(uint)((1<<24) * (1 / channels[ch].freqRatio));
+		channels[ch].velocity = vel;
+		channels[ch].status &= ~ChannelStatusFlags.noteOn;
+	}
+	protected void presetRecall(ubyte ch) @nogc pure nothrow {
+		channels[ch].presetCopy = presetBank[channels[ch].presetNum | (channels[ch].bankNum<<7)];
 	}
 	/** 
 	 * Creates a decoder function.
@@ -285,21 +347,23 @@ public class PCM8 : AudioModule {
 		switch (fmt.format) {		//Hope this branching won't impact performance too much
 			case AudioFormat.PCM:
 				if (fmt.bitsPerSample == 8)
-					return (ubyte[] src, int[] dest, ref Workpad wp) {decode8bitPCM(cast(const(ubyte)[])src, dest, wp);};
+					return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) {decode8bitPCM(cast(const(ubyte)[])src, dest, wp);};
 				else if (fmt.bitsPerSample == 16)
-					return (ubyte[] src, int[] dest, ref Workpad wp) {decode16bitPCM(cast(const(short)[])src, dest, wp);};
+					return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) {decode16bitPCM(cast(const(short)[])src, dest, wp);};
 				return null;
 			case AudioFormat.ADPCM:
-				return (ubyte[] src, int[] dest, ref Workpad wp) {decode4bitIMAADPCM(ADPCMStream(src, src.length/2), dest, wp);};
+				return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) 
+						{decode4bitIMAADPCM(ADPCMStream(src, src.length*2), dest, wp);};
 				
 			case AudioFormat.DIALOGIC_OKI_ADPCM:
-				return (ubyte[] src, int[] dest,ref Workpad wp){decode4bitDialogicADPCM(ADPCMStream(src, src.length/2), dest, wp);};
+				return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) 
+						{decode4bitDialogicADPCM(ADPCMStream(src, src.length*2), dest, wp);};
 				
 			case AudioFormat.MULAW:
-				return (ubyte[] src, int[] dest, ref Workpad wp) {decodeMuLawStream(cast(const(ubyte)[])src, dest, wp);};
+				return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) {decodeMuLawStream(cast(const(ubyte)[])src, dest, wp);};
 				
 			case AudioFormat.ALAW:
-				return (ubyte[] src, int[] dest, ref Workpad wp) {decodeALawStream(cast(const(ubyte)[])src, dest, wp);};
+				return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) {decodeALawStream(cast(const(ubyte)[])src, dest, wp);};
 				
 			default:
 				return null;
@@ -437,7 +501,17 @@ public class PCM8 : AudioModule {
 	 * Returns all the possible parameters this module has.
 	 */
 	public override MValue[] getParameters() nothrow {
-		return null;
+		return [
+			MValue(MValueType.Int32, 0x00_00, "envGenAtk"), MValue(MValueType.Int32, 0x00_01, "envGenDec"),
+			MValue(MValueType.Int32, 0x00_02, "envGenSusC"), MValue(MValueType.Int32, 0x00_03, "envGenDec"),
+			MValue(MValueType.Float, 0x00_04, "envGenAtkShp"), MValue(MValueType.Float, 0x00_05, "envGenDecShp"),
+			MValue(MValueType.Float, 0x00_06, "envGenSusLevel"), MValue(MValueType.Float, 0x00_07, "masterVol"),
+			MValue(MValueType.Float, 0x00_08, "balance"), MValue(MValueType.Float, 0x00_09, "auxSendA"),
+			MValue(MValueType.Float, 0x00_0A, "auxSendB"), MValue(MValueType.Float, 0x00_0B, "velToLevelAm"),
+			MValue(MValueType.Float, 0x00_0C, "velToAuxSendAm"), MValue(MValueType.Float, 0x00_0D, "velToAtkShp"),
+			MValue(MValueType.Float, 0x00_0E, "velToRelShp"), MValue(MValueType.Float, 0x00_0F, "adsrToVol"),
+			MValue(MValueType.Int32, 0x00_10, "flags"),
+		] ~ SAMPLE_SET_VALS.dup;
 	}
 	/** 
 	 * Reads the given value (int).
