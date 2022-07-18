@@ -15,12 +15,23 @@ public interface ITileLayer {
 	/// Retrieves the mapping from the tile layer.
 	/// Can be used to retrieve data, e.g. for editors, saving game states
 	public MappingElement[] getMapping() @nogc @safe pure nothrow;
-	/// Reads the mapping element from the given area.
+	/** 
+	 * Reads the mapping element from the given area, while accounting for warp mode.
+	 * Params:
+	 *  x: x offset of the tile.
+	 *  y: y offset of the tile.
+	 * Returns: The tile at the given point.
+	 */
 	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const;
-	/// Writes the given element into the mapping at the given location.
+	/**
+	 * Writes the given element into the mapping at the given location.
+	 * Params:
+	 *  x: x offset of the tile.
+	 *  y: y offset of the tile.
+	 */
 	public void writeMapping(int x, int y, MappingElement w) @nogc @safe pure nothrow;
 	/** 
-	 * 
+	 * Loads a mapping into the layer.
 	 * Params:
 	 *   x = width of the map.
 	 *   y = height of the map.
@@ -30,7 +41,14 @@ public interface ITileLayer {
 	public void loadMapping(int x, int y, MappingElement[] mapping) @safe pure;
 	/// Removes the tile from the display list with the given ID.
 	public void removeTile(wchar id) pure;
-	/// Returns the tile ID from the location by pixel.
+	/// .
+	/** 
+	 * Reads the mapping element from the given area, while accounting for warp mode.
+	 * Params:
+	 *  x: x offset of the tile.
+	 *  y: y offset of the tile.
+	 * Returns: The tile at the given point.
+	 */
 	public MappingElement tileByPixel(int x, int y) @nogc @safe pure nothrow const;
 	/// Returns the width of the tiles.
 	public int getTileWidth() @nogc @safe pure nothrow const;
@@ -44,9 +62,11 @@ public interface ITileLayer {
 	public size_t getTX() @nogc @safe pure nothrow const;
 	/// Returns the total height of the tile layer.
 	public size_t getTY() @nogc @safe pure nothrow const;
-	/// Adds a tile.
+	/**
+	 *
+	 */
 	public void addTile(ABitmap tile, wchar id, ubyte paletteSh = 0) pure;
-	/// Returns the tile.
+	/// Returns the bitmap associated with the tile ID.
 	public ABitmap getTile(wchar id) @nogc @safe pure nothrow;
 	/// Sets the warp mode.
 	/// Returns the new warp mode that is being used.
