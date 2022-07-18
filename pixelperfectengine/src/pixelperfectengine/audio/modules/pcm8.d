@@ -474,7 +474,71 @@ public class PCM8 : AudioModule {
 	 * Returns an errorcode on failure.
 	 */
 	public override int writeParam_int(uint presetID, uint paramID, int value) nothrow {
-		return 0;
+		Preset* presetPtr = presetBank.ptrOf(paramID);
+		if (presetPtr is null) {
+			presetBank[paramID] = Preset.init;
+			presetPtr = presetBank.ptrOf(paramID);
+		}
+		if (paramID & 0x10_00) {
+			switch (paramID & 0x0F_00) {
+				case 0x00_00:
+					presetPtr.sampleMapping[paramID & 0x7F].sampleNum = value;
+					return 0;
+				case 0x02_00:
+					presetPtr.sampleMapping[paramID & 0x7F].loopBegin = value;
+					return 0;
+				case 0x03_00:
+					presetPtr.sampleMapping[paramID & 0x7F].loopEnd = value;
+					return 0;
+				default:
+					break;
+			}
+		} else {
+			switch (paramID) {
+				case 0x00:
+					presetPtr.eAtk = cast(ubyte)value;
+					return 0;
+				case 0x01:
+					presetPtr.eDec = cast(ubyte)value;
+					return 0;
+				case 0x02:
+					presetPtr.eSusC = cast(ubyte)value;
+					return 0;
+				case 0x03:
+					presetPtr.eRel = cast(ubyte)value;
+					return 0;
+				case 0x10:
+					presetPtr.flags = value;
+					return 0;
+				case 0x00_11:
+					if (value)
+						presetPtr.flags |= PresetFlags.cutoffOnKeyOff;
+					else
+						presetPtr.flags &= ~PresetFlags.cutoffOnKeyOff;
+					return 0;
+				case 0x00_12:
+					if (value)
+						presetPtr.flags |= PresetFlags.modwheelToLFO;
+					else
+						presetPtr.flags &= ~PresetFlags.modwheelToLFO;
+					return 0;
+				case 0x00_13:
+					if (value)
+						presetPtr.flags |= PresetFlags.panningLFO;
+					else
+						presetPtr.flags &= ~PresetFlags.panningLFO;
+					return 0;
+				case 0x00_14:
+					if (value)
+						presetPtr.flags |= PresetFlags.ADSRtoVol;
+					else
+						presetPtr.flags &= ~PresetFlags.ADSRtoVol;
+					return 0;
+				default:
+					break;
+			}
+		}
+		return 1;
 	}
 	/**
 	 * Restores a parameter to the given preset.
@@ -488,7 +552,63 @@ public class PCM8 : AudioModule {
 	 * Returns an errorcode on failure.
 	 */
 	public override int writeParam_double(uint presetID, uint paramID, double value) nothrow {
-		return 0;
+		Preset* presetPtr = presetBank.ptrOf(paramID);
+		if (presetPtr is null) {
+			presetBank[paramID] = Preset.init;
+			presetPtr = presetBank.ptrOf(paramID);
+		}
+		if (paramID & 0x10_00) {
+			switch (paramID & 0x0F_00) {
+				case 0x01_00:
+					presetPtr.sampleMapping[paramID & 0x7F].baseFreq = value;
+					return 0;
+				default:
+					break;
+			}
+		} else {
+			if (value < 0 || value > 1) return 2;
+			switch (paramID) {
+				case 0x00_04:
+					presetPtr.eAtkShp = value;
+					return 0;
+				case 0x00_05:
+					presetPtr.eRelShp = value;
+					return 0;
+				case 0x00_06:
+					presetPtr.eSusLev = value;
+					return 0;
+				case 0x00_07:
+					presetPtr.masterVol = value;
+					return 0;
+				case 0x00_08:
+					presetPtr.balance = value;
+					return 0;
+				case 0x00_09:
+					presetPtr.auxSendA = value;
+					return 0;
+				case 0x00_0A:
+					presetPtr.auxSendB = value;
+					return 0;
+				case 0x00_0B:
+					presetPtr.velToLevelAm = value;
+					return 0;
+				case 0x00_0C:
+					presetPtr.velToAuxSendAm = value;
+					return 0;
+				case 0x00_0D:
+					presetPtr.velToAtkShp = value;
+					return 0;
+				case 0x00_0E:
+					presetPtr.velToRelShp = value;
+					return 0;
+				case 0x00_0F:
+					presetPtr.adsrToVol = value;
+					return 0;
+				default:
+					break;
+			}
+		}
+		return 1;
 	}
 	/**
 	 * Restores a parameter to the given preset.
@@ -511,6 +631,10 @@ public class PCM8 : AudioModule {
 			MValue(MValueType.Float, 0x00_0C, "velToAuxSendAm"), MValue(MValueType.Float, 0x00_0D, "velToAtkShp"),
 			MValue(MValueType.Float, 0x00_0E, "velToRelShp"), MValue(MValueType.Float, 0x00_0F, "adsrToVol"),
 			MValue(MValueType.Int32, 0x00_10, "flags"),
+			MValue(MValueType.Boolean, 0x00_10, "f_cutoffOnKeyOff"),
+			MValue(MValueType.Boolean, 0x00_11, "f_modwheelToLFO"),
+			MValue(MValueType.Boolean, 0x00_12, "f_panningLFO"),
+			MValue(MValueType.Boolean, 0x00_13, "f_ADSRtoVol"),
 		] ~ SAMPLE_SET_VALS.dup;
 	}
 	/** 

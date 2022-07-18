@@ -62,7 +62,7 @@ Modules can be created by condition if needed.
 To load a sample into the module, just simply use:
 
 ```s
-loadSample "drum.wav" 56L dpk="instruments.dpk"
+loadSample "drum.wav" 56 dpk="instruments.dpk"
 ```
 
 Where the first parameter is the filename in string format (can be unicode), the second parameter is the sample ID in 
@@ -90,24 +90,35 @@ Conditional routing can be set if needed.
 To recall preset parameters, just simply use:
 
 ```s
-paramRecall {
-    "level" 81 1.0
-    87923045L 81 0.56
+paramRecall 81 {
+    "level" 1.0
+    87923045L 0.56
     ...
 }
 ```
 
-Where the first parameters in the nameless tags are the parameter identifiers, the seconds are preset identifiers, and
-the third parameters are the values themselves (int, uint, double, and string are allowed). Usually preset identifiers
-work something like this:
+Where the first parameters in the nameless tags are the parameter identifiers, and the second parameters are the values 
+themselves (int, uint, double, and string are allowed). Usually preset identifiers work something like this:
 
 * bits 0-6: preset number
 * bits 7-20: bank number
 
 # Condition codes
 
-The following condition codes exist, alongside with their uses:
+The following condition codes exist:
+* `ifNodeExists`
+* `ifNodeNotExists`
+* `ifHeadphones`
 
-## ifNodeExists
+## Example use
 
-## ifNodeNotExist
+```s
+module "Reverb" ifNodeExists="rearL&rearR" {
+    loadSample "hall.wav" 1
+    loadSample "room.wav" 2
+    route "auxSendB" "inL"
+    route "auxSendB" "inR"
+    route "outL" "rearL"
+    route "outR" "rearR"
+}
+```
