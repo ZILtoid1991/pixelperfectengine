@@ -63,7 +63,14 @@ public interface ITileLayer {
 	/// Returns the total height of the tile layer.
 	public size_t getTY() @nogc @safe pure nothrow const;
 	/**
-	 *
+	 * Adds a new tile to the layer.
+	 * Params: 
+	 *  tile: the bitmap representing the tile. Must be the same size as all the others. Some tilelayers might require
+	 * an exact format of tiles.
+	 *  id: the character ID of the tile represented on the map.
+	 *  paletteSh: palette shift amount, or how many bits are actually used of the bitmap. This enables less than 16 
+	 * or 256 color chunks on the palette to be selected.
+	 * Throws: TileFormatException if size or format is wrong.
 	 */
 	public void addTile(ABitmap tile, wchar id, ubyte paletteSh = 0) pure;
 	/// Returns the bitmap associated with the tile ID.
