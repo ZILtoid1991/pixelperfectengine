@@ -15,10 +15,16 @@ import pixelperfectengine.system.timer;
 import pixelperfectengine.system.rng;
 
 import pixelperfectengine.system.common;
-
+/**
+ * The main entry point. Contains essential calls to initializing and running the program.
+ */
 int main() {
+	//SDL initialization call. Once the library `iota` is mature enough for input/output,
+	//it'll be removed.
 	initialzeSDL();
+	//Initialize our game.
 	SnakeGame game = new SnakeGame();
+	//Run the game.
 	game.whereTheMagicHappens();
 	return 0;
 }
@@ -34,14 +40,17 @@ int main() {
  * * If the player somehow makes the snake to grow so big a new apple cannot be spawned, then the player wins.
  *
  * Design guidelines:
- * * No external assets.
+ * * No much external assets. (except for engine essentials).
  * * Snake tail follows past directions
+ *
+ * Some possible assignments to practice using the engine:
+ * * Use some external assets.
+ * * Add some obstacles.
+ * * Add a second, third, etc. player.
  */
 public class SnakeGame : InputListener, SystemEventListener {
 	/** 
-	 * Used for tracking direction changes in the snake, in the attribute area of tile data.
-	 *
-	 * Tells, where the previous segment is, or was if it's removed.
+	 * Used for direction tracing in the API.
 	 */
 	enum Direction : ubyte {
 		init		=	0,
@@ -445,7 +454,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
 		
 	}
-
+	/// Makes it possible to close the game the `proper` way.
 	public void onQuit() {
 		state = 4;
 	}
