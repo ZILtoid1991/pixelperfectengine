@@ -91,14 +91,35 @@ public interface ISpriteLayer {
 	public void clear() @safe nothrow;
 	///Removes the sprite with the given ID.
 	public void removeSprite(int n) @safe nothrow;
-	///Moves the sprite to the given location.
+	/** 
+	 * Moves the sprite to the exact location.
+	 * Params:
+	 *   n = The identifier of the sprite.
+	 *   x = New x position of the sprite.
+	 *   y = New y position of the sprite.
+	 */
 	public void moveSprite(int n, int x, int y) @safe nothrow;
-	///Relatively moves the sprite by the given values.
+	/** 
+	 * Relatively moves the sprite by the given values.
+	 * Params:
+	 *   n = The identifier of the sprite.
+	 *   x = New x position of the sprite.
+	 *   y = New y position of the sprite.
+	 */
 	public void relMoveSprite(int n, int x, int y) @safe nothrow;
 	///Gets the coordinate of the sprite.
-	public Coordinate getSpriteCoordinate(int n) @nogc @safe nothrow;
-	///Adds a sprite to the layer.
-	public void addSprite(ABitmap s, int n, Coordinate c, ushort paletteSel = 0, int scaleHoriz = 1024, 
+	public Box getSpriteCoordinate(int n) @nogc @safe nothrow;
+	/** 
+	 * Places a new sprite onto the layer with the given parameters.
+	 * Params:
+	 *   s = The bitmap to be displayed as the sprite.
+	 *   n = Priority ID. Lower number (including negatives) get to drawn last, thus appearing on top.
+	 *   c = The box that sets the position of the sprite.
+	 *   paletteSel = 
+	 *   scaleHoriz =
+	 *   scaleVert =
+	 */
+	public void addSprite(ABitmap s, int n, Box c, ushort paletteSel = 0, int scaleHoriz = 1024, 
 			int scaleVert = 1024) @safe nothrow;
 	///Adds a sprite to the layer.
 	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
@@ -110,12 +131,12 @@ public interface ISpriteLayer {
 	///Replaces the sprite and moves to the given position.
 	public void replaceSprite(ABitmap s, int n, int x, int y) @safe nothrow;
 	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(ABitmap s, int n, Coordinate c) @safe nothrow;
+	public void replaceSprite(ABitmap s, int n, Box c) @safe nothrow;
 	///Returns the displayed portion of the sprite.
-	public @nogc Coordinate getSlice(int n) @safe nothrow;
+	public @nogc Box getSlice(int n) @safe nothrow;
 	///Writes the displayed portion of the sprite.
 	///Returns the new slice, if invalid (greater than the bitmap, etc.) returns the old one.
-	public Coordinate setSlice(int n, Coordinate slice) @safe nothrow;
+	public Box setSlice(int n, Box slice) @safe nothrow;
 	///Returns the selected paletteID of the sprite.
 	public @nogc ushort getPaletteID(int n) @safe nothrow;
 	///Sets the paletteID of the sprite. Returns the new ID, which is truncated to the possible values with a simple binary and operation

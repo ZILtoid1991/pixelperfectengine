@@ -83,43 +83,32 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
 			}
 		}
-		/**
-		 * Creates a display list item without palette selector.
-		 */
-		this(Coordinate position, Coordinate slice, ABitmap sprite, int priority, int scaleHoriz = 1024,
-				int scaleVert = 1024) pure @trusted nothrow {
-			if(slice.top < 0)
-				slice.top = 0;
-			if(slice.left < 0)
-				slice.left = 0;
-			if(slice.right >= sprite.width)
-				slice.right = sprite.width - 1;
-			if(slice.bottom >= sprite.height)
-				slice.bottom = sprite.height - 1;
-			this.slice = slice;
-			this(position, sprite, priority, paletteSel, scaleHoriz, scaleVert);
+		this(int x, int y, ABitmap sprite, int pri, ushort paletteSel = 0, ubyte paletteSh = 0, ubyte alpha = ubyte.max, 
+				int scaleHoriz = 1024, int scaleVert = 1024) pure @trusted nothrow {
+			this.width = sprite.width();
+			this.height = sprite.height();
+			this.position = Box.bySize(x, y, width, height);
+			this.priority = priority;
+			this.paletteSel = paletteSel;
+			this.scaleVert = scaleVert;
+			this.scaleHoriz = scaleHoriz;
+			slice = Coordinate(0,0,sprite.width,sprite.height);
+			if (typeid(sprite) is typeid(Bitmap4Bit)) {
+				bmpType = BitmapTypes.Bmp4Bit;
+				this.paletteSh = paletteSh ? paletteSh : 4;
+				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
+			} else if (typeid(sprite) is typeid(Bitmap8Bit)) {
+				bmpType = BitmapTypes.Bmp8Bit;
+				this.paletteSh = paletteSh ? paletteSh : 8;
+				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
+			} else if (typeid(sprite) is typeid(Bitmap16Bit)) {
+				bmpType = BitmapTypes.Bmp16Bit;
+				pixelData = (cast(Bitmap16Bit)(sprite)).getPtr;
+			} else if (typeid(sprite) is typeid(Bitmap32Bit)) {
+				bmpType = BitmapTypes.Bmp32Bit;
+				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
+			}
 		}
-		/+
-		/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
-		@property ubyte paletteSh() @safe @nogc pure nothrow const {
-			return cast(ubyte)flags & PALETTESH_MASK;
-		}
-		/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
-		@property ubyte paletteSh(ubyte val) @safe @nogc pure nothrow {
-			flags &= ~PALETTESH_MASK;
-			flags |= val;
-			return cast(ubyte)flags & PALETTESH_MASK;
-		}
-		/// Defines the type of bitmap the sprite is using. This method is much faster and simpler than checking the class type of the bitmap.
-		@property BitmapTypes bmpType() @safe @nogc pure nothrow const {
-			return cast(BitmapTypes)((flags & BMPTYPE_MASK) >>> 4);
-		}
-		/// Defines the type of bitmap the sprite is using. This method is much faster and simpler than checking the class type of the bitmap.
-		@property BitmapTypes bmpType(BitmapTypes val) @safe @nogc pure nothrow {
-			flags &= ~BMPTYPE_MASK;
-			flags |= cast(ubyte)val << 4;
-			return bmpType;
-		}+/
 		/**
 		 * Resets the slice to its original position.
 		 */
@@ -264,6 +253,20 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Palette must exist in the parent Raster, otherwise AccessError might happen
 	public ushort setPaletteID(int n, ushort paletteID) @nogc pure @safe nothrow {
 		return getDisplayListItem_internal(n).paletteSel = paletteID;
+	}
+
+	public Box addSprite(ABitmap sprt, int n, int x, int y, ushort paletteSel = 0, ubyte paletteSh = 0, 
+			ubyte alpha = ubyte.max, int scaleHoriz = 1024, int scaleVert = 1024, RenderingMode renderMode = RenderingMode.init) 
+			@safe nothrow {
+		DisplayListItem d = DisplayListItem(x, y, sprt, n, paletteSel, paletteSh, alpha, scaleHoriz, scaleVert);
+		if (renderMode == RenderingMode.init)
+			d.renderFunc = mainRenderingFunction;
+		else
+			d.renderFunc = getRenderingFunc(renderMode);
+		synchronized
+			allSprites[n] = d;
+		checkSprite(d);
+		return allSprites[n].position;
 	}
 	/**
 	 * Adds a sprite to the layer.
