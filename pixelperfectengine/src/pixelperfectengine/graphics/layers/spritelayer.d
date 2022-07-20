@@ -83,16 +83,30 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
 			}
 		}
+		/** 
+		 * Creates a display list item according to the newer architecture.
+		 * Params:
+		 *   x = X position of the sprite.
+		 *   y = Y position of the sprite.
+		 *   sprite = The bitmap to be used as the sprite.
+		 *   pri = Priority identifier.
+		 *   paletteSel = Selects a given palette.
+		 *   paletteSh = Determines how many bits are being used.
+		 *   alpha = The transparency of the sprite.
+		 *   scaleHoriz = Horizontal scaling of the sprite. 1024 is the base value, anything less will stretch, greater will shrink the sprite.
+		 *   scaleVert = Ditto for vertical.
+		 */
 		this(int x, int y, ABitmap sprite, int pri, ushort paletteSel = 0, ubyte paletteSh = 0, ubyte alpha = ubyte.max, 
 				int scaleHoriz = 1024, int scaleVert = 1024) pure @trusted nothrow {
 			this.width = sprite.width();
 			this.height = sprite.height();
-			this.position = Box.bySize(x, y, width, height);
+			this.position = Box.bySize(x, y, cast(int)scaleNearestLength(width, scaleHoriz), 
+					cast(int)scaleNearestLength(height, scaleVert));
 			this.priority = priority;
 			this.paletteSel = paletteSel;
 			this.scaleVert = scaleVert;
 			this.scaleHoriz = scaleHoriz;
-			slice = Coordinate(0,0,sprite.width,sprite.height);
+			slice = Box(0,0,sprite.width,sprite.height);
 			if (typeid(sprite) is typeid(Bitmap4Bit)) {
 				bmpType = BitmapTypes.Bmp4Bit;
 				this.paletteSh = paletteSh ? paletteSh : 4;
@@ -254,7 +268,23 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public ushort setPaletteID(int n, ushort paletteID) @nogc pure @safe nothrow {
 		return getDisplayListItem_internal(n).paletteSel = paletteID;
 	}
-
+	/** 
+	 * Creates a sprite from a bitmap with the given data, then places it to the display list.
+	 * Params:
+	 *   sprt = The bitmap to be used as the sprite.
+	 *   n = Priority ID of the sprite. Both identifies the sprite and decides it's display priority. Larger numbers will be drawn first, 
+	 * and thus will appear behind of smaller numbers, which also include negatives.
+	 *   x = X position of the sprite (top-left corner).
+	 *   y = Y position of the sprite (top-left corner).
+	 *   paletteSel = Selects a given palette.
+	 *   paletteSh = Determines how many bits are being used, and thus the palette size for selection.
+	 *   alpha = The transparency of the sprite.
+	 *   scaleHoriz = Horizontal scaling of the sprite. 1024 is the base value, anything less will stretch, greater will shrink the sprite.
+	 *   scaleVert = Ditto for vertical.
+	 *   renderMode = Determines the rendering mode of the sprite. By default, it's determined by the layer itself. Any of the default 
+	 * other methods can be selected here, or a specially written rendering function can be specified with a different function.
+	 * Returns: The current area of the sprite.
+	 */
 	public Box addSprite(ABitmap sprt, int n, int x, int y, ushort paletteSel = 0, ubyte paletteSh = 0, 
 			ubyte alpha = ubyte.max, int scaleHoriz = 1024, int scaleVert = 1024, RenderingMode renderMode = RenderingMode.init) 
 			@safe nothrow {
