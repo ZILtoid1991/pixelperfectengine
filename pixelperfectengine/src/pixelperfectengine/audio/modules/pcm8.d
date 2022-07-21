@@ -645,6 +645,43 @@ public class PCM8 : AudioModule {
 	 * Returns: The value of the given preset and parameter
 	 */
 	public override int readParam_int(uint presetID, uint paramID) nothrow {
+		Preset* presetPtr = presetBank.ptrOf(paramID);
+		if (presetPtr is null) return 0;
+		if (paramID & 0x10_00) {
+			switch (paramID & 0x0F_00) {
+				case 0x00_00:
+					return presetPtr.sampleMapping[paramID & 0x7F].sampleNum;
+				case 0x02_00:
+					return presetPtr.sampleMapping[paramID & 0x7F].loopBegin;
+				case 0x03_00:
+					return presetPtr.sampleMapping[paramID & 0x7F].loopEnd;
+				default:
+					break;
+			}
+		} else {
+			switch (paramID) {
+				case 0x00:
+					return presetPtr.eAtk;
+				case 0x01:
+					return presetPtr.eDec;
+				case 0x02:
+					return presetPtr.eSusC;
+				case 0x03:
+					return presetPtr.eRel;
+				case 0x10:
+					return presetPtr.flags;
+				case 0x00_11:
+					return presetPtr.flags & PresetFlags.cutoffOnKeyOff ? 1 : 0;
+				case 0x00_12:
+					return presetPtr.flags & PresetFlags.modwheelToLFO ? 1 : 0;
+				case 0x00_13:
+					return presetPtr.flags & PresetFlags.panningLFO ? 1 : 0;
+				case 0x00_14:
+					return presetPtr.flags |= PresetFlags.ADSRtoVol ? 1 : 0;
+				default:
+					break;
+			}
+		}
 		return 0;
 	}
 	/** 
@@ -665,7 +702,46 @@ public class PCM8 : AudioModule {
 	 * Returns: The value of the given preset and parameter
 	 */
 	public override double readParam_double(uint presetID, uint paramID) nothrow {
-		return 0;
+		Preset* presetPtr = presetBank.ptrOf(paramID);
+		if (presetPtr is null) return double.nan;
+		if (paramID & 0x10_00) {
+			switch (paramID & 0x0F_00) {
+				case 0x01_00:
+					return presetPtr.sampleMapping[paramID & 0x7F].baseFreq;
+				default:
+					break;
+			}
+		} else {
+			switch (paramID) {
+				case 0x00_04:
+					return presetPtr.eAtkShp;
+				case 0x00_05:
+					return presetPtr.eRelShp;
+				case 0x00_06:
+					return presetPtr.eSusLev;
+				case 0x00_07:
+					return presetPtr.masterVol;
+				case 0x00_08:
+					return presetPtr.balance;
+				case 0x00_09:
+					return presetPtr.auxSendA;
+				case 0x00_0A:
+					return presetPtr.auxSendB;
+				case 0x00_0B:
+					return presetPtr.velToLevelAm;
+				case 0x00_0C:
+					return presetPtr.velToAuxSendAm;
+				case 0x00_0D:
+					return presetPtr.velToAtkShp;
+				case 0x00_0E:
+					return presetPtr.velToRelShp;
+				case 0x00_0F:
+					return presetPtr.adsrToVol;
+				default:
+					break;
+			}
+		}
+		return double.nan;
 	}
 	/** 
 	 * Reads the given value (int).

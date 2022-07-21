@@ -259,14 +259,13 @@ public class ModuleManager {
 	}
 	
 	/**
-	 * 
+	 * Runs the audio thread and starts the audio output.
 	 */
 	public int runAudioThread() @nogc nothrow {
 		return outStrm.runAudioThread();
 	}
 	/**
 	 * Stops all audio output.
-	 * 
 	 */
 	public int suspendAudioThread() {
 		return outStrm.suspendAudioThread();

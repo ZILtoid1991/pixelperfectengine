@@ -33,6 +33,11 @@ a method that is very CPU cache bound.
 
 * The CoarseTimer's callback delegate now can be throwing, and passes a Duration called `jitter` that can be used to
 correct jitter errors.
+* SpriteLayer: New architecture for adding sprites added, all layer features are now exposed.
+
+## Bug fixes
+
+* SpriteLayer: When adding a scaled sprite to the layer, it didn't set the correct size. Now it does.
 
 # 0.10.0-beta6
 

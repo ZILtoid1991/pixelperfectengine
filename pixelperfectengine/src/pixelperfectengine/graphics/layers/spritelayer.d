@@ -237,12 +237,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 * Searches the DisplayListItem by priority and returns it.
 	 * Intended for internal use, as it returns it as a reference value.
 	 */
-	protected DisplayListItem* getDisplayListItem_internal(int n) @nogc pure @safe nothrow {
+	protected final DisplayListItem* getDisplayListItem_internal(int n) @nogc pure @safe nothrow {
 		return allSprites.ptrOf(n);
 	}
-	override public void setRasterizer(int rX,int rY) {
+	/+override public void setRasterizer(int rX,int rY) {
 		super.setRasterizer(rX,rY);
-	}
+	}+/
 	///Returns the displayed portion of the sprite.
 	public Coordinate getSlice(int n) @nogc pure @safe nothrow {
 		return getDisplayListItem(n).slice;
@@ -261,7 +261,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	}
 	///Returns the selected paletteID of the sprite.
 	public ushort getPaletteID(int n) @nogc pure @safe nothrow {
-		return getDisplayListItem(n).paletteSel;
+		return allSprites[n].paletteSel;
 	}
 	///Sets the paletteID of the sprite. Returns the new ID, which is truncated to the possible values with a simple binary and operation
 	///Palette must exist in the parent Raster, otherwise AccessError might happen
@@ -269,7 +269,35 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		return getDisplayListItem_internal(n).paletteSel = paletteID;
 	}
 	/** 
-	 * Creates a sprite from a bitmap with the given data, then places it to the display list.
+	 * Returns the sprite rendering function.
+	 * Params:
+	 *   n = Sprite priority ID.
+	 */
+	public RenderFunc getSpriteRenderingFunc(int n) @nogc @safe pure nothrow {
+		return allSprites[n].renderFunc;
+	}
+	/** 
+	 * Sets the sprite's rendering function from a predefined ones.
+	 * Params:
+	 *   n = Sprite priority ID.
+	 *   mode = The rendering mode. (init for layer default)
+	 * Returns: The new rendering function.
+	 */
+	public RenderFunc setSpriteRenderingMode(int n, RenderingMode mode) @nogc @safe pure nothrow {
+		return allSprites.ptrOf(n).renderFunc = mode == RenderingMode.init ? mainRenderingFunction : getRenderingFunc(mode);
+	}
+	/** 
+	 * Sets the sprite's rendering function. Can be a custom one.
+	 * Params:
+	 *   n = Sprite priority ID.
+	 *   mode = The rendering mode. (init for layer default)
+	 * Returns: The new rendering function.
+	 */
+	public RenderFunc setSpriteRenderingFunc(int n, RenderFunc func) @nogc @safe pure nothrow {
+		return allSprites.ptrOf(n).renderFunc = func;
+	}
+	/** 
+	 * Creates a sprite from a bitmap with the given data, then places it to the display list. (New architecture)
 	 * Params:
 	 *   sprt = The bitmap to be used as the sprite.
 	 *   n = Priority ID of the sprite. Both identifies the sprite and decides it's display priority. Larger numbers will be drawn first, 
@@ -312,7 +340,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Ditto
 	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
 				int scaleVert = 1024) @safe nothrow {
-		DisplayListItem d = DisplayListItem(Box(x, y, x + s.width - 1, y + s.height - 1), s, n, paletteSel, scaleHoriz, 
+		DisplayListItem d = DisplayListItem(Box.bySize(x, y, cast(int)scaleNearestLength(s.width, scaleHoriz), 
+					cast(int)scaleNearestLength(s.height, scaleVert)), s, n, paletteSel, scaleHoriz, 
 				scaleVert);
 		d.renderFunc = mainRenderingFunction;
 		synchronized

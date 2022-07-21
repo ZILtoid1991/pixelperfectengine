@@ -52,7 +52,7 @@ Nodes can be created conditionally, see condition codes chapter.
 The `Module` root tag contains module configuration information, including preset data and routing.
 
 ```s
-Module "QM816" {...}
+Module "QM816" "fmsynth" {...}
 ```
 
 Modules can be created by condition if needed.
@@ -109,6 +109,9 @@ The following condition codes exist:
 * `ifNodeExists`
 * `ifNodeNotExists`
 * `ifHeadphones`
+* `ifSampleRate`
+* `ifSampleRateMin`
+* `ifSampleRateMax`
 
 ## Example use
 
