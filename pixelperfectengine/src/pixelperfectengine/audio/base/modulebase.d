@@ -91,8 +91,6 @@ public abstract class AudioModule {
 	 * id: The ID of the waveform.
 	 * rawData: The data itself, in unprocessed form.
 	 * format: The format of the wave data, including the data type, bit depth, base sampling rate
-	 *
-	 * Note: This function needs the audio system to be unlocked.
 	 */
 	public abstract int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow;
 	/**

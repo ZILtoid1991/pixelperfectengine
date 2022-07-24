@@ -33,8 +33,7 @@ public class PCM8 : AudioModule {
 	shared static this () {
 		import std.range : iota;
 		import std.conv : to;
-		//TODO: Make a version to leave this out, otherwise it'll just consume memory for the end user.
-		for (uint i ; i < 128 ; i++) {
+		for (uint i ; i < 128 ; i++) {		//TODO: Make a version to leave this out, otherwise it'll just consume memory for the end user.
 			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x10_00, "Sample"~to!string(i)~"_Select");
 			SAMPLE_SET_VALS ~= MValue(MValueType.Float, i | 0x11_00, "Sample"~to!string(i)~"_SlmpFreq");
 			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x12_00, "Sample"~to!string(i)~"_LoopBegin");
@@ -125,6 +124,14 @@ public class PCM8 : AudioModule {
 		panningLFO			=	1<<2,		///Sets amplitude LFO to panning on this channel
 		ADSRtoVol			=	1<<3,		///If set, then envGen will control the volume
 	}
+	protected enum LFOFlags {
+		saw					=	1<<0,
+		triangle			=	1<<1,
+		pulse				=	1<<2,
+		sawpulse			=	1<<3,
+		invert				=	1<<4,
+		ringmod				=	1<<5
+	}
 	protected enum ChannelStatusFlags {
 		noteOn				=	1<<0,
 		sampleRunout		=	1<<1,
@@ -211,8 +218,11 @@ public class PCM8 : AudioModule {
 	protected SampleMap		sampleBank;			///Stores all current samples.
 	protected PresetMap		presetBank;			///Stores all current presets. (bits: 0-6: preset number, 7-13: bank lsb, 14-20: bank msb)
 	protected Channel[8]	channels;			///Channel status data.
-	protected Oscillator	lfo;				///Low frequency oscillator to modify values in real-time
+	protected MultiTapOsc	lfo;				///Low frequency oscillator to modify values in real-time
 	protected float[]		lfoOut;				///LFO output buffer
+	protected uint			lfoFlags;			///LFO state flags
+	protected float			lfoFreq;			///LFO frequency
+	protected float			lfoPWM;				///LFO pulse width modulation
 	protected float[]		dummyBuf;			///Dummy buffer if one or more output aren't used
 	protected int[]			iBuf;				///Integer output buffers
 	protected __m128[]		lBuf;				///Local output buffer
@@ -232,6 +242,7 @@ public class PCM8 : AudioModule {
 		info.hasMidiIn = true;
 		info.hasMidiOut = true;
 		info.midiSendback = true;
+		lfo = MultiTapOsc.init;
 	}
 	/**
 	 * Sets the module up.
@@ -333,6 +344,20 @@ public class PCM8 : AudioModule {
 		channels[ch].jumpAm = cast(uint)((1<<24) * (1 / channels[ch].freqRatio));
 		channels[ch].velocity = vel;
 		channels[ch].status &= ~ChannelStatusFlags.noteOn;
+	}
+	protected void resetLFO() @nogc @safe pure nothrow {
+		const int divident = ((lfoFlags>>3) & 1) + ((lfoFlags>>2) & 1) + ((lfoFlags>>1) & 1) + (lfoFlags & 1);
+		const short value = cast(short)(short.max / divident * (lfoFlags & LFOFlags.invert ? -1 : 1));
+		if (lfoFlags & LFOFlags.pulse)
+			lfo.pulseAm = value;
+		if (lfoFlags & LFOFlags.saw)
+			lfo.sawAm = value;
+		if (lfoFlags & LFOFlags.sawpulse)
+			lfo.sawPulseAm = value;
+		if (lfoFlags & LFOFlags.triangle)
+			lfo.triAm = value;
+		lfo.pulseWidth = cast(uint)(lfoPWM * uint.max);
+		lfo.setRate(sampleRate, lfoFreq);
 	}
 	protected void presetRecall(ubyte ch) @nogc pure nothrow {
 		channels[ch].presetCopy = presetBank[channels[ch].presetNum | (channels[ch].bankNum<<7)];
@@ -453,8 +478,6 @@ public class PCM8 : AudioModule {
 	 * id: The ID of the waveform.
 	 * rawData: The data itself, in unprocessed form.
 	 * format: The format of the wave data, including the data type, bit depth, base sampling rate
-	 *
-	 * Note: This function needs the audio system to be unlocked.
 	 */
 	public override int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow {
 		int result;
@@ -489,6 +512,47 @@ public class PCM8 : AudioModule {
 					return 0;
 				case 0x03_00:
 					presetPtr.sampleMapping[paramID & 0x7F].loopEnd = value;
+					return 0;
+				default:
+					break;
+			}
+		} else if (paramID & 0x80_00) {
+			switch (paramID) {
+				case 0x80_09:
+					if (value)
+						lfoFlags |= LFOFlags.saw;
+					else
+						lfoFlags ^= LFOFlags.saw;
+					return 0;
+				case 0x80_0a:
+					if (value)
+						lfoFlags |= LFOFlags.triangle;
+					else
+						lfoFlags ^= LFOFlags.triangle;
+					return 0;
+				case 0x80_0b:
+					if (value)
+						lfoFlags |= LFOFlags.pulse;
+					else
+						lfoFlags ^= LFOFlags.pulse;
+					return 0;
+				case 0x80_0c:
+					if (value)
+						lfoFlags |= LFOFlags.sawpulse;
+					else
+						lfoFlags ^= LFOFlags.sawpulse;
+					return 0;
+				case 0x80_0d:
+					if (value)
+						lfoFlags |= LFOFlags.invert;
+					else
+						lfoFlags ^= LFOFlags.invert;
+					return 0;
+				case 0x80_0f:
+					if (value)
+						lfoFlags |= LFOFlags.ringmod;
+					else
+						lfoFlags ^= LFOFlags.ringmod;
 					return 0;
 				default:
 					break;
@@ -565,6 +629,8 @@ public class PCM8 : AudioModule {
 				default:
 					break;
 			}
+		} else if (paramID & 0x80_00) {
+
 		} else {
 			if (value < 0 || value > 1) return 2;
 			switch (paramID) {
@@ -635,7 +701,16 @@ public class PCM8 : AudioModule {
 			MValue(MValueType.Boolean, 0x00_11, "f_modwheelToLFO"),
 			MValue(MValueType.Boolean, 0x00_12, "f_panningLFO"),
 			MValue(MValueType.Boolean, 0x00_13, "f_ADSRtoVol"),
-		] ~ SAMPLE_SET_VALS.dup;
+		] ~ SAMPLE_SET_VALS.dup ~ [
+			MValue(MValueType.Float, 0x80_00, `_FilterLCFreq`), MValue(MValueType.Float, 0x80_01, `_FilterLCQ`),
+			MValue(MValueType.Float, 0x80_02, `_FilterRCFreq`), MValue(MValueType.Float, 0x80_03, `_FilterRCQ`),
+			MValue(MValueType.Float, 0x80_04, `_FilterACFreq`), MValue(MValueType.Float, 0x80_05, `_FilterACQ`),
+			MValue(MValueType.Float, 0x80_06, `_FilterBCFreq`), MValue(MValueType.Float, 0x80_07, `_FilterBCQ`),
+			MValue(MValueType.Float, 0x80_08, "_LFOFreq"), MValue(MValueType.Boolean, 0x80_09, "_LFOSaw"),
+			MValue(MValueType.Boolean, 0x80_0a, "_LFOTri"), MValue(MValueType.Boolean, 0x80_0b, "_LFOPul"), 
+			MValue(MValueType.Boolean, 0x80_0c, "_LFOSawPul"), MValue(MValueType.Boolean, 0x80_0d, "_LFOInv"),
+			MValue(MValueType.Float, 0x80_0e, "_LFOPWM"), MValue(MValueType.Boolean, 0x80_0f, "_LFORingmod")
+		];
 	}
 	/** 
 	 * Reads the given value (int).
@@ -658,6 +733,8 @@ public class PCM8 : AudioModule {
 				default:
 					break;
 			}
+		} else if (paramID & 0x80_00) {
+
 		} else {
 			switch (paramID) {
 				case 0x00:
@@ -711,6 +788,8 @@ public class PCM8 : AudioModule {
 				default:
 					break;
 			}
+		} else if (paramID & 0x80_00) {
+
 		} else {
 			switch (paramID) {
 				case 0x00_04:

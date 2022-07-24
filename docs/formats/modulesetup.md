@@ -62,14 +62,14 @@ Modules can be created by condition if needed.
 To load a sample into the module, just simply use:
 
 ```s
-loadSample "drum.wav" 56 dpk="instruments.dpk"
+loadSample "drum.wav" 56 dpk="../audio/instruments.dpk"
 ```
 
 Where the first parameter is the filename in string format (can be unicode), the second parameter is the sample ID in 
 unsigned 32 bit integer format, and the `dpk` optional attribute tells if the file is in a datapak file and where it
 can be found.
 
-## Routing setup
+## Audio routing setup
 
 Every input or output can be only routed to one node, but a single node can be read or be written by multiple modules.
 
@@ -85,12 +85,23 @@ Where the first string is the source, and the second one is the destination.
 
 Conditional routing can be set if needed.
 
+## MIDI track routing
+
+Especially due to the lack of implemented MIDI 2.0 file formats, multiple-track MIDI files must be used, and we must 
+tell the program how to route the sequencer.
+
+```s
+midiTrack 0
+midiTrack 1
+...
+```
+
 ## Preset recall
 
 To recall preset parameters, just simply use:
 
 ```s
-paramRecall 81 {
+paramRecall 81 name="something" {
     "level" 1.0
     87923045L 0.56
     ...
@@ -98,10 +109,12 @@ paramRecall 81 {
 ```
 
 Where the first parameters in the nameless tags are the parameter identifiers, and the second parameters are the values 
-themselves (int, uint, double, and string are allowed). Usually preset identifiers work something like this:
+themselves (int, long, bool, double, and string are allowed). Usually preset identifiers work something like this:
 
 * bits 0-6: preset number
 * bits 7-20: bank number
+
+PResets can be named if one chooses so.
 
 # Condition codes
 
@@ -117,8 +130,10 @@ The following condition codes exist:
 
 ```s
 module "Reverb" ifNodeExists="rearL&rearR" {
-    loadSample "hall.wav" 1
-    loadSample "room.wav" 2
+    loadSample "hall44.wav" 1 ifSampleRate=44100
+    loadSample "room44.wav" 2 ifSampleRate=44100
+    loadSample "hall48.wav" 1 ifSampleRate=48000
+    loadSample "room48.wav" 2 ifSampleRate=48000
     route "auxSendB" "inL"
     route "auxSendB" "inR"
     route "outL" "rearL"

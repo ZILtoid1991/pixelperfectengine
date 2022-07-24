@@ -1,112 +1,59 @@
 module pixelperfectengine.audio.base.osc;
 
 import pixelperfectengine.system.etc : clamp;
-/** 
- * Implements an oscillator base.
- */
-public abstract class Oscillator {
-	protected float		_frequency;		///The current frequency of the oscillator
-	protected int		_slmpFreq;		///Sampling frequency of the output
-	/** 
-	 * Returns the sampling frequency set in this oscillator.
-	 */
-	public int slmpFreq() @nogc @safe pure nothrow const {
-		return _slmpFreq;
-	}
-	/** 
-	 * Sets the sampling frequency of the oscillator.
-	 * In devived classes, this might also change the internal state of the oscillator.
-	 */
-	public int slmpFreq(int val) @nogc @safe pure nothrow {
-		return _slmpFreq = val;
-	}
-	/** 
-	 * Returns the current output frequency of the oscillator.
-	 */
-	public float frequency() @nogc @safe pure nothrow const {
-		return _frequency;
-	}
-	/**
-	 * Sets the new frequency of the oscillator.
-	 * In devived classes, this might also change the internal state of the oscillator.
-	 */
-	public float frequency(float val) @nogc @safe pure nothrow {
-		return _frequency = val;
-	}
 
-	/**
-	 * Generates an output based on the oscillator's internal states.
-	 */
-	public abstract void generate(float[] output) @nogc pure nothrow;
-}
 /** 
- * Generates a pulse signal. If set to 0.5, the output will be a perfect square wave.
+ * An oscillator that generates multiple waveform outputs from a single counter, and allows the mixing of them.
+ * Available waveforms:
+ * * sawtooth: The basic output of the counter.
+ * * triangle: Produced from the counter by using the top-bit of the counter to invert the next 16 bits.
+ * * pulse: Produced from the counter with a simple logic of testing the counter against the `pulseWidth` variable.
+ * * sawpulse: Sawtooth and pulse logically AND-ed together
+ * The amounts can be set to minus, this way the output will be inverted.
  */
-public class PulseGen : Oscillator {
-	protected float			stepRate = 1;
-	protected float			position = 0;
-	public float			pulseWidth = 0.5;
-	public this(int _slmpFreq, float _frequency, float pulseWidth) {
-		this._slmpFreq = _slmpFreq;
-		frequency = _frequency;
-		this.pulseWidth = pulseWidth;
-	}
-	public override float frequency(float val) {
-		_frequency = val;
-		stepRate = (1 / _frequency) / _slmpFreq;
-		return _frequency;
-	}
-	public override int slmpFreq(int val) @nogc @safe pure nothrow {
-		_slmpFreq = val;
-		stepRate = (1 / _frequency) / _slmpFreq;
-		return _slmpFreq;
-	}
-	/**
-	 * Generates an output based on the oscillator's internal states.
+public struct MultiTapOsc {
+	///The rate of which the oscillator operates at
+	protected uint		rate;
+	///Current state of the oscillator
+	protected uint		counter;
+	///Controls the pulse width of the oscillator
+	public uint			pulseWidth;
+	///Controls the amount of the sawtooth wave (minus means inverting)
+	public short		sawAm;
+	///Controls the amount of the triangle wave (minus means inverting)
+	public short		triAm;
+	///Controls the amount of the pulse wave (minus means inverting)
+	public short		pulseAm;
+	///Controls the amount of the sawpulse wave (minus means inverting)
+	public short		sawPulseAm;
+	/** 
+	 * Returns the integer output of the oscillator.
 	 */
-	public override void generate(float[] output) @nogc pure nothrow {
-		for (size_t i ; i < output.length ; i++) {
-			output[i] = position > pulseWidth ? -1 : 1;
-			position += stepRate;
-			position = position >= 1 ? 0 : position;
-		}
+	int outputI() @nogc @safe pure nothrow {
+		const int pulseOut = (counter >= pulseWidth ? ushort.max : ushort.min);
+		const int sawOut = (counter >> 16);
+		const int triOut = (counter >> 15 ^ (sawOut & 0x80_00 ? ushort.max : ushort.min) & ushort.max);
+		counter += rate;
+		return (((pulseOut + short.min) * pulseAm)>>15) + (((sawOut + short.min) * pulseAm)>>15) + 
+				(((triOut + short.min) * triAm)>>15) + ((((sawOut & pulseOut) + short.min) * sawPulseAm)>>15);
 	}
-}
-/** 
- * Generates a variable triangle signal. If shape is set to 0.5, a regular triangle wave will be generated. 0 and 1 
- * will generate regular saw waves. Any inbetween values generate asymmetric triangle waves.
- */
-public class TriangleGen : Oscillator {
-	protected float			stepRate = 1;
-	protected float			position = 0;
-	protected float			slopeUp = 2;
-	protected float			slopeDown = -2;
-	protected float			state = 0;
-	public float			shape = 0.5;
-	public this(int _slmpFreq, float _frequency, float shape) {
-		this._slmpFreq = _slmpFreq;
-		frequency = _frequency;
-		this.shape = shape;
-		recalc();
+	/** 
+	 * Returns the floating point output of the oscillator
+	 * Params:
+	 *   bias = Offset of the output.
+	 *   invDiv = Inverse divident to convert to a floating-point scale. Equals with 1/divident.
+	 */
+	double outputF(double bias, double invDiv) @nogc @safe pure nothrow {
+		return (outputI() * invDiv) + bias;
 	}
-	protected final void recalc() @nogc @safe pure nothrow {
-		stepRate = (1 / _frequency) / _slmpFreq;
-		slopeUp = stepRate * 2 * shape;
-		slopeDown = stepRate * -2 * (1 - shape);
-	}
-	public override float frequency(float val) {
-		_frequency = val;
-		stepRate = (1 / val) / _slmpFreq;
-		recalc();
-		return _frequency;
-	}
-	public override void generate(float[] output) @nogc pure nothrow {
-		for (size_t i ; i < output.length ; i++) {
-			state += position > shape ? slopeDown : slopeUp;
-			clamp(state, -1, 1);
-			output[i] = state;
-			position += stepRate;
-			position = position >= 1 ? 0 : position;
-		}
+	/** 
+	 * Sets the rate of the oscillator
+	 * Params:
+	 *   sampleRate = The current sampling frequency.
+	 *   freq = The frequency to set the oscillator.
+	 */
+	void setRate(int sampleRate, double freq) @nogc @safe pure nothrow {
+		double rateD = freq / (sampleRate / cast(double)(1<<16));
+		rate = cast(uint)(cast(double)(1<<16) * rateD);
 	}
 }
