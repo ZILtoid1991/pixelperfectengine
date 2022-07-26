@@ -403,7 +403,9 @@ public class PCM8 : AudioModule {
 	 * NOTE: Buffers must have matching sizes.
 	 */
 	public override void renderFrame(float*[] input, float*[] output) @nogc nothrow {
-		
+		for (int i ; i < bufferSize ; i++) {
+			lfoOut[i] = lfo.outputF(0.5, 1.0 / ushort.max);
+		}
 		for (int i ; i < 8 ; i++) {
 			if (channels[i].currNote == 255) continue;
 			//get the data for the sample

@@ -56,4 +56,7 @@ public struct MultiTapOsc {
 		double rateD = freq / (sampleRate / cast(double)(1<<16));
 		rate = cast(uint)(cast(double)(1<<16) * rateD);
 	}
+	void reset() @nogc @safe pure nothrow {
+		counter = 0;
+	}
 }

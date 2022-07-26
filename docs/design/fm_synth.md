@@ -301,7 +301,8 @@ The synth shares two LFOs (tremolo and vibrato) and four filters between channel
 
 ## General differences from other phase modulation-based synthesis engines
 
-* Use of linear sinewaves. Math of Yamaha's logarithmic sine waves are complicated enough to drag the project on too long, and otherwise regular sine waves can do the job just fine, with some sonic differences.
+* Use of linear sinewaves. Some chips, like the OPL-series instead used a prelogarithmized sine wave in ROM, alongside with an exponential table, to avoid the use of multipliers. Meaning that the OPL series can get pretty close to other FM chips, and the main limitations come from the lack of a more-adjustable sustain curve and lack of algorithms, it's not a mig deal.
 * Use of both user- and pre-defined wavetables.
 * All operators have feedback capabilities, for both to have more tonal capabilities and to ease the confusions around algorithms where the main difference is different operators having the feedback loop.
 * Almost all algorithms have one "channel feedback" instead of often having to choose between a single operator or channel feedback.
+* In theory, the synth can emulate the resonant waveforms of the Casio CZ series, either by loading them as custom waveforms, or by applying sine-wave ring modulation to the output. The latter is more adjustable.
