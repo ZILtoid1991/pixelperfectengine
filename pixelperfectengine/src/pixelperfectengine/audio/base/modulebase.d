@@ -42,7 +42,7 @@ public abstract class AudioModule {
 	alias StreamIDSet = SortedList!(ubyte, "a < b", false);
 	protected StreamIDSet	enabledInputs;		///List of enabled input channel numbers
 	protected StreamIDSet	enabledOutputs;		///List of enabled output channel numbers
-	public @nogc nothrow void delegate(uint[4] data, uint offset)	midiOut;	///A delegate where MIDI messages are being routed
+	public @nogc nothrow void delegate(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0)	midiOut;	///A delegate where MIDI messages are being routed
 	/**
 	 * Returns the basic informations about this module.
 	 */

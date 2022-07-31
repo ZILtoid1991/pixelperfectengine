@@ -34,10 +34,10 @@ public class PCM8 : AudioModule {
 		import std.range : iota;
 		import std.conv : to;
 		for (uint i ; i < 128 ; i++) {		//TODO: Make a version to leave this out, otherwise it'll just consume memory for the end user.
-			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x10_00, "Sample"~to!string(i)~"_Select");
-			SAMPLE_SET_VALS ~= MValue(MValueType.Float, i | 0x11_00, "Sample"~to!string(i)~"_SlmpFreq");
-			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x12_00, "Sample"~to!string(i)~"_LoopBegin");
-			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x13_00, "Sample"~to!string(i)~"_LoopEnd");
+			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x10_00, "Sample-"~to!string(i)~"_Select");
+			SAMPLE_SET_VALS ~= MValue(MValueType.Float, i | 0x11_00, "Sample-"~to!string(i)~"_SlmpFreq");
+			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x12_00, "Sample-"~to!string(i)~"_LoopBegin");
+			SAMPLE_SET_VALS ~= MValue(MValueType.Int32, i | 0x13_00, "Sample-"~to!string(i)~"_LoopEnd");
 		}
 		for (int i ; i < 128 ; i++) {
 			ADSR_TIME_TABLE[i] = pow(i / 64.0, 1.8);
@@ -111,18 +111,19 @@ public class PCM8 : AudioModule {
 		float			velToAtkShp = 0;///Assigns velocity to attack shape of envelop generator
 		float			velToRelShp = 0;///Assigns velocity to release shape of envelop generator
 		float			lfoToVol = 0;	///Tremolo level (LFO to volume)
-		float			adsrToVol = 0;	///ADSR amount 
+		float			adsrToVol = 0;	///ADSR to output level amount 
+		float			adsrToDetune = 0;///ADSR to pitch bend amount
+		float			vibrAm = 0;	///FLO to pitch bend amount
 
 		float			pitchBendAm = 2;///Pitch bend range
-		float			detuneAm = 0;///Master detune amount
 
 		uint			flags;		///Contains various binary settings
 	}
 	protected enum PresetFlags {
 		cutoffOnKeyOff		=	1<<0,		///If set, the sample playback will cut off on every key off event
-		modwheelToLFO		=	1<<1,		///Assigns modulation wheel to amplitude LFO levels
+		modwheelToLFO		=	1<<1,		///Assigns modulation wheel to amplitude and/or pitch LFO levels
 		panningLFO			=	1<<2,		///Sets amplitude LFO to panning on this channel
-		ADSRtoVol			=	1<<3,		///If set, then envGen will control the volume
+		/* ADSRtoVol			=	1<<3,		///If set, then envGen will control the volume */
 	}
 	protected enum LFOFlags {
 		saw					=	1<<0,
@@ -205,6 +206,10 @@ public class PCM8 : AudioModule {
 			}
 			
 		}
+		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
+			freqRatio = sampleRate / presetCopy.sampleMapping[currNote & 127].baseFreq;
+			jumpAm = cast(uint)((1<<24) * (1 / freqRatio));
+		}
 		void reset() @nogc @safe pure nothrow {
 			outPos = 0;
 			status = 0;
@@ -233,7 +238,8 @@ public class PCM8 : AudioModule {
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
 	protected float[8]			filterCtrl	=	[16_000, 0.707, 16_000, 0.707, 16_000, 0.707, 16_000, 0.707];
 	protected float				mixdownVal = short.max + 1;
-
+	protected ubyte[32]			sysExBuf;		///SysEx command buffer [0-30] + length [31]
+	protected ubyte[68][9]		chCtrlLower;	///Lower parts of the channel controllers (0-31 / 32-63) + (Un)registered parameter select (64-65)
 	public this() @safe nothrow {
 		info.nOfAudioInput = 0;
 		info.nOfAudioOutput = 4;
@@ -265,18 +271,21 @@ public class PCM8 : AudioModule {
 		this.handler = handler;
 		//Reset filters
 		for (int i ; i < 4 ; i++) {
-			BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
-			filterVals[0][i] = vals.a0;
-			filterVals[1][i] = vals.a1;
-			filterVals[2][i] = vals.a2;
-			filterVals[3][i] = vals.b0;
-			filterVals[4][i] = vals.b1;
-			filterVals[5][i] = vals.b2;
-			filterVals[6][i] = 0;
-			filterVals[7][i] = 0;
-			filterVals[8][i] = 0;
-			filterVals[9][i] = 0;
+			resetLPF(i);
 		}
+	}
+	protected void resetLPF(int i) @nogc @safe pure nothrow {
+		BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
+		filterVals[0][i] = vals.a0;
+		filterVals[1][i] = vals.a1;
+		filterVals[2][i] = vals.a2;
+		filterVals[3][i] = vals.b0;
+		filterVals[4][i] = vals.b1;
+		filterVals[5][i] = vals.b2;
+		filterVals[6][i] = 0;
+		filterVals[7][i] = 0;
+		filterVals[8][i] = 0;
+		filterVals[9][i] = 0;
 	}
 	/**
 	 * MIDI 2.0 data received here.
@@ -324,15 +333,38 @@ public class PCM8 : AudioModule {
 					}
 				}
 				break;
+			case MessageType.Data64:
+				if (data0.status == SysExSt.Start || data0.status == SysExSt.Complete)
+					sysExBuf[31] = 0;
+				ubyte[4] packet1 = [cast(ubyte)(data1>>24), cast(ubyte)(data1>>16), cast(ubyte)(data1>>8), cast(ubyte)data1];
+				int length = data0.channel;
+				for (int i ; i < 2 && length - 4 > 0 ; i++, length--) {
+					sysExBuf[sysExBuf[31]] = data0.bytes[i];
+					sysExBuf[31]++;
+					if (sysExBuf[31] > 30) {
+						length = 0;
+						sysExBuf[31] = 0;
+					}
+				}
+				for (int i ; i < 4 && length > 0 ; i++, length--) {
+					sysExBuf[sysExBuf[31]] = packet1[i];
+					sysExBuf[31]++;
+					if (sysExBuf[31] > 30) {
+						length = 0;
+						sysExBuf[31] = 0;
+					}
+				}
+				if (data0.status == SysExSt.Complete || data0.status == SysExSt.End)
+					sysExCmd(sysExBuf[0..sysExBuf[31]]);
+				break;
 			default:
 				break;
 		}
 	}
 	protected void keyOn(ubyte note, ubyte ch, float vel) @nogc pure nothrow {
 		channels[ch].currNote = note;
-		channels[ch].freqRatio = sampleRate / channels[ch].presetCopy.sampleMapping[note].baseFreq;
-		channels[ch].jumpAm = cast(uint)((1<<24) * (1 / channels[ch].freqRatio));
 		channels[ch].velocity = vel;
+		channels[ch].calculateJumpAm(sampleRate);
 		//reset all on channel
 		channels[ch].reset();
 		//set noteOn status flag
@@ -340,10 +372,268 @@ public class PCM8 : AudioModule {
 	}
 	protected void keyOff(ubyte note, ubyte ch, float vel) @nogc pure nothrow {
 		channels[ch].currNote = note;
-		channels[ch].freqRatio = sampleRate / channels[ch].presetCopy.sampleMapping[note].baseFreq;
-		channels[ch].jumpAm = cast(uint)((1<<24) * (1 / channels[ch].freqRatio));
 		channels[ch].velocity = vel;
+		channels[ch].calculateJumpAm(sampleRate);
 		channels[ch].status &= ~ChannelStatusFlags.noteOn;
+	}
+	protected void ctrlCh(ubyte ch, ubyte param, uint val) @nogc pure nothrow {
+		if (ch <= 7) {	//Channel locals
+			switch (param) {
+				case 7:
+					channels[ch].presetCopy.masterVol = (1.0 / uint.max) * val;
+					break;
+				case 8:
+					channels[ch].presetCopy.balance = (1.0 / uint.max) * val;
+					break;
+				case 91:
+					channels[ch].presetCopy.auxSendA = (1.0 / uint.max) * val;
+					break;
+				case 92:
+					channels[ch].presetCopy.auxSendB = (1.0 / uint.max) * val;
+					break;
+				case 73:
+					channels[ch].presetCopy.eAtk = cast(ubyte)(val>>25);
+					break;
+				case 14:
+					channels[ch].presetCopy.eAtkShp = (1.0 / uint.max) * val;
+					break;
+				case 70:
+					channels[ch].presetCopy.eDec = cast(ubyte)(val>>25);
+					break;
+				case 71:
+					channels[ch].presetCopy.eSusC = cast(ubyte)(val>>25);
+					break;
+				case 9:
+					channels[ch].presetCopy.eSusLev = (1.0 / uint.max) * val;
+					break;
+				case 72:
+					channels[ch].presetCopy.eRel = cast(ubyte)(val>>25);
+					break;
+				case 15:
+					channels[ch].presetCopy.eRelShp = (1.0 / uint.max) * val;
+					break;
+				case 20:
+					channels[ch].presetCopy.velToLevelAm = (1.0 / uint.max) * val;
+					break;
+				case 21:
+					channels[ch].presetCopy.velToAuxSendAm = (1.0 / uint.max) * val;
+					break;
+				case 22:
+					channels[ch].presetCopy.velToAtkShp = (1.0 / uint.max) * val;
+					break;
+				case 23:
+					channels[ch].presetCopy.velToRelShp = (1.0 / uint.max) * val;
+					break;
+				case 24:
+					channels[ch].presetCopy.lfoToVol = (1.0 / uint.max) * val;
+					break;
+				case 25:
+					channels[ch].presetCopy.adsrToVol = (1.0 / uint.max) * val;
+					break;
+				case 26:
+					channels[ch].presetCopy.adsrToDetune = (1.0 / uint.max) * val * 24;
+					break;
+				case 27:
+					channels[ch].presetCopy.vibrAm = (1.0 / uint.max) * val * 12;
+					break;
+				case 102:
+					if (val)
+						channels[ch].presetCopy.flags |= PresetFlags.cutoffOnKeyOff;
+					else
+						channels[ch].presetCopy.flags &= ~PresetFlags.cutoffOnKeyOff;
+					break;
+				case 103:
+					if (val)
+						channels[ch].presetCopy.flags |= PresetFlags.modwheelToLFO;
+					else
+						channels[ch].presetCopy.flags &= ~PresetFlags.modwheelToLFO;
+					break;
+				case 104:
+					if (val)
+						channels[ch].presetCopy.flags |= PresetFlags.panningLFO;
+					else
+						channels[ch].presetCopy.flags &= ~PresetFlags.panningLFO;
+					break;
+				default:
+					break;
+			}
+		} else if (ch == 8) {	//Module globals
+			switch (param) {
+				case 2:
+					filterCtrl[0] = (1.0 / uint.max) * val * 16_000;
+					resetLPF(0);
+					break;
+				case 3:
+					filterCtrl[1] = (1.0 / uint.max) * val * 2;
+					resetLPF(0);
+					break;
+				case 4:
+					filterCtrl[2] = (1.0 / uint.max) * val * 16_000;
+					resetLPF(1);
+					break;
+				case 5:
+					filterCtrl[3] = (1.0 / uint.max) * val * 2;
+					resetLPF(1);
+					break;
+				case 6:
+					filterCtrl[4] = (1.0 / uint.max) * val * 16_000;
+					resetLPF(2);
+					break;
+				case 7:
+					filterCtrl[5] = (1.0 / uint.max) * val * 2;
+					resetLPF(2);
+					break;
+				case 8:
+					filterCtrl[6] = (1.0 / uint.max) * val * 16_000;
+					resetLPF(3);
+					break;
+				case 9:
+					filterCtrl[7] = (1.0 / uint.max) * val * 2;
+					resetLPF(3);
+					break;
+				case 10:
+					if (lfoFlags & LFOFlags.ringmod)
+						lfoFreq = noteToFreq((1.0 / uint.max) * val * 127);
+					else
+						lfoFreq = (1.0 / uint.max) * val * 20;
+					resetLFO();
+					break;
+				case 11:
+					lfoPWM = (1.0 / uint.max) * val;
+					resetLFO();
+					break;
+				case 102:
+					if (val)
+						lfoFlags |= LFOFlags.saw;
+					else
+						lfoFlags &= ~LFOFlags.saw;
+					resetLFO();
+					break;
+				case 103:
+					if (val)
+						lfoFlags |= LFOFlags.triangle;
+					else
+						lfoFlags &= ~LFOFlags.triangle;
+					resetLFO();
+					break;
+				case 104:
+					if (val)
+						lfoFlags |= LFOFlags.pulse;
+					else
+						lfoFlags &= ~LFOFlags.pulse;
+					resetLFO();
+					break;
+				case 105:
+					if (val)
+						lfoFlags |= LFOFlags.sawpulse;
+					else
+						lfoFlags &= ~LFOFlags.sawpulse;
+					resetLFO();
+					break;
+				case 106:
+					if (val)
+						lfoFlags |= LFOFlags.invert;
+					else
+						lfoFlags &= ~LFOFlags.invert;
+					resetLFO();
+					break;
+				case 107:
+					if (val)
+						lfoFlags |= LFOFlags.ringmod;
+					else
+						lfoFlags &= ~LFOFlags.ringmod;
+					resetLFO();
+					break;
+				default:
+					break;
+			}
+		}
+	}
+	protected void sysExCmd(ubyte[] msg) @nogc nothrow {
+		//Check manufacturer ID (7D: internal use)
+		if (msg[0] == 0x7D || msg[1] == 0x7D) {
+			const int msgPos = msg[0] ? 1 : 2;
+			switch (msg[msgPos]) {
+				case 0x01:	//Suspend channel
+					if (msg[msgPos + 1] >= 8) return;
+					if (!(channels[msg[msgPos + 1]].status & ChannelStatusFlags.sampleRunout)) {
+						channels[msg[msgPos + 1]].currNote |= 0x80;
+					}
+					break;
+				case 0x02:	//Resume channel
+					if (msg[msgPos + 1] >= 8) return;
+					if (!(channels[msg[msgPos + 1]].status & ChannelStatusFlags.sampleRunout)) {
+						channels[msg[msgPos + 1]].currNote &= 0x7F;
+					}
+					break;
+				case 0x03:	//Overwrite preset
+					if (msg[msgPos + 1] >= 8) return;
+					if (msg.length == msgPos + 5) {
+						channels[msg[msgPos + 1]].presetNum = msg[msgPos + 2];
+						channels[msg[msgPos + 1]].bankNum = (msg[msgPos + 3]>>1) | msg[msgPos + 4];
+					}
+					*(presetBank.ptrOf((channels[msg[msgPos + 1]].bankNum<<7) | channels[msg[msgPos + 1]].presetNum)) = 
+							channels[msg[msgPos + 1]].presetCopy;
+					break;
+				case 0x20:	//Jump to sample position by restoring codec data
+					if (msg[msgPos + 1] >= 8) return;
+					channels[msg[msgPos + 1]].decoderWorkpad.pos = (msg[msgPos + 2] << 21) | (msg[msgPos + 3] << 14) | 
+						(msg[msgPos + 4] << 7) | msg[msgPos + 5];
+					channels[msg[msgPos + 1]].waveModWorkpad.lookupVal = 0;
+					if (msg.length == msgPos + 10) {
+						channels[msg[msgPos + 1]].decoderWorkpad.pred = msg[msgPos + 6];
+						channels[msg[msgPos + 1]].decoderWorkpad.outn1 = (msg[msgPos + 7]<<30) | (msg[msgPos + 8]<<23) | 
+								(msg[msgPos + 9]<<16);
+						channels[msg[msgPos + 1]].decoderWorkpad.outn1>>=16;
+					}
+					//decode the sample
+					if (channels[msg[msgPos + 1]].currNote & 128) return;
+					//get the data for the sample
+					SampleAssignment sa = channels[msg[msgPos + 1]].presetCopy.sampleMapping[channels[msg[msgPos + 1]].currNote];
+					Sample slmp = sampleBank[sa.sampleNum];
+					channels[msg[msgPos + 1]].decodeMore(sa, slmp);
+					break;
+				case 0x21:	//Dump codec data
+					if (msg[msgPos + 1] >= 8) return;
+					uint[2] dump;
+					const int delta = channels[msg[msgPos + 1]].decoderWorkpad.outn1;
+					dump[0] = cast(uint)channels[msg[msgPos + 1]].decoderWorkpad.pos;
+					dump[0] = ((dump[0] & 0xF_E0_00_00)<<3) | ((dump[0] & 0x1F_C0_00)<<2) | ((dump[0] & 0x3F_80)<<1) | (dump[0] & 0x7F);
+					dump[1] = channels[msg[msgPos + 1]].decoderWorkpad.pred<<24;
+					dump[1] |= ((delta & 0xC0_00)<<2) | ((delta & 0x3F_80)<<1) | (delta & 0x7F);
+					if (midiOut !is null) midiOut(UMP(MessageType.Data128, 0x0, SysExSt.Complete, 9, 0x0, 0x7D), dump[0], 
+							dump[1]);
+					break;
+				case 0xA0:	//Jump to sample position by restoring codec data (8bit)
+					if (msg[msgPos + 1] >= 8) return;
+					channels[msg[msgPos + 1]].decoderWorkpad.pos = (msg[msgPos + 2] << 24) | (msg[msgPos + 3] << 16) | 
+						(msg[msgPos + 4] << 8) | msg[msgPos + 5];
+					channels[msg[msgPos + 1]].waveModWorkpad.lookupVal = 0;
+					if (msg.length == msgPos + 9) {
+						channels[msg[msgPos + 1]].decoderWorkpad.pred = msg[msgPos + 6];
+						channels[msg[msgPos + 1]].decoderWorkpad.outn1 = (msg[msgPos + 7]<<24) | (msg[msgPos + 8]<<16);
+						channels[msg[msgPos + 1]].decoderWorkpad.outn1>>=16;
+					}
+					//decode the sample
+					if (channels[msg[msgPos + 1]].currNote & 128) return;
+					//get the data for the sample
+					SampleAssignment sa = channels[msg[msgPos + 1]].presetCopy.sampleMapping[channels[msg[msgPos + 1]].currNote];
+					Sample slmp = sampleBank[sa.sampleNum];
+					channels[msg[msgPos + 1]].decodeMore(sa, slmp);
+					break;
+				case 0xA1:	//Dump codec data (8bit)
+					if (msg[msgPos + 1] >= 8) return;
+					uint[2] dump;
+					dump[0] = cast(uint)channels[msg[msgPos + 1]].decoderWorkpad.pos;
+					dump[1] = channels[msg[msgPos + 1]].decoderWorkpad.pred<<24;
+					dump[1] |= (channels[msg[msgPos + 1]].decoderWorkpad.outn1 & ushort.max)<<8;
+					if (midiOut !is null) midiOut(UMP(MessageType.Data128, 0x0, SysExSt.Complete, 8, 0x0, 0x7D), dump[0], 
+							dump[1]);
+					break;
+				default:
+					break;
+			}
+		}
 	}
 	protected void resetLFO() @nogc @safe pure nothrow {
 		const int divident = ((lfoFlags>>3) & 1) + ((lfoFlags>>2) & 1) + ((lfoFlags>>1) & 1) + (lfoFlags & 1);
@@ -407,7 +697,7 @@ public class PCM8 : AudioModule {
 			lfoOut[i] = lfo.outputF(0.5, 1.0 / ushort.max);
 		}
 		for (int i ; i < 8 ; i++) {
-			if (channels[i].currNote == 255) continue;
+			if (channels[i].currNote & 128) continue;
 			//get the data for the sample
 			SampleAssignment sa = channels[i].presetCopy.sampleMapping[channels[i].currNote];
 			Sample slmp = sampleBank[sa.sampleNum];
@@ -417,7 +707,7 @@ public class PCM8 : AudioModule {
 				///Calculate the amount of samples that are needed for this block
 				uint samplesToAdvance = cast(uint)((channels[i].waveModWorkpad.lookupVal + (channels[i].jumpAm * samplesNeeded))
 						>>24);
-				const uint decoderBufPos = channels[i].outPos & 255;
+				const uint decoderBufPos = cast(uint)(channels[i].decoderWorkpad.pos & 255);
 				///Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
 				if (256 - decoderBufPos <= samplesToAdvance){
 					samplesToAdvance = 256 - decoderBufPos;
@@ -524,37 +814,43 @@ public class PCM8 : AudioModule {
 					if (value)
 						lfoFlags |= LFOFlags.saw;
 					else
-						lfoFlags ^= LFOFlags.saw;
+						lfoFlags &= ~LFOFlags.saw;
+					resetLFO();
 					return 0;
 				case 0x80_0a:
 					if (value)
 						lfoFlags |= LFOFlags.triangle;
 					else
-						lfoFlags ^= LFOFlags.triangle;
+						lfoFlags &= ~LFOFlags.triangle;
+					resetLFO();
 					return 0;
 				case 0x80_0b:
 					if (value)
 						lfoFlags |= LFOFlags.pulse;
 					else
-						lfoFlags ^= LFOFlags.pulse;
+						lfoFlags &= ~LFOFlags.pulse;
+					resetLFO();
 					return 0;
 				case 0x80_0c:
 					if (value)
 						lfoFlags |= LFOFlags.sawpulse;
 					else
-						lfoFlags ^= LFOFlags.sawpulse;
+						lfoFlags &= ~LFOFlags.sawpulse;
+					resetLFO();
 					return 0;
 				case 0x80_0d:
 					if (value)
 						lfoFlags |= LFOFlags.invert;
 					else
-						lfoFlags ^= LFOFlags.invert;
+						lfoFlags &= ~LFOFlags.invert;
+					resetLFO();
 					return 0;
 				case 0x80_0f:
 					if (value)
 						lfoFlags |= LFOFlags.ringmod;
 					else
-						lfoFlags ^= LFOFlags.ringmod;
+						lfoFlags &= ~LFOFlags.ringmod;
+					resetLFO();
 					return 0;
 				default:
 					break;
@@ -594,12 +890,12 @@ public class PCM8 : AudioModule {
 					else
 						presetPtr.flags &= ~PresetFlags.panningLFO;
 					return 0;
-				case 0x00_14:
+				/* case 0x00_14:
 					if (value)
 						presetPtr.flags |= PresetFlags.ADSRtoVol;
 					else
 						presetPtr.flags &= ~PresetFlags.ADSRtoVol;
-					return 0;
+					return 0; */
 				default:
 					break;
 			}
@@ -632,8 +928,52 @@ public class PCM8 : AudioModule {
 					break;
 			}
 		} else if (paramID & 0x80_00) {
-
+			switch (paramID) {
+				case 0x80_00: 
+					filterCtrl[0] = value; 
+					resetLPF(0); 
+					return 0;
+				case 0x80_01: 
+					filterCtrl[1] = value; 
+					resetLPF(0); 
+					return 0;
+				case 0x80_02: 
+					filterCtrl[2] = value; 
+					resetLPF(1); 
+					return 0;
+				case 0x80_03: 
+					filterCtrl[3] = value; 
+					resetLPF(1); 
+					return 0;
+				case 0x80_04: 
+					filterCtrl[4] = value; 
+					resetLPF(2); 
+					return 0;
+				case 0x80_05: 
+					filterCtrl[5] = value; 
+					resetLPF(2); 
+					return 0;
+				case 0x80_06: 
+					filterCtrl[6] = value; 
+					resetLPF(3); 
+					return 0;
+				case 0x80_07: 
+					filterCtrl[7] = value; 
+					resetLPF(3); 
+					return 0;
+				case 0x80_08: 
+					lfoFreq = value;
+					resetLFO();
+					return 0;
+				case 0x80_0e: 
+					lfoPWM = value;
+					resetLFO();
+					return 0;
+				default:
+					break;
+			}
 		} else {
+			
 			if (value < 0 || value > 1) return 2;
 			switch (paramID) {
 				case 0x00_04:
@@ -702,7 +1042,7 @@ public class PCM8 : AudioModule {
 			MValue(MValueType.Boolean, 0x00_10, "f_cutoffOnKeyOff"),
 			MValue(MValueType.Boolean, 0x00_11, "f_modwheelToLFO"),
 			MValue(MValueType.Boolean, 0x00_12, "f_panningLFO"),
-			MValue(MValueType.Boolean, 0x00_13, "f_ADSRtoVol"),
+			/* MValue(MValueType.Boolean, 0x00_13, "f_ADSRtoVol"), */
 		] ~ SAMPLE_SET_VALS.dup ~ [
 			MValue(MValueType.Float, 0x80_00, `_FilterLCFreq`), MValue(MValueType.Float, 0x80_01, `_FilterLCQ`),
 			MValue(MValueType.Float, 0x80_02, `_FilterRCFreq`), MValue(MValueType.Float, 0x80_03, `_FilterRCQ`),
@@ -736,7 +1076,22 @@ public class PCM8 : AudioModule {
 					break;
 			}
 		} else if (paramID & 0x80_00) {
-
+			switch (paramID) {
+				case 0x80_09:
+					return lfoFlags & LFOFlags.saw ? 1 : 0;
+				case 0x80_0a:
+					return lfoFlags & LFOFlags.triangle ? 1 : 0;
+				case 0x80_0b:
+					return lfoFlags & LFOFlags.pulse ? 1 : 0;
+				case 0x80_0c:
+					return lfoFlags & LFOFlags.sawpulse ? 1 : 0;
+				case 0x80_0d:
+					return lfoFlags & LFOFlags.invert ? 1 : 0;
+				case 0x80_0f:
+					return lfoFlags & LFOFlags.ringmod ? 1 : 0;
+				default:
+					break;
+			}
 		} else {
 			switch (paramID) {
 				case 0x00:
@@ -755,8 +1110,8 @@ public class PCM8 : AudioModule {
 					return presetPtr.flags & PresetFlags.modwheelToLFO ? 1 : 0;
 				case 0x00_13:
 					return presetPtr.flags & PresetFlags.panningLFO ? 1 : 0;
-				case 0x00_14:
-					return presetPtr.flags |= PresetFlags.ADSRtoVol ? 1 : 0;
+				/* case 0x00_14:
+					return presetPtr.flags |= PresetFlags.ADSRtoVol ? 1 : 0; */
 				default:
 					break;
 			}
@@ -791,7 +1146,30 @@ public class PCM8 : AudioModule {
 					break;
 			}
 		} else if (paramID & 0x80_00) {
-
+			switch (paramID) {
+				case 0x80_00: 
+					return filterCtrl[0];
+				case 0x80_01: 
+					return filterCtrl[1];
+				case 0x80_02: 
+					return filterCtrl[2];
+				case 0x80_03: 
+					return filterCtrl[3];
+				case 0x80_04: 
+					return filterCtrl[4];
+				case 0x80_05: 
+					return filterCtrl[5];
+				case 0x80_06: 
+					return filterCtrl[6];
+				case 0x80_07: 
+					return filterCtrl[7];
+				case 0x80_08: 
+					return lfoFreq;
+				case 0x80_0e: 
+					return lfoPWM;
+				default:
+					break;
+			}
 		} else {
 			switch (paramID) {
 				case 0x00_04:

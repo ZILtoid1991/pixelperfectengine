@@ -297,6 +297,16 @@ alias ADPCMStream = NibbleArray;
 		r = pow(2, r);
 		return r * baseFreq;
 	}
+	/** 
+	 * Bends the frequency by the given amount of seminotes.
+	 * Params:
+	 *   freq = The frequency to be modified.
+	 *   am = The amount of seminotes. Positive means upwards, negative means downwards.
+	 * Returns: The modified frequency.
+	 */
+	public double bendFreq(double freq, double am) @safe {
+		return freq * pow(2, am / 12);
+	}
 	/**
 	 * Calculates biquad low-pass filter coefficients from the supplied values.
 	 *

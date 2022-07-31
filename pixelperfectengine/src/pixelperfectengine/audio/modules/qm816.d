@@ -813,7 +813,7 @@ public class QM816 : AudioModule {
 	protected float				pLFOFreq = 6;
 	///Mixdown value.
 	///Used for final mixing.
-	protected float				mixdownVal = short.max + 1;//4096;
+	protected float				mixdownVal = short.max + 1;
 	///Internal sampling frequency
 	protected int				intSlmpRate;
 	///Internal buffer sizes
@@ -823,6 +823,7 @@ public class QM816 : AudioModule {
 	protected ChFun[16]			chDeleg;
 	///Used as a keepsake for MIDI 1.0 control change values.
 	protected ubyte[64]			ccLow;
+	protected ubyte[32]			sysExBuf;		///SysEx command buffer [0-30] + length [31]
 	/**
 	Creates an instance of QM816
 	*/
@@ -1256,6 +1257,30 @@ public class QM816 : AudioModule {
 						//break;
 				}
 				break;
+			case MessageType.Data64:
+				if (data0.status == SysExSt.Start || data0.status == SysExSt.Complete)
+					sysExBuf[31] = 0;
+				ubyte[4] packet1 = [cast(ubyte)(data1>>24), cast(ubyte)(data1>>16), cast(ubyte)(data1>>8), cast(ubyte)data1];
+				int length = data0.channel;
+				for (int i ; i < 2 && length - 4 > 0 ; i++, length--) {
+					sysExBuf[sysExBuf[31]] = data0.bytes[i];
+					sysExBuf[31]++;
+					if (sysExBuf[31] > 30) {
+						length = 0;
+						sysExBuf[31] = 0;
+					}
+				}
+				for (int i ; i < 4 && length > 0 ; i++, length--) {
+					sysExBuf[sysExBuf[31]] = packet1[i];
+					sysExBuf[31]++;
+					if (sysExBuf[31] > 30) {
+						length = 0;
+						sysExBuf[31] = 0;
+					}
+				}
+				if (data0.status == SysExSt.Complete || data0.status == SysExSt.End)
+					sysExCmd(sysExBuf[0..sysExBuf[31]]);
+				break;
 			default:
 				//assert(0, "Something went really wrong!");
 				break;
@@ -1357,6 +1382,48 @@ public class QM816 : AudioModule {
 			channels[ch + 8].eeg.keyOff();
 			operators[ch + 16].keyOff(intSlmpRate);
 			operators[ch + 17].keyOff(intSlmpRate);
+		}
+	}
+	protected void sysExCmd(ubyte[] msg) @nogc pure nothrow {
+		//Check manufacturer ID (7D: internal use)
+		if (msg[0] == 0x7D || msg[1] == 0x7D) {
+			const int msgPos = msg[0] ? 1 : 2;
+			switch (msg[msgPos]) {
+				case 0x01:	//Suspend channel
+					if (msg[msgPos + 1] >= 16) return;
+					chDeleg[msg[msgPos + 1]] = &updateChannelMD;
+					break;
+				case 0x02:	//Resume channel
+					if (msg[msgPos + 1] >= 16) return;
+					ubyte ch = msg[msgPos + 1];
+					if (ch < 8)
+						setChDeleg(channels[ch].preset.chCtrl, ch, channels[ch + 8].preset.chCtrl);
+					else
+						setChDeleg(channels[ch].preset.chCtrl, ch);
+					break;
+				case 0x03:	//Overwrite preset
+					if (msg[msgPos + 1] >= 16) return;
+					ubyte ch = msg[msgPos + 1];
+					if (msg.length == msgPos + 5) {
+						presetNum[ch] = msg[msgPos + 2];
+						if (channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) {
+							bankNum[ch] = msg[msgPos + 4] & ~0x01;
+							presetNum[ch + 8] = msg[msgPos + 2];
+							bankNum[ch + 8] = msg[msgPos + 4] | 0x01;
+						} else
+							bankNum[ch] = msg[msgPos + 4];
+					}
+					soundBank[bankNum[ch]][presetNum[ch]] = Preset([operators[ch*2].preset, operators[(ch*2) + 1].preset], 
+							channels[ch].preset);
+					if (ch < 8 && (channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest)) {
+						ch += 8;
+						soundBank[bankNum[ch]][presetNum[ch]] = Preset([operators[ch*2].preset, operators[(ch*2) + 1].preset], 
+							channels[ch].preset);
+					}
+					break;
+				default:
+					break;
+			}
 		}
 	}
 	/**
