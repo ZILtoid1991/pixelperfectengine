@@ -822,7 +822,7 @@ public class QM816 : AudioModule {
 	///Channel update delegates
 	protected ChFun[16]			chDeleg;
 	///Used as a keepsake for MIDI 1.0 control change values.
-	protected ubyte[64]			ccLow;
+	protected ubyte[64][16]		ccLow;
 	protected ubyte[32]			sysExBuf;		///SysEx command buffer [0-30] + length [31]
 	/**
 	Creates an instance of QM816
@@ -1007,6 +1007,7 @@ public class QM816 : AudioModule {
 			case MessageType.SysCommMsg:	//Process system common message
 				break;
 			case MessageType.MIDI1:			//Process MIDI 1.0 messages
+				ubyte ch = data0.channel;
 				switch (data0.status) {
 					case MIDI1_0Cmd.CtrlCh:	//Process MIDI 1.0 control change messages
 						switch (data0.note) {
@@ -1014,56 +1015,57 @@ public class QM816 : AudioModule {
 								bankNum[data0.channel] = data0.value & 7;
 								break;
 							case 1, 33:			//Modulation wheel
-								ccLow[data0.note] = data0.value;
-								chCtrls[data0.channel].modwheel = cast(double)((ccLow[1]<<7) + ccLow[33]) / (ushort.max>>2);
+								ccLow[ch][data0.note] = data0.value;
+								chCtrls[ch].modwheel = cast(double)((ccLow[ch][1]<<7) + ccLow[ch][33]) / (ushort.max>>2);
 								break;
 							case 2, 34:
-								ccLow[data0.note] = data0.value;
-								chCtrls[data0.channel].auxCtrl = cast(double)((ccLow[2]<<7) + ccLow[34]) / (ushort.max>>2);
+								ccLow[ch][data0.note] = data0.value;
+								chCtrls[ch].auxCtrl = cast(double)((ccLow[ch][2]<<7) + ccLow[ch][34]) / (ushort.max>>2);
 								break;
 							case 6, 38:			//Data Entry
-								ccLow[data0.note] = data0.value;
-								paramTemp = [0xFF,0xFF,0xFF,0xFF];
+								ccLow[ch][data0.note] = data0.value;
+								//paramTemp = [0xFF,0xFF,0xFF,0xFF];
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][18], ccLow[ch][32+18]), [paramTemp[0], paramTemp[1]], ch);
 								break;
 							case 18, (32+18):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[18], ccLow[32+18]), [0, 0], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][18], ccLow[ch][32+18]), [0, 0], ch);
 								break;
 							case 19, (32+19):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[19], ccLow[32+19]), [1, 0], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][19], ccLow[ch][32+19]), [1, 0], ch);
 								break;
 							case 16, (32+16):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[16], ccLow[32+16]), [0, 3], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][16], ccLow[ch][32+16]), [0, 3], ch);
 								break;
 							case 17, (32+17):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[17], ccLow[32+17]), [1, 3], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][17], ccLow[ch][32+17]), [1, 3], ch);
 								break;
 							case 20, (32+20):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[20], ccLow[32+20]), [0, 10], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][20], ccLow[ch][32+20]), [0, 10], ch);
 								break;
 							case 22, (32+22):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[22], ccLow[32+22]), [1, 10], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][22], ccLow[ch][32+22]), [1, 10], ch);
 								break;
 							case 21, (32+21):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[21], ccLow[32+21]), [0, 10], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][21], ccLow[ch][32+21]), [0, 10], ch);
 								break;
 							case 23, (32+23):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[23], ccLow[32+23]), [1, 10], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][23], ccLow[ch][32+23]), [1, 10], ch);
 								break;
 							case 30, (32+30):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[30], ccLow[32+30]), [0, 9], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][30], ccLow[ch][32+30]), [0, 9], ch);
 								break;
 							case 31, (32+31):
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[31], ccLow[32+31]), [1, 9], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][31], ccLow[ch][32+31]), [1, 9], ch);
 								break;
 //
 							case 73:
@@ -1111,19 +1113,19 @@ public class QM816 : AudioModule {
 //
 							case 7, 32+7:
 								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[7], ccLow[32+7]), [4, 0], data0.channel);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][7], ccLow[ch][32+7]), [4, 0], data0.channel);
 								break;
 							case 8, 32+8:
 								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[8], ccLow[32+8]), [4, 1], data0.channel);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][8], ccLow[ch][32+8]), [4, 1], data0.channel);
 								break;
 							case 24, 32+24:
 								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[24], ccLow[32+24]), [4, 11], data0.channel);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][24], ccLow[ch][32+24]), [4, 11], data0.channel);
 								break;
 							case 25, 32+25:
 								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[25], ccLow[32+25]), [4, 12], data0.channel);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][25], ccLow[ch][32+25]), [4, 12], data0.channel);
 								break;
 //
 							case 91:
@@ -1159,14 +1161,14 @@ public class QM816 : AudioModule {
 //
 							case 98:		//Non Registered Parameter Number MSB (handle through MIDI 2.0)
 								paramTemp[0] = data0.value;
-								if (paramTemp[0] != 0xFF)
-									setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), [ccLow[6], ccLow[38]], data0.channel);
+								/* if (paramTemp[0] != 0xFF)
+									setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), [ccLow[ch][6], ccLow[ch][38]], data0.channel); */
 								break;
 							case 99:		//Non Registered Parameter Number LSB (handle through MIDI 2.0)
 								//setUnregisteredParam(data0.value, paramNum, 0, data0.channel);
 								paramTemp[1] = data0.value;
-								if (paramTemp[0] != 0xFF)
-									setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), [ccLow[6], ccLow[38]], data0.channel);
+								/* if (paramTemp[0] != 0xFF)
+									setUnregisteredParam(convertM1CtrlValToM2(paramTemp[0], paramTemp[1]), [ccLow[ch][6], ccLow[ch][38]], data0.channel); */
 								break;
 							default:
 								break;
@@ -1196,7 +1198,7 @@ public class QM816 : AudioModule {
 						}
 						break;
 					case MIDI1_0Cmd.PitchBend:
-						const uint ch = data0.channel;
+						//const uint ch = data0.channel;
 						chCtrls[ch].pitchBend = channels[ch].preset.pitchBendSens * ((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
 						break;
 					default:
@@ -1277,6 +1279,21 @@ public class QM816 : AudioModule {
 						length = 0;
 						sysExBuf[31] = 0;
 					}
+				}
+				if (data0.status == SysExSt.Complete || data0.status == SysExSt.End)
+					sysExCmd(sysExBuf[0..sysExBuf[31]]);
+				break;
+			case MessageType.Data128:
+				if (data0.status == SysExSt.Start || data0.status == SysExSt.Complete)
+					sysExBuf[31] = 0;
+				ubyte[13] data = [data0.value, 
+						cast(ubyte)(data1>>24), cast(ubyte)(data1>>16), cast(ubyte)(data1>>8), cast(ubyte)data1,
+						cast(ubyte)(data2>>24), cast(ubyte)(data2>>16), cast(ubyte)(data2>>8), cast(ubyte)data2,
+						cast(ubyte)(data3>>24), cast(ubyte)(data3>>16), cast(ubyte)(data3>>8), cast(ubyte)data3];
+				for (int i ; i < data0.channel ; i++, sysExBuf[31]++) {
+					sysExBuf[sysExBuf[31]] = data[i];
+					if (sysExBuf[31] > 30)
+						sysExBuf[31] = 0;
 				}
 				if (data0.status == SysExSt.Complete || data0.status == SysExSt.End)
 					sysExCmd(sysExBuf[0..sysExBuf[31]]);

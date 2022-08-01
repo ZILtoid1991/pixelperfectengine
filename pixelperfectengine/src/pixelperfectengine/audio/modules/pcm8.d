@@ -357,6 +357,21 @@ public class PCM8 : AudioModule {
 				if (data0.status == SysExSt.Complete || data0.status == SysExSt.End)
 					sysExCmd(sysExBuf[0..sysExBuf[31]]);
 				break;
+			case MessageType.Data128:
+				if (data0.status == SysExSt.Start || data0.status == SysExSt.Complete)
+					sysExBuf[31] = 0;
+				ubyte[13] data = [data0.value, 
+						cast(ubyte)(data1>>24), cast(ubyte)(data1>>16), cast(ubyte)(data1>>8), cast(ubyte)data1,
+						cast(ubyte)(data2>>24), cast(ubyte)(data2>>16), cast(ubyte)(data2>>8), cast(ubyte)data2,
+						cast(ubyte)(data3>>24), cast(ubyte)(data3>>16), cast(ubyte)(data3>>8), cast(ubyte)data3];
+				for (int i ; i < data0.channel ; i++, sysExBuf[31]++) {
+					sysExBuf[sysExBuf[31]] = data[i];
+					if (sysExBuf[31] > 30)
+						sysExBuf[31] = 0;
+				}
+				if (data0.status == SysExSt.Complete || data0.status == SysExSt.End)
+					sysExCmd(sysExBuf[0..sysExBuf[31]]);
+				break;
 			default:
 				break;
 		}
