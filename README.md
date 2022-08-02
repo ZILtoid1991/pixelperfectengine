@@ -70,13 +70,30 @@ Map format testcase. Tests most functionality of the Extendible Map Format (XMF)
 
 GUI elements testcase. Tests if GUI elements work correctly.
 
-### wallbreaker
+### test4
+
+Test of the scripting engine.
+
+### snake
+
+A simple engine demonstration game. Does not use (much) external assets, and instead uses code renerated ones.
+
+The classic game of Snake, where the player must collect apples (red dots) in order to grow.
+
+### icebreaker
 
 Arkanoid-clone game. Currently under development.
 
 ### Windowmaker for Concrete/PPE
 
 Window layout editor with code generation features.
+
+### PixelPerfectEditor
+
+External project. Map editor, with some other tools built in, like a BMFont editor, and format converter. Can be found
+here: https://github.com/ZILtoid1991/pixelperfecteditor
+
+A must-have for this engine, due to it using some unusual features, like palette shifting.
 
 # Features
 
@@ -91,6 +108,7 @@ Window layout editor with code generation features.
 * Collision detection
 * Handling of multiple inputs
 * An audio subsystem capable of era-correct synthesis
+* (Coming soon!) Scripting via Lua (more languages might be added)
 * ...and many more
 
 # Known issues:
@@ -107,5 +125,4 @@ systems.
 # Future plans:
 
 * Hardware acceleration, possibly through OpenCL since GLSL lacks the ability of reading textures as integers in older versions.
-* Adding support for scripting languages (QScript, Lua, Python, BASIC, etc).
 * Compressed data file handling.
