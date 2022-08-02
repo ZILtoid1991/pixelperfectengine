@@ -308,6 +308,26 @@ public class PCM8 : AudioModule {
 						case MIDI1_0Cmd.NoteOff:
 							keyOff(data0.note, data0.channel, data0.value/127.0);
 							break;
+						case MIDI1_0Cmd.CtrlCh:
+							uint val;
+							if (data0.note < 64) {
+								chCtrlLower[data0.channel][data0.note] = data0.value;
+								val = convertM1CtrlValToM2(chCtrlLower[data0.channel][data0.note & 0x1F], 
+										chCtrlLower[data0.channel][data0.note | 0x20]);
+							} else if (data0.note >= 70 && data0.note <= 73) {
+								val = data0.value<<25;
+							} else {
+								val = convertM1CtrlValToM2(data0.value, data0.value);
+							}
+							if (data0.note == 0 || data0.note == 32)
+								channels[data0.channel].bankNum = (chCtrlLower[data0.channel][0]<<7) | chCtrlLower[data0.channel][32];
+							else
+								ctrlCh (data0.channel, data0.note, val);
+							break;
+						case MIDI1_0Cmd.PrgCh:
+							channels[data0.channel].presetCopy = presetBank[(channels[data0.channel].bankNum<<7) | data0.note];
+							channels[data0.channel].presetNum = data0.note;
+							break;
 						default:
 							break;
 					}
@@ -327,6 +347,9 @@ public class PCM8 : AudioModule {
 						case MIDI2_0Cmd.NoteOff:
 							NoteVals nv = *cast(NoteVals*)&data1;
 							keyOff(data0.note, data0.channel, nv.velocity / ushort.max);
+							break;
+						case MIDI2_0Cmd.CtrlChOld, MIDI2_0Cmd.CtrlCh:
+							ctrlCh(data0.channel, data0.note, data1);
 							break;
 						default:
 							break;
@@ -392,6 +415,7 @@ public class PCM8 : AudioModule {
 		channels[ch].status &= ~ChannelStatusFlags.noteOn;
 	}
 	protected void ctrlCh(ubyte ch, ubyte param, uint val) @nogc pure nothrow {
+		if (param >= 32 && param < 64) param &= 0x1F;
 		if (ch <= 7) {	//Channel locals
 			switch (param) {
 				case 7:
