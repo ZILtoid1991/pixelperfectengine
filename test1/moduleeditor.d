@@ -38,6 +38,10 @@ public class ModuleEditor : Window {
 	}
 	protected void smallButtons_onClick(Event ev) {
 		SmallButton sender = cast(SmallButton)ev.sender;
+		switch (sender.getSource) {
+			default:
+				break;
+		}
 	}
 	protected void listView_presets_onSelect(Event ev) {
 
