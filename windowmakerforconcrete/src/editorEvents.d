@@ -239,22 +239,51 @@ public class MoveElemEvent : UndoableEvent {
 		this.oldPos = oldPos;
 		this.target = target;
 	}
-	public this(Box newPos, string target){
+	public this(Box newPos, string target) {
 		this.newPos = newPos;
 		this.oldPos = editorTarget.elements[target].element.getPosition();
 		this.target = target;
 	}
-	public void redo(){
+	public void redo() {
 		wserializer.editValue(target, "position", [Value(newPos.left), Value(newPos.top), Value(newPos.right), 
 				Value(newPos.bottom)]);
 		//oldPos = editorTarget.elements[target].position;
 		editorTarget.elements[target].element.setPosition(newPos);
 		dwtarget.draw();
 	}
-	public void undo(){
+	public void undo() {
 		wserializer.editValue(target, "position", [Value(oldPos.left), Value(oldPos.top), Value(oldPos.right), 
 				Value(oldPos.bottom)]);
 		editorTarget.elements[target].element.setPosition(oldPos);
+		dwtarget.draw();
+	}
+}
+
+public class ListViewHeaderEditEvent : UndoableEvent {
+	private Tag[] oldHeader, newHeader;
+	private ListViewHeader oldHeader0, newHeader0;
+	private string target;
+	public this(Tag[] newHeader, ListViewHeader newHeader0, string target) {
+		this.newHeader = newHeader;
+		this.newHeader0 = newHeader0;
+		this.target = target;
+	}
+	public void redo() {
+		Tag t = wserializer.getTag(target, "header");
+		foreach (Tag t0; t.tags)
+			oldHeader ~= t0.remove();
+		t.add(newHeader);
+		ListView lw = cast(ListView)editorTarget.elements[targetName].element;
+		lw.setHeader(newHeader0, null);
+		dwtarget.draw();
+	}
+	public void undo() {
+		Tag t = wserializer.getTag(target, "header");
+		foreach (Tag t0; t.tags)
+			t0.remove();
+		t.add(oldHeader);
+		ListView lw = cast(ListView)editorTarget.elements[targetName].element;
+		lw.setHeader(oldHeader0, null);
 		dwtarget.draw();
 	}
 }

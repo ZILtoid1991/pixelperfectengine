@@ -157,7 +157,7 @@ public class WindowSerializer {
 							t0.getTagValue!string("source") ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
 				case "ListView":
-					elementCtors ~= "new ListView(new ListViewHeader(" ~ conv.to!string(t0.getTagValue!int("header")) ~ "16, ";
+					elementCtors ~= "new ListView(new ListViewHeader(" ~ conv.to!string(t0.getTagValue!int("header")) ~ ", ";
 					string intArr = "[", strArr = "[";
 					foreach (t1 ; t0.expectTag("header").tags) {
 						intArr ~= conv.to!string(t1.getValue!int()) ~ " ,";
@@ -165,7 +165,7 @@ public class WindowSerializer {
 					}
 					intArr = intArr[0..$-2] ~ "]";
 					strArr = strArr[0..$-2] ~ "]";
-					elementCtors ~= intArr ~ ", " ~ strArr ~ ", null, " ~  ", \"" ~ 
+					elementCtors ~= intArr ~ ", " ~ strArr ~ "), null, " ~  ", \"" ~ 
 							t0.getTagValue!string("source") ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
 				case "Window":
@@ -206,6 +206,25 @@ public class WindowSerializer {
 		foreach(t0; root.all.tags){
 			if(t0.getValue!string() == target){
 				return t0.getTag(property);
+			}
+		}
+		return null;
+	}
+	/** 
+	 * Replaces an existing tag with a new one.
+	 * Params:
+	 *   target = 
+	 *   property = 
+	 *   newTag = 
+	 * Returns: 
+	 */
+	public Tag replaceTag(string target, string property, Tag newTag) {
+		foreach(Tag t0; root.all.tags){
+			if(t0.getValue!string() == target){
+				Tag oldTag = t0.getTag(property);
+				oldTag.remove();
+				t0.add(newTag);
+				return oldTag;
 			}
 		}
 		return null;

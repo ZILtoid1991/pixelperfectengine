@@ -490,6 +490,12 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			onDraw();
 		}
 	}
+	/** 
+	 * Returns the numfer of entries the ListView has.
+	 */
+	public @property size_t numEntries() @nogc @safe pure nothrow const {
+		return entries.length;
+	}
 	/**
 	 * Returns the number of the selected item.
 	 */
@@ -558,6 +564,24 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		if (selection >= entries.length) selection--;
 		//draw;
 		return result;
+	}
+	/** 
+	 * Inserts an element at the given index.
+	 * Params:
+	 *   index = Where the new element should be inserted.
+	 *   item = The item to be inserted.
+	 * Returns: The inserted element, or null if out of bounds.
+	 */
+	public ListViewItem insertAt(size_t index, ListViewItem item) {
+		if (!index)
+			entries = item ~ entries;
+		else if (entries.length > index)
+			entries = entries[0..index] ~ item ~ entries[index..$];
+		else if (entries.length == index)
+			entries ~= item;
+		else
+			return null;
+		return item;
 	}
 	/**
 	 * Removes all entries in the list.
