@@ -19,14 +19,18 @@ public class ListViewEditor : Window {
 		button_remove = new Button("Remove Entry"d, "button0", Box(240, 45, 335, 65));
 		button_apply = new Button("Apply"d, "button0", Box(240, 300, 335, 320));
 
+		listView_headerEdit.editEnable = true;
 		listView_headerEdit.multicellEditEnable = true;
 		Tag header = wserializer.getTag(target, "header");
+		button_add.onMouseLClick = &button_add_onClick;
+		button_remove.onMouseLClick = &button_remove_onClick;
+		button_apply.onMouseLClick = &button_apply_onClick;
 		addElement(button_add);
 		addElement(button_remove);
 		addElement(button_apply);
 		foreach (Tag key; header.tags) {
-			listView_headerEdit += new ListViewItem(16, [key.values[0].get!int().to!dstring(), 
-					toUTF32(key.values[1].get!string)], [TextInputFieldType.DecimalP, TextInputFieldType.Text]);
+			listView_headerEdit += new ListViewItem(16, [key.values[1].get!int().to!dstring(), 
+					toUTF32(key.values[0].get!string)], [TextInputFieldType.DecimalP, TextInputFieldType.Text]);
 		}
 		addElement(listView_headerEdit);
 	}
@@ -36,8 +40,8 @@ public class ListViewEditor : Window {
 	private void button_add_onClick(Event ev) {
 		const int pos = listView_headerEdit.value;
 		if (pos >= 0)
-			listView_headerEdit.insertAt(pos, new ListViewItem(16, [key.values[0].get!int().to!dstring(), 
-					toUTF32(key.values[1].get!string)], [TextInputFieldType.DecimalP, TextInputFieldType.Text]));
+			listView_headerEdit.insertAt(pos, new ListViewItem(16, ["40", "col"], 
+					[TextInputFieldType.DecimalP, TextInputFieldType.Text]));
 		listView_headerEdit.draw();
 	}
 	private void button_remove_onClick(Event ev) {
@@ -50,11 +54,11 @@ public class ListViewEditor : Window {
 		Tag[] headerTags;
 		dstring[] texts;
 		int[] widths;
-		header.reserve = listView_headerEdit.numEntries;
+		headerTags.reserve = listView_headerEdit.numEntries;
 		texts.reserve = listView_headerEdit.numEntries;
 		widths.reserve = listView_headerEdit.numEntries;
 		for (int i ; i < listView_headerEdit.numEntries ; i++) {
-			header ~= new Tag(null, null, [Value(toUTF8(listView_headerEdit[i][1].text.text)), 
+			headerTags ~= new Tag(null, null, [Value(toUTF8(listView_headerEdit[i][1].text.text)), 
 					Value(to!int(listView_headerEdit[i][0].text.text))]);
 			texts ~= listView_headerEdit[i][1].text.text;
 			widths ~= to!int(listView_headerEdit[i][0].text.text);

@@ -260,7 +260,8 @@ public class MoveElemEvent : UndoableEvent {
 }
 
 public class ListViewHeaderEditEvent : UndoableEvent {
-	private Tag[] oldHeader, newHeader;
+	private Tag oldHeader;
+	private Tag[] newHeader;
 	private ListViewHeader oldHeader0, newHeader0;
 	private string target;
 	public this(Tag[] newHeader, ListViewHeader newHeader0, string target) {
@@ -269,20 +270,16 @@ public class ListViewHeaderEditEvent : UndoableEvent {
 		this.target = target;
 	}
 	public void redo() {
-		Tag t = wserializer.getTag(target, "header");
-		foreach (Tag t0; t.tags)
-			oldHeader ~= t0.remove();
-		t.add(newHeader);
-		ListView lw = cast(ListView)editorTarget.elements[targetName].element;
+		oldHeader = wserializer.getTag(target, "header");
+		Tag t = new Tag(null, "header", oldHeader.values, null, newHeader);
+		wserializer.replaceTag(target, "header", t);
+		ListView lw = cast(ListView)editorTarget.elements[target].element;
 		lw.setHeader(newHeader0, null);
 		dwtarget.draw();
 	}
 	public void undo() {
-		Tag t = wserializer.getTag(target, "header");
-		foreach (Tag t0; t.tags)
-			t0.remove();
-		t.add(oldHeader);
-		ListView lw = cast(ListView)editorTarget.elements[targetName].element;
+		wserializer.replaceTag(target, "header", oldHeader);
+		ListView lw = cast(ListView)editorTarget.elements[target].element;
 		lw.setHeader(oldHeader0, null);
 		dwtarget.draw();
 	}

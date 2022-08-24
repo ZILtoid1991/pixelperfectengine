@@ -3,6 +3,7 @@ module editor;
 import types;
 import serializer;
 import editorEvents;
+import listviewedit;
 
 import pixelperfectengine.concrete.window;
 import pixelperfectengine.system.input;
@@ -76,6 +77,7 @@ public class TopLevelWindow : Window {
 		mb.onMenuEvent = &e.menuEvent;
 		objectList.onItemSelect = &e.onObjectListSelect;
 		propList.onTextInput = &e.onAttributeEdit;
+		propList.onItemSelect = &e.onAttributeOpen;
 	}
 	public override void draw(bool drawHeaderOnly = false) {
 		if(output.output.width != position.width || output.output.height != position.height)
@@ -337,7 +339,19 @@ public class Editor : SystemEventListener, InputListener{
 			}
 		}
 	}
-	public void clickEvent(int x, int y, bool state){
+	public void onAttributeOpen(Event ev) {
+		ListViewItem lbi = cast(ListViewItem)ev.aux;
+		switch (tlw.objectList.selectedElement[0].text.text) {
+			case "ListView":
+				if (lbi[0].text.text == "header") {
+					ewh.addWindow(new ListViewEditor(selection));
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	public void clickEvent(int x, int y, bool state) {
 		if(typeSel != ElementType.NULL) {
 			if(state) {
 				x0 = x;

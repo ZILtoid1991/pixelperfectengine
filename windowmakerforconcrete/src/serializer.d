@@ -165,7 +165,7 @@ public class WindowSerializer {
 					}
 					intArr = intArr[0..$-2] ~ "]";
 					strArr = strArr[0..$-2] ~ "]";
-					elementCtors ~= intArr ~ ", " ~ strArr ~ "), null, " ~  ", \"" ~ 
+					elementCtors ~= intArr ~ ", " ~ strArr ~ "), null, \"" ~ 
 							t0.getTagValue!string("source") ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~ "));\n";
 					break;
 				case "Window":
@@ -213,10 +213,10 @@ public class WindowSerializer {
 	/** 
 	 * Replaces an existing tag with a new one.
 	 * Params:
-	 *   target = 
-	 *   property = 
-	 *   newTag = 
-	 * Returns: 
+	 *   target = The name of the window element, which tag must be replaced.
+	 *   property = The name of the property Tag.
+	 *   newTag = The new tag to be used in the place of the old
+	 * Returns: The old tag as a backup.
 	 */
 	public Tag replaceTag(string target, string property, Tag newTag) {
 		foreach(Tag t0; root.all.tags){
