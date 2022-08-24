@@ -512,6 +512,15 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		draw;
 		return selection;
 	}
+	/** 
+	 * Returns the currently selected element, or null if none is selected.
+	 */
+	public @property ListViewItem selectedElement() @nogc @safe pure nothrow {
+		if (selection >= 0)
+			return entries[selection];
+		else
+			return null;
+	}
 	/**
 	 * Enables or disables the text editing of this element.
 	 */
