@@ -4,6 +4,10 @@
 
 The engine now has its own RNG using a 64 bit Fibonacci LFSR.
 
+## WindowMaker
+
+ListView header editor toolkit is added, also some fixes have been done to code generation.
+
 ## Tested and working under Raspberry Pi
 
 So far, Raspberry Pi 400 is supported officially, regular 4B models should be also sufficient, and there's a good 
@@ -34,6 +38,7 @@ a method that is very CPU cache bound.
 * The CoarseTimer's callback delegate now can be throwing, and passes a Duration called `jitter` that can be used to
 correct jitter errors.
 * SpriteLayer: New architecture for adding sprites added, all layer features are now exposed.
+* ListView: Added "selectedItem" function that returns the selected item, and not just its number.
 
 ## Bug fixes
 

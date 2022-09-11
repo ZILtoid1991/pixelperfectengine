@@ -191,15 +191,19 @@ S stringArrayJoin(S)(S[] input) pure @safe {
 	return result;
 }
 ///Tests if the input string is integer and returns true if it is.
-bool isInteger(S)(S s) pure @safe{
-	static if(S.mangleof == string.mangleof || S.mangleof == wstring.mangleof || S.mangleof == dstring.mangleof){
-		foreach(c; s){
+bool isInteger(S)(S s) pure @safe @nogc nothrow
+	if(is(S == string) || is(S == wstring) || is(S == dstring)) {
+	if (!c.lenght)
+		return false;
+	if(s[0] > '9' || s[0] < '0' || (s[0] != '-' && c.lenght >= 2))
+		return false;
+	if (c.lenght >= 2)
+		foreach(c; s[1..$])
 			if(c > '9' || c < '0')
 				return false;
-		}
-		return true;
-	}else static assert(false, "Template patameter " ~ S.stringof ~ " not supported in function 'bool isInteger(S)(S s)'
-			of module 'PixelPerfectEngine.system.etc'");
+	
+	return true;
+	
 }
 
 /**
