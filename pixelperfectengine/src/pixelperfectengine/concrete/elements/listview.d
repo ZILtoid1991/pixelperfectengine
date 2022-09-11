@@ -17,72 +17,20 @@ public class ListViewItem {
 	 * Defines a single field (cell) in a listview.
 	 */
 	public struct Field {
-		private uint		flags;		///Stores various flags (constraints, etc.)
+		public uint			textInputType;		///Stores various flags (constraints, etc.)
 		public Text			text;		///Stores the text of this field if there's any.
 		public ABitmap		bitmap;		///Custom bitmap, can be 32 bit if target enables it.
-		static enum IS_EDITABLE		= 1 << 0;///Set if field is text editable.
-		static enum INTEGER			= 1 << 1;///Set if field only accepts integer numbers.
-		static enum NUMERIC			= 1 << 3;///Set if field only accepts numeric values (integer or floating-point).
-		static enum POSITIVE_ONLY	= 1 << 4;///Set if field only accepts positive numeric values (integer or floating-point).
-		
 		/**
 		 * Default constructor.
 		 */
-		this(Text text, ABitmap bitmap, bool editable = false, bool numOnly = false, bool fp = false, 
-				bool posOnly = false) @nogc @safe pure nothrow {
+		this(Text text, ABitmap bitmap, uint TextInputFieldType) @nogc @safe pure nothrow {
 			this.text = text;
 			this.bitmap = bitmap;
-			if (editable) flags |= IS_EDITABLE;
-			if (numOnly) {
-				if (fp) {
-					flags |= NUMERIC;
-				} else {
-					flags |= INTEGER;
-				}
-				if (posOnly) {
-					flags |= POSITIVE_ONLY;
-				}
-			}
+			this.textInputType = textInputType;
 		}
 		///Returns whether the field is editable.
 		public @property bool editable() @nogc @safe pure nothrow const {
-			return flags & IS_EDITABLE ? true : false;
-		}
-		///Sets whether the field is editable. Returns the new value.
-		public @property bool editable(bool val) @nogc @safe pure nothrow {
-			if (val) flags |= IS_EDITABLE;
-			else flags &= ~IS_EDITABLE;
-			return flags & IS_EDITABLE ? true : false;
-		}
-		///Returns whether the field is integer only.
-		public @property bool integer() @nogc @safe pure nothrow const {
-			return flags & INTEGER ? true : false;
-		}
-		///Sets whether the field is integer only. Returns the new value.
-		public @property bool integer(bool val) @nogc @safe pure nothrow {
-			if (val) flags |= INTEGER;
-			else flags &= ~INTEGER;
-			return flags & INTEGER ? true : false;
-		}
-		///Returns whether the field is numeric only.
-		public @property bool numeric() @nogc @safe pure nothrow const {
-			return flags & NUMERIC ? true : false;
-		}
-		///Sets whether the field is numeric only. Returns the new value.
-		public @property bool numeric(bool val) @nogc @safe pure nothrow {
-			if (val) flags |= NUMERIC;
-			else flags &= ~NUMERIC;
-			return flags & NUMERIC ? true : false;
-		}
-		///Returns whether the field is positive only.
-		public @property bool positiveOnly() @nogc @safe pure nothrow const {
-			return flags & POSITIVE_ONLY ? true : false;
-		}
-		///Sets whether the field is positive only. Returns the new value.
-		public @property bool positiveOnly(bool val) @nogc @safe pure nothrow {
-			if (val) flags |= POSITIVE_ONLY;
-			else flags &= ~POSITIVE_ONLY;
-			return flags & POSITIVE_ONLY ? true : false;
+			return flags != TextInputFieldType.None;
 		}
 	}
 	/**
@@ -124,7 +72,7 @@ public class ListViewItem {
 		this.height = height;
 		fields.reserve = ds.length;
 		foreach (dstring key ; ds) {
-			this.fields ~= Field(new Text(key, globalDefaultStyle.getChrFormatting("ListViewHeader")), null);
+			this.fields ~= Field(new Text(key, globalDefaultStyle.getChrFormatting("ListViewItem")), null);
 		}
 	}
 	/**
@@ -139,13 +87,7 @@ public class ListViewItem {
 		fields.reserve = ds.length;
 		assert (ds.length == inputTypes.length, "Mismatch in inputTypes and text length");
 		for (size_t i ; i < ds.length ; i++) {
-			const bool isNumeric = inputTypes[i] == TextInputFieldType.Hex || inputTypes[i] == TextInputFieldType.Integer ||
-					inputTypes[i] == TextInputFieldType.IntegerP || inputTypes[i] == TextInputFieldType.Decimal ||
-					inputTypes[i] == TextInputFieldType.DecimalP;
-			Field f = Field(new Text(ds[i], globalDefaultStyle.getChrFormatting("ListViewHeader")), null, 
-					inputTypes[i] != TextInputFieldType.None, isNumeric, inputTypes[i] == TextInputFieldType.Decimal ||
-					inputTypes[i] == TextInputFieldType.DecimalP, inputTypes[i] == TextInputFieldType.IntegerP ||
-					inputTypes[i] == TextInputFieldType.DecimalP);
+			Field f = Field(new Text(ds[i], globalDefaultStyle.getChrFormatting("ListViewItem")), null, inputTypes[i]);
 			fields ~= f;
 		}
 	}
@@ -308,6 +250,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	///Called when an item is selected
 	public EventDeleg			onItemSelect;
 	///Called when text input is finished and accepted
+	///Event value is `CellEditEvent`
 	public EventDeleg			onTextInput;
 	protected static enum	EDIT_EN = 1<<9;
 	protected static enum	MULTICELL_EDIT_EN = 1<<10;
@@ -1013,18 +956,32 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	public void initTextInput() {
 		flags |= TEXTINPUT_EN;
 		ListViewItem.Field f = opIndex(selection)[hSelection];
-		if (f.numeric) {
-			if (f.positiveOnly)
-				filter = new DecimalFilter!false(f.text);
-			else
-				filter = new DecimalFilter!true(f.text);
-		} else if (f.integer) {
-			if (f.positiveOnly)
-				filter = new IntegerFilter!false(f.text);
-			else
-				filter = new IntegerFilter!true(f.text);
-		} else {
-			filter = null;
+		switch(f.textInputType) {
+			default:
+				filter = null;
+				break;
+			case TextInputFieldType.ASCIIText:
+				filter = new ASCIITextFilter(f.text.text);
+				break;
+			case TextInputFieldType.Decimal:
+				filter = new DecimalFilter(f.text.text);
+				break;
+			case TextInputFieldType.Integer:
+				filter = new IntegerFilter(f.text.text);
+				break;
+			case TextInputFieldType.DecimalP:
+				filter = new DecimalFilter!false(f.text.text);
+				break;
+			case TextInputFieldType.IntegerP:
+				filter = new IntegerFilter!false(f.text.text);
+				break;
+			case TextInputFieldType.Hex:
+				filter = new HexadecimalFilter(f.text.text);
+				break;
+			case TextInputFieldType.Oct:
+				break;
+			case TextInputFieldType.Bin:
+				break;
 		}
 	}
 	private void deleteCharacter(size_t n){

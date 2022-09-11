@@ -54,3 +54,27 @@ public class DecimalFilter(bool AllowNegative = true) : InputFilter {
 		input = removeUnallowedSymbols(input, symbolList);
 	}
 }
+public class HexadecimalFilter : InputFilter {
+	///Creates an instance of this kind of filter
+	public this (Text target) @safe {
+		this.target = target;
+	}
+	public override void use(ref dstring input) @safe {
+		dstring symbolList = "0123456789ABCDEFabcdef";
+		input = removeUnallowedSymbols(input, symbolList);
+	}
+}
+public class ASCIITextFilter : InputFilter {
+	static immutable dstring SYMBOL_LIST;
+	shared static this() {
+		for (dchar c = 0x20 ; c <= 0x7F ; c++) {
+			SYMBOL_LIST ~= c;
+		}
+	}
+	public this (Text target) @safe {
+		this.target = target;
+	}
+	public override void use(ref dstring input) @safe {
+		input = removeUnallowedSymbols(input, SYMBOL_LIST);
+	}
+}
