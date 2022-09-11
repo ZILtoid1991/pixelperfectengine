@@ -2,6 +2,9 @@ module pixelperfectengine.audio.base.envgen;
 
 import std.math : sqrt, pow;
 
+import pixelperfectengine.system.etc : clamp;
+import pixelperfectengine.audio.base.func : fastPow;
+
 /*
  * Copyright (C) 2015-2021, by Laszlo Szeremi under the Boost license.
  *
@@ -126,12 +129,14 @@ public struct ADSREnvelopGenerator {
 	public bool keypos() @nogc @safe pure nothrow const {
 		return _keyState;
 	}
-	///Changes the shape of the output using optimized (modified Bézier) mathematics
+	///Changes the shape of the output using a fast and very crude power of function.
 	///Output is returned as a floating-point value between 0.0 and 1.0
 	public double shp(double g) @nogc @safe pure nothrow const {
 		//return g + (1 - counter) * (1 - counter) * (0 - g) + counter * counter * (1 - g);
-		const double c_2 = counter * counter;
-		return -2 * c_2 * g + c_2 + 2 * counter * g;
+		/+const double c_2 = counter * counter;
+		return -2 * c_2 * g + c_2 + 2 * counter * g;+/
+		double res = fastPow(counter, 2 + (g - 0.5) * 1.5);
+		return clamp(res, 0.0, 1.0);
 	}
 	
 }
