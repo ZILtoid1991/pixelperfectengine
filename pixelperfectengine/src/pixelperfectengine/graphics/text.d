@@ -13,13 +13,17 @@ import xml = undead.xml;
 import std.utf : toUTF32, toUTF8;
 import std.conv : to;
 import std.algorithm : countUntil;
+import std.typecons : BitFlags;
 
 /**
  * Implements a formatted text chunk, that can be serialized in XML form.
  * Has a linked list structure to easily link multiple chunks after each other.
  */
 public class TextTempl(BitmapType = Bitmap8Bit) {
-
+	enum Flags : ubyte {
+		newLine			=	1 << 0,
+		newParagraph	=	1 << 1,
+	}
 	protected dchar[]		_text;			///The text to be displayed
 	public CharacterFormattingInfo!BitmapType 	formatting;	///The formatting of this text block
 	public TextTempl!BitmapType	next;			///The next piece of formatted text block
@@ -28,6 +32,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	public byte				iconOffsetX;	///X offset of the icon if any
 	public byte				iconOffsetY;	///Y offset of the icon if any
 	public byte				iconSpacing;	///Spacing after the icon if any
+	public BitFlags!Flags	flags;			///Text flags
 	/**
 	 * Creates a unit of formatted text from the supplied data.
 	 */

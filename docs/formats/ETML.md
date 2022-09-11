@@ -7,10 +7,10 @@ Purpose of the ETML (Embedded Text Markup Language):
 
 ## Tags with the same behavior as their HTML counterpart
 
-* `<p></p>`
-* `<u></u>`
-* `</ br>`
-* `<s></s>`
+* `<p></p>`: Paragraph marker.
+* `<u></u>`: Understrike marker.
+* `</ br>`: Line break (normal line breaks are not processed by default).
+* `<s></s>`: Strikethrough.
 
 Note: `u` and `s` (and `o`) can be formatted with attributes
 * `style` (possible values: `single`, `double`, `triple`, `quad`),
@@ -18,33 +18,31 @@ Note: `u` and `s` (and `o`) can be formatted with attributes
 * and `perWord` (possible values: `true`, `false`).
 
 Note: `p` can be formatted with attributes
-* `paragraphSpace` (numeric values)
-* `rowHeight` (numeric values)
+* `paragraphSpace` (numeric values): Defines the space between two paragraphs.
+* `rowHeight` (numeric values): Defines the height of a row.
+
+Note: `p`, `font`, and `text` tags can be formatted with attribute:
+* `offsetV`: Vertical offset for single-line texts, sometimes can be useful.
 
 ## Tags special to ETML
 
-* `<o></o>`
+* `<o></o>`: Turns the text overstriken (puts a line on top of the selected text).
 
-Turns the text overstriken (puts a line on top of the selected text).
+* `<i></i>`: Marks the text as italic. The amount can be set with the attribute `amount`.
 
-* `<i></i>`
+* `<font type="OpenSans-reg-14" color="15"></font>`: Sets the type and/or of the font. In the future, there might be a
+size attribute, if vector fonts will ever be supported.
 
-Marks the text as italic. The amount can be set with the attribute `amount`.
+* `<format id="default"></format>`: Chooses a predefined format for the text chunk. Can be modified with any of the 
+other tags.
 
-* `<font type="OpenSans-reg-14" color="15"></font>`
+* `</ frontTab amount="10">`: Inserts a tabulator at the given position.
 
-Sets the type of the font.
+* `</ image src="jeffrey">`: Inserts an image at the current position.
 
-In the future, there might be a size attribute, if vector fonts will ever be supported.
+* `<text id="64"></text>`: Used for containing multiple textchunks in a single file.
 
-* `</ frontTab amount="10">`
+# Note on custom entities
 
-Inserts a tabulator at the given position.
-
-* `</ image src="jeffrey">`
-
-Inserts an image at the current position.
-
-* `<text id="64"></text>`
-
-Used for containing multiple textchunks in a single file.
+Applications can register custom entities, that will be injected into the document while parsing, and override any DTD
+defined entities if names are matching. So called "system" (or external) entities are completely disabled.
