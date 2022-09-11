@@ -48,19 +48,17 @@ int main(string[] args) {
  * Testcase for the audio system.
  * Capable of playing back external files.
  */
-public class TestAudio : InputListener, SystemEventListener {
+public class TestOneApp : InputListener, SystemEventListener {
 	AudioDeviceHandler adh;
 	ModuleManager	mm;
 	QM816			fmsynth;
 	OutputScreen	output;
 	InputHandler	ih;
 	Raster			r;
-	//TileLayer		textOut;
+	AudioSpecs		aS;
 	SpriteLayer		windowing;
 	MIDIInput		midiIn;
 	WindowHandler	wh;
-	int				audioDev;
-	int				midiDev = -1;
 	uint			state;
 	ubyte			noteBase = 60;
 	ubyte			bank0;
@@ -85,11 +83,36 @@ public class TestAudio : InputListener, SystemEventListener {
 		wh = new WindowHandler(1696,960,848,480,windowing);
 		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
 		INIT_CONCRETE();
-
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUI_ADK.tga");
+			globalDefaultStyle.setImage(customGUIElems[6], "newA");
+			globalDefaultStyle.setImage(customGUIElems[7], "newB");
+			globalDefaultStyle.setImage(customGUIElems[8], "saveA");
+			globalDefaultStyle.setImage(customGUIElems[9], "saveB");
+			globalDefaultStyle.setImage(customGUIElems[10], "loadA");
+			globalDefaultStyle.setImage(customGUIElems[11], "loadB");
+			globalDefaultStyle.setImage(customGUIElems[12], "settingsA");
+			globalDefaultStyle.setImage(customGUIElems[13], "settingsB");
+			globalDefaultStyle.setImage(customGUIElems[14], "globalsA");
+			globalDefaultStyle.setImage(customGUIElems[15], "globalsB");
+			globalDefaultStyle.setImage(customGUIElems[16], "addA");
+			globalDefaultStyle.setImage(customGUIElems[17], "addB");
+			globalDefaultStyle.setImage(customGUIElems[18], "removeA");
+			globalDefaultStyle.setImage(customGUIElems[19], "removeB");
+			globalDefaultStyle.setImage(customGUIElems[20], "soloA");
+			globalDefaultStyle.setImage(customGUIElems[21], "soloB");
+			globalDefaultStyle.setImage(customGUIElems[22], "muteA");
+			globalDefaultStyle.setImage(customGUIElems[23], "muteB");
+			globalDefaultStyle.setImage(customGUIElems[24], "importA");
+			globalDefaultStyle.setImage(customGUIElems[25], "importB");
+			globalDefaultStyle.setImage(customGUIElems[26], "exportA");
+			globalDefaultStyle.setImage(customGUIElems[27], "exportB");
+			globalDefaultStyle.setImage(customGUIElems[28], "macroA");
+			globalDefaultStyle.setImage(customGUIElems[29], "macroB");
+		}
 
 		adh = new AudioDeviceHandler(AudioSpecs(predefinedFormats[PredefinedFormats.FP32], 48_000, 0, 2, 512, Duration.init), 
 				64, 8);
-		
 		initDriver();
 		
 	}
@@ -108,62 +131,14 @@ public class TestAudio : InputListener, SystemEventListener {
 	
 	
 	public void initDriver() {
-		clearScreen();
-
 		adh.initAudioDriver(OS_PREFERRED_DRIVER);
-
-		int line;
-		textOut.writeTextToMap(0, line++, 0, "Available devices:");
-		textOut.writeTextToMap(0, line, 0, "` ");
-		textOut.writeTextToMap(2, line++, 0, "Default");
-		foreach (i, key; adh.getDevices) {
-			textOut.writeTextToMap(0, line, 0, to!wstring(i + 1));
-			textOut.writeTextToMap(2, line++, 0, to!wstring(key));
-		}
-
-		//state |= StateFlags.driverInitialized;
-	}
-
-	public void initMidiDev() {
 		initMIDI();
-		string[] inDevs = getMIDIInputDevs();
-		if (inDevs.length) {
-			clearScreen();
-
-			int line;
-			textOut.writeTextToMap(0, line++, 0, "Available MIDI input devices:");
-			textOut.writeTextToMap(0, line, 0, "` ");
-			textOut.writeTextToMap(2, line++, 0, "None");
-			foreach (i, key; inDevs) {
-				textOut.writeTextToMap(0, line, 0, to!wstring(i + 1));
-				textOut.writeTextToMap(2, line++, 0, to!wstring(key));
-			}
-		} else {
-			state |= StateFlags.midiInitialized;
-		}
 	}
+
+	
 
 	public void initDevice(int num) {
-		clearScreen();
-		try {
-			adh.initAudioDevice(num);
-
-			//int line;
-			textOut.writeTextToMap(0, 0, 0, "Sample Rate:");
-			textOut.writeTextToMap(14, 0, 0, to!wstring(adh.getSamplingFrequency));
-			textOut.writeTextToMap(21, 0, 0, "Channels:");
-			textOut.writeTextToMap(31, 0, 0, to!wstring(adh.getChannels));
-			textOut.writeTextToMap(35, 0, 0, "Bits:");
-			//textOut.writeTextToMap(40, 0, 0, to!wstring(adh..bits & 0xFF));
-			textOut.writeTextToMap(0, 1, 0, "Synth:");
-			textOut.writeTextToMap(7, 1, 0, "QM816");
-			
-		} catch (AudioInitException e) {
-			textOut.writeTextToMap(14, 0, 0, to!wstring(e.msg));
-		}
-		mm = new ModuleManager(adh);
-		fmsynth = new QM816();
-		mm.addModule(fmsynth, null, null, [0,1], [0,1]);
+		
 
 		//Initialize audio thread
 		int status = mm.runAudioThread();
@@ -172,311 +147,12 @@ public class TestAudio : InputListener, SystemEventListener {
 
 		state |= StateFlags.deviceInitialized;
 	}
-	public void refreshDisplay() {
-		textOut.writeTextToMap(0, 2, 0, "                                                                    ");
-		textOut.writeTextToMap(0, 2, 0, "VBank0:");
-		textOut.writeTextToMap(8, 2, 0, to!wstring(bank0));
-		textOut.writeTextToMap(16, 2, 0, "VBank1:");
-		textOut.writeTextToMap(24, 2, 0, to!wstring(bank1));
-		textOut.writeTextToMap(32, 2, 0, "Half:");
-		textOut.writeTextToMap(38, 2, 0, state & StateFlags.upperHalf ? "Hi" : "Lo");
-		textOut.writeTextToMap(42, 2, 0, "Val:");
-		textOut.writeTextToMap(48, 2, 0, to!wstring(level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0]));
-	}
+	
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
-		if (isPressed) {
-			if ((state & StateFlags.deviceSelected) == 0) {
-				switch (id) {
-					case hashCalc("num1"):
-						audioDev = 0;
-						break;
-					case hashCalc("num2"):
-						audioDev = 1;
-						break;
-					case hashCalc("num3"):
-						audioDev = 2;
-						break;
-					case hashCalc("num4"):
-						audioDev = 3;
-						break;
-					case hashCalc("num5"):
-						audioDev = 4;
-						break;
-					case hashCalc("num6"):
-						audioDev = 5;
-						break;
-					case hashCalc("num7"):
-						audioDev = 6;
-						break;
-					case hashCalc("num8"):
-						audioDev = 7;
-						break;
-					case hashCalc("num9"):
-						audioDev = 8;
-						break;
-					case hashCalc("num0"):
-						audioDev = 9;
-						break;
-					case hashCalc("grave"):
-						audioDev = -1;
-						break;
-					default:
-						break;
-				}
-				initMidiDev();
-				state |= StateFlags.deviceSelected;
-				if (state & StateFlags.midiInitialized)
-					initDevice(audioDev);
-			} else if ((state & StateFlags.midiInitialized) == 0) {
-				switch (id) {
-					case hashCalc("num1"):
-						midiDev = 0;
-						break;
-					case hashCalc("num2"):
-						midiDev = 1;
-						break;
-					case hashCalc("num3"):
-						midiDev = 2;
-						break;
-					case hashCalc("num4"):
-						midiDev = 3;
-						break;
-					case hashCalc("num5"):
-						midiDev = 4;
-						break;
-					case hashCalc("num6"):
-						midiDev = 5;
-						break;
-					case hashCalc("num7"):
-						midiDev = 6;
-						break;
-					case hashCalc("num8"):
-						midiDev = 7;
-						break;
-					case hashCalc("num9"):
-						midiDev = 8;
-						break;
-					case hashCalc("num0"):
-						midiDev = 9;
-						break;
-					case hashCalc("grave"):
-						
-						break;
-					default:
-						break;
-				}
-				initDevice(audioDev);
-				if (midiDev != -1)
-					openMIDIInput(midiIn, midiDev);
-				if (midiIn)
-					midiIn.midiInCallback = &midiInCallback;
-				midiIn.start();
-				state |= StateFlags.midiInitialized;
-			} else if(!(state & StateFlags.keyPressed)) {
-				state |= StateFlags.keyPressed;
-				UMP midipacket; //UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, noteBase, MIDI2_0NoteAttrTyp.None);
-				switch (id) {
-					case hashCalc("q"):		//C
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, noteBase, MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("num2"):	//C#
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 1), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("w"):		//D
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 2), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("num3"):	//D#
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 3), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("e"):		//E
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 4), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("r"):		//F
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 5), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("num5"):	//F#
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 6), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("t"):		//G
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 7), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("num6"):	//G#
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 8), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("y"):		//A
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 9), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("num7"):	//A#
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 10), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("u"):		//B
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 11), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("i"):		//C+
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 12), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("num9"):	//C#+
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 13), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("o"):		//D+
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 14), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("num0"):	//D#+
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 15), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("p"):		//E+
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 16), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("["):		//F+
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 17), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("equals")://F#+
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 18), MIDI2_0NoteAttrTyp.None);
-						break;
-					case hashCalc("]"):		//G+
-						midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOn, 0x0, cast(ubyte)(noteBase + 19), MIDI2_0NoteAttrTyp.None);
-						break;
-					default:
-						break;
-				}
-				if (midipacket.msgType == MessageType.MIDI2) {
-					fmsynth.midiReceive(midipacket, uint.max);
-				}
-			}
-		} else if ((state & StateFlags.deviceInitialized) && (state & StateFlags.keyPressed)) {
-			state ^= StateFlags.keyPressed;
-			UMP midipacket;// = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, noteBase, MIDI2_0NoteAttrTyp.None);
-			uint val = uint.max;
-			switch (id) {
-				case hashCalc("q"):		//C
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, noteBase, MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("num2"):	//C#
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 1), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("w"):		//D
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 2), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("num3"):	//D#
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 3), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("e"):		//E
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 4), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("r"):		//F
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 5), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("num5"):	//F#
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 6), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("t"):		//G
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 7), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("num6"):	//G#
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 8), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("y"):		//A
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 9), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("num7"):	//A#
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 10), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("u"):		//B
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 11), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("i"):		//C+
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 12), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("num9"):	//C#+
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 13), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("o"):		//D+
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 14), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("num0"):	//D#+
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 15), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("p"):		//E+
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 16), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("["):		//F+
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 17), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("equals")://F#+
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 18), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("]"):		//G+
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.NoteOff, 0x0, cast(ubyte)(noteBase + 19), MIDI2_0NoteAttrTyp.None);
-					break;
-				case hashCalc("F1"):
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.CtrlCh, state & StateFlags.upperHalf ? 0x8 : 0x0, bank0, bank1);
-					level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] += 1;
-					val = level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] * 0x01_01_01_01;
-					refreshDisplay();
-					break;
-				case hashCalc("F2"):
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.CtrlCh, state & StateFlags.upperHalf ? 0x8 : 0x0, bank0, bank1);
-					level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] -= 1;
-					val = level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] * 0x01_01_01_01;
-					refreshDisplay();
-					break;
-				case hashCalc("F3"):
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.CtrlCh, state & StateFlags.upperHalf ? 0x8 : 0x0, bank0, bank1);
-					level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] += 8;
-					val = level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] * 0x01_01_01_01;
-					refreshDisplay();
-					break;
-				case hashCalc("F4"):
-					midipacket = UMP(MessageType.MIDI2, 0x0, MIDI2_0Cmd.CtrlCh, state & StateFlags.upperHalf ? 0x8 : 0x0, bank0, bank1);
-					level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] -= 8;
-					val = level[state & StateFlags.upperHalf ? 1 : 0][bank1][bank0] * 0x01_01_01_01;
-					refreshDisplay();
-					break;
-				case hashCalc("F5"):
-					bank0++;
-					if (bank0 > 31) bank0 = 0 ;
-					refreshDisplay();
-					break;
-				case hashCalc("F6"):
-					bank0--;
-					if (bank0 > 31) bank0 = 31 ;
-					refreshDisplay();
-					break;
-				case hashCalc("F7"):
-					bank1++;
-					if (bank1 > 5) bank1 = 0 ;
-					refreshDisplay();
-					break;
-				case hashCalc("F8"):
-					bank1--;
-					if (bank1 > 5) bank1 = 5 ;
-					refreshDisplay();
-					break;
-				case hashCalc("F9"):
-					state ^= StateFlags.upperHalf;
-					refreshDisplay();
-					break;
-				case hashCalc("OctUp"):
-					noteBase += 12;
-					break;
-				case hashCalc("OctDown"):
-					noteBase -= 12;
-					break;
-				default:
-					break;
-			}
-			if (midipacket.msgType == MessageType.MIDI2) {
-				fmsynth.midiReceive(midipacket, val);
-			}
-		}
+		
 	}
 	public void midiInCallback(ubyte[] data, size_t timestamp) @nogc nothrow {
-		UMP midipkt = UMP(MessageType.MIDI1, 0, data[0]>>4, data[0 & 0xF]);
-		if (data.length > 1)
-			midipkt.bytes[2] = data[1];
-		if (data.length > 2)
-			midipkt.bytes[3] = data[2];
-		fmsynth.midiReceive(midipkt);
+		
 	}
 	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
 		
