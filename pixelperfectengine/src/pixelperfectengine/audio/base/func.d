@@ -442,7 +442,7 @@ alias ADPCMStream = NibbleArray;
 	 * Params:
 	 *   targetBuffer = The buffer to be reset.
 	 */
-	public void resetBuffer(T)(ref T[] targetBuffer) @nogc @safe pure nothrow {
+	public void resetBuffer(T)(ref T[] targetBuffer) @safe {
 		static if (is(T == __m128)) {
 			for (size_t i ; i < targetBuffer.length ; i++) {
 				targetBuffer[i] = __m128(0);
@@ -452,4 +452,15 @@ alias ADPCMStream = NibbleArray;
 				targetBuffer[i] = 0;
 			}
 		}
+	}
+	double fastPow(double a, double b) @safe {
+	    union U {
+	        double d;
+	        int[2] x;
+	    }
+		U u;
+		u.d = a;
+	    u.x[1] = cast(int)(b * (u.x[1] - 1_072_632_447) + 1_072_632_447);
+	    u.x[0] = 0;
+	    return u.d;
 	}
