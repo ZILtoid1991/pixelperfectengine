@@ -46,9 +46,6 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	///Sets the default formatting
 	public CharacterFormattingInfo!BitmapType defaultFormatting(CharacterFormattingInfo!BitmapType val) @property @safe
 			pure nothrow {
-		if (stack[0].formatting is null) {
-			stack[0].formatting = val;
-		}
 		defFrmt = val;
 		return defFrmt;
 	}
@@ -58,7 +55,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	}
 	
 	///Sets/gets the input
-	public string input() @property @safe @nogc pure nothrow inout {
+	public dstring input() @property @safe @nogc pure nothrow inout {
 		return _input;
 	}
 	/**

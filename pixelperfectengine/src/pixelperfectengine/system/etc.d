@@ -193,11 +193,11 @@ S stringArrayJoin(S)(S[] input) pure @safe {
 ///Tests if the input string is integer and returns true if it is.
 bool isInteger(S)(S s) pure @safe @nogc nothrow
 	if(is(S == string) || is(S == wstring) || is(S == dstring)) {
-	if (!c.lenght)
+	if (!s.length)
 		return false;
-	if(s[0] > '9' || s[0] < '0' || (s[0] != '-' && c.lenght >= 2))
+	if(s[0] > '9' || s[0] < '0' || (s[0] != '-' && s.length >= 2))
 		return false;
-	if (c.lenght >= 2)
+	if (s.length >= 2)
 		foreach(c; s[1..$])
 			if(c > '9' || c < '0')
 				return false;

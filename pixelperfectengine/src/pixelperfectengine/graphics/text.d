@@ -9,7 +9,6 @@ module pixelperfectengine.graphics.text;
 public import pixelperfectengine.graphics.fontsets;
 public import pixelperfectengine.graphics.bitmap;
 
-import xml = undead.xml;
 import std.utf : toUTF32, toUTF8;
 import std.conv : to;
 import std.algorithm : countUntil;

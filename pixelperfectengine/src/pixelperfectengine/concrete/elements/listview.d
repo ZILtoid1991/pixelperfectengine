@@ -23,14 +23,14 @@ public class ListViewItem {
 		/**
 		 * Default constructor.
 		 */
-		this(Text text, ABitmap bitmap, uint TextInputFieldType) @nogc @safe pure nothrow {
+		this(Text text, ABitmap bitmap, uint TextInputFieldType = TextInputFieldType.None) @nogc @safe pure nothrow {
 			this.text = text;
 			this.bitmap = bitmap;
 			this.textInputType = textInputType;
 		}
 		///Returns whether the field is editable.
 		public @property bool editable() @nogc @safe pure nothrow const {
-			return flags != TextInputFieldType.None;
+			return textInputType != TextInputFieldType.None;
 		}
 	}
 	/**
@@ -961,22 +961,22 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				filter = null;
 				break;
 			case TextInputFieldType.ASCIIText:
-				filter = new ASCIITextFilter(f.text.text);
+				filter = new ASCIITextFilter(f.text);
 				break;
 			case TextInputFieldType.Decimal:
-				filter = new DecimalFilter(f.text.text);
+				filter = new DecimalFilter!true(f.text);
 				break;
 			case TextInputFieldType.Integer:
-				filter = new IntegerFilter(f.text.text);
+				filter = new IntegerFilter!true(f.text);
 				break;
 			case TextInputFieldType.DecimalP:
-				filter = new DecimalFilter!false(f.text.text);
+				filter = new DecimalFilter!false(f.text);
 				break;
 			case TextInputFieldType.IntegerP:
-				filter = new IntegerFilter!false(f.text.text);
+				filter = new IntegerFilter!false(f.text);
 				break;
 			case TextInputFieldType.Hex:
-				filter = new HexadecimalFilter(f.text.text);
+				filter = new HexadecimalFilter(f.text);
 				break;
 			case TextInputFieldType.Oct:
 				break;
