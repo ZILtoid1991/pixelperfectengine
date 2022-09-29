@@ -135,7 +135,7 @@ public struct ADSREnvelopGenerator {
 		//return g + (1 - counter) * (1 - counter) * (0 - g) + counter * counter * (1 - g);
 		/+const double c_2 = counter * counter;
 		return -2 * c_2 * g + c_2 + 2 * counter * g;+/
-		double res = fastPow(counter, 2 + (g - 0.5) * 1.5);
+		double res = fastPow(counter, 2 + (g - 0.5) * 3);
 		return clamp(res, 0.0, 1.0);
 	}
 	
