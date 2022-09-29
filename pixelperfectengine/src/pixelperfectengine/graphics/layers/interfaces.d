@@ -115,9 +115,9 @@ public interface ISpriteLayer {
 	 *   s = The bitmap to be displayed as the sprite.
 	 *   n = Priority ID. Lower number (including negatives) get to drawn last, thus appearing on top.
 	 *   c = The box that sets the position of the sprite.
-	 *   paletteSel = 
-	 *   scaleHoriz =
-	 *   scaleVert =
+	 *   paletteSel = The ID of the selected palette.
+	 *   scaleHoriz = Horizontal scaling.
+	 *   scaleVert = Vertical scaling.
 	 */
 	public void addSprite(ABitmap s, int n, Box c, ushort paletteSel = 0, int scaleHoriz = 1024, 
 			int scaleVert = 1024) @safe nothrow;
