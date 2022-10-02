@@ -164,7 +164,9 @@ public class TileLayer : Layer, ITileLayer {
 		y = cast(uint)y / tileY;
 		return readMapping(x, y);
 	}
-
+	public override LayerType getLayerType() @nogc @safe pure nothrow const {
+		return LayerType.TransformableTile;
+	}
 	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette) {
 		import std.stdio : printf;
 		int sX0 = sX, sY0 = sY;

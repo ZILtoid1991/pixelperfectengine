@@ -94,6 +94,9 @@ abstract class Layer {
 	}
 	/// Override this to enable output to the raster
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
+	///Returns the type of the layer.
+	///Useful with certain scripting languages.
+	public abstract LayerType getLayerType() @nogc @safe pure nothrow const;
 	///Standard algorithm for horizontal mirroring, used for tile mirroring
 	protected void flipHorizontal(T)(T[] target) @nogc pure nothrow {
 		//sizediff_t j = target.length - 1;
@@ -106,7 +109,7 @@ abstract class Layer {
 	}
 }
 /**
- * Mostly used for internal communication.
+ * Mostly used for internal communication and scripting.
  */
 public enum LayerType {
 	init,

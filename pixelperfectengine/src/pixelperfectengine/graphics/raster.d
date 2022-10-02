@@ -204,26 +204,15 @@ public class Raster : IRaster, PaletteContainer{
     }
     ///Adds a layer at the given priority.
     public void addLayer(Layer l, int i) @safe pure nothrow {
-		/+l.setRasterizer(rX, rY);
-        layerList[i] = l;
-		layerPriorityHandler ~= i;
-		layerPriorityHandler.sort();+/
 		l.setRasterizer(rX, rY);
 		layerMap[i] = l;
     }
 	///Removes a layer at the given priority.
 	public void removeLayer(int n) @safe pure nothrow {
-		/+layerList.remove(n);
-		int[] newlayerPriorityHandler;
-		for(int i; i < layerPriorityHandler.length; i++){
-			//writeln(0);
-			if(layerPriorityHandler[i] != n){
-				newlayerPriorityHandler ~= layerPriorityHandler[i];
-
-			}
-		}
-		layerPriorityHandler = newlayerPriorityHandler;+/
 		layerMap.remove(n);
+	}
+	public Layer getLayer(int n) @nogc @safe pure nothrow {
+		return layerMap[n];
 	}
 	/**
 	 * Refreshes the whole framebuffer.

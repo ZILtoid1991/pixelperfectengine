@@ -41,7 +41,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		 * means 512 * 128 color palettes, while the bitmaps are still stored in the 8 bit "chunky" mode
 		 * instead of 7 bit planar that would require way more processing power. However this doesn't 
 		 * limit the bitmap's ability to access 256 colors, and this can result in memory leakage if
-		 * the end developer isn't careful enough.
+		 * the developer isn't careful enough.
 		 */
 		ushort	paletteSel;
 		//ubyte	flags;				/// Flags packed into a single byte (bitmapType, paletteSh)
@@ -453,6 +453,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Gets the sprite's current vertical scale value
 	public int getScaleSpriteVert(int n) @nogc @trusted nothrow {
 		return allSprites[n].scaleVert;
+	}
+	public override LayerType getLayerType() @nogc @safe pure nothrow const {
+		return LayerType.TransformableTile;
 	}
 	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {
 		/*

@@ -29,7 +29,7 @@ import inteli.emmintrin;
  * </ul>
  * HDMA emulation supported through delegate hBlankInterrupt.
  */
-public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int TileY = 8) : Layer, ITileLayer{
+public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int TileY = 8) : Layer, ITileLayer, ITTL{
 		/*if(isPowerOf2(TileX) && isPowerOf2(TileY))*/
 	protected struct DisplayListItem {
 		BMPType	tile;		///For reference counting
@@ -143,7 +143,9 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 			src.length = rX;
 		}
 	}
-
+	public override LayerType getLayerType() @nogc @safe pure nothrow const {
+		return LayerType.TransformableTile;
+	}
 	override public @nogc void updateRaster(void* workpad,int pitch,Color* palette) {
 		//import core.stdc.stdio;
 		if(needsUpdate){
@@ -367,43 +369,43 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	/**
 	 * Horizontal scaling. Greater than 256 means zooming in, less than 256 means zooming out.
 	 */
-	public @nogc @property pure @safe short A(){
+	public @property short A() @nogc @safe nothrow pure const {
 		return transformPoints[0];
 	}
 	/**
 	 * Horizontal shearing.
 	 */
-	public @nogc @property pure @safe short B(){
+	public @property short B() @nogc @safe nothrow pure const {
 		return transformPoints[1];
 	}
 	/**
 	 * Vertical shearing.
 	 */
-	public @nogc @property pure @safe short C(){
+	public @property short C() @nogc @safe nothrow pure const {
 		return transformPoints[2];
 	}
 	/**
 	 * Vertical scaling. Greater than 256 means zooming in, less than 256 means zooming out.
 	 */
-	public @nogc @property pure @safe short D(){
+	public @property short D() @nogc @safe nothrow pure const {
 		return transformPoints[3];
 	}
 	/**
 	 * Horizontal transformation offset.
 	 */
-	public @nogc @property pure @safe short x_0(){
+	public @property short x_0() @nogc @safe nothrow pure const {
 		return tpOrigin[0];
 	}
 	/**
 	 * Vertical transformation offset.
 	 */
-	public @nogc @property pure @safe short y_0(){
+	public @property short y_0() @nogc @safe nothrow pure const {
 		return tpOrigin[1];
 	}
 	/**
 	 * Horizontal scaling. Greater than 256 means zooming in, less than 256 means zooming out.
 	 */
-	public @nogc @property pure @safe short A(short newval){
+	public @property short A(short newval) @nogc @safe nothrow pure {
 		transformPoints[0] = newval;
 		needsUpdate = true;
 		return transformPoints[0];
@@ -411,7 +413,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	/**
 	 * Horizontal shearing.
 	 */
-	public @nogc @property pure @safe short B(short newval){
+	public @property short B(short newval) @nogc @safe nothrow pure {
 		transformPoints[1] = newval;
 		needsUpdate = true;
 		return transformPoints[1];
@@ -419,7 +421,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	/**
 	 * Vertical shearing.
 	 */
-	public @nogc @property pure @safe short C(short newval){
+	public @property short C(short newval) @nogc @safe nothrow pure {
 		transformPoints[2] = newval;
 		needsUpdate = true;
 		return transformPoints[2];
@@ -427,7 +429,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	/**
 	 * Vertical scaling. Greater than 256 means zooming in, less than 256 means zooming out.
 	 */
-	public @nogc @property pure @safe short D(short newval){
+	public @property short D(short newval) @nogc @safe nothrow pure {
 		transformPoints[3] = newval;
 		needsUpdate = true;
 		return transformPoints[3];
@@ -435,7 +437,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	/**
 	 * Horizontal transformation offset.
 	 */
-	public @nogc @property pure @safe short x_0(short newval){
+	public @property short x_0(short newval) @nogc @safe nothrow pure {
 		tpOrigin[0] = newval;
 		//tpOrigin[2] = newval;
 		needsUpdate = true;
@@ -444,7 +446,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	/**
 	 * Vertical transformation offset.
 	 */
-	public @nogc @property pure @safe short y_0(short newval){
+	public @property short y_0(short newval) @nogc @safe nothrow pure {
 		tpOrigin[1] = newval;
 		//tpOrigin[3] = newval;
 		needsUpdate = true;

@@ -83,6 +83,20 @@ public interface ITileLayer {
 	///Clears the tilemap
 	public void clearTilemap() @nogc @safe pure nothrow;
 }
+public interface ITTL {
+	public @property short A() @nogc @safe nothrow pure const;
+	public @property short B() @nogc @safe nothrow pure const;
+	public @property short C() @nogc @safe nothrow pure const;
+	public @property short D() @nogc @safe nothrow pure const;
+	public @property short x_0() @nogc @safe nothrow pure const;
+	public @property short y_0() @nogc @safe nothrow pure const;
+	public @property short A(short newval) @nogc @safe nothrow pure;
+	public @property short B(short newval) @nogc @safe nothrow pure;
+	public @property short C(short newval) @nogc @safe nothrow pure;
+	public @property short D(short newval) @nogc @safe nothrow pure;
+	public @property short x_0(short newval) @nogc @safe nothrow pure;
+	public @property short y_0(short newval) @nogc @safe nothrow pure;
+}
 /**
  *General SpriteLayer interface.
  */
