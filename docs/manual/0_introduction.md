@@ -140,9 +140,17 @@ editor for faster creation and easier visualization.
 
 ## Audio subsystem
 
-There's a custom audio subsystem, which can be used to geterate both music and sound effects. It uses software synthesizers, that can be manipulated real time through MIDI2.0, which is also can be used for preset recall. Dynamic soundtracks containing more than just fading in and out MP3 files.
+There's a custom audio subsystem, which can be used to geterate both music and sound effects. It uses software 
+synthesizers, that can be manipulated real time through MIDI2.0, which is also can be used for preset recall. Dynamic 
+soundtracks containing more than just fading in and out MP3 files will be implemented later on.
 
-A musician wanting to use the synths must be familiar with MIDI2.0, and programming the synths themselves. Some corners can be cut by using presets of course.
+A musician wanting to use the synths must be familiar with MIDI2.0, and programming the synths themselves. Some corners
+can be cut by using presets of course.
+
+## Scripting
+
+PixelPerfectEngine so far supports Lua scripting, that can be embedded into the XMF files (see `mapformat.md` for 
+further info), and can be used to automate in-game events without altering the main code of the game.
 
 # Planned features
 

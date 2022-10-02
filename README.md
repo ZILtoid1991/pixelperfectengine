@@ -1,40 +1,40 @@
-# PixelPerfectEngine ver 0.10-beta
+# PixelPerfectEngine ver 0.10-rc
 
 A retro engine for 2D and pseudo-3D games written in D by László Szerémi.
 
-Started out as a project for college, and continued as a hobby to learn game and software development. Has its own GUI subsystem, 
-which is influenced by the looks of old graphical operating systems' (Amiga Workbench, old MacOS, etc.).
+Started out as a project for college, and continued as a hobby to learn game and software development. Has its own GUI
+subsystem, which is influenced by the looks of old graphical operating systems' (Amiga Workbench, old MacOS, etc.).
 
 # Why use PixelPerfectEngine over the competition?
 
 ## Authentic pixel graphics
 
 I was looking for a project idea to present something for Object-Oriented Programming exams, that would be doable by a 
-single person, yet fun enough to keep me occupied to work on it. While I underestimated the complexity and the work that should
-go into an engine (especially as a rookie), I noticed a few odd things about 2D retro games. As modern engines often use 3D
-polygons for sprites, there are often many errors:
+single person, yet fun enough to keep me occupied to work on it. While I underestimated the complexity and the work 
+that should go into an engine (especially as a rookie), I noticed a few odd things about 2D retro games. As modern 
+engines often use 3D polygons for sprites, there are often many errors:
 
 * Rounding errors from floating-point coordinates.
 * Unauthentic scaling and rotation effects due to direct rendering on high-resolution framebuffers.
 * Ability of use of sprites and textures with baked-in big pixels, which lead to misaligned pixels.
 
-In order to mitigate these issues, the engine uses CPU or GPU (coming in the future) blitter, like some old systems did back
-in the days, such as the Amiga. However the engine also can do some of the tricks of later 2D machines like per-index 
-transparency, and you can create various effects like light, fog, and reflections, by using custom layers or even the 
-`EffectLayer` (coming in the future). You also don't need any trickery for palette-swap effects.
+In order to mitigate these issues, the engine uses CPU or GPU (coming in the future) blitter, like some old systems did
+back in the days, such as the Amiga. However the engine also can do some of the tricks of later 2D machines like 
+per-index transparency, and you can create various effects like light, fog, and reflections, by using custom layers or
+even the `EffectLayer` (coming in the future). You also don't need any trickery for palette-swap effects.
 
 ## Small footprint and lightweight
 
-Some other, popular engines used for 2D retro games are 3D engines that are made to display 2D graphics instead. This often
-adds additional bulk onto an otherwise small game.
+Some other, popular engines used for 2D retro games are 3D engines that are made to display 2D graphics instead. This 
+often adds additional bulk onto an otherwise small game.
 
-This lightweight nature of the engine will soon enable to be compiled for low-powered ARMv8 devices, which will allow to
-be run on many smartphones and even single-board computers.
+This lightweight nature of the engine will soon enable to be compiled for low-powered ARMv8 devices, which will allow 
+to be run on many smartphones and even single-board computers.
 
 ## Open-source without the hassle
 
-This engine is licensed under the Boost Software License 1.0, which means it can be used without attribution and even in
-commercial applications. Be aware that many components are on different licenses, such as SDL2 and ZLib.
+This engine is licensed under the Boost Software License 1.0, which means it can be used without attribution and even 
+in commercial applications. Be aware that many components are on different licenses, such as SDL2 and ZLib.
 
 # How to build
 
@@ -74,6 +74,10 @@ GUI elements testcase. Tests if GUI elements work correctly.
 
 Test of the scripting engine.
 
+### test5
+
+Test of the XML text parsing engine and the text drawing functions.
+
 ### snake
 
 A simple engine demonstration game. Does not use (much) external assets, and instead uses code renerated ones.
@@ -108,21 +112,25 @@ A must-have for this engine, due to it using some unusual features, like palette
 * Collision detection
 * Handling of multiple inputs
 * An audio subsystem capable of era-correct synthesis
-* (Coming soon!) Scripting via Lua (more languages might be added)
+* Scripting via Lua (more languages might be added by others)
 * ...and many more
 
 # Known issues:
 
-* The engine doesn't clear the framebuffer to spare some CPU time. This can result in rapid flickering if the bottom layer is scrolled
-out. To avoid it at all cost, you can use a warp mode on that layer.
-* There's also some speed issues as SDL2 writes the framebuffer back to the main memory. This will probably end up in the slow 
-replacement of SDL2's graphical side with something faster.
-* WindowMakerForConcrete and PixelPerfectEditor are currently unfinished. The former will be soon working fully with extra features 
-(such as undo/redo, snapping to grid and components), then the latter can be developed without an issue.
-* Error handling isn't fully realized, so a lot of errors might happen. You can help me by reporting errors, testing on various 
-systems.
+* The engine doesn't clear the framebuffer to spare some CPU time. This can result in rapid flickering if the bottom 
+layer is scrolled out. To avoid it at all cost, you can use a warp mode on that layer.
+* There's also some speed issues as SDL2 writes the framebuffer back to the main memory. This will probably end up in 
+the slow replacement of SDL2's graphical side with something faster.
+* WindowMakerForConcrete and PixelPerfectEditor are currently unfinished. The former will be soon working fully with 
+extra features (such as undo/redo, snapping to grid and components), then the latter can be developed without an issue.
+* Error handling isn't fully realized, so a lot of errors might happen. You can help me by reporting errors, testing on
+various systems.
 
 # Future plans:
 
-* Hardware acceleration, possibly through OpenCL since GLSL lacks the ability of reading textures as integers in older versions.
 * Compressed data file handling.
+* Effects layer with some sort of programmability.
+* Transformable sprites.
+* Support for MacOS. (Contact me, if you have hardware for it and willing to contribute to the project)
+* Support for Android. (Either will be done by me later on, or contact me if you're up for this challenge)
+* Support for iOS. (Contact me if you have the hardware and you willing to contribute)
