@@ -11,6 +11,8 @@ import std.traits;
 import std.exception : enforce;
 
 import pixelperfectengine.system.exc;
+public import pixelperfectengine.scripting.lualib : registerLibForScripting;
+public import pixelperfectengine.scripting.globals;
 
 import collections.linkedmap;
 
@@ -103,8 +105,57 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
 		static if(is(ReturnType!Func == void)) {
 			Func(params);
 			return 0;
+		} else static if(is(ReturnType!Func == struct)) {
+			auto retVal = Func(params);
+			static foreach (key ; (ReturnType!Func).tupleof) {
+				LuaVar(__traits(child, retVal, key)).pushToLuaState(state);
+			}
+			return cast(int)retVal.tupleof.length;
 		} else {
 			LuaVar(Func(params)).pushToLuaState(state);
+			return 1;
+		}
+	} catch (Exception e) {
+		//luaPushVar(L, null);
+		lastLuaToDException = e;
+		try {
+			luaL_error(state, ("A D function threw: "~e.toString~"!\0").ptr);
+		} catch(Exception e) { 
+			luaL_error(state, "D threw when stringifying exception!");
+		}
+		return 1;
+	}
+}
+extern (C) public int registerDDelegate(alias Func)(lua_State* state) nothrow
+		if(isSomeFunction!(Func)) {
+	import std.traits:Parameters, ReturnType;
+	alias ClassType = __traits(parent, Func);
+	Parameters!Func params;
+	int stackCounter = 0;
+	stackCounter--;
+	ClassType c;
+	try {
+		c = luaGetFromIndex!ClassType(state, stackCounter);
+		foreach_reverse(ref param; params) {
+			stackCounter--;
+			param = luaGetFromIndex!(typeof(param))(state, stackCounter);
+		}
+	} catch (Exception e) {
+		luaL_error(state, "Argument type mismatch with D functions!");
+	}
+	
+	try {
+		static if(is(ReturnType!Func == void)) {
+			__traits(child, c, Func)(params);//c.Func(params);
+			return 0;
+		} else static if(is(ReturnType!Func == struct)) {
+			ReturnType!Func retVal = __traits(child, c, Func)(params);//auto retVal = c.Func(params);
+			static foreach (key ; (ReturnType!Func).tupleof) {
+				LuaVar(__traits(child, retVal, key)).pushToLuaState(state);
+			}
+			return cast(int)retVal.tupleof.length;
+		} else {
+			LuaVar(__traits(child, c, Func)(params)).pushToLuaState(state);//LuaVar(c.Func(params)).pushToLuaState(state);
 			return 1;
 		}
 	} catch (Exception e) {
@@ -121,7 +172,7 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
 ///Contains the pointer to the exception thrown by a D function called from the Lua side.
 public static Exception lastLuaToDException;
 package T luaGetFromIndex(T)(lua_State* L, int ind) {
-	static if(isIntegral!T) {
+	static if(isIntegral!T || isSomeChar!T) {
 		if (!lua_isinteger(L, ind)) 
 			throw new LuaException(7,"Type mismatch!");
 		lua_Integer i = lua_tointeger(L, ind);
@@ -131,16 +182,21 @@ package T luaGetFromIndex(T)(lua_State* L, int ind) {
 			throw new LuaException(7,"Type mismatch!");
 		lua_Number n = lua_tonumber(L, ind);
 		return cast(T)n;
-	} else static if(is(T == string)) {
-		import std.string : fromStringz;
-		if (!lua_isstring(L, ind))
-			throw new LuaException(7,"Type mismatch!");
-		return fromStringz(lua_tostring(L, ind));
-	} else static if(is(T == void*)) {
+	} else static if(is(T == class) || is(T == interface)) {
 		if (!lua_islightuserdata(L, ind))
 			throw new LuaException(7,"Type mismatch!");
 		void* data = lua_touserdata(L, ind);
 		return cast(T)data;
+	} else static if(is(T == string)) {
+		import std.string : fromStringz;
+		if (!lua_isstring(L, ind))
+			throw new LuaException(7,"Type mismatch!");
+		return cast(string)(fromStringz(lua_tostring(L, ind)));
+	} else static if(is(T == void*)) {
+		if (!lua_islightuserdata(L, ind))
+			throw new LuaException(7,"Type mismatch!");
+		void* data = lua_touserdata(L, ind);
+		return data;
 	} else static if(is(T == LuaVar)) {
 		return LuaVar(L, ind);
 	} else static assert(0, "Type not supported!");
@@ -167,7 +223,11 @@ public struct LuaVar {
 		long				dataInt;
 		double				dataNum;
 	}
-	//private void*			data;
+	public static LuaVar voidType() @safe pure nothrow {
+		LuaVar result;
+		result._type = LuaVarType.Null;
+		return result;
+	}
 	public this(T)(T val) @safe pure nothrow {
 		static if (is(T == void*) || is(T == LuaTable*)) {
 			dataPtr = val;
@@ -176,7 +236,15 @@ public struct LuaVar {
 		} else static if (isFloatingPoint!T) {
 			dataNum = val;
 		} else static if (is(T == string)) {
-			dataStr = val;
+			void __workaround() @system pure nothrow {
+				dataPtr = cast(void*)toStringz(val);
+			}
+			void _workaround() @trusted pure nothrow {
+				__workaround();
+			}
+			_workaround();
+		} else static if (is(T == const(char)*)) {
+			dataPtr = cast(void*)val;
 		}
 		setType!(T);
 	}
@@ -209,15 +277,15 @@ public struct LuaVar {
 		}
 	}
 	private void setType(T)() @nogc @safe pure nothrow {
-		static if (isIntegral!T) {
+		static if (isIntegral!T || isSomeChar!T) {
 			_type = LuaVarType.Integer;
 		} else static if (isBoolean!T) {
 			_type = LuaVarType.Boolean;
 		} else static if (isFloatingPoint!T) {
 			_type = LuaVarType.Number;
-		} else static if (is(T == string)) {
+		} else static if (is(T == string) || is(T == const(char)*)) {
 			_type = LuaVarType.String;
-		} else static if (is(T == void*)) {
+		} else static if (is(T == void*) || is(T == class) || is(T == interface)) {
 			_type = LuaVarType.Userdata;
 		} else static if (is(T == LuaTable)) {
 			_type = LuaVarType.Table;
@@ -237,7 +305,9 @@ public struct LuaVar {
 			return cast(T)dataNum;
 		} else static if (is(T == string)) {
 			return fromStringz(cast(const(char*))dataPtr);
-		}
+		} else static if (is(T == const(char*))) {
+			return cast(const(char*))dataPtr;
+		} else static assert(0, "Unsupported type!");
 	}
 	package void pushToLuaState(lua_State* state) @system nothrow {
 		final switch (_type) with (LuaVarType) {
@@ -268,19 +338,22 @@ public struct LuaVar {
 		}
 	}
 	public T get(T)() const @trusted pure {
-		static if (is(typeof(T) == int) || is(typeof(T) == long)) {
+		static if (isIntegral!T) {
 			if (_type == LuaVarType.Integer)
 				return cast(T)deRef!long;
-		} else static if (is(typeof(T) == double) || is(typeof(T) == float)) {
+		} else static if (isFloatingPoint!T) {
 			if (_type == LuaVarType.Integer)
 				return cast(T)deRef!double;
-		} else static if (is(typeof(T) == string)) {
+		} else static if (is(T == string)) {
 			if (_type == LuaVarType.String)
 				return deRef!string;
-		} else static if (is(typeof(T) == void*)) {
+		} else static if (is(T == const(char*))){
+			if (_type == LuaVarType.String)
+				return deRef!(const(char*));
+		} else static if (is(T == void*)) {
 			if (_type == LuaVarType.Userdata)
 				return deRef!(void*);
-		} else static if (is(typeof(T) == bool)) {
+		} else static if (is(T == bool)) {
 			if (_type == LuaVarType.Boolean)
 				return deRef!bool;
 		} else static if (is(typeof(T) == LuaTable*)) {
@@ -320,6 +393,20 @@ public struct LuaVar {
 		return this;
 	}
 	T opCast(T)() const @safe pure {
+		import std.math : nearbyint;
+		static if (isIntegral!T) {
+			if (_type == LuaVarType.Integer) {
+				return cast(T)dataInt;
+			} else if (_type == LuaVarType.Number) {
+				return cast(T)nearbyint(dataNum);
+			}
+		} else static if (isFloatingPoint!T) {
+			if (_type == LuaVarType.Integer) {
+				return cast(T)dataInt;
+			} else if (_type == LuaVarType.Number) {
+				return cast(T)dataNum;
+			}
+		}
 		return get!T();
 	}
 }
