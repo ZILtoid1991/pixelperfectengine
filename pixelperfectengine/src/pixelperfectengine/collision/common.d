@@ -16,9 +16,9 @@ import collections.treemap;
  */
 public struct CollisionShape {
 	Box				position;	///Position of the shape in the 2D space.
-	Bitmap1bit		shape;		///The shape defined by a 1 bit bitmap. Null if custom shape isn't needed
+	Bitmap1Bit		shape;		///The shape defined by a 1 bit bitmap. Null if custom shape isn't needed
 	///default CTOR
-	public this(Box position, Bitmap1bit shape) @nogc @safe pure nothrow {
+	public this(Box position, Bitmap1Bit shape) @nogc @safe pure nothrow {
 		this.position = position;
 		this.shape = shape;
 		//this.id = id;
@@ -65,12 +65,11 @@ public class TileCollisionEvent {
 	 * Defines individual tile collisions.
 	 */
 	public struct CollisionContext {
-		Box					position;	///Position of the tile
+		Point				position;	///Position of the tile on the map
 		MappingElement		data;		///Data of the mapping element read out from the layer
 	}
 	CollisionShape*		a;			///Source object
 	int					contextID;	///The context of the collision (e.g. layer number)
-	CollisionContext[]	overlap;	///All overlapping collisions
 	CollisionContext[]	topEdge;	///Top edge collisions if any
 	CollisionContext[]	bottomEdge;	///Bottom edge collisions if any
 	CollisionContext[]	leftEdge;	///Left edge collisions if any

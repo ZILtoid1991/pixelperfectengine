@@ -12,6 +12,13 @@ import pixelperfectengine.collision.common;
 
 /**
  * Object-to-object collision detector.
+ *
+ * Detects whether two objects have been collided, and if yes in what way. Capable of detecting:
+ * * Box overlap
+ * * Box edge
+ * * Shape overlap
+ * Note that shape overlap needs a custom collision shape for it to work, and cannot be mirrored in any way, instead
+ * "pre-mirroring" has to be done. Also sprite scaling isn't supported by this very collision detector.
  */
 public class ObjectCollisionDetector {
 	ObjectMap			objects;	///Contains all of the objects 
@@ -149,13 +156,20 @@ public class ObjectCollisionDetector {
 			}
 			ObjectCollisionEvent event = new ObjectCollisionEvent(shA, shB, contextID, cc, ObjectCollisionEvent.Type.BoxOverlap);
 			if(shA.shape !is null && shB.shape !is null) {
-				for (int y ; y < cc.height ; y++) {
+				/+for (int y ; y < cc.height ; y++) {
 					for (int x ; x < cc.width ; x++) {
 						if (shA.shape.readPixel(ca.left + x, ca.top + y) && shB.shape.readPixel(cb.left + x, cb.top + y)) {
 							event.type = ObjectCollisionEvent.Type.ShapeOverlap;
 							return event;
 						}
 					}
+				}+/
+				if (shA.position.left <= shB.position.left) {
+					if (shA.shape.testCollision(ca.top, ca.height, shB.shape, cb.top, ca.left, cb.width))
+						event.type = ObjectCollisionEvent.Type.ShapeOverlap;
+				} else {
+					if (shB.shape.testCollision(cb.top, cb.height, shA.shape, ca.top, cb.left, cb.width))
+						event.type = ObjectCollisionEvent.Type.ShapeOverlap;
 				}
 			}
 			return event;
