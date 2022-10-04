@@ -221,6 +221,17 @@ public class Raster : IRaster, PaletteContainer{
 		import std.stdio : writeln;
         r = true;
 		
+		//get frame duration
+		frameTime_1 = frameTime;
+		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
+		delta_frameTime = frameTime - frameTime_1;
+		const real delta_frameTime0 = cast(real)(delta_frameTime.total!"usecs"());
+		framesPerSecond = 1 / (delta_frameTime0 / 1_000_000);
+		if(avgFPS)
+			avgFPS = (avgFPS + framesPerSecond) / 2;
+		else
+			avgFPS = framesPerSecond;
+
 		updatedBuffer++;
 		if(updatedBuffer >= nOfBuffers) updatedBuffer = 0;
 
@@ -239,16 +250,7 @@ public class Raster : IRaster, PaletteContainer{
         foreach(r; rL){
             r.refreshFinished;
         }
-		//get frame duration
-		frameTime_1 = frameTime;
-		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
-		delta_frameTime = frameTime - frameTime_1;
-		const real delta_frameTime0 = cast(real)(delta_frameTime.total!"usecs"());
-		framesPerSecond = 1 / (delta_frameTime0 / 1_000_000);
-		if(avgFPS)
-			avgFPS = (avgFPS + framesPerSecond) / 2;
-		else
-			avgFPS = framesPerSecond;
+		
     }
 
 

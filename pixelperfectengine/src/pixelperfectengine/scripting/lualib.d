@@ -64,7 +64,7 @@ public void registerLibForScripting(lua_State* state) {
 	lua_register(state, "getSpriteCoordinate", &registerDDelegate!(ISpriteLayer.getSpriteCoordinate));
 	lua_register(state, "setSpriteSlice", &registerDFunction!setSpriteSlice);
 	lua_register(state, "getSpriteSlice", &registerDDelegate!(ISpriteLayer.getSlice));
-	lua_register(state, "addSprite", &registerDFunction!addSprite);
+	lua_register(state, "addSprite", &registerDDelegate!(ISpriteLayer.addSprite));
 	lua_register(state, "removeSprite", &registerDDelegate!(ISpriteLayer.removeSprite));
 	lua_register(state, "getPaletteID", &registerDDelegate!(ISpriteLayer.getPaletteID));
 	lua_register(state, "setPaletteID", &registerDDelegate!(ISpriteLayer.setPaletteID));
@@ -239,10 +239,10 @@ package void moveSprite(ISpriteLayer target, int n, LuaVar x, LuaVar y) {
 package void relMoveSprite(ISpriteLayer target, int n, LuaVar x, LuaVar y) {
 	target.relMoveSprite(n, cast(int)x, cast(int)y);
 }
-package void addSprite(ISpriteLayer target, ABitmap s, int n, LuaVar x, LuaVar y, ushort paletteSel, 
+/+package void addSprite(ISpriteLayer target, ABitmap s, int n, LuaVar x, LuaVar y, ushort paletteSel, 
 		LuaVar scaleHoriz, LuaVar scaleVert) {
 	target.addSprite(s, n, cast(int)x, cast(int)y, paletteSel, cast(int)scaleHoriz, cast(int)scaleVert);
-}
+}+/
 package short ttl_getA(ITTL target) @nogc nothrow {
 	return target.A;
 }

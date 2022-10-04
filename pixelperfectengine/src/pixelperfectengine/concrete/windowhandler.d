@@ -133,7 +133,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	protected void updateSpriteOrder() {
 		spriteLayer.clear();
 		for (int i ; i < windows.length ; i++)
-			spriteLayer.addSprite(windows[i].getOutput, i, windows[i].getPosition);
+			spriteLayer.addSprite(windows[i].getOutput, i, windows[i].getPosition.left, windows[i].getPosition.top);
 		if (background) spriteLayer.addSprite(background, 65_536, 0, 0);
 		if (baseWindow) spriteLayer.addSprite(baseWindow.getOutput, 65_535, 0, 0);
 	}
@@ -254,7 +254,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		import pixelperfectengine.graphics.layers.base : RenderingMode;
 		w.addHandler(this);
 		baseWindow = w;
-		spriteLayer.addSprite(w.getOutput, 65_535, w.getPosition);
+		spriteLayer.addSprite(w.getOutput, 65_535, w.getPosition.left, w.getPosition.top);
 		spriteLayer.setSpriteRenderingMode(65_535, RenderingMode.Blitter);
 		return baseWindow;
 	}
@@ -282,7 +282,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		
 		p.move(mouseX, mouseY);
 		numOfPopUpElements--;
-		spriteLayer.addSprite(p.getOutput(), numOfPopUpElements, p.getPosition());
+		spriteLayer.addSprite(p.getOutput(), numOfPopUpElements, p.getPosition.left, p.getPosition.top);
 
 	}
 	public void addPopUpElement(PopUpElement p, int x, int y){
