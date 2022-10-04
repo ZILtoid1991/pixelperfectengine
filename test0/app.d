@@ -44,7 +44,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	TransformableTileLayer!(Bitmap8Bit,16,16) tt;
 	Bitmap8Bit[] tiles;
 	Bitmap8Bit dlangMan;
-	Bitmap1bit dlangManCS;
+	Bitmap1Bit dlangManCS;
 	SpriteLayer s;
 	InputHandler ih;
 	ObjectCollisionDetector ocd;
@@ -89,7 +89,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 		s.addSprite(dlangMan, 65_536, 0, 0, 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
-		s.addSprite(dlangMan, 0, 0, 0, 1, -1024, -1024);
+		s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
 
 		for(int i = 1 ; i < 10 ; i++){
 			const int x = uniform(0,320), y = uniform(0,240);

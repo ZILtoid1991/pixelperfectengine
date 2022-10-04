@@ -23,6 +23,7 @@ import pixelperfectengine.graphics.bitmap;
 import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;
 import pixelperfectengine.system.etc;
+import pixelperfectengine.system.systemutility;
 import pixelperfectengine.system.config;
 
 import pixelperfectengine.system.common;
@@ -34,13 +35,15 @@ import core.thread;
 import iota.audio.midi;
 import iota.audio.midiin;
 
+import test1.audioconfig;
+
 /** 
  * Audio subsystem test.
  * 
  */
 int main(string[] args) {
 	initialzeSDL();
-	TestAudio app = new TestAudio(args);
+	TestOneApp app = new TestOneApp(args);
 	app.whereTheMagicHappens();
 	return 0;
 }
@@ -54,7 +57,7 @@ public class TestOneApp : InputListener, SystemEventListener {
 	QM816			fmsynth;
 	OutputScreen	output;
 	InputHandler	ih;
-	Raster			r;
+	Raster			mainRaster;
 	AudioSpecs		aS;
 	SpriteLayer		windowing;
 	MIDIInput		midiIn;
@@ -78,13 +81,15 @@ public class TestOneApp : InputListener, SystemEventListener {
 		state |= StateFlags.isRunning;
 		//Image fontSource = loadImage(File("../system/cp437_8x16.png"));
 		output = new OutputScreen("PixelPerfectEngine Audio Development Kit", 848 * 2, 480 * 2);
-		r = new Raster(848,480,output,0);
+		mainRaster = new Raster(848,480,output,0);
 		windowing = new SpriteLayer(RenderingMode.Copy);
+		//windowing.addSprite(new Bitmap8Bit(848, 480), -65_536, 0, 0);
 		wh = new WindowHandler(1696,960,848,480,windowing);
 		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
+		mainRaster.addLayer(windowing, 0);
 		INIT_CONCRETE();
 		{
-			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUI_ADK.tga");
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUI_ADK.tga", 16, 16);
 			globalDefaultStyle.setImage(customGUIElems[6], "newA");
 			globalDefaultStyle.setImage(customGUIElems[7], "newB");
 			globalDefaultStyle.setImage(customGUIElems[8], "saveA");
@@ -111,14 +116,28 @@ public class TestOneApp : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[29], "macroB");
 		}
 
+		ih = new InputHandler();
+		ih.systemEventListener = this;
+		ih.inputListener = this;
+		ih.mouseListener = wh;
+
 		adh = new AudioDeviceHandler(AudioSpecs(predefinedFormats[PredefinedFormats.FP32], 48_000, 0, 2, 512, Duration.init), 
 				64, 8);
-		initDriver();
-		
+		adh.initAudioDriver(OS_PREFERRED_DRIVER);
+		initMIDI();
+
+		Bitmap4Bit background = new Bitmap4Bit(848, 480);
+		for (int y ; y < background.height() ; y++) {
+			for (int x ; x < background.width() ; x++) {
+				background.writePixel(x, y, 0x0);
+			}
+		}
+		wh.addBackground(background);
+		wh.addWindow(new AudioConfig(this));
 	}
 	void whereTheMagicHappens() {
 		while (state & StateFlags.isRunning) {
-			r.refresh();
+			mainRaster.refresh();
 			ih.test();
 			
 		}
@@ -127,15 +146,6 @@ public class TestOneApp : InputListener, SystemEventListener {
 				writeln(mm.suspendAudioThread());
 		}
 	}
-
-	
-	
-	public void initDriver() {
-		adh.initAudioDriver(OS_PREFERRED_DRIVER);
-		initMIDI();
-	}
-
-	
 
 	public void initDevice(int num) {
 		

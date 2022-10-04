@@ -61,22 +61,22 @@ public class ModuleEditor : Window {
 					case String:
 						dstring val = toUTF32(editedModule.readParam_string(presetID, key.id));
 						fields ~= 
-								ListViewItem.Field(new Text(val, ss.getChrFormatting("listViewItem")), null, true);
+								ListViewItem.Field(new Text(val, ss.getChrFormatting("listViewItem")), null, TextInputFieldType.ASCIIText);
 						break;
 					case Int32, Boolean:
 						dstring val = to!dstring(editedModule.readParam_int(presetID, key.id));
 						fields ~= 
-								ListViewItem.Field(new Text(val, ss.getChrFormatting("listViewItem")), null, true, true);
+								ListViewItem.Field(new Text(val, ss.getChrFormatting("listViewItem")), null, TextInputFieldType.Integer);
 						break;
 					case Int64:
 						dstring val = to!dstring(editedModule.readParam_long(presetID, key.id));
 						fields ~= 
-								ListViewItem.Field(new Text(val, ss.getChrFormatting("listViewItem")), null, true, true);
+								ListViewItem.Field(new Text(val, ss.getChrFormatting("listViewItem")), null, TextInputFieldType.Integer);
 						break;
 					case Float:
 						dstring val = to!dstring(editedModule.readParam_double(presetID, key.id));
 						fields ~= 
-								ListViewItem.Field(new Text(val, ss.getChrFormatting("listViewItem")), null, true, true, true);
+								ListViewItem.Field(new Text(val, ss.getChrFormatting("listViewItem")), null, TextInputFieldType.Decimal);
 						break;
 				}
 				listView_values ~= new ListViewItem(16, fields);
@@ -118,19 +118,19 @@ public class ModuleEditor : Window {
 				break;
 			case Int32, Boolean:
 				editedModule.writeParam_int(presetID, currparam.id, to!int(str));
-				str = to!int(editedModule.readParam_int(presetID, currparam.id));
+				str = to!dstring(editedModule.readParam_int(presetID, currparam.id));
 				listView_values[cee.row] = new ListViewItem(16, [toUTF32(currparam.name), str], 
 						[TextInputFieldType.None, TextInputFieldType.Integer]);
 				break;
 			case Int64:
 				editedModule.writeParam_long(presetID, currparam.id, to!long(str));
-				str = to!int(editedModule.readParam_long(presetID, currparam.id));
+				str = to!dstring(editedModule.readParam_long(presetID, currparam.id));
 				listView_values[cee.row] = new ListViewItem(16, [toUTF32(currparam.name), str], 
 						[TextInputFieldType.None, TextInputFieldType.Integer]);
 				break;
 			case Float:
 				editedModule.writeParam_double(presetID, currparam.id, to!double(str));
-				str = to!int(editedModule.readParam_double(presetID, currparam.id));
+				str = to!dstring(editedModule.readParam_double(presetID, currparam.id));
 				listView_values[cee.row] = new ListViewItem(16, [toUTF32(currparam.name), str], 
 						[TextInputFieldType.None, TextInputFieldType.Integer]);
 				break;

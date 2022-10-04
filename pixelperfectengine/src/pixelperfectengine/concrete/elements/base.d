@@ -12,8 +12,8 @@ public import pixelperfectengine.system.input.handler;
  */
 public enum ElementState : ubyte {
 	Enabled				=	0,	///Means the element is enabled.
-	DisabledWOGray		=	1,	///Disabled without grayout, should be only used by elements contained within
-	Disabled			=	2,	///Means the element is disabled
+	DisabledWOGray		=	1,	///Disabled without grayout, should be only used by elements contained within other elements.
+	Disabled			=	2,	///Means the element is disabled.
 }
 /**
  * All Window elements inherit from this class. Provides basic interfacing with containers.
