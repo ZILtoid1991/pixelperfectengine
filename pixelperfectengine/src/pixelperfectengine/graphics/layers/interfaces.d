@@ -124,6 +124,27 @@ public interface ISpriteLayer {
 	///Gets the coordinate of the sprite.
 	public Box getSpriteCoordinate(int n) @nogc @safe nothrow;
 	/** 
+	 * Creates a sprite from a bitmap with the given data, then places it to the display list. (New architecture)
+	 * Params:
+	 *   sprt = The bitmap to be used as the sprite.
+	 *   n = Priority ID of the sprite. Both identifies the sprite and decides it's display priority. Larger numbers will be drawn first, 
+	 * and thus will appear behind of smaller numbers, which also include negatives.
+	 *   x = X position of the sprite (top-left corner).
+	 *   y = Y position of the sprite (top-left corner).
+	 *   paletteSel = Selects a given palette.
+	 *   paletteSh = Determines how many bits are being used, and thus the palette size for selection.
+	 *   alpha = The transparency of the sprite.
+	 *   scaleHoriz = Horizontal scaling of the sprite. 1024 is the base value, anything less will stretch, greater will shrink the sprite.
+	 *   scaleVert = Ditto for vertical.
+	 *   renderMode = Determines the rendering mode of the sprite. By default, it's determined by the layer itself. Any of the default 
+	 * other methods can be selected here, or a specially written rendering function can be specified with a different function.
+	 * Returns: The current area of the sprite.
+	 */
+	public Box addSprite(ABitmap sprt, int n, int x, int y, ushort paletteSel = 0, ubyte paletteSh = 0, 
+			ubyte alpha = ubyte.max, int scaleHoriz = 1024, int scaleVert = 1024, RenderingMode renderMode = RenderingMode.init) 
+			@safe nothrow;
+	/+
+	/** 
 	 * Places a new sprite onto the layer with the given parameters.
 	 * Params:
 	 *   s = The bitmap to be displayed as the sprite.
@@ -137,7 +158,7 @@ public interface ISpriteLayer {
 			int scaleVert = 1024) @safe nothrow;
 	///Adds a sprite to the layer.
 	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
-			int scaleVert = 1024) @safe nothrow;
+			int scaleVert = 1024) @safe nothrow;+/
 	///Sets the rendering function for the sprite (defaults to the layer's rendering function)
 	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe nothrow;
 	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
