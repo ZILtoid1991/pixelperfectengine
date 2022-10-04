@@ -29,27 +29,37 @@ public class TileLayer : Layer, ITileLayer {
 		 * bitmaps wouldn't use their full capability.
 		 */
 		ubyte paletteSh;		
-		///Default ctor
+		/** 
+		 * Creates a tile-ID association.
+		 * Params:
+		 *   ID = The character ID of the tile.
+		 *   tile = The bitmap to become the tile
+		 *   paletteSh = 
+		 */
 		this(wchar ID, ABitmap tile, ubyte paletteSh = 0) pure @safe {
 			//palettePtr = tile.getPalettePtr();
 			//this.paletteSel = paletteSel;
 			this.ID = ID;
 			this.tile=tile;
-			if(typeid(tile) is typeid(Bitmap4Bit)){
+			if (typeid(tile) is typeid(Bitmap2Bit)) {
+				wordLength = 2;
+				this.paletteSh = paletteSh ? paletteSh : 2;
+				pixelDataPtr = (cast(Bitmap2Bit)(tile)).getPtr;
+			} else if (typeid(tile) is typeid(Bitmap4Bit)) {
 				wordLength = 4;
 				this.paletteSh = paletteSh ? paletteSh : 4;
 				pixelDataPtr = (cast(Bitmap4Bit)(tile)).getPtr;
-			}else if(typeid(tile) is typeid(Bitmap8Bit)){
+			} else if (typeid(tile) is typeid(Bitmap8Bit)) {
 				wordLength = 8;
 				this.paletteSh = paletteSh ? paletteSh : 8;
 				pixelDataPtr = (cast(Bitmap8Bit)(tile)).getPtr;
-			}else if(typeid(tile) is typeid(Bitmap16Bit)){
+			} else if (typeid(tile) is typeid(Bitmap16Bit)) {
 				wordLength = 16;
 				pixelDataPtr = (cast(Bitmap16Bit)(tile)).getPtr;
-			}else if(typeid(tile) is typeid(Bitmap32Bit)){
+			} else if (typeid(tile) is typeid(Bitmap32Bit)) {
 				wordLength = 32;
 				pixelDataPtr = (cast(Bitmap32Bit)(tile)).getPtr;
-			}else{
+			} else {
 				throw new TileFormatException("Bitmap format not supported!");
 			}
 		}
@@ -196,6 +206,16 @@ public class TileLayer : Layer, ITileLayer {
 							tileXLength -= offsetX0;
 						}
 						switch (tileInfo.wordLength) {
+							case 2:
+								import CPUblit.colorlookup : colorLookup2Bit;
+								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + (offsetX1 + (offsetY0 * tileX)>>>2);
+								colorLookup2Bit(tileSrc, cast(uint*)src, (cast(uint*)palette) + 
+										(currentTile.paletteSel<<tileInfo.paletteSh) + paletteOffset, tileXLength, offsetX1 & 2);
+								if(currentTile.attributes.horizMirror){//Horizontal mirroring
+									flipHorizontal(src);
+								}
+								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength,masterVal);
+								break;
 							case 4:
 								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + (offsetX1 + (offsetY0 * tileX)>>>1);
 								main4BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + 

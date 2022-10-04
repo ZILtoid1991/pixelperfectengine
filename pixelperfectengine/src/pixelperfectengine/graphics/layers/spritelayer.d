@@ -54,7 +54,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		//ubyte paletteSh;			/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
 		//static enum ubyte	PALETTESH_MASK = 0x0F;	/// Mask for paletteSh
 		//static enum ubyte	BMPTYPE_MASK = 0x80;	/// Mask for bmpType
-		/**
+		/+ /**
 		 * Creates a display list item with palette selector.
 		 */
 		this(Coordinate position, ABitmap sprite, int priority, ushort paletteSel = 0, int scaleHoriz = 1024,
@@ -67,7 +67,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			this.scaleVert = scaleVert;
 			this.scaleHoriz = scaleHoriz;
 			slice = Coordinate(0,0,sprite.width,sprite.height);
-			if (typeid(sprite) is typeid(Bitmap4Bit)) {
+			if (typeid(sprite) is typeid(Bitmap2Bit)) {
+				bmpType = BitmapTypes.Bmp2Bit;
+
+			} else if (typeid(sprite) is typeid(Bitmap4Bit)) {
 				bmpType = BitmapTypes.Bmp4Bit;
 				paletteSh = 4;
 				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
@@ -82,7 +85,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				bmpType = BitmapTypes.Bmp32Bit;
 				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
 			}
-		}
+		}+/
 		/** 
 		 * Creates a display list item according to the newer architecture.
 		 * Params:
@@ -107,7 +110,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			this.scaleVert = scaleVert;
 			this.scaleHoriz = scaleHoriz;
 			slice = Box(0,0,sprite.width,sprite.height);
-			if (typeid(sprite) is typeid(Bitmap4Bit)) {
+			if (typeid(sprite) is typeid(Bitmap2Bit)) {
+				bmpType = BitmapTypes.Bmp2Bit;
+				this.paletteSh = paletteSh ? paletteSh : 2;
+				pixelData = (cast(Bitmap2Bit)(sprite)).getPtr;
+			} else if (typeid(sprite) is typeid(Bitmap4Bit)) {
 				bmpType = BitmapTypes.Bmp4Bit;
 				this.paletteSh = paletteSh ? paletteSh : 4;
 				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
@@ -146,13 +153,17 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				position.bottom = position.top + cast(int)scaleNearestLength(height, scaleVert);
 				resetSlice();
 			}
-			if (typeid(sprite) is typeid(Bitmap4Bit)) {
+			if (typeid(sprite) is typeid(Bitmap2Bit)) {
+				bmpType = BitmapTypes.Bmp2Bit;
+				//paletteSh = 2;
+				pixelData = (cast(Bitmap2Bit)(sprite)).getPtr;
+			} else if (typeid(sprite) is typeid(Bitmap4Bit)) {
 				bmpType = BitmapTypes.Bmp4Bit;
-				paletteSh = 4;
+				//paletteSh = 4;
 				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
 			} else if (typeid(sprite) is typeid(Bitmap8Bit)) {
 				bmpType = BitmapTypes.Bmp8Bit;
-				paletteSh = 8;
+				//paletteSh = 8;
 				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
 			} else if (typeid(sprite) is typeid(Bitmap16Bit)) {
 				bmpType = BitmapTypes.Bmp16Bit;
@@ -183,10 +194,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		}
 	}
 	alias DisplayList = TreeMap!(int, DisplayListItem);
-	alias OnScreenList = SortedList!(int, "a < b", false);
+	//alias OnScreenList = SortedList!(int, "a < b", false, "a == b");
 	//protected DisplayListItem[] displayList;	///Stores the display data
 	protected DisplayList		allSprites;			///All sprites of this layer
-	protected OnScreenList		displayedSprites;	///Sprites that are being displayed
+	//protected OnScreenList		displayedSprites;	///Sprites that are being displayed
 	protected Color[2048]		src;				///Local buffer for scaling
 	//size_t[8] prevSize;
 	///Default ctor
@@ -194,14 +205,14 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		setRenderingMode(renderMode);
 		//Bug workaround: Sometimes when attempting to append an element to a zero-length array, it causes an exception
 		//to be thrown, due to access errors. This bug is unstable, and as such hard to debug for (memory leakage issue?)
-		displayedSprites.reserve(128);
+		//displayedSprites.reserve(128);
 		//src[0].length = 1024;
 	}
 	/**
 	 * Checks all sprites for whether they're on screen or not.
 	 * Called every time the layer is being scrolled.
 	 */
-	public void checkAllSprites() @safe pure nothrow {
+	public void checkAllSprites() @safe nothrow {
 		foreach (key; allSprites) {
 			checkSprite(key);
 		}
@@ -210,19 +221,19 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 * Checks whether a sprite would be displayed on the screen, then updates the display list.
 	 * Returns true if it's on screen.
 	 */
-	public bool checkSprite(int n) @safe pure nothrow {
+	public bool checkSprite(int n) @safe nothrow {
 		return checkSprite(allSprites[n]);
 	}
 	///Ditto.
-	protected bool checkSprite(DisplayListItem sprt) @safe pure nothrow {
+	protected bool checkSprite(DisplayListItem sprt) @safe nothrow {
 		//assert(sprt.bmpType != BitmapTypes.Undefined && sprt.pixelData, "DisplayList error!");
 		if(sprt.slice.width && sprt.slice.height 
 				&& (sprt.position.right > sX && sprt.position.bottom > sY && 
 				sprt.position.left < sX + rasterX && sprt.position.top < sY + rasterY)) {
-			displayedSprites.put(sprt.priority);
+			//displayedSprites.put(sprt.priority);
 			return true;
 		} else {
-			displayedSprites.removeByElem(sprt.priority);
+			//displayedSprites.removeByElem(sprt.priority);
 			return false;
 		}
 	}
@@ -249,7 +260,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	}
 	///Writes the displayed portion of the sprite.
 	///Returns the new slice, if invalid (greater than the bitmap, etc.) returns Coordinate.init.
-	public Coordinate setSlice(int n, Coordinate slice) @safe pure nothrow {
+	public Coordinate setSlice(int n, Coordinate slice) @safe nothrow {
 		DisplayListItem* sprt = allSprites.ptrOf(n);
 		if(sprt) {
 			sprt.slice = slice;
@@ -321,24 +332,25 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			d.renderFunc = mainRenderingFunction;
 		else
 			d.renderFunc = getRenderingFunc(renderMode);
-		synchronized
+		synchronized{
 			allSprites[n] = d;
-		checkSprite(d);
+			checkSprite(d);
+		}
 		return allSprites[n].position;
 	}
 	/**
 	 * Adds a sprite to the layer.
 	 */
-	public void addSprite(ABitmap s, int n, Box c, ushort paletteSel = 0, int scaleHoriz = 1024, 
+	/+public void addSprite(ABitmap s, int n, Box c, ushort paletteSel = 0, int scaleHoriz = 1024, 
 				int scaleVert = 1024) @safe nothrow {
 		DisplayListItem d = DisplayListItem(c, s, n, paletteSel, scaleHoriz, scaleVert);
 		d.renderFunc = mainRenderingFunction;
 		synchronized
 			allSprites[n] = d;
 		checkSprite(d);
-	}
+	}+/
 	///Ditto
-	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
+	/+public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
 				int scaleVert = 1024) @safe nothrow {
 		DisplayListItem d = DisplayListItem(Box.bySize(x, y, cast(int)scaleNearestLength(s.width, scaleHoriz), 
 					cast(int)scaleNearestLength(s.height, scaleVert)), s, n, paletteSel, scaleHoriz, 
@@ -347,21 +359,21 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		synchronized
 			allSprites[n] = d;
 		checkSprite(d);
-	}
+	}+/
 	/**
 	 * Replaces the bitmap of the given sprite.
 	 */
 	public void replaceSprite(ABitmap s, int n) @safe nothrow {
 		DisplayListItem* sprt = getDisplayListItem_internal(n);
 		sprt.replaceSprite(s);
-		checkSprite(*sprt);
+		//checkSprite(*sprt);
 	}
 	///Ditto with move
 	public void replaceSprite(ABitmap s, int n, int x, int y) @safe nothrow {
 		DisplayListItem* sprt = getDisplayListItem_internal(n);
 		sprt.replaceSprite(s);
 		sprt.position.move(x, y);
-		checkSprite(*sprt);
+		//checkSprite(*sprt);
 	}
 	///Ditto with move
 	public void replaceSprite(ABitmap s, int n, Coordinate c) @safe nothrow {
@@ -375,13 +387,13 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public void removeSprite(int n) @safe nothrow {
 		synchronized {
-			displayedSprites.removeByElem(n);
+			//displayedSprites.removeByElem(n);
 			allSprites.remove(n);
 		}
 	}
 	///Clears all sprite from the layer.
 	public void clear() @safe nothrow {
-		displayedSprites = OnScreenList.init;
+		//displayedSprites = OnScreenList.init;
 		allSprites = DisplayList.init;
 	}
 	/**
@@ -390,7 +402,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public void moveSprite(int n, int x, int y) @safe nothrow {
 		DisplayListItem* sprt = allSprites.ptrOf(n);
 		sprt.position.move(x, y);
-		checkSprite(*sprt);
+		//checkSprite(*sprt);
 	}
 	/**
 	 * Moves a sprite by the given amount.
@@ -398,7 +410,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public void relMoveSprite(int n, int x, int y) @safe nothrow {
 		DisplayListItem* sprt = allSprites.ptrOf(n);
 		sprt.position.relMove(x, y);
-		checkSprite(*sprt);
+		//checkSprite(*sprt);
 	}
 	///Sets the rendering function for the sprite (defaults to the layer's rendering function)
 	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe nothrow {
@@ -462,9 +474,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack. (Fixed!)
 		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches. (Fixed!!!)
 		 */
-		foreach (priority ; displayedSprites) {
-		//foreach(i ; displayList){
-			DisplayListItem i = allSprites[priority];
+		//foreach (priority ; displayedSprites) {
+		foreach_reverse (i ; allSprites) {
+			if(!(i.slice.width && i.slice.height 
+					&& (i.position.right > sX && i.position.bottom > sY && 
+					i.position.left < sX + rasterX && i.position.top < sY + rasterY))) continue;
+			//DisplayListItem i = allSprites[priority];
 			const int left = i.position.left + i.slice.left;
 			const int top = i.position.top + i.slice.top;
 			const int right = i.position.left + i.slice.right;
@@ -497,9 +512,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
 			void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
 			final switch (i.bmpType) with (BitmapTypes) {
-				case Bmp4Bit:
-					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
-					const size_t _pitch = i.width>>>1;
+				case Bmp2Bit:
+					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>2);
+					const size_t _pitch = i.width>>>2;
 					for (int y = offsetYA ; y < i.slice.height - offsetYB ; ) {
 						/+horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
 								i.scaleHoriz);+/
@@ -513,7 +528,23 @@ public class SpriteLayer : Layer, ISpriteLayer {
 						}
 						p0 += _pitch;
 					}
-					//}
+					break;
+				case Bmp4Bit:
+					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * ((i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0)>>1);
+					const size_t _pitch = i.width>>>1;
+					for (int y = offsetYA ; y < i.slice.height - offsetYB ; ) {
+						/+horizontalScaleNearest4BitAndCLU(p0, src.ptr, palette + (i.paletteSel<<i.paletteSh), scalelength, offsetXA & 1,
+								i.scaleHoriz);+/
+						horizontalScaleNearestAndCLU(NibbleArray(p0[0.._pitch], i.width), src.ptr, palette + (i.paletteSel<<i.paletteSh), 
+								length, i.scaleHoriz, offsetXA * scaleHorizAbs);
+						offsetTarget += 1024;
+						for (; offset < offsetTarget && y < i.slice.height - offsetYB ; offset += scaleVertAbs) {
+							y++;
+							i.renderFunc(cast(uint*)src.ptr, cast(uint*)dest, length, i.masterAlpha);
+							dest += pitch;
+						}
+						p0 += _pitch;
+					}
 					break;
 				case Bmp8Bit:
 					ubyte* p0 = cast(ubyte*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
@@ -558,7 +589,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					}
 					//}
 					break;
-				case Undefined, Bmp1Bit, Bmp2Bit, Planar:
+				case Undefined, Bmp1Bit, Planar:
 					break;
 			}
 
@@ -568,13 +599,13 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			//free(src[threadOffset]);
 	}
 	///Absolute scrolling.
-	public override void scroll(int x, int y) @safe pure nothrow {
+	public override void scroll(int x, int y) @safe nothrow {
 		sX = x;
 		sY = y;
 		checkAllSprites;
 	}
 	///Relative scrolling. Positive values scrolls the layer left and up, negative values scrolls the layer down and right.
-	public override void relScroll(int x, int y) @safe pure nothrow {
+	public override void relScroll(int x, int y) @safe nothrow {
 		sX += x;
 		sY += y;
 		checkAllSprites;
