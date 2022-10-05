@@ -185,7 +185,7 @@ public class Bitmap(string S,T) : ABitmap {
 		}
 		///Creates a bitmap from an array.
 		this(ubyte[] p, int w, int h) @safe pure{
-			if (p.length/2 < w * h || w & 1)
+			if (p.length * 2 != w * h || w & 1)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			_width=w;
 			_height=h;
@@ -214,7 +214,7 @@ public class Bitmap(string S,T) : ABitmap {
 		}
 		///Creates a bitmap from an array.
 		this(ubyte[] p, int w, int h) @safe pure{
-			if (p.length/2 < w * h || w & 1)
+			if (p.length * 4 != w * h || w & 3)
 				throw new BitmapFormatException("Incorrect Bitmap size exception!");
 			_width=w;
 			_height=h;

@@ -80,6 +80,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 		r.addPaletteChunk(localPal);
 		r.addPaletteChunk([Color(0x00,0x00,0x00,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x00,0x00,0x00,0xFF),
 				Color(0xff,0x00,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),Color(0x00,0xff,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),
+				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
+				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
 				Color(0x00,0x00,0xff,0xFF)]);
 
 		//writeln(r.layerMap);
@@ -88,16 +90,16 @@ class TileLayerTest : SystemEventListener, InputListener {
 		dlangManCS = dlangMan.generateStandardCollisionModel();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 		{
-			Image i = loadImage(loadFileFromDisk("basn3p04.png"));
+			Image i = loadImage(loadFileFromDisk("../assets/basn3p04.png"));
 			r.addPaletteChunk(loadPaletteFromImage(i));
-			s.addSprite(loadBitmapFromImage!Bitmap4Bit(i), 65_537, 424 - 32, 240 - 64, cast(ushort)34);
+			s.addSprite(loadBitmapFromImage!Bitmap4Bit(i), 65_537, 320, 200, 0x21);//34
 		}
 		{
-			Image i = loadImage(loadFileFromDisk("basn3p02.png"));
+			Image i = loadImage(loadFileFromDisk("../assets/basn3p02.png"));
 			r.addPaletteChunk(loadPaletteFromImage(i));
-			s.addSprite(loadBitmapFromImage!Bitmap2Bit(i), 65_537, 424 - 32, 240 - 32, 0x88);
+			s.addSprite(loadBitmapFromImage!Bitmap2Bit(i), 65_538, 352, 200, 0x88);//0x88
 		}
-		s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
+		//s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
 		s.addSprite(dlangMan, 65_536, 0, 0, 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
 		s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
