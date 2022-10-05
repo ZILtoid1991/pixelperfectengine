@@ -3,6 +3,8 @@ module pixelperfectengine.system.etc;
 import std.conv;
 import std.algorithm.mutation;
 import std.algorithm.searching;
+
+public import bitleveld.reinterpret;
 /*
  * Copyright (C) 2015-2017, by Laszlo Szeremi under the Boost license.
  *
@@ -226,6 +228,7 @@ public T nextPow2(T)(T val) pure @safe @nogc nothrow{
 	val |= val >> 1;
 	return val + 1;
 }
+/+
 /**
  * Safely converts an array to a type.
  * NOTE: by 0.10.0, an external library will replace this.
@@ -238,7 +241,8 @@ public T reinterpretGet(T, S)(S[] source) pure @trusted {
 		return _reinterpretGet();
 	else
 		throw new Exception("Reinterpretation error!");
-}
+}+/
+/+
 /**
  * Safely converts the type of an array.
  * NOTE: by 0.10.0, an external library will replace this.
@@ -251,7 +255,8 @@ public T[] reinterpretCast(T, S)(S[] source) pure @trusted {
 		return _reinterpretCast();
 	else
 		throw new Exception("Reinterpretation error!");
-}
+}+/
+/+
 /**
  * Safely converts a single instance into a bytestream.
  * NOTE: by 0.10.0, an external library will replace this.
@@ -264,7 +269,8 @@ public T[] toStream(T = ubyte, S)(S source) pure @trusted {
 		return _toStream();
 	else
 		throw new Exception("Reinterpretation error!");
-}
+}+/
+alias toStream = reinterpretAsArray;
 /**
  * Checks whether object `o` have implemented the given interface.
  * Checks are done on the basis of name strings.

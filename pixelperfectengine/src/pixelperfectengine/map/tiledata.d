@@ -82,11 +82,11 @@ public class TileInfo {
 	 */
 	public ubyte[] serialize() @safe pure {
 		ubyte[] result;
-		result ~= toStream(header);
+		result ~= reinterpretAsArray!ubyte(header);
 		for(int i; i < indexes.length; i++) {
 			string name = indexes[i].name;
 			IndexF f = IndexF(indexes[i].id, cast(ubyte)name.length);
-			result ~= toStream(f);
+			result ~= reinterpretAsArray!ubyte(f);
 			if(name.length)
 				result ~= reinterpretCast!ubyte(name.dup);
 		}

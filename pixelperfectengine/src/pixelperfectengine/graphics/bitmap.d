@@ -201,7 +201,27 @@ public class Bitmap(string S,T) : ABitmap {
 			_width = x;
 			_height = y;
 		}
-
+	} else static if(S == "QB") {
+		///Creates an empty bitmap.
+		this(int w, int h) @safe pure{
+			if (w & 1)
+				throw new BitmapFormatException("Incorrect Bitmap size exception!");
+			_width=w;
+			_height=h;
+			pitch = _width / 2;
+			pixels.length = pitch * _height;
+			pixelAccess = QuadArray(pixels, _width * _height);
+		}
+		///Creates a bitmap from an array.
+		this(ubyte[] p, int w, int h) @safe pure{
+			if (p.length/2 < w * h || w & 1)
+				throw new BitmapFormatException("Incorrect Bitmap size exception!");
+			_width=w;
+			_height=h;
+			pitch = _width / 2;
+			pixels=p;
+			pixelAccess = QuadArray(pixels, _width * _height);
+		}
 	} else static if(S == "b") {
 		/**
 		 * CTOR for 1 bit bitmaps with no preexisting source.

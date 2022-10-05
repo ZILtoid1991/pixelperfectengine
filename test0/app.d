@@ -87,6 +87,17 @@ class TileLayerTest : SystemEventListener, InputListener {
 		dlangMan = loadBitmapFromImage!Bitmap8Bit(spriteSource);
 		dlangManCS = dlangMan.generateStandardCollisionModel();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
+		{
+			Image i = loadImage(loadFileFromDisk("basn3p04.png"));
+			r.addPaletteChunk(loadPaletteFromImage(i));
+			s.addSprite(loadBitmapFromImage!Bitmap4Bit(i), 65_537, 424 - 32, 240 - 64, cast(ushort)34);
+		}
+		{
+			Image i = loadImage(loadFileFromDisk("basn3p02.png"));
+			r.addPaletteChunk(loadPaletteFromImage(i));
+			s.addSprite(loadBitmapFromImage!Bitmap2Bit(i), 65_537, 424 - 32, 240 - 32, 0x88);
+		}
+		s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
 		s.addSprite(dlangMan, 65_536, 0, 0, 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
 		s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);

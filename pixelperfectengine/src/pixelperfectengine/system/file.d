@@ -24,11 +24,24 @@ import dimage.tga;
 import dimage.png;
 import dimage.bmp;
 
+//import bitleveld.reinterpret;
 
 import vfile;
 
 import bindbc.sdl.mixer;
 
+/** 
+ * Pads a scanline to be on size_t's bounds.
+ * Params:
+ *   scanline = The scanline to be padded.
+ * Returns: the padded scanline
+ */
+package size_t[] padScanLine(ubyte[] scanline) @safe {
+	const int extra = size_t.sizeof - (scanline.length % size_t.sizeof);
+	if (extra)
+		scanline.length = scanline.length + extra;
+	return reinterpretCast!size_t(scanline);
+}
 /**
  * Loads an Image from a File or VFile.
  * Automatically detects format from file extension.
@@ -55,9 +68,27 @@ public Image loadImage(F = File)(F file) @trusted{
  * Loads a bitmap from Image.
  */
 public T loadBitmapFromImage(T)(Image img) @trusted
-		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
+		if (is (T == Bitmap1Bit) || is(T == Bitmap2Bit) || is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || 
+		is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
 	// Later we might want to detect image type from classinfo, until then let's rely on similarities between types
-	static if(is(T == Bitmap4Bit)){
+	static if(is(T == Bitmap1Bit)){
+		if (img.getBitdepth != 1)
+			throw new BitmapFormatException("Bitdepth mismatch exception!");
+		ubyte[] data = img.imageData.raw;
+		size_t[] newData;
+		const size_t pitch = data.length / img.imageData.height;
+		for (int i ; i < img.imageData.height ; i++) {
+			newData ~= padScanLine(data[pitch * i..pitch * (i + 1)]);
+		}
+		return new Bitmap1Bit(newData, img.imageData.width, img.imageData.height);
+	} else static if(is(T == Bitmap2Bit)){
+		if (img.getBitdepth == 2)
+			return new Bitmap2Bit(img.imageData.raw, img.width, img.height);
+		else if (img.getBitdepth < 2)
+			return new Bitmap2Bit(img.imageData.convTo(PixelFormat.Indexed2Bit).raw, img.width, img.height);
+		else
+			throw new BitmapFormatException("Bitdepth mismatch exception!");	
+	}else static if(is(T == Bitmap4Bit)){
 		if (img.getBitdepth == 4)
 			return new Bitmap4Bit(img.imageData.raw, img.width, img.height);
 		else if (img.getBitdepth < 4)
@@ -95,7 +126,8 @@ public T loadBitmapFromImage(T)(Image img) @trusted
  * Currently supported formats: *.tga, *.png, *.bmp
  */
 public T loadBitmapFromFile(T)(string filename)
-		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
+		if (is (T == Bitmap1Bit) || is(T == Bitmap2Bit) || is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || 
+		is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
 	File f = File(filename);
 	return loadBitmapFromImage!T(loadImage(f));
 }
@@ -104,7 +136,8 @@ public T loadBitmapFromFile(T)(string filename)
  * This one doesn't require TGA devarea extensions.
  */
 public T[] loadBitmapSheetFromFile(T)(string filename, int x, int y)
-		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
+		if (is (T == Bitmap1Bit) || is(T == Bitmap2Bit) || is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || 
+		is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
 	//T source = loadBitmapFromFile!T(filename);
 	return loadBitmapSheetFromImage!T(loadImage(File(filename)), x, y);
 }
@@ -113,11 +146,16 @@ public T[] loadBitmapSheetFromFile(T)(string filename, int x, int y)
  * This one doesn't require embedded data.
  */
 public T[] loadBitmapSheetFromImage(T)(Image img, int x, int y)
-		if (is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
+		if (is (T == Bitmap1Bit) || is(T == Bitmap2Bit) || is(T == Bitmap4Bit) || is(T == Bitmap8Bit) || 
+		is(T == Bitmap16Bit) || is(T == Bitmap32Bit)) {
 	T source = loadBitmapFromImage!T(img);
 	if (source.width % x == 0 && source.height % y == 0) {
 		T[] output;
-		static if (is(T == Bitmap4Bit))
+		static if (is(T == Bitmap1Bit))
+			const size_t length = x / 8, length0 = x / 8, pitch = source.width / 8;
+		else static if (is(T == Bitmap2Bit))
+			const size_t length = x / 4, length0 = x / 4, pitch = source.width / 4;
+		else static if (is(T == Bitmap4Bit))
 			const size_t length = x / 2, length0 = x / 2, pitch = source.width / 2;
 		else static if (is(T == Bitmap8Bit))
 			const size_t length = x, length0 = x, pitch = source.width;
@@ -178,6 +216,7 @@ public Color[] loadPaletteFromImage (Image img) {
 
 /**
  * Loads a *.wav file if SDL2 mixer is used
+ * WILL BE DEPRECATED SOON!
  */
 public Mix_Chunk* loadSoundFromFile(const char* filename){
 	return Mix_LoadWAV(filename);

@@ -70,7 +70,7 @@ public void saveMapFile(MapDataHeader* header, ref MappingElement[] map, string 
  * See documentation about the format.
  */ 
 public void saveMapFile(F = File)(MapDataHeader header, MappingElement[] map, F file) @trusted {
-	ubyte[] writeBuf = toStream(header);
+	ubyte[] writeBuf = reinterpretAsArray!(ubyte)(header);
 	file.rawWrite(writeBuf);
 	file.rawWrite(map);
 }

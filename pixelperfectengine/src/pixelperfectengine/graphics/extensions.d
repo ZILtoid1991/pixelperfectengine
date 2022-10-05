@@ -41,7 +41,8 @@ public class ObjectSheet (Size = ushort) {
 		static if(MemoryResident){
 			private string _name;	///Name with character overflow protection
 			///Default ctor
-			this (uint id, Size x, Size y, ubyte width, ubyte height, byte displayOffsetX, byte displayOffsetY, string _name) @safe pure {
+			this (uint id, Size x, Size y, ubyte width, ubyte height, byte displayOffsetX, byte displayOffsetY, string _name) 
+					@safe pure {
 				this.id = id;
 				this.x = x;
 				this.y = y;
@@ -234,7 +235,8 @@ public class AdaptiveFramerateAnimationData {
 	 */
 	public ubyte[] serialize () @safe pure {
 		ubyte[] result;
-		result ~= toStream(Header!false(header.id, cast(uint)frames.length, header.source, cast(ubyte)header.name.length));
+		result ~= reinterpretAsArray!(ubyte)(Header!false(header.id, cast(uint)frames.length, header.source, 
+				cast(ubyte)header.name.length));
 		result ~= reinterpretCast!ubyte(frames);
 		return result;
 	}
@@ -273,7 +275,8 @@ unittest {
 
 	AdaptiveFramerateAnimationData testObj = new AdaptiveFramerateAnimationData("Test", 0, 0);
 	for(int i ; i < 10 ; i++)
-		testObj.frames ~= AdaptiveFramerateAnimationData.Index(uniform!uint(), uniform!uint(), uniform!byte(), uniform!byte());
+		testObj.frames ~= AdaptiveFramerateAnimationData.Index(uniform!uint(), uniform!uint(), uniform!byte(), 
+				uniform!byte());
 	ubyte[] datastream = testObj.serialize();
 	AdaptiveFramerateAnimationData secondTestObj = new AdaptiveFramerateAnimationData(datastream);
 	for(int i ; i < 10 ; i++)
