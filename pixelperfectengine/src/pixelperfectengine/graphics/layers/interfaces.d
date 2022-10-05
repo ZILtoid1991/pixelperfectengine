@@ -9,7 +9,7 @@ module pixelperfectengine.graphics.layers.interfaces;
 import pixelperfectengine.graphics.layers.base;
 
 /**
- * Tile interface, defines common functions.
+ * Tile interface, defines common functions shared between tile layers.
  */
 public interface ITileLayer {
 	/// Retrieves the mapping from the tile layer.
@@ -83,18 +83,42 @@ public interface ITileLayer {
 	///Clears the tilemap
 	public void clearTilemap() @nogc @safe pure nothrow;
 }
+/**
+ * Defines functions specific to transformable tile layers.
+ * All transform parameters (A, B, C, D) are 256-based "fractional integers".
+ */
 public interface ITTL {
+    ///Returns the horizontal scaling amount.
+    ///256 means no scaling, negative values flip everything horizontally.
 	public @property short A() @nogc @safe nothrow pure const;
+	///Returns the shearing amount on the X axis.
+	///256 means one pixel moved downwards for each horizontal scanline.
 	public @property short B() @nogc @safe nothrow pure const;
+	///Returns the shearing amount on the Y axis.
+	///256 means one pixel moved right for each vertical scanline.
 	public @property short C() @nogc @safe nothrow pure const;
+	///Returns the vertical scaling amount.
+    ///256 means no scaling, negative values flip everything vertically.
 	public @property short D() @nogc @safe nothrow pure const;
+	///Returns the x origin point of the transformation relative to the screen.
 	public @property short x_0() @nogc @safe nothrow pure const;
+	///Returns the y origin point of the transformation relative to the screen.
 	public @property short y_0() @nogc @safe nothrow pure const;
+	///Sets the horizontal scaling amount.
+    ///256 means no scaling, negative values flip everything horizontally.
 	public @property short A(short newval) @nogc @safe nothrow pure;
+	///Sets the shearing amount on the X axis.
+	///256 means one pixel moved downwards for each horizontal scanline.
 	public @property short B(short newval) @nogc @safe nothrow pure;
+	///Sets the shearing amount on the Y axis.
+	///256 means one pixel moved right for each vertical scanline.
 	public @property short C(short newval) @nogc @safe nothrow pure;
+	///Sets the vertical scaling amount.
+    ///256 means no scaling, negative values flip everything vertically.
 	public @property short D(short newval) @nogc @safe nothrow pure;
+	///Returns the x origin point of the transformation relative to the screen.
 	public @property short x_0(short newval) @nogc @safe nothrow pure;
+	///Returns the y origin point of the transformation relative to the screen.
 	public @property short y_0(short newval) @nogc @safe nothrow pure;
 }
 /**
