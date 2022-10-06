@@ -57,7 +57,7 @@ public class AudioDeviceHandler {
 	 *
 	 * Throws an AudioInitException if audio failed to be initialized.
 	 */
-	public void initAudioDriver(DriverType backend) {
+	public static void initAudioDriver(DriverType backend) {
 		int errCode = initDriver(backend);
 		if (errCode) throw new AudioInitException("Failed to initialize audio driver. Error code: " ~ errCode.to!string);
 	}
