@@ -757,8 +757,11 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 
 			if (onItemSelect !is null && selection != -1)
 				onItemSelect(new Event(this, entries[selection], EventType.Selection, SourceType.WindowElement));
-		} else if (!entries.length)
+		} else if (!entries.length) {
 			selection = -1;
+		} else {
+			super.passMCE(mec, mce);
+		}
 		
 		draw();
 	}
