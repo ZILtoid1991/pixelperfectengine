@@ -121,9 +121,10 @@ public class TestOneApp : InputListener, SystemEventListener {
 		ih.inputListener = this;
 		ih.mouseListener = wh;
 
-		adh = new AudioDeviceHandler(AudioSpecs(predefinedFormats[PredefinedFormats.FP32], 48_000, 0, 2, 512, Duration.init), 
-				64, 8);
-		adh.initAudioDriver(OS_PREFERRED_DRIVER);
+		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);
+		//adh = new AudioDeviceHandler(AudioSpecs(predefinedFormats[PredefinedFormats.FP32], 48_000, 0, 2, 512, Duration.init), 
+		//		64, 8);
+		//adh.initAudioDriver(OS_PREFERRED_DRIVER);
 		initMIDI();
 
 		Bitmap4Bit background = new Bitmap4Bit(848, 480);
