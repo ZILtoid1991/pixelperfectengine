@@ -1,6 +1,7 @@
 module test1.audioconfig;
 
 import pixelperfectengine.concrete.window;
+import pixelperfectengine.audio.base.handler;
 
 import test1.app;
 
@@ -65,8 +66,17 @@ public class AudioConfig : Window {
 	protected void button_apply_onClick(Event ev) {
 		import iota.audio.types;
 		//create audio specs
-		app.aS.format = predefinedFormats[PredefinedFormats.FP32];
-		app.aS.outputChannels = 2;
-		app.aS.bufferSize_slmp = to!uint(textBox_buffer.getText.text);
+		try {
+			app.aS.format = predefinedFormats[PredefinedFormats.FP32];
+			app.aS.outputChannels = 2;
+			app.aS.bufferSize_slmp = to!uint(textBox_buffer.getText.text);
+			app.aS.mirrorBufferSizes();
+			int frameSize = to!int(textBox_frame.getText.text);
+			app.adh = new AudioDeviceHandler(app.aS, frameSize, app.aS.bufferSize_slmp / frameSize);
+			app.adh.initAudioDevice(to!int(listView_AudDevs.selectedElement[0].text.text));
+			
+		} catch (Exception e) {
+			handler.message("Audio initialization error!", toUTF32(e.msg));
+		}
 	}
 }
