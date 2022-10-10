@@ -23,9 +23,10 @@ public class AudioConfig : Window {
 	Label label1;
 	Label label2;
 	Button button_apply;
-	TestOneApp app;
-	public this(TestOneApp app) {
+	AudioDevKit app;
+	public this(AudioDevKit app) {
 		super(Box(0, 0, 355, 250), "Audio and MIDI setup");
+		this.app = app;
 		listView_AudDevs = new ListView(new ListViewHeader(16, [30 ,300], ["Num" ,"Audio Device"]), null, "listView0", 
 				Box(5, 20, 175, 200));
 		listView_MidiDev = new ListView(new ListViewHeader(16, [30 ,300], ["Num" ,"MIDI Device"]), null, "listView1", 
@@ -49,6 +50,8 @@ public class AudioConfig : Window {
 			listView_MidiDev ~= new ListViewItem(16, [to!dstring(id), toUTF32(key)]);
 		}
 
+		button_apply.onMouseLClick = &button_apply_onClick;
+
 		textBox_sampleRate.setFilter(TextInputFieldType.IntegerP);
 		textBox_buffer.setFilter(TextInputFieldType.IntegerP);
 		textBox_frame.setFilter(TextInputFieldType.IntegerP);
@@ -67,14 +70,14 @@ public class AudioConfig : Window {
 		import iota.audio.types;
 		//create audio specs
 		try {
-			app.aS.format = predefinedFormats[PredefinedFormats.FP32];
-			app.aS.outputChannels = 2;
-			app.aS.bufferSize_slmp = to!uint(textBox_buffer.getText.text);
-			app.aS.mirrorBufferSizes();
+			app.aS = AudioSpecs(predefinedFormats[PredefinedFormats.FP32], to!int(textBox_sampleRate.getText.text), 0, 2, 
+					to!int(textBox_buffer.getText.text), Duration.init);
 			int frameSize = to!int(textBox_frame.getText.text);
 			app.adh = new AudioDeviceHandler(app.aS, frameSize, app.aS.bufferSize_slmp / frameSize);
 			app.adh.initAudioDevice(to!int(listView_AudDevs.selectedElement[0].text.text));
-			
+			app.mm = new ModuleManager(app.adh);
+			app.onStart();
+			this.close();
 		} catch (Exception e) {
 			handler.message("Audio initialization error!", toUTF32(e.msg));
 		}
