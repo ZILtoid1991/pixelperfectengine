@@ -99,7 +99,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		 *   scaleHoriz = Horizontal scaling of the sprite. 1024 is the base value, anything less will stretch, greater will shrink the sprite.
 		 *   scaleVert = Ditto for vertical.
 		 */
-		this(int x, int y, ABitmap sprite, int pri, ushort paletteSel = 0, ubyte paletteSh = 0, ubyte alpha = ubyte.max, 
+		this(int x, int y, ABitmap sprite, int priority, ushort paletteSel = 0, ubyte paletteSh = 0, ubyte alpha = ubyte.max, 
 				int scaleHoriz = 1024, int scaleVert = 1024) pure @trusted nothrow {
 			this.width = sprite.width();
 			this.height = sprite.height();
@@ -334,7 +334,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			d.renderFunc = getRenderingFunc(renderMode);
 		synchronized{
 			allSprites[n] = d;
-			checkSprite(d);
+			//checkSprite(d);
 		}
 		return allSprites[n].position;
 	}
