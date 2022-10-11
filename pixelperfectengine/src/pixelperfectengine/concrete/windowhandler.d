@@ -111,7 +111,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	/**
 	 * Returns the window priority or -1 if the window can't be found.
 	 */
-	private int whichWindow(Window w) @safe pure nothrow {
+	public int whichWindow(Window w) @safe pure nothrow {
 		try
 			return cast(int)windows.which(w);
 		catch (Exception e)
