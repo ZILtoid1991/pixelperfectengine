@@ -1,10 +1,12 @@
+module test1.preseteditor;
+
 import pixelperfectengine.concrete.window; 
 import pixelperfectengine.audio.base.modulebase;
 import std.conv : to;
 import std.utf : toUTF32, toUTF8;
 import std.algorithm.searching : countUntil;
 
-public class ModuleEditor : Window {
+public class PresetEditor : Window {
 	ListView listView_presets;
 	ListView listView_values;
 	SmallButton[] smallButtons;

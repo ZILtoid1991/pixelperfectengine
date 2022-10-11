@@ -36,6 +36,7 @@ import iota.audio.midi;
 import iota.audio.midiin;
 
 import test1.audioconfig;
+import test1.preseteditor;
 
 /** 
  * Audio subsystem test.
@@ -70,10 +71,14 @@ public class TopLevelWindow : Window {
 		menuElements[1] ~= new PopUpMenuElement("cut", "Cut");
 		menuElements[1] ~= new PopUpMenuElement("paste", "Paste");
 
+		menuElements ~= new PopUpMenuElement("view", "View");
+
+		menuElements[2] ~= new PopUpMenuElement("preEdit", "Module editor");
+
 		menuElements ~= new PopUpMenuElement("help", "Help");
 
-		menuElements[2] ~= new PopUpMenuElement("helpFile", "Content");
-		menuElements[2] ~= new PopUpMenuElement("about", "About");
+		menuElements[3] ~= new PopUpMenuElement("helpFile", "Content");
+		menuElements[3] ~= new PopUpMenuElement("about", "About");
 
 		mb = new MenuBar("mb", Box(0, 0, width-1, 15), menuElements);
 		addElement(mb);
@@ -100,6 +105,7 @@ public class TopLevelWindow : Window {
 public class AudioDevKit : InputListener, SystemEventListener {
 	AudioDeviceHandler adh;
 	ModuleManager	mm;
+	AudioModule		selectedModule;
 	OutputScreen	output;
 	InputHandler	ih;
 	Raster			mainRaster;
@@ -108,6 +114,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	MIDIInput		midiIn;
 	WindowHandler	wh;
 	Window			tlw;
+	PresetEditor	preEdit;
 	uint			state;
 	ubyte			noteBase = 60;
 	ubyte			bank0;
@@ -193,11 +200,20 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void onMenuEvent(Event ev) {
 		MenuEvent me = cast(MenuEvent)ev;
 		switch (me.itemSource) {
+			case "preEdit":
+				openPresetEditor();
+				break;
 			case "exit":
 				state &= ~StateFlags.isRunning;
 				break;
 			default: break;
 		}
+	}
+	public void openPresetEditor() {
+		if (preEdit is null)
+			preEdit = new PresetEditor("Module editor", selectedModule);
+		if (wh.whichWindow(preEdit) == -1)
+			wh.addWindow(preEdit);
 	}
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		
