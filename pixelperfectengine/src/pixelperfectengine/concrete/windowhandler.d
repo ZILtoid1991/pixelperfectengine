@@ -340,8 +340,32 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
 	 */
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+		import pixelperfectengine.system.etc : hashCalc;
 		if (isPressed) {
-
+			switch (id) {
+				case hashCalc("systab"):
+					if (windows.length) {
+						windows[0].cycleFocus(1);
+					}
+					break;
+				case hashCalc("systabs"):
+					if (windows.length) {
+						windows[0].cycleFocus(-1);
+					}
+					break;
+				case hashCalc("syctabc"):
+					if (windows.length > 1) {
+						windows = windows[1..$] ~ windows[0..1];
+					}
+					break;
+				case hashCalc("syctabsc"):
+					if (windows.length > 1) {
+						windows = windows[$ - 1..$] ~ windows[0..$-1];
+					}
+					break;
+				default:
+					break;
+			}
 		}
 	}
 	/**
