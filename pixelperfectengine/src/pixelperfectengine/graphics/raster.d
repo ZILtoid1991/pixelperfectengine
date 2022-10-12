@@ -17,6 +17,7 @@ import core.time;
 import collections.treemap;
 
 ///The raster calls it every time it finishes the drawing to the framebuffers.
+///Used to signal the output screen to switch out the framebuffers.
 public interface RefreshListener{
     public void refreshFinished();
 }
@@ -49,7 +50,7 @@ public interface PaletteContainer {
 	public Color[] loadPalette(Color[] palette) @safe;
 	/**
 	 * Loads a palette chunk into the object.
-	 * The offset determines where the palette should be loaded.
+	 * The `offset` determines where the palette should be loaded.
 	 * If it points to an existing place, the indices after that will be overwritten until the whole palette will be copied.
 	 * If it points to the end or after it, then the palette will be made longer, and will pad with values #00000000 if needed.
 	 * Returns the new palette of the object.
@@ -77,19 +78,26 @@ public class Raster : IRaster, PaletteContainer{
 	///Stores the layers by their priorities.
 	public LayerMap layerMap;
     //private Layer[int] layerList;	
-	private int[] threads;
-    private bool r;
+	private int[] threads;			///Thread IDs (currently unused).
+    private bool r;					///Set to true if refresh is happening.
 	protected ubyte nOfBuffers;		///Number of framebuffers, 2 for double buffering.
 	protected ubyte updatedBuffer;	///Framebuffer currently being updated
 	protected ubyte displayedBuffer;///Framebuffer currently being displayed
 	//private int[2] doubleBufferRegisters;
-    private RefreshListener[] rL;
-	private MonoTime frameTime, frameTime_1;
-	private Duration delta_frameTime;
-	private real framesPerSecond, avgFPS;
+    private RefreshListener[] rL;				///Contains RefreshListeners associated with this raster.
+	private MonoTime frameTime, frameTime_1;	///Timestamps of frame occurences
+	private Duration delta_frameTime;			///Current time delta between two frames
+	private real framesPerSecond, avgFPS;		///Current and average fps counter
 	//public Bitmap16Bit[2] frameBuffer;
 
-    ///Default constructor. x and y : represent the resolution of the raster.
+	///Creates a raster with the supplied parameters.
+	///Params:
+	///   x = Width of the raster.
+	///   y = Height of the raster.
+	///   paletteLength = The initial size of the palette.
+	///   buffers = The number of buffers to be used. Default is two for double buffering. Single buffering can
+	///eliminate occassional flickering and latency at the possibility of screen tearing and having to wait for
+	///the buffer to be finished.
     public this(ushort x, ushort y, OutputScreen oW, size_t paletteLength, ubyte buffers = 2){
         //workpad = SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
 		//this.threads = threads;
