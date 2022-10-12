@@ -16,7 +16,7 @@ public import pixelperfectengine.map.mapdata;
  * Serializes/deserializes XMF map data in SDLang format.
  * Each layer can contain objects (eg. for marking events, clipping, or sprites if applicable), tilemapping (not for SpriteLayers), embedded
  * data such as tilemapping or scripts, and so on.
- * <br/>
+ *
  * Note on layer tags:
  * As of this version, additional tags within layers must have individual names. Subtags within a parent also need to have individual names.
  * Namespaces are reserved for internal use (eg. file sources, objects).
@@ -97,6 +97,8 @@ public class MapFormat {
 	/**
 	 * Loads tiles from disk to all layers. Also loads the palette.
 	 * TODO: Add dpk support
+	 * Params:
+	 *   paletteTarget: The destination, where the palettes should be loaded into.
 	 */
 	public void loadTiles (PaletteContainer paletteTarget) @trusted {
 		import pixelperfectengine.system.file;
@@ -172,8 +174,10 @@ public class MapFormat {
 	}
 	/**
 	 * Saves the document to disc.
+	 * Params:
+	 *   path = the path where the document is should be saved to.
 	 */
-	public void save (string path) @trusted {
+	public void save(string path) @trusted {
 		debug writeln(root.tags);
 		foreach(int i, Tag t; layerData){
 			if(t.name == "Tile")
@@ -184,14 +188,18 @@ public class MapFormat {
 		f.write(output);
 	}
 	/**
-	 * Returns given metadata.
+	 * Returns the given metadata.
+	 * Params:
+	 *   name = the name of the parameter.
+	 * Template params:
+	 *   T = The type of the parameter.
 	 */
 	public T getMetadata(T)(string name)
 			if (T.stringof == int.stringof || T.stringof == string.stringof) {
 		return metadata.getTagValue!T(name);
 	}
 	/**
-	 * Returns the requested layer
+	 * Returns the requested layer.
 	 */
 	public Layer opIndex(int index) @safe pure {
 		return layeroutput[index];
@@ -219,6 +227,12 @@ public class MapFormat {
 	}
 	/**
 	 * Alters a tile layer data.
+	 * Params:
+	 *   layerNum = The numer of the layer
+	 *   dataNum = The index of the data
+	 *   value = The new value.
+	 * Template params:
+	 *   T = The type of the parameter.
 	 */
 	public void alterTileLayerInfo(T)(int layerNum, int dataNum, T value) @trusted {
 		layerData[layerNum].values[dataNum] = Value(value);
@@ -226,6 +240,9 @@ public class MapFormat {
 	/**
 	 * Returns a selected tile layer's all tile's basic information.
 	 * Mainly used to display information in editors.
+	 * Params:
+	 *   pri = Layer priority ID
+	 * Returns: an array with the tile information.
 	 */
 	public TileInfo[] getTileInfo(int pri) @trusted {
 		import std.algorithm.sorting : sort;
@@ -254,8 +271,13 @@ public class MapFormat {
 		return result;
 	}
 	/**
-	 * Adds TileInfo to a TileLayer.
+	 * Adds TileInfo to a TileLayer from an array.
 	 * Joins together multiple chunks with the same source identifier. (should be a path)
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   list = An array of TileInfo, which need to be added to the document.
+	 *   source = The file origin of the tiles (file or DataPak path).
+	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
 	 */
 	public void addTileInfo(int pri, TileInfo[] list, string source, string dpkSource = null) @trusted {
 		if(list.length == 0) throw new Exception("Empty list!");
@@ -279,7 +301,15 @@ public class MapFormat {
 		//writeln(t.tags.length);
 		assert(t.tags.length == list.length);
 	}
-	///Ditto, but from preexisting Tag.
+	/**
+	 * Adds TileInfo to a TileLayer from a preexiting tag.
+	 * Joins together multiple chunks with the same source identifier. (should be a path)
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   t = The SDL tag to be added to the Layer.
+	 *   source = The file origin of the tiles (file or DataPak path).
+	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
+	 */
 	public void addTileInfo(int pri, Tag t, string source, string dpkSource = null) @trusted {
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
 			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
@@ -313,7 +343,11 @@ public class MapFormat {
 	}
 	/**
 	 * Renames a single tile.
-	 * Returns the previous name if the action was successful, or null if there was some issue.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   id = Tile character ID.
+	 *   newName = The new name of the tile.
+	 * Returns: the previous name if the action was successful, or null if there was some issue.
 	 */
 	public string renameTile(int pri, int id, string newName) {
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
@@ -335,10 +369,14 @@ public class MapFormat {
 	}
 	/**
 	 * Removes a single tile from a TileInfo chunk.
-	 * Returns a tag as a backup.
-	 * Returns null if source is not found.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   id = Tile character ID.
+	 *   source = The file origin of the tiles (file or DataPak path).
+	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
+	 * Returns: a tag as a backup if tile is found and removed, or null if it's not found.
 	 */
-	public Tag removeTile(int pri, int id, ref string source, ref string dpkSource) @trusted {
+	public Tag removeTile(int pri, int id, string source, string dpkSource = null) @trusted {
 		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
 			if (t0.name == "TileSource") {
 				Tag t1 = t0.getTag("Embed:TileInfo");
@@ -358,7 +396,9 @@ public class MapFormat {
 	}
 	/**
 	 * Removes a given layer of any kind.
-	 * Returns the Tag of the layer as a backup.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 * Returns: the Tag of the layer as a backup.
 	 */
 	public Tag removeLayer(int pri) @trusted {
 		Tag backup = layerData[pri];
@@ -367,7 +407,11 @@ public class MapFormat {
 		return backup.remove;
 	}
 	/**
-	 * Adds a layer from external tag.
+	 * Adds a layer from preexsting tag.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   t = The tag containing layer information.
+	 *   l = The layer.
 	 */
 	public void addNewLayer(int pri, Tag t, Layer l) @trusted {
 		layeroutput[pri] = l;
@@ -375,7 +419,15 @@ public class MapFormat {
 		root.add(t);
 	}
 	/**
-	 * Adds a new TileLayer to the document.
+	 * Adds a newly created TileLayer to the document.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   tX = Tile width.
+	 *   tY = Tile height.
+	 *   mX = Map width.
+	 *   mY = Map height.
+	 *   name = Name of the layer.
+	 *   l = The layer itself.
 	 */
 	public void addNewTileLayer(int pri, int tX, int tY, int mX, int mY, string name, TileLayer l) @trusted {
 		layeroutput[pri] = l;
@@ -385,6 +437,10 @@ public class MapFormat {
 	}
 	/**
 	 * Adds a new tag to a layer.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   name = Name of the tag.
+	 *   args = The values of the tag.
 	 */
 	public void addTagToLayer(T...)(int pri, string name, T args) @trusted {
 		Value[] vals;
@@ -394,9 +450,15 @@ public class MapFormat {
 		new Tag(layerData[pri], null, name, vals);
 	}
 	/**
-	 * Adds a new subtag to a layer's property tag.
+	 * Adds a new property tag to a layer's tag.
+	 * Note: Property tag must be first created by `addTagToLayer`.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   name = Name of the tag.
+	 *   parent = Name of the tag this one will be contained by.
+	 *   args = The values to be added to the tag.
 	 */
-	public void addSubTagToLayersProperty(T...)(int pri, string name, string parent, T args) @trusted {
+	public void addPropertyTagToLayer(T...)(int pri, string name, string parent, T args) @trusted {
 		Value[] vals;
 		foreach (arg; args) {
 			vals ~= Value(arg);
@@ -405,24 +467,41 @@ public class MapFormat {
 	}
 	/**
 	 * Gets the values of a layer's root tag.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 * Returns: an array containing all the values belonging to the root tag.
 	 */
 	public Value[] getLayerRootTagValues(int pri) @trusted {
 		return layerData[pri].values;
 	}
 	/**
 	 * Gets the values of a layer's tag.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   name = The name of the tag.
+	 * Returns: an array containing all the values belonging to the given tag.
 	 */
 	public Value[] getLayerTagValues(int pri, string name) @trusted {
 		return layerData[pri].expectTag(name).values;
 	}
 	/**
-	 * Gets the values of a layer's tag.
+	 * Gets the values of a layer's property tag.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   name = The name of the property tag.
+	 *   parent = The name of the tag the property tag is contained within.
+	 * Returns: an array containing all the values belonging to the given property tag.
 	 */
 	public Value[] getLayerPropertyTagValues(int pri, string name, string parent) @trusted {
 		return layerData[pri].expectTag(parent).expectTag(name).values;
 	}
 	/**
-	 * Edits the values of a layer's tag. Returns the original values in an array.
+	 * Edits the values of a layer's tag. 
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   name = Name of the tag.
+	 *   args = The values to be added to the tag.
+	 * Returns: the original values in an array.
 	 */
 	public Value[] editLayerTagValues(T...)(int pri, string name, T args) @trusted {
 		Value[] backup = layerData[pri].expectTag(name).values;
@@ -435,9 +514,15 @@ public class MapFormat {
 		return backup;
 	}
 	/**
-	 * Edits the values of a layer's subtag. Returns the original values in an array.
+	 * Edits the values of a layer's property tag.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   name = Name of the tag.
+	 *   parent = Name of the tag this one will be contained by.
+	 *   args = The values to be added to the tag.
+	 * Returns: the original values in an array.
 	 */
-	public Value[] editLayerSubtagValues(T...)(int pri, string name, string parent, T args) @trusted {
+	public Value[] editLayerPropertyTagValues(T...)(int pri, string name, string parent, T args) @trusted {
 		Value[] backup = layerData[pri].expectTag(parent).expectTag(name).values;
 		Value[] vals;
 		foreach (arg; args) {
@@ -448,51 +533,68 @@ public class MapFormat {
 	}
 	/**
 	 * Removes a layer's tag.
-	 * Returns a backup for undoing.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   name = Name of the tag.
+	 * Returns: a backup for undoing.
 	 */
 	public Tag removeLayerTagValues(int pri, string name) @trusted {
 		return layerData[pri].expectTag(name).remove;
 	}
 	/**
 	 * Adds an embedded MapData to a TileLayer.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   base64Code = The data to be embedded,
 	 */
 	public void addEmbeddedMapData(int pri, ubyte[] base64Code) @trusted {
 		layerData[pri].add(new Tag("Embed", "MapData", [Value(base64Code)]));
 	}
-	///Ditto
+	/**
+	 * Adds an embedded MapData to a TileLayer.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   me = The data to be embedded,
+	 */
 	public void addEmbeddedMapData(int pri, MappingElement[] me) @safe {
 		import pixelperfectengine.system.etc : reinterpretCast;
 		addEmbeddedMapData(pri, reinterpretCast!ubyte(me));
 	}
 	/**
 	 * Adds a TileData file to a TileLayer.
-	 * Filename must contain relative path.
+	 * Filename should contain relative path.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   filename = Path to the map data file. (Either on the disk or within the DataPak file)
+	 *   dataPakSrc = Path to the DataPak source file if used, null otherwise.
 	 */
 	public void addMapDataFile(int pri, string filename, string dataPakSrc = null) @trusted {
 		Attribute[] a;
 		if (dataPakSrc !is null) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
 		layerData[pri].add(new Tag("File", "MapData", [Value(filename)], a));
 	}
-	/+///Ditto, but for files found in DataPak archives
-	public void addMapDataFile(int pri, string dataPakPath, string filename) @trusted {
-		new Tag(layerData[pri], "File", "MapData", [Value(dataPakPath), Value(filename)]);
-	}+/
 	/**
 	 * Removes embedded TileData from a TileLayer.
-	 * Returns a backup for undoing.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 * Returns: a backup for undoing.
 	 */
 	public Tag removeEmbeddedMapData(int pri) @trusted {
 		return layerData[pri].expectTag("Embed:MapData").remove;
 	}
 	/**
 	 * Removes a TileData file from a TileLayer.
-	 * Returns a backup for undoing.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 * Returns: a backup for undoing.
 	 */
 	public Tag removeMapDataFile(int pri) @trusted {
 		return layerData[pri].expectTag("File:MapData").remove;
 	}
 	/**
 	 * Pulls TileLayer data from the layer, and stores it in the preconfigured location.
+	 * Params:
+	 *   pri = Layer priority ID.
 	 * Only works with uncompressed data due to the need of recompression.
 	 */
 	public void pullMapDataFromLayer(int pri) @trusted {
@@ -506,10 +608,14 @@ public class MapFormat {
 			MapDataHeader mdh = MapDataHeader(layerData[pri].values[4].get!int, layerData[pri].values[5].get!int);
 			saveMapFile(mdh, mapping, File(filename, "wb"));
 		}
-
 	}
 	/**
-	 * Adds a tile source file to a TileLayer.
+	 * Adds a tile source file (file that contains the tiles) to a TileLayer.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   filename = Path to the file.
+	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
+	 *   palShift = Amount of palette shiting, 0 for default.
 	 */
 	public void addTileSourceFile(int pri, string filename, string dataPakSrc = null, int palShift = 0) @trusted {
 		Attribute[] a;
@@ -519,7 +625,11 @@ public class MapFormat {
 	}
 	/**
 	 * Removes a tile source.
-	 * Returns a backup copy.
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   filename = Path to the file.
+	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
+	 * Returns: a backup copy of the tag.
 	 */
 	public Tag removeTileSourceFile(int pri, string filename, string dataPakSrc = null) @trusted {
 		try {
@@ -538,6 +648,10 @@ public class MapFormat {
 	}
 	/**
 	 * Accesses tile source tags in documents for adding extra data (eg. tile names).
+	 * Params:
+	 *   pri = Layer priority ID.
+	 *   filename = Path to the file.
+	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
 	 */
 	public Tag getTileSourceTag(int pri, string filename, string dataPakSrc = null) @trusted {
 		try {
@@ -557,6 +671,8 @@ public class MapFormat {
 	/**
 	 * Returns all tile sources for a given layer.
 	 * Intended to use with a loader.
+	 * Params:
+	 *   pri = Layer priority ID.
 	 */
 	public Tag[] getAllTileSources (int pri) @trusted {
 		Tag[] result;
@@ -576,6 +692,11 @@ public class MapFormat {
 	}
 	/**
 	 * Adds a palette file source to the document.
+	 * Params:
+	 *   filename = Path to the file containing the palette.
+	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
+	 *   offset = Palette offset, or where the palette should be loaded.
+	 *   palShift = Palette shifting, or how many bits the target bitmap will use.
 	 */
 	public Tag addPaletteFile (string filename, string dataPakSrc, int offset, int palShift) @trusted {
 		Attribute[] a;
@@ -586,6 +707,10 @@ public class MapFormat {
 	}
 	/**
 	 * Adds an embedded palette to the document.
+	 * Params:
+	 *   c = The palette to be embedded.
+	 *   name = Name of the palette.
+	 *   offset = Palette offset, or where the palette should be loaded.
 	 */
 	public Tag addEmbeddedPalette (Color[] c, string name, int offset) @trusted {
 		import pixelperfectengine.system.etc : reinterpretCast;
@@ -595,6 +720,10 @@ public class MapFormat {
 	}
 	/**
 	 * Returns whether the given palette file source exists.
+	 * Params:
+	 *   filename = Path to the file containing the palette.
+	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
+	 * Returns: True if the palette file source exists.
 	 */
 	public bool isPaletteFileExists (string filename, string dataPakSrc = null) @trusted {
 		foreach (t0 ; root.all.tags) {
