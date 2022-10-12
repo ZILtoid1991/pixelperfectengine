@@ -37,6 +37,7 @@ import iota.audio.midiin;
 
 import test1.audioconfig;
 import test1.preseteditor;
+import test1.modulerouter;
 
 /** 
  * Audio subsystem test.
