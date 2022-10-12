@@ -15,35 +15,36 @@ import std.conv;
 /**
  * Output window, uses SDL to output the graphics on screen.
  * TODO: Add borderless window support for better concreteUI integration.
+ * NOTE: Once the iota library gets raster output support, this subsystem will get refactored.
  */
 public class OutputScreen : RefreshListener{
-    private SDL_Window* window;
-    private IRaster mainRaster;
-    public SDL_Renderer* renderer;
+	private SDL_Window* window;
+	private IRaster mainRaster;
+	public SDL_Renderer* renderer;
 	private SDL_Rect* outputArea;
-    private void* mPixels;
-    private int mPitch;
+	private void* mPixels;
+	private int mPitch;
 
-    ///Constructor. x , y : resolution of the window
-    this(const char* title, ushort x, ushort y, uint flags = SDL_WINDOW_OPENGL, SDL_Rect* outputArea = null){
-        SDL_Init(SDL_INIT_VIDEO);
+	///Constructor. x , y : resolution of the window
+	this(const char* title, ushort x, ushort y, uint flags = SDL_WINDOW_OPENGL, SDL_Rect* outputArea = null){
+	SDL_Init(SDL_INIT_VIDEO);
 		this.outputArea = outputArea;
-        window = SDL_CreateWindow(title , cast(int)SDL_WINDOWPOS_UNDEFINED, cast(int)SDL_WINDOWPOS_UNDEFINED, x, y,
+		window = SDL_CreateWindow(title , cast(int)SDL_WINDOWPOS_UNDEFINED, cast(int)SDL_WINDOWPOS_UNDEFINED, x, y,
 				cast(SDL_WindowFlags)flags);
-        if (window == null) {
+		if (window == null) {
 //                throw new Exception();
 			throw new GraphicsInitializationException("Graphics initialization error! " ~ to!string(SDL_GetError()));
-        }
-        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    }
-    ~this(){
-        SDL_DestroyWindow(window);
-    }
-    ///Sets the main raster. Useful for changing rendering resolutions.
-    public void setMainRaster(IRaster r){
-        mainRaster = r;
-        //sdlTexture = SDL_CreateTextureFromSurface(renderer, mainRaster.getOutput());
-    }
+		}
+		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	}
+	~this(){
+		SDL_DestroyWindow(window);
+	}
+	///Sets the main raster. Useful for changing rendering resolutions.
+	public void setMainRaster(IRaster r){
+		mainRaster = r;
+		//sdlTexture = SDL_CreateTextureFromSurface(renderer, mainRaster.getOutput());
+	}
 	///Enters into fullscreen mode.
 	public void setToFullscreen(const SDL_DisplayMode* videoMode){
 		if(SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN)){
@@ -90,12 +91,12 @@ public class OutputScreen : RefreshListener{
 		}
 	}
 
-    ///Displays the output from the raster when invoked.
-    public void refreshFinished(){
+	///Displays the output from the raster when invoked.
+	public void refreshFinished(){
 		//SDL_Rect r = SDL_Rect(0,0,640,480);
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, mainRaster.getOutput,null,null);
 		SDL_RenderPresent(renderer);
 
-    }
+	}
 }

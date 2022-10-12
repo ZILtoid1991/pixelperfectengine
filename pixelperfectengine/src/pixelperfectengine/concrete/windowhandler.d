@@ -46,10 +46,13 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	private PopUpElement dragEventDestPopUp;
 	//private ubyte lastMouseButton;
 	/**
-	 * Default CTOR.
-	 * sW and sH set the screen width and height.
-	 * rW and rH set the raster width and height.
-	 * ISpriteLayer sets the SpriteLayer, that will display the windows and popups as sprites.
+	 * Creates an instance of WindowHandler.
+	 * Params:
+	 *   sW = Screen width
+	 *   sH = Screen height
+	 *   rW = Raster width
+	 *   rH = Raster height
+	 *   sl = The spritelayer, that will display the windows as sprites.
 	 */
 	public this(int sW, int sH, int rW, int rH, ISpriteLayer sl) {
 		screenWidth = sW;
@@ -76,7 +79,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		return cursor;
 	}
 	/**
-	 * Adds a window to the handler.
+	 * Adds a window to the handler, then sets it to top and hands over the focus to it.
+	 * Params:
+	 *   w = The window to be added to the handler.
 	 */
 	public void addWindow(Window w) @trusted {
 		windows.put(w);
@@ -86,7 +91,11 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	}
 
 	/**
-	 * Adds a DefaultDialog as a message box
+	 * Adds a DefaultDialog as a message box.
+	 * Params:
+	 *   title = Title of the window.
+	 *   message = The text that appears in the window.
+	 *   width = The width of the dialog window. 256 pixels is default.
 	 */
 	public void message(dstring title, dstring message, int width = 256) {
 		import pixelperfectengine.concrete.dialogs.defaultdialog;
@@ -102,7 +111,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		addWindow(new DefaultDialog(c, null, title, formattedMessage));
 	}
 	/**
-	 * Adds a background.
+	 * Adds a background to the spritelayer without disrupting window priorities.
+	 * Params:
+	 *   b = The bitmap to become the background. Should match the raster's sizes, but can be of any bitdepth.
 	 */
 	public void addBackground(ABitmap b) {
 		background = b;
@@ -110,6 +121,8 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	}
 	/**
 	 * Returns the window priority or -1 if the window can't be found.
+	 * Params:
+	 *   w = The window of which priority must be checked.
 	 */
 	public int whichWindow(Window w) @safe pure nothrow {
 		try
@@ -118,7 +131,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 			return -1;
 	}
 	/**
-	 * Sets sender to be top priority.
+	 * Sets sender to be top priority, and hands focus to it.
+	 * Params:
+	 *   w = The window that needs to be set.
 	 */
 	public void setWindowToTop(Window w) {
 		windows[0].focusTaken();
@@ -138,7 +153,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		if (baseWindow) spriteLayer.addSprite(baseWindow.getOutput, 65_535, 0, 0);
 	}
 	/**
-	 * Returns the default stylesheet.
+	 * Returns the default stylesheet, either one that has been set locally to this handler, or the global one.
 	 */
 	public StyleSheet getStyleSheet() {
 		if (defaultStyle)
@@ -147,8 +162,8 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 			return globalDefaultStyle;
 	}
 	/**
-	 * Closes the given window.
-	 *
+	 * Removes the window from the list of windows, essentially closing it.
+	 * 
 	 * NOTE: The closed window should be dereferenced in other places in order to be deallocated by the GC. If not,
 	 * then it can be used to restore the window without creating a new one, potentially saving it's states.
 	 */
@@ -160,14 +175,17 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	}
 	
 	/**
-	 * Initializes drag event.
+	 * Initializes mouse drag event.
 	 * Used to avoid issues from stray mouse release, etc.
+	 * Params:
+	 *   dragEventSrc = The receptor of mouse drag events.
 	 */
 	public void initDragEvent(MouseEventReceptor dragEventSrc) @safe nothrow {
 		this.dragEventSrc = dragEventSrc;
 	}
 	/**
-	 * Updates the sender's coordinates.
+	 * Updates the window's coordinates.
+	 * DUPLICATE FUNCTION OF `refreshWindow`! REMOVE IT BY RELEASE VERSION OF 0.10.0, AND REPLACE IT WITH AN ALIAS!
 	 */
 	public void updateWindowCoord(Window sender) @safe nothrow {
 		const int n = whichWindow(sender);
@@ -266,14 +284,16 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * Needed to be called each time the window's sprite is being replaced, or else the previous one will be continued to
 	 * be displayed without any updates.
 	 */
-	public void refreshWindow(Window sender) @safe {
+	public void refreshWindow(Window sender) @safe nothrow {
 		const int n = whichWindow(sender);
 		spriteLayer.replaceSprite(windows[n].getOutput, n, windows[n].getPosition);
 	}
 	/**
-	 * Adds a popup element and moves it to the current cursor position.
+	 * Adds a popup element into the environment and moves it to the current cursor position.
+	 * Params:
+	 *   p = The pop-up element to be added.
 	 */
-	public void addPopUpElement(PopUpElement p){
+	public void addPopUpElement(PopUpElement p) {
 		popUpElements.put(p);
 		p.addParent(this);
 		p.draw;
@@ -285,6 +305,13 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		spriteLayer.addSprite(p.getOutput(), numOfPopUpElements, p.getPosition.left, p.getPosition.top);
 
 	}
+	/**
+	 * Adds a pop-up element into the environment and moves it to the given location.
+	 * Params:
+	 *   p = The pop-up element to be added.
+	 *   x = The x coordinate on the raster.
+	 *   y = The y coordinate on the raster.
+	 */
 	public void addPopUpElement(PopUpElement p, int x, int y){
 		popUpElements.put(p);
 		p.addParent(this);
@@ -293,6 +320,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		numOfPopUpElements--;
 		spriteLayer.addSprite(p.getOutput,numOfPopUpElements, x, y);
 	}
+	/**
+	 * Removes all pop-up elements from the environment, effectively ending the pop-up session.
+	 */
 	private void removeAllPopUps(){
 		for ( ; numOfPopUpElements < 0 ; numOfPopUpElements++){
 			spriteLayer.removeSprite(numOfPopUpElements);
@@ -306,18 +336,32 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 			popUpElements.remove(0);
 		}+/
 	}
+	/**
+	 * Removes the pop-up element with the highest priority.
+	 */
 	private void removeTopPopUp(){
 
 		spriteLayer.removeSprite(numOfPopUpElements++);
 
 		popUpElements.remove(popUpElements.length - 1);
 	}
+	/**
+	 * Returns the default stylesheet (popup).
+	 */
 	public StyleSheet getDefaultStyleSheet(){
 		return defaultStyle;
 	}
+	/**
+	 * Ends the current pop-up session.
+	 * Params:
+	 *   p = UNUSED
+	 */
 	public void endPopUpSession(PopUpElement p){
 		removeAllPopUps();
 	}
+	/**
+	 * Removes the given popup element.
+	 */
 	public void closePopUp(PopUpElement p){
 		popUpElements.removeByElem(p);
 	}
