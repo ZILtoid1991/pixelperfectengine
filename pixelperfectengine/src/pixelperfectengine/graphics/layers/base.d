@@ -38,6 +38,7 @@ alias RenderFunc = @nogc pure nothrow void function(uint* src, uint* dest, size_
 }
 /**
  * The basis of all layer classes, containing function pointers for rendering.
+ * Can be overloaded for user defined layers.
  */
 abstract class Layer {
 	protected RenderFunc mainRenderingFunction;		///Used to implement changeable renderers for each layers
@@ -60,12 +61,24 @@ abstract class Layer {
 	protected int		rasterX;///Raster width (visible)
 	protected int		rasterY;///Haster height
 
-	/// Sets the main rasterizer
+	/**
+	 * Sets up the layer for the current rasterizer.
+	 * Params:
+	 *   rX = Width of the raster.
+	 *   rY = Height of the raster.
+	 * Note: These values define the visible area that need to be worked with. Some overscan can be defined,
+	 * and `updateRaster`'s `pitch` parameter defines the per-line stepping. Note that too much overscan can
+	 * negatively impact performance.
+	 */
 	public void setRasterizer(int rX, int rY) @safe pure nothrow {
 		rasterX=rX;
 		rasterY=rY;
 	}
-	///Sets the rendering mode
+	/**
+	 * Sets the global rendering mode for this layer.
+	 * Params:
+	 *   mode = The enumerator that describes built-in rendering functions.
+	 */
 	public void setRenderingMode(RenderingMode mode) @nogc @safe pure nothrow {
 		renderMode = mode;
 		mainRenderingFunction = getRenderingFunc(mode);
@@ -74,12 +87,24 @@ abstract class Layer {
 		//main8BitColorLookupFunction = &colorLookup!(ubyte,uint);
 		//main4BitColorLookupFunction = &colorLookup4Bit!uint;
 	}
-	///Absolute scrolling.
+	/**
+	 * Scrolls the layer to the given position.
+	 * Params:
+	 *   x = Horizontal coordinate.
+	 *   y = Vertical coordinate.
+	 */
 	public void scroll(int x, int y) @safe nothrow {
 		sX = x;
 		sY = y;
 	}
-	///Relative scrolling. Positive values scrolls the layer left and up, negative values scrolls the layer down and right.
+	/**
+	 * Relatively scrolls the layer by the given amount.
+	 * Formula is:
+	 * `[sX,sY] = [sX,sY] + [x,y]`
+	 * Params:
+	 *   x = Horizontal amount.
+	 *   y = Vertical amount.
+	 */
 	public void relScroll(int x, int y) @safe nothrow {
 		sX += x;
 		sY += y;
@@ -92,7 +117,20 @@ abstract class Layer {
 	public int getSY() @nogc @safe pure nothrow const {
 		return sY;
 	}
-	/// Override this to enable output to the raster
+	/**
+	 * Renders the layer's output to the raster. Function is called sequentially for all layers. Layers with higher
+	 * priority number will render to the raster in a later time. Function is marked as @nogc, as render-time 
+	 * allocation has negative impact on performance. For errors, either use asserts for unrecoverable errors, or 
+	 * errorcodes for less severe cases.
+	 * Params:
+	 *   workpad = The pointer to the workpad's first pixel to be shown. Does not have to be equal with the actual
+	 * first pixel of the workpad.
+	 *   pitch = The difference between lines in the amount of bytes. Must also contain any padding bytes, e.g.
+	 * pixels, etc.
+	 *   palette = Pointer to the first element on the palette.
+	 * Note: Due to the nature of how rendering functions work on vector extensions, arrays are not as feasible as
+	 * in other places, so that's why pointers are used instead.
+	 */
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
 	///Returns the type of the layer.
 	///Useful with certain scripting languages.
@@ -191,10 +229,17 @@ public enum WarpMode : ubyte {
 	TileRepeat			/// Out of bounds areas repeat tile 0x0000. Tile 0xFFFF is still reserved as transparency.
 }
 /**
- * Universal Mapping element, that is stored on 32 bit.
+ * Mapping element, that is used on most if not all layers in this engine.
+ * It reserves:
+ * * 16 bits for tile selection.
+ * * 6 bits for extra purposes (can be user defined if the layer doesn't use it for anything else).
+ * * 1 bit for vertical mirroring.
+ * * 1 bit for horizontal mirroring.
+ * * 8 bits for palette selection (can be used for user-defined purposes if tiles are either 16 or 32 bit).
+ * User defined purposes may include marking tiles with special purpose for the game logic.
  */
 public struct MappingElement {
-	wchar tileID;				///Determines which tile is being used for the given instance
+	wchar tileID;				///Determines which tile is being used for the given instance. 0xFFFF is reserved for transparency.
 	BitmapAttrib attributes;	///General attributes, such as vertical and horizontal mirroring. The extra 6 bits can be used for various purposes
 	ubyte paletteSel;			///Selects the palette for the bitmap if supported
 	///Default constructor
