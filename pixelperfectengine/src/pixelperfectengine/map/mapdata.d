@@ -27,6 +27,9 @@ public import pixelperfectengine.system.exc;
 
 /**
  * Contains the very basic data for the map binary file (*.mbf).
+ * Length of the map is calculated as `length = sizeX * sizeY`, all words are 32 bits long, so size of map in bytes
+ * equals `mapSize = length * 4`, and header should be 12 bytes in size.
+ * Maps are always starting in the top-left corner of their tile layers.
  */
 public struct MapDataHeader{
 	public uint flags;		///Stores additional data about the binary map file as a boolean array. Bit 24-31 are user definable.
@@ -37,6 +40,12 @@ public struct MapDataHeader{
 		UD_PalShiftField	=	1<<1,	///Palette-shift field contains user defined data
 		Bit10AxisSwitch		=	1<<2,	///Bit 10 (bit 0 of priority field) switches X and Y axes
 	}
+	/**
+	 * Creates a MapDataHeader with the supplied parameters.
+	 * Params:
+	 *   sizeX = Width of the map.
+	 *   sizeY = Height of the map.
+	 */
 	this(int sizeX, int sizeY){
 		//this.fileLength = cast(uint)(sizeX * sizeY + MapDataHeader.sizeof);
 		this.sizeX = sizeX;
@@ -48,7 +57,7 @@ public struct MapDataHeader{
  * Saves a map to an external file.
  * Will be deprecated soon.
  */
-public void saveMapFile(MapDataHeader* header, ref MappingElement[] map, string name){
+public deprecated void saveMapFile(MapDataHeader* header, ref MappingElement[] map, string name){
 	FILE* outputStream = fopen(toStringz(name), "wb");
 	if(outputStream is null){
 		import std.conv;
