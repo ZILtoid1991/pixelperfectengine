@@ -12,7 +12,7 @@ Purpose of the ETML (Embedded Text Markup Language):
 * `</ br>`: Line break (normal line breaks are not processed by default).
 * `<s></s>`: Strikethrough.
 
-Note: `u` and `s` (and `o`) can be formatted with attributes
+Note: `u` can be formatted with attributes
 * `style` (possible values: `single`, `double`, `triple`, `quad`),
 * `lines` (possible values: `normal`, `dotted`, `wavy`, `wavySoft`, `stripes`),
 * and `perWord` (possible values: `true`, `false`).
@@ -36,11 +36,28 @@ size attribute, if vector fonts will ever be supported.
 * `<format id="default"></format>`: Chooses a predefined format for the text chunk. Can be modified with any of the 
 other tags.
 
-* `</ frontTab amount="10">`: Inserts a tabulator at the given position.
+* `<frontTab amount="10" />` or `<ft amount="10" />`: Inserts a tabulator at the given position.
 
-* `</ image src="jeffrey">`: Inserts an image at the current position.
+* `<image src="jeffrey" />`: Inserts an image at the current position.
 
 * `<text id="64"></text>`: Used for containing multiple textchunks in a single file.
+
+# Example document
+
+```xml
+<!xml version = "1.0" encoding = "utf8">
+<?DOCTYPE ETML?>
+<etml>
+    <text id="example1">
+        Hello world! <br />
+        This is an examle of a <i>multiline</i> text done in ETML.
+    </text>
+    <text id="example2">
+        This even supports Unicode characters as long as the target system is capable of displaying them. <br />
+        árvíztűrő tükörfúrógép ÁRVÍZTŰRŐ TÜKÖRFÚRÓGÉP
+    </text>
+</etml>
+```
 
 # Note on custom entities
 
