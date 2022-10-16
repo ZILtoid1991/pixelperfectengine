@@ -8,19 +8,18 @@ public import pixelperfectengine.system.exc;
 public import pixelperfectengine.system.etc : isInteger;
 
 import newxml;
+import newxml.interfaces : XMLException;
 import std.utf : toUTF32, toUTF8;
 import std.conv : to;
 import std.algorithm : countUntil;
 import std.exception : enforce;
+import std.typecons : BitFlags;
+import core.exception : RangeError;
 
 /**
  * Parses text from XML/ETML
  *
- * See "ETML.md" for info.
- *
- * Constraints:
- * * <text> chunks are mandatory with ID.
- * * Certain functions may not be fully implemented as of now.
+ * See "ETML.md" for further info on how the ETML format works.
  */
 public class TextParserTempl(BitmapType = Bitmap8Bit)
 		if (is(BitmapType == Bitmap8Bit) || is(BitmapType == Bitmap16Bit) || is(BitmapType Bitmap32Bit)) {
@@ -32,26 +31,17 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	//private ChrFormat				currFrmt;///currently parsed formatting
 	public ChrFormat[]				chrFrmt;///All character format, that has been parsed so far
 	public ChrFormat[]				frmtStack;	///Character formatting stack.
-	//public Fontset!BitmapType[]		fontStack;	///Fonttype formatting stack. Used for referring back to previous font types.
-	//public uint[]					colorStack;	///Contains a stack of color modifiers. If empty, it'll fall back to what the default formatting has.
-	//private ChrFormat				defFrmt;	///Default character formatting. Must be set before parsing
-	//alias defFrmt = chrFrmt[0];
+	public ChrFormat[string]		namedFormats;///Named format lookup table.
 	public Fontset!BitmapType[string]	fontsets;///Fontset name association table
 	public BitmapType[string]		icons;		///Icon name association table
 	public dstring[dstring]			customEntities;///Custom entities that are loaded during parsing.
 	private dstring					_input;		///The source XML/ETML document
+	private bool					inTextChunk;///Set to true if currently in a text chunk to allow detection of cascading 
 	
 	///Creates a new instance with a select string input.
-	public this(dstring _input) @safe pure nothrow {
+	public this(dstring _input, CharacterFormattingInfo!BitmapType val) @safe pure nothrow {
 		this._input = _input;
-		
-	}
-	///Sets the default formatting
-	public CharacterFormattingInfo!BitmapType defaultFormatting(CharacterFormattingInfo!BitmapType val) @property @safe
-			pure nothrow {
-		//defFrmt = val;
 		chrFrmt = [val];
-		return defFrmt;
 	}
 	///Gets the default formatting
 	public CharacterFormattingInfo!BitmapType defaultFormatting() @property @safe pure nothrow @nogc {
@@ -70,11 +60,18 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	/**
 	 * Parses the formatted text, then sets the output values.
 	 */
-	public void parse() @safe {
+	public void parse()  {
 		auto parser = _input.lexer.parser.cursor.saxParser;
 		parser.setSource(_input);
 		parser.onElementStart = &onElementStart;
 		parser.onElementEnd = &onElementEnd;
+		try {
+			parser.processDocument();
+		} catch (XMLException e) {	//XML formatting issue
+			throw new XMLTextParsingException("XML file is badly formatted!", e);
+		} catch (RangeError e) {	//Missing mandatory attributes
+			throw new XMLTextParsingException("Missing mandatory attribute found!", e);
+		}
 	}
 	protected void onText(dstring content) @safe {
 		if (currTextBlock.charLength) {
@@ -89,6 +86,21 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 			case "text":
 				onTextElementStart(attr);
 				break;
+			case "p":
+				onPElementStart(attr);
+				break;
+			case "u":
+				onLineFormatElementStart!"u"(attr);
+				break;
+			case "s":
+				onLineFormatElementStart!"s"(attr);
+				break;
+			case "o":
+				onLineFormatElementStart!"o"(attr);
+				break;
+			case "i":
+				onIElementStart(attr);
+				break;
 			default:
 				break;
 		}
@@ -98,14 +110,29 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 			case "br":
 				onBrElement();
 				break;
+			case "image":
+				onImageElement(attr);
+				break;
+			case "frontTab", "ft":
+				onFrontTabElement(attr);
+				break;
+			case "formatDef":
+				onFormatDefElement(attr);
+				break;
 			default:
 				break;
 		}
 	}
 	protected void onElementEnd(dstring name) @safe {
 		switch (name) {
-			case "text":
-				
+			case "p":
+			case "u":
+			case "s":
+			case "o":
+			case "i":
+			case "font":
+			case "format":
+				closeFormattingTag();
 				break;
 			default:
 				break;
@@ -125,10 +152,8 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		output[textID] = currTextBlock;
 	}
 	protected void onPElementStart(dstring[dstring] attributes) @safe {
-		if (currTextBlock.charLength) {
-			currTextBlock.next = new TextType(null, currFrmt);
-			currTextBlock = currTextBlock.next;
-		}
+		currTextBlock.next = new TextType(null, currFrmt);
+		currTextBlock = currTextBlock.next;
 		ChrFormat newFrmt = new ChrFormat(currFrmt);
 		dstring paragraphSpaceStr = attributes.get("paragraphSpace", null);
 		if (paragraphSpaceStr.isInteger) {
@@ -143,10 +168,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		currTextBlock.flags.newParagraph = true;
 	}
 	protected void onLineFormatElementStart(string Type)(dstring[dstring] attributes) @safe {
-		if (currTextBlock.charLength) {
-			currTextBlock.next = new TextType(null, currFrmt);
-			currTextBlock = currTextBlock.next;
-		}
+		closeTextBlockIfNotEmpty();
 		ChrFormat newFrmt = new ChrFormat(currFrmt);
 		static if (Type == "u") {
 			dstring style = attributes.get("style", null);
@@ -186,7 +208,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 					break;
 			}
 			dstring perWord = attributes.get("perWord", null);
-			if (perWord == "true") {
+			if (perWord == "true" || perWord == "yes") {
 				newFrmt.formatFlags |= FormattingFlags.underlinePerWord;
 			} else {
 				newFrmt.formatFlags &= ~FormattingFlags.underlinePerWord;
@@ -200,10 +222,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		currTextBlock.formatting = currFrmt;
 	}
 	protected void onIElementStart(dstring[dstring] attributes) @safe {
-		if (currTextBlock.charLength) {
-			currTextBlock.next = new TextType(null, currFrmt);
-			currTextBlock = currTextBlock.next;
-		}
+		closeTextBlockIfNotEmpty();
 		ChrFormat newFrmt = new ChrFormat(currFrmt);
 		dstring amount = attributes.get("amount", null);
 		newFrmt.formatFlags &= ~FormattingFlags.forceItalicsMask;
@@ -222,10 +241,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		currTextBlock.formatting = currFrmt;
 	}
 	protected void onFontElementStart(dstring[dstring] attributes) @safe {
-		if (currTextBlock.charLength) {
-			currTextBlock.next = new TextType(null, currFrmt);
-			currTextBlock = currTextBlock.next;
-		}
+		closeTextBlockIfNotEmpty();
 		ChrFormat newFrmt = new ChrFormat(currFrmt);
 		string type = toUTF8(attributes.get("font", null));
 		if (type.length) {
@@ -245,11 +261,67 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		currTextBlock.formatting = currFrmt;
 	}
 	protected void onFormatElementStart(dstring[dstring] attributes) @safe {
-		if (currTextBlock.charLength) {
-			currTextBlock.next = new TextType(null, currFrmt);
-			currTextBlock = currTextBlock.next;
+		closeTextBlockIfNotEmpty();
+		currTextBlock.formatting = namedFormats[toUTF8(attributes["id"])];
+	}
+	protected void onFormatDefElement(dstring[dstring] attributes) @safe {
+		bool checkBoolean(dstring val) @safe {
+			if (val == "true" || val == "yes")
+				return true;
+			else
+				return false;
 		}
+		closeTextBlockIfNotEmpty();
 		ChrFormat newFrmt = new ChrFormat(currFrmt);
+		foreach (dstring key, dstring elem; attributes) {
+			switch (key) {
+				case "u":
+					if (checkBoolean(elem))
+						newFrmt.formatFlags &= ~FormattingFlags.underline;
+					else
+						newFrmt.formatFlags |= FormattingFlags.underline;
+					break;
+				case "s":
+					if (checkBoolean(elem))
+						newFrmt.formatFlags &= ~FormattingFlags.strikeThrough;
+					else
+						newFrmt.formatFlags |= FormattingFlags.strikeThrough;
+					break;
+				case "o":
+					if (checkBoolean(elem))
+						newFrmt.formatFlags &= ~FormattingFlags.overline;
+					else
+						newFrmt.formatFlags |= FormattingFlags.overline;
+					break;
+				case "i":
+					if (checkBoolean(elem)) {
+						newFrmt.formatFlags &= ~FormattingFlags.forceItalicsMask;
+					} else {
+						dstring i_amount = attributes.get("i_amount", null);
+						switch (i_amount) {
+							case "1/2":
+								newFrmt.formatFlags |= FormattingFlags.forceItalics1per2;
+								break;
+							case "1/3":
+								newFrmt.formatFlags |= FormattingFlags.forceItalics1per3;
+								break;
+							default:
+								newFrmt.formatFlags |= FormattingFlags.forceItalics1per4;
+								break;
+						}
+					}
+					break;
+				default:
+					break;
+			}
+		}
+		const sizediff_t frmtNum = hasChrFormatting(newFrmt);
+		if (frmtNum == -1) {
+			namedFormats[toUTF8(attributes["id"])] = newFrmt;
+			chrFrmt ~= newFrmt;
+		} else {
+			namedFormats[toUTF8(attributes["id"])] = chrFrmt[frmtNum];
+		}
 	}
 	protected void onBrElement() @safe {
 		currTextBlock.next = new TextType(null, currFrmt);
@@ -257,10 +329,24 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		currTextBlock.flags.newLine = true;
 	}
 	protected void onFrontTabElement(dstring[dstring] attributes) @safe {
-
+		closeTextBlockIfNotEmpty();
+		currTextBlock.frontTab = attributes["amount"].to!int;
 	}
 	protected void onImageElement(dstring[dstring] attributes) @safe {
-
+		if (currTextBlock.charLength || currTextBlock.icon) {
+			currTextBlock.next = new TextType(null, currFrmt);
+			currTextBlock = currTextBlock.next;
+		}
+	}
+	protected void closeFormattingTag() @safe {
+		removeTopFromFrmtStack();
+		closeTextBlockIfNotEmpty();
+	}
+	protected final void closeTextBlockIfNotEmpty() @safe {
+		if (currTextBlock.charLength) {
+			currTextBlock.next = new TextType(null, currFrmt);
+			currTextBlock = currTextBlock.next;
+		}
 	}
 	protected final void removeTopFromFrmtStack() @safe {
 		frmtStack = frmtStack[0..$-1];
