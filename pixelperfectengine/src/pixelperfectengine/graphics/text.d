@@ -68,7 +68,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Indexing to refer to child items.
 	 * Returns null if the given element isn't available.
 	 */
-	public Text!BitmapType opIndex(size_t index) @safe pure nothrow {
+	public TextTempl!BitmapType opIndex(size_t index) @safe pure nothrow {
 		if (index) {
 			if (next) {
 				return next[index - 1];
@@ -243,5 +243,75 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		_text = val.dup;
 		return val;
 	}
+	protected void addToEnd(TextTempl!(BitmapType) chunk) @safe pure nothrow {
+		if (next is null) {
+			next = chunk;
+		} else {
+			next.addToEnd(chunk);
+		}
+	}
+	/** 
+	 * Breaks this text object into multiple lines
+	 * Params:
+	 *   width = The width of the text.
+	 * Returns: An array of text objects, with each new element representing a new line. Each text objects might still
+	 * have more subelements for formatting reasons.
+	 */
+	public TextTempl!(BitmapType)[] breakTextIntoMultipleLines(int width) {
+		TextTempl!BitmapType curr = this;
+		TextTempl!BitmapType currentLine = new Text(null, curr.formatting, null, curr.frontTab, curr.icon);
+		TextTempl!BitmapType currentChunk = currentLine;
+		dchar[] currentWord;
+		TextTempl!(BitmapType)[] result;
+		int currentWordLength, currentLineLength;
+		while (curr) {
+			foreach(ch ; curr._text) {
+				currentWordLength += curr.formatting.font.chars(ch).xadvance;
+				if (isWhiteSpaceMB(ch)){
+					if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start new word.
+						currentLineLength += currentWordLength;
+						currentLine._text ~= currentWord ~ ch;
+					} else {
+						result ~= currentLine;
+						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
+						currentChunk = currentLine;
+					}
+				} else {
+					if (currentWordLength > width) {		//Break word to avoid going out of the line
+						result ~= currentLine;
+						result ~= new TextTempl!(BitmapType)(currentWord.idup, curr.formatting, null, 0, null);
+						currentWord.length = 0;
+						currentWordLength = curr.formatting.font.chars(ch).xadvance;
+						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+						currentChunk = currentLine;
+					}
+					currentWord ~= ch;
+				}
+			}
+			curr = curr.next;
+			if (curr.flags.newLine || curr.flags.newParagraph) {		//Force text breakage, put text chunk into the array.
+				result ~= currentLine;
+				currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+				currentChunk = currentLine;
+			} else {
+				currentChunk = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+				currentLine.addToEnd(currentChunk);
+			}
+		}
+		return result;
+	}
 }
 alias Text = TextTempl!Bitmap8Bit;
+//Text helper functions
+///Checks character `c` if it's a whitespace character that may break but is not an absolute break, then returns the 
+///true if it is.
+public bool isWhiteSpaceMB(dchar c) @safe pure nothrow {
+	import std.algorithm : countUntil;
+	static immutable dchar[] whitespaces = [0x0009, 0x0020, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0X2004, 0x2005,
+			0x2006, 0x2007, 0x2008, 0x2009, 0x200A, 0x205F, 0x3000, 0x180E, 0x200B, 0x200C, 0x200D];
+	try {
+		return countUntil(whitespaces, c) != -1;
+	} catch (Exception e) {
+		return false;
+	}
+}
