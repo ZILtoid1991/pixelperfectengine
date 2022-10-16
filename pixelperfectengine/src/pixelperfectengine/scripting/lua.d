@@ -25,7 +25,7 @@ public bool initLua() {
 	return ver == LuaSupport.lua54;
 }
 extern(C)
-package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @system @nogc nothrow {
+package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @system nothrow {
 	import core.memory;
 	if (nsize == 0) {
 		GC.free(ptr);
@@ -428,7 +428,7 @@ public class LuaScript {
 	this(string source, const(char*) name) {
 		this.source = source;
 		state = lua_newstate(&luaAllocator, null);
-		const int errorCode = lua_load(state, &reader, name, null);
+		const int errorCode = lua_load(state, &reader, cast(void*)this, name, null);
 		switch (errorCode) {
 			default:
 				break;
@@ -449,14 +449,15 @@ public class LuaScript {
 		return callLuaFunc!(LuaVar, "main")(state);
 	}
 	extern(C)
-	private const(char*) reader(lua_State* st, void* data, size_t* size) @nogc nothrow {
-		if (isLoaded) {
+	private static const(char*) reader(lua_State* st, void* data, size_t* size) nothrow {
+		LuaScript ls = cast(LuaScript)data;
+		if (ls.isLoaded) {
 			*size = 0;
 			return null;
 		} else {
-			isLoaded = true;
-			*size = source.length;
-			return source.ptr;
+			ls.isLoaded = true;
+			*size = ls.source.length;
+			return ls.source.ptr;
 		}
 	}
 }
