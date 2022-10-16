@@ -26,19 +26,19 @@ public bool initLua() {
 }
 extern(C)
 package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @system @nogc nothrow {
-	import core.stdc.stdlib;
+	import core.memory;
 	if (nsize == 0) {
-		free(ptr);
+		GC.free(ptr);
 		return null;
 	} else {
-		return realloc(ptr, nsize);
+		return GC.realloc(ptr, nsize);
 	}
 }
 /** 
  * Calls a Lua function with the given name and arguments.
  * Params:
  *   state = The Lua state, where the function is located.
- *   ... = The arguments to be passed to the
+ *   ... = The arguments to be passed to the function.
  * Template params:
  *   T = The return type.
  *   funcName = The name of the function.
@@ -76,7 +76,15 @@ public T callLuaFunc(T, funcName)(lua_State* state, ...) @system {
 		} else static assert(0, "Argument not supported!");
 	}
 	int errorCode = lua_pcall(state, cast(int)_arguments.length, is(T == void) ? 0 : 1, 0);
-	return T.init;
+	static if (!is(T == void)) {
+		LuaVar result = LuaVar(state, -1);
+		lua_pop(state, 1);
+		static if (is(T == LuaVar)) {
+			return result;
+		} else {
+			return result.get!T;
+		}
+	}
 }
 /** 
  * Registers a D function to be called from Lua.
@@ -412,6 +420,46 @@ public struct LuaVar {
 }
 
 alias LuaTable = LinkedMap!(LuaVar, LuaVar);
+
+public class LuaScript {
+	protected lua_State*		state;
+	protected string			source;
+	protected bool				isLoaded;
+	this(string source, const(char*) name) {
+		this.source = source;
+		state = lua_newstate(&luaAllocator, null);
+		const int errorCode = lua_load(state, &reader, name, null);
+		switch (errorCode) {
+			default:
+				break;
+			case LUA_ERRSYNTAX:
+				throw new LuaException(LUA_ERRSYNTAX, "Syntax error in file!");
+			case LUA_ERRMEM:
+				throw new LuaException(LUA_ERRMEM, "Memory error!");
+		}
+		registerLibForScripting(state);
+	}
+	~this() {
+		lua_close(state);
+	}
+	public lua_State* getState() @nogc nothrow pure {
+		return state;
+	}
+	public LuaVar runMain() {
+		return callLuaFunc!(LuaVar, "main")(state);
+	}
+	extern(C)
+	private const(char*) reader(lua_State* st, void* data, size_t* size) @nogc nothrow {
+		if (isLoaded) {
+			*size = 0;
+			return null;
+		} else {
+			isLoaded = true;
+			*size = source.length;
+			return source.ptr;
+		}
+	}
+}
 
 public class LuaException : PPEException {
 	public int errorCode;
