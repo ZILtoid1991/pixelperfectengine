@@ -3,7 +3,7 @@
 	"versions": {
 		"bindbc-loader": "1.0.1",
 		"bindbc-lua": "0.5.0",
-		"bindbc-sdl": "1.2.1",
+		"bindbc-sdl": "1.2.2",
 		"bitleveld": "0.1.0",
 		"bmfont": "0.1.0",
 		"collections-d": "0.4.7",

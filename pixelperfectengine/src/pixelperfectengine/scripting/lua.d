@@ -428,7 +428,7 @@ public class LuaScript {
 	this(string source, const(char*) name) {
 		this.source = source;
 		state = lua_newstate(&luaAllocator, null);
-		const int errorCode = lua_load(state, &reader, cast(void*)this, name, null);
+		const int errorCode;// = lua_load(state, &reader, cast(void*)this, name, null);
 		switch (errorCode) {
 			default:
 				break;
@@ -445,9 +445,9 @@ public class LuaScript {
 	public lua_State* getState() @nogc nothrow pure {
 		return state;
 	}
-	public LuaVar runMain() {
-		return callLuaFunc!(LuaVar, "main")(state);
-	}
+	/+public LuaVar runMain() {
+		//return callLuaFunc!(LuaVar, "main")(state);
+	}+/
 	extern(C)
 	private static const(char*) reader(lua_State* st, void* data, size_t* size) nothrow {
 		LuaScript ls = cast(LuaScript)data;
