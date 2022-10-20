@@ -74,7 +74,8 @@ public class TopLevelWindow : Window {
 
 		menuElements ~= new PopUpMenuElement("view", "View");
 
-		menuElements[2] ~= new PopUpMenuElement("preEdit", "Module editor");
+		//menuElements[2] ~= new PopUpMenuElement("preEdit", "Module editor");
+		menuElements[2] ~= new PopUpMenuElement("router", "Routing layout editor");
 
 		menuElements ~= new PopUpMenuElement("help", "Help");
 
@@ -116,6 +117,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	WindowHandler	wh;
 	Window			tlw;
 	PresetEditor	preEdit;
+	ModuleRouter	router;
 	uint			state;
 	ubyte			noteBase = 60;
 	ubyte			bank0;
@@ -204,14 +206,24 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			case "preEdit":
 				openPresetEditor();
 				break;
+			case "router":
+				openRouter();
+				break;
 			case "exit":
 				state &= ~StateFlags.isRunning;
 				break;
 			default: break;
 		}
 	}
+	public void openRouter() {
+		if (router is null)
+			router = new ModuleRouter(this);
+		if (wh.whichWindow(router) == -1)
+			wh.addWindow(router);
+		
+	}
 	public void openPresetEditor() {
-		if (preEdit is null)
+		if (preEdit is null && selectedModule !is null)
 			preEdit = new PresetEditor("Module editor", selectedModule);
 		if (wh.whichWindow(preEdit) == -1)
 			wh.addWindow(preEdit);
