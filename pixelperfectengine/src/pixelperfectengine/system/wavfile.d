@@ -2,6 +2,7 @@ module pixelperfectengine.system.wavfile;
 
 static import std.file;
 import std.format;
+import std.exception : enforce;
 
 
 /// parse little-endian ushort
@@ -17,6 +18,7 @@ private uint toUint(const ubyte[] array, uint offset) {
 
 /**
 Basic WAV file loader
+TO DO: Make some more specific exceptions by final version 0.10.0!
 */
 class WavFile {
    /**
@@ -38,10 +40,10 @@ class WavFile {
          // this *might* be out of spec, as in theory fmt chunks could be bigger if indicated by offset 16-20 (uint)
          // so any offset above 35 should be dynamicall calculated
          // but I don't think there's any WAV files like that
-         assert(rawData[0..4] == "RIFF", "Header corrupted: 'RIFF' string missing");
-         assert(rawData[8..12] == "WAVE", "Header corrupted: 'WAVE' string missing");
-         assert(rawData[12..16] == "fmt ", "Header corrupted: 'fmt ' string missing");
-         assert(rawData[36..40] == "data", "Header corrupted: 'data' string missing");
+         enforce(rawData[0..4] == "RIFF", new Exception("Header corrupted: 'RIFF' string missing"));
+         enforce(rawData[8..12] == "WAVE", new Exception("Header corrupted: 'WAVE' string missing"));
+         enforce(rawData[12..16] == "fmt ", new Exception("Header corrupted: 'fmt ' string missing"));
+         enforce(rawData[36..40] == "data", new Exception("Header corrupted: 'data' string missing"));
          this.size = toUint(rawData, 4);
          this.format = toUshort(rawData, 20);
          this.channels = toUshort(rawData, 22);
@@ -88,9 +90,9 @@ class WavFile {
    this(string filename) {
       rawData = cast(immutable(ubyte[]))std.file.read(filename);
       this.header = WavHeader(this.rawData[0..44]);
-      assert(this.header.size + 8 == this.rawData.length, format(
+      enforce(this.header.size + 8 == this.rawData.length, new Exception(format(
          "File size is corrupted: size is %s but it should be %s", 
-         this.header.size, this.rawData.length - 8)
+         this.header.size, this.rawData.length - 8))
       );
    }
 
