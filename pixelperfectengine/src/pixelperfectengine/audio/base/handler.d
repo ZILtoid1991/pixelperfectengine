@@ -233,6 +233,9 @@ public class ModuleManager {
 			resetBuffer(buffers[i]);
 		}
 	}
+	public int getChannels() const @nogc @safe pure nothrow {
+		return channels;
+	}
 	/**
 	 * Adds a plugin to the list.
 	 *Params: 
@@ -257,7 +260,12 @@ public class ModuleManager {
 		inBufferList ~= buffList0;
 		outBufferList ~= buffList1;
 	}
-	
+	public void reset() {
+		moduleList.length = 0;
+		inBufferList.length = 0;
+		outBufferList.length = 0;
+		setBuffers(0);
+	}
 	/**
 	 * Runs the audio thread and starts the audio output.
 	 */
