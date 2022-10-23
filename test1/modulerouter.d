@@ -38,4 +38,12 @@ public class ModuleRouter : Window {
 		//addElement(button_midiNode);
 		addElement(button_remNode);
 	}
+	private void button_addMod_onClick(Event e) {
+		handler.addPopUpElement(new PopUpMenu([new PopUpMenuElement("qm816", "QM816"), new PopUpMenuElement("pcm8", "PCM8")], 
+				"moduleSelector", &onModuleTypeSelect));
+		
+	}
+	private void onModuleTypeSelect(Event e) {
+
+	}
 }

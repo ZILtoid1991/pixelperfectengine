@@ -5,6 +5,7 @@ import pixelperfectengine.audio.base.modulebase;
 import std.conv : to;
 import std.utf : toUTF32, toUTF8;
 import std.algorithm.searching : countUntil;
+import pixelperfectengine.audio.base.config;
 
 public class PresetEditor : Window {
 	ListView listView_presets;
@@ -12,11 +13,12 @@ public class PresetEditor : Window {
 	SmallButton[] smallButtons;
 	CheckBox checkBox_Globals;
 	AudioModule editedModule;
+	ModuleConfig acfg;
 	MValue[] params;
 	uint[] paramIDs;
 	uint presetID;
 	//CheckBox	checkBox_globals;
-	public this(dstring name, AudioModule editedModule) {
+	public this(dstring name, AudioModule editedModule, ModuleConfig acfg) {
 		super(Box(0, 0, 330, 330), name ~ " presets"d);
 		listView_presets = new ListView(new ListViewHeader(16, [32, 32, 240], ["Bank" ,"Prg" ,"Name"]), null, 
 				"listView_presets", Box(5, 20, 230, 100));
@@ -47,6 +49,7 @@ public class PresetEditor : Window {
 			key.onMouseLClick = &smallButtons_onClick;
 		}
 		this.editedModule = editedModule;
+		this.acfg = acfg;
 		params = editedModule.getParameters;
 	}
 	private void fillValues() {

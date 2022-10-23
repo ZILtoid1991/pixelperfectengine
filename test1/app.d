@@ -5,6 +5,7 @@ import std.string;
 import std.conv;
 import std.format;
 import std.random;
+import std.typecons : BitFlags;
 
 import bindbc.sdl;
 
@@ -30,7 +31,8 @@ import pixelperfectengine.system.common;
 
 import pixelperfectengine.audio.base.handler;
 import pixelperfectengine.audio.base.modulebase;
-import pixelperfectengine.audio.modules.qm816;
+import pixelperfectengine.audio.base.config;
+//import pixelperfectengine.audio.modules.qm816;
 import core.thread;
 import iota.audio.midi;
 import iota.audio.midiin;
@@ -118,7 +120,8 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	Window			tlw;
 	PresetEditor	preEdit;
 	ModuleRouter	router;
-	uint			state;
+	ModuleConfig	mcfg;
+	BitFlags!StateFlags	state;
 	ubyte			noteBase = 60;
 	ubyte			bank0;
 	ubyte			bank1;
@@ -126,15 +129,12 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	//ubyte[32][6][2]	level;
 	enum StateFlags {
 		isRunning		=	1<<0,
-		deviceSelected	=	1<<1,
-		deviceInitialized=	1<<2,
-		midiInitialized	=	1<<3,
-		keyPressed		=	1<<8,
-		upperHalf		=	1<<9,
+		audioThreadRunning=	1<<1,
+		configurationCompiled=1<<2,
 	}
 	
 	public this(string[] args) {
-		state |= StateFlags.isRunning;
+		state.isRunning = true;
 		//Image fontSource = loadImage(File("../system/cp437_8x16.png"));
 		output = new OutputScreen("PixelPerfectEngine Audio Development Kit", 848 * 2, 480 * 2);
 		mainRaster = new Raster(848,480,output,0);
@@ -186,7 +186,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		wh.addWindow(new AudioConfig(this));
 	}
 	void whereTheMagicHappens() {
-		while (state & StateFlags.isRunning) {
+		while (state.isRunning) {
 			mainRaster.refresh();
 			ih.test();
 			
@@ -210,7 +210,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 				openRouter();
 				break;
 			case "exit":
-				state &= ~StateFlags.isRunning;
+				state.isRunning = false;
 				break;
 			default: break;
 		}
@@ -239,7 +239,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	}
 	
 	public void onQuit() {
-		state &= ~StateFlags.isRunning;
+		state.isRunning = false;
 	}
 	
 	public void controllerAdded(uint id) {
