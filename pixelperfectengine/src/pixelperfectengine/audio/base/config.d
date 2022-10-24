@@ -16,6 +16,10 @@ import std.array : split;
  * See `modulesetup.md` on documentation about how the format works internally.
  */
 public class ModuleConfig {
+	/**
+	 * Defines a routing node.
+	 * Can contain multiple inputs and outputs.
+	 */
 	protected static struct RoutingNode {
 		string name;
 		string[] inputs;
@@ -44,6 +48,11 @@ public class ModuleConfig {
 	public void loadConfig(string src) {
 		root = parseSource(src);
 	}
+	/**
+	 * Compiles the current configuration, then configures the modules accordingly.
+	 * Params:
+	 *  isRunning = If true, then the audio thread will be suspended on the duration of the configuration.
+	 */
 	public void compile(bool isRunning) {
 		rns.length = 0;
 		modules.length = 0;
@@ -150,10 +159,28 @@ public class ModuleConfig {
 		if (isRunning)
 			manager.runAudioThread();
 	}
+	/**
+	 * Loads an audio file into the given audio module.
+	 * This function is external, with the intent of being able to alter default voicebanks for e.g. mods, 
+	 * localizations, etc.
+	 * Params:
+	 *  modID = The module identifier string, usually its name within the configuration.
+	 *  waveID = The waveform ID. Conflicting waveforms will be automatically overwitten.
+	 *  path = Path of the file to be loaded.
+	 *  dataPak = If a DataPak is used, then the path to it must be specified there, otherwise it's null.
+	 */
 	public void loadAudioFile(string modID, int waveID, string path, string dataPak = null) {
 		import std.path : extension;
 		loadAudioFile(modules[countUntil(modNames, modID)], waveID, path, dataPak);
 	}
+	/**
+	 * Loads an audio file into the given audio module.
+	 * Params:
+	 *  mod = The module, that needs the waveform data.
+	 *  waveID = The waveform ID. Conflicting waveforms will be automatically overwitten.
+	 *  path = Path of the file to be loaded.
+	 *  dataPak = If a DataPak is used, then the path to it must be specified there, otherwise it's null.
+	 */
 	protected void loadAudioFile(AudioModule mod, int waveID, string path, string dataPak = null) {
 		import std.path : extension;
 		switch (extension(path)) {
@@ -167,6 +194,14 @@ public class ModuleConfig {
 				break;
 		}
 	}
+	/**
+	 * Loads a Microsoft Wave (wav) file into a module.
+	 * Params:
+	 *  mod = The module, that needs the waveform data.
+	 *  waveID = The waveform ID. Conflicting waveforms will be automatically overwitten.
+	 *  path = Path of the file to be loaded.
+	 *  dataPak = If a DataPak is used, then the path to it must be specified there, otherwise it's null.
+	 */
 	protected void loadWaveFile(AudioModule mod, int waveID, string path, string dataPak = null) {
 		import pixelperfectengine.system.wavfile;
 		WavFile f = new WavFile(path);
@@ -174,6 +209,14 @@ public class ModuleConfig {
 				WaveFormat(f.header.samplerate, f.header.bytesPerSecond, f.header.format, f.header.channels, 
 				f.header.bytesPerSample, f.header.bitsPerSample));
 	}
+	/**
+	 * Loads a Dialogic ADPCM (voc) file into a module.
+	 * Params:
+	 *  mod = The module, that needs the waveform data.
+	 *  waveID = The waveform ID. Conflicting waveforms will be automatically overwitten.
+	 *  path = Path of the file to be loaded.
+	 *  dataPak = If a DataPak is used, then the path to it must be specified there, otherwise it's null.
+	 */
 	protected void loadVocFile(AudioModule mod, int waveID, string path, string dataPak = null) {
 		import std.stdio : File;
 		File f = File(path);
@@ -182,6 +225,14 @@ public class ModuleConfig {
 		f.rawRead(buf);
 		mod.waveformDataReceive(waveID, buf, WaveFormat(8000, 4000, AudioFormat.DIALOGIC_OKI_ADPCM, 1, 1, 4));
 	}
+	/**
+	 * Edits a preset parameter.
+	 * Params:
+	 *  modID = The module identifier string, usually its name within the configuration.
+	 *  presetID = The preset identifier number.
+	 *  paramID = The ID of the parameter, either the type of a string, or a long.
+	 *  value = The value to be written into the preset.
+	 */
 	public void editPresetParameter(T, U)(string modID, int presetID, U paramID, T value) {
 		foreach (Tag t0 ; root.tags) {
 			if (t0.name == "module") {
