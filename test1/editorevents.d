@@ -3,33 +3,117 @@ module test1.editorevents;
 import pixelperfectengine.concrete.eventchainsystem;
 import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.config;
+import sdlang : Tag, Value;
+import collections.commons : defaultHash;
 
 public class AddModuleEvent : UndoableEvent {
-    
-    public this() {
+	Tag backup;
+	ModuleConfig mcfg;
+	string type;
+	string name;
+	public this(ModuleConfig mcfg, string type, string name) {
+		this.mcfg = mcfg;
+		this.type = type;
+		this.name = name;
+	}
 
-    }
+	public void redo() {
+		if (backup) {
+			mcfg.addModule(backup);
+		} else {
+			mcfg.addModule(type, name);
+		}
+	}
 
-    public void redo() {
-        
-    }
-
-    public void undo() {
-        
-    }
+	public void undo() {
+		backup = mcfg.removeModule(name);
+	}
+}
+public class DeleteModuleEvent : UndoableEvent {
+	Tag backup;
+	ModuleConfig mcfg;
+	string name;
+	public this(ModuleConfig mcfg, string name) {
+		this.mcfg = mcfg;
+		this.name = name;
+	}
+	public void redo() {
+		backup = mcfg.removeModule(name);
+	}
+	public void undo() {
+		mcfg.addModule(backup);
+	}
 }
 public class EditPresetParameterEvent : UndoableEvent {
-    AudioModule mod;
-    ModuleConfig mcfg;
-    public this(AudioModule mod, ModuleConfig mcfg) {
-        
-    }
+	ModuleConfig mcfg;
+	Value oldVal, newVal;
+	Value paramID;
+	string modID;
+	int presetID;
+	string presetName;
+	AudioModule mod;
+	public this(VT, PT)(ModuleConfig mcfg, VT newVal, ValuePT paramID, string modID, int presetID, string presetName, 
+			AudioModule mod) {
+		this.mcfg = mcfg;
+		this.newVal = Value(newVal);
+		this.paramID = Value(paramID);
+		this.modID = modID;
+		this.presetID = presetID;
+		this.presetName = presetName;
+		this.mod = mod;
+		if (mod !is null) {
+			if (newVal.peek!int) {
+				oldVal = Value(mod.readParam_int(presetID, _paramID));
+			} else if (newVal.peek!long) {
+				oldVal = Value(mod.readParam_long(presetID, _paramID));
+			} else if (newVal.peek!double) {
+				oldVal = Value(mod.readParam_double(presetID, _paramID));
+			} else {
+				oldVal = Value(mod.readParam_string(presetID, _paramID));
+			}
+		}
+	}
 
-    public void redo() {
-        
-    }
+	public void redo() {
+		mcfg.editPresetParameter(modID, presetID, paramID, newVal, oldVal, presetName);
+		if (mod !is null) {
+			uint _paramID;
+			if (paramID.peek!string) {
+				_paramID = defaultHash(paramID.get!string);
+			} else {
+				_paramID = cast(uint)paramID.get!long;
+			}
+			if (newVal.peek!int) {
+				mod.writeParam_int(presetID, _paramID, newVal.get!int);
+			} else if (newVal.peek!long) {
+				mod.writeParam_long(presetID, _paramID, newVal.get!long);
+			} else if (newVal.peek!double) {
+				mod.writeParam_double(presetID, _paramID, newVal.get!double);
+			} else {
+				mod.writeParam_string(presetID, _paramID, newVal.get!string);
+			}
+		}
+	}
 
-    public void undo() {
-        
-    }
+	public void undo() {
+		Value dummy;
+		mcfg.editPresetParameter(modID, presetID, paramID, oldVal, dummy, presetName);
+		if (mod !is null) {
+			uint _paramID;
+			if (paramID.peek!string) {
+				_paramID = defaultHash(paramID.get!string);
+			} else {
+				_paramID = cast(uint)paramID.get!long;
+			}
+			if (oldVal.peek!int) {
+				mod.writeParam_int(presetID, _paramID, oldVal.get!int);
+			} else if (oldVal.peek!long) {
+				mod.writeParam_long(presetID, _paramID, oldVal.get!long);
+			} else if (oldVal.peek!double) {
+				mod.writeParam_double(presetID, _paramID, oldVal.get!double);
+			} else {
+				mod.writeParam_string(presetID, _paramID, oldVal.get!string);
+			}
+		}
+	}
 }
