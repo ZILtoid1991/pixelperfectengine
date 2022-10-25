@@ -128,7 +128,10 @@ public class ModuleConfig {
 					foreach (Tag t1; t0.expectTag("output").tags) {
 						node.outputs ~= t1.getValue!string();
 					}
-					rns ~= node;
+					if (node.inputs.length == 0 && node.outputs.length == 0)	//Node is invalidated, remove it
+						t0.remove();
+					else if (node.inputs.length && node.outputs.length)			//Only use nodes that have valid inputs and outputs
+						rns ~= node;
 					break;
 				default:
 					break;
@@ -228,24 +231,223 @@ public class ModuleConfig {
 	/**
 	 * Edits a preset parameter.
 	 * Params:
-	 *  modID = The module identifier string, usually its name within the configuration.
-	 *  presetID = The preset identifier number.
-	 *  paramID = The ID of the parameter, either the type of a string, or a long.
-	 *  value = The value to be written into the preset.
+	 *   modID = The module identifier string, usually its name within the configuration.
+	 *   presetID = The preset identifier number.
+	 *   paramID = The ID of the parameter, either the type of a string, or a long.
+	 *   value = The value to be written into the preset.
+	 *   backup = Previous value of the parameter, otherwise left unaltered.
+	 *   name = Optional name of the preset.
 	 */
-	public void editPresetParameter(T, U)(string modID, int presetID, U paramID, T value) {
+	public void editPresetParameter(string modID, int presetID, Value paramID, Value value, ref Value backup, 
+			string name = null) {
 		foreach (Tag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1].get!string == modID) {
 					foreach (Tag t1 ; t0.tags) {
 						if (t1.name == "presetRecall" && t1.values[0].peek!int && t1.values[0].get!int() == presetID) {
-
+							foreach (Tag t2 ; t1.tags) {
+								
+								if (t2.values[0] == paramID) {
+									backup = t2.values[1];
+									t2.values[1] = value;
+									return;
+								}
+								
+							}
+							new Tag(t1, null, null, [Value(paramID), Value(value)]);
+							return;
 						}
 					}
-					Tag t_1 = new Tag(t0, null, "presetRecall", [Value!int(presetID)], null);
+					Attribute[] attr;
+					if (name.length)
+						attr ~= new Attribute("name", Value(name));
+					Tag t_1 = new Tag(t0, null, "presetRecall", [Value(presetID)], attr);
+					new Tag(t_1, null, null, [paramID, value]);
+					return;
 				}
 			}
 		}
 
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   from = 
+	 *   to = 
+	 */
+	public void addRouting(string from, string to) {
+		const bool fromModule = from.split(":").length == 2;
+		const bool toModule = to.split(":").length == 2 || countUntil(outChannelNames, to) != -1;
+		if (fromModule && toModule) {
+			new Tag(root, null, "route", [Value(from), Value(to)]);
+		} else if (fromModule) {
+			foreach (Tag t0; root.tags) {
+				if (t0.name == "node" && t0.getValue!string == to) {
+					new Tag(t0.expectTag("input"), null, null, [Value(from)]);
+					return;
+				}
+			}
+			new Tag(root, null, "node", [Value(to)], null, 
+				[
+					new Tag(null, "input", null, null, [
+						new Tag(null, null, from)
+					]), 
+					new Tag(null, "output")
+				]);
+		} else {	//(toModule)
+			foreach (Tag t0; root.tags) {
+				if (t0.name == "node" && t0.getValue!string == from) {
+					new Tag(t0.expectTag("output"), null, null, [Value(to)]);
+					return;
+				}
+			}
+			new Tag(root, null, "node", [Value(from)], null, 
+				[
+					new Tag(null, "input"), 
+					new Tag(null, "output", null, null, [
+						new Tag(null, null, to)
+					])
+				]);
+		}
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   from = 
+	 *   to = 
+	 * Returns: 
+	 */
+	public bool removeRouting(string from, string to) {
+		const bool fromModule = from.split(":").length == 2;
+		const bool toModule = to.split(":").length == 2 || countUntil(outChannelNames, to) != -1;
+		if (fromModule && toModule) {
+			foreach (Tag t0; root.tags) {
+				if (t0.name == "route") {
+					if (t0.values[0] == from && t0.values[1] == to) {
+						t0.remove();
+						return true;
+					}
+				}
+			}
+		} else if (fromModule) {
+			foreach (Tag t0; root.tags) {
+				if (t0.name == "node" && t0.getValue!string == to) {
+					Tag t1 = t0.expectTag("input");
+					foreach (Tag t2 ; t1.tags())
+					if (t2.getValue!string == from) {
+						t2.remove();
+						return true;
+					}
+				}
+			}
+		} else {	//(toModule)
+			foreach (Tag t0; root.tags) {
+				if (t0.name == "node" && t0.getValue!string == from) {
+					Tag t1 = t0.expectTag("output");
+					foreach (Tag t2 ; t1.tags())
+					if (t2.getValue!string == to) {
+						t2.remove();
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+	/** 
+	 * 
+	 * Returns: 
+	 */
+	public string[2][] getRoutingTable() {
+		string[2][] result;
+		foreach (Tag t0 ; root.tags()) {
+			switch (t0.name) {
+				case "route":
+					result ~= [t0.values[0].get!string, t0.values[1].get!string];
+					break;
+				case "node":
+					const string nodeName = t0.values[0].get!string;
+					foreach (Tag t1; t0.expectTag("input").tags) {
+						result ~= [t1.values[0].get!string, nodeName];
+					}
+					foreach (Tag t1; t0.expectTag("output").tags) {
+						result ~= [nodeName, t1.values[0].get!string];
+					}
+					break;
+				default:
+					break;
+			}
+		}
+		return result;
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   type = 
+	 *   name =
+	 */
+	public void addModule(string type, string name) {
+		new Tag(root, null, "module", [Value(type), Value(name)]);
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   backup = 
+	 */
+	public void addModule(Tag backup) {
+		root.add(backup);
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   name = 
+	 * Returns: 
+	 */
+	public Tag removeModule(string name) {
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == name) {
+					t0.remove();
+					return t0;
+				}
+			}
+		}
+		return null;
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   modID = 
+	 *   presetID = 
+	 * Returns: 
+	 */
+	public Tag removePreset(string modID, int presetID) {
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					foreach (Tag t1; t0.tags) {
+						if (t1.name == "presetRecall" && t1.getValue!int == presetID) {
+							return t1.remove;
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   modID = 
+	 *   backup = 
+	 */
+	public void addPreset(string modID, Tag backup) {
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					t0.add(backup);
+				}
+			}
+		}
 	}
 }
