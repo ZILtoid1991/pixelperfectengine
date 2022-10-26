@@ -224,7 +224,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	}
 	public void openPresetEditor() {
 		if (preEdit is null && selectedModule !is null)
-			preEdit = new PresetEditor("Module editor", selectedModule);
+			preEdit = new PresetEditor("Module editor", selectedModule, mcfg);
 		if (wh.whichWindow(preEdit) == -1)
 			wh.addWindow(preEdit);
 	}
