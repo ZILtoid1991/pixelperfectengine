@@ -5,7 +5,9 @@ import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.config;
 import sdlang : Tag, Value;
 import collections.commons : defaultHash;
-
+/**
+ * Adds a module to the module configuration.
+ */
 public class AddModuleEvent : UndoableEvent {
 	Tag backup;
 	ModuleConfig mcfg;
@@ -29,6 +31,9 @@ public class AddModuleEvent : UndoableEvent {
 		backup = mcfg.removeModule(name);
 	}
 }
+/**
+ * Deletes a module from the audio configuration while holding a backup of it.
+ */
 public class DeleteModuleEvent : UndoableEvent {
 	Tag backup;
 	ModuleConfig mcfg;
@@ -44,6 +49,9 @@ public class DeleteModuleEvent : UndoableEvent {
 		mcfg.addModule(backup);
 	}
 }
+/**
+ * Edits or adds a preset parameter to the audio configuration, also edits the one in the module.
+ */
 public class EditPresetParameterEvent : UndoableEvent {
 	ModuleConfig mcfg;
 	Value oldVal, newVal;
