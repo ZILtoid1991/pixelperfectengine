@@ -270,10 +270,11 @@ public class ModuleConfig {
 
 	}
 	/** 
-	 * 
+	 * Adds a routing to the audio configuration. Automatically creates nodes if names are not recognized either as
+	 * module ports or audio outputs.
 	 * Params:
-	 *   from = 
-	 *   to = 
+	 *   from = Source of the routing. Can be either a module output or a node.
+	 *   to = Destination of the routing. Can be either a module input, a node, or an audio output.
 	 */
 	public void addRouting(string from, string to) {
 		const bool fromModule = from.split(":").length == 2;
@@ -311,11 +312,11 @@ public class ModuleConfig {
 		}
 	}
 	/** 
-	 * 
+	 * Removes a routing from the audio configuration.
 	 * Params:
-	 *   from = 
-	 *   to = 
-	 * Returns: 
+	 *   from = Source of the routing. Can be either a module output or a node.
+	 *   to = Destination of the routing. Can be either a module input, a node, or an audio output.
+	 * Returns: True if routing is found and then removed, false otherwise.
 	 */
 	public bool removeRouting(string from, string to) {
 		const bool fromModule = from.split(":").length == 2;
@@ -355,8 +356,7 @@ public class ModuleConfig {
 		return false;
 	}
 	/** 
-	 * 
-	 * Returns: 
+	 * Returns the routing table of this audio configuration as an array of pairs of strings. 
 	 */
 	public string[2][] getRoutingTable() {
 		string[2][] result;
@@ -381,27 +381,27 @@ public class ModuleConfig {
 		return result;
 	}
 	/** 
-	 * 
+	 * Adds a new module to the configuration.
 	 * Params:
-	 *   type = 
-	 *   name =
+	 *   type = Type of the module.
+	 *   name = Name and ID of the module.
 	 */
 	public void addModule(string type, string name) {
 		new Tag(root, null, "module", [Value(type), Value(name)]);
 	}
 	/** 
-	 * 
+	 * Adds a module from backup.
 	 * Params:
-	 *   backup = 
+	 *   backup = The module tag containing all the info associated with the module.
 	 */
 	public void addModule(Tag backup) {
 		root.add(backup);
 	}
 	/** 
-	 * 
+	 * Removes a module from the configuration.
 	 * Params:
-	 *   name = 
-	 * Returns: 
+	 *   name = Name/ID of the module.
+	 * Returns: An SDL tag containing all the information related to the module, or null if ID is invalid.
 	 */
 	public Tag removeModule(string name) {
 		foreach (Tag t0 ; root.tags) {
@@ -415,11 +415,12 @@ public class ModuleConfig {
 		return null;
 	}
 	/** 
-	 * 
+	 * Removes a preset from the configuration.
 	 * Params:
-	 *   modID = 
-	 *   presetID = 
-	 * Returns: 
+	 *   modID = Module name/ID.
+	 *   presetID = Preset ID.
+	 * Returns: The tag containing all the info related to the preset for backup, or null if module and/or 
+	 * preset ID is invalid.
 	 */
 	public Tag removePreset(string modID, int presetID) {
 		foreach (Tag t0 ; root.tags) {
@@ -436,10 +437,10 @@ public class ModuleConfig {
 		return null;
 	}
 	/** 
-	 * 
+	 * Adds a preset to the configuration either from a backup or an import.
 	 * Params:
-	 *   modID = 
-	 *   backup = 
+	 *   modID = Module name/ID.
+	 *   backup = The preset to be (re)added.
 	 */
 	public void addPreset(string modID, Tag backup) {
 		foreach (Tag t0 ; root.tags) {
