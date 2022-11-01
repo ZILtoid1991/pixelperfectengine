@@ -31,6 +31,24 @@ public class AddModuleEvent : UndoableEvent {
 		backup = mcfg.removeModule(name);
 	}
 }
+public class RenameModuleEvent : UndoableEvent {
+	ModuleConfig mcfg;
+	string oldName;
+	string newName;
+	public this(ModuleConfig mcfg, string oldName, string newName) {
+		this.mcfg = mcfg;
+		this.oldName = oldName;
+		this.newName = newName;
+	}
+
+	public void redo() {
+		mcfg.renameModule(oldName, newName);
+	}
+
+	public void undo() {
+		mcfg.renameModule(newName, oldName);
+	}
+}
 /**
  * Deletes a module from the audio configuration while holding a backup of it.
  */
@@ -59,17 +77,17 @@ public class EditPresetParameterEvent : UndoableEvent {
 	string modID;
 	int presetID;
 	string presetName;
-	AudioModule mod;
-	public this(VT, PT)(ModuleConfig mcfg, VT newVal, ValuePT paramID, string modID, int presetID, string presetName, 
-			AudioModule mod) {
+	/* AudioModule mod; */
+	public this(VT, PT)(ModuleConfig mcfg, VT newVal, PT paramID, string modID, int presetID, string presetName, 
+			/* AudioModule mod */) {
 		this.mcfg = mcfg;
 		this.newVal = Value(newVal);
 		this.paramID = Value(paramID);
 		this.modID = modID;
 		this.presetID = presetID;
 		this.presetName = presetName;
-		this.mod = mod;
-		if (mod !is null) {
+		/* this.mod = mod; */
+		/* if (mod !is null) {
 			if (newVal.peek!int) {
 				oldVal = Value(mod.readParam_int(presetID, _paramID));
 			} else if (newVal.peek!long) {
@@ -79,12 +97,12 @@ public class EditPresetParameterEvent : UndoableEvent {
 			} else {
 				oldVal = Value(mod.readParam_string(presetID, _paramID));
 			}
-		}
+		} */
 	}
 
 	public void redo() {
 		mcfg.editPresetParameter(modID, presetID, paramID, newVal, oldVal, presetName);
-		if (mod !is null) {
+		/* if (mod !is null) {
 			uint _paramID;
 			if (paramID.peek!string) {
 				_paramID = defaultHash(paramID.get!string);
@@ -100,13 +118,13 @@ public class EditPresetParameterEvent : UndoableEvent {
 			} else {
 				mod.writeParam_string(presetID, _paramID, newVal.get!string);
 			}
-		}
+		} */
 	}
 
 	public void undo() {
 		Value dummy;
 		mcfg.editPresetParameter(modID, presetID, paramID, oldVal, dummy, presetName);
-		if (mod !is null) {
+		/* if (mod !is null) {
 			uint _paramID;
 			if (paramID.peek!string) {
 				_paramID = defaultHash(paramID.get!string);
@@ -122,6 +140,22 @@ public class EditPresetParameterEvent : UndoableEvent {
 			} else {
 				mod.writeParam_string(presetID, _paramID, oldVal.get!string);
 			}
-		}
+		} */
+	}
+}
+public class AddRoutingNodeEvent : UndoableEvent {
+	ModuleConfig mcfg;
+	string from, to;
+	public this (ModuleConfig mcfg, string from, string to) {
+		this.mcfg = mcfg;
+		this.from = from;
+		this.to = to;
+	}
+	public void redo() {
+		mcfg.addRouting(from, to);
+	}
+
+	public void undo() {
+		mcfg.removeRouting(from, to);
 	}
 }

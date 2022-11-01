@@ -14,6 +14,7 @@ import midi2.types.enums;
 
 import pixelperfectengine.concrete.window;
 import pixelperfectengine.concrete.windowhandler;
+import pixelperfectengine.concrete.eventchainsystem;
 
 import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
@@ -58,31 +59,34 @@ public class TopLevelWindow : Window {
 		this.app = app;
 		PopUpMenuElement[] menuElements;
 
-		menuElements ~= new PopUpMenuElement("file", "File");
+		menuElements ~= new PopUpMenuElement("file", "File", "", [
+			new PopUpMenuElement("new", "New project"),
+			new PopUpMenuElement("load", "Load project"),
+			new PopUpMenuElement("save", "Save project"),
+			new PopUpMenuElement("saveAs", "Save project as"),
+			new PopUpMenuElement("exit", "Exit application", "Alt + F4")
+		]);
 
-		menuElements[0] ~= new PopUpMenuElement("new", "New project");
-		menuElements[0] ~= new PopUpMenuElement("load", "Load project");
-		menuElements[0] ~= new PopUpMenuElement("save", "Save project");
-		menuElements[0] ~= new PopUpMenuElement("saveAs", "Save project as");
-		menuElements[0] ~= new PopUpMenuElement("exit", "Exit application", "Alt + F4");
+		menuElements ~= new PopUpMenuElement("edit", "Edit", "", [
+			new PopUpMenuElement("undo", "Undo"),
+			new PopUpMenuElement("redo", "Redo"),
+			new PopUpMenuElement("copy", "Copy"),
+			new PopUpMenuElement("cut", "Cut"),
+			new PopUpMenuElement("paste", "Paste")
+		]);
 
-		menuElements ~= new PopUpMenuElement("edit", "Edit");
+		menuElements ~= new PopUpMenuElement("view", "View", "", [
+			new PopUpMenuElement("router", "Routing layout editor")]);
 
-		menuElements[1] ~= new PopUpMenuElement("undo", "Undo");
-		menuElements[1] ~= new PopUpMenuElement("redo", "Redo");
-		menuElements[1] ~= new PopUpMenuElement("copy", "Copy");
-		menuElements[1] ~= new PopUpMenuElement("cut", "Cut");
-		menuElements[1] ~= new PopUpMenuElement("paste", "Paste");
+		menuElements ~= new PopUpMenuElement("audio", "Audio", "", [
+			new PopUpMenuElement("stAudio", "Start/Stop Audio thread"),
+			new PopUpMenuElement("compile", "Compile current configuration"),
+		]);
 
-		menuElements ~= new PopUpMenuElement("view", "View");
-
-		//menuElements[2] ~= new PopUpMenuElement("preEdit", "Module editor");
-		menuElements[2] ~= new PopUpMenuElement("router", "Routing layout editor");
-
-		menuElements ~= new PopUpMenuElement("help", "Help");
-
-		menuElements[3] ~= new PopUpMenuElement("helpFile", "Content");
-		menuElements[3] ~= new PopUpMenuElement("about", "About");
+		menuElements ~= new PopUpMenuElement("help", "Help", "", [
+			new PopUpMenuElement("helpFile", "Content"),
+			new PopUpMenuElement("about", "About")
+		]);
 
 		mb = new MenuBar("mb", Box(0, 0, width-1, 15), menuElements);
 		addElement(mb);
@@ -122,9 +126,8 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	ModuleRouter	router;
 	ModuleConfig	mcfg;
 	BitFlags!StateFlags	state;
-	ubyte			noteBase = 60;
-	ubyte			bank0;
-	ubyte			bank1;
+	UndoableStack	eventStack;
+	string			selectedModID;
 	
 	//ubyte[32][6][2]	level;
 	enum StateFlags {
@@ -199,6 +202,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void onStart() {
 		tlw = new TopLevelWindow(848, 480, this);
 		wh.setBaseWindow(tlw);
+		mcfg = new ModuleConfig(mm);
 	}
 	public void onMenuEvent(Event ev) {
 		MenuEvent me = cast(MenuEvent)ev;
@@ -224,7 +228,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	}
 	public void openPresetEditor() {
 		if (preEdit is null && selectedModule !is null)
-			preEdit = new PresetEditor("Module editor", selectedModule, mcfg);
+			preEdit = new PresetEditor("Module editor", this);
 		if (wh.whichWindow(preEdit) == -1)
 			wh.addWindow(preEdit);
 	}
