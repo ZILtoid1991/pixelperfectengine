@@ -203,7 +203,7 @@ struct BiquadFilterValues {
 /** 
  * Defines the type of a module parameter.
  */
-public enum MValueType {
+public enum MValueType : ubyte {
 	init,
 	String,
 	Int32,
@@ -216,12 +216,14 @@ public enum MValueType {
  */
 public struct MValue {
 	MValueType		type;
-	uint			id;			///Ideally the MurMurHashV3/32 value of the name, but other numbers also can be used if needed, e.g. it's too complex to rely on hash values
+	ubyte			idType;		///0 if ID is hash of the name, 1 if not.
+	int				id;			///Ideally the MurMurHashV3/32 value of the name, but other numbers also can be used if needed, e.g. it's too complex to rely on hash values
 	string			name;
 	this (MValueType type, uint id, string name) @nogc @safe pure nothrow {
 		this.type = type;
 		this.id = id;
 		this.name = name;
+		idType = 1;
 	}
 	this (MValueType type, string name) @nogc @safe pure nothrow {
 		import pixelperfectengine.system.etc : hashCalc;
