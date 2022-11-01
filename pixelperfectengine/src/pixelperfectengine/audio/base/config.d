@@ -45,6 +45,10 @@ public class ModuleConfig {
 		root = parseSource(src);
 		this.manager = manager;
 	}
+	public this(ModuleManager manager) {
+		this.manager = manager;
+		root = new Tag(null);
+	}
 	public void loadConfig(string src) {
 		root = parseSource(src);
 	}
@@ -397,6 +401,16 @@ public class ModuleConfig {
 	public void addModule(Tag backup) {
 		root.add(backup);
 	}
+	public void renameModule(string oldName, string newName) {
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == oldName) {
+					t0.values[1] = Value(newName);
+					return;
+				}
+			}
+		}
+	}
 	/** 
 	 * Removes a module from the configuration.
 	 * Params:
@@ -413,6 +427,15 @@ public class ModuleConfig {
 			}
 		}
 		return null;
+	}
+	public string[2][] getModuleList() {
+		string[2][] result;
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				result ~= [t0.values[0].get!string, t0.values[1].get!string];
+			}
+		}
+		return result;
 	}
 	/** 
 	 * Removes a preset from the configuration.
@@ -447,8 +470,29 @@ public class ModuleConfig {
 			if (t0.name == "module") {
 				if (t0.values[1] == modID) {
 					t0.add(backup);
+					return;
 				}
 			}
 		}
+	}
+	public auto getPresetList(string modID) {
+		struct PresetData {
+			string name;
+			int id;
+		}
+		PresetData[] result;
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					foreach (Tag t1; t0.tags) {
+						if (t1.name == "presetRecall") {
+							result ~= PresetData(t1.getAttribute!string("name"), t1.expectValue!int);
+						}
+					}
+					return result;
+				}
+			}
+		}
+		return result;
 	}
 }
