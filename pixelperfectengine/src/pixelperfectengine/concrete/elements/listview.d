@@ -32,6 +32,9 @@ public class ListViewItem {
 		public @property bool editable() @nogc @safe pure nothrow const {
 			return textInputType != TextInputFieldType.None;
 		}
+		public dstring getText() @safe pure nothrow {
+			return text.toDString();
+		}
 	}
 	/**
 	 * Stores the list of items to be displayed.
