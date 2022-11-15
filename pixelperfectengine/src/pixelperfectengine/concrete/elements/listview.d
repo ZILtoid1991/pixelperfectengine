@@ -23,7 +23,7 @@ public class ListViewItem {
 		/**
 		 * Default constructor.
 		 */
-		this(Text text, ABitmap bitmap, uint TextInputFieldType = TextInputFieldType.None) @nogc @safe pure nothrow {
+		this(Text text, ABitmap bitmap, uint textInputType = TextInputFieldType.None) @nogc @safe pure nothrow {
 			this.text = text;
 			this.bitmap = bitmap;
 			this.textInputType = textInputType;
