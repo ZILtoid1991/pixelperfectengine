@@ -34,8 +34,10 @@ public class ModuleConfig {
 			return countUntil(outputs, s) != -1;
 		}
 	}
+	///Registered output channel names.
 	protected static immutable string[] outChannelNames = 
 			["outputL", "outputR", "surroundL", "surroundR", "center", "lowfreq"];
+	///Stores most of the document data here when uncompiled.
 	protected Tag					root;
 	protected ModuleManager			manager;
 	protected RoutingNode[]			rns;
@@ -49,8 +51,23 @@ public class ModuleConfig {
 		this.manager = manager;
 		root = new Tag(null);
 	}
+	/** 
+	 * Loads a configuration file.
+	 * Params:
+	 *   src = the text of the configuration file.
+	 */
 	public void loadConfig(string src) {
 		root = parseSource(src);
+	}
+	/** 
+	 * Saves the configuration into a file.
+	 * Params:
+	 *   path = the path of the file.
+	 */
+	public void save(string path) {
+		import std.stdio : File;
+		File f = File(path, "rw");
+		f.write(root.toSDLDocument());
 	}
 	/**
 	 * Compiles the current configuration, then configures the modules accordingly.
