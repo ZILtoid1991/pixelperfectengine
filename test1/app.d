@@ -76,11 +76,13 @@ public class TopLevelWindow : Window {
 		]);
 
 		menuElements ~= new PopUpMenuElement("view", "View", "", [
-			new PopUpMenuElement("router", "Routing layout editor")]);
+			new PopUpMenuElement("router", "Routing layout editor"),
+			new PopUpMenuElement("sequencer", "Sequencer")
+		]);
 
 		menuElements ~= new PopUpMenuElement("audio", "Audio", "", [
 			new PopUpMenuElement("stAudio", "Start/Stop Audio thread"),
-			new PopUpMenuElement("compile", "Compile current configuration"),
+			new PopUpMenuElement("cfgcompile", "Compile current configuration"),
 		]);
 
 		menuElements ~= new PopUpMenuElement("help", "Help", "", [
@@ -128,6 +130,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	BitFlags!StateFlags	state;
 	UndoableStack	eventStack;
 	string			selectedModID;
+	string			path;
 	
 	//ubyte[32][6][2]	level;
 	enum StateFlags {
@@ -187,6 +190,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		Bitmap4Bit background = new Bitmap4Bit(848, 480);
 		wh.addBackground(background);
 		wh.addWindow(new AudioConfig(this));
+		eventStack = new UndoableStack(10);
 	}
 	void whereTheMagicHappens() {
 		while (state.isRunning) {
@@ -213,11 +217,83 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			case "router":
 				openRouter();
 				break;
+			case "stAudio":
+				onAudioThreadSwitch();
+				break;
+			case "cfgcompile":
+				onCompileAudioConfig();
+				break;
 			case "exit":
 				state.isRunning = false;
 				break;
+			case "new":
+				onNew();
+				break;
+			case "load":
+				onLoad();
+				break;
+			case "save":
+				onSave();
+				break;
+			case "saveAs":
+				onSaveAs();
+				break;
 			default: break;
 		}
+	}
+	public void onAudioThreadSwitch() {
+		if (state.audioThreadRunning) {
+			const int errorCode = mm.suspendAudioThread();
+			state.audioThreadRunning = false;
+			if (errorCode) {
+				wh.message("Audio thread error!", "An error occured during audio thread runtime!\nError code:" ~ 
+						errorCode.to!dstring);
+			}
+		} else {
+			const int errorCode = mm.runAudioThread();
+			if (!errorCode) {
+				state.audioThreadRunning = true;
+			} else {
+				wh.message("Audio thread error!", "Failed to initialize audio thread!\nError code:" ~ errorCode.to!dstring);
+			}
+		}
+	}
+	public void onCompileAudioConfig() {
+		mcfg.compile(state.audioThreadRunning);
+	}
+	public void onNew() {
+		mcfg = new ModuleConfig(mm);
+	}
+	public void onLoad() {
+		import pixelperfectengine.concrete.dialogs.filedialog;
+		wh.addWindow(new FileDialog("Load audio configuration file.", "loadConfigDialog", &onLoadConfigurationFile, 
+			[FileDialog.FileAssociationDescriptor("SDLang file", ["*.sdl"])], "./"));
+	}
+	public void onLoadConfigurationFile(Event ev) {
+		FileEvent fe = cast(FileEvent)ev;
+		path = fe.getFullPath;
+		File f = File(path);
+		char[] c;
+		c.length = cast(size_t)f.size();
+		f.rawRead(c);
+		mcfg.loadConfig(c.idup);
+	}
+	public void onSave() {
+		if (!path.length) {
+			onSaveAs();
+		} else {
+			mcfg.save(path);
+		}
+	}
+	public void onSaveAs() {
+		import pixelperfectengine.concrete.dialogs.filedialog;
+		wh.addWindow(new FileDialog("Save audio configuration file.", "saveConfigDialog", &onSaveConfigurationFile, 
+			[FileDialog.FileAssociationDescriptor("SDLang file", ["*.sdl"])], "./", true));
+	}
+	public void onSaveConfigurationFile(Event ev) {
+		FileEvent fe = cast(FileEvent)ev;
+		path = fe.getFullPath;
+		mcfg.save(path);
 	}
 	public void openRouter() {
 		if (router is null)
@@ -236,7 +312,13 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		
 	}
 	public void midiInCallback(ubyte[] data, size_t timestamp) @nogc nothrow {
-		
+		if (selectedModule !is null) {
+			UMP msb = UMP(MessageType.MIDI1, 0, 0, 0);
+			msb.bytes[1] = data.length > 0 ? data[0] : 0;
+			msb.bytes[2] = data.length > 1 ? data[1] : 0;
+			msb.bytes[3] = data.length > 2 ? data[2] : 0;
+			selectedModule.midiReceive(msb);
+		}
 	}
 	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
 		

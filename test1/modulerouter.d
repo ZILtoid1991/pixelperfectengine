@@ -33,6 +33,11 @@ public class ModuleRouter : Window {
 		//button_midiNode = new Button("Add MIDI node"d, "button1", Box(535, 205, 635, 225));
 		button_remNode = new Button("Remove node"d, "button_remNode", Box(535, 205, 635, 225));
 		button_addMod.onMouseLClick = &button_addMod_onClick;
+		listView_modules.editEnable = true;
+		listView_modules.onTextInput = &listView_modules_onTextEdit;
+		listView_routing.editEnable = true;
+		listView_routing.multicellEditEnable = true;
+		listView_routing.onTextInput = &listView_routing_onTextEdit;
 		addElement(listView_modules);
 		addElement(listView_routing);
 		addElement(button_addMod);
@@ -86,7 +91,7 @@ public class ModuleRouter : Window {
 	private void listView_routing_onTextEdit(Event e) {
 		ListViewItem item = cast(ListViewItem)e.aux;
 		if (item[0].getText != "NONE" && item[1].getText != "NONE") {
-			adk.eventStack.addToTop();
+			adk.eventStack.addToTop(new AddRoutingNodeEvent(adk.mcfg, item[0].getText().to!string, item[1].getText().to!string));
 		}
 	}
 }
