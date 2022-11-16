@@ -51,6 +51,7 @@ int main(string[] args) {
 	app.whereTheMagicHappens();
 	return 0;
 }
+///Top level window, so far only containing the MenuBar.
 public class TopLevelWindow : Window {
 	MenuBar mb;
 	AudioDevKit app;
