@@ -283,7 +283,11 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		if (!path.length) {
 			onSaveAs();
 		} else {
-			mcfg.save(path);
+			try {
+				mcfg.save(path);
+			} catch(Exception e) {
+				debug writeln(e);
+			}
 		}
 	}
 	public void onSaveAs() {
@@ -294,7 +298,11 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void onSaveConfigurationFile(Event ev) {
 		FileEvent fe = cast(FileEvent)ev;
 		path = fe.getFullPath;
-		mcfg.save(path);
+		try {
+			mcfg.save(path);
+		} catch(Exception e) {
+			debug writeln(e);
+		}
 	}
 	public void openRouter() {
 		if (router is null)

@@ -80,9 +80,8 @@ public class ModuleConfig {
 	 *   path = the path of the file.
 	 */
 	public void save(string path) {
-		import std.stdio : File;
-		File f = File(path, "rw");
-		f.write(root.toSDLDocument());
+		import std.file : write;
+		write(path, root.toSDLDocument());
 	}
 	/**
 	 * Compiles the current configuration, then configures the modules accordingly.
