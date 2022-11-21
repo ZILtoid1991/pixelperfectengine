@@ -30,17 +30,18 @@ public class PresetEditor : Window {
 				"listView_presets", Box(5, 20, 230, 100));
 		listView_values = new ListView(new ListViewHeader(16, [200, 100], ["Name" ,"Value"]), null, "listView_values", 
 				Box(5, 105, 325, 325));
-		smallButtons ~= new SmallButton("loadB", "loadA", "load", Box(236, 20, 241, 35));
-		smallButtons ~= new SmallButton("saveB", "saveA", "save", Box(242, 20, 257, 35));
-		smallButtons ~= new SmallButton("importB", "importA", "import", Box(258, 20, 273, 36));
-		smallButtons ~= new SmallButton("exportB", "exportA", "export", Box(274, 20, 289, 36));
+		smallButtons ~= new SmallButton("loadB", "loadA", "load", Box(236, 20, 251, 35));
+		smallButtons ~= new SmallButton("saveB", "saveA", "save", Box(252, 20, 267, 35));
+		smallButtons ~= new SmallButton("importB", "importA", "import", Box(268, 20, 283, 36));
+		smallButtons ~= new SmallButton("exportB", "exportA", "export", Box(284, 20, 299, 36));
 
-		smallButtons ~= new SmallButton("addB", "addA", "add", Box(236, 36, 241, 51));
-		smallButtons ~= new SmallButton("removeB", "removeA", "remove", Box(242, 36, 257, 51));
-		checkBox_Globals = new CheckBox("globalsB", "globalsA", "globals", Box(258, 36, 273, 51));
-		smallButtons ~= new SmallButton("macroB", "macroA", "macro", Box(274, 36, 289, 51));
+		smallButtons ~= new SmallButton("addB", "addA", "add", Box(236, 36, 251, 51));
+		smallButtons ~= new SmallButton("removeB", "removeA", "remove", Box(252, 36, 267, 51));
+		checkBox_Globals = new CheckBox("globalsB", "globalsA", "globals", Box(268, 36, 283, 51));
+		smallButtons ~= new SmallButton("macroB", "macroA", "macro", Box(284, 36, 299, 51));
 
 		listView_presets.editEnable = true;
+		listView_presets.multicellEditEnable = true;
 		addElement(listView_presets);
 		listView_presets.onItemSelect = &listView_presets_onSelect;
 		listView_presets.onTextInput = &listView_presets_onTextEdit;
@@ -58,13 +59,15 @@ public class PresetEditor : Window {
 		this.editedModID = adk.selectedModID;
 		this.adk = adk;
 		params = editedModule.getParameters;
+		loadPresets();
 	}
 	private void fillValues() {
 		StyleSheet ss = globalDefaultStyle;
 		paramIDs.length = 0;
 		listView_values.clear();
 		foreach (MValue key; params) {
-			if ((key.name[0] == '_' && checkBox_Globals.isChecked) || (key.name[0] != '_' && !checkBox_Globals.isChecked)) {
+			const char fc = key.name.length ? key.name[0] : ' ';
+			if ((fc == '_' && checkBox_Globals.isChecked) || (fc != '_' && !checkBox_Globals.isChecked)) {
 				ListViewItem.Field[] fields = 
 						[ListViewItem.Field(new Text(toUTF32(key.name), ss.getChrFormatting("listViewItem")), null)];
 				final switch (key.type) with (MValueType) {
@@ -95,39 +98,64 @@ public class PresetEditor : Window {
 				paramIDs ~= key.id;
 			}
 		}
-		listView_values.draw;
+		listView_values.refresh();
 	}
 	private void loadPresets() {
 		listView_presets.clear();
 		foreach (key; adk.mcfg.getPresetList(adk.selectedModID)) {
-			listView_presets ~= new ListViewItem(16, [(key.id>>7).to!dstring, (key.id & 127).to!dstring, toUTF32(key.name)], 
-					[TextInputFieldType.DecimalP, TextInputFieldType.DecimalP, TextInputFieldType.Text]);
+			if (key.id < (1<<21))
+				listView_presets ~= new ListViewItem(16, [(key.id>>7).to!dstring, (key.id & 127).to!dstring, toUTF32(key.name)], 
+						[TextInputFieldType.DecimalP, TextInputFieldType.DecimalP, TextInputFieldType.Text]);
 		}
 		listView_presets.refresh();
 	}
 	protected void checkBox_Globals_onToggle(Event ev) {
-		/+if (checkBox_Globals.isChecked) {
-			presetID = 1<21;
+		if (checkBox_Globals.isChecked) {
+			presetID = 1<<21;
 			presetName = "globals";
-		} else if (listView_presets.selectedElement() !is null) {+/
-		presetID = (to!int(listView_presets.selectedElement()[0].getText())<<7) || 
-				(to!int(listView_presets.selectedElement()[1].getText()));
-		presetName = toUTF8(listView_presets.selectedElement()[2].getText());
-		//}
+		} else if (listView_presets.selectedElement() !is null) {
+			if (listView_presets.selectedElement()[0].getText() != "!" && listView_presets.selectedElement()[1].getText() != "!") {
+				presetID = (to!int(listView_presets.selectedElement()[0].getText())<<7) || 
+						(to!int(listView_presets.selectedElement()[1].getText()));
+			}
+			presetName = toUTF8(listView_presets.selectedElement()[2].getText());
+		}
 		fillValues();
 	}
 	protected void smallButtons_onClick(Event ev) {
 		SmallButton sender = cast(SmallButton)ev.sender;
 		switch (sender.getSource) {
+			case "add":
+				listView_presets ~= new ListViewItem(16, ["!", "!", ""], 
+						[TextInputFieldType.DecimalP, TextInputFieldType.DecimalP, TextInputFieldType.Text]);
+				listView_presets.refresh();
+				break;
+			case "remove":
+				if (presetID == 1<<21)
+					adk.eventStack.addToTop(new RemovePresetEvent(adk.mcfg, editedModID, presetID));
+				break;
 			default:
 				break;
 		}
 	}
 	protected void listView_presets_onSelect(Event ev) {
-
+		ListViewItem item = cast(ListViewItem)ev.aux;
+		if (item[0].getText != "!" && item[1].getText != "!") {
+			const uint bank = item[0].getText().to!uint;
+			const uint preset = item[1].getText().to!uint;
+			presetID = preset | (bank<<7);
+			presetName = item[2].getText().toUTF8;
+		}
+		fillValues();
 	}
 	protected void listView_presets_onTextEdit(Event ev) {
-
+		ListViewItem item = cast(ListViewItem)ev.aux;
+		if (item[0].getText != "!" && item[1].getText != "!") {
+			const uint bank = item[0].getText().to!uint;
+			const uint preset = item[1].getText().to!uint;
+			presetID = preset | (bank<<7);
+			presetName = item[2].getText().toUTF8;
+		}
 	}
 	protected void listView_values_onSelect(Event ev) {
 

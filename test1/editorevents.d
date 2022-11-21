@@ -159,3 +159,21 @@ public class AddRoutingNodeEvent : UndoableEvent {
 		mcfg.removeRouting(from, to);
 	}
 }
+public class RemovePresetEvent : UndoableEvent {
+	ModuleConfig mcfg;
+	string modID;
+	int presetID;
+	Tag backup;
+	public this (ModuleConfig mcfg, string modID, int presetID) {
+		this.mcfg = mcfg;
+		this.modID = modID;
+		this.presetID = presetID;
+	}
+	public void redo() {
+		backup = mcfg.removePreset(modID, presetID);
+	}
+
+	public void undo() {
+		mcfg.addPreset(modID, backup);
+	}
+}

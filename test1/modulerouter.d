@@ -33,8 +33,11 @@ public class ModuleRouter : Window {
 		//button_midiNode = new Button("Add MIDI node"d, "button1", Box(535, 205, 635, 225));
 		button_remNode = new Button("Remove node"d, "button_remNode", Box(535, 205, 635, 225));
 		button_addMod.onMouseLClick = &button_addMod_onClick;
+		button_audNode.onMouseLClick = &button_addNode_onClick;
+		button_preset.onMouseLClick = &button_preset_onClick;
 		listView_modules.editEnable = true;
 		listView_modules.onTextInput = &listView_modules_onTextEdit;
+		listView_modules.onItemSelect = &listView_modules_onItemSelect;
 		listView_routing.editEnable = true;
 		listView_routing.multicellEditEnable = true;
 		listView_routing.onTextInput = &listView_routing_onTextEdit;
@@ -49,6 +52,8 @@ public class ModuleRouter : Window {
 		addElement(button_remNode);
 
 		this.adk = adk;
+		refreshRoutingTable();
+		refreshModuleList();
 	}
 	public void refreshRoutingTable() {
 		ModuleConfig mcfg = adk.mcfg;
@@ -69,9 +74,20 @@ public class ModuleRouter : Window {
 				[TextInputFieldType.None, TextInputFieldType.ASCIIText]);
 		}
 	}
+	private void listView_modules_onItemSelect(Event e) {
+		ListViewItem item = cast(ListViewItem)e.aux;
+		if (item[1].getText != "Rename me!") {
+			ModuleConfig mcfg = adk.mcfg;
+			adk.selectedModID = item[1].getText.to!string;
+			adk.selectedModule = mcfg.getModule(adk.selectedModID);
+		}
+	}
 	private void button_addMod_onClick(Event e) {
 		handler.addPopUpElement(new PopUpMenu([new PopUpMenuElement("qm816", "QM816"), new PopUpMenuElement("pcm8", "PCM8")], 
 				"moduleSelector", &onModuleTypeSelect));
+	}
+	private void button_preset_onClick(Event e) {
+		adk.openPresetEditor();
 	}
 	private void onModuleTypeSelect(Event e) {
 		MenuEvent me = cast(MenuEvent)e;
@@ -81,7 +97,9 @@ public class ModuleRouter : Window {
 		//adk.eventStack.addToTop(new AddModuleEvent(adk.mcfg, me.itemSource, me.itemSource));
 	}
 	private void button_addNode_onClick(Event e) {
-		listView_routing ~= new ListViewItem(16, ["NONE", "NONE"]);
+		listView_routing ~= new ListViewItem(16, ["!NONE!", "!NONE!"], 
+				[TextInputFieldType.ASCIIText, TextInputFieldType.ASCIIText]);
+		listView_routing.refresh();
 	}
 	private void listView_modules_onTextEdit(Event e) {
 		//CellEditEvent ce = cast(CellEditEvent)e;
@@ -90,7 +108,7 @@ public class ModuleRouter : Window {
 	}
 	private void listView_routing_onTextEdit(Event e) {
 		ListViewItem item = cast(ListViewItem)e.aux;
-		if (item[0].getText != "NONE" && item[1].getText != "NONE") {
+		if (item[0].getText != "!NONE!" && item[1].getText != "!NONE!") {
 			adk.eventStack.addToTop(new AddRoutingNodeEvent(adk.mcfg, item[0].getText().to!string, item[1].getText().to!string));
 		}
 	}

@@ -278,6 +278,10 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		c.length = cast(size_t)f.size();
 		f.rawRead(c);
 		mcfg.loadConfig(c.idup);
+		if (router !is null) {
+			router.refreshRoutingTable();
+			router.refreshModuleList();
+		}
 	}
 	public void onSave() {
 		if (!path.length) {
