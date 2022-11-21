@@ -8,8 +8,9 @@ import pixelperfectengine.system.input;
 import pixelperfectengine.system.systemutility;
 import pixelperfectengine.system.file;
 import pixelperfectengine.system.common;
+import pixelperfectengine.system.timer;
 
-
+import core.thread;
 import std.conv;
 
 /** 
@@ -29,11 +30,11 @@ public class TestElements : InputListener, SystemEventListener {
     SpriteLayer			sprtL;
     WindowHandler		wh;
     InputHandler        ih;
-    bool                isRunning;
+    bool                isRunning, flipScreen;
 
     public this() {
         sprtL = new SpriteLayer(RenderingMode.Copy);
-		outScrn = new OutputScreen("WindowMaker for PPE/Concrete",1696,960);
+		outScrn = new OutputScreen("Test nr. 3",1696,960);
 		mainRaster = new Raster(848,480,outScrn,0);
 		mainRaster.addLayer(sprtL,0);
         mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
@@ -42,14 +43,23 @@ public class TestElements : InputListener, SystemEventListener {
         ih.inputListener = this;
         ih.systemEventListener = this;
         ih.mouseListener = wh;
-
+        WindowElement.onDraw = &rasterRefresh;
+        Window.onDrawUpdate = &rasterRefresh;
         isRunning = true;
         wh.addWindow(new TestWindow());
     }
+    protected void rasterRefresh() {
+        flipScreen = true;
+    }
     public void whereTheMagicHappens() {
+        mainRaster.refresh();
         while(isRunning) {
-            mainRaster.refresh();
+            if (flipScreen) {
+                flipScreen = false;
+                mainRaster.refresh();
+            }
             ih.test();
+            Thread.sleep(dur!"msecs"(10));
         }
     }
 
