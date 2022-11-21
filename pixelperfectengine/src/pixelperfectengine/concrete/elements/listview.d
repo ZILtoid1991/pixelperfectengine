@@ -409,6 +409,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			}
 
 			for (int i = firstRow ; i <= lastRow ; i++) {
+				if (drawParams.target.bottom > position.bottom)
+					drawParams.target.bottom = position.bottom;
 				if (ss.getColor("ListViewHSep") && i != lastRow) {
 					parent.drawLine(drawParams.target.cornerLL, drawParams.target.cornerLR, ss.getColor("ListViewHSep"));
 				}
