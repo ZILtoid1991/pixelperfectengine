@@ -100,11 +100,11 @@ public class ModuleConfig {
 					string modName = t0.values[1].get!string;
 					AudioModule currMod;
 					switch (t0.values[0].get!string) {
-						case "QM816":
+						case "qm816":
 							import pixelperfectengine.audio.modules.qm816;
 							currMod = new QM816();
 							break;
-						case "PCM8":
+						case "pcm8":
 							import pixelperfectengine.audio.modules.pcm8;
 							currMod = new PCM8();
 							break;
@@ -456,6 +456,13 @@ public class ModuleConfig {
 					return t0;
 				}
 			}
+		}
+		return null;
+	}
+	public AudioModule getModule(string name) {
+		foreach (size_t i, string n; modNames) {
+			if (n == name)
+				return modules[i];
 		}
 		return null;
 	}
