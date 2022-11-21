@@ -27,9 +27,7 @@ public class IntegerFilter(bool AllowNegative = true) : InputFilter {
 	public override void use(ref dstring input) @safe {
 		dstring symbolList = "0123456789", curr = target.text;
 		static if (AllowNegative) {
-			if (!curr.length) {
-				symbolList ~= "-";
-			}
+			symbolList ~= "-";
 		}
 		input = removeUnallowedSymbols(input, symbolList);
 	}
@@ -43,14 +41,10 @@ public class DecimalFilter(bool AllowNegative = true) : InputFilter {
 		this.target = target;
 	}
 	public override void use(ref dstring input) @safe {
-		dstring symbolList = "0123456789", curr = target.text;
+		dstring symbolList = "0123456789.,", curr = target.text;
 		static if (AllowNegative) {
-			if (!curr.length) {
-				symbolList ~= "-";
-			}
+			symbolList ~= "-";
 		}
-		if (!(count(curr, ".") + count(curr, ",")))
-			symbolList ~= ".,";
 		input = removeUnallowedSymbols(input, symbolList);
 	}
 }
