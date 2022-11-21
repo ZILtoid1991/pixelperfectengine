@@ -508,7 +508,6 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			int offsetTarget;													//the target fractional lines
 			int offset = (offsetYA * scaleVertAbs) & 1023;						//the current amount of fractional lines, also contains the fractional offset bias by defauls
 			//const size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB); //determines offset based on mirroring
-			// HACK: as I couldn't figure out a better method yet I decided to scale a whole line, which has a lot of problems
 			const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
 			void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
 			final switch (i.bmpType) with (BitmapTypes) {
@@ -602,12 +601,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public override void scroll(int x, int y) @safe nothrow {
 		sX = x;
 		sY = y;
-		checkAllSprites;
+		//checkAllSprites;
 	}
 	///Relative scrolling. Positive values scrolls the layer left and up, negative values scrolls the layer down and right.
 	public override void relScroll(int x, int y) @safe nothrow {
 		sX += x;
 		sY += y;
-		checkAllSprites;
+		//checkAllSprites;
 	}
 }
