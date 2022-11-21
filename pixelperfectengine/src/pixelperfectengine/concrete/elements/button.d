@@ -19,11 +19,7 @@ public class Button : WindowElement {
 		StyleSheet ss = getStyleSheet();
 		parent.clearArea(position);
 		if (isPressed) {
-			/+output.drawFilledRectangle(1, position.width()-1, 1,position.height()-1, getAvailableStyleSheet().getColor("windowinactive"));
-			output.drawLine(0, position.width()-1, 0, 0, getAvailableStyleSheet().getColor("windowdescent"));
-			output.drawLine(0, 0, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
-			output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));
-			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));+/
+			
 			with (parent) {
 				drawFilledBox(position, ss.getColor("windowinactive"));
 				drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowdescent"));
@@ -32,11 +28,7 @@ public class Button : WindowElement {
 				drawLine(position.cornerUR, position.cornerLR, ss.getColor("windowascent"));
 			}
 		} else {
-			/+output.drawFilledRectangle(1, position.width()-1, 1,position.height()-1, getAvailableStyleSheet().getColor("window"));
-			output.drawLine(0, position.width()-1, 0, 0, getAvailableStyleSheet().getColor("windowascent"));
-			output.drawLine(0, 0, 0, position.height()-1, getAvailableStyleSheet().getColor("windowascent"));
-			output.drawLine(0, position.width()-1, position.height()-1, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));
-			output.drawLine(position.width()-1, position.width()-1, 0, position.height()-1, getAvailableStyleSheet().getColor("windowdescent"));+/
+			
 			with (parent) {
 				drawFilledBox(position, ss.getColor("buttonTop"));
 				drawLine(position.cornerUL, position.cornerUR, ss.getColor("windowascent"));
