@@ -53,7 +53,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	//public static PopUpHandler popUpHandler;	///Common pop-up handler
 	//public static StyleSheet styleSheet;		///Basic stylesheet, all elements default to this if no alternative found
 
-	public void delegate()	onDraw;			///Called when drawing is finished
+	public static void delegate()	onDraw;			///Called when drawing is finished
 
 	public EventDeleg 		onMouseLClick;	///Called on left mouseclick released
 	public EventDeleg 		onMouseRClick;	///Called on right mouseclick released

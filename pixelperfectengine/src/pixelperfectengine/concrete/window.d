@@ -118,6 +118,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 			output = new BitmapDrawer(position.width, position.height);
 			draw();
 		}
+		if (onDrawUpdate !is null)
+			onDrawUpdate();
 		return position;
 	}
 	/**
@@ -206,7 +208,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		foreach (WindowElement we; elements) {
 			we.draw();
 		}
-		
+		if (onDrawUpdate !is null)
+			onDrawUpdate();
 	}
 	/**
 	 * Draws the header.
@@ -287,6 +290,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void close() {
 		if (onClose !is null) onClose();
 		if (parent !is null) parent.removeChildWindow(this);
+		if (onDrawUpdate !is null)
+			onDrawUpdate();
 		handler.closeWindow(this);
 	}
 	/**
@@ -307,6 +312,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void move(const int x, const int y) {
 		position.move(x,y);
 		handler.updateWindowCoord(this);
+		if (onDrawUpdate !is null)
+			onDrawUpdate();
 	}
 	/**
 	 * Moves the window by the given values.
@@ -314,6 +321,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void relMove(const int x, const int y) {
 		position.relMove(x,y);
 		handler.updateWindowCoord(this);
+		if (onDrawUpdate !is null)
+			onDrawUpdate();
 	}
 	/**
 	 * Sets the size of the window, also issues a redraw.
