@@ -4,7 +4,8 @@ public import pixelperfectengine.concrete.elements.base;
 public import pixelperfectengine.concrete.popup;
 
 /**
- * Menubar containing menus in a tree-like structure.
+ * Implements a menubar, that is ideally contained under the top bar of the window,
+ * and contains a tree-like structure for menus.
  */
 public class MenuBar : WindowElement {
 	private PopUpMenuElement[] menus;
@@ -13,6 +14,14 @@ public class MenuBar : WindowElement {
 	//private PopUpHandler popUpHandler;
 	private int select, usedWidth;
 	public EventDeleg onMenuEvent;
+	/**
+	 * Creates a menubar.
+	 * Params:
+	 *   source = The source of the emitted events.
+	 *   position = The position, where the element should be drawn.
+	 *   menus = The top level menus, which in turn contain any child menus present if any.
+	 *   customStyle = A custom stylesheet if used.
+	 */
 	public this(string source, Box position, PopUpMenuElement[] menus, StyleSheet customStyle = null){
 		this.customStyle = customStyle;
 		this.source = source;
