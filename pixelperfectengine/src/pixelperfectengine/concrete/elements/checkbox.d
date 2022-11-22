@@ -3,26 +3,48 @@ module pixelperfectengine.concrete.elements.checkbox;
 public import pixelperfectengine.concrete.elements.base;
 
 /**
- * A simple toggle button.
+ * Implements a checkbox, that can take a binary choice option from the user.
  */
 public class CheckBox : WindowElement, ISmallButton {
 	public string		iconChecked = "checkBoxB";		///Sets the icon for checked positions
 	public string		iconUnchecked = "checkBoxA";	///Sets the icon for unchecked positions
 	public EventDeleg 	onToggle;
-	///CTOR for checkbox with text
-	public this(Text text, string source, Coordinate coordinates, bool checked = false) {
-		position = coordinates;
+	/**
+	 * Creates an instance of a checkbox with a text object.
+	 * Params:
+	 *   text = The text to be displayed besides the button.
+	 *   source = The source of the events emitted by this object.
+	 *   position = Defines where the element should be drawn.
+	 *   checked = Initial state of the button.
+	 */
+	public this(Text text, string source, Box position, bool checked = false) {
+		this.position = position;
 		this.text = text;
 		this.source = source;
 		isChecked = checked;
 	}
-	///Ditto
-	public this(dstring text, string source, Coordinate coordinates, bool checked = false) {
+	/**
+	 * Creates an instance of a checkbox with a default formatted text.
+	 * Params:
+	 *   text = The text to be displayed besides the button.
+	 *   source = The source of the events emitted by this object.
+	 *   position = Defines where the element should be drawn.
+	 *   checked = Initial state of the button.
+	 */
+	public this(dstring text, string source, Box position, bool checked = false) {
 		this(new Text(text, getStyleSheet().getChrFormatting("checkBox")), source, coordinates, checked);
 	}
-	///CTOR for small button version
-	public this(string iconChecked, string iconUnchecked, string source, Coordinate coordinates, bool checked = false) {
-		position = coordinates;
+	/**
+	 * Creates a small button version of the checkbox for windows, toolbars, etc.
+	 * Params:
+	 *   iconChecked = The icon when the button is checked.
+	 *   iconUnchecked = The icon when the button is unchecked.
+	 *   source = The source of the events emitted by this object.
+	 *   position = Defines where the element should be drawn.
+	 *   checked = Initial state of the button.
+	 */
+	public this(string iconChecked, string iconUnchecked, string source, Box position, bool checked = false) {
+		this.position = position;
 		this.iconChecked = iconChecked;
 		this.iconUnchecked = iconUnchecked;
 		this.source = source;
