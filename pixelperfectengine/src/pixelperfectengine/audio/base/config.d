@@ -432,6 +432,12 @@ public class ModuleConfig {
 	public void addModule(Tag backup) {
 		root.add(backup);
 	}
+	/**
+	 * Renames a module.
+	 * Params:
+	 *   oldName = The current name of the module.
+	 *   newName = the desired name of the module.
+	 */
 	public void renameModule(string oldName, string newName) {
 		foreach (Tag t0 ; root.tags) {
 			if (t0.name == "module") {
@@ -459,6 +465,9 @@ public class ModuleConfig {
 		}
 		return null;
 	}
+	/**
+	 * Returns the module with the given `name`, or null if not found.
+	 */
 	public AudioModule getModule(string name) {
 		foreach (size_t i, string n; modNames) {
 			if (n == name)
@@ -466,6 +475,9 @@ public class ModuleConfig {
 		}
 		return null;
 	}
+	/**
+	 * Returns a list of modules.
+	 */
 	public string[2][] getModuleList() {
 		string[2][] result;
 		foreach (Tag t0 ; root.tags) {
@@ -513,6 +525,9 @@ public class ModuleConfig {
 			}
 		}
 	}
+	/**
+	 * Returns the list of presets associated with the module identified by `modID`.
+	 */
 	public auto getPresetList(string modID) {
 		struct PresetData {
 			string name;
