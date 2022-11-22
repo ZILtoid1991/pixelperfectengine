@@ -32,7 +32,7 @@ public class CheckBox : WindowElement, ISmallButton {
 	 *   checked = Initial state of the button.
 	 */
 	public this(dstring text, string source, Box position, bool checked = false) {
-		this(new Text(text, getStyleSheet().getChrFormatting("checkBox")), source, coordinates, checked);
+		this(new Text(text, getStyleSheet().getChrFormatting("checkBox")), source, position, checked);
 	}
 	/**
 	 * Creates a small button version of the checkbox for windows, toolbars, etc.
