@@ -1,14 +1,30 @@
 module pixelperfectengine.concrete.elements.button;
 
 public import pixelperfectengine.concrete.elements.base;
-
+/**
+ * Implements a simple clickable window element for user input.
+ */
 public class Button : WindowElement {
-	private bool isPressed;
-	public bool enableRightButtonClick;
-	public bool enableMiddleButtonClick;
+	//private bool isPressed;
+	//public bool enableRightButtonClick;
+	//public bool enableMiddleButtonClick;
+	/**
+	 * Creates a Button with the default text formatting style.
+	 * Params:
+	 *   text = The text to be displayed on the button.
+	 *   source = The source of the events emitted by this window element.
+	 *   position = Defines where the button should be drawn.
+	 */
 	public this(dstring text, string source, Box position) {
 		this(new Text(text,getStyleSheet.getChrFormatting("button")), source, position);
 	}
+	/**
+	 * Creates a Button with the supplied Text object.
+	 * Params:
+	 *   text = The text to be displayed on the button. Can contain one or more icons.
+	 *   source = The source of the events emitted by this window element.
+	 *   position = Defines where the button should be drawn.
+	 */
 	public this(Text text, string source, Box position) {
 		this.position = position;
 		this.text = text;
