@@ -6,11 +6,11 @@ public import pixelperfectengine.concrete.elements.base;
  * A simple label used on GUI elements to annotate things.
  */
 public class Label : WindowElement {
-	public this(dstring text, string source, Coordinate coordinates) {
-		this(new Text(text, getStyleSheet().getChrFormatting("label")), source, coordinates);
+	public this(dstring text, string source, Box position) {
+		this(new Text(text, getStyleSheet().getChrFormatting("label")), source, position);
 	}
-	public this(Text text, string source, Coordinate coordinates) {
-		position = coordinates;
+	public this(Text text, string source, Box position) {
+		this.position = position;
 		this.text = text;
 		this.source = source;
 	}
