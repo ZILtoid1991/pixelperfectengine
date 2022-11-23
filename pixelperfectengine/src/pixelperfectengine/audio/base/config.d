@@ -178,18 +178,22 @@ public class ModuleConfig {
 			string[] modOuts = am.getInfo.outputChNames;
 			size_t[] inBufs, outBufs;
 			ubyte[] inChs, outChs;
-			foreach (string key; modIns) {
-				ptrdiff_t n = countUntil!("a.hasInput(b)")(rns, key);
-				if (n != -1) {
-					inBufs ~= n;
-					inChs ~= cast(ubyte)n;
+			foreach (size_t k, string key; modIns) {
+				for (size_t j ; j < rns.length ; j++) {
+					if (rns[j].hasOutput(modNames[i] ~ ":" ~ key)) {
+						inBufs ~= j;
+						inChs ~= cast(ubyte)k;
+						break;
+					}
 				}
 			}
-			foreach (string key; modOuts) {
-				ptrdiff_t n = countUntil!("a.hasOutput(b)")(rns, key);
-				if (n != -1) {
-					outBufs ~= n;
-					outChs ~= cast(ubyte)n;
+			foreach (size_t k, string key; modOuts) {
+				for (size_t j ; j < rns.length ; j++) {
+					if (rns[j].hasInput(modNames[i] ~ ":" ~ key)) {
+						outBufs ~= j;
+						outChs ~= cast(ubyte)k;
+						break;
+					}
 				}
 			}
 			manager.addModule(am, inBufs, inChs, outBufs, outChs);
