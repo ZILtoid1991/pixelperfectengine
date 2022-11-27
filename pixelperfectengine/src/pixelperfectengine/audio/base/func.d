@@ -273,9 +273,9 @@ alias ADPCMStream = NibbleArray;
 	 */
 	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, ref WavemodWorkpad wp, uint modifier = 0x1_00_00_00) 
 			@safe {
-		wp.lookupVal &= 0x_FF_FF_FF;
+		//wp.lookupVal &= 0x_FF_FF_FF;
 		for (size_t i ; i < dest.length ; i++) {
-			dest[i] = src[cast(size_t)(wp.lookupVal>>24)];
+			dest[i] = src[cast(size_t)(wp.lookupVal>>24) & 0XFF];
 			wp.lookupVal += modifier;
 		}
 	}
