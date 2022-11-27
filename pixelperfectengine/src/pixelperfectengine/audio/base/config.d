@@ -247,7 +247,7 @@ public class ModuleConfig {
 	protected void loadWaveFile(AudioModule mod, int waveID, string path, string dataPak = null) {
 		import pixelperfectengine.system.wavfile;
 		WavFile f = new WavFile(path);
-		mod.waveformDataReceive(waveID, f.rawData.dup, 
+		mod.waveformDataReceive(waveID, f.rawData[52..$].dup, 
 				WaveFormat(f.header.samplerate, f.header.bytesPerSecond, f.header.format, f.header.channels, 
 				f.header.bytesPerSample, f.header.bitsPerSample));
 	}
