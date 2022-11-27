@@ -6,6 +6,7 @@ import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.func;
 import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.osc;
+import pixelperfectengine.system.etc : min;
 
 import std.math;
 
@@ -142,18 +143,19 @@ public class PCM8 : AudioModule {
 	Defines a single channel's statuses.
 	*/
 	protected struct Channel {
-		int[257]		decoderBuffer;		///Stores decoded samples.
+		//int[256]		decoderBuffer;
+		int[256]		decoderBuffer;		///Stores decoded samples.
 		Preset			presetCopy;			///The copy of the preset.
 		DecoderWorkpad	decoderWorkpad;		///Stores the current state of the decoder.
 		DecoderWorkpad	savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
+		size_t			outPos;				///Position in decoded amount.
 		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
-		uint			outPos;				///Position in decoded amount.
 		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
 
-		ubyte			currNote;			///The currently played note, or 255 if samples ran out.
+		ubyte			currNote = 255;		///The currently played note, or 255 if samples ran out.
 		ubyte			presetNum;			///Selected preset.
 		ushort			bankNum;			///Bank select number.
 		uint			status;				///Channel status flags. Bit 1: Note on, Bit 2: Sample run out approaching, Bit 3: In loop
@@ -169,23 +171,23 @@ public class PCM8 : AudioModule {
 		Decodes one more block worth of samples, depending on internal state.
 		*/
 		void decodeMore(ref SampleAssignment sa, ref Sample slmp) @nogc nothrow pure {
-			if (status & 2) currNote = 255;
-			if (currNote == 255) return;
-			//Save final sample in case we will need it later on during resampling.
-			decoderBuffer[0] = decoderBuffer[256];
+			if (status & ChannelStatusFlags.sampleRunout) {
+				currNote = 255;
+			}
+			if (currNote == 255) {
+				return;
+			}
 			//Determine how much samples we will need.
-			int samplesNeeded = 256;
+			size_t samplesNeeded = 256;
 			
-			//SampleAssignment sa = presetCopy.sampleMapping[currNote];
-			//Sample slmp = sampleBank[sa.sampleNum];
 			const bool keyOn = (status & 1) == 1;
-			const bool isLooping = !(sa.loopBegin == -1 || sa.loopEnd == -1) && keyOn;
+			const bool isLooping = (sa.loopBegin != -1 && sa.loopEnd != -1) && ((sa.loopEnd - sa.loopBegin) > 0) && keyOn;
 			
 			//Case 1: sample is running out, and there are no looppoints.
 			if (!isLooping && (decoderWorkpad.pos + samplesNeeded >= slmp.samplesLength())) {
-				samplesNeeded = cast(int)(decoderWorkpad.pos + samplesNeeded - slmp.samplesLength());
-				status |= 2;
-				for (int i = samplesNeeded ; i <= 256 ; i++) 
+				samplesNeeded -= decoderWorkpad.pos + samplesNeeded - slmp.samplesLength();
+				status |= ChannelStatusFlags.sampleRunout;
+				for (size_t i = samplesNeeded ; i < 256 ; i++) 
 					decoderBuffer[i] = 0;
 			}
 			while (samplesNeeded > 0) {
@@ -196,19 +198,22 @@ public class PCM8 : AudioModule {
 				const bool loopEnd = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopEnd);
 				const size_t samplesToDecode = loopBegin ? decoderWorkpad.pos + samplesNeeded - sa.loopBegin : (loopEnd ? 
 						decoderWorkpad.pos + samplesNeeded - sa.loopEnd : samplesNeeded);
-				slmp.decode(slmp.sampleData, decoderBuffer[1..samplesNeeded + 1], decoderWorkpad);
+				//slmp.decode(slmp.sampleData, decoderBuffer[1..samplesNeeded + 1], decoderWorkpad);
+				//slmp.decode(slmp.sampleData, decoderBuffer[0..samplesNeeded], decoderWorkpad);
+				slmp.decode(slmp.sampleData, decoderBuffer[0..samplesToDecode], decoderWorkpad);
 				if (loopBegin) {
 					status |= ChannelStatusFlags.inLoop;
 					savedDWState = decoderWorkpad;
 				} else if (loopEnd)
 					decoderWorkpad = savedDWState;
 				samplesNeeded -= samplesToDecode;
+				//outPos += samplesToAdvance;
 			}
-			
+			waveModWorkpad.lookupVal &= 0xFF_FF_FF;
 		}
 		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
 			freqRatio = sampleRate / presetCopy.sampleMapping[currNote & 127].baseFreq;
-			jumpAm = cast(uint)((1<<24) * (1 / freqRatio));
+			jumpAm = cast(uint)((1<<24) / freqRatio);
 		}
 		void reset() @nogc @safe pure nothrow {
 			outPos = 0;
@@ -216,6 +221,13 @@ public class PCM8 : AudioModule {
 			decoderWorkpad = DecoderWorkpad.init;
 			savedDWState = DecoderWorkpad.init;
 			waveModWorkpad = WavemodWorkpad.init;
+		}
+		///Recalculates shape params.
+		void setShpVals(float vel = 1.0) @nogc @safe pure nothrow {
+			currShpA = presetCopy.eAtkShp - (presetCopy.velToAtkShp * presetCopy.eAtkShp) + 
+					(presetCopy.velToAtkShp * presetCopy.eAtkShp * vel);
+			currShpR = presetCopy.eRelShp - (presetCopy.velToRelShp * presetCopy.eRelShp) + 
+					(presetCopy.velToRelShp * presetCopy.eRelShp * vel);
 		}
 	}
 	alias SampleMap = TreeMap!(uint, Sample);
@@ -264,7 +276,7 @@ public class PCM8 : AudioModule {
 		/+for (int i ; i < 8 ; i++) {
 			channels[i].decoderBuffer.length = bufferSize * 2;
 		}+/
-		
+		dummyBuf.length = bufferSize;
 		iBuf.length = bufferSize;
 		lBuf.length = bufferSize;
 		lfoOut.length = bufferSize;
@@ -351,6 +363,11 @@ public class PCM8 : AudioModule {
 						case MIDI2_0Cmd.CtrlChOld, MIDI2_0Cmd.CtrlCh:
 							ctrlCh(data0.channel, data0.note, data1);
 							break;
+						case MIDI2_0Cmd.PrgCh:
+							channels[data0.channel].bankNum = data1 & ushort.max;
+							channels[data0.channel].presetNum = data1>>24;
+							presetRecall(data0.channel);
+							break;
 						default:
 							break;
 					}
@@ -403,15 +420,18 @@ public class PCM8 : AudioModule {
 		channels[ch].currNote = note;
 		channels[ch].velocity = vel;
 		channels[ch].calculateJumpAm(sampleRate);
+		channels[ch].setShpVals(vel);
 		//reset all on channel
 		channels[ch].reset();
 		//set noteOn status flag
 		channels[ch].status |= ChannelStatusFlags.noteOn;
 	}
 	protected void keyOff(ubyte note, ubyte ch, float vel) @nogc pure nothrow {
-		channels[ch].currNote = note;
+		if (!(channels[ch].currNote & 128))
+			channels[ch].currNote = note;
 		channels[ch].velocity = vel;
 		channels[ch].calculateJumpAm(sampleRate);
+		channels[ch].setShpVals(vel);
 		channels[ch].status &= ~ChannelStatusFlags.noteOn;
 	}
 	protected void ctrlCh(ubyte ch, ubyte param, uint val) @nogc pure nothrow {
@@ -736,42 +756,48 @@ public class PCM8 : AudioModule {
 			lfoOut[i] = lfo.outputF(0.5, 1.0 / ushort.max);
 		}
 		for (int i ; i < 8 ; i++) {
-			if (channels[i].currNote & 128) continue;
-			//get the data for the sample
-			SampleAssignment sa = channels[i].presetCopy.sampleMapping[channels[i].currNote];
-			Sample slmp = sampleBank[sa.sampleNum];
-			if (!slmp.sampleData.length) continue;
-			int samplesNeeded = cast(int)bufferSize;
-			while (samplesNeeded) {
-				///Calculate the amount of samples that are needed for this block
-				uint samplesToAdvance = cast(uint)((channels[i].waveModWorkpad.lookupVal + (channels[i].jumpAm * samplesNeeded))
-						>>24);
-				const uint decoderBufPos = cast(uint)(channels[i].decoderWorkpad.pos & 255);
-				///Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
-				if (256 - decoderBufPos <= samplesToAdvance){
-					samplesToAdvance = 256 - decoderBufPos;
+			if (!(channels[i].currNote & 128)) {
+				//get the data for the sample
+				SampleAssignment sa = channels[i].presetCopy.sampleMapping[channels[i].currNote];
+				Sample slmp = sampleBank[sa.sampleNum];
+				if (!slmp.sampleData.length) continue;
+				size_t samplesNeeded = bufferSize;
+				size_t outpos;
+				while (samplesNeeded && !(channels[i].currNote & 128)) {
+					///Calculate the amount of samples that are needed for this block
+					size_t samplesToAdvance = (channels[i].waveModWorkpad.lookupVal + (channels[i].jumpAm * samplesNeeded))
+							>>24;
+					if (!(channels[i].outPos & 255)) channels[i].decodeMore(sa, slmp);
+					const size_t decoderBufPos = channels[i].outPos & 255;
+					///Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
+					if (256 - decoderBufPos <= samplesToAdvance){
+						samplesToAdvance -= 256 - decoderBufPos;
+					}
+					const size_t samplesOutputted = min(cast(size_t)round(samplesToAdvance * channels[i].freqRatio), samplesNeeded);
+					//const int bias = channels[i].waveModWorkpad.lookupVal & 0x_FF_FF_FF ? 0 : 1;
+					//stretchAudioNoIterpol(channels[i].decoderBuffer[bias + decoderBufPos..$], iBuf[0..samplesOutputted], 
+					stretchAudioNoIterpol(channels[i].decoderBuffer, iBuf[outpos..outpos + samplesOutputted], 
+							channels[i].waveModWorkpad, channels[i].jumpAm);
+					samplesNeeded -= samplesOutputted;
+					channels[i].outPos += samplesOutputted;
+					outpos += samplesOutputted;
+					//if (samplesNeeded) channels[i].decodeMore(sa, slmp);
 				}
-				const uint samplesOutputted = cast(uint)(samplesToAdvance / channels[i].freqRatio);
-				const int bias = channels[i].waveModWorkpad.lookupVal & 0x_FF_FF_FF ? 0 : 1;
-				stretchAudioNoIterpol(channels[i].decoderBuffer[bias + decoderBufPos..$], iBuf[0..samplesOutputted], 
-						channels[i].waveModWorkpad, channels[i].jumpAm);
-				samplesNeeded -= samplesOutputted;
-				if (samplesNeeded) channels[i].decodeMore(sa, slmp);
-			}
-			//apply envelop (if needed) and volume, then mix it to the local buffer
-			__m128 levels;
-			levels[0] = channels[i].presetCopy.masterVol - channels[i].presetCopy.balance;
-			levels[1] = channels[i].presetCopy.masterVol - (1 - channels[i].presetCopy.balance);
-			levels[2] = channels[i].presetCopy.auxSendA;
-			levels[3] = channels[i].presetCopy.auxSendB;
-			for (int j ; j < bufferSize ; j++) {
-				__m128 sample = _mm_cvtepi32_ps(__m128i(iBuf[j]));
-				const float adsrEnv = channels[i].envGen.shp(channels[i].envGen.position == ADSREnvelopGenerator.Stage.Attack ? 
-						channels[i].currShpA : channels[i].currShpR) * channels[i].presetCopy.adsrToVol;
-				channels[i].envGen.advance();
-				sample *= __m128((1 - channels[i].presetCopy.adsrToVol) + adsrEnv) * __m128((1 - channels[i].presetCopy.lfoToVol) + 
-						(lfoOut[j] * channels[i].presetCopy.lfoToVol)) * levels;
-				lBuf[j] = sample;
+				//apply envelop (if needed) and volume, then mix it to the local buffer
+				__m128 levels;
+				levels[0] = channels[i].presetCopy.masterVol * channels[i].presetCopy.balance;
+				levels[1] = channels[i].presetCopy.masterVol * (1 - channels[i].presetCopy.balance);
+				levels[2] = channels[i].presetCopy.auxSendA;
+				levels[3] = channels[i].presetCopy.auxSendB;
+				for (int j ; j < bufferSize ; j++) {
+					__m128 sample = _mm_cvtepi32_ps(__m128i(iBuf[j]));
+					const float adsrEnv = channels[i].envGen.shp(channels[i].envGen.position == ADSREnvelopGenerator.Stage.Attack ? 
+							channels[i].currShpA : channels[i].currShpR) * channels[i].presetCopy.adsrToVol;
+					channels[i].envGen.advance();
+					sample *= __m128((1 - channels[i].presetCopy.adsrToVol) + adsrEnv) * __m128((1 - channels[i].presetCopy.lfoToVol) + 
+							(lfoOut[j] * channels[i].presetCopy.lfoToVol)) * levels;
+					lBuf[j] += sample;
+				}
 			}
 		}
 		float*[4] outBuf;
@@ -787,7 +813,7 @@ public class PCM8 : AudioModule {
 		const __m128 b0_a0 = filterVals[3] / filterVals[0], b1_a0 = filterVals[4] / filterVals[0], 
 				b2_a0 = filterVals[5] / filterVals[0], a1_a0 = filterVals[1] / filterVals[0], a2_a0 = filterVals[2] / filterVals[0];
 		for (int i ; i < bufferSize ; i++) {
-			__m128 input0 = iBuf[i];
+			__m128 input0 = lBuf[i];
 			input0 /= __m128(mixdownVal);
 			input0 = _mm_max_ps(input0, __m128(-1.0));
 			input0 = _mm_min_ps(input0, __m128(1.0));
@@ -801,6 +827,7 @@ public class PCM8 : AudioModule {
 			filterVals[9] = filterVals[8];
 			filterVals[8] = output0;
 		}
+		resetBuffer(lBuf);
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
@@ -828,10 +855,10 @@ public class PCM8 : AudioModule {
 	 * Returns an errorcode on failure.
 	 */
 	public override int writeParam_int(uint presetID, uint paramID, int value) nothrow {
-		Preset* presetPtr = presetBank.ptrOf(paramID);
+		Preset* presetPtr = presetBank.ptrOf(presetID);
 		if (presetPtr is null) {
-			presetBank[paramID] = Preset.init;
-			presetPtr = presetBank.ptrOf(paramID);
+			presetBank[presetID] = Preset.init;
+			presetPtr = presetBank.ptrOf(presetID);
 		}
 		if (paramID & 0x10_00) {
 			switch (paramID & 0x0F_00) {
@@ -953,10 +980,10 @@ public class PCM8 : AudioModule {
 	 * Returns an errorcode on failure.
 	 */
 	public override int writeParam_double(uint presetID, uint paramID, double value) nothrow {
-		Preset* presetPtr = presetBank.ptrOf(paramID);
+		Preset* presetPtr = presetBank.ptrOf(presetID);
 		if (presetPtr is null) {
-			presetBank[paramID] = Preset.init;
-			presetPtr = presetBank.ptrOf(paramID);
+			presetBank[presetID] = Preset.init;
+			presetPtr = presetBank.ptrOf(presetID);
 		}
 		if (paramID & 0x10_00) {
 			switch (paramID & 0x0F_00) {
@@ -1101,7 +1128,7 @@ public class PCM8 : AudioModule {
 	 * Returns: The value of the given preset and parameter
 	 */
 	public override int readParam_int(uint presetID, uint paramID) nothrow {
-		Preset* presetPtr = presetBank.ptrOf(paramID);
+		Preset* presetPtr = presetBank.ptrOf(presetID);
 		if (presetPtr is null) return 0;
 		if (paramID & 0x10_00) {
 			switch (paramID & 0x0F_00) {
@@ -1175,7 +1202,7 @@ public class PCM8 : AudioModule {
 	 * Returns: The value of the given preset and parameter
 	 */
 	public override double readParam_double(uint presetID, uint paramID) nothrow {
-		Preset* presetPtr = presetBank.ptrOf(paramID);
+		Preset* presetPtr = presetBank.ptrOf(presetID);
 		if (presetPtr is null) return double.nan;
 		if (paramID & 0x10_00) {
 			switch (paramID & 0x0F_00) {
