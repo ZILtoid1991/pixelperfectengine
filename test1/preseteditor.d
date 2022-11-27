@@ -24,8 +24,8 @@ public class PresetEditor : Window {
 	string presetName;
 	
 	//CheckBox	checkBox_globals;
-	public this(dstring name, AudioDevKit adk) {
-		super(Box(0, 0, 330, 330), name ~ " presets"d);
+	public this(AudioDevKit adk) {
+		super(Box(0, 0, 330, 330), "`" ~ toUTF32(adk.selectedModID) ~ "` presets"d);
 		listView_presets = new ListView(new ListViewHeader(16, [32, 32, 240], ["Bank" ,"Prg" ,"Name"]), null, 
 				"listView_presets", Box(5, 20, 230, 100));
 		listView_values = new ListView(new ListViewHeader(16, [200, 100], ["Name" ,"Value"]), null, "listView_values", 
@@ -139,14 +139,17 @@ public class PresetEditor : Window {
 		}
 	}
 	protected void listView_presets_onSelect(Event ev) {
+		import midi2.types.structs;
+		import midi2.types.enums;
 		ListViewItem item = cast(ListViewItem)ev.aux;
 		if (item[0].getText != "!" && item[1].getText != "!") {
 			const uint bank = item[0].getText().to!uint;
 			const uint preset = item[1].getText().to!uint;
 			presetID = preset | (bank<<7);
 			presetName = item[2].getText().toUTF8;
+			fillValues();
+			editedModule.midiReceive(UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.PrgCh, 0), (preset<<24) | (bank & 0x7F) | ((bank>>7)<<8));
 		}
-		fillValues();
 	}
 	protected void listView_presets_onTextEdit(Event ev) {
 		ListViewItem item = cast(ListViewItem)ev.aux;
@@ -220,6 +223,7 @@ public class PresetEditor : Window {
 				str = to!dstring(newVal);
 				break;
 		}
-		listView_values.refresh();
+		listView_values[cee.row][1].text.text = str;
+		//listView_values.refresh();
 	}
 }

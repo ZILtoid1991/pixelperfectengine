@@ -260,7 +260,11 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		}
 	}
 	public void onCompileAudioConfig() {
-		mcfg.compile(state.audioThreadRunning);
+		try {
+			mcfg.compile(state.audioThreadRunning);
+		} catch (Exception e) {
+			writeln(e);
+		}
 	}
 	public void onNew() {
 		mcfg = new ModuleConfig(mm);
@@ -316,10 +320,8 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		
 	}
 	public void openPresetEditor() {
-		if (preEdit is null && selectedModule !is null)
-			preEdit = new PresetEditor("Module editor", this);
-		if (wh.whichWindow(preEdit) == -1)
-			wh.addWindow(preEdit);
+		if (selectedModule !is null)
+			wh.addWindow(new PresetEditor(this));
 	}
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		
