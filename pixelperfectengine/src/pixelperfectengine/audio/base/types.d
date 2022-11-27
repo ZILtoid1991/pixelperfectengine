@@ -162,6 +162,8 @@ public enum SampleLoadErrorCode : int {
 	SampleLoadingNotSupported	=	-1,
 	SampleSlotNotExist			=	-2,
 	SampleBankFull				=	-3,
+	FileFormatNotSupported		=	-4,
+	FileNotFound				=	-5,
 	//sample format issues
 	//should be OR-ed together
 	FormatNotSupported			=	0x1,
@@ -186,7 +188,7 @@ public struct WavemodWorkpad {
 	///Substracts from the offset for the next wavechunk.
 	///Returns the new lookupVal
 	ulong sub(size_t amount) @nogc @safe pure nothrow {
-		return lookupVal - (amount<<20);
+		return lookupVal - (amount<<24);
 	}
 }
 /**
