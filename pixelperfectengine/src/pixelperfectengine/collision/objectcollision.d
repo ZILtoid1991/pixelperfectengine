@@ -45,7 +45,7 @@ public class ObjectCollisionDetector {
 		}
 	}
 	/**
-	 * Tests a single shape against the others
+	 * Tests a single shape (objectID) against the others.
 	 */
 	public void testSingle(int objectID) {
 		testSingle(objectID, objects.ptrOf(objectID));
