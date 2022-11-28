@@ -120,12 +120,14 @@ public class PCM8 : AudioModule {
 
 		uint			flags;		///Contains various binary settings
 	}
+	///Defines preset setting flags.
 	protected enum PresetFlags {
 		cutoffOnKeyOff		=	1<<0,		///If set, the sample playback will cut off on every key off event
 		modwheelToLFO		=	1<<1,		///Assigns modulation wheel to amplitude and/or pitch LFO levels
 		panningLFO			=	1<<2,		///Sets amplitude LFO to panning on this channel
 		/* ADSRtoVol			=	1<<3,		///If set, then envGen will control the volume */
 	}
+	///Defines LFO setting flags.
 	protected enum LFOFlags {
 		saw					=	1<<0,
 		triangle			=	1<<1,
@@ -134,10 +136,11 @@ public class PCM8 : AudioModule {
 		invert				=	1<<4,
 		ringmod				=	1<<5
 	}
+	///Defines channel statuses.
 	protected enum ChannelStatusFlags {
-		noteOn				=	1<<0,
-		sampleRunout		=	1<<1,
-		inLoop				=	1<<2,
+		noteOn				=	1<<0,	///Set if key is on
+		sampleRunout		=	1<<1,	///Set if sample have ran out (decoder proceeds to stop)
+		inLoop				=	1<<2,	///Set if sample is looping
 	}
 	/**
 	Defines a single channel's statuses.
@@ -155,7 +158,7 @@ public class PCM8 : AudioModule {
 		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
 
-		ubyte			currNote = 255;		///The currently played note, or 255 if samples ran out.
+		ubyte			currNote = 255;		///The currently played note + Bit 8 indicates suspension.
 		ubyte			presetNum;			///Selected preset.
 		ushort			bankNum;			///Bank select number.
 		uint			status;				///Channel status flags. Bit 1: Note on, Bit 2: Sample run out approaching, Bit 3: In loop
@@ -211,10 +214,12 @@ public class PCM8 : AudioModule {
 			}
 			waveModWorkpad.lookupVal &= 0xFF_FF_FF;
 		}
+		///Calculates jump amount for the sample.
 		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
 			freqRatio = sampleRate / presetCopy.sampleMapping[currNote & 127].baseFreq;
 			jumpAm = cast(uint)((1<<24) / freqRatio);
 		}
+		///Resets all internal states.
 		void reset() @nogc @safe pure nothrow {
 			outPos = 0;
 			status = 0;
@@ -284,8 +289,13 @@ public class PCM8 : AudioModule {
 		//Reset filters
 		for (int i ; i < 4 ; i++) {
 			resetLPF(i);
+			filterVals[6][i] = 0;
+			filterVals[7][i] = 0;
+			filterVals[8][i] = 0;
+			filterVals[9][i] = 0;
 		}
 	}
+	///Recalculates the low pass filter vlues for the given output channel.
 	protected void resetLPF(int i) @nogc @safe pure nothrow {
 		BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
 		filterVals[0][i] = vals.a0;
@@ -294,10 +304,6 @@ public class PCM8 : AudioModule {
 		filterVals[3][i] = vals.b0;
 		filterVals[4][i] = vals.b1;
 		filterVals[5][i] = vals.b2;
-		filterVals[6][i] = 0;
-		filterVals[7][i] = 0;
-		filterVals[8][i] = 0;
-		filterVals[9][i] = 0;
 	}
 	/**
 	 * MIDI 2.0 data received here.
