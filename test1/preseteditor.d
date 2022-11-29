@@ -148,7 +148,10 @@ public class PresetEditor : Window {
 			presetID = preset | (bank<<7);
 			presetName = item[2].getText().toUTF8;
 			fillValues();
-			editedModule.midiReceive(UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.PrgCh, 0), (preset<<24) | (bank & 0x7F) | ((bank>>7)<<8));
+			editedModule.midiReceive(UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.PrgCh, 0), 
+					(preset<<24) | (bank & 0x7F) | ((bank>>7)<<8));
+			/* editedModule.midiReceive(UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.PrgCh, 0), 
+					((presetID & 127)<<24) | ((presetID>>7) & 0x7F) | ((presetID>>14)<<8)); */
 		}
 	}
 	protected void listView_presets_onTextEdit(Event ev) {
@@ -224,6 +227,11 @@ public class PresetEditor : Window {
 				break;
 		}
 		listView_values[cee.row][1].text.text = str;
+		import midi2.types.structs;
+		import midi2.types.enums;
+		if (!checkBox_Globals.isChecked)
+			editedModule.midiReceive(UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.PrgCh, 0), 
+					((presetID & 127)<<24) | ((presetID>>7) & 0x7F) | ((presetID>>14)<<8));
 		//listView_values.refresh();
 	}
 }
