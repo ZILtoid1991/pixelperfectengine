@@ -930,6 +930,12 @@ public class QM816 : AudioModule {
 		for (int i ; i < 4 ; i++) {
 			resetLPF(i);
 			resetHPF(i);
+			filterVals[6][i] = 0;
+			filterVals[7][i] = 0;
+			filterVals[8][i] = 0;
+			filterVals[9][i] = 0;
+			hpfVals[6][i] = 0;
+			hpfVals[7][i] = 0;
 		}
 		aLFO_y1 = 0;
 		setALFO();
@@ -953,10 +959,10 @@ public class QM816 : AudioModule {
 		filterVals[3][i] = vals.b0;
 		filterVals[4][i] = vals.b1;
 		filterVals[5][i] = vals.b2;
-		filterVals[6][i] = 0;
-		filterVals[7][i] = 0;
-		filterVals[8][i] = 0;
-		filterVals[9][i] = 0;
+		//filterVals[6][i] = 0;
+		//filterVals[7][i] = 0;
+		//filterVals[8][i] = 0;
+		//filterVals[9][i] = 0;
 	}
 	protected void resetHPF(int i) @nogc @safe pure nothrow {
 		BiquadFilterValues hpf = createHPF(sampleRate, hpfCtrl[i * 2], hpfCtrl[(i * 2) + 1]);
@@ -966,8 +972,8 @@ public class QM816 : AudioModule {
 		hpfVals[3][i] = hpf.b0;
 		hpfVals[4][i] = hpf.b1;
 		hpfVals[5][i] = hpf.b2;
-		hpfVals[6][i] = 0;
-		hpfVals[7][i] = 0;
+		//hpfVals[6][i] = 0;
+		//hpfVals[7][i] = 0;
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
@@ -3349,27 +3355,35 @@ public class QM816 : AudioModule {
 				return 0;
 			case hashCalc(`_FilterLCFreq`):
 				filterCtrl[0] = value;
+				resetLPF(0);
 				return 0;
 			case hashCalc(`_FilterLCQ`):
 				filterCtrl[1] = value;
+				resetLPF(0);
 				return 0;
 			case hashCalc(`_FilterRCFreq`):
 				filterCtrl[2] = value;
+				resetLPF(1);
 				return 0;
 			case hashCalc(`_FilterRCQ`):
 				filterCtrl[3] = value;
+				resetLPF(1);
 				return 0;
 			case hashCalc(`_FilterACFreq`):
 				filterCtrl[4] = value;
+				resetLPF(2);
 				return 0;
 			case hashCalc(`_FilterACQ`):
 				filterCtrl[5] = value;
+				resetLPF(2);
 				return 0;
 			case hashCalc(`_FilterBCFreq`):
 				filterCtrl[6] = value;
+				resetLPF(3);
 				return 0;
 			case hashCalc(`_FilterBCQ`):
 				filterCtrl[7] = value;
+				resetLPF(3);
 				return 0;
 			case hashCalc(`_HPFLCFreq`):
 				hpfCtrl[0] = value;
