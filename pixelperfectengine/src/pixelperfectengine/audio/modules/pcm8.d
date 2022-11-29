@@ -153,7 +153,7 @@ public class PCM8 : AudioModule {
 		DecoderWorkpad	savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
-		size_t			outPos;				///Position in decoded amount.
+		long			outPos;				///Position in decoded amount with fractions.
 		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
 		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
@@ -207,12 +207,14 @@ public class PCM8 : AudioModule {
 				if (loopBegin) {
 					status |= ChannelStatusFlags.inLoop;
 					savedDWState = decoderWorkpad;
-				} else if (loopEnd)
+				} else if (loopEnd) {
 					decoderWorkpad = savedDWState;
+					outPos = savedDWState.pos<<24;
+				}
 				samplesNeeded -= samplesToDecode;
 				//outPos += samplesToAdvance;
 			}
-			waveModWorkpad.lookupVal &= 0xFF_FF_FF;
+			waveModWorkpad.lookupVal = 0;//&= 0xFF_FF_FF;
 		}
 		///Calculates jump amount for the sample.
 		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
@@ -770,22 +772,30 @@ public class PCM8 : AudioModule {
 				size_t samplesNeeded = bufferSize;
 				size_t outpos;
 				while (samplesNeeded && !(channels[i].currNote & 128)) {
-					///Calculate the amount of samples that are needed for this block
-					size_t samplesToAdvance = (channels[i].waveModWorkpad.lookupVal + (channels[i].jumpAm * samplesNeeded))
-							>>24;
-					if (!(channels[i].outPos & 255)) channels[i].decodeMore(sa, slmp);
-					const size_t decoderBufPos = channels[i].outPos & 255;
-					///Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
-					if (256 - decoderBufPos <= samplesToAdvance){
-						samplesToAdvance -= 256 - decoderBufPos;
+					//Calculate the amount of samples that are needed for this block
+					ulong samplesToAdvance = channels[i].jumpAm * samplesNeeded;
+							//cast(size_t)ceil(
+							/* ((0xFF_FF_FF - (channels[i].waveModWorkpad.lookupVal & 0xFF_FF_FF)) / cast(double)0x1_00_00_00) +  */
+							//((1 / channels[i].freqRatio) * samplesNeeded));
+							//((channels[i].waveModWorkpad.lookupVal & 0xFF_FF_FF) + (channels[i].jumpAm * samplesNeeded))>>24;
+					if ((channels[i].outPos + (channels[i].waveModWorkpad.lookupVal)) >= (channels[i].decoderWorkpad.pos<<24L)) 
+					//if (channels[i].waveModWorkpad.lookupVal + channels[i].jumpAm >= 0x1_00_00_00_00)
+						channels[i].decodeMore(sa, slmp);
+					const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;/* channels[i].waveModWorkpad.lookupVal */
+					//Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
+					if ((256<<24L) - decoderBufPos <= samplesToAdvance){
+						samplesToAdvance = (256<<24L) - decoderBufPos;
 					}
-					const size_t samplesOutputted = min(cast(size_t)round(samplesToAdvance * channels[i].freqRatio), samplesNeeded);
+					//Calculate how many samples will be outputted
+					const size_t samplesOutputted = 
+							cast(size_t)(samplesToAdvance / channels[i].jumpAm);
+							//min(cast(size_t)round(samplesToAdvance * channels[i].freqRatio / (1<<24)), samplesNeeded);
 					//const int bias = channels[i].waveModWorkpad.lookupVal & 0x_FF_FF_FF ? 0 : 1;
 					//stretchAudioNoIterpol(channels[i].decoderBuffer[bias + decoderBufPos..$], iBuf[0..samplesOutputted], 
 					stretchAudioNoIterpol(channels[i].decoderBuffer, iBuf[outpos..outpos + samplesOutputted], 
 							channels[i].waveModWorkpad, channels[i].jumpAm);
 					samplesNeeded -= samplesOutputted;
-					channels[i].outPos += samplesOutputted;
+					channels[i].outPos += samplesToAdvance;
 					outpos += samplesOutputted;
 					//if (samplesNeeded) channels[i].decodeMore(sa, slmp);
 				}
@@ -804,6 +814,7 @@ public class PCM8 : AudioModule {
 							(lfoOut[j] * channels[i].presetCopy.lfoToVol)) * levels;
 					lBuf[j] += sample;
 				}
+				resetBuffer(iBuf);
 			}
 		}
 		float*[4] outBuf;
