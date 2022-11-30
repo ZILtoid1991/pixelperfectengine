@@ -342,6 +342,21 @@ S removeUnallowedSymbols(S)(S input, S symbolList) @safe pure nothrow {
 	}
 	return result;
 }
+S removeUnallowedDups(S)(S input, S symbolList) @safe pure nothrow {
+	S result;
+	S foundDups;
+	foreach (c ; input) {
+		if (count(symbolList, c)) {
+			if (!count(foundDups)) {
+				result ~= c;
+				foundDups ~= c;
+			}
+		} else {
+			result ~= c;
+		}
+	}
+	return result;
+}
 /**
  * Clamps a value between of two.
  */

@@ -33,7 +33,6 @@ public class TextBox : WindowElement, TextInputListener {
 	 */
 	public void setFilter (InputFilter f) {
 		filter = f;
-		filter.target = text;
 	}
 	/**
 	 * Sets an internal input filter
@@ -49,16 +48,16 @@ public class TextBox : WindowElement, TextInputListener {
 			case ASCIIText:
 				break;
 			case Decimal:
-				filter = new DecimalFilter!true(text);
+				filter = new DecimalFilter!true();
 				break;
 			case Integer:
-				filter = new IntegerFilter!true(text);
+				filter = new IntegerFilter!true();
 				break;
 			case DecimalP:
-				filter = new DecimalFilter!false(text);
+				filter = new DecimalFilter!false();
 				break;
 			case IntegerP:
-				filter = new IntegerFilter!false(text);
+				filter = new IntegerFilter!false();
 				break;
 			case Hex:
 				break;

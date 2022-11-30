@@ -969,22 +969,22 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				filter = null;
 				break;
 			case TextInputFieldType.ASCIIText:
-				filter = new ASCIITextFilter(f.text);
+				filter = new ASCIITextFilter();
 				break;
 			case TextInputFieldType.Decimal:
-				filter = new DecimalFilter!true(f.text);
+				filter = new DecimalFilter!true();
 				break;
 			case TextInputFieldType.Integer:
-				filter = new IntegerFilter!true(f.text);
+				filter = new IntegerFilter!true();
 				break;
 			case TextInputFieldType.DecimalP:
-				filter = new DecimalFilter!false(f.text);
+				filter = new DecimalFilter!false();
 				break;
 			case TextInputFieldType.IntegerP:
-				filter = new IntegerFilter!false(f.text);
+				filter = new IntegerFilter!false();
 				break;
 			case TextInputFieldType.Hex:
-				filter = new HexadecimalFilter(f.text);
+				filter = new HexadecimalFilter();
 				break;
 			case TextInputFieldType.Oct:
 				break;

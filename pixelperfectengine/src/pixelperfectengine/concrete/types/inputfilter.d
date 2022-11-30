@@ -1,7 +1,7 @@
 module pixelperfectengine.concrete.types.inputfilter;
 
 import pixelperfectengine.graphics.text : Text;
-import pixelperfectengine.system.etc : removeUnallowedSymbols;
+import pixelperfectengine.system.etc : removeUnallowedSymbols, removeUnallowedDups;
 
 import std.algorithm.searching : count;
 
@@ -9,8 +9,7 @@ import std.algorithm.searching : count;
  * Defines the basic layout for an input filter.
  */
 public abstract class InputFilter {
-	///The targeted text.
-	Text	target;
+	
 	/**
 	 * Uses this input filter on the provided text.
 	 */
@@ -20,38 +19,40 @@ public abstract class InputFilter {
  * Implements an integer input filter.
  */
 public class IntegerFilter(bool AllowNegative = true) : InputFilter {
+	static immutable dstring symbolList = "0123456789";
+	static immutable dstring symbolListWMinus = "-0123456789";
 	///Creates an instance of this kind of filter
-	public this (Text target) @safe {
-		this.target = target;
+	public this () @safe {
 	}
 	public override void use(ref dstring input) @safe {
-		dstring symbolList = "0123456789", curr = target.text;
 		static if (AllowNegative) {
-			symbolList ~= "-";
+			input = removeUnallowedSymbols(input[0..1], symbolListWMinus) ~ removeUnallowedSymbols(input[1..$], symbolList);
+		} else {
+			input = removeUnallowedSymbols(input, symbolList);
 		}
-		input = removeUnallowedSymbols(input, symbolList);
 	}
 }
 /**
  * Implements an decimal input filter.
  */
 public class DecimalFilter(bool AllowNegative = true) : InputFilter {
+	static immutable dstring symbolList = "0123456789";
+	static immutable dstring symbolListWMinus = "-0123456789";
 	///Creates an instance of this kind of filter
-	public this (Text target) @safe {
-		this.target = target;
+	public this () @safe {
 	}
 	public override void use(ref dstring input) @safe {
-		dstring symbolList = "0123456789.,", curr = target.text;
 		static if (AllowNegative) {
-			symbolList ~= "-";
+			input = removeUnallowedSymbols(input[0..1], symbolListWMinus) ~ removeUnallowedSymbols(input[1..$], symbolList);
+		} else {
+			input = removeUnallowedSymbols(input, symbolList);
 		}
-		input = removeUnallowedSymbols(input, symbolList);
+		input = removeUnallowedDups(input, ".");
 	}
 }
 public class HexadecimalFilter : InputFilter {
 	///Creates an instance of this kind of filter
-	public this (Text target) @safe {
-		this.target = target;
+	public this () @safe {
 	}
 	public override void use(ref dstring input) @safe {
 		dstring symbolList = "0123456789ABCDEFabcdef";
@@ -65,8 +66,7 @@ public class ASCIITextFilter : InputFilter {
 			SYMBOL_LIST ~= c;
 		}
 	}
-	public this (Text target) @safe {
-		this.target = target;
+	public this () @safe {
 	}
 	public override void use(ref dstring input) @safe {
 		input = removeUnallowedSymbols(input, SYMBOL_LIST);
