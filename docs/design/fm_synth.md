@@ -6,6 +6,16 @@
 
 # Operator
 
+## Theory of operation
+
+This synth uses the Chowning-formula most commonly associated with phase modulation (Digital FM and Phase Distortion) synthesis engines.
+
+Simplified formula of such engines for two operators and sine waveforms is:
+
+y = a₁ * sin(x * n₁ + a₂ * sin(x * n²))                (a = amplitude of the given operator ; n = freqency multiplier)
+
+One can manipulate the waveform of the carrier (1) by manipulating the amplitude and frequency of the modulator (2), thus making the waveform richer in upper harmonics. By using a frequency multiplier of 2 for the modulator, the carrier can be turned into a square wave. 
+
 ## Diagram
 
 ```
@@ -105,9 +115,9 @@ Notation: [bit index in parameter settings]{bit index in the operator itself}
 
 The operators use the following formula to generate tone:
 
-`out = wavetable[((step>>21) + (in>>2) + (fb>>3)) & 1023]`
+`out = wavetable[((step>>22) + (in>>2) + (fb>>3)) & 1023]`
 
-where `wavetable` is a waveform selected from 128 waveforms shared between the operators (both predefined and user-supplied), `step` is the current position of the the oscillator with 21 bits of fraction, `in` is the input from other operators (if any), `fb` is feedback (global feedback also goes there).
+where `wavetable` is a waveform selected from 128 waveforms shared between the operators (both predefined and user-supplied), `step` is the current position of the the oscillator with 22 bits of fraction, `in` is the input from other operators (if any), `fb` is feedback (global feedback also goes there).
 
 For each cycle, increment `step` by `rate`, and let it overflow, generating a continuous cycle.
 
@@ -168,6 +178,8 @@ Numbers in square brackets mean number of unregistered parameter. Curly brackets
 * `ResetMode` [10]: If set, reset only occurs if all operator envelops reached the off position.
 * `FBMode` [11]: If set, then channel feedback will bypass the source operator's envelop control
 * `FBNeg` [12]: If set, then the feedback is inverted.
+* `ResMode` [13]: Enables resonant mode on select algorithms.
+* `ResSrc` [14]: Toggles the source for the resonant oscillator on algorithm 3/10
 
 ## Algorithms and channel combinations
 
@@ -270,6 +282,12 @@ Later on, there will be some further explanations for the algorithms.
 
 Pitch, and output can be set only with the lower half's parameters, either envelop can be set to change output levels if needed. Lower half's envelop can only affect P0 and P1 operators, upper half only affects S0 and S1.
 
+### Resonant mode
+
+The resonant mode can mimic the resonant waveforms of phase distortion synthesis engines, but with greater control over the waveform, and can generate a resonant form of any waveform, including the result of phase modulation synthesis. It is available on M0/1, M1/01, M1/11, M3/10, M3/11, with the last one has an additional ability of selecting between two sources (P1 output or S0 output).
+
+In this mode, the output levels of P1 (or S1 in case of Mode 3) control the amount of resonance output. Since the source is taken from the unattenuated output of the source oscillator, its output does not affect the output levels of the resonant waveform, and can be turned off completely if the original waveform is not wanted in the audio output.
+
 # Global settings
 
 The synth shares two LFOs (tremolo and vibrato) and four filters between channels. MSB 16 selects global parameters on any channel.
@@ -305,4 +323,4 @@ The synth shares two LFOs (tremolo and vibrato) and four filters between channel
 * Use of both user- and pre-defined wavetables.
 * All operators have feedback capabilities, for both to have more tonal capabilities and to ease the confusions around algorithms where the main difference is different operators having the feedback loop.
 * Almost all algorithms have one "channel feedback" instead of often having to choose between a single operator or channel feedback.
-* In theory, the synth can emulate the resonant waveforms of the Casio CZ series, either by loading them as custom waveforms, or by applying sine-wave ring modulation to the output. The latter is more adjustable.
+* Its resonant-mode can mimic the resonant waveforms of phase distortion synthesis engines, but without the 8 stage envelop for output level control, but might has more control in other aspects.
