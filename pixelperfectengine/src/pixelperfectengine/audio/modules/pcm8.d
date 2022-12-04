@@ -9,6 +9,7 @@ import pixelperfectengine.audio.base.osc;
 import pixelperfectengine.system.etc : min;
 
 import std.math;
+import core.stdc.string;
 
 import collections.treemap;
 
@@ -154,6 +155,7 @@ public class PCM8 : AudioModule {
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
 		long			outPos;				///Position in decoded amount with fractions.
+		uint			decodeAm;			///Decoded amount
 		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
 		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
@@ -181,7 +183,9 @@ public class PCM8 : AudioModule {
 				return;
 			}
 			//Determine how much samples we will need.
-			size_t samplesNeeded = 256;
+			size_t samplesNeeded = 128;
+			//Determine offset based on which cycle we will need
+			size_t offset = decodeAm & 0x80 ? 128 : 0;
 			
 			const bool keyOn = (status & 1) == 1;
 			const bool isLooping = (sa.loopBegin != -1 && sa.loopEnd != -1) && ((sa.loopEnd - sa.loopBegin) > 0) && keyOn;
@@ -190,9 +194,10 @@ public class PCM8 : AudioModule {
 			if (!isLooping && (decoderWorkpad.pos + samplesNeeded >= slmp.samplesLength())) {
 				samplesNeeded -= decoderWorkpad.pos + samplesNeeded - slmp.samplesLength();
 				status |= ChannelStatusFlags.sampleRunout;
-				for (size_t i = samplesNeeded ; i < 256 ; i++) 
-					decoderBuffer[i] = 0;
+				for (size_t i = samplesNeeded ; i < 128 ; i++) 
+					decoderBuffer[offset + i] = 0;
 			}
+			size_t dPos = offset;	//Decoder position
 			while (samplesNeeded > 0) {
 				//Case 2: sample might enter the beginning or the end of the loop.
 				//If loop is short enough, it can happen multiple times
@@ -201,9 +206,7 @@ public class PCM8 : AudioModule {
 				const bool loopEnd = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopEnd);
 				const size_t samplesToDecode = loopBegin ? decoderWorkpad.pos + samplesNeeded - sa.loopBegin : (loopEnd ? 
 						decoderWorkpad.pos + samplesNeeded - sa.loopEnd : samplesNeeded);
-				//slmp.decode(slmp.sampleData, decoderBuffer[1..samplesNeeded + 1], decoderWorkpad);
-				//slmp.decode(slmp.sampleData, decoderBuffer[0..samplesNeeded], decoderWorkpad);
-				slmp.decode(slmp.sampleData, decoderBuffer[0..samplesToDecode], decoderWorkpad);
+				slmp.decode(slmp.sampleData, decoderBuffer[dPos..offset + samplesToDecode], decoderWorkpad);
 				if (loopBegin) {
 					status |= ChannelStatusFlags.inLoop;
 					savedDWState = decoderWorkpad;
@@ -212,9 +215,10 @@ public class PCM8 : AudioModule {
 					outPos = savedDWState.pos<<24;
 				}
 				samplesNeeded -= samplesToDecode;
+				dPos += samplesToDecode;
+				decodeAm += samplesToDecode;
 				//outPos += samplesToAdvance;
 			}
-			waveModWorkpad.lookupVal = 0;//&= 0xFF_FF_FF;
 		}
 		///Calculates jump amount for the sample.
 		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
@@ -225,6 +229,7 @@ public class PCM8 : AudioModule {
 		void reset() @nogc @safe pure nothrow {
 			outPos = 0;
 			status = 0;
+			decodeAm = 0;
 			decoderWorkpad = DecoderWorkpad.init;
 			savedDWState = DecoderWorkpad.init;
 			waveModWorkpad = WavemodWorkpad.init;
@@ -783,8 +788,8 @@ public class PCM8 : AudioModule {
 						channels[i].decodeMore(sa, slmp);
 					const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;/* channels[i].waveModWorkpad.lookupVal */
 					//Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
-					if ((256<<24L) - decoderBufPos <= samplesToAdvance){
-						samplesToAdvance = (256<<24L) - decoderBufPos;
+					if ((128<<24L) - decoderBufPos <= samplesToAdvance){
+						samplesToAdvance = (128<<24L) - decoderBufPos;
 					}
 					//Calculate how many samples will be outputted
 					const size_t samplesOutputted = 
@@ -1122,9 +1127,9 @@ public class PCM8 : AudioModule {
 			MValue(MValueType.Float, 0x00_0C, "velToAuxSendAm"), MValue(MValueType.Float, 0x00_0D, "velToAtkShp"),
 			MValue(MValueType.Float, 0x00_0E, "velToRelShp"), MValue(MValueType.Float, 0x00_0F, "adsrToVol"),
 			MValue(MValueType.Int32, 0x00_10, "flags"),
-			MValue(MValueType.Boolean, 0x00_10, "f_cutoffOnKeyOff"),
-			MValue(MValueType.Boolean, 0x00_11, "f_modwheelToLFO"),
-			MValue(MValueType.Boolean, 0x00_12, "f_panningLFO"),
+			MValue(MValueType.Boolean, 0x00_11, "f_cutoffOnKeyOff"),
+			MValue(MValueType.Boolean, 0x00_12, "f_modwheelToLFO"),
+			MValue(MValueType.Boolean, 0x00_13, "f_panningLFO"),
 			/* MValue(MValueType.Boolean, 0x00_13, "f_ADSRtoVol"), */
 		] ~ SAMPLE_SET_VALS.dup ~ [
 			MValue(MValueType.Float, 0x80_00, `_FilterLCFreq`), MValue(MValueType.Float, 0x80_01, `_FilterLCQ`),
