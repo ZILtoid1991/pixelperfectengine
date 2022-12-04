@@ -15,7 +15,7 @@ import pixelperfectengine.system.input;             //This gives us to read user
 import pixelperfectengine.system.systemutility;     //It has the INIT_CONCRETE() function, important for setting and loading standards for Concrete.
 import pixelperfectengine.system.file;              //Bitmap file loading
 import pixelperfectengine.system.common;            //Has the initialzeSDL() function, needed for the engine to function as of now (might be replaced with INIT_IOTA() in the future)
-import pixelperfectengine.system.timer;             //Not mandatory, but lack of timer.test() calls make certain GUI events not work.
+import pixelperfectengine.system.timer;             //Not mandatory, but a lack of timer.test() calls make certain GUI events not work.
 
 import core.thread;                                 //Imported due to the Thread.sleep() function, only needed for reduced raster refresh operations.
 
@@ -35,6 +35,7 @@ class SampleApp : InputListener, SystemEventListener {
     SpriteLayer			sprtL;
     WindowHandler		wh;
     InputHandler        ih;
+    //The next two are bitflags, can be unified into a single word to save on memory.
     bool                isRunning;
     bool                flipScreen;
     /// Initializes every other things that wasn't initialized in other places.
@@ -56,7 +57,7 @@ class SampleApp : InputListener, SystemEventListener {
         //Delete the next two lines if you want refresh on every frame!
         WindowElement.onDraw = &rasterRefresh;                      //Sets the draw event output of the window elements to a function of this class.
         Window.onDrawUpdate = &rasterRefresh;                       //Sets the draw event output of the windows to a function of this class.
-        isRunning = true;                                           //Set isRunning to true
+        isRunning = true;                                           //Set isRunning to true, so the main loop will stay running.
 
         //Add your initial windows to the window handler here!
     }
