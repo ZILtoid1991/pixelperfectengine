@@ -46,34 +46,34 @@ package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @sys
  * Throws: A LuaException if the return type isn't matched, the execution ran into an error, or the function isn't 
  * found.
  */
-public T callLuaFunc(T, funcName)(lua_State* state, ...) @system {
+public T callLuaFunc(T, string funcName)(lua_State* state, ...) @system {
 	lua_getglobal(state, funcName);
-	if (!lua_isfunction(state, LUA_TOP))
+	if (!lua_isfunction(state, 0 /* LUA_TOP */))
 		throw new LuaException(8,"Function not found");
-	static foreach (arg; _arguments) {
-		static if (arg == typeid(byte)) {
+	foreach (arg; _arguments) {
+		if (arg == typeid(byte)) {
 			lua_pushinteger(state, va_arg!byte(_argptr));
-		} else static if (arg == typeid(short)) {
+		} else if (arg == typeid(short)) {
 			lua_pushinteger(state, va_arg!short(_argptr));
-		} else static if (arg == typeid(int)) {
+		} else if (arg == typeid(int)) {
 			lua_pushinteger(state, va_arg!int(_argptr));
-		} else static if (arg == typeid(long)) {
+		} else if (arg == typeid(long)) {
 			lua_pushinteger(state, va_arg!long(_argptr));
-		} else static if (arg == typeid(ushort)) {
+		} else if (arg == typeid(ushort)) {
 			lua_pushinteger(state, va_arg!ushort(_argptr));
-		} else static if (arg == typeid(uint)) {
+		} else if (arg == typeid(uint)) {
 			lua_pushinteger(state, va_arg!uint(_argptr));
-		} else static if (arg == typeid(ubyte)) {
+		} else if (arg == typeid(ubyte)) {
 			lua_pushinteger(state, va_arg!ubyte(_argptr));
-		} else static if (arg == typeid(bool)) {
+		} else if (arg == typeid(bool)) {
 			lua_pushboolean(state, va_arg!bool(_argptr));
-		} else static if (arg == typeid(double)) {
+		} else if (arg == typeid(double)) {
 			lua_pushnumber(state, va_arg!double(_argptr));
-		} else static if (arg == typeid(string)) {
+		} else if (arg == typeid(string)) {
 			lua_pushstring(state, toStringz(va_arg!string(_argptr)));
-		} else static if (arg == typeid(LuaVar)) {
+		} else if (arg == typeid(LuaVar)) {
 			va_arg!LuaVar(_argptr).pushToLuaState(state);
-		} else static assert(0, "Argument not supported!");
+		} else assert(0, "Argument not supported!");
 	}
 	int errorCode = lua_pcall(state, cast(int)_arguments.length, is(T == void) ? 0 : 1, 0);
 	static if (!is(T == void)) {
@@ -428,7 +428,7 @@ public class LuaScript {
 	this(string source, const(char*) name) {
 		this.source = source;
 		state = lua_newstate(&luaAllocator, null);
-		const int errorCode;// = lua_load(state, &reader, cast(void*)this, name, null);
+		const int errorCode = lua_load(state, &reader, cast(void*)this, name, null);
 		switch (errorCode) {
 			default:
 				break;
@@ -445,9 +445,9 @@ public class LuaScript {
 	public lua_State* getState() @nogc nothrow pure {
 		return state;
 	}
-	/+public LuaVar runMain() {
-		//return callLuaFunc!(LuaVar, "main")(state);
-	}+/
+	public LuaVar runMain() {
+		return callLuaFunc!(LuaVar, "main")(state);
+	}
 	extern(C)
 	private static const(char*) reader(lua_State* st, void* data, size_t* size) nothrow {
 		LuaScript ls = cast(LuaScript)data;
