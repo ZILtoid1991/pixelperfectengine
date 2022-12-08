@@ -727,8 +727,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				foreach (size_t i, ListViewItem.Field f ; entries[selection].fields) {
 					if (f.editable) {
 						hSelection = cast(int)i;
-						if (vertSlider) textArea.top -= vertSlider.value;
-						if (horizSlider) textArea.left -= horizSlider.value;
+						
 						
 						with (textArea) {
 							bottom = entries[selection].height + textArea.top;
@@ -744,10 +743,20 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 						//oldText = text;
 						if (flags & MULTICELL_EDIT_EN) {
 							if (textArea.left < mce.x && textArea.right > mce.x) {
+								if (vertSlider) {
+									textArea.top -= vertSlider.value;
+									textArea.bottom = entries[selection].height + textArea.top;
+								}
+								if (horizSlider) textArea.left -= horizSlider.value;
 								inputHandler.startTextInput(this);
 								break;
 							}
 						} else {
+							if (vertSlider) {
+								textArea.top -= vertSlider.value;
+								textArea.bottom = entries[selection].height + textArea.top;
+							}
+							if (horizSlider) textArea.left -= horizSlider.value;
 							inputHandler.startTextInput(this);
 							break;
 						}
@@ -794,6 +803,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	}
 	///Passes mouse scroll event
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		mwe.y *= 7;
 		if (state != ElementState.Enabled) return;
 		if (horizSlider) horizSlider.passMWE(mec, mwe);
 		if (vertSlider) vertSlider.passMWE(mec, mwe);
