@@ -36,8 +36,8 @@ public class IntegerFilter(bool AllowNegative = true) : InputFilter {
  * Implements an decimal input filter.
  */
 public class DecimalFilter(bool AllowNegative = true) : InputFilter {
-	static immutable dstring symbolList = "0123456789";
-	static immutable dstring symbolListWMinus = "-0123456789";
+	static immutable dstring symbolList = "0123456789.";
+	static immutable dstring symbolListWMinus = "-0123456789.";
 	///Creates an instance of this kind of filter
 	public this () @safe {
 	}

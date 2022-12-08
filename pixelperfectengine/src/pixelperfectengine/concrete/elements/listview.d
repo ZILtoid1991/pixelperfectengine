@@ -832,10 +832,6 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			text = removeUnallowedSymbols(text, allowedChars);
 			if (!text.length) return;
 		}+/
-		if (filter) {
-			filter.use(text);
-			if (!text.length) return;
-		}
 		if (tselect) {
 			this.text.removeChar(cursorPos, tselect);
 			tselect = 0;
@@ -850,6 +846,12 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			for(int j ; j < text.length ; j++){
 				this.text.insertChar(cursorPos++, text[j]);
 			}
+		}
+		if (filter) {
+			dstring s = this.text.text;
+			filter.use(s);
+			this.text.text = s;
+			cursorPos = min(cursorPos, cast(uint)this.text.charLength);
 		}
 		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
 		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
