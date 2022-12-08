@@ -536,7 +536,7 @@ public class PCM8 : AudioModule {
 					resetLPF(0);
 					break;
 				case 3:
-					filterCtrl[1] = (1.0 / uint.max) * val * 2;
+					filterCtrl[1] = (1.0 / uint.max) * val * 40;
 					resetLPF(0);
 					break;
 				case 4:
@@ -544,7 +544,7 @@ public class PCM8 : AudioModule {
 					resetLPF(1);
 					break;
 				case 5:
-					filterCtrl[3] = (1.0 / uint.max) * val * 2;
+					filterCtrl[3] = (1.0 / uint.max) * val * 40;
 					resetLPF(1);
 					break;
 				case 6:
@@ -552,7 +552,7 @@ public class PCM8 : AudioModule {
 					resetLPF(2);
 					break;
 				case 7:
-					filterCtrl[5] = (1.0 / uint.max) * val * 2;
+					filterCtrl[5] = (1.0 / uint.max) * val * 40;
 					resetLPF(2);
 					break;
 				case 8:
@@ -560,7 +560,7 @@ public class PCM8 : AudioModule {
 					resetLPF(3);
 					break;
 				case 9:
-					filterCtrl[7] = (1.0 / uint.max) * val * 2;
+					filterCtrl[7] = (1.0 / uint.max) * val * 40;
 					resetLPF(3);
 					break;
 				case 10:

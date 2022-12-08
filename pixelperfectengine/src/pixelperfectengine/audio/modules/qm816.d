@@ -1918,7 +1918,7 @@ public class QM816 : AudioModule {
 
 				void setFilterQ(int num) @nogc @safe pure nothrow {
 					const double valF = cast(double)val / uint.max;
-					filterCtrl[num] = valF * 2;
+					filterCtrl[num] = valF * 40;
 				}
 
 				switch (paramNum[0]) {
