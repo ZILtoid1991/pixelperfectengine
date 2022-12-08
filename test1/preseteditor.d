@@ -30,15 +30,15 @@ public class PresetEditor : Window {
 				"listView_presets", Box(5, 20, 230, 100));
 		listView_values = new ListView(new ListViewHeader(16, [200, 100], ["Name" ,"Value"]), null, "listView_values", 
 				Box(5, 105, 325, 325));
-		smallButtons ~= new SmallButton("loadB", "loadA", "load", Box(236, 20, 251, 35));
-		smallButtons ~= new SmallButton("saveB", "saveA", "save", Box(252, 20, 267, 35));
-		smallButtons ~= new SmallButton("importB", "importA", "import", Box(268, 20, 283, 36));
-		smallButtons ~= new SmallButton("exportB", "exportA", "export", Box(284, 20, 299, 36));
+		//smallButtons ~= new SmallButton("loadB", "loadA", "load", Box(236, 20, 251, 35));
+		//smallButtons ~= new SmallButton("saveB", "saveA", "save", Box(252, 20, 267, 35));
+		//smallButtons ~= new SmallButton("importB", "importA", "import", Box(268, 20, 283, 36));
+		//smallButtons ~= new SmallButton("exportB", "exportA", "export", Box(284, 20, 299, 36));
 
 		smallButtons ~= new SmallButton("addB", "addA", "add", Box(236, 36, 251, 51));
 		smallButtons ~= new SmallButton("removeB", "removeA", "remove", Box(252, 36, 267, 51));
 		checkBox_Globals = new CheckBox("globalsB", "globalsA", "globals", Box(268, 36, 283, 51));
-		smallButtons ~= new SmallButton("macroB", "macroA", "macro", Box(284, 36, 299, 51));
+		//smallButtons ~= new SmallButton("macroB", "macroA", "macro", Box(284, 36, 299, 51));
 
 		listView_presets.editEnable = true;
 		listView_presets.multicellEditEnable = true;
@@ -177,18 +177,20 @@ public class PresetEditor : Window {
 			case String:
 				editedModule.writeParam_string(presetID, currparam.id, toUTF8(str));
 				string newVal = editedModule.readParam_string(presetID, currparam.id); //str = toUTF32(editedModule.readParam_string(presetID, currparam.id));
-				listView_values[cee.row][1] = ListViewItem.Field();
+				str = toUTF32(newVal);
+				listView_values[cee.row] = new ListViewItem(16, [toUTF32(currparam.name), str], 
+						[TextInputFieldType.None, TextInputFieldType.Text]);
 				if (currparam.idType)
 					adk.eventStack.addToTop(new EditPresetParameterEvent(mcfg, newVal, currparam.id, editedModID, presetID, 
 							presetName));
 				else
 					adk.eventStack.addToTop(new EditPresetParameterEvent(mcfg, newVal, currparam.name, editedModID, presetID, 
 							presetName));
-				str = toUTF32(newVal);
 				break;
 			case Int32, Boolean:
 				editedModule.writeParam_int(presetID, currparam.id, to!int(str));
 				int newVal = editedModule.readParam_int(presetID, currparam.id); //str = to!dstring(editedModule.readParam_int(presetID, currparam.id));
+				str = to!dstring(newVal);
 				listView_values[cee.row] = new ListViewItem(16, [toUTF32(currparam.name), str], 
 						[TextInputFieldType.None, TextInputFieldType.Integer]);
 				if (currparam.idType)
@@ -197,11 +199,11 @@ public class PresetEditor : Window {
 				else
 					adk.eventStack.addToTop(new EditPresetParameterEvent(mcfg, newVal, currparam.name, editedModID, presetID, 
 							presetName));
-				str = to!dstring(newVal);
 				break;
 			case Int64:
 				editedModule.writeParam_long(presetID, currparam.id, to!long(str));
 				long newVal = editedModule.readParam_long(presetID, currparam.id); //str = to!dstring(editedModule.readParam_long(presetID, currparam.id));
+				str = to!dstring(newVal);
 				listView_values[cee.row] = new ListViewItem(16, [toUTF32(currparam.name), str], 
 						[TextInputFieldType.None, TextInputFieldType.Integer]);
 				if (currparam.idType)
@@ -210,23 +212,22 @@ public class PresetEditor : Window {
 				else
 					adk.eventStack.addToTop(new EditPresetParameterEvent(mcfg, newVal, currparam.name, editedModID, presetID, 
 							presetName));
-				str = to!dstring(newVal);
 				break;
 			case Float:
 				editedModule.writeParam_double(presetID, currparam.id, to!double(str));
 				double newVal = editedModule.readParam_double(presetID, currparam.id); //str = to!dstring(editedModule.readParam_double(presetID, currparam.id));
+				str = to!dstring(newVal);
 				listView_values[cee.row] = new ListViewItem(16, [toUTF32(currparam.name), str], 
-						[TextInputFieldType.None, TextInputFieldType.Integer]);
+						[TextInputFieldType.None, TextInputFieldType.Decimal]);
 				if (currparam.idType)
 					adk.eventStack.addToTop(new EditPresetParameterEvent(mcfg, newVal, currparam.id, editedModID, presetID, 
 							presetName));
 				else
 					adk.eventStack.addToTop(new EditPresetParameterEvent(mcfg, newVal, currparam.name, editedModID, presetID, 
 							presetName));
-				str = to!dstring(newVal);
 				break;
 		}
-		listView_values[cee.row][1].text.text = str;
+		//listView_values[cee.row][1].text.text = str;
 		import midi2.types.structs;
 		import midi2.types.enums;
 		if (!checkBox_Globals.isChecked)
