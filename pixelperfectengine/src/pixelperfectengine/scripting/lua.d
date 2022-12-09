@@ -24,6 +24,7 @@ public bool initLua() {
 	LuaSupport ver = loadLua();
 	return ver == LuaSupport.lua54;
 }
+///A default allocator for Lua.
 extern(C)
 package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @system nothrow {
 	import core.memory;
@@ -134,6 +135,14 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
 		return 1;
 	}
 }
+/** 
+ * Registers a D delegate to be called from Lua.
+ * Code is modified from MrcSnm's example found in the HipremeEngine.
+ * Params:
+ *   state = The Lua state to handle the data from the Lua side of things.
+ * Template params:
+ *   Func = The function to be registered.
+ */
 extern (C) public int registerDDelegate(alias Func)(lua_State* state) nothrow
 		if(isSomeFunction!(Func)) {
 	import std.traits:Parameters, ReturnType;
@@ -448,12 +457,19 @@ public class LuaScript {
 		}
 		registerLibForScripting(state);
 	}
+	///Automatically deallocates the lua_State variable.
 	~this() {
 		lua_close(state);
 	}
+	///Returns the lua_State variable for any manual use.
 	public lua_State* getState() @nogc nothrow pure {
 		return state;
 	}
+	/**
+	 * Executes the main function of the scipt.
+	 * Returns: A LuaVar variable with the appropriate return value if there was any.
+	 * Throws: A LuaException if the execution ran into an error, or the function isn't found.
+	 */
 	public LuaVar runMain() {
 		return callLuaFunc!(LuaVar, "main")(state);
 	}
@@ -470,7 +486,9 @@ public class LuaScript {
 		}
 	}
 }
-
+/**
+ * Thrown on errors encountered during Lua script execution.
+ */
 public class LuaException : PPEException {
 	public int errorCode;
 	///
