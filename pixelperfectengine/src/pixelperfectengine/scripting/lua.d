@@ -421,12 +421,19 @@ public struct LuaVar {
 
 alias LuaTable = LinkedMap!(LuaVar, LuaVar);
 /**
- * Implements an interface to the lua_State* variable with automatic garbage management.
+ * Implements an interface to the lua_State* variable with automatic garbage management and some basic functionality.
  */
 public class LuaScript {
 	protected lua_State*		state;
 	protected string			source;
 	protected bool				isLoaded;
+	/**
+	 * Initializes a Lua script from the provided source code.
+	 * Params:
+	 *   source = The source code of the script file.
+	 *   name = The name of the file.
+	 * Throws: LuaException, if either a syntax or memory error was encountered.
+	 */
 	this(string source, const(char*) name) {
 		this.source = source;
 		state = lua_newstate(&luaAllocator, null);
