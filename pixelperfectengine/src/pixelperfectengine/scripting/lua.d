@@ -142,6 +142,8 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
  *   state = The Lua state to handle the data from the Lua side of things.
  * Template params:
  *   Func = The function to be registered.
+ * Note: When calling a D delegate from Lua, the first parameter is always a light user data
+ * containing the class instance that the delegate should be executed on.
  */
 extern (C) public int registerDDelegate(alias Func)(lua_State* state) nothrow
 		if(isSomeFunction!(Func)) {
@@ -188,6 +190,7 @@ extern (C) public int registerDDelegate(alias Func)(lua_State* state) nothrow
 }
 ///Contains the pointer to the exception thrown by a D function called from the Lua side.
 public static Exception lastLuaToDException;
+///Fetches a value from a lua_State variable.
 package T luaGetFromIndex(T)(lua_State* L, int ind) {
 	static if(isIntegral!T || isSomeChar!T) {
 		if (!lua_isinteger(L, ind)) 
@@ -219,6 +222,9 @@ package T luaGetFromIndex(T)(lua_State* L, int ind) {
 	} else static assert(0, "Type not supported!");
 	
 }
+/**
+ * Contains type identifiers related to Lua.
+ */
 public enum LuaVarType {
 	Null,
 	Boolean,
@@ -234,17 +240,22 @@ public enum LuaVarType {
  * Implements a Lua variable with all the underlying stuff required for it.
  */
 public struct LuaVar {
+	///Contains the type of the given Lua variable.
 	private LuaVarType		_type;
 	private union {
 		void*				dataPtr;
 		long				dataInt;
 		double				dataNum;
 	}
+	///Creates a Lua variable of type `void`.
 	public static LuaVar voidType() @safe pure nothrow {
 		LuaVar result;
 		result._type = LuaVarType.Null;
 		return result;
 	}
+	/**
+	 * Initializes the value with the type of `val`
+	 */
 	public this(T)(T val) @safe pure nothrow {
 		static if (is(T == void*) || is(T == LuaTable*)) {
 			dataPtr = val;
@@ -265,6 +276,9 @@ public struct LuaVar {
 		}
 		setType!(T);
 	}
+	/**
+	 * Fetches the given index (idx) from the lua_State (state), and initializes a LuaVar based on its type.
+	 */
 	public this(lua_State* state, int idx) nothrow {
 		int type = lua_type(state, idx);
 		switch (type) {
@@ -293,6 +307,7 @@ public struct LuaVar {
 				break;
 		}
 	}
+	///Sets the type of this variable internally.
 	private void setType(T)() @nogc @safe pure nothrow {
 		static if (isIntegral!T || isSomeChar!T) {
 			_type = LuaVarType.Integer;
@@ -310,9 +325,11 @@ public struct LuaVar {
 			_type = LuaVarType.Null;
 		}
 	}
+	///Returns the type held by this stucture.
 	public LuaVarType type() const @nogc @safe pure nothrow {
 		return _type;
 	}
+	///Internal dereference.
 	private T deRef(T)() const @nogc @system pure nothrow {
 		static if (is(T == void*) || is(T == LuaTable*)) {
 			return cast(T)dataPtr;
@@ -326,6 +343,9 @@ public struct LuaVar {
 			return cast(const(char*))dataPtr;
 		} else static assert(0, "Unsupported type!");
 	}
+	/**
+	 * Pushes the struct's value to the given lua_State.
+	 */
 	package void pushToLuaState(lua_State* state) @system nothrow {
 		final switch (_type) with (LuaVarType) {
 			case Null:
@@ -354,6 +374,10 @@ public struct LuaVar {
 				break;
 		}
 	}
+	/**
+	 * Returns the given type of `T`.
+	 * Throws: LuaException in case of type mismatch.
+	 */
 	public T get(T)() const @trusted pure {
 		static if (isIntegral!T) {
 			if (_type == LuaVarType.Integer)
@@ -379,6 +403,9 @@ public struct LuaVar {
 		} else static assert(0, "Type not supported!");
 		throw new LuaException(7, "Wrong type!");
 	}
+	/**
+	 * used to implement an interface with tables in Lua.
+	 */
 	public bool opEquals(const LuaVar other) const @nogc @trusted pure nothrow {
 		if (_type != other._type) return false;
 		switch (_type) {
@@ -396,6 +423,9 @@ public struct LuaVar {
 				return false;
 		}
 	}
+	/**
+	 * Assigns the value to this struct and sets the type if needed.
+	 */
 	public auto opAssign(T)(T val) @safe pure nothrow {
 		static if (is(T == void*) || is(T == LuaTable*)) {
 			dataPtr = val;
@@ -409,6 +439,10 @@ public struct LuaVar {
 		setType!T;
 		return this;
 	}
+	/**
+	 * Casts the type to `T` if possible.
+	 * Throws: LuaException, if implicit type casting is impossible.
+	 */
 	T opCast(T)() const @safe pure {
 		import std.math : nearbyint;
 		static if (isIntegral!T) {
