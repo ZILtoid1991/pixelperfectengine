@@ -420,7 +420,9 @@ public struct LuaVar {
 }
 
 alias LuaTable = LinkedMap!(LuaVar, LuaVar);
-
+/**
+ * Implements an interface to the lua_State* variable with automatic garbage management.
+ */
 public class LuaScript {
 	protected lua_State*		state;
 	protected string			source;
