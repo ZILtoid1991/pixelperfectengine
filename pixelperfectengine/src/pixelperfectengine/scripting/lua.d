@@ -433,8 +433,6 @@ public struct LuaVar {
 			dataInt = val;
 		} else static if (isFloatingPoint!T) {
 			dataNum = val;
-		} else static if (is(T == string)) {
-			dataStr = val;
 		}
 		setType!T;
 		return this;
@@ -456,6 +454,16 @@ public struct LuaVar {
 				return cast(T)dataInt;
 			} else if (_type == LuaVarType.Number) {
 				return cast(T)dataNum;
+			}
+		} else static if (is(T == string)) {
+			string ww() const @system pure {
+				return fromStringz(cast(char*)dataPtr);
+			}
+			string w() const @trusted pure {
+				return ww;
+			}
+			if (_type == LuaVarType.String) {
+				return w;
 			}
 		}
 		return get!T();

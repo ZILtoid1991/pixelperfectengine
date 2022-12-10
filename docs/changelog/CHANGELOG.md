@@ -4,6 +4,10 @@
 
 The engine now has its own RNG using a 64 bit Fibonacci LFSR.
 
+## Preliminary scripting engine and text engine
+
+A scripting engine using Lua, and a text formatting engine using XML has been added.
+
 ## WindowMaker
 
 ListView header editor toolkit is added, also some fixes have been done to code generation.
@@ -31,7 +35,16 @@ a method that is very CPU cache bound.
 
 * QM816: finetuning. Added high-pass filtering, artifacts from applying feedback eliminated.
 * QM816: Fixes to previously untested functionality.
+* QM816: Low-pass filtering resonance range change.
+* QM816: Added "resonant mode" capable of "ring modulating" two oscillators connected in parallel.
+* PCM8: Now it works!
 * `@nogc` removed from all parameter recall functions, parameter editing functionality added.
+
+### Audio configuration
+
+An audio configuration file format has been added (see `docs/formats/modulesetup.md`) and a configuration/test tool has 
+been created under the name "PixelPerfectEngine Audio Development Kit". Currently it's an early prototype, and as such
+many capabilities are currently missing from it.
 
 ## Other changes
 
@@ -43,6 +56,7 @@ correct jitter errors.
 ## Bug fixes
 
 * SpriteLayer: When adding a scaled sprite to the layer, it didn't set the correct size. Now it does.
+* ListView: Multicell editing bug fixed.
 
 # 0.10.0-beta6
 

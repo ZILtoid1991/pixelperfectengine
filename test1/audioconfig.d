@@ -81,8 +81,10 @@ public class AudioConfig : Window {
 
 			if (listView_MidiDev.value != -1) {
 				const int midiErrCode = openMIDIInput(app.midiIn, listView_MidiDev.value);
-				app.midiIn.midiInCallback = &app.midiInCallback;
-				app.midiIn.start();
+				if (app.midiIn !is null) {
+					app.midiIn.midiInCallback = &app.midiInCallback;
+					app.midiIn.start();
+				}
 			}
 		} catch (Exception e) {
 			handler.message("Audio initialization error!", toUTF32(e.msg));

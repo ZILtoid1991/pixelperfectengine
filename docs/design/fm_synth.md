@@ -36,13 +36,52 @@ One can manipulate the waveform of the carrier (1) by manipulating the amplitude
     |  --------------- |[ADSREnvGen]
     |------------------|
 ```
+
+## Envelop generators
+
+```
+     /\
+    /  \
+   /    \_______
+  /             \
+ /               \
+/                 \
+A    |D  |S     |R
+```
+
+All time values are exponential (y = x¹∙⁸ if 0⩽x⩽2), except for the sustain control.
+
+### Envelop shaping
+
+The envelop generator can be shaped with a shaping value, using a fast and inaccurate power of x function. The general formula is `fastpow(x, shp)`, where x is between 0 and 1, and shp is between 0.5 and 3.5, with 2 being the default. There's two shaping values, one for the attack stage, one for the rest, the latter one is also affects the sustain level.
+
+### Attack stage
+
+The attack stage is the initial stage of the envelop generation. When a note-on command is received on MIDI, the channel's envelop generators step into this very first stage, and keeps in it until it reaches the maximum output of the envelop. If the attack value is zero, this will be skipped. The attack stage has its own shaping coefficient.
+
+### Decay stage
+
+The envelop generator steps into the decay stage right after the attack stage. It makes the output value descend from the maximum output value to the sustain level in the set amount of time. If the decay value is zero, this will be skipped and immediately steps to the sustain stage
+
+### Sustain stage
+
+The envelop generator then steps into the sustain phase. Depending on the sustain control value, it'll either keep it's value until a note-off command is received, or will change the output value.
+
+Sustain control value ranges:
+* 0: No sustain, percussive mode. The envelop generator will step into the release phase regardless of whether a note-off command was received or not.
+* 1-63: The sustain is slowly fading out (4.5s - 70s), thus emulating the behavior of a real-life stringed instrument slowly losing its volume after getting plucked.
+* 64: The sustain level is kept as is.
+* 65-127: Swell mode. The output level is slowly rising to maximum output (70s - 4.5s).
+
+### Release stage
+
+The envelop generator steps into this stage once a note-off command was received. If the value is zero, the note will immediately fut of, however it is recommended to keep at least a minimum value of 1 or 2 here to remove some of the audible pops when the oscillator stops.
+
 ## operator controllers
 
 Operator control parameters can be set through the Control Change command. However, the original (1.0) MIDI implementation has limited public namespace, with many defaults posing other limitations. So to avoid running out from controls without breaking standards, the unregistered parameter bank is being used to extend the available namespace as well as adding 14 bit precision for many values. Also every value between 0-31 has extended precision (LSB) in the 32-63 region with control numbers shifted by 32. In case of MIDI 2.0, there's enough for everything.
 
 Unregistered parameter bank 0 and 1 belong to operator controls. Numbers in square brackets mean number of unregistered parameter. Curly brackets contain legacy control change numbers if available.
-
-All time values are exponential (y = x¹∙⁸ if 0⩽x⩽2)
 
 * `Level` [0]: Controls the output level of the operator. Exponential (y = x²). {O0: 18 ; O1: 19}
 * `Attack` [1]: Controls the attack time of the operator. Range is between 0s to ~3.5s. {O0: 78 ; O1: 73}
@@ -54,8 +93,8 @@ All time values are exponential (y = x¹∙⁸ if 0⩽x⩽2)
 * `Feedback` [7]: Controls the feedback of this operator. Exponential (y = ²∙⁵). Up to around half way, it can be used to add timbre to the sound, after that point the signal becomes noisier. {O0: 76 ; O1: 71}
 * `TuneCor` [8]: Sets the coarse tuning. By default, it uses a so called "EasyTune" system, allowing the user to select integer multiples of the base note's frequency. Turning it off the operator then can be tuned at this point by whole steps, or precisely if "ContiTune" is enabled. {O0: 87 ; O1: 88}
 * `TuneFine` [9]: Sets the fine tuning within a seminote. Disabled with "EasyTune". {O0: 30 ; O1: 31}
-* `ShpA` [10]: Sets the envelop-shape for the attack phase between (y = x⁴) and (y =⁴√x) if (0 ≤ x ≤ 1). {O0: 20 ; O1: 22}
-* `ShpR` [11]: Sets the envelop-shape for the decay, sustain, and release phase between (y = x⁴) and (y =⁴√x) if (0 ≤ x ≤ 1). {O0: 21 ; O1: 23}
+* `ShpA` [10]: Sets the envelop-shape for the attack phase between (y = x³∙⁵) and (y = √x) if (0 ≤ x ≤ 1). {O0: 20 ; O1: 22}
+* `ShpR` [11]: Sets the envelop-shape for the decay, sustain, and release phase between (y = x³∙⁵) and (y =√x) if (0 ≤ x ≤ 1). {O0: 21 ; O1: 23}
 * `VelToLevel` [12]: Sets how much velocity is affecting the output level of the operator.
 * `MWToLevel` [13]: Sets how much the MW/Expr is affecting the output level of the operator.
 * `LFOToLevel` [14]: Sets how much the amplitude LFO is affecting the output level of the operator.
@@ -149,8 +188,8 @@ Numbers in square brackets mean number of unregistered parameter. Curly brackets
 * `SusLevel` [8]: Sets the attack rate of the channel envelop generator. {104}
 * `SusCtrl` [9]:  Controls how the sustain phase behaves. 0 sets the envelop generator into percussive mode (no sustain), 1-63 selects a descending curve, 64 selects a continuous output (infinite sustain), 65-127 selects an ascending curve (swell). {105}
 * `Release` [10]: Sets the attack rate of the channel envelop generator. {106}
-* `ShpA` [11]: Sets the envelop-shape for the attack phase between (y = x⁴) and (y =⁴√x) if (0 ≤ x ≤ 1). {24}
-* `ShpR` [12]: Sets the envelop-shape for the decay, sustain, and release phase between (y = x⁴) and (y =⁴√x) if (0 ≤ x ≤ 1). {25}
+* `ShpA` [11]: Sets the envelop-shape for the attack phase between (y = x³∙⁵) and (y = √x) if (0 ≤ x ≤ 1). {24}
+* `ShpR` [12]: Sets the envelop-shape for the decay, sustain, and release phase between (y = x³∙⁵) and (y = √x) if (0 ≤ x ≤ 1). {25}
 * `GlobalFB` [13]: Sets the amount of the channel feedback. {107}
 * `ChCtrl` [16]: Sets channel control flags at once.
 * `EEGToLeft` [18]: Sets the channel envelop amount for the left channel.
