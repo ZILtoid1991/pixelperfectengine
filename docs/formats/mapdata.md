@@ -25,6 +25,7 @@ palette-selection purposes.
 * bit 2: Bit 10 in the chunk (bit 2 in the `attributes` field) is used to indicate if a tile's X and Y axes are 
 interchanged for 90° rotation effects (not yet implemented). If bit 0 is set, then the remaining 5 bits are used for
 other purposes.
+* bit 8: Run-lenght encoding. See chapter "Compression" for more information.
 
 Bits 24-31 are user-definiable flags.
 
@@ -66,3 +67,12 @@ as long as the given layer doesn't use it for other purposes.
 smaller than 256 color, then the number of accessible colors are less than 65536, and the upper ranges of the palettes
 can be accessed by per-layer color shifting. Can be used to store extra data, but please be noted that this will only
 work with 32 and 16 bit tiles
+
+# Compression
+
+The format by default supports RLE (Run-Lenght Encoding) compression, but as of this version, it's unimplemented by the
+engine. RLE is indicated by bit 8 in the bitflags section of the header. Works similarly to TGA's own RLE compression
+format.
+
+Each RLE block begins with an identifier byte. The most significant bit indicates whether the section is a literal 
+(low), or an RLE (high) block, the remaining 7 bits identify he length of the block (1-128).

@@ -138,6 +138,12 @@ restricted to internal use.
 Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
 "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
 
+### 'ScrollRate'
+
+`ScrollRate 0.325 0.25`
+
+Sets the relative scrolling speed of the layers relative to the main one.
+
 ## Reserved tags
 
 * `EffectsLayer`
@@ -202,6 +208,13 @@ Defines external file sources for the map.
 
 Tags in the `File` namespace can have the `dataPakSrc` attribute, which specifies the datapak file the file is in.
 
+## 'BOM'
+
+`File:BOM "../assets/cityenv.bom" use=63`
+
+Links to shared Image Loading Data (`.BOM`) files. The `use` attribute will select the used tilesheet, etc. ID, 
+otherwise every relevant data will be pulled from it.
+
 ## 'MapData'
 
 `File:MapData "64.map"`
@@ -251,7 +264,7 @@ left out if needed.
 
 The tag must have at least one unnamed child tag to describe sprites.
 
-`32 16 16 32 32 displayOffsetX=-8 displayOffsetY=2 name="dlangman"`
+`32 16 16 32 32 name="dlangman"`
 
 Value notation:
 
@@ -261,12 +274,11 @@ Value notation:
 4) Width of the sprite.
 5) Height of the sprite.
 
-Attributes `displayOffsetX` and `displayOffsetY` set the offset of the sprites when being displayed. `name` sets the 
-name of the sprite, otherwise a generated name sill be used in the editor.
+`name` sets the name of the sprite, otherwise a generated name will be used in the editor.
 
 ## 'Script'
 
-`File:Script "../script/something" lang="qscript"`
+`File:Script "../script/something" lang="lua"`
 
 Specifies a script for a layer or object.
 
