@@ -100,7 +100,7 @@ public class MapFormat {
 	 * Params:
 	 *   paletteTarget: The destination, where the palettes should be loaded into.
 	 */
-	public void loadTiles (PaletteContainer paletteTarget) @trusted {
+	public void loadTiles(PaletteContainer paletteTarget) @trusted {
 		import pixelperfectengine.system.file;
 		foreach (key, value ; layerData) {
 			if (value.name != "Tile") continue;
@@ -117,6 +117,11 @@ public class MapFormat {
 						}
 				}
 				switch(i.getBitdepth){
+					case 2:
+						Bitmap2Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap2Bit)(i, value.values[2].get!int(), 
+								value.values[3].get!int());
+						helperFunc(bitmaps, t0);
+						break;
 					case 4:
 						Bitmap4Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap4Bit)(i, value.values[2].get!int(), 
 								value.values[3].get!int());
@@ -147,6 +152,122 @@ public class MapFormat {
 				//debug writeln(paletteTarget.palette);
 			}
 		}
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   layerID = 
+	 *   paletteTarget = 
+	 * Returns: 
+	 */
+	public ABitmap[int] loadSprites(int layerID, PaletteContainer paletteTarget) @trusted {
+		import pixelperfectengine.system.file;
+		ABitmap[int] result;
+		Image[string] imageBuffer;
+		Tag tBase = layerData[layerID];
+		if (tBase.name != "Sprite") return result;
+		foreach (Tag t0; tBase.all.tags) {
+			switch (t0.getFullName.toString) {
+				case "File:SpriteSource":
+					string filename = t0.expectValue!string();
+					if (imageBuffer.get(filename, null) is null) {
+						imageBuffer[filename] = loadImage(File(filename));
+					}
+					const int id = t0.expectValue!int();
+					if ("horizOffset" in t0.attributes && "vertOffset" in t0.attributes && "width" in t0.attributes && 
+							"height" in t0.attributes){
+						const int hOffset = t0.getAttribute!int("horizOffset"), vOffset = t0.getAttribute!int("vertOffset"),
+							w = t0.getAttribute!int("width"), h = t0.getAttribute!int("height");
+						switch (imageBuffer[filename].getBitdepth) {
+							case 2:
+								result[id] = loadBitmapSliceFromImage!Bitmap2Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+								break;
+							case 4:
+								result[id] = loadBitmapSliceFromImage!Bitmap4Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+								break;
+							case 8:
+								result[id] = loadBitmapSliceFromImage!Bitmap8Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+								break;
+							case 16:
+								result[id] = loadBitmapSliceFromImage!Bitmap16Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+								break;
+							case 32:
+								result[id] = loadBitmapSliceFromImage!Bitmap32Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+								break;
+							default:
+								break;
+						}
+					} else {
+						switch (imageBuffer[filename].getBitdepth) {
+							case 2:
+								result[id] = loadBitmapFromImage!Bitmap2Bit(imageBuffer[filename]);
+								break;
+							case 4:
+								result[id] = loadBitmapFromImage!Bitmap4Bit(imageBuffer[filename]);
+								break;
+							case 8:
+								result[id] = loadBitmapFromImage!Bitmap8Bit(imageBuffer[filename]);
+								break;
+							case 16:
+								result[id] = loadBitmapFromImage!Bitmap16Bit(imageBuffer[filename]);
+								break;
+							case 32:
+								result[id] = loadBitmapFromImage!Bitmap32Bit(imageBuffer[filename]);
+								break;
+							default:
+								break;
+						}
+					}
+					break;
+				case "File:SpriteSheet":
+					string filename = t0.expectValue!string();
+					if (imageBuffer.get(filename, null) is null) {
+						imageBuffer[filename] = loadImage(File(filename));
+					}
+					foreach (Tag t1 ; t0.tags) {
+						if (t1.name == "SheetData") {
+							foreach (Tag t2 ; t1.tags) {
+								const int id = t2.values[0].get!int(), hOffset = t2.values[1].get!int(), vOffset = t2.values[2].get!int(),
+										w = t2.values[3].get!int(), h = t2.values[4].get!int();
+								switch (imageBuffer[filename].getBitdepth) {
+									case 2:
+										result[id] = loadBitmapSliceFromImage!Bitmap2Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+										break;
+									case 4:
+										result[id] = loadBitmapSliceFromImage!Bitmap4Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+										break;
+									case 8:
+										result[id] = loadBitmapSliceFromImage!Bitmap8Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+										break;
+									case 16:
+										result[id] = loadBitmapSliceFromImage!Bitmap16Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+										break;
+									case 32:
+										result[id] = loadBitmapSliceFromImage!Bitmap32Bit(imageBuffer[filename], hOffset, vOffset, w, h);
+										break;
+									default:
+										break;
+								}
+							}
+						}
+					}
+					break;
+				case "File:Palette":
+					string filename = t0.expectValue!string();
+					if (imageBuffer.get(filename, null) is null) {
+						imageBuffer[filename] = loadImage(File(filename));
+					}
+					Color[] pal = loadPaletteFromImage(imageBuffer[filename]);
+					const size_t palLength = "palShift" in t0.attributes ? 1<<(t0.getAttribute!int("palShift")) : pal.length;
+					const int palOffset = "offset" in t0.attributes ? t0.getAttribute!int("offset") : 0;
+					paletteTarget.loadPaletteChunk(pal[0..palLength], cast(ushort)palOffset);
+					break;
+				default:
+					break;
+			}
+		}
+		
+		return result;
 	}
 	/**
 	 * Loads mapping data from disk to all layers.
@@ -774,7 +895,7 @@ abstract class MapObject {
 	public int			gID;		///group identifier (equals with layer number)
 	public string		name;		///name of object
 	protected MapObjectType	_type;	///type of the object
-	public Tag[]		ancillaryTags;	///Tags that hold extra information
+	public Tag			mainTag;	///Tag that holds the data related to this mapobject + ancillary tags
 	///Returns the type of this object
 	public @property MapObjectType type () const @nogc nothrow @safe pure {
 		return type;
@@ -814,16 +935,13 @@ public class BoxObject : MapObject {
 		this.gID = gID;
 		_type = MapObjectType.box;
 		//ancillaryTags = t.tags;
-		foreach (tag ; t.tags)
-			ancillaryTags ~= tag;
+		mainTag = t;
 	}
 	/**
 	 * Serializes the object into an SDL tag
 	 */
 	public override Tag serialize () @trusted {
-		return new Tag("Object", "Box", [Value(name), Value(pID)], [new Attribute(null,"left",Value(position.left)),
-				new Attribute(null,"top",Value(position.top)), new Attribute(null,"right",Value(position.right)),
-				new Attribute(null,"bottom",Value(position.bottom))], ancillaryTags);
+		return mainTag;
 	}
 }
 /**
@@ -860,18 +978,22 @@ public class SpriteObject : MapObject {
 		y = t.expectAttribute!int("y");
 		scaleHoriz = t.expectAttribute!int("scaleHoriz");
 		scaleVert = t.expectAttribute!int("scaleVert");
-		foreach (tag ; t.tags)
-			ancillaryTags ~= tag;
+		mainTag = t;
 	}
 	/**
 	 * Serializes the object into an SDL tag
 	 */
 	public override Tag serialize () @trusted {
-		return new Tag("Object", "Sprite", [Value(name), Value(pID), Value(_ssID)], [new Attribute("x",Value(x)),
-				new Attribute("y",Value(y)), new Attribute("scaleHoriz",Value(scaleHoriz)),
-				new Attribute("scaleVert",Value(scaleVert))], ancillaryTags);
+		return mainTag;
 	}
 	
+}
+public class PolylineObject : MapObject {
+
+
+	override public Tag serialize() @trusted {
+		return Tag.init; // TODO: implement
+	}
 }
 /**
  * Gets a coordinate out from a Tag's Attributes with standard attribute namings.

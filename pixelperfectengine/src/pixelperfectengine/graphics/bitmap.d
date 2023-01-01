@@ -351,17 +351,31 @@ public class Bitmap(string S,T) : ABitmap {
 		}
 	}
 	static if (S == "b" || S == "QB" || S == "HB") {
+		/**
+		 * Returns a 2D slice (window) of the bitmap.
+		 */
+		public Bitmap!(S,T) window(int iX0, int iY0, int iX1, int iY1) @safe pure {
+			const int localWidth = (iX1 - iX0), localHeight = (iY1 - iY0);
+			Bitmap!(S,T) result = new Bitmap!(S,T)(localWidth, localHeight);
+			for (int y ; y < localHeight ; y++) {
+				for (int x ; x < localWidth ; x++) {
+					result.writePixel(x, y, readPixel(iX0 + x, iY0 + y));
+				}
+			}
+			return result;
+		}
+	}
+	static if (S == "QB" || S == "HB") {
 		///Returns the pixel at the given position.
 		@nogc public T readPixel(int x, int y) @trusted pure {
 			assert (x >= 0 && x < _width && y >= 0 && y < _height);
 			return pixelAccess[x + (y * pitch)];
 		}
 		///Writes the pixel at the given position.
-	    @nogc public T writePixel(int x, int y, bool val) @trusted pure {
+	    @nogc public T writePixel(int x, int y, T val) @trusted pure {
 			assert (x >= 0 && x < _width && y >= 0 && y < _height);
 			return pixelAccess[x + (y * pitch)] = val;
-		}
-	}
+		}}
 	static if(S == "W"){
 		/**
 		 * Clears the Bitmap
@@ -396,6 +410,17 @@ public class Bitmap(string S,T) : ABitmap {
 				}
 			}
 			return output;
+		}
+	} else {
+		///Returns the pixel at the given position.
+		@nogc public bool readPixel(int x, int y) @trusted pure {
+			assert (x >= 0 && x < _width && y >= 0 && y < _height);
+			return pixelAccess[x + (y * pitch)];
+		}
+		///Writes the pixel at the given position.
+	    @nogc public bool writePixel(int x, int y, bool val) @trusted pure {
+			assert (x >= 0 && x < _width && y >= 0 && y < _height);
+			return pixelAccess[x + (y * pitch)] = val;
 		}
 	}
 }
