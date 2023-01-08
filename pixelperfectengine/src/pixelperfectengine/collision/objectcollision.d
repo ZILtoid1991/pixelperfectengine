@@ -73,7 +73,7 @@ public class ObjectCollisionDetector {
 			if (shA.position.bottom >= shB.position.top && shA.position.top <= shB.position.bottom && 
 					(shA.position.right - shB.position.left == -1 || shA.position.left - shB.position.right == 1)) {
 				//calculate edge collision area
-				Coordinate cc;
+				Box cc;
 				if(shA.position.top >= shB.position.top)
 					cc.top = shA.position.top;
 				else
@@ -93,7 +93,7 @@ public class ObjectCollisionDetector {
 			} else if (shA.position.right >= shB.position.left && shA.position.left <= shB.position.right && 
 					(shA.position.bottom - shB.position.top == -1 || shA.position.top - shB.position.bottom == 1)) {
 				//calculate edge collision area
-				Coordinate cc;
+				Box cc;
 				if(shA.position.left >= shB.position.left)
 					cc.left = shA.position.left;
 				else
@@ -113,7 +113,7 @@ public class ObjectCollisionDetector {
 			} else return null;
 		} else {
 			//if there's a bitmap for both shapes, then proceed to per-pixel testing
-			Coordinate ca, cb, cc; // test area coordinates
+			Box ca, cb, cc; // test area coordinates
 			//ca: Shape a's overlap area
 			//cb: Shape b's overlap area
 			//cc: global overlap area
