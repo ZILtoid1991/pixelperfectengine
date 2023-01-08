@@ -311,6 +311,10 @@ Value notation:
 5) Right,
 6) and Bottom coordinates of the object.
 
+### 'ToCollision'
+
+Marks object to be added to collision detection.
+
 ## 'Polyline'
 
 `Object:Polyline "nameOfObject" 9`
@@ -374,7 +378,8 @@ Value notation:
 5) Y coordinate.
 
 `scaleHoriz` and `scaleVert` sets the horizontal and vertical scaling values with 1024 (1.0) being the default one. 
-`masterAlpha` sets the master alpha value for rendering to the raster.
+`masterAlpha` sets the master alpha value for rendering to the raster. `palSel` selects the palette, and `palShift` 
+sets the length of the selected palette.
 
 ### 'RenderingMode'
 
@@ -382,3 +387,9 @@ Value notation:
 
 Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
 "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
+
+### 'ToCollision'
+
+Marks object to be added to collision detection.
+
+Can have the attribute `shape`, which will specify an ID to a 1 bit bitmap containing the shape.

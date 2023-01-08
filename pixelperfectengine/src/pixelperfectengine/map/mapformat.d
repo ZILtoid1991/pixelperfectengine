@@ -9,13 +9,22 @@ import sdlang;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster : PaletteContainer;
 import std.stdio;
+import std.exception : enforce;
+import std.typecons : BitFlags;
+import pixelperfectengine.system.etc : parseHex;
+import std.format : format;
 import collections.treemap;
 public import pixelperfectengine.map.mapdata;
+import pixelperfectengine.system.file;
+import pixelperfectengine.collision.objectcollision;
+import pixelperfectengine.system.exc : PPEException;
 
 /**
  * Serializes/deserializes XMF map data in SDLang format.
  * Each layer can contain objects (eg. for marking events, clipping, or sprites if applicable), tilemapping (not for SpriteLayers), embedded
  * data such as tilemapping or scripts, and so on.
+ *
+ * Also does some basic resource managing.
  *
  * Note on layer tags:
  * As of this version, additional tags within layers must have individual names. Subtags within a parent also need to have individual names.
@@ -26,12 +35,13 @@ public class MapFormat {
 	public TreeMap!(int,Layer)	layeroutput;///Used to fast map and object data pullback in editors
 	protected Tag 				metadata;	///Stores metadata.
 	protected Tag				root;		///Root tag for common information.
-	public TileInfo[][int]	tileDataFromExt;///Stores basic TileData that are loaded through extensions
+	public TileInfo[][int]		tileDataFromExt;///Stores basic TileData that are loaded through extensions
 	/**
 	 * Associative array used for rendering mode lookups in one way.
 	 */
 	public static immutable RenderingMode[string] renderingModeLookup;
 	shared static this() {
+		renderingModeLookup["null"] = RenderingMode.init;
 		renderingModeLookup["Copy"] = RenderingMode.Copy;
 		renderingModeLookup["Blitter"] = RenderingMode.Blitter;
 		renderingModeLookup["AlphaBlend"] = RenderingMode.AlphaBlend;
@@ -79,6 +89,9 @@ public class MapFormat {
 					switch (t0.name) {
 						case "Tile":
 							layeroutput[priority] = new TileLayer(t0.values[2].get!int, t0.values[3].get!int, lrd);
+							break;
+						case "Sprite":
+							layeroutput[priority] = new SpriteLayer(lrd);
 							break;
 						default:
 							throw new Exception("Unsupported layer format");
@@ -154,16 +167,17 @@ public class MapFormat {
 		}
 	}
 	/** 
-	 * 
+	 * Loads the sprites associated with the layer ID.
 	 * Params:
-	 *   layerID = 
-	 *   paletteTarget = 
-	 * Returns: 
+	 *   layerID = the ID of the layer.
+	 *   paletteTarget = target for any loaded palettes, ideally the raster.
+	 * Returns: An associative array with sprite identifiers as the keys, and the sprite bitmaps as its elements.
+	 * Note: It's mainly intended for editor placeholders, but also could work with other things.
 	 */
 	public ABitmap[int] loadSprites(int layerID, PaletteContainer paletteTarget) @trusted {
 		import pixelperfectengine.system.file;
 		ABitmap[int] result;
-		Image[string] imageBuffer;
+		Image[string] imageBuffer;	//Resource manager to minimize reloading image files
 		Tag tBase = layerData[layerID];
 		if (tBase.name != "Sprite") return result;
 		foreach (Tag t0; tBase.all.tags) {
@@ -268,6 +282,47 @@ public class MapFormat {
 		}
 		
 		return result;
+	}
+	public MapObject[] getLayerObjects(int layerID) @trusted {
+		Tag t0 = layerData[layerID];
+		if (t0 is null) return null;
+		MapObject[] result;
+		foreach (Tag t1; t0.namespaces["Object"].tags) {
+			MapObject obj = parseObject(t1, layerID);
+			if (obj !is null)
+				result ~= obj;
+		}
+		return result;
+	}
+	public void loadAllSpritesAndObjects(PaletteContainer paletteTarget, ObjectCollisionDetector ocd) @trusted {
+		import pixelperfectengine.collision.common;
+		foreach (key, value; layerData) {
+			ABitmap[int] spr = loadSprites(key, paletteTarget);
+			MapObject[] objList = getLayerObjects(key);
+			if (spr.length) {
+				SpriteLayer sl = cast(SpriteLayer)value;
+				foreach (MapObject key0; objList) {
+					if (key0.type == MapObject.MapObjectType.sprite) {
+						SpriteObject so = cast(SpriteObject)key0;
+						sl.addSprite(spr[so.ssID], so.pID, so.x, so.y, so.palSel, so.palShift, so.masterAlpha, so.scaleHoriz, 
+								so.scaleVert, so.rendMode);
+						if (ocd !is null && so.flags.toCollision) {
+							ocd.objects[so.pID] = new CollisionShape(sl.getSpriteCoordinate(so.pID), null);
+						}
+					} else if (ocd !is null && key0.type == MapObject.MapObjectType.box && key0.flags.toCollision) {
+						BoxObject bo = cast(BoxObject)key0;
+						ocd.objects[so.pID] = new CollisionShape(bo.position, null);
+					}
+				}
+			} else if (ocd !is null) {
+				foreach (MapObject key0; objList) {
+					if (ocd !is null && key0.type == MapObject.MapObjectType.box && key0.flags.toCollision) {
+						BoxObject bo = cast(BoxObject)key0;
+						ocd.objects[so.pID] = new CollisionShape(bo.position, null);
+					}
+				}
+			}
+		}
 	}
 	/**
 	 * Loads mapping data from disk to all layers.
@@ -798,12 +853,21 @@ public class MapFormat {
 	public Tag[] getAllTileSources (int pri) @trusted {
 		Tag[] result;
 		try {
-			auto namespace = layerData[pri].namespaces["File"];
-			foreach (t ; namespace.tags) {
-				if (t.name == "TileSource") {
-					result ~= t;
+			void loadFromLayer(int _pri) {
+				//auto namespace = layerData[pri].namespaces["File"];
+				foreach (Tag t ; layerData[_pri].namespaces["File"]) {
+					if (t.name == "TileSource") {
+						result ~= t;
+					}
 				}
 			}
+			loadFromLayer(pri);
+			foreach (Tag t ; layerData[pri].namespaces["Shared"]) {
+				if (t.name == "TileData") {
+					loadFromLayer(t.expectValue!int());
+				}
+			}
+
 		} catch (DOMRangeException e) {
 			debug writeln(e);
 		} catch (Exception e) {
@@ -883,18 +947,24 @@ abstract class MapObject {
 	 * Enumerator used for differentiating between multiple kinds of objects.
 	 * The value serialized as a string as the name of a tag.
 	 */
-	public enum MapObjectType {
+	public enum MapObjectType : ubyte {
 		box,			///Can be used for collision detection, event marking for scripts, and masking. Has two coordinates.
 		/**
 		 * Only applicable for SpriteLayer.
 		 * Has one coordinate, a horizontal and vertical scaling indicator (int), and a source indicator (int).
 		 */
 		sprite,
+		polyline,
+	}
+	public enum MapObjectFlags : ushort {
+		toCollision		=	1<<0,
+
 	}
 	public int 			pID;		///priority identifier
 	public int			gID;		///group identifier (equals with layer number)
 	public string		name;		///name of object
 	protected MapObjectType	_type;	///type of the object
+	public BitFlags!MapObjectFlags	flags;///Contains property flags
 	public Tag			mainTag;	///Tag that holds the data related to this mapobject + ancillary tags
 	///Returns the type of this object
 	public @property MapObjectType type () const @nogc nothrow @safe pure {
@@ -914,7 +984,7 @@ abstract class MapObject {
  */
 public class BoxObject : MapObject {
 	public Box			position;	///position of object on the layer
-	public Color		color;		///identifying color
+	
 	/**
 	 * Creates a new instance from scratch.
 	 */
@@ -943,16 +1013,36 @@ public class BoxObject : MapObject {
 	public override Tag serialize () @trusted {
 		return mainTag;
 	}
+	public Color color() @trusted {
+		Tag t0 = mainTag.getTag("Color");
+		if (t0) {
+			return parseColor(t0);
+		} else {
+			return Color.init;
+		}
+	}
+	public Color color(Color c) @trusted {
+		Tag t0 = mainTag.getTag("Color");
+		if (t0) {
+			t0.remove;
+		} 
+		mainTag.add(storeColor(c));
+		return c;
+	}
 }
 /**
  * Implements a sprite object. Adds a sprite source identifier, X and Y coordinates, and two 1024 based scaling indicator.
  */
 public class SpriteObject : MapObject {
-	protected int 		_ssID;	///Sprite source identifier
+	public int 			ssID;	///Sprite source identifier
 	public int			x;		///X position
 	public int			y;		///Y position
 	public int			scaleHoriz;	///Horizontal scaling value
 	public int			scaleVert;	///Vertical scaling value
+	public RenderingMode	rendMode;
+	public ushort		palSel;
+	public ubyte		palShift;
+	public ubyte		masterAlpha;
 	/**
 	 * Creates a new instance from scratch.
 	 */
@@ -960,7 +1050,7 @@ public class SpriteObject : MapObject {
 		this.pID = pID;
 		this.gID = gID;
 		this.name = name;
-		this._ssID = ssID;
+		this.ssID = ssID;
 		this.x = x;
 		this.y = y;
 		this.scaleHoriz = scaleHoriz;
@@ -971,14 +1061,17 @@ public class SpriteObject : MapObject {
 	 * Deserializes itself from a Tag.
 	 */
 	public this (Tag t, int gID) @trusted {
+		this.gID = gID;
 		name = t.values[0].get!string();
 		pID = t.values[1].get!int();
-		_ssID = t.values[2].get!int();
-		x = t.expectAttribute!int("x");
-		y = t.expectAttribute!int("y");
-		scaleHoriz = t.expectAttribute!int("scaleHoriz");
-		scaleVert = t.expectAttribute!int("scaleVert");
+		ssID = t.values[2].get!int();
+		x = t.values[3].get!int("x");
+		y = t.t.values[4].get!int("y");
+		scaleHoriz = t.getAttribute!int("scaleHoriz", 1024);
+		scaleVert = t.getAttribute!int("scaleVert", 1024);
+		rendMode = MapFormat.renderingModeLookup[t.getTagValue!string("RenderingMode", "init")];
 		mainTag = t;
+		_type = MapObjectType.sprite;
 	}
 	/**
 	 * Serializes the object into an SDL tag
@@ -989,8 +1082,69 @@ public class SpriteObject : MapObject {
 	
 }
 public class PolylineObject : MapObject {
-
-
+	public Point[]		path;
+	
+	public this (Tag t, int gID) @trusted {
+		this.gID = gID;
+		name = t.values[0].get!string();
+		pID = t.values[1].get!int();
+		foreach (Tag t0 ; t.tags) {
+			switch (t0.name) {
+				case "Begin":
+					enforce!MapFormatException(path.length == 0, "'Begin' node found in the middle of the path.");
+					goto case "Segment";
+				case "Segment":
+					enforce!MapFormatException(path.length != 0, "No 'Begin' node found");
+					path ~= Point(t0.values[0].get!int, t0.values[1].get!int);
+					break;
+				case "Close":
+					path ~= path[0];
+					break;
+				default:
+					break;
+			}
+		}
+		mainTag = t;
+		_type = MapObjectType.polyline;
+	}
+	public Color color(Color c, int num) @trusted {
+		int i;
+		foreach (Tag t0 ; t.tags) {
+			switch (t0.name) {
+				case "Begin", "Segment", "Close":
+					if (num == i) {
+						t0.add(storeColor(c));
+						return c;
+					}
+					i++;
+					break;
+				default:
+					break;
+			}
+		}
+		throw new PPEException("Out of index error!");
+	}
+	public Color color(int num) @trusted {
+		int i;
+		foreach (Tag t0 ; t.tags) {
+			switch (t0.name) {
+				case "Begin", "Segment", "Close":
+					if (num == i) {
+						Tag t1 = t0.getTag("Color");
+						if (t1) {
+							return parseColor(t1);
+						} else {
+							return Color.init;
+						}
+					}
+					i++;
+					break;
+				default:
+					break;
+			}
+		}
+		throw new PPEException("Out of index error!");
+	}
 	override public Tag serialize() @trusted {
 		return Tag.init; // TODO: implement
 	}
@@ -998,9 +1152,44 @@ public class PolylineObject : MapObject {
 /**
  * Gets a coordinate out from a Tag's Attributes with standard attribute namings.
  */
-public Coordinate getCoordinate(Tag t) @trusted {
-	return Coordinate(t.expectAttribute!int("position:left"), t.expectAttribute!int("position:top"),
+public Box getCoordinate(Tag t) @trusted {
+	return Box(t.expectAttribute!int("position:left"), t.expectAttribute!int("position:top"),
 			t.expectAttribute!int("position:right"), t.expectAttribute!int("position:bottom"));
+}
+public Color parseColor(Tag t) @trusted {
+	Color c;
+	switch (t.values.length) {
+		case 1:
+			if (t.values[0].peek!long)
+				c.base = cast(uint)t.getValue!long();
+			else
+				c.base = parseHex!uint(t.getValue!string);
+			break;
+		case 4:
+			c.a = cast(ubyte)t.values[0].get!int();
+			c.r = cast(ubyte)t.values[1].get!int();
+			c.g = cast(ubyte)t.values[2].get!int();
+			c.b = cast(ubyte)t.values[3].get!int();
+		default:
+			throw new MapFormatException("Unrecognized color format tag!");
+	}
+	return c;
+}
+public Tag storeColor(Color c) @trusted {
+	return new Tag(null, "Color", [Value(format("%08x", c.base))]);
+}
+public MapObject parseObject(Tag t, int gID) @trusted {
+	if (t.namespace != "Object") return null;
+	switch (t.name) {
+		case "Box":
+			return new BoxObject(t, gID);
+		case "Sprite":
+			return new SpriteObject(t, gID);
+		case "Polyline":
+			return new PolylineObject(t, gID);
+		default:
+			return null;
+	}
 }
 /**
  * Simple LayerInfo struct, mostly for internal communications.
@@ -1055,4 +1244,16 @@ public struct TileInfo {
 		import std.conv : to;
 		return to!string(id) ~ ";" ~ to!string(num) ~ ";" ~ name;
 	}
+}
+public class MapFormatException : PPEException {
+	///
+	@nogc @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
+    {
+        super(msg, file, line, nextInChain);
+    }
+	///
+    @nogc @safe pure nothrow this(string msg, Throwable nextInChain, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, nextInChain);
+    }
 }
