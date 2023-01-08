@@ -779,14 +779,9 @@ public class PCM8 : AudioModule {
 				while (samplesNeeded && !(channels[i].currNote & 128)) {
 					//Calculate the amount of samples that are needed for this block
 					ulong samplesToAdvance = channels[i].jumpAm * samplesNeeded;
-							//cast(size_t)ceil(
-							/* ((0xFF_FF_FF - (channels[i].waveModWorkpad.lookupVal & 0xFF_FF_FF)) / cast(double)0x1_00_00_00) +  */
-							//((1 / channels[i].freqRatio) * samplesNeeded));
-							//((channels[i].waveModWorkpad.lookupVal & 0xFF_FF_FF) + (channels[i].jumpAm * samplesNeeded))>>24;
 					if ((channels[i].outPos + (channels[i].waveModWorkpad.lookupVal)) >= (channels[i].decoderWorkpad.pos<<24L)) 
-					//if (channels[i].waveModWorkpad.lookupVal + channels[i].jumpAm >= 0x1_00_00_00_00)
 						channels[i].decodeMore(sa, slmp);
-					const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;/* channels[i].waveModWorkpad.lookupVal */
+					const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;
 					//Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
 					if ((128<<24L) - decoderBufPos <= samplesToAdvance){
 						samplesToAdvance = (128<<24L) - decoderBufPos;
@@ -794,15 +789,11 @@ public class PCM8 : AudioModule {
 					//Calculate how many samples will be outputted
 					const size_t samplesOutputted = 
 							cast(size_t)(samplesToAdvance / channels[i].jumpAm);
-							//min(cast(size_t)round(samplesToAdvance * channels[i].freqRatio / (1<<24)), samplesNeeded);
-					//const int bias = channels[i].waveModWorkpad.lookupVal & 0x_FF_FF_FF ? 0 : 1;
-					//stretchAudioNoIterpol(channels[i].decoderBuffer[bias + decoderBufPos..$], iBuf[0..samplesOutputted], 
 					stretchAudioNoIterpol(channels[i].decoderBuffer, iBuf[outpos..outpos + samplesOutputted], 
 							channels[i].waveModWorkpad, channels[i].jumpAm);
 					samplesNeeded -= samplesOutputted;
 					channels[i].outPos += samplesToAdvance;
 					outpos += samplesOutputted;
-					//if (samplesNeeded) channels[i].decodeMore(sa, slmp);
 				}
 				//apply envelop (if needed) and volume, then mix it to the local buffer
 				__m128 levels;
