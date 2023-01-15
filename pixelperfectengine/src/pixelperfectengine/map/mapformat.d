@@ -287,16 +287,21 @@ public class MapFormat {
 		Tag t0 = layerData[layerID];
 		if (t0 is null) return null;
 		MapObject[] result;
-		foreach (Tag t1; t0.namespaces["Object"].tags) {
-			MapObject obj = parseObject(t1, layerID);
-			if (obj !is null)
-				result ~= obj;
+		try {
+			foreach (Tag t1; t0.namespaces["Object"].tags) {
+				MapObject obj = parseObject(t1, layerID);
+				if (obj !is null)
+					result ~= obj;
+			}
+		} catch (Exception e) {
+			debug writeln(e);
+			return null;
 		}
 		return result;
 	}
 	public void loadAllSpritesAndObjects(PaletteContainer paletteTarget, ObjectCollisionDetector ocd) @trusted {
 		import pixelperfectengine.collision.common;
-		foreach (key, value; layerData) {
+		foreach (key, value; layeroutput) {
 			ABitmap[int] spr = loadSprites(key, paletteTarget);
 			MapObject[] objList = getLayerObjects(key);
 			if (spr.length) {
@@ -307,18 +312,18 @@ public class MapFormat {
 						sl.addSprite(spr[so.ssID], so.pID, so.x, so.y, so.palSel, so.palShift, so.masterAlpha, so.scaleHoriz, 
 								so.scaleVert, so.rendMode);
 						if (ocd !is null && so.flags.toCollision) {
-							ocd.objects[so.pID] = new CollisionShape(sl.getSpriteCoordinate(so.pID), null);
+							ocd.objects[so.pID] = CollisionShape(sl.getSpriteCoordinate(so.pID), null);
 						}
 					} else if (ocd !is null && key0.type == MapObject.MapObjectType.box && key0.flags.toCollision) {
 						BoxObject bo = cast(BoxObject)key0;
-						ocd.objects[so.pID] = new CollisionShape(bo.position, null);
+						ocd.objects[bo.pID] = CollisionShape(bo.position, null);
 					}
 				}
 			} else if (ocd !is null) {
 				foreach (MapObject key0; objList) {
 					if (ocd !is null && key0.type == MapObject.MapObjectType.box && key0.flags.toCollision) {
 						BoxObject bo = cast(BoxObject)key0;
-						ocd.objects[so.pID] = new CollisionShape(bo.position, null);
+						ocd.objects[bo.pID] = CollisionShape(bo.position, null);
 					}
 				}
 			}
@@ -855,14 +860,14 @@ public class MapFormat {
 		try {
 			void loadFromLayer(int _pri) {
 				//auto namespace = layerData[pri].namespaces["File"];
-				foreach (Tag t ; layerData[_pri].namespaces["File"]) {
+				foreach (Tag t ; layerData[_pri].namespaces["File"].tags) {
 					if (t.name == "TileSource") {
 						result ~= t;
 					}
 				}
 			}
 			loadFromLayer(pri);
-			foreach (Tag t ; layerData[pri].namespaces["Shared"]) {
+			foreach (Tag t ; layerData[pri].namespaces["Shared"].tags) {
 				if (t.name == "TileData") {
 					loadFromLayer(t.expectValue!int());
 				}
@@ -925,6 +930,34 @@ public class MapFormat {
 	public string getName () @trusted {
 		return metadata.getTagValue!string("Name");
 	}
+	public Tag addObjectToLayer(int layer, Tag t) @trusted {
+		Tag result;
+		try {
+			foreach (Tag t0; layerData[layer].namespaces["Object"].tags) {
+				if (t0.values[1].get!int == t.values[1].get!int) {
+					layerData[layer].add(t);
+					result = t0.remove();
+					break;
+				}
+			}
+		} catch (Exception e) {
+			debug writeln(e);
+		}
+		layerData[layer].add(t);
+		return result;
+	}
+	public Tag removeObjectFromLayer(int layer, int objID) @trusted {
+		try {
+			foreach (Tag t0; layerData[layer].namespaces["Object"].tags) {
+				if (t0.values[1].get!int == objID) {
+					return t0.remove();
+				}
+			}
+		} catch (Exception e) {
+			debug writeln(e);
+		}
+		return null;
+	}
 	/**
 	 * Returns the horizontal resolution.
 	 */
@@ -968,7 +1001,7 @@ abstract class MapObject {
 	public Tag			mainTag;	///Tag that holds the data related to this mapobject + ancillary tags
 	///Returns the type of this object
 	public @property MapObjectType type () const @nogc nothrow @safe pure {
-		return type;
+		return _type;
 	}
 	///Serializes the object into an SDL tag
 	public abstract Tag serialize () @trusted;
@@ -1001,11 +1034,13 @@ public class BoxObject : MapObject {
 	public this (Tag t, int gID) @trusted {
 		name = t.values[0].get!string();
 		pID = t.values[1].get!int();
-		position = getCoordinate(t);
+		position = Box(t.values[2].get!int(), t.values[3].get!int(), t.values[4].get!int(), t.values[5].get!int());
 		this.gID = gID;
 		_type = MapObjectType.box;
 		//ancillaryTags = t.tags;
 		mainTag = t;
+		if (t.getTag("ToCollision"))
+			flags.toCollision = true;
 	}
 	/**
 	 * Serializes the object into an SDL tag
@@ -1065,13 +1100,18 @@ public class SpriteObject : MapObject {
 		name = t.values[0].get!string();
 		pID = t.values[1].get!int();
 		ssID = t.values[2].get!int();
-		x = t.values[3].get!int("x");
-		y = t.t.values[4].get!int("y");
+		x = t.values[3].get!int();
+		y = t.values[4].get!int();
 		scaleHoriz = t.getAttribute!int("scaleHoriz", 1024);
 		scaleVert = t.getAttribute!int("scaleVert", 1024);
-		rendMode = MapFormat.renderingModeLookup[t.getTagValue!string("RenderingMode", "init")];
+		rendMode = MapFormat.renderingModeLookup[t.getTagValue!string("RenderingMode", "null")];
+		palSel = cast(ushort)t.getAttribute!int("palSel", 0);
+		palShift = cast(ubyte)t.getAttribute!int("palShift", 0);
+		masterAlpha = cast(ubyte)t.getAttribute!int("masterAlpha", 255);
 		mainTag = t;
 		_type = MapObjectType.sprite;
+		if (t.getTag("ToCollision"))
+			flags.toCollision = true;
 	}
 	/**
 	 * Serializes the object into an SDL tag
@@ -1109,7 +1149,7 @@ public class PolylineObject : MapObject {
 	}
 	public Color color(Color c, int num) @trusted {
 		int i;
-		foreach (Tag t0 ; t.tags) {
+		foreach (Tag t0 ; mainTag.tags) {
 			switch (t0.name) {
 				case "Begin", "Segment", "Close":
 					if (num == i) {
@@ -1126,7 +1166,7 @@ public class PolylineObject : MapObject {
 	}
 	public Color color(int num) @trusted {
 		int i;
-		foreach (Tag t0 ; t.tags) {
+		foreach (Tag t0 ; mainTag.tags) {
 			switch (t0.name) {
 				case "Begin", "Segment", "Close":
 					if (num == i) {
@@ -1149,13 +1189,7 @@ public class PolylineObject : MapObject {
 		return Tag.init; // TODO: implement
 	}
 }
-/**
- * Gets a coordinate out from a Tag's Attributes with standard attribute namings.
- */
-public Box getCoordinate(Tag t) @trusted {
-	return Box(t.expectAttribute!int("position:left"), t.expectAttribute!int("position:top"),
-			t.expectAttribute!int("position:right"), t.expectAttribute!int("position:bottom"));
-}
+
 public Color parseColor(Tag t) @trusted {
 	Color c;
 	switch (t.values.length) {
@@ -1170,6 +1204,7 @@ public Color parseColor(Tag t) @trusted {
 			c.r = cast(ubyte)t.values[1].get!int();
 			c.g = cast(ubyte)t.values[2].get!int();
 			c.b = cast(ubyte)t.values[3].get!int();
+			break;
 		default:
 			throw new MapFormatException("Unrecognized color format tag!");
 	}
