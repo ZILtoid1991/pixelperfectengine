@@ -4,6 +4,7 @@ import bindbc.sdl;
 
 import std.stdio;
 import std.typecons : BitFlags;
+import std.format;
 
 import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
@@ -25,10 +26,15 @@ import pixelperfectengine.map.mapformat;
 
 int main(string[] args) {
 	initialzeSDL();
-	string path = "../assets/test2.xmp";
+	string path = "../assets/test2.xmf";
 	if (args.length > 1)
 		path = args[1];
-	MapFormatTester app = new MapFormatTester(path);
+	try {
+		MapFormatTester app = new MapFormatTester(path);
+		app.whereTheMagicHappens();
+	} catch (Throwable e) {
+		writeln(e);
+	}
 	return 0;
 }
 
@@ -56,7 +62,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		output = new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
 		r = new Raster(424,240,output,0);
 		output.setMainRaster(r);
-		
+		Image fontSource = loadImage(File("../system/codepage_8_8.png"));
 		ih = new InputHandler();
 		ih.systemEventListener = this;
 		ih.inputListener = this;
@@ -73,21 +79,56 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		textLayer.paletteOffset = 512;
 		textLayer.masterVal = 127;
 		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
-		r.addLayer(textLayer, 65_536);
+		{
+			Bitmap8Bit[] fontSet = loadBitmapSheetFromImage!Bitmap8Bit(fontSource, 8, 8);
+			for (ushort i; i < fontSet.length; i++) {
+				textLayer.addTile(fontSet[i], i, 1);
+			}
+		}
 		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false));
 		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false));
+
+		ocd = new ObjectCollisionDetector(&onCollision, 0);
+
+		stateFlags.isRunning = true;
+		loadMap(path);
 	}
 	void loadMap(string m) {
 		mapSource = new MapFormat(File(m));
 		mapSource.loadTiles(r);
 		mapSource.loadAllSpritesAndObjects(r, ocd);
-		r.layerMap = mapSource.layeroutput;
-		r.addLayer(textLayer, 65_536);
+		mapSource.loadMappingData();
+		r.loadLayers(mapSource.layeroutput);
+		gameField = cast(SpriteLayer)(mapSource.layeroutput[16]);
+		r.addLayer(textLayer, 32);
+		r.loadPaletteChunk([Color(0x00,0x00,0x00,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x00,0x00,0x00,0xFF),
+				Color(0xff,0x00,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),Color(0x00,0xff,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),
+				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
+				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
+				Color(0x00,0x00,0xff,0xFF)], 512);
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
 			r.refresh();
 			ih.test();
+			ocd.objects.ptrOf(65_536).position = gameField.getSpriteCoordinate(65_536);
+			if(controlFlags.up) {
+				gameField.relMoveSprite(65_536,0,-1);
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+			}
+			if(controlFlags.down) {
+				gameField.relMoveSprite(65_536,0,1);
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+			}
+			if(controlFlags.left) {
+				gameField.relMoveSprite(65_536,-1,0);
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+			}
+			if(controlFlags.right) {
+				gameField.relMoveSprite(65_536,1,0);
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+			}
+			ocd.testSingle(65_536);
 		}
 	}
 	public void onCollision(ObjectCollisionEvent event) {
@@ -109,7 +150,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 	}
 
 	public void onQuit() {
-		
+		stateFlags.isRunning = false;
 	}
 	
 	public void controllerAdded(uint id) {
@@ -121,7 +162,22 @@ public class MapFormatTester : SystemEventListener, InputListener {
 	}
 	
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
-		
+		switch (id) {
+			case hashCalc("up"):	//up
+				controlFlags.up = isPressed;
+				break;
+			case hashCalc("down"):	//down
+				controlFlags.down = isPressed;
+				break;
+			case hashCalc("left"):	//left
+				controlFlags.left = isPressed;
+				break;
+			case hashCalc("right"):	//right
+				controlFlags.right = isPressed;
+				break;
+			default:
+				break;
+		}
 	}
 	
 	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
