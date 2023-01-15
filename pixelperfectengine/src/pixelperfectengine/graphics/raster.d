@@ -150,8 +150,8 @@ public class Raster : IRaster, PaletteContainer{
 	 * Returns the new palette of the object.
 	 */
 	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @safe {
-		if (paletteChunk.length + offset < _palette.length) 
-			_palette.length += (offset - _palette.length) + paletteChunk.length;
+		if (paletteChunk.length + offset > _palette.length) 
+			_palette.length = offset + paletteChunk.length;
 		for (int i = offset, j ; j < paletteChunk.length ; i++, j++) 
 			_palette[i] = paletteChunk[j];
 		return _palette;
@@ -215,6 +215,11 @@ public class Raster : IRaster, PaletteContainer{
 		l.setRasterizer(rX, rY);
 		layerMap[i] = l;
     }
+	public void loadLayers(R)(R layerRange) @safe pure nothrow {
+		foreach (int key, Layer value; layerRange) {
+			addLayer(value, key);
+		}
+	}
 	///Removes a layer at the given priority.
 	public void removeLayer(int n) @safe pure nothrow {
 		layerMap.remove(n);
