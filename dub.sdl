@@ -59,7 +59,7 @@ subPackage {
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"
 	targetPath "./bin-$ARCH-$PLATFORM/"
-	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_test1.pdb" platform="windows"
+	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_test2.pdb" platform="windows"
 	sourcePaths "./test2/"
 	importPaths "./test2/"
 }
