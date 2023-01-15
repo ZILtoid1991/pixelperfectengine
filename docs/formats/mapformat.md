@@ -133,7 +133,7 @@ restricted to internal use.
 
 ### 'RenderingMode'
 
-`RenderingMode "AlphaBlending"`
+`RenderingMode "AlphaBlend"`
 
 Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
 "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
@@ -188,7 +188,7 @@ loaded in the raster. Should be a root tag.
 
 ## 'Script'
 
-`Embed:Script [] lang="dbasic"`
+`Embed:Script [] lang="lua"`
 
 Stores a script for a layer or an object.
 
@@ -383,7 +383,7 @@ sets the length of the selected palette.
 
 ### 'RenderingMode'
 
-`RenderingMode "AlphaBlending"`
+`RenderingMode "AlphaBlend"`
 
 Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
 "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
