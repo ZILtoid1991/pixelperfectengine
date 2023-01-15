@@ -1,0 +1,95 @@
+Metadata {
+	Version 1 0
+	Name "test2"
+	Resolution 424 240
+}
+Layer:Tile "64" 0 16 16 45 45 {
+	RenderingMode "Copy"
+	File:MapData "../assets/test2_layer0.map"
+	File:TileSource "../assets/sci-fi-tileset.png" {
+		Embed:TileInfo {
+			0 0 "tile0000"
+			1 1 "tile0001"
+			2 2 "tile0002"
+			3 3 "tile0003"
+			4 4 "tile0004"
+			5 5 "tile0005"
+			6 6 "tile0006"
+			7 7 "tile0007"
+			8 8 "tile0008"
+			9 9 "tile0009"
+			10 10 "tile000A"
+			11 11 "tile000B"
+			12 12 "tile000C"
+			13 13 "tile000D"
+			14 14 "tile000E"
+			15 15 "tile000F"
+			16 16 "tile0010"
+			17 17 "tile0011"
+			18 18 "tile0012"
+			19 19 "tile0013"
+			20 20 "tile0014"
+			21 21 "tile0015"
+			22 22 "tile0016"
+			23 23 "tile0017"
+			24 24 "tile0018"
+			25 25 "tile0019"
+			26 26 "tile001A"
+			27 27 "tile001B"
+			28 28 "tile001C"
+			29 29 "tile001D"
+			30 30 "tile001E"
+			31 31 "tile001F"
+			32 32 "tile0020"
+			33 33 "tile0021"
+			34 34 "tile0022"
+			35 35 "tile0023"
+			36 36 "tile0024"
+			37 37 "tile0025"
+			38 38 "tile0026"
+			39 39 "tile0027"
+			40 40 "tile0028"
+			41 41 "tile0029"
+			42 42 "tile002A"
+			43 43 "tile002B"
+			44 44 "tile002C"
+			45 45 "tile002D"
+			46 46 "tile002E"
+			47 47 "tile002F"
+			48 48 "tile0030"
+			49 49 "tile0031"
+			50 50 "tile0032"
+			51 51 "tile0033"
+			52 52 "tile0034"
+			53 53 "tile0035"
+			54 54 "tile0036"
+			55 55 "tile0037"
+			56 56 "tile0038"
+			57 57 "tile0039"
+			58 58 "tile003A"
+			59 59 "tile003B"
+			60 60 "tile003C"
+			61 61 "tile003D"
+			62 62 "tile003E"
+			63 63 "tile003F"
+		}
+	}
+}
+Layer:Sprite "sprites" 16 {
+	File:SpriteSource 0 "../assets/d-man.tga" name="dlangman"
+	File:Palette "../assets/d-man.tga" offset=256
+	Object:Sprite "player" 65536 0 16 16 palSel=1 {
+		ToCollision
+	}
+	Object:Box "testObject" 0 16 16 24 24 {
+		ToCollision
+	}
+	Object:Box "testObject" 1 32 32 48 48 {
+		ToCollision
+	}
+	Object:Box "testObject" 2 64 64 96 96 {
+		ToCollision
+	}
+	RenderingMode "AlphaBlend"
+}
+File:Palette "../assets/sci-fi-tileset.png" palShift=5
