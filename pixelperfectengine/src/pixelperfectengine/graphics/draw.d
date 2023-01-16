@@ -13,7 +13,9 @@ import std.conv;
 import pixelperfectengine.graphics.bitmap;
 import compose = CPUblit.composing;
 import specblt = CPUblit.composing.specblt;
-import draw = CPUblit.draw;
+//import draw = CPUblit.draw;
+import draw = CPUblit.drawing.line;
+import draw0 = CPUblit.drawing.foodfill;
 import bmfont;
 public import pixelperfectengine.graphics.fontsets;
 public import pixelperfectengine.graphics.common;
@@ -30,11 +32,6 @@ public class BitmapDrawer{
 		output = new Bitmap8Bit(x, y);
 
 	}
-	/+
-	///Draws a single line. DEPRECATED!
-	deprecated public void drawLine(int xa, int xb, int ya, int yb, ubyte color) pure {
-		draw.drawLine(xa, ya, xb, yb, color, output.getPtr(), output.width);
-	}+/
 	/**
 	 * Draws a single line.
 	 * Parameters:
@@ -43,7 +40,7 @@ public class BitmapDrawer{
 	 *  color = The color index to be used for the line.
 	 */
 	public void drawLine(Point from, Point to, ubyte color) pure {
-		draw.drawLine(from.x, from.y, to.x, to.y, color, output.getPtr(), output.width);
+		draw.drawLine(from.x, from.y, to.x, to.y, color, output.pixels, output.width);
 	}
 	/**
 	 * Draws a line with a pattern.
@@ -53,7 +50,7 @@ public class BitmapDrawer{
 	 *  pattern = Contains the color indexes for the line, to draw the pattern.
 	 */
 	public void drawLinePattern(Point from, Point to, ubyte[] pattern) pure {
-		draw.drawLinePattern(from.x, from.y, to.x, to.y, pattern, output.getPtr(), output.width);
+		draw.drawLinePattern(from.x, from.y, to.x, to.y, pattern, output.pixels, output.width);
 	}
 	/**
 	 * Draws a box.
@@ -62,10 +59,10 @@ public class BitmapDrawer{
 	 *  color = The color index which the box will be drawn.
 	 */
 	public void drawBox(Box target, ubyte color) pure {
-		draw.drawLine(target.left, target.top, target.right, target.top, color, output.getPtr(), output.width);
-		draw.drawLine(target.left, target.top, target.left, target.bottom, color, output.getPtr(), output.width);
-		draw.drawLine(target.left, target.bottom, target.right, target.bottom, color, output.getPtr(), output.width);
-		draw.drawLine(target.right, target.top, target.right, target.bottom, color, output.getPtr(), output.width);
+		draw.drawLine(target.left, target.top, target.right, target.top, color, output.pixels, output.width);
+		draw.drawLine(target.left, target.top, target.left, target.bottom, color, output.pixels, output.width);
+		draw.drawLine(target.left, target.bottom, target.right, target.bottom, color, output.pixels, output.width);
+		draw.drawLine(target.right, target.top, target.right, target.bottom, color, output.pixels, output.width);
 	}
 	/**
 	 * Draws a box with the supplied pattern as the 
@@ -74,10 +71,10 @@ public class BitmapDrawer{
 	 *  color = The color index which the box will be drawn.
 	 */
 	public void drawBox(Coordinate target, ubyte[] pattern) pure {
-		draw.drawLinePattern(target.left, target.top, target.right, target.top, pattern, output.getPtr(), output.width);
-		draw.drawLinePattern(target.left, target.top, target.left, target.bottom, pattern, output.getPtr(), output.width);
-		draw.drawLinePattern(target.left, target.bottom, target.right, target.bottom, pattern, output.getPtr(), output.width);
-		draw.drawLinePattern(target.right, target.top, target.right, target.bottom, pattern, output.getPtr(), output.width);
+		draw.drawLinePattern(target.left, target.top, target.right, target.top, pattern, output.pixels, output.width);
+		draw.drawLinePattern(target.left, target.top, target.left, target.bottom, pattern, output.pixels, output.width);
+		draw.drawLinePattern(target.left, target.bottom, target.right, target.bottom, pattern, output.pixels, output.width);
+		draw.drawLinePattern(target.right, target.top, target.right, target.bottom, pattern, output.pixels, output.width);
 	}
 	/**
 	 * Draws a filled box.
@@ -86,8 +83,11 @@ public class BitmapDrawer{
 	 *  color = The color of the box (both the line and fill color).
 	 */
 	public void drawFilledBox(Coordinate target, ubyte color) pure {
-		draw.drawFilledRectangle(target.left, target.top, target.right + 1, target.bottom - 1, color, output.getPtr(), 
+		draw.drawFilledRectangle(target.left, target.top, target.right, target.bottom, color, output.pixels, 
 				output.width);
+	}
+	public void floodFill(Point target, ubyte color, ubyte transparency = 0) pure {
+		draw0.floodFill(target.x, target.y, color, output.pixels, output.width, transparency);
 	}
 	/**
 	 * Copies a bitmap to the canvas using 0th index transparency.
@@ -217,30 +217,7 @@ public class BitmapDrawer{
 			pdest += output.width;
 		}
 	}
-	/+
-	///Draws a rectangle. DEPRECATED!
-	deprecated public void drawRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
-		drawLine(xa, xa, ya, yb, color);
-		drawLine(xb, xb, ya, yb, color);
-		drawLine(xa, xb, ya, ya, color);
-		drawLine(xa, xb, yb, yb, color);
-	}+/
-	/+
-	deprecated public void drawRectangle(int xa, int xb, int ya, int yb, Bitmap8Bit brush) pure {
-		xa = xa + brush.width;
-		ya = ya + brush.height;
-		xb = xb - brush.width;
-		yb = yb - brush.height;
-		drawLine(xa, xa, ya, yb, brush);
-		drawLine(xb, xb, ya, yb, brush);
-		drawLine(xa, xb, ya, ya, brush);
-		drawLine(xa, xb, yb, yb, brush);
-	}
-	///Draws a filled rectangle. DEPRECATED!
-	deprecated public void drawFilledRectangle(int xa, int xb, int ya, int yb, ubyte color) pure {
-		draw.drawFilledRectangle(xa, ya, xb, yb, color, output.getPtr(), output.width);
-	}+/
-	
+		
 	///Draws colored text from monocromatic font.
 	public void drawColorText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, ubyte color, uint style = 0) pure {
 		//color = 1;
@@ -355,29 +332,6 @@ public class BitmapDrawer{
 					Font.Char chrInfo = text.font.chars(chr);
 					//check if the character exists in the fontset, if not, then substitute it and set flag for missing character
 					if(chrInfo.id == 0xFFFD && chr != 0xFFFD) status |= TextDrawStatus.CharacterNotFound;
-					//const int chrAdvAmount = chrInfo.xadvance + currTextChunk.formatting.getKerning(prevChar, chr);
-					/+if(pX < targetX) {
-						//if(pX + chrInfo.xadvance >= offset) {
-						Box letterSlice = Box(chrInfo.x, chrInfo.y, chrInfo.x + chrInfo.width, chrInfo.y + 
-							chrInfo.height);
-						const int xOffset = pX < offset ? offset - pX : 0;
-						letterSlice.left += xOffset > chrInfo.xoffset ? xOffset : 0; //Draw portion of letter if it's partly obscured at the left
-						letterSlice.top += lineOffset > chrInfo.yoffset ? chrInfo.yoffset - lineOffset : 0;
-						if(pX + chrInfo.xoffset + chrAdvAmount >= targetX){//Draw portion of letter if it's partly obscured at the right
-							letterSlice.right -= targetX - (pX + chrInfo.xoffset + chrInfo.width);
-							status |= TextDrawStatus.RHSOutOfBound;
-						}
-						/+letterSlice.right -= pX + chrInfo.xoffset + chrInfo.width >= targetX ? 
-								(pX - chrInfo.xoffset) - (targetX - chrInfo.xoffset) : 0;+/
-						if (letterSlice.width > 0 && letterSlice.height > 0)
-							insertColorLetter(pX + chrInfo.xoffset - xOffset, pos.top + chrInfo.yoffset - lineOffset, 
-									text.font.pages[chrInfo.page], text.formatting.color, letterSlice);
-						//}
-						pX += chrAdvAmount;
-						firstCharOffset = 0;
-						currCharPos++;
-						prevChar = chr;
-					} else return status | TextDrawStatus.RHSOutOfBound;+/
 					Box letterSrc = Box(chrInfo.x, chrInfo.y, chrInfo.x + chrInfo.width, chrInfo.y + 
 							chrInfo.height);
 					Point chrPos = Point (pX + chrInfo.xoffset, chrInfo.yoffset);

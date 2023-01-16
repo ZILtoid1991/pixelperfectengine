@@ -52,7 +52,7 @@ public class PopUpMenu : PopUpElement {
 		if(select > -1){
 			int y0 = cast(int)((height / elements.length) * select);
 			int y1 = cast(int)((height / elements.length) + y0);
-			output.drawFilledBox(Box(1, y0 + 1, position0.width, y1 + 1), ss.getColor("selection")); //output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
+			output.drawFilledBox(Box(1, y0 + 1, position0.width - 1, y1 - 1), ss.getColor("selection")); //output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
 		}
 
 
