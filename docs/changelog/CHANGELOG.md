@@ -1,4 +1,21 @@
-# Current
+# 0.10.0-beta8
+
+## Added some basic object handling and loading, and full sprite layer support to mapformat
+
+Originally, I wanted to work on the editor, but since the engine lacked some critical features, I had to go back and 
+add them. Fortunately didn't took too much time.
+
+## Collision detection bugfix
+
+The ObjectCollisionDetector had some kind of weird bug, which I had to fix by changing how the tested area is being 
+calculated. This might also bring some minimal performance improvements, since the new one can be substituted with some
+conditional moves.
+
+## Other changes:
+
+* CPUblit upgraded to 0.6.1
+
+# 0.10.0-beta7
 
 ## Added Random number generator
 
