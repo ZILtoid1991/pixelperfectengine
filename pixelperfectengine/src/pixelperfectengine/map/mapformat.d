@@ -283,6 +283,9 @@ public class MapFormat {
 		
 		return result;
 	}
+	/**
+	 * Returns all objects belonging to a `layerID` in an array.
+	 */
 	public MapObject[] getLayerObjects(int layerID) @trusted {
 		Tag t0 = layerData[layerID];
 		if (t0 is null) return null;
@@ -299,6 +302,13 @@ public class MapFormat {
 		}
 		return result;
 	}
+	/**
+	 * Loads all sprites and objects to thir respective layers and the supplied ObjectCollisionDetector.
+	 * Params:
+	 *   paletteTarget: A raster to load the palettes into. Must be not null.
+	 *   ocd: The supplied ObjectCollisionDetector. Can be null.
+	 * Note: This is a default parser and loader, one might want to write a more complicated one for their application.
+	 */
 	public void loadAllSpritesAndObjects(PaletteContainer paletteTarget, ObjectCollisionDetector ocd) @trusted {
 		import pixelperfectengine.collision.common;
 		foreach (key, value; layeroutput) {
