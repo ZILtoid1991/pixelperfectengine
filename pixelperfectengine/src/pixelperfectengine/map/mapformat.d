@@ -1223,7 +1223,7 @@ public class PolylineObject : MapObject {
 		return Tag.init; // TODO: implement
 	}
 }
-
+///Parses a color from SDLang Tag 't', then returns it as the engine's default format.
 public Color parseColor(Tag t) @trusted {
 	Color c;
 	switch (t.values.length) {
@@ -1244,9 +1244,17 @@ public Color parseColor(Tag t) @trusted {
 	}
 	return c;
 }
+///Serializes the engine's color format into an SDLang Tag.
 public Tag storeColor(Color c) @trusted {
 	return new Tag(null, "Color", [Value(format("%08x", c.base))]);
 }
+/**
+ * Parses an ofject from an SDLang tag.
+ * Params:
+ *   t = The source tag.
+ *   gID = Group (layer) ID.
+ * Returns: The parsed object.
+ */
 public MapObject parseObject(Tag t, int gID) @trusted {
 	if (t.namespace != "Object") return null;
 	switch (t.name) {
