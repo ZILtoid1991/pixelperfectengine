@@ -1074,6 +1074,7 @@ public class BoxObject : MapObject {
 	public override Tag serialize () @trusted {
 		return mainTag;
 	}
+	///Gets the identifying color of this object.
 	public Color color() @trusted {
 		Tag t0 = mainTag.getTag("Color");
 		if (t0) {
@@ -1082,6 +1083,7 @@ public class BoxObject : MapObject {
 			return Color.init;
 		}
 	}
+	///Sets the identifying color of this object.
 	public Color color(Color c) @trusted {
 		Tag t0 = mainTag.getTag("Color");
 		if (t0) {
@@ -1173,6 +1175,9 @@ public class PolylineObject : MapObject {
 		mainTag = t;
 		_type = MapObjectType.polyline;
 	}
+	/**
+	 * Sets the color to 'c' for the polyline object's given segment indicated by 'num'.
+	 */
 	public Color color(Color c, int num) @trusted {
 		int i;
 		foreach (Tag t0 ; mainTag.tags) {
@@ -1190,6 +1195,9 @@ public class PolylineObject : MapObject {
 		}
 		throw new PPEException("Out of index error!");
 	}
+	/**
+	 * Returns the color for the polyline object's given segment indicated by 'num'.
+	 */
 	public Color color(int num) @trusted {
 		int i;
 		foreach (Tag t0 ; mainTag.tags) {
