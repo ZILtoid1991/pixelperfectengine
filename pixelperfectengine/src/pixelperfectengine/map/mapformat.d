@@ -940,6 +940,14 @@ public class MapFormat {
 	public string getName () @trusted {
 		return metadata.getTagValue!string("Name");
 	}
+	/**
+	 * Adds an object to a layer.
+	 * Intended for editor use.
+	 * Params:
+	 *   layer = The ID of the layer.
+	 *   t = The serialized tag of the object.
+	 * Returns: The backup of the previous object's copy, or null if no object have existed with the same ID.
+	 */
 	public Tag addObjectToLayer(int layer, Tag t) @trusted {
 		Tag result;
 		try {
@@ -956,6 +964,14 @@ public class MapFormat {
 		layerData[layer].add(t);
 		return result;
 	}
+	/**
+	 * Removes an object from a layer.
+	 * Intended for editor use.
+	 * Params:
+	 *   layer = ID of the layer from which we want to remove the object from.
+	 *   objID = ID of the object we want to remove.
+	 * Returns: the tag of the object that has been removed if the operation is successful.
+	 */
 	public Tag removeObjectFromLayer(int layer, int objID) @trusted {
 		try {
 			foreach (Tag t0; layerData[layer].namespaces["Object"].tags) {
