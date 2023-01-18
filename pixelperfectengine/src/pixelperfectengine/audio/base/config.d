@@ -45,6 +45,10 @@ public class ModuleConfig {
 	protected RoutingNode[]			rns;
 	///The audio modules stored by this configuration.
 	protected AudioModule[]			modules;
+	///Track routing for MIDI devices.
+	public uint[]					midiRouting;
+	///Group identifiers for tracks.
+	public ubyte[]					midiGroups;
 	///The names of the modules.
 	protected string[]				modNames;
 	/**
@@ -92,6 +96,8 @@ public class ModuleConfig {
 		rns.length = 0;
 		modules.length = 0;
 		modNames.length = 0;
+		midiRouting.length = 0;
+		midiGroups.length = 0;
 		if (isRunning)
 			manager.suspendAudioThread();
 		foreach (Tag t0; root.tags) {
@@ -167,6 +173,14 @@ public class ModuleConfig {
 						t0.remove();
 					else if (node.inputs.length && node.outputs.length)			//Only use nodes that have valid inputs and outputs
 						rns ~= node;
+					break;
+				case "midiRouting":
+					foreach (Tag t1 ; t0.tags) {
+						midiRouting ~= t1.values[0].get!int;
+						midiGroups ~= cast(ubyte)(t1.getAttribute!int("group", 0));
+					}
+					/* midiRouting ~= t0.values[0].get!int;
+					midiGroups ~= cast(ubyte)(t0.getAttribute!int("group", 0)); */
 					break;
 				default:
 					break;

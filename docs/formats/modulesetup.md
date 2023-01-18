@@ -105,12 +105,15 @@ Especially due to the lack of implemented MIDI 2.0 file formats, multiple-track 
 tell the program how to route the sequencer.
 
 ```s
-midiTrack 0 "fmsynth"
-midiTrack 1 "sampler" port=5
-...
+midiRouting {
+    0
+    1 group=3
+    [...]
+}
 ```
 
-The "port" attribute sets the MIDI 2.0 port (default is 0).
+The "group" attribute sets the MIDI 2.0 group (default is 0). Each unnamed tag refers to a MIDI track, and the value 
+tells which module should be the target for the output.
 
 # Condition codes
 
