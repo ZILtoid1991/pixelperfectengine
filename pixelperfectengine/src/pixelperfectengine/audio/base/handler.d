@@ -130,7 +130,7 @@ public class ModuleManager {
 	 * Ran in order, should be ordered in such way to ensure that routing is correct, and the modules that need the
 	 * input will get some.
 	 */
-	protected AudioModule[]	moduleList;
+	public AudioModule[]	moduleList;
 	/**
 	 * List of pointers to input buffers.
 	 *
