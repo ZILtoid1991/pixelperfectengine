@@ -45,7 +45,7 @@ class SampleApp : InputListener, SystemEventListener {
 		mainRaster = new Raster(848,480,outScrn,0);                 //Creates a raster with the size of 848x480.
 		mainRaster.addLayer(sprtL,0);                               //Adds the sprite layer to the raster.
         mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga")); //Loads the default palette from a supplied file containing icons.
-
+        outScrn.setMainRaster(mainRaster);                          //Sets the main raster of the output screen.
         //Load additional fonts, icons, etc. here
 
         wh = new WindowHandler(1696,960,848,480,sprtL);             //Creates a window handler for the sizes of the windowhandler and raster.
