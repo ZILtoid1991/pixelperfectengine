@@ -28,6 +28,8 @@ import dimage.bmp;
 
 import vfile;
 
+import mididi;
+
 import bindbc.sdl.mixer;
 
 /** 
@@ -225,14 +227,22 @@ public Color[] loadPaletteFromImage (Image img) {
 
 /**
  * Loads a *.wav file if SDL2 mixer is used
- * WILL BE DEPRECATED SOON!
+ * Deprecated, use pixelperfect.audio instead!
  */
-public Mix_Chunk* loadSoundFromFile(const char* filename){
+public deprecated Mix_Chunk* loadSoundFromFile(const char* filename){
 	return Mix_LoadWAV(filename);
 }
 
 File loadFileFromDisk(string filename){
 	return File(filename, "r");
+}
+
+MIDI loadMidiFile(F)(F source) {
+	ubyte[] src;
+	src.length = cast(size_t)source.size;
+	src = source.rawRead(src);
+	MIDIReader!(ubyte[]) reader = MIDIReader!(ubyte[])(src);
+	return reader.readMIDI();
 }
 
 /**
