@@ -1,4 +1,4 @@
-# 0.10.0-beta8
+# 0.10.0-beta8 (current)
 
 ## Added some basic object handling and loading, and full sprite layer support to mapformat
 
@@ -10,6 +10,10 @@ add them. Fortunately didn't took too much time.
 The ObjectCollisionDetector had some kind of weird bug, which I had to fix by changing how the tested area is being 
 calculated. This might also bring some minimal performance improvements, since the new one can be substituted with some
 conditional moves.
+
+## Made the MIDI sequencer workable
+
+If you're lucky, it'll work right out of the box. See `gameapp.d` template for example usage.
 
 ## Other changes:
 

@@ -99,7 +99,7 @@ public class GameApp : SystemEventListener, InputListener {
 	/// Put other things here if you need them.
 	this () {
 		stateFlags.isRunning = true;	//Sets the state to running, so the main loop will stay running.
-		output = new OutputScreen("TileLayer test", 424 * 4, 240 * 4);	//Creates an output window with the display size of 1696x960.
+		output = new OutputScreen("Your app name here", 424 * 4, 240 * 4);	//Creates an output window with the display size of 1696x960.
 		rstr = new Raster(424,240,output,0);//Creates a raster with the size of 424x240.
 		output.setMainRaster(rstr);		//Sets the main raster of the output screen.
 
@@ -114,6 +114,7 @@ public class GameApp : SystemEventListener, InputListener {
 		textLayer.masterVal = 127;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
 
 		cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
+		//Comment the next part out, if you're having too much trouble with audio working, since you still can add sound later on.
 		//audio related part begin
 		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);	//Initializes the driver
 		AudioSpecs as = AudioSpecs(predefinedFormats[PredefinedFormats.FP32], cfg.audioFrequency, 0, 2, cfg.audioBufferLen, 
@@ -122,13 +123,7 @@ public class GameApp : SystemEventListener, InputListener {
 		adh.initAudioDevice(-1);							//Initializes the default device
 		modMan = new ModuleManager(adh);					//Initializes the module manager
 		modCfg = new ModuleConfig(modMan);					//Initializes the module configurator
-		{													//This block loads the audio configuration from file
-			File f = File("yourAudioConfiguration.sdl");
-			char[] c;
-			c.length = cast(size_t)f.size();
-			f.rawRead(c);
-			modCfg.loadConfig(c.idup);
-		}
+		modCfg.loadConfigFromFile("yourAudioConfiguration.sdl");//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
 		modCfg.compile(false);								//Compiles the current module configuration.
 		midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
 		modMan.runAudioThread();							//Runs the audio thread.

@@ -71,12 +71,24 @@ public class ModuleConfig {
 		root = new Tag(null);
 	}
 	/** 
-	 * Loads a configuration file.
+	 * Loads a configuration file from text.
 	 * Params:
 	 *   src = the text of the configuration file.
 	 */
-	public void loadConfig(string src) {
+	public void loadConfig(string src) @trusted {
 		root = parseSource(src);
+	}
+	/** 
+	 * Loads a configuration file from file
+	 * Params:
+	 *   path = Path to the file.
+	 */
+	public void loadConfigFromFile(string path) {
+		File f = File(path);
+		char[] c;
+		c.length = cast(size_t)f.size();
+		f.rawRead(c);
+		loadConfig(c.idup);
 	}
 	/** 
 	 * Saves the configuration into a file.
