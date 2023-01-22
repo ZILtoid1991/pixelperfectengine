@@ -5,6 +5,7 @@ module pixelperfectengine.system.timer;
  * Pixel Perfect Engine, system.timer module
  */
 import collections.sortedlist;
+import std.typecons : BitFlags;
 public import core.time;
 
 static CoarseTimer timer;
@@ -18,7 +19,11 @@ static this() {
  * Is fast and can effectively test for multiple elements, but is inaccurate which can even fluctuate if tests are done
  * on VSYNC intervals. This will make the duration longer in every case (up to 16.7ms on 60Hz displays), but this
  * still should be accurate enough for many cases.
+ * In theory, calls for test can be done separate from VSYNC intervals by running it in its own thread, but that can 
+ * cause potential race issues.
  * Delegates take the `jitter` argument, which is the overshoot of the time.
+ * Can be suspended for game pausing, etc., while keeping time deltas mostly accurate. Multiple instances of this class
+ * can be used to create various effects from suspending the timer.
  */
 public class CoarseTimer {
 	alias TimerReceiver = void delegate(Duration jitter);
@@ -38,19 +43,26 @@ public class CoarseTimer {
 			return cast(size_t)when.ticks;
 		}
 	}
+	protected enum StatusFlags {
+		isTesting	=	1<<0,
+		isPaused	=	1<<1,
+	}
 	protected SortedList!Entry	timerList;		///The list of timer entries.
-	protected Entry[]			timerRegs;		///Secondary timer list
-	protected uint				status;			///1 if during testing, 0 otherwise
-	///CTOR
+	protected Entry[]			timerRegs;		///Secondary timer list.
+	protected BitFlags!StatusFlags status;		///Contains various status flags.
+	protected MonoTime			timeSuspend;	///Time when suspension happened.
+	///CTOR (empty)
 	public this() @safe pure nothrow {
 
 	}
 	/**
 	 * Registers an entry for the timer.
-	 * Delta sets the amount of time into the future.
+	 * Params:
+	 *    dg = the delegate to be called when the event is lapsed.
+	 *    delta = sets the amount of time into the future.
 	 */
 	public void register(TimerReceiver dg, Duration delta) @safe nothrow {
-		if (!status)
+		if (status.isTesting)
 			timerList.put(Entry(dg, MonoTime.currTime + delta));
 		else
 			timerRegs ~= Entry(dg, MonoTime.currTime + delta);
@@ -60,8 +72,8 @@ public class CoarseTimer {
 	 * If enough time has passed, then those entries will be called and deleted.
 	 */
 	public void test() {
-		status = 1;
-		while (timerList.length) {
+		status.isTesting = true;
+		while (timerList.length && !status.isPaused) {
 			if (MonoTime.currTime >= timerList[0].when) {
 				timerList[0].onLapse(MonoTime.currTime - timerList[0].when);
  				timerList.remove(0);
@@ -72,6 +84,29 @@ public class CoarseTimer {
 		foreach (e ; timerRegs)
 			timerList.put(e);
 		timerRegs.length = 0;
-		status = 0;
+		status.isTesting = true;
+	}
+	/** 
+	 * Suspends the timer and saves the current timestamp to calculate timeshift caused by suspension.
+	 */
+	public void suspendTimer() {
+		if(!status.isPaused) {
+			status.isPaused = true;
+			timeSuspend = MonoTime.currTime;
+		}
+	}
+	/** 
+	 * Resumes timer and shifts all entries by given time delta.
+	 */
+	public void resumeTimer() {
+		if(status.isPaused) {
+			status.isPaused = false;
+			const MonoTime timeResume = MonoTime.currTime;
+			const Duration timeShift = timeResume - timeSuspend;
+			//in theory, every entry should keep their position, so no list rebuilding is needed
+			foreach (ref Entry key; timerList) {
+				key.when += timeShift;
+			}
+		}
 	}
 }
