@@ -84,6 +84,7 @@ public class ModuleConfig {
 	 *   path = Path to the file.
 	 */
 	public void loadConfigFromFile(string path) {
+		import std.stdio : File;
 		File f = File(path);
 		char[] c;
 		c.length = cast(size_t)f.size();
