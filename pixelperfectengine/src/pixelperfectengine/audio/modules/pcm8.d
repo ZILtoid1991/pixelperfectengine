@@ -165,7 +165,7 @@ public class PCM8 : AudioModule {
 		ushort			bankNum;			///Bank select number.
 		uint			status;				///Channel status flags. Bit 1: Note on, Bit 2: Sample run out approaching, Bit 3: In loop
 
-		float			pitchBend;			///Current amount of pitch bend.
+		float			pitchBend = 0;		///Current amount of pitch bend.
 
 		float			velocity;			///Velocity normalized between 0 and 1
 		float			modWheel;			///Modulation wheel normalized between 0 and 1
@@ -222,7 +222,7 @@ public class PCM8 : AudioModule {
 		}
 		///Calculates jump amount for the sample.
 		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
-			freqRatio = sampleRate / presetCopy.sampleMapping[currNote & 127].baseFreq;
+			freqRatio = sampleRate / bendFreq(presetCopy.sampleMapping[currNote & 127].baseFreq, pitchBend);
 			jumpAm = cast(uint)((1<<24) / freqRatio);
 		}
 		///Resets all internal states.
@@ -326,6 +326,7 @@ public class PCM8 : AudioModule {
 						case MIDI1_0Cmd.PitchBend:
 							channels[data0.channel].pitchBend = channels[data0.channel].presetCopy.pitchBendAm * 
 									((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
+							channels[data0.channel].calculateJumpAm(sampleRate);
 							break;
 						case MIDI1_0Cmd.NoteOn:
 							keyOn(data0.note, data0.channel, data0.value/127.0);
@@ -364,6 +365,7 @@ public class PCM8 : AudioModule {
 						case MIDI2_0Cmd.PitchBend:
 							channels[data0.channel].pitchBend = channels[data0.channel].presetCopy.pitchBendAm * 
 									((cast(double)data1 - int.max) / (int.max));
+							channels[data0.channel].calculateJumpAm(sampleRate);
 							break;
 						case MIDI2_0Cmd.NoteOn:
 							NoteVals nv = *cast(NoteVals*)&data1;
@@ -1091,6 +1093,9 @@ public class PCM8 : AudioModule {
 				case 0x00_0F:
 					presetPtr.adsrToVol = value;
 					return 0;
+				case 0x00_20:
+					presetPtr.pitchBendAm = value;
+					return 0;
 				default:
 					break;
 			}
@@ -1121,6 +1126,7 @@ public class PCM8 : AudioModule {
 			MValue(MValueType.Boolean, 0x00_11, "f_cutoffOnKeyOff"),
 			MValue(MValueType.Boolean, 0x00_12, "f_modwheelToLFO"),
 			MValue(MValueType.Boolean, 0x00_13, "f_panningLFO"),
+			MValue(MValueType.Float, 0x00_20, "pitchBendRange"),
 			/* MValue(MValueType.Boolean, 0x00_13, "f_ADSRtoVol"), */
 		] ~ SAMPLE_SET_VALS.dup ~ [
 			MValue(MValueType.Float, 0x80_00, `_FilterLCFreq`), MValue(MValueType.Float, 0x80_01, `_FilterLCQ`),
@@ -1275,6 +1281,8 @@ public class PCM8 : AudioModule {
 					return presetPtr.velToRelShp;
 				case 0x00_0F:
 					return presetPtr.adsrToVol;
+				case 0x0020:
+					return presetPtr.pitchBendAm;
 				default:
 					break;
 			}
