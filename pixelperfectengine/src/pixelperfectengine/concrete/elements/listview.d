@@ -243,6 +243,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	protected int				tselect;		///Lenght of selected characters.
 	protected int				cursorPos;		///Position of cursor.
 	protected int				horizTextOffset;///Horizontal text offset if text cannot fit the cell.
+	public int					hScrollSpeed = 1;///Horizontal scrolling speed.
+	public int					vScrollSpeed = 8;///Vertical scrolling speed.
 	///Text editing area.
 	protected Box				textArea;
 	///Filters the input to the cell if not null.
@@ -803,7 +805,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	}
 	///Passes mouse scroll event
 	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
-		mwe.y *= 7;
+		mwe.x *= hScrollSpeed;
+		mwe.y *= vScrollSpeed;
 		if (state != ElementState.Enabled) return;
 		if (horizSlider) horizSlider.passMWE(mec, mwe);
 		if (vertSlider) vertSlider.passMWE(mec, mwe);
