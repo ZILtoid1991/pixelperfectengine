@@ -62,7 +62,7 @@ public class CoarseTimer {
 	 *    delta = sets the amount of time into the future.
 	 */
 	public void register(TimerReceiver dg, Duration delta) @safe nothrow {
-		if (status.isTesting)
+		if (!status.isTesting)
 			timerList.put(Entry(dg, MonoTime.currTime + delta));
 		else
 			timerRegs ~= Entry(dg, MonoTime.currTime + delta);
