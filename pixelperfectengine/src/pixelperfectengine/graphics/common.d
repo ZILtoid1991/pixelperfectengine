@@ -26,6 +26,9 @@ public struct Point {
 		import std.conv : to;
 		return "x: " ~ to!string(x) ~ " ; y: " ~ to!string(y);
 	}
+	bool opEquals(const Point other) @safe @nogc pure nothrow const {
+		return this.x == other.x && this.y == other.y;
+	}
 }
 /**
  * Graphics primitive. Represents a box on a 2D field.
