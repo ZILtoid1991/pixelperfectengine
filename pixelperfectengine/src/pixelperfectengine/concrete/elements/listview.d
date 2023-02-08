@@ -542,6 +542,21 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			return null;
 		return item;
 	}
+	public int[2] scroll() {
+		int[2] result;
+		if (horizSlider !is null)
+			result[0] = horizSlider.value;
+		if (vertSlider !is null)
+			result[1] = vertSlider.value;
+		return result;
+	}
+	public int[2] scroll(int[2] pos) {
+		if (horizSlider !is null)
+			horizSlider.value = pos[0];
+		if (vertSlider !is null)
+			vertSlider.value = pos[1];
+		return scroll();
+	}
 	/**
 	 * Removes all entries in the list.
 	 */
