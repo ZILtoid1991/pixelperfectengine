@@ -13,6 +13,7 @@ import std.exception : enforce;
 import std.typecons : BitFlags;
 import pixelperfectengine.system.etc : parseHex;
 import std.format : format;
+import std.conv : to;
 import collections.treemap;
 public import pixelperfectengine.map.mapdata;
 import pixelperfectengine.system.file;
@@ -1047,12 +1048,14 @@ public class BoxObject : MapObject {
 	/**
 	 * Creates a new instance from scratch.
 	 */
-	public this (int pID, int gID, string name, Box position) @nogc nothrow @safe pure {
+	public this (int pID, int gID, string name, Box position)  {
 		this.pID = pID;
 		this.gID = gID;
 		this.name = name;
 		this.position = position;
 		_type = MapObjectType.box;
+		mainTag = new Tag("Object", "Box", [Value(name), Value(pID), Value(position.left), Value(position.top), 
+				Value(position.right), Value(position.bottom)]);
 	}
 	/**
 	 * Deserializes itself from a Tag.
@@ -1109,7 +1112,8 @@ public class SpriteObject : MapObject {
 	/**
 	 * Creates a new instance from scratch.
 	 */
-	public this (int pID, int gID, string name, int ssID, int x, int y, int scaleHoriz, int scaleVert) {
+	public this (int pID, int gID, string name, int ssID, int x, int y, int scaleHoriz = 1024, int scaleVert = 1024, 
+			RenderingMode rendMode = RenderingMode.init, ushort palSel = 0, ubyte palShift = 0, ubyte masterAlpha = 0xFF) {
 		this.pID = pID;
 		this.gID = gID;
 		this.name = name;
@@ -1119,6 +1123,20 @@ public class SpriteObject : MapObject {
 		this.scaleHoriz = scaleHoriz;
 		this.scaleVert = scaleVert;
 		_type = MapObjectType.sprite;
+		Attribute[] attr;
+		if (scaleHoriz != 1024)
+			attr ~= new Attribute("scaleHoriz", Value(scaleHoriz));
+		if (scaleVert != 1024)
+			attr ~= new Attribute("scaleVert", Value(scaleVert));
+		if (palSel)
+			attr ~= new Attribute("palSel", Value(cast(int)palSel));
+		if (palShift)
+			attr ~= new Attribute("palShift", Value(cast(int)palShift));
+		if (masterAlpha)
+			attr ~= new Attribute("masterAlpha", Value(cast(int)masterAlpha));
+		mainTag = new Tag("Object", "Sprite", [Value(name), Value(pID), Value(ssID), Value(x), Value(y)]);
+		if (rendMode != RenderingMode.init)
+			new Tag(mainTag, null,"RenderingMode", [Value(to!string(rendMode))]);
 	}
 	/**
 	 * Deserializes itself from a Tag.
@@ -1151,7 +1169,22 @@ public class SpriteObject : MapObject {
 }
 public class PolylineObject : MapObject {
 	public Point[]		path;
-	
+	public this (int pID, int gID, string name, Point[] path) {
+		this.gID = gID;
+		this.pID = pID;
+		this.name = name;
+		this.path = path;
+		mainTag = new Tag(null, "Object", "Polyline", [Value(name), Value(pID)]);
+		new Tag(mainTag, null, "Begin", [Value(path[0].x), Value(path[0].y)]);
+		foreach (Point key; path[1..$-1]) {
+			new Tag(mainTag, null, "Segment", [Value(key.x), Value(key.y)]);
+		}
+		if (path[0] == path[$-1]) {
+			new Tag(mainTag, null, "Close");
+		} else {
+			new Tag(mainTag, null, "Segment", [Value(path[$-1].x), Value(path[$-1].y)]);
+		}
+	}
 	public this (Tag t, int gID) @trusted {
 		this.gID = gID;
 		name = t.values[0].get!string();
