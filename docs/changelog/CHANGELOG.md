@@ -1,4 +1,23 @@
-# 0.10.0-beta8 (current)
+# 0.10.0-beta9 (current)
+
+## Suspendable timer
+
+The timer now can be suspended for pausing, etc.
+
+## Implemented pitch bending for PCM8
+
+The functionality was there mostly, but just forgot to implement it fully.
+
+## Object data serialization
+
+Implemented missing object data serialization, so now it should work. (Hope I don't have to debug it in the editor).
+
+## ListView
+
+Added the ability to set the scroll speed of ListView, to avoid painfully laborous scrolls. Also added a function to 
+jump an exact scroll location.
+
+# 0.10.0-beta8
 
 ## Added some basic object handling and loading, and full sprite layer support to mapformat
 
