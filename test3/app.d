@@ -58,8 +58,10 @@ public class TestElements : InputListener, SystemEventListener {
                 flipScreen = false;
                 mainRaster.refresh();
             }
+            //mainRaster.refresh();
             ih.test();
             Thread.sleep(dur!"msecs"(10));
+            timer.test();
         }
     }
 
