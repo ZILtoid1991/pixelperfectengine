@@ -120,18 +120,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	public @property bool mousePressEvent() @nogc @safe pure nothrow {
 		return flags & ENABLE_MOUSE_PRESS ? true : false;
 	}
-	/+/**
-	 * Returns true if middle mouse button events are enabled.
-	 */
-	public @property bool mouseMClickEvent() @nogc @safe pure nothrow {
-		return flags & ENABLE_MCLICK_FLAG ? true : false;
-	}
-	/**
-	 * Returns true if right mouse button events are enabled.
-	 */
-	public @property bool mouseRClickEvent() @nogc @safe pure nothrow {
-		return flags & ENABLE_RCLICK_FLAG ? true : false;
-	}+/
+	
 	/**
 	 * Returns true if the element will generate events on mouse press and mouse release.
 	 * By default, only release is used.
@@ -141,22 +130,7 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		else flags &= ~ENABLE_MOUSE_PRESS;
 		return flags & ENABLE_MOUSE_PRESS ? true : false;
 	}
-	/+/**
-	 * Returns true if middle mouse button events are enabled.
-	 */
-	public @property bool mouseMClickEvent(bool val) @nogc @safe pure nothrow {
-		if (val) flags |= ENABLE_MCLICK_FLAG;
-		else flags &= ~ENABLE_MCLICK_FLAG;
-		return flags & ENABLE_MCLICK_FLAG ? true : false;
-	}
-	/**
-	 * Returns true if right mouse button events are enabled.
-	 */
-	public @property bool mouseRClickEvent(bool val) @nogc @safe pure nothrow {
-		if (val) flags |= ENABLE_RCLICK_FLAG;
-		else flags &= ~ENABLE_RCLICK_FLAG;
-		return flags & ENABLE_RCLICK_FLAG ? true : false;
-	}+/
+	
 	/**
 	 * Returns the next available StyleSheet.
 	 */
@@ -203,6 +177,9 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 	public @property bool isChecked() @nogc @safe pure nothrow const {
 		return flags & IS_CHECKED ? true : false;
 	}
+	/**
+	 * Sets whether the element is checked
+	 */
 	protected @property bool isChecked(bool val) @nogc @safe pure nothrow {
 		if (val) flags |= IS_CHECKED;
 		else flags &= ~IS_CHECKED;
