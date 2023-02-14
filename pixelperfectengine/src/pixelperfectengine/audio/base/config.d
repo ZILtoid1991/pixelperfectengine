@@ -27,9 +27,11 @@ public class ModuleConfig {
 		bool opEquals(const RoutingNode other) const @nogc @safe pure nothrow {
 			return this.name == other.name;
 		}
+		///Returns true if input is found in the routing node.
 		bool hasInput(string s) {
 			return countUntil(inputs, s) != -1;
 		}
+		///Returns true if output is found in the routing node.
 		bool hasOutput(string s) {
 			return countUntil(outputs, s) != -1;
 		}
