@@ -17,7 +17,12 @@ import collections.treemap;
 public struct CollisionShape {
 	Box				position;	///Position of the shape in the 2D space.
 	Bitmap1Bit		shape;		///The shape defined by a 1 bit bitmap. Null if custom shape isn't needed
-	///default CTOR
+	/**
+	 * Creates a collision shape.
+	 * Params:
+	 *   position: The position of the bounding box.
+	 *   shape: The shape of the object in the form of a 1 bit bitmap if any, null otherwise.
+	 */
 	public this(Box position, Bitmap1Bit shape) @nogc @safe pure nothrow {
 		this.position = position;
 		this.shape = shape;
@@ -39,8 +44,8 @@ public class ObjectCollisionEvent {
 		BoxEdge,			///Two edges are one pixel apart
 		ShapeOverlap,		///Two shapes overlap each other
 	}
-	CollisionShape*	shA;		///The object that was tested against other objects
-	CollisionShape*	shB;		///The object that was found colliding with other objects
+	CollisionShape*	shA;		///The object (A) that was tested against other objects
+	CollisionShape*	shB;		///The object (B) that was found colliding with the source object
 	int				idA;		///ID of object A
 	int				idB;		///ID of object B
 	int				contextID;	///The context of the collision (e.g. tester ID)
