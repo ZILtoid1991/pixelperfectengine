@@ -190,7 +190,7 @@ public class BitmapDrawer{
 		}
 	}
 	///Inserts a midsection of the bitmap defined by slice (DEPRECATED)
-	public void insertBitmapSlice(int x, int y, Bitmap8Bit bitmap, Coordinate slice) pure {
+	public deprecated void insertBitmapSlice(int x, int y, Bitmap8Bit bitmap, Coordinate slice) pure {
 		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
 		pdest += x + output.width * y;
 		int bmpWidth = bitmap.width;
@@ -203,7 +203,7 @@ public class BitmapDrawer{
 		}
 	}
 	///Inserts a midsection of the bitmap defined by slice as a color letter (DEPRECATED)
-	public void insertColorLetter(int x, int y, Bitmap8Bit bitmap, ubyte color, Coordinate slice) pure {
+	public deprecated void insertColorLetter(int x, int y, Bitmap8Bit bitmap, ubyte color, Coordinate slice) pure {
 		if(slice.width - 1 <= 0) return;
 		if(slice.height - 1 <= 0) return;
 		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
@@ -413,9 +413,9 @@ enum FontFormat : uint {
  */
 enum TextDrawStatus : uint {
 	CharacterNotFound		=	0x01_00,	///Set if there's any character that was not found in the character set
-	LHSOutOfBound			=	0x00_01,
-	RHSOutOfBound			=	0x00_02,
-	TPOutOfBound			=	0x00_04,
-	BPOutOfBound			=	0x00_08,
+	LHSOutOfBound			=	0x00_01,	///Left hand side out of bound
+	RHSOutOfBound			=	0x00_02,	///Right hand side out of bound
+	TPOutOfBound			=	0x00_04,	///Top portion out of bound
+	BPOutOfBound			=	0x00_08,	///Bottom portion out of bound
 	TooMuchOffset			=	0x1_00_00,
 }
