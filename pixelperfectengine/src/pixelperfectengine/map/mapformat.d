@@ -173,7 +173,8 @@ public class MapFormat {
 	 *   layerID = the ID of the layer.
 	 *   paletteTarget = target for any loaded palettes, ideally the raster.
 	 * Returns: An associative array with sprite identifiers as the keys, and the sprite bitmaps as its elements.
-	 * Note: It's mainly intended for editor placeholders, but also could work with other things.
+	 * Note: It's mainly intended for editor placeholders, but also could work with production-made games as long
+	 * as the limitations don't intercept anything major.
 	 */
 	public ABitmap[int] loadSprites(int layerID, PaletteContainer paletteTarget) @trusted {
 		import pixelperfectengine.system.file;
@@ -1016,8 +1017,9 @@ abstract class MapObject {
 		sprite,
 		polyline,
 	}
+	///Defines various flags for objects
 	public enum MapObjectFlags : ushort {
-		toCollision		=	1<<0,
+		toCollision		=	1<<0,	///Marks the object to be included to collision detection.
 
 	}
 	public int 			pID;		///priority identifier
@@ -1105,10 +1107,10 @@ public class SpriteObject : MapObject {
 	public int			y;		///Y position
 	public int			scaleHoriz;	///Horizontal scaling value
 	public int			scaleVert;	///Vertical scaling value
-	public RenderingMode	rendMode;
-	public ushort		palSel;
-	public ubyte		palShift;
-	public ubyte		masterAlpha;
+	public RenderingMode	rendMode;///The rendering mode of the sprite
+	public ushort		palSel;	///Palette selector. Selects the given palette for the object.
+	public ubyte		palShift;	///Palette shift value. Determines palette length (2^x).
+	public ubyte		masterAlpha;///The main alpha channel of the sprite.
 	/**
 	 * Creates a new instance from scratch.
 	 */
@@ -1167,7 +1169,11 @@ public class SpriteObject : MapObject {
 	}
 	
 }
+/**
+ * Describes a polyline object for things like Vectoral Tile Layer.
+ */
 public class PolylineObject : MapObject {
+	///The points of the object's path.
 	public Point[]		path;
 	public this (int pID, int gID, string name, Point[] path) {
 		this.gID = gID;
