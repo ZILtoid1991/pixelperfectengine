@@ -196,21 +196,30 @@ S stringArrayJoin(S)(S[] input) pure @safe {
 	}
 	return result;
 }
-///Tests if the input string is integer and returns true if it is.
+//removed due to this function suddenly stopping working, then no fix can reverse it.
+//use exception handling to avoid type conversion errors.
+/* ///Tests if the input string is integer and returns true if it is.
 bool isInteger(S)(S s) pure @safe @nogc nothrow
 	if(is(S == string) || is(S == wstring) || is(S == dstring)) {
+	bool isNumChar(C)(C ch) {
+		switch(ch) {
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+				return true;
+			default:
+				return false;
+		}
+	}
 	if (!s.length)
 		return false;
-	if(s[0] > '9' || s[0] < '0' || (s[0] != '-' && s.length >= 2))
+	if(!isNumChar(s[0]) || (s[0] != '-' && s.length >= 2))
 		return false;
 	if (s.length >= 2)
 		foreach(c; s[1..$])
-			if(c > '9' || c < '0')
+			if(!isNumChar(c))
 				return false;
 	
 	return true;
-	
-}
+} */
 
 /**
  * Returns true if x is power of two.

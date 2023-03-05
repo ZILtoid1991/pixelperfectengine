@@ -5,7 +5,7 @@ public import pixelperfectengine.graphics.bitmap;
 
 public import pixelperfectengine.graphics.text;
 public import pixelperfectengine.system.exc;
-public import pixelperfectengine.system.etc : isInteger;
+//public import pixelperfectengine.system.etc : isInteger;
 
 import newxml;
 import newxml.interfaces : XMLException;
@@ -156,12 +156,16 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		currTextBlock = currTextBlock.next;
 		ChrFormat newFrmt = new ChrFormat(currFrmt);
 		dstring paragraphSpaceStr = attributes.get("paragraphSpace", null);
-		if (paragraphSpaceStr.isInteger) {
+		try {
 			newFrmt.paragraphSpace = paragraphSpaceStr.to!ushort;
+		} catch (Exception e) {
+			
 		}
 		dstring rowHeightStr = attributes.get("rowHeight", null);
-		if (rowHeightStr.isInteger) {
+		try {
 			newFrmt.rowHeight = rowHeightStr.to!short;
+		} catch (Exception e) {
+			
 		}
 		testFormatting(newFrmt);
 		currTextBlock.formatting = currFrmt;
