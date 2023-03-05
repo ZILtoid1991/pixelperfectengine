@@ -348,8 +348,9 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			}
 			//Clamp down if cursor is wider than the text editing area
 			cursor.right = cursor.right <= textArea.right - textPadding ? cursor.right : textArea.right - textPadding;
-			//Draw cursor
-			parent.drawFilledBox(cursor, ss.getColor("selection"));
+			//Draw cursor if it doesn't fall out of bounds
+			if (cursor.left < position.right && cursor.right < position.right)
+				parent.drawFilledBox(cursor, ss.getColor("selection"));
 
 			//}
 			//draw text
