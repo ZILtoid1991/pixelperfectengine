@@ -7,7 +7,7 @@ import listviewedit;
 
 import pixelperfectengine.concrete.window;
 import pixelperfectengine.system.input;
-import pixelperfectengine.system.etc : csvParser, isInteger;
+import pixelperfectengine.system.etc : csvParser;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.outputscreen;
@@ -316,17 +316,16 @@ public class Editor : SystemEventListener, InputListener{
 					dstring[] src = csvParser(t, ';');
 					if(src.length == 4){
 						Coordinate c;
-						foreach(s; src){
-							if(!isInteger(s)){
-								ewh.message("Format Error!", "Value is not integer!");
-								return;
-							}
+						try {
+							c.left = conv.to!int(src[0]);
+							c.top = conv.to!int(src[1]);
+							c.right = conv.to!int(src[2]);
+							c.bottom = conv.to!int(src[3]);
+							eventStack.addToTop(new PositionEditEvent(c, selection));
+						} catch (Exception e) {
+							ewh.message("Format Error!", "Value is not integer!");
+							return;
 						}
-						c.left = conv.to!int(src[0]);
-						c.top = conv.to!int(src[1]);
-						c.right = conv.to!int(src[2]);
-						c.bottom = conv.to!int(src[3]);
-						eventStack.addToTop(new PositionEditEvent(c, selection));
 					}else{
 						ewh.message("Format Error!", "Correct format is: [int];[int];[int];[int];");
 					}
