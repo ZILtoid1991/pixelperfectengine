@@ -45,7 +45,7 @@ public class PCM8 : AudioModule {
 			ADSR_TIME_TABLE[i] = pow(i / 64.0, 1.8);
 		}
 	}
-	protected static immutable MValue[] SAMPLE_SET_VALS;
+	protected static MValue[] SAMPLE_SET_VALS;
 	public static immutable float[128] ADSR_TIME_TABLE;
 	/**
 	Contains a table to calculate Sustain control values.
@@ -154,8 +154,8 @@ public class PCM8 : AudioModule {
 		DecoderWorkpad	savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
-		long			outPos;				///Position in decoded amount with fractions.
-		uint			decodeAm;			///Decoded amount
+		long			outPos;				///Position in decoded amount, including fractions
+		uint			decodeAm;			///Decoded amount, mainly used to determine output buffer half
 		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
 		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
@@ -183,9 +183,9 @@ public class PCM8 : AudioModule {
 				return;
 			}
 			//Determine how much samples we will need.
-			size_t samplesNeeded = 128;
+			sizediff_t samplesNeeded = 128;
 			//Determine offset based on which cycle we will need
-			size_t offset = decodeAm & 0x80 ? 128 : 0;
+			const size_t offset = decodeAm & 0x80 ? 128 : 0;
 			
 			const bool keyOn = (status & 1) == 1;
 			const bool isLooping = (sa.loopBegin != -1 && sa.loopEnd != -1) && ((sa.loopEnd - sa.loopBegin) > 0) && keyOn;
@@ -204,15 +204,17 @@ public class PCM8 : AudioModule {
 				const bool loopBegin = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopBegin) && 
 						!(status & ChannelStatusFlags.inLoop);
 				const bool loopEnd = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopEnd);
-				const size_t samplesToDecode = loopBegin ? decoderWorkpad.pos + samplesNeeded - sa.loopBegin : (loopEnd ? 
-						decoderWorkpad.pos + samplesNeeded - sa.loopEnd : samplesNeeded);
-				slmp.decode(slmp.sampleData, decoderBuffer[dPos..offset + samplesToDecode], decoderWorkpad);
+				/* const size_t samplesToDecode = loopBegin ? decoderWorkpad.pos + samplesNeeded - sa.loopBegin : (loopEnd ? 
+						decoderWorkpad.pos + samplesNeeded - sa.loopEnd : samplesNeeded); */
+				const size_t samplesToDecode = loopBegin ? sa.loopBegin - decoderWorkpad.pos : (loopEnd ? 
+						sa.loopEnd - decoderWorkpad.pos : samplesNeeded);
+				slmp.decode(slmp.sampleData, decoderBuffer[dPos..dPos + samplesToDecode], decoderWorkpad);
 				if (loopBegin) {
 					status |= ChannelStatusFlags.inLoop;
 					savedDWState = decoderWorkpad;
 				} else if (loopEnd) {
 					decoderWorkpad = savedDWState;
-					outPos = savedDWState.pos<<24;
+					outPos = savedDWState.pos<<24;	//this is the only way the looping can somewhat working, using decodeAm instead of decoderWorkpad.pos is buggy for some weird reason
 				}
 				samplesNeeded -= samplesToDecode;
 				dPos += samplesToDecode;
@@ -771,19 +773,21 @@ public class PCM8 : AudioModule {
 			lfoOut[i] = lfo.outputF(0.5, 1.0 / ushort.max);
 		}
 		for (int i ; i < 8 ; i++) {
-			if (!(channels[i].currNote & 128)) {
+			if (!(channels[i].currNote & 128) && channels[i].jumpAm) {
 				//get the data for the sample
-				SampleAssignment sa = channels[i].presetCopy.sampleMapping[channels[i].currNote];
-				Sample slmp = sampleBank[sa.sampleNum];
-				if (!slmp.sampleData.length) continue;
-				size_t samplesNeeded = bufferSize;
-				size_t outpos;
+				SampleAssignment sa = channels[i].presetCopy.sampleMapping[channels[i].currNote];	//get sample assignment data
+				Sample slmp = sampleBank[sa.sampleNum];		//get sample
+				if (!slmp.sampleData.length) continue;		//break if no sample found
+				size_t samplesNeeded = bufferSize;			//determine the amount of needed samples for this frame, initially it's equals with the frame buffer size
+				size_t outpos;								//position in output buffer
 				while (samplesNeeded && !(channels[i].currNote & 128)) {
 					//Calculate the amount of samples that are needed for this block
 					ulong samplesToAdvance = channels[i].jumpAm * samplesNeeded;
-					if ((channels[i].outPos + (channels[i].waveModWorkpad.lookupVal)) >= (channels[i].decoderWorkpad.pos<<24L)) 
+					//Determine if there's enough decoded samples in the output buffer.
+					//If not, decode more.
+					if ((channels[i].outPos + samplesToAdvance) > (channels[i].decoderWorkpad.pos<<24))
 						channels[i].decodeMore(sa, slmp);
-					const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;
+					const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;		//Get the amount of unused samples in the decoder buffer with fractions
 					//Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
 					if ((128<<24L) - decoderBufPos <= samplesToAdvance){
 						samplesToAdvance = (128<<24L) - decoderBufPos;
@@ -792,10 +796,10 @@ public class PCM8 : AudioModule {
 					const size_t samplesOutputted = 
 							cast(size_t)(samplesToAdvance / channels[i].jumpAm);
 					stretchAudioNoIterpol(channels[i].decoderBuffer, iBuf[outpos..outpos + samplesOutputted], 
-							channels[i].waveModWorkpad, channels[i].jumpAm);
-					samplesNeeded -= samplesOutputted;
-					channels[i].outPos += samplesToAdvance;
-					outpos += samplesOutputted;
+							channels[i].waveModWorkpad, channels[i].jumpAm);		//Output the audio to the intermediary buffer
+					samplesNeeded -= samplesOutputted;		//substract the number of outputted samples from the needed samples
+					channels[i].outPos += samplesToAdvance;	//add the samples needed to advance to the output position
+					outpos += samplesOutputted;				//shift the output position by the amount of the outputted samples
 				}
 				//apply envelop (if needed) and volume, then mix it to the local buffer
 				__m128 levels;
