@@ -60,7 +60,7 @@ public class HexadecimalFilter : InputFilter {
 	}
 }
 public class ASCIITextFilter : InputFilter {
-	static immutable dstring SYMBOL_LIST;
+	static dstring SYMBOL_LIST;
 	shared static this() {
 		for (dchar c = 0x20 ; c <= 0x7F ; c++) {
 			SYMBOL_LIST ~= c;
