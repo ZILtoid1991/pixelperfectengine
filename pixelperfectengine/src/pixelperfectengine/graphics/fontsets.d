@@ -262,7 +262,16 @@ public class CharacterFormattingInfo(T) {
 	public short			rowHeight;		///Modifies the space between rows of text within a single formatting unit
 	public ushort			offsetV;		///Upper-part offseting. The amount of lines which should be skipped (single line), or moved upwards (multi line)
 	static if(T.stringof == Bitmap8Bit.stringof) {
-		///Constructs a CFI from the supplied data.
+		/**
+		 * Creates character formatting from the supplied data.
+		 * Params:
+		 *   font = The fontset to be used for the formatting.
+		 *   color = The color of the text.
+		 *   formatFlags = Formatting flags, some combination of FormattingFlags ORed together.
+		 *   paragraphSpace = Spaces between new paragraphs.
+		 *   rowHeight = Total height of a row (fontsize + space between lines).
+		 *   offsetV = Vertical offset on singleline texts.
+		 */
 		public this(Fontset!T font, ubyte color, uint formatFlags, ushort paragraphSpace, short rowHeight, ushort offsetV) 
 				@safe {
 			this.font = font;
