@@ -1,4 +1,20 @@
-# 0.10.0-beta9 (current)
+# 0.10.0-beta10 (current)
+
+## PCM8 sample playback fix
+
+The sample playback of the PCM8 module has been fixed. Looping is currently untested.
+
+A bug caused skips in the frequency of sample decode calls, now it should work as should.
+
+## Removal of function isInteger
+
+`isInteger` was created to avoid exception handling, but due to issues I decided to remove it, and subtitute it with exception handling.
+
+## Fix to ListView draw algorithm
+
+Added some safety checks to the cursor drawing, now it should not cause issues.
+
+# 0.10.0-beta9
 
 ## Suspendable timer
 
