@@ -185,7 +185,7 @@ public class PCM8 : AudioModule {
 			//Determine how much samples we will need.
 			sizediff_t samplesNeeded = 128;
 			//Determine offset based on which cycle we will need
-			const size_t offset = decodeAm & 0x80 ? 128 : 0;
+			const size_t offset = decodeAm & 0x01 ? 128 : 0;
 			
 			const bool keyOn = (status & 1) == 1;
 			const bool isLooping = (sa.loopBegin != -1 && sa.loopEnd != -1) && ((sa.loopEnd - sa.loopBegin) > 0) && keyOn;
@@ -206,8 +206,8 @@ public class PCM8 : AudioModule {
 				const bool loopEnd = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopEnd);
 				/* const size_t samplesToDecode = loopBegin ? decoderWorkpad.pos + samplesNeeded - sa.loopBegin : (loopEnd ? 
 						decoderWorkpad.pos + samplesNeeded - sa.loopEnd : samplesNeeded); */
-				const size_t samplesToDecode = loopBegin ? sa.loopBegin - decoderWorkpad.pos : (loopEnd ? 
-						sa.loopEnd - decoderWorkpad.pos : samplesNeeded);
+				const size_t samplesToDecode = loopBegin ? samplesNeeded - (sa.loopBegin - decoderWorkpad.pos) : (loopEnd ? 
+						samplesNeeded - (sa.loopEnd - decoderWorkpad.pos) : samplesNeeded);
 				slmp.decode(slmp.sampleData, decoderBuffer[dPos..dPos + samplesToDecode], decoderWorkpad);
 				if (loopBegin) {
 					status |= ChannelStatusFlags.inLoop;
@@ -215,12 +215,14 @@ public class PCM8 : AudioModule {
 				} else if (loopEnd) {
 					decoderWorkpad = savedDWState;
 					outPos = savedDWState.pos<<24;	//this is the only way the looping can somewhat working, using decodeAm instead of decoderWorkpad.pos is buggy for some weird reason
+					//waveModWorkpad.lookupVal &= 0xFFFF_FFFF_FF00_0000;
 				}
 				samplesNeeded -= samplesToDecode;
 				dPos += samplesToDecode;
-				decodeAm += samplesToDecode;
+				//decodeAm += samplesToDecode;
 				//outPos += samplesToAdvance;
 			}
+			decodeAm++;
 		}
 		///Calculates jump amount for the sample.
 		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
@@ -328,7 +330,7 @@ public class PCM8 : AudioModule {
 						case MIDI1_0Cmd.PitchBend:
 							channels[data0.channel].pitchBend = channels[data0.channel].presetCopy.pitchBendAm * 
 									((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
-							channels[data0.channel].calculateJumpAm(sampleRate);
+							//channels[data0.channel].calculateJumpAm(sampleRate);
 							break;
 						case MIDI1_0Cmd.NoteOn:
 							keyOn(data0.note, data0.channel, data0.value/127.0);
@@ -367,7 +369,7 @@ public class PCM8 : AudioModule {
 						case MIDI2_0Cmd.PitchBend:
 							channels[data0.channel].pitchBend = channels[data0.channel].presetCopy.pitchBendAm * 
 									((cast(double)data1 - int.max) / (int.max));
-							channels[data0.channel].calculateJumpAm(sampleRate);
+							//channels[data0.channel].calculateJumpAm(sampleRate);
 							break;
 						case MIDI2_0Cmd.NoteOn:
 							NoteVals nv = *cast(NoteVals*)&data1;
@@ -774,6 +776,7 @@ public class PCM8 : AudioModule {
 		}
 		for (int i ; i < 8 ; i++) {
 			if (!(channels[i].currNote & 128) && channels[i].jumpAm) {
+				channels[i].calculateJumpAm(sampleRate);
 				//get the data for the sample
 				SampleAssignment sa = channels[i].presetCopy.sampleMapping[channels[i].currNote];	//get sample assignment data
 				Sample slmp = sampleBank[sa.sampleNum];		//get sample
