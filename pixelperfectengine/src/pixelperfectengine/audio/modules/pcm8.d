@@ -174,6 +174,9 @@ public class PCM8 : AudioModule {
 		float			currShpR;			///The current release shape
 		/**
 		Decodes one more block worth of samples, depending on internal state.
+
+		Bugs: 
+		* Upon pitchbend and when looping, it can cause buffer alignment issues, which in turn will cause audio glitches.
 		*/
 		void decodeMore(ref SampleAssignment sa, ref Sample slmp) @nogc nothrow pure {
 			if (status & ChannelStatusFlags.sampleRunout) {
