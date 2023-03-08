@@ -1,6 +1,7 @@
 module pixelperfectengine.audio.base.osc;
 
 import pixelperfectengine.system.etc : clamp;
+import inteli.emmintrin;
 
 /** 
  * An oscillator that generates multiple waveform outputs from a single counter, and allows the mixing of them.
@@ -58,5 +59,25 @@ public struct MultiTapOsc {
 	}
 	void reset() @nogc @safe pure nothrow {
 		counter = 0;
+	}
+}
+
+public struct QuadMultitapOsc {
+	__m128i		rate;
+	__m128i		counter;
+	__m128i		pulseWidth;
+	short8		levelCtrl01;
+	short8		levelCtrl23;
+	static immutable __m128i triTest = __m128i(int.max);
+	__m128i output() @nogc @safe pure nothrow {
+		__m128i result;
+		const __m128i pulseOut = _mm_cmpgt_epi32(counter, pulseWidth);
+		const __m128i triOut = _mm_slli_epi32(_mm_cmpgt_epi32(counter, triTest) ^ counter, 1);
+		const __m128i spOut = pulseOut & counter;
+		const __m128i out01 = _mm_packs_epi32(_mm_srai_epi32(counter, 16), _mm_srai_epi32(triOut, 16));
+		const __m128i out23 = _mm_packs_epi32(_mm_srai_epi32(pulseOut, 16), _mm_srai_epi32(spOut, 16));
+		result = _mm_madd_epi16(out01, cast(__m128i)levelCtrl01) + _mm_madd_epi16(out23, cast(__m128i)levelCtrl23);
+		counter += rate;
+		return result;
 	}
 }
