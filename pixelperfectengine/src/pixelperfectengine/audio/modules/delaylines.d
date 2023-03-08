@@ -15,6 +15,13 @@ import midi2.types.enums;
 
 /**
  * Implements a configurable delay line device, that can be used to create various time-based effects.
+ * It contains:
+ * * two delay lines
+ * * four taps per delay line
+ * * a short 8 element FIR per tap
+ * * 4 filters per tap (3 with mix amount + 1 for feedback)
+ * * 4 LFO globally
+ * The module is controllable via MIDI CC commands.
  */
 public class DelayLines : AudioModule {
 	/** 
@@ -34,6 +41,7 @@ public class DelayLines : AudioModule {
 	protected struct IIRBank {
 		///All initial values
 		__m128		x1, x2, y1, y2, b0a0, b1a0, b2a0, a1a0, a2a0;
+		///Calculates the output of the filter, then stores the input and output values.
 		pragma (inline, true)
 		__m128 output(__m128 x0) @nogc @safe pure nothrow {
 			const __m128 y0 = b0a0 * x0 + b1a0 * x1 + b2a0 * x2 + a1a0 * y1 + a2a0 * y2;
