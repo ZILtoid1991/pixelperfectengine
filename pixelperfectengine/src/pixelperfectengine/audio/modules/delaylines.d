@@ -13,6 +13,8 @@ import inteli.emmintrin;
 import midi2.types.structs;
 import midi2.types.enums;
 
+import std.bitmanip : bitfields;
+
 /**
  * Implements a configurable delay line device, that can be used to create various time-based effects.
  * It contains:
@@ -28,7 +30,17 @@ public class DelayLines : AudioModule {
 	 * Defines a delay line tap.
 	 */
 	protected struct Tap {
-		uint		pos;		///Median position of the tap
+		//uint		pos;		///Median position of the tap
+		union {
+			///used for preset save
+			uint flags;
+			mixin(bitfields!(
+				bool, "tapEnable", 1,		///Enables the tap, otherwise just skips it to save CPU time
+				bool, "bypassDrySig", 1,	///Bypasses unfiltered signal
+				bool, "filterAlg", 1,		///Toggles filter algorithm (serial/parallel)
+				uint, "pos", 29				///Median position of the tap
+			));
+		}
 		float		filterAm0;	///IIR0 mix amount
 		float		filterAm1;	///IIR1 mix amount
 		float		filterAm2;	///IIR2 mix amount
@@ -54,10 +66,16 @@ public class DelayLines : AudioModule {
 	}
 	protected Tap[4][2]			taps;
 	protected IIRBank[4][2]		filterBanks;
+	protected __m128[4][2]		filterOuts;
+	protected float[4][2]		feedbackSends;
 	protected float[][2]		delayLines;		///The two delay lines of the 
+	protected __m128			inLevel;		///0: A to pri, 1: A to sec, 2: B to pri, 3: B to sec
+	protected float[2]			outLevel;
+	protected float[2]			feedbackSum;
 	protected MultiTapOsc[4]	osc;			///Oscillators to modify fix tap points
 	protected size_t[2]			dLPos;			///Delay line positions
 	protected size_t[2]			dLMod;			///Delay line modulo
+	protected float[]			dummyBuf;
 	
 	/**
 	 * Creates an instance of this module using the supplied parameters.
@@ -87,7 +105,7 @@ public class DelayLines : AudioModule {
 
 	override public void renderFrame(float*[] input, float*[] output) @nogc nothrow {
 		//function to read from the delay line
-		__m128[2] readDL(int lineNum, uint pos) @nogc safe pure nothrow {
+		__m128[2] readDL(int lineNum, uint pos) @nogc @safe pure nothrow {
 			__m128[2] result;
 			for (int i ; i < 2 ; i++) {
 				for (int j ; j < 4 ; j++) {
@@ -96,8 +114,74 @@ public class DelayLines : AudioModule {
 			}
 			return result;
 		}
-		dLPos[0]++;
-		dLPos[1]++;
+		float*[2] inBuf, outBuf;			//Set up input and output buffers
+		for (ubyte i, j, k ; i < 2 ; i++) {
+			if (enabledInputs.has(i)) {
+				inBuf[i] = output[j];
+				j++;
+			} else {
+				inBuf[i] = dummyBuf.ptr;
+			}
+			if (enabledOutputs.has(i)) {
+				outBuf[i] = output[k];
+				k++;
+			} else {
+				outBuf[i] = dummyBuf.ptr;
+			}
+		}
+		__m128[4][2] filterLevels;
+		for (int i ; i < 2 ; i++) {
+			for (int j ; j < 4 ; j++) {
+				filterLevels[i][j][0] = taps[i][j].filterAm0;
+				filterLevels[i][j][1] = taps[i][j].filterAm1;
+				filterLevels[i][j][2] = taps[i][j].filterAm2;
+				filterLevels[i][j][3] = taps[i][j].bypassDrySig ? 0.0 : 1.0;
+			}
+		}
+		for (int outputPos ; outputPos < bufferSize ; outputPos++) {
+			delayLines[0] = inbuf[0] + feedbackSum[0];
+			delayLines[1] = inbuf[1] + feedbackSum[1];
+			feedbackSum[0] = 0.0;
+			feedbackSum[1] = 0.0;
+			for (int i ; i < 2 ; i++) {
+				for (int j ; j < 4 ; j++) {
+					if (taps[i][j].tapEnable) {
+						const __m128[2] firTarget = readDL(i, taps[i][j].pos);
+						const __m128 partialOut = firTarget[0] * taps[i][j].fir[0] + firTarget[1] * taps[i][j].fir[1];//Apply FIR
+						//Apply IIRs
+						const float outSum = partialOut[0] + partialOut[1] + partialOut[2] + partialOut[3];
+						__m128 toIIR;
+						toIIR[0] = outSum;
+						toIIR[3] = feedbackSends[i][j];
+						if(taps[i][j].filterAlg) {
+							toIIR[1] = filterOuts[i][j][0];
+							toIIR[2] = filterOuts[i][j][1];
+						} else {
+							toIIR[1] = outSum;
+							toIIR[2] = outSum;
+						}
+						//toIIR *= filterLevels;
+						toIIR = IIRBank.output(toIIR);
+						filterOuts[i][j] = toIIR;
+						toIIR[3] = outSum;
+						toIIR *= filterLevels[i][j];
+						feedbackSends[i][j] = toIIR[0] + toIIR[1] + toIIR[2] + toIIR[3];
+						__m128 finalOut;
+						finalOut[0] = feedbackSends[i][j];
+						finalOut[1] = feedbackSends[i][j];
+						finalOut[2] = filterOuts[i][j][3];
+						finalOut[3] = filterOuts[i][j][3];
+						finalOut *= taps[i][j].outLevels;
+						outBuf[0][outputPos] += finalOut[0] * outLevel[0];
+						outBuf[1][outputPos] += finalOut[1] * outLevel[1];
+						feedbackSum[0] = finalOut[2];
+						feedbackSum[1] = finalOut[3];
+					}
+				}
+			}
+			dLPos[0]++;
+			dLPos[1]++;
+		}
 	}
 
 	override public int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow {
