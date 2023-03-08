@@ -59,7 +59,12 @@ public class DelayLines : AudioModule {
 	protected size_t[2]			dLPos;			///Delay line positions
 	protected size_t[2]			dLMod;			///Delay line modulo
 	
-
+	/**
+	 * Creates an instance of this module using the supplied parameters.
+	 * Params:
+	 *   priLen = Primary buffer length. Must be power of two.
+	 *   secLen = Secondary buffer length. Must be power of two.
+	 */
 	public this(size_t priLen, size_t secLen) {
 		assert(isPowerOf2(priLen));
 		assert(isPowerOf2(secLen) || !secLen);
@@ -81,7 +86,18 @@ public class DelayLines : AudioModule {
 	}
 
 	override public void renderFrame(float*[] input, float*[] output) @nogc nothrow {
-		
+		//function to read from the delay line
+		__m128[2] readDL(int lineNum, uint pos) @nogc safe pure nothrow {
+			__m128[2] result;
+			for (int i ; i < 2 ; i++) {
+				for (int j ; j < 4 ; j++) {
+					result[i][j] = delayLines[lineNum][dLMod[lineNum] & (dLPos[lineNum] - pos - j - (i<<2))];
+				}
+			}
+			return result;
+		}
+		dLPos[0]++;
+		dLPos[1]++;
 	}
 
 	override public int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow {
