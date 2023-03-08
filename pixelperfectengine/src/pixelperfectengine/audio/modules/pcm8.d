@@ -179,6 +179,7 @@ public class PCM8 : AudioModule {
 		* Upon pitchbend and when looping, it can cause buffer alignment issues, which in turn will cause audio glitches.
 		*/
 		void decodeMore(ref SampleAssignment sa, ref Sample slmp) @nogc nothrow pure {
+			//Check if sample runout have happened already, stop decoding if yes.
 			if (status & ChannelStatusFlags.sampleRunout) {
 				currNote = 255;
 			}
@@ -189,11 +190,12 @@ public class PCM8 : AudioModule {
 			sizediff_t samplesNeeded = 128;
 			//Determine offset based on which cycle we will need
 			const size_t offset = decodeAm & 0x01 ? 128 : 0;
-			
+			//Determine if note is on.
 			const bool keyOn = (status & 1) == 1;
+			//Determine if sample is looping
 			const bool isLooping = (sa.loopBegin != -1 && sa.loopEnd != -1) && ((sa.loopEnd - sa.loopBegin) > 0) && keyOn;
 			
-			//Case 1: sample is running out, and there are no looppoints.
+			//Special Case 1: sample is running out, and there are no looppoints or note isn't on.
 			if (!isLooping && (decoderWorkpad.pos + samplesNeeded >= slmp.samplesLength())) {
 				samplesNeeded -= decoderWorkpad.pos + samplesNeeded - slmp.samplesLength();
 				status |= ChannelStatusFlags.sampleRunout;
@@ -202,30 +204,26 @@ public class PCM8 : AudioModule {
 			}
 			size_t dPos = offset;	//Decoder position
 			while (samplesNeeded > 0) {
-				//Case 2: sample might enter the beginning or the end of the loop.
+				//Special Case 2: sample might enter the beginning or the end of the loop.
 				//If loop is short enough, it can happen multiple times
 				const bool loopBegin = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopBegin) && 
 						!(status & ChannelStatusFlags.inLoop);
 				const bool loopEnd = isLooping && (decoderWorkpad.pos + samplesNeeded >= sa.loopEnd);
-				/* const size_t samplesToDecode = loopBegin ? decoderWorkpad.pos + samplesNeeded - sa.loopBegin : (loopEnd ? 
-						decoderWorkpad.pos + samplesNeeded - sa.loopEnd : samplesNeeded); */
 				const size_t samplesToDecode = loopBegin ? samplesNeeded - (sa.loopBegin - decoderWorkpad.pos) : (loopEnd ? 
-						samplesNeeded - (sa.loopEnd - decoderWorkpad.pos) : samplesNeeded);
-				slmp.decode(slmp.sampleData, decoderBuffer[dPos..dPos + samplesToDecode], decoderWorkpad);
-				if (loopBegin) {
+						samplesNeeded - (sa.loopEnd - decoderWorkpad.pos) : samplesNeeded);//Determine how much saples will we need
+				slmp.decode(slmp.sampleData, decoderBuffer[dPos..dPos + samplesToDecode], decoderWorkpad);//Decode some amount of samples
+				if (loopBegin) {//Save decoder workpad state on the beginning of the loop (important for ADPCM!)
 					status |= ChannelStatusFlags.inLoop;
 					savedDWState = decoderWorkpad;
-				} else if (loopEnd) {
+				} else if (loopEnd) {//Restore decoder and other necessary statuses.
 					decoderWorkpad = savedDWState;
 					outPos = savedDWState.pos<<24;	//this is the only way the looping can somewhat working, using decodeAm instead of decoderWorkpad.pos is buggy for some weird reason
 					//waveModWorkpad.lookupVal &= 0xFFFF_FFFF_FF00_0000;
 				}
 				samplesNeeded -= samplesToDecode;
 				dPos += samplesToDecode;
-				//decodeAm += samplesToDecode;
-				//outPos += samplesToAdvance;
 			}
-			decodeAm++;
+			decodeAm++;	//Flip decode buffer
 		}
 		///Calculates jump amount for the sample.
 		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
