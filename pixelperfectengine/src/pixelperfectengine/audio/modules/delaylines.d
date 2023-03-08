@@ -13,6 +13,9 @@ import inteli.emmintrin;
 import midi2.types.structs;
 import midi2.types.enums;
 
+/**
+ * Implements a configurable delay line device, that can be used to create various time-based effects.
+ */
 public class DelayLines : AudioModule {
 	/** 
 	 * Defines a delay line tap.
@@ -25,6 +28,9 @@ public class DelayLines : AudioModule {
 		__m128		outLevels	= __m128(0.0);///Output levels (0: Left; 1: Right, 2: Primary feedback, 3: Secondary feedback)
 		__m128[2]	fir = [__m128(0.0),__m128(0.0)];///Short finite impulse response after tap
 	}
+	/**
+	 * Defines an infinite response filter bank for various uses.
+	 */
 	protected struct IIRBank {
 		///All initial values
 		__m128		x1, x2, y1, y2, b0a0, b1a0, b2a0, a1a0, a2a0;
