@@ -13,6 +13,8 @@ import inteli.emmintrin;
 import midi2.types.structs;
 import midi2.types.enums;
 
+import collections.treemap;
+
 import std.bitmanip : bitfields;
 
 /**
@@ -41,9 +43,9 @@ public class DelayLines : AudioModule {
 				uint, "pos", 29				///Median position of the tap
 			));
 		}
-		float		filterAm0;	///IIR0 mix amount
-		float		filterAm1;	///IIR1 mix amount
-		float		filterAm2;	///IIR2 mix amount
+		float		filterAm0 = 0.0;	///IIR0 mix amount
+		float		filterAm1 = 0.0;	///IIR1 mix amount
+		float		filterAm2 = 0.0;	///IIR2 mix amount
 		__m128		outLevels	= __m128(0.0);///Output levels (0: Left; 1: Right, 2: Primary feedback, 3: Secondary feedback)
 		__m128[2]	fir = [__m128(0.0),__m128(0.0)];///Short finite impulse response after tap
 	}
@@ -64,7 +66,56 @@ public class DelayLines : AudioModule {
 			return y0;
 		}
 	}
-	protected Tap[4][2]			taps;
+	protected enum OscTarget : ubyte {
+		init,
+		TapA0Out,
+		TapA0Pos,
+		TapA0Feedback,
+		TapA1Out,
+		TapA1Pos,
+		TapA1Feedback,
+		TapA2Out,
+		TapA2Pos,
+		TapA2Feedback,
+		TapA3Out,
+		TapA3Pos,
+		TapA3Feedback,
+		TapB0Out,
+		TapB0Pos,
+		TapB0Feedback,
+		TapB1Out,
+		TapB1Pos,
+		TapB1Feedback,
+		TapB2Out,
+		TapB2Pos,
+		TapB2Feedback,
+		TapB3Out,
+		TapB3Pos,
+		TapB3Feedback,
+	}
+	protected struct Preset {
+		struct OscWaveform {
+			mixin(bitfields!(
+				bool, "sawtooth", 1,
+				bool, "triangle", 1,
+				bool, "pulse", 1,
+				bool, "sawpulse", 1,
+				bool, "integrate", 1,
+				bool, "phaseInvert", 1,
+				ubyte, "", 2,
+			));
+		}
+		Tap[4][2]				taps;
+		float[4]				iirFreq;
+		float[4]				iirQ;
+		float[4]				oscLevels;
+		float[4]				oscFrequencies;
+		float[4]				oscPWM;
+		ubyte[4]				oscTargets;
+		OscWaveform[4]			oscWaveform;
+		
+	}
+	protected Preset			currPreset;
 	protected IIRBank[4][2]		filterBanks;
 	protected __m128[4][2]		filterOuts;
 	protected float[4][2]		feedbackSends;
@@ -72,7 +123,8 @@ public class DelayLines : AudioModule {
 	protected __m128			inLevel;		///0: A to pri, 1: A to sec, 2: B to pri, 3: B to sec
 	protected float[2]			outLevel;
 	protected float[2]			feedbackSum;
-	protected MultiTapOsc[4]	osc;			///Oscillators to modify fix tap points
+	protected QuadMultitapOsc	osc;			///Oscillators to modify fix tap points
+	protected __m128i[]			oscOut;
 	protected size_t[2]			dLPos;			///Delay line positions
 	protected size_t[2]			dLMod;			///Delay line modulo
 	protected float[]			dummyBuf;
@@ -97,6 +149,20 @@ public class DelayLines : AudioModule {
 		dLMod[1] = secLen - 1;
 		resetBuffer(delayLines[0]);
 		resetBuffer(delayLines[1]);
+	}
+	/**
+	 * Sets the module up.
+	 *
+	 * Can be overridden in child classes to allow resets.
+	 */
+	public override void moduleSetup(ubyte[] inputs, ubyte[] outputs, int sampleRate, size_t bufferSize, 
+			ModuleManager handler) @safe nothrow {
+		enabledInputs = StreamIDSet(inputs);
+		enabledOutputs = StreamIDSet(outputs);
+		this.sampleRate = sampleRate;
+		this.bufferSize = bufferSize;
+		this.handler = handler;
+		
 	}
 
 	override public void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
@@ -138,6 +204,7 @@ public class DelayLines : AudioModule {
 				filterLevels[i][j][3] = taps[i][j].bypassDrySig ? 0.0 : 1.0;
 			}
 		}
+		
 		for (int outputPos ; outputPos < bufferSize ; outputPos++) {
 			delayLines[0] = inbuf[0] + feedbackSum[0];
 			delayLines[1] = inbuf[1] + feedbackSum[1];
@@ -145,9 +212,10 @@ public class DelayLines : AudioModule {
 			feedbackSum[1] = 0.0;
 			for (int i ; i < 2 ; i++) {
 				for (int j ; j < 4 ; j++) {
-					if (taps[i][j].tapEnable) {
-						const __m128[2] firTarget = readDL(i, taps[i][j].pos);
-						const __m128 partialOut = firTarget[0] * taps[i][j].fir[0] + firTarget[1] * taps[i][j].fir[1];//Apply FIR
+					if (currPreset.taps[i][j].tapEnable) {
+						const __m128[2] firTarget = readDL(i, currPreset.taps[i][j].pos);
+						const __m128 partialOut = firTarget[0] * currPreset.taps[i][j].fir[0] + 
+								firTarget[1] * currPreset.taps[i][j].fir[1];//Apply FIR
 						//Apply IIRs
 						const float outSum = partialOut[0] + partialOut[1] + partialOut[2] + partialOut[3];
 						__m128 toIIR;
