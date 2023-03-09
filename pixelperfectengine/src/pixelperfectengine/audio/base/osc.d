@@ -69,15 +69,28 @@ public struct QuadMultitapOsc {
 	short8		levelCtrl01;
 	short8		levelCtrl23;
 	static immutable __m128i triTest = __m128i(int.max);
+	static immutable short8 wordOffset = short8(short.min);
 	__m128i output() @nogc @safe pure nothrow {
 		__m128i result;
 		const __m128i pulseOut = _mm_cmpgt_epi32(counter, pulseWidth);
 		const __m128i triOut = _mm_slli_epi32(_mm_cmpgt_epi32(counter, triTest) ^ counter, 1);
 		const __m128i spOut = pulseOut & counter;
-		const __m128i out01 = _mm_packs_epi32(_mm_srai_epi32(counter, 16), _mm_srai_epi32(triOut, 16));
-		const __m128i out23 = _mm_packs_epi32(_mm_srai_epi32(pulseOut, 16), _mm_srai_epi32(spOut, 16));
+		const __m128i out01 = _mm_sub_epi16(_mm_packs_epi32(_mm_srai_epi32(counter, 16), _mm_srai_epi32(triOut, 16)), 
+				wordOffset);
+		const __m128i out23 = _mm_sub_epi16(_mm_packs_epi32(_mm_srai_epi32(pulseOut, 16), _mm_srai_epi32(spOut, 16)), 
+				wordOffset);
 		result = _mm_madd_epi16(out01, cast(__m128i)levelCtrl01) + _mm_madd_epi16(out23, cast(__m128i)levelCtrl23);
 		counter += rate;
+		return result;
+	}
+	__m128i outputHS0(int[] osc)() @nogc @safe pure nothrow {
+		const int prevState = counter[0];
+		__m128i result = output();
+		if (prevState > counter[0]) {
+			static foreach (i ; osc) {
+				counter[i] = 0;
+			}
+		}
 		return result;
 	}
 }
