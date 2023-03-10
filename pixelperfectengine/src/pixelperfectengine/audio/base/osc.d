@@ -61,15 +61,25 @@ public struct MultiTapOsc {
 		counter = 0;
 	}
 }
-
+/**
+ * An oscillator that generates multiple waveforms from 4 separate counters, and allows the mixing of them, with 4 possible
+ * outputs.
+ * Available waveforms:
+ * * sawtooth: The basic output of the counter.
+ * * triangle: Produced from the counter by using the top-bit of the counter to invert the next 16 bits.
+ * * pulse: Produced from the counter with a simple logic of testing the counter against the `pulseWidth` variable.
+ * * sawpulse: Sawtooth and pulse logically AND-ed together
+ * The amounts can be set to minus, this way the output will be inverted.
+ */
 public struct QuadMultitapOsc {
 	__m128i		rate;
 	__m128i		counter;
 	__m128i		pulseWidth;
-	short8		levelCtrl01;
-	short8		levelCtrl23;
+	short8		levelCtrl01;	///Even number elements set the saw, odd number elements set the triangle amount
+	short8		levelCtrl23;	///Even number elements set the pulse, odd number elements set the sawpulse amount
 	static immutable __m128i triTest = __m128i(int.max);
 	static immutable short8 wordOffset = short8(short.min);
+	///Returns the output and forwards the oscillator by a single step.
 	__m128i output() @nogc @safe pure nothrow {
 		__m128i result;
 		const __m128i pulseOut = _mm_cmpgt_epi32(counter, pulseWidth);
@@ -83,6 +93,12 @@ public struct QuadMultitapOsc {
 		counter += rate;
 		return result;
 	}
+	/**
+	 * Implements hard synchronization between the first and any other oscillators.
+	 * Template params:
+	 *   osc = the oscillator selection.
+	 * Note: Hardsync causes noticeable aliasing artifacts on the output.
+	 */
 	__m128i outputHS0(int[] osc)() @nogc @safe pure nothrow {
 		const int prevState = counter[0];
 		__m128i result = output();
