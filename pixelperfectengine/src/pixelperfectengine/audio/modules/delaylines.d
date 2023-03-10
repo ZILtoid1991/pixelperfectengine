@@ -66,6 +66,7 @@ public class DelayLines : AudioModule {
 			return y0;
 		}
 	}
+	///Defines an LFO target
 	protected enum OscTarget : ubyte {
 		init,
 		TapA0Out,
@@ -93,7 +94,16 @@ public class DelayLines : AudioModule {
 		TapB3Pos,
 		TapB3Feedback,
 	}
+	///Contains recallable preset data.
 	protected struct Preset {
+		///Defines oscillator waveform selection data.
+		///Bitfield notation:
+		///  sawtooth = Enables or disables sawtooth output.
+		///  triangle = Enables or disables triangle output.
+		///  pulse = Enables or disables pulse output.
+		///  sawpulse = Enables or disables sawpulse output.
+		///  integrate = Compensates triangle/saw output for position offsetting.
+		///  phaseInvert = Inverts the output phase of the oscillator.
 		struct OscWaveform {
 			mixin(bitfields!(
 				bool, "sawtooth", 1,
