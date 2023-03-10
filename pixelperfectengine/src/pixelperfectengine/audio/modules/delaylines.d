@@ -105,39 +105,42 @@ public class DelayLines : AudioModule {
 		///  integrate = Compensates triangle/saw output for position offsetting.
 		///  phaseInvert = Inverts the output phase of the oscillator.
 		struct OscWaveform {
-			mixin(bitfields!(
-				bool, "sawtooth", 1,
-				bool, "triangle", 1,
-				bool, "pulse", 1,
-				bool, "sawpulse", 1,
-				bool, "integrate", 1,
-				bool, "phaseInvert", 1,
-				ubyte, "", 2,
-			));
+			union {
+				mixin(bitfields!(
+					bool, "sawtooth", 1,
+					bool, "triangle", 1,
+					bool, "pulse", 1,
+					bool, "sawpulse", 1,
+					bool, "integrate", 1,
+					bool, "phaseInvert", 1,
+					ubyte, "", 2,
+				));
+				ubyte raw;
+			}
 		}
-		Tap[4][2]				taps;
-		float[4]				iirFreq;
-		float[4]				iirQ;
-		float[4]				oscLevels;
-		float[4]				oscFrequencies;
-		float[4]				oscPWM;
-		ubyte[4]				oscTargets;
-		OscWaveform[4]			oscWaveform;
+		Tap[4][2]				taps;			///Defines delay line taps
+		float[4]				iirFreq;		///Defines IIR frequencies
+		float[4]				iirQ;			///Defines IIR Q value
+		float[4]				oscLevels;		///Defines the amount of effect a given LFO has on a parameter
+		float[4]				oscFrequencies;	///Defines LFO freqencies
+		float[4]				oscPWM;			///Defines the PWM of the LFOs
+		ubyte[4]				oscTargets;		///Sets the target of a given LFO
+		OscWaveform[4]			oscWaveform;	///Sets the waveform output of the LFOs
 		
 	}
-	protected Preset			currPreset;
-	protected IIRBank[4][2]		filterBanks;
-	protected __m128[4][2]		filterOuts;
-	protected float[4][2]		feedbackSends;
+	protected Preset			currPreset;		///Contains the copy of the current preset
+	protected IIRBank[4][2]		filterBanks;	///Stores filter data for each taps
+	protected __m128[4][2]		filterOuts;		///Last filter outputs
+	protected float[4][2]		feedbackSends;	///Stores feedback send levels
 	protected float[][2]		delayLines;		///The two delay lines of the 
 	protected __m128			inLevel;		///0: A to pri, 1: A to sec, 2: B to pri, 3: B to sec
-	protected float[2]			outLevel;
-	protected float[2]			feedbackSum;
+	protected float[2]			outLevel;		///Output levels
+	protected float[2]			feedbackSum;	///Feedback sums to be mixed in with the inputs
 	protected QuadMultitapOsc	osc;			///Oscillators to modify fix tap points
-	protected __m128i[]			oscOut;
+	protected __m128i[]			oscOut;			///LFO buffer
 	protected size_t[2]			dLPos;			///Delay line positions
 	protected size_t[2]			dLMod;			///Delay line modulo
-	protected float[]			dummyBuf;
+	protected float[]			dummyBuf;		///Buffer used for unused inputs/outputs
 	
 	/**
 	 * Creates an instance of this module using the supplied parameters.
@@ -172,7 +175,8 @@ public class DelayLines : AudioModule {
 		this.sampleRate = sampleRate;
 		this.bufferSize = bufferSize;
 		this.handler = handler;
-		
+		oscOut.length = bufferSize;
+		dummyBuf.length = bufferSize;
 	}
 
 	override public void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
