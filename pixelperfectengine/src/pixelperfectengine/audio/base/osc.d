@@ -75,6 +75,7 @@ public struct QuadMultitapOsc {
 	__m128i		rate;
 	__m128i		counter;
 	__m128i		pulseWidth;
+	__m128i		syncReset;		///Used for sync resets
 	short8		levelCtrl01;	///Even number elements set the saw, odd number elements set the triangle amount
 	short8		levelCtrl23;	///Even number elements set the pulse, odd number elements set the sawpulse amount
 	static immutable __m128i triTest = __m128i(int.max);
@@ -86,9 +87,9 @@ public struct QuadMultitapOsc {
 		const __m128i triOut = _mm_slli_epi32(_mm_cmpgt_epi32(counter, triTest) ^ counter, 1);
 		const __m128i spOut = pulseOut & counter;
 		const __m128i out01 = _mm_sub_epi16(_mm_packs_epi32(_mm_srai_epi32(counter, 16), _mm_srai_epi32(triOut, 16)), 
-				wordOffset);
+				cast(__m128i)wordOffset);
 		const __m128i out23 = _mm_sub_epi16(_mm_packs_epi32(_mm_srai_epi32(pulseOut, 16), _mm_srai_epi32(spOut, 16)), 
-				wordOffset);
+				cast(__m128i)wordOffset);
 		result = _mm_madd_epi16(out01, cast(__m128i)levelCtrl01) + _mm_madd_epi16(out23, cast(__m128i)levelCtrl23);
 		counter += rate;
 		return result;
@@ -99,7 +100,7 @@ public struct QuadMultitapOsc {
 	 *   osc = the oscillator selection.
 	 * Note: Hardsync causes noticeable aliasing artifacts on the output.
 	 */
-	__m128i outputHS0(int[] osc)() @nogc @safe pure nothrow {
+	__m128i outputHSync0(int[] osc)() @nogc @safe pure nothrow {
 		const int prevState = counter[0];
 		__m128i result = output();
 		if (prevState > counter[0]) {
@@ -108,5 +109,20 @@ public struct QuadMultitapOsc {
 			}
 		}
 		return result;
+	}
+	__m128i outputSSync0(int[] osc)() @nogc @safe pure nothrow {
+		const int prevState = counter[0];
+		__m128i result = output();
+		if (prevState > counter[0]) {
+			static foreach (i ; osc) {
+				counter[i] = syncReset[i] * counter[0];
+			}
+		}
+		return result;
+	}
+	void setRate(int sampleRate, double freq, int osc) @nogc @safe pure nothrow {
+		double cycLen = freq / (sampleRate / cast(double)(1<<16));
+		rate[osc] = cast(uint)(cast(double)(1<<16) * cycLen);
+		syncReset[osc] = cast(uint)(cast(double)rate[0] / rate[osc]);
 	}
 }
