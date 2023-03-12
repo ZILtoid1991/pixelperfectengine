@@ -28,6 +28,38 @@ import std.bitmanip : bitfields;
  * The module is controllable via MIDI CC commands.
  */
 public class DelayLines : AudioModule {
+	shared static this () {
+		import std.conv : to;
+		for (uint i ; i < 8 ; i++) {
+			for (uint j ; j < 8 ; j++) {
+				SET_VALS ~= MValue(MValueType.Float, (i<<7) | j, "Tap" ~ i.to!string ~ "_FIR" ~ j.to!string);
+			}
+			for (uint j ; j < 4 ; j++) {
+				SET_VALS ~= MValue(MValueType.Float, (i<<7) | (8 + j * 3 + 0), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Freq");
+				SET_VALS ~= MValue(MValueType.Float, (i<<7) | (8 + j * 3 + 1), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Q");
+				SET_VALS ~= MValue(MValueType.Int32, (i<<7) | (8 + j * 3 + 2), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Type");
+			}
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (16), "Tap" ~ i.to!string ~ "_OutputL");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (17), "Tap" ~ i.to!string ~ "_OutputR");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (18), "Tap" ~ i.to!string ~ "_FeedbackA");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (19), "Tap" ~ i.to!string ~ "_FeedbackB");
+			SET_VALS ~= MValue(MValueType.Int32, (i<<7) | (20), "Tap" ~ i.to!string ~ "_Pos");
+			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (21), "Tap" ~ i.to!string ~ "_TapEnable");
+			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (22), "Tap" ~ i.to!string ~ "_BypassDrySig");
+			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (23), "Tap" ~ i.to!string ~ "_FilterAlg");
+		}
+		for (uint i ; i < 4 ; i++){
+			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (0), "LFO" ~ i.to!string ~ "_Waveform");
+			SET_VALS ~= MValue(MValueType.Float, (8<<7) | (i<<3) | (1), "LFO" ~ i.to!string ~ "_Level");
+			SET_VALS ~= MValue(MValueType.Float, (8<<7) | (i<<3) | (2), "LFO" ~ i.to!string ~ "_Freq");
+			SET_VALS ~= MValue(MValueType.Float, (8<<7) | (i<<3) | (3), "LFO" ~ i.to!string ~ "_PWM");
+			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (4), "LFO" ~ i.to!string ~ "_Target0");
+			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (5), "LFO" ~ i.to!string ~ "_Target1");
+			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (6), "LFO" ~ i.to!string ~ "_Target2");
+			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (7), "LFO" ~ i.to!string ~ "_Target3");
+		}
+	}
+	protected static MValue[] SET_VALS;
 	/** 
 	 * Defines a delay line tap.
 	 */
@@ -128,6 +160,7 @@ public class DelayLines : AudioModule {
 		OscWaveform[4]			oscWaveform;	///Sets the waveform output of the LFOs
 		
 	}
+	protected TreeMap!(uint,Preset)	presetBank;	///Stores presets
 	protected Preset			currPreset;		///Contains the copy of the current preset
 	protected IIRBank[4][2]		filterBanks;	///Stores filter data for each taps
 	protected __m128[4][2]		filterOuts;		///Last filter outputs
@@ -212,16 +245,16 @@ public class DelayLines : AudioModule {
 		__m128[4][2] filterLevels;
 		for (int i ; i < 2 ; i++) {
 			for (int j ; j < 4 ; j++) {
-				filterLevels[i][j][0] = taps[i][j].filterAm0;
-				filterLevels[i][j][1] = taps[i][j].filterAm1;
-				filterLevels[i][j][2] = taps[i][j].filterAm2;
-				filterLevels[i][j][3] = taps[i][j].bypassDrySig ? 0.0 : 1.0;
+				filterLevels[i][j][0] = currPreset.taps[i][j].filterAm0;
+				filterLevels[i][j][1] = currPreset.taps[i][j].filterAm1;
+				filterLevels[i][j][2] = currPreset.taps[i][j].filterAm2;
+				filterLevels[i][j][3] = currPreset.taps[i][j].bypassDrySig ? 0.0 : 1.0;
 			}
 		}
 		
 		for (int outputPos ; outputPos < bufferSize ; outputPos++) {
-			delayLines[0] = inbuf[0] + feedbackSum[0];
-			delayLines[1] = inbuf[1] + feedbackSum[1];
+			delayLines[0][dLPos[0] | dlMod[0]] = inBuf[0][outputPos] + feedbackSum[0];
+			delayLines[1][dLPos[1] | dlMod[1]] = inBuf[1][outputPos] + feedbackSum[1];
 			feedbackSum[0] = 0.0;
 			feedbackSum[1] = 0.0;
 			for (int i ; i < 2 ; i++) {
@@ -235,7 +268,7 @@ public class DelayLines : AudioModule {
 						__m128 toIIR;
 						toIIR[0] = outSum;
 						toIIR[3] = feedbackSends[i][j];
-						if(taps[i][j].filterAlg) {
+						if(currPreset.taps[i][j].filterAlg) {
 							toIIR[1] = filterOuts[i][j][0];
 							toIIR[2] = filterOuts[i][j][1];
 						} else {
@@ -243,7 +276,7 @@ public class DelayLines : AudioModule {
 							toIIR[2] = outSum;
 						}
 						//toIIR *= filterLevels;
-						toIIR = IIRBank.output(toIIR);
+						toIIR = filterBanks[i][j].output(toIIR);
 						filterOuts[i][j] = toIIR;
 						toIIR[3] = outSum;
 						toIIR *= filterLevels[i][j];
@@ -253,7 +286,7 @@ public class DelayLines : AudioModule {
 						finalOut[1] = feedbackSends[i][j];
 						finalOut[2] = filterOuts[i][j][3];
 						finalOut[3] = filterOuts[i][j][3];
-						finalOut *= taps[i][j].outLevels;
+						finalOut *= currPreset.taps[i][j].outLevels;
 						outBuf[0][outputPos] += finalOut[0] * outLevel[0];
 						outBuf[1][outputPos] += finalOut[1] * outLevel[1];
 						feedbackSum[0] = finalOut[2];
