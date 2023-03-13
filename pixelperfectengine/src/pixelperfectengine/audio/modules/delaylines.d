@@ -41,8 +41,8 @@ public class DelayLines : AudioModule {
 			}
 			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (16), "Tap" ~ i.to!string ~ "_OutputL");
 			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (17), "Tap" ~ i.to!string ~ "_OutputR");
-			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (18), "Tap" ~ i.to!string ~ "_FeedbackA");
-			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (19), "Tap" ~ i.to!string ~ "_FeedbackB");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (18), "Tap" ~ i.to!string ~ "_FeedbackPri");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (19), "Tap" ~ i.to!string ~ "_FeedbackSec");
 			SET_VALS ~= MValue(MValueType.Int32, (i<<7) | (20), "Tap" ~ i.to!string ~ "_Pos");
 			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (21), "Tap" ~ i.to!string ~ "_TapEnable");
 			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (22), "Tap" ~ i.to!string ~ "_BypassDrySig");
@@ -58,6 +58,10 @@ public class DelayLines : AudioModule {
 			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (6), "LFO" ~ i.to!string ~ "_Target2");
 			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (7), "LFO" ~ i.to!string ~ "_Target3");
 		}
+		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (0), "InputAtoPri");
+		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (1), "InputAtoSec");
+		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (2), "InputBtoPri");
+		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (3), "InputBtoSec");
 	}
 	protected static MValue[] SET_VALS;
 	/** 
