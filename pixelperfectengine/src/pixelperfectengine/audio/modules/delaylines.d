@@ -39,14 +39,14 @@ public class DelayLines : AudioModule {
 				SET_VALS ~= MValue(MValueType.Float, (i<<7) | (8 + j * 3 + 1), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Q");
 				SET_VALS ~= MValue(MValueType.Int32, (i<<7) | (8 + j * 3 + 2), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Type");
 			}
-			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (16), "Tap" ~ i.to!string ~ "_OutputL");
-			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (17), "Tap" ~ i.to!string ~ "_OutputR");
-			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (18), "Tap" ~ i.to!string ~ "_FeedbackPri");
-			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (19), "Tap" ~ i.to!string ~ "_FeedbackSec");
-			SET_VALS ~= MValue(MValueType.Int32, (i<<7) | (20), "Tap" ~ i.to!string ~ "_Pos");
-			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (21), "Tap" ~ i.to!string ~ "_TapEnable");
-			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (22), "Tap" ~ i.to!string ~ "_BypassDrySig");
-			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (23), "Tap" ~ i.to!string ~ "_FilterAlg");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (20), "Tap" ~ i.to!string ~ "_OutputL");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (21), "Tap" ~ i.to!string ~ "_OutputR");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (22), "Tap" ~ i.to!string ~ "_FeedbackPri");
+			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (23), "Tap" ~ i.to!string ~ "_FeedbackSec");
+			SET_VALS ~= MValue(MValueType.Int32, (i<<7) | (24), "Tap" ~ i.to!string ~ "_Pos");
+			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (25), "Tap" ~ i.to!string ~ "_TapEnable");
+			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (26), "Tap" ~ i.to!string ~ "_BypassDrySig");
+			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (27), "Tap" ~ i.to!string ~ "_FilterAlg");
 		}
 		for (uint i ; i < 4 ; i++){
 			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (0), "LFO" ~ i.to!string ~ "_Waveform");
@@ -62,6 +62,8 @@ public class DelayLines : AudioModule {
 		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (1), "InputAtoSec");
 		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (2), "InputBtoPri");
 		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (3), "InputBtoSec");
+		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (3), "MasterL");
+		SET_VALS ~= MValue(MValueType.Float, (9<<7) | (3), "MasterR");
 	}
 	protected static MValue[] SET_VALS;
 	/** 
@@ -308,6 +310,23 @@ public class DelayLines : AudioModule {
 	}
 
 	override public int writeParam_int(uint presetID, uint paramID, int value) nothrow {
+		Preset selPreset;
+		const uint paramGr = (paramID)>>7;
+		switch (paramGr) {
+			case 0: .. case 7:
+				const uint tapID = paramGr & 3, lineID = paramGr>>2;
+				const uint subParamID = paramID & 0x3F
+				switch (subParamID) {
+					case 0: .. case 3:
+						
+						break;
+					default:
+						break;
+				}
+				break
+			default:
+				break;
+		}
 		return int.init; // TODO: implement
 	}
 
@@ -316,6 +335,29 @@ public class DelayLines : AudioModule {
 	}
 
 	override public int writeParam_double(uint presetID, uint paramID, double value) nothrow {
+		Preset selPreset;
+		const uint paramGr = (paramID)>>7;
+		switch (paramGr) {
+			case 0: .. case 7:
+				const uint tapID = paramGr & 3, lineID = paramGr>>2;
+				const uint subParamID = paramID & 0x3F
+				switch (subParamID) {
+					case 0: .. case 3:
+						selPreset.taps[lineID][tapID].fir[0][subParamID] = value;
+						break;
+					case 4: .. case 7:
+						selPreset.taps[lineID][tapID].fir[1][subParamID - 4] = value;
+						break;
+					case 8: .. case 19:
+						const uint filterID = (subParamID - 8) / 3, filterParamID = (subParamID - 8) % 3;
+						break;
+					default:
+						break;
+				}
+				break
+			default:
+				break;
+		}
 		return int.init; // TODO: implement
 	}
 
