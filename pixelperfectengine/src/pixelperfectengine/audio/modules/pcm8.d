@@ -155,6 +155,7 @@ public class PCM8 : AudioModule {
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
 		long			outPos;				///Position in decoded amount, including fractions
+		long			savedOutPos;
 		uint			decodeAm;			///Decoded amount, mainly used to determine output buffer half
 		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
 		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
@@ -215,9 +216,11 @@ public class PCM8 : AudioModule {
 				if (loopBegin) {//Save decoder workpad state on the beginning of the loop (important for ADPCM!)
 					status |= ChannelStatusFlags.inLoop;
 					savedDWState = decoderWorkpad;
+					savedOutPos = outPos;
 				} else if (loopEnd) {//Restore decoder and other necessary statuses.
 					decoderWorkpad = savedDWState;
-					outPos = savedDWState.pos<<24;	//this is the only way the looping can somewhat working, using decodeAm instead of decoderWorkpad.pos is buggy for some weird reason
+					outPos = savedOutPos;
+					//outPos = savedDWState.pos<<24;	//this is the only way the looping can somewhat working, using decodeAm instead of decoderWorkpad.pos is buggy for some weird reason
 					//waveModWorkpad.lookupVal &= 0xFFFF_FFFF_FF00_0000;
 				}
 				samplesNeeded -= samplesToDecode;
@@ -797,8 +800,7 @@ public class PCM8 : AudioModule {
 						samplesToAdvance = (128<<24L) - decoderBufPos;
 					}
 					//Calculate how many samples will be outputted
-					const size_t samplesOutputted = 
-							cast(size_t)(samplesToAdvance / channels[i].jumpAm);
+					const size_t samplesOutputted = cast(size_t)(samplesToAdvance / channels[i].jumpAm);
 					stretchAudioNoIterpol(channels[i].decoderBuffer, iBuf[outpos..outpos + samplesOutputted], 
 							channels[i].waveModWorkpad, channels[i].jumpAm);		//Output the audio to the intermediary buffer
 					samplesNeeded -= samplesOutputted;		//substract the number of outputted samples from the needed samples
