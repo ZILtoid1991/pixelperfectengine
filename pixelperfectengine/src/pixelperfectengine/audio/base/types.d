@@ -172,6 +172,14 @@ public enum SampleLoadErrorCode : int {
 	ChNumNotSupported			=	0x8,
 	SampleLenghtNotSupported	=	0x10,	//Should be only used if a specific sample length was requested
 }
+public enum IIRType : ubyte {
+	none,
+	LPF,
+	HPF,
+	BPF0,
+	BPF1,
+	Notch,
+}
 /**
  * Defines a workpad for many simple audio codecs
  */
