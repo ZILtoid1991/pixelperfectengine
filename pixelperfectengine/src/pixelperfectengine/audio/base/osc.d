@@ -110,6 +110,11 @@ public struct QuadMultitapOsc {
 		}
 		return result;
 	}
+	/**
+	 * Implements soft synchronization between the first and any other oscillators.
+	 * Template params:
+	 *   osc = the oscillator selection.
+	 */
 	__m128i outputSSync0(int[] osc)() @nogc @safe pure nothrow {
 		const int prevState = counter[0];
 		__m128i result = output();
@@ -120,9 +125,16 @@ public struct QuadMultitapOsc {
 		}
 		return result;
 	}
+	/**
+	 * Sets the rate of a given oscillator.
+	 * Params:
+	 *   sampleRate = Sampling frequency.
+	 *   freq = The desired output frequency.
+	 *   osc = Number of the oscillator to be set.
+	 */
 	void setRate(int sampleRate, double freq, int osc) @nogc @safe pure nothrow {
 		double cycLen = freq / (sampleRate / cast(double)(1<<16));
 		rate[osc] = cast(uint)(cast(double)(1<<16) * cycLen);
-		syncReset[osc] = cast(uint)(cast(double)rate[0] / rate[osc]);
+		syncReset[osc] = cast(uint)(cast(double)rate[0] / ((cast(double)(1<<16) * cycLen));
 	}
 }
