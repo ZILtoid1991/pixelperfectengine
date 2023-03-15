@@ -453,6 +453,11 @@ alias ADPCMStream = NibbleArray;
 			}
 		}
 	}
+	/** 
+	 * Original algorithm for C++ by Martin Leitner-Ankerl (https://martin.ankerl.com/2007/10/04/optimized-pow-approximation-for-java-and-c-c/).
+	 * Computes the power of `a` on the `b`th much faster than std.math.pow, at the cost of some accuracy.
+	 * Good enough for envelop curve shaping.
+	 */
 	double fastPow(double a, double b) @safe {
 	    union U {
 	        double d;
