@@ -135,6 +135,6 @@ public struct QuadMultitapOsc {
 	void setRate(int sampleRate, double freq, int osc) @nogc @safe pure nothrow {
 		double cycLen = freq / (sampleRate / cast(double)(1<<16));
 		rate[osc] = cast(uint)(cast(double)(1<<16) * cycLen);
-		syncReset[osc] = cast(uint)(cast(double)rate[0] / ((cast(double)(1<<16) * cycLen));
+		syncReset[osc] = cast(uint)(cast(double)rate[0] / (cast(double)(1<<16) * cycLen));
 	}
 }
