@@ -16,6 +16,7 @@ import midi2.types.enums;
 import collections.treemap;
 
 import std.bitmanip : bitfields;
+import std.math;
 
 /**
  * Implements a configurable delay line device, that can be used to create various time-based effects.
@@ -85,7 +86,7 @@ public class DelayLines : AudioModule {
 	 * Defines an infinite response filter bank for various uses.
 	 */
 	protected struct IIRBank {
-		///All initial values
+		///All initial values + some precalculated ones.
 		__m128		x1, x2, y1, y2, b0a0, b1a0, b2a0, a1a0, a2a0;
 		///Calculates the output of the filter, then stores the input and output values.
 		pragma (inline, true)
@@ -210,6 +211,10 @@ public class DelayLines : AudioModule {
 		this.handler = handler;
 		oscOut.length = bufferSize;
 		dummyBuf.length = bufferSize;
+		feedbackSum[0] = 0;
+		feedbackSum[1] = 0;
+		resetBuffer(oscOut);
+		resetBuffer(dummyBuf);
 	}
 
 	override public void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
@@ -242,19 +247,37 @@ public class DelayLines : AudioModule {
 				outBuf[i] = dummyBuf.ptr;
 			}
 		}
+		//Precalculate values, so they don't need to be done on a per-cycle basis.
 		__m128[4][2] filterLevels;
+		float[4][2] filterAlg0;
+		float[4][2] filterAlg1;
 		for (int i ; i < 2 ; i++) {
 			for (int j ; j < 4 ; j++) {
 				filterLevels[i][j][0] = currPreset.taps[i][j].filterAm0;
 				filterLevels[i][j][1] = currPreset.taps[i][j].filterAm1;
 				filterLevels[i][j][2] = currPreset.taps[i][j].filterAm2;
 				filterLevels[i][j][3] = currPreset.taps[i][j].bypassDrySig ? 0.0 : 1.0;
+				filterAlg0[i][j] = currPreset[i][j].filterAlg ? 0.0 : 1.0;
+				filterAlg1[i][j] = currPreset[i][j].filterAlg ? 1.0 : 0.0;
 			}
 		}
-		
+		{	//Render LFO outs.
+			for (int lfoPos ; lfoPos < bufferSize ; lfoPos++) {
+				oscOut[lfoPos] = osc.output();
+			}
+			for (int i ; i < 4 ; i++) {
+				if (currPreset.oscWaveform[i].integrate){	//integrate output if needed
+					for (int lfoPos ; lfoPos < bufferSize ; lfoPos++) {
+						oscOut[lfoPos][i] = cast(int)((abs(oscOut[lfoPos][i]) * cast(long)oscOut[lfoPos][i])>>32L);
+					}
+				}
+			}
+		}
 		for (int outputPos ; outputPos < bufferSize ; outputPos++) {
-			delayLines[0][dLPos[0] | dlMod[0]] = inBuf[0][outputPos] + feedbackSum[0];
-			delayLines[1][dLPos[1] | dlMod[1]] = inBuf[1][outputPos] + feedbackSum[1];
+			delayLines[0][dLPos[0] | dlMod[0]] = inBuf[0][outputPos] * inLevel[0] + inBuf[1][outputPos] * inLevel[1] + 
+					feedbackSum[0];
+			delayLines[1][dLPos[1] | dlMod[1]] = inBuf[0][outputPos] * inLevel[2] + inBuf[1][outputPos] * inLevel[3] + 
+					feedbackSum[1];
 			feedbackSum[0] = 0.0;
 			feedbackSum[1] = 0.0;
 			for (int i ; i < 2 ; i++) {
@@ -267,20 +290,15 @@ public class DelayLines : AudioModule {
 						const float outSum = partialOut[0] + partialOut[1] + partialOut[2] + partialOut[3];
 						__m128 toIIR;
 						toIIR[0] = outSum;
+						toIIR[1] = filterOuts[i][j][0] * filterAlg1[i][j] + outSum * filterAlg0[i][j];
+						toIIR[2] = filterOuts[i][j][1] * filterAlg1[i][j] + outSum * filterAlg0[i][j];
 						toIIR[3] = feedbackSends[i][j];
-						if(currPreset.taps[i][j].filterAlg) {
-							toIIR[1] = filterOuts[i][j][0];
-							toIIR[2] = filterOuts[i][j][1];
-						} else {
-							toIIR[1] = outSum;
-							toIIR[2] = outSum;
-						}
-						//toIIR *= filterLevels;
 						toIIR = filterBanks[i][j].output(toIIR);
 						filterOuts[i][j] = toIIR;
 						toIIR[3] = outSum;
 						toIIR *= filterLevels[i][j];
 						feedbackSends[i][j] = toIIR[0] + toIIR[1] + toIIR[2] + toIIR[3];
+						//Mix to final output
 						__m128 finalOut;
 						finalOut[0] = feedbackSends[i][j];
 						finalOut[1] = feedbackSends[i][j];
@@ -289,8 +307,8 @@ public class DelayLines : AudioModule {
 						finalOut *= currPreset.taps[i][j].outLevels;
 						outBuf[0][outputPos] += finalOut[0] * outLevel[0];
 						outBuf[1][outputPos] += finalOut[1] * outLevel[1];
-						feedbackSum[0] = finalOut[2];
-						feedbackSum[1] = finalOut[3];
+						feedbackSum[0] += finalOut[2];
+						feedbackSum[1] += finalOut[3];
 					}
 				}
 			}
