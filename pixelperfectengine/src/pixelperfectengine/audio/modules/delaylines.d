@@ -484,8 +484,7 @@ public class DelayLines : AudioModule {
 	override public int readParam_int(uint presetID, uint paramID) nothrow {
 		Preset* presetPtr = presetBank.ptrOf(presetID);
 		if (presetPtr is null) {
-			presetBank[presetID] = Preset.init;
-			presetPtr = presetBank.ptrOf(presetID);
+			return int.init;
 		}
 		const uint paramGr = (paramID)>>7;
 		switch (paramGr) {
@@ -527,15 +526,84 @@ public class DelayLines : AudioModule {
 			default:
 				break;
 		}
-		return int.init; // TODO: implement
+		return int.init;
+	}
+
+	override public double readParam_double(uint presetID, uint paramID) nothrow {
+		Preset* presetPtr = presetBank.ptrOf(presetID);
+		if (presetPtr is null) {
+			return double.init;
+		}
+		const uint paramGr = (paramID)>>7;
+		switch (paramGr) {
+			case 0: .. case 7:
+				const uint tapID = paramGr & 3, lineID = paramGr>>2;
+				const uint subParamID = paramID & 0x3F;
+				switch (subParamID) {
+					case 0: .. case 3:	//FIR low
+						return presetPtr.taps[lineID][tapID].fir[0][subParamID];
+					case 4: .. case 7:	//FIR high
+						return presetPtr.taps[lineID][tapID].fir[1][subParamID - 4];
+					case 8: .. case 23:
+						const uint filterID = (subParamID - 8)>>2, filterParamID = (subParamID - 8)&7;
+						switch (filterParamID) {
+							case 0:		//Filter freq
+								return presetPtr.iirFreq[lineID][tapID][filterID];
+							case 1:		//Filter Q
+								return presetPtr.iirQ[lineID][tapID][filterID];
+							case 3:		//Filter amount
+								switch (filterID) {
+									case 0:
+										return presetPtr.taps[lineID][tapID].filterAm0;
+									case 1:
+										return presetPtr.taps[lineID][tapID].filterAm1;
+									case 2:
+										return presetPtr.taps[lineID][tapID].filterAm2;
+									default:
+										return 0;
+								}
+							default:
+								return double.init;
+						}
+					case 24: .. case 27:	//Output Levels
+						const uint levelID = (subParamID - 24) & 3;
+						return presetPtr.taps[lineID][tapID].outLevels[levelID];
+					default:
+						break;
+				}
+				break;
+			case 8:	//LFO
+				const uint lfoID = (paramID>>3) & 3, subParamID = paramID & 7;
+				switch (subParamID) {
+					case 1:
+						return presetPtr.oscLevels[lfoID];
+					case 2:
+						return presetPtr.oscFrequencies[lfoID];
+					case 3:
+						return presetPtr.oscPWM[lfoID];
+					default:
+						break;
+				}
+				break;
+			case 9: //Levels
+				const uint subParamID = paramID & 7;
+				switch (subParamID) {
+					case 0: .. case 3:
+						return presetPtr.inputLevel[subParamID];
+					case 4, 5:
+						return presetPtr.outputLevel[subParamID - 4];
+					default:
+						break;
+				}
+				break;
+			default:
+				break;
+		}
+		return double.init; // TODO: implement
 	}
 
 	override public long readParam_long(uint presetID, uint paramID) nothrow {
 		return long.init; // TODO: implement
-	}
-
-	override public double readParam_double(uint presetID, uint paramID) nothrow {
-		return double.init; // TODO: implement
 	}
 
 	override public string readParam_string(uint presetID, uint paramID) nothrow {
