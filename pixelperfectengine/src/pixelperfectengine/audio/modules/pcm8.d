@@ -142,6 +142,7 @@ public class PCM8 : AudioModule {
 		noteOn				=	1<<0,	///Set if key is on
 		sampleRunout		=	1<<1,	///Set if sample have ran out (decoder proceeds to stop)
 		inLoop				=	1<<2,	///Set if sample is looping
+		bufferHalf			=	1<<3,
 	}
 	/**
 	Defines a single channel's statuses.
@@ -154,9 +155,9 @@ public class PCM8 : AudioModule {
 		DecoderWorkpad	savedDWState;		///The state of the decoder when the beginning of the looppoint has been reached.
 		WavemodWorkpad	waveModWorkpad;		///Stores the current state of the wave modulator.
 		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
-		long			outPos;				///Position in decoded amount, including fractions
-		long			savedOutPos;
-		uint			decodeAm;			///Decoded amount, mainly used to determine output buffer half
+		ulong			outPos;				///Position in decoded amount, including fractions
+		ulong			samplesHave;		///Amount of decoded samples with fractions offsetted
+		//uint			decodeAm;			///Decoded amount, mainly used to determine output buffer half
 		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
 		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
@@ -164,7 +165,7 @@ public class PCM8 : AudioModule {
 		ubyte			currNote = 255;		///The currently played note + Bit 8 indicates suspension.
 		ubyte			presetNum;			///Selected preset.
 		ushort			bankNum;			///Bank select number.
-		uint			status;				///Channel status flags. Bit 1: Note on, Bit 2: Sample run out approaching, Bit 3: In loop
+		uint			status;				///Channel status flags. Bit 1: Note on, Bit 2: Sample run out approaching, Bit 3: In loop, Bit 4: Bufferhalf
 
 		float			pitchBend = 0;		///Current amount of pitch bend.
 
@@ -175,9 +176,11 @@ public class PCM8 : AudioModule {
 		float			currShpR;			///The current release shape
 		/**
 		Decodes one more block worth of samples, depending on internal state.
-
+		Params:
+		* sa = The sample's assigned data.
+		* slmp = The sample to be decoded.
 		Bugs: 
-		* Upon pitchbend and when looping, it can cause buffer alignment issues, which in turn will cause audio glitches.
+		* Upon pitchbend and when looping, it can cause buffer alignment issues, which in turn will cause audio glitches. FIXED!
 		*/
 		void decodeMore(ref SampleAssignment sa, ref Sample slmp) @nogc nothrow pure {
 			//Check if sample runout have happened already, stop decoding if yes.
@@ -190,7 +193,7 @@ public class PCM8 : AudioModule {
 			//Determine how much samples we will need.
 			sizediff_t samplesNeeded = 128;
 			//Determine offset based on which cycle we will need
-			const size_t offset = decodeAm & 0x01 ? 128 : 0;
+			const size_t offset = status & ChannelStatusFlags.bufferHalf ? 128 : 0;
 			//Determine if note is on.
 			const bool keyOn = (status & 1) == 1;
 			//Determine if sample is looping
@@ -216,17 +219,15 @@ public class PCM8 : AudioModule {
 				if (loopBegin) {//Save decoder workpad state on the beginning of the loop (important for ADPCM!)
 					status |= ChannelStatusFlags.inLoop;
 					savedDWState = decoderWorkpad;
-					savedOutPos = outPos;
 				} else if (loopEnd) {//Restore decoder and other necessary statuses.
 					decoderWorkpad = savedDWState;
-					outPos = savedOutPos;
-					//outPos = savedDWState.pos<<24;	//this is the only way the looping can somewhat working, using decodeAm instead of decoderWorkpad.pos is buggy for some weird reason
-					//waveModWorkpad.lookupVal &= 0xFFFF_FFFF_FF00_0000;
 				}
 				samplesNeeded -= samplesToDecode;
 				dPos += samplesToDecode;
+				samplesHave += (samplesToDecode<<24);
 			}
-			decodeAm++;	//Flip decode buffer
+			status ^= ChannelStatusFlags.bufferHalf;
+			//decodeAm++;	//Flip decode buffer
 		}
 		///Calculates jump amount for the sample.
 		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
@@ -237,7 +238,9 @@ public class PCM8 : AudioModule {
 		void reset() @nogc @safe pure nothrow {
 			outPos = 0;
 			status = 0;
-			decodeAm = 0;
+			status &= ~ChannelStatusFlags.bufferHalf;
+			//decodeAm = 0;
+			samplesHave = 0;
 			decoderWorkpad = DecoderWorkpad.init;
 			savedDWState = DecoderWorkpad.init;
 			waveModWorkpad = WavemodWorkpad.init;
@@ -680,7 +683,8 @@ public class PCM8 : AudioModule {
 					uint[2] dump;
 					const int delta = channels[msg[msgPos + 1]].decoderWorkpad.outn1;
 					dump[0] = cast(uint)channels[msg[msgPos + 1]].decoderWorkpad.pos;
-					dump[0] = ((dump[0] & 0xF_E0_00_00)<<3) | ((dump[0] & 0x1F_C0_00)<<2) | ((dump[0] & 0x3F_80)<<1) | (dump[0] & 0x7F);
+					dump[0] = ((dump[0] & 0xF_E0_00_00)<<3) | ((dump[0] & 0x1F_C0_00)<<2) | ((dump[0] & 0x3F_80)<<1) | 
+							(dump[0] & 0x7F);
 					dump[1] = channels[msg[msgPos + 1]].decoderWorkpad.pred<<24;
 					dump[1] |= ((delta & 0xC0_00)<<2) | ((delta & 0x3F_80)<<1) | (delta & 0x7F);
 					if (midiOut !is null) midiOut(UMP(MessageType.Data128, 0x0, SysExSt.Complete, 9, 0x0, 0x7D), dump[0], 
@@ -792,13 +796,15 @@ public class PCM8 : AudioModule {
 					ulong samplesToAdvance = channels[i].jumpAm * samplesNeeded;
 					//Determine if there's enough decoded samples in the output buffer.
 					//If not, decode more.
-					if ((channels[i].outPos + samplesToAdvance) > (channels[i].decoderWorkpad.pos<<24))
+					if ((channels[i].outPos + samplesToAdvance) > (channels[i].samplesHave))
 						channels[i].decodeMore(sa, slmp);
-					const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;		//Get the amount of unused samples in the decoder buffer with fractions
+					const ulong decoderBufPos = channels[i].samplesHave - channels[i].outPos;
+					//const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;		//Get the amount of unused samples in the decoder buffer with fractions
 					//Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
-					if ((128<<24L) - decoderBufPos <= samplesToAdvance){
+					if ((128<<24L) - decoderBufPos < samplesToAdvance){
 						samplesToAdvance = (128<<24L) - decoderBufPos;
 					}
+					debug assert(samplesToAdvance, "Lockup event in PCM8!");	//Test for lockups, crash thread if anything goes wrong
 					//Calculate how many samples will be outputted
 					const size_t samplesOutputted = cast(size_t)(samplesToAdvance / channels[i].jumpAm);
 					stretchAudioNoIterpol(channels[i].decoderBuffer, iBuf[outpos..outpos + samplesOutputted], 
@@ -846,7 +852,6 @@ public class PCM8 : AudioModule {
 					a2_a0 * filterVals[9];
 			for (int j ; j < 4 ; j++)
 				outBuf[j][i] += output0[j];
-			//	outBuf[j][i] += input0[j];
 			filterVals[7] = filterVals[6];
 			filterVals[6] = input0;
 			filterVals[9] = filterVals[8];
