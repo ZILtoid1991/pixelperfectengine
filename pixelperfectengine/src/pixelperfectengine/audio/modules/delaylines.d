@@ -478,10 +478,55 @@ public class DelayLines : AudioModule {
 	}
 
 	override public MValue[] getParameters() nothrow {
-		return null; // TODO: implement
+		return SET_VALS;
 	}
 
 	override public int readParam_int(uint presetID, uint paramID) nothrow {
+		Preset* presetPtr = presetBank.ptrOf(presetID);
+		if (presetPtr is null) {
+			presetBank[presetID] = Preset.init;
+			presetPtr = presetBank.ptrOf(presetID);
+		}
+		const uint paramGr = (paramID)>>7;
+		switch (paramGr) {
+			case 0: .. case 7:
+				const uint tapID = paramGr & 3, lineID = paramGr>>2;
+				const uint subParamID = paramID & 0x3F;
+				switch (subParamID) {
+					case 8: .. case 19:
+						const uint filterID = (subParamID - 8) / 4, filterParamID = (subParamID - 8) % 4;
+						switch (filterParamID) {
+							case 2:	
+								return presetPtr.iirType[lineID][tapID][filterID];	//Filtertype
+							default:
+								break;
+						}
+					case 28:	//Position
+						return presetPtr.taps[lineID][tapID].pos;
+					case 29:	//Tap enable
+						return presetPtr.taps[lineID][tapID].tapEnable ? 1 : 0;
+					case 30:	//Bypass dry signal
+						return presetPtr.taps[lineID][tapID].bypassDrySig ? 1 : 0;
+					case 31:	//Filter algorithm
+						return presetPtr.taps[lineID][tapID].filterAlg ? 1 : 0;
+					default:
+						break;
+				}
+				break;
+			case 8:		//LFO
+				const uint lfoID = (paramID>>3) & 3, subParamID = paramID & 7;
+				switch (subParamID) {
+					case 0:
+						return presetPtr.oscWaveform[lfoID].raw;
+					case 4:
+						return presetPtr.oscTargets[lfoID];
+					default:
+						break;
+				}
+				break;
+			default:
+				break;
+		}
 		return int.init; // TODO: implement
 	}
 
