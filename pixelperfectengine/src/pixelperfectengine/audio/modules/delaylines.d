@@ -39,7 +39,7 @@ public class DelayLines : AudioModule {
 				SET_VALS ~= MValue(MValueType.Float, (i<<7) | (8 + j * 3 + 0), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Freq");
 				SET_VALS ~= MValue(MValueType.Float, (i<<7) | (8 + j * 3 + 1), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Q");
 				SET_VALS ~= MValue(MValueType.Int32, (i<<7) | (8 + j * 3 + 2), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Type");
-				SET_VALS ~= MValue(MValueType.Float, (i<<7) | (8 + j * 3 + 3), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~ "Level");
+				SET_VALS ~= MValue(MValueType.Float, (i<<7) | (8 + j * 3 + 3), "Tap" ~ i.to!string ~ "_IIR" ~ j.to!string ~"Level");
 			}
 			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (24), "Tap" ~ i.to!string ~ "_OutputL");
 			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (25), "Tap" ~ i.to!string ~ "_OutputR");
@@ -163,6 +163,8 @@ public class DelayLines : AudioModule {
 	protected size_t[2]			dLPos;			///Delay line positions
 	protected size_t[2]			dLMod;			///Delay line modulo
 	protected float[]			dummyBuf;		///Buffer used for unused inputs/outputs
+	protected uint				presetNum;
+	protected uint				unregCC;
 	
 	/**
 	 * Creates an instance of this module using the supplied parameters.
@@ -207,6 +209,14 @@ public class DelayLines : AudioModule {
 
 	override public void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
 		
+	}
+
+	protected void controlChangeCmd(uint paramID, uint val) @nogc nothrow {
+
+	}
+
+	protected void presetChangeCmd(uint preset) @nogc nothrow {
+
 	}
 
 	override public void renderFrame(float*[] input, float*[] output) @nogc nothrow {
@@ -498,7 +508,7 @@ public class DelayLines : AudioModule {
 							case 2:	
 								return presetPtr.iirType[lineID][tapID][filterID];	//Filtertype
 							default:
-								break;
+								return int.init;
 						}
 					case 28:	//Position
 						return presetPtr.taps[lineID][tapID].pos;
