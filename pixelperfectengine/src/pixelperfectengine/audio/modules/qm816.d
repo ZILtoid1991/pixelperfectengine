@@ -1214,6 +1214,7 @@ public class QM816 : AudioModule {
 						break;
 					case MIDI1_0Cmd.PrgCh:	//Program change
 						const uint chOffset = data0.channel;
+						presetNum[chOffset] = data0.program;
 						const uint chCtrl = soundBank[bankNum[chOffset] & 7][presetNum[chOffset]].channel.chCtrl;
 						if (chCtrl & ChCtrlFlags.ComboModeTest) {
 							const uint chX = chOffset & 7, bankX = bankNum[chOffset] & 7 & ~1;
@@ -1228,8 +1229,8 @@ public class QM816 : AudioModule {
 						chCtrls[ch].pitchBend = channels[ch].preset.pitchBendSens * ((cast(double)data0.bend - 0x20_00) / 0x3F_FF);
 						break;
 					default:
-						assert(0, "MIDI 1.0 data error!");
-						//break;
+						//assert(0, "MIDI 1.0 data error!");
+						break;
 				}
 				break;
 			case MessageType.MIDI2:
@@ -1338,49 +1339,50 @@ public class QM816 : AudioModule {
 	 *   bend = amount of initial bend (MIDI 2.0 only)
 	 */
 	protected void keyOn(ubyte note, ubyte ch, float vel, float bend = float.nan) @nogc pure nothrow {
+		const int opOffset = ch * 2;
 		void hardReset() @safe @nogc pure nothrow {
 			channels[ch].eeg.keyOn();
-			operators[ch].eg.keyOn();
-			operators[ch + 1].eg.keyOn();
-			operators[ch].pos = 0;
-			operators[ch + 1].pos = 0;
+			operators[opOffset].eg.keyOn();
+			operators[opOffset + 1].eg.keyOn();
+			operators[opOffset].pos = 0;
+			operators[opOffset + 1].pos = 0;
 		}
 		void softReset() @safe @nogc pure nothrow {
 			channels[ch].eeg.keyOnNoReset();
-			operators[ch].eg.keyOnNoReset();
-			operators[ch + 1].eg.keyOnNoReset();
+			operators[opOffset].eg.keyOnNoReset();
+			operators[opOffset + 1].eg.keyOnNoReset();
 		}
 		void hardResetCmb() @safe @nogc pure nothrow {
 			channels[ch + 8].eeg.keyOn();
-			operators[ch + 16].eg.keyOn();
-			operators[ch + 17].eg.keyOn();
-			operators[ch + 16].pos = 0;
-			operators[ch + 17].pos = 0;
+			operators[opOffset + 16].eg.keyOn();
+			operators[opOffset + 17].eg.keyOn();
+			operators[opOffset + 16].pos = 0;
+			operators[opOffset + 17].pos = 0;
 		}
 		void softResetCmb() @safe @nogc pure nothrow {
 			channels[ch + 8].eeg.keyOnNoReset();
-			operators[ch + 16].eg.keyOnNoReset();
-			operators[ch + 17].eg.keyOnNoReset();
+			operators[opOffset + 16].eg.keyOnNoReset();
+			operators[opOffset + 17].eg.keyOnNoReset();
 		}
 		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
 		chCtrls[ch].note = note;
 		chCtrls[ch].velocity = vel;
 		if (!isNaN(bend)) chCtrls[ch].pitchBend = bend;
-		operators[ch].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-		operators[ch].setEG(intSlmpRate, note, vel);
-		operators[ch + 1].setFrequency(intSlmpRate, note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
-		operators[ch + 1].setEG(intSlmpRate, note, vel);
+		operators[opOffset].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+		operators[opOffset].setEG(intSlmpRate, note, vel);
+		operators[opOffset + 1].setFrequency(intSlmpRate, note, chCtrls[ch + 1].pitchBend, channels[ch].preset.chnlTun);
+		operators[opOffset + 1].setEG(intSlmpRate, note, vel);
 		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
-			operators[ch + 16].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-			operators[ch + 16].setEG(intSlmpRate, note, vel);
-			operators[ch + 17].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
-			operators[ch + 17].setEG(intSlmpRate, note, vel);
+			operators[opOffset + 16].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+			operators[opOffset + 16].setEG(intSlmpRate, note, vel);
+			operators[opOffset + 17].setFrequency(intSlmpRate, note, chCtrls[ch].pitchBend, channels[ch].preset.chnlTun);
+			operators[opOffset + 17].setEG(intSlmpRate, note, vel);
 			if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetOnKeyOn) {
 				hardReset();
 				hardResetCmb();
 			} else if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetMode) {
 				if ((channels[ch].eeg.position | channels[ch + 8].eeg.position | operators[ch].eg.position |
-						operators[ch + 1].eg.position | operators[ch + 16].eg.position | operators[ch + 17].eg.position) == 
+						operators[opOffset + 1].eg.position | operators[opOffset + 16].eg.position | operators[opOffset + 17].eg.position) == 
 						ADSREnvelopGenerator.Stage.Off) {
 					hardReset();
 					hardResetCmb();
@@ -1416,15 +1418,16 @@ public class QM816 : AudioModule {
 	 */
 	protected void keyOff(ubyte note, ubyte ch, float vel, float bend = 0) @nogc pure nothrow {
 		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;
+		const int opOffset = ch * 2;
 		chCtrls[ch].note = note;
 		chCtrls[ch].velocity = vel;
 		channels[ch].eeg.keyOff();
-		operators[ch].keyOff(intSlmpRate);
-		operators[ch + 1].keyOff(intSlmpRate);
+		operators[opOffset].keyOff(intSlmpRate);
+		operators[opOffset + 1].keyOff(intSlmpRate);
 		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch <= 7) {
 			channels[ch + 8].eeg.keyOff();
-			operators[ch + 16].keyOff(intSlmpRate);
-			operators[ch + 17].keyOff(intSlmpRate);
+			operators[opOffset + 16].keyOff(intSlmpRate);
+			operators[opOffset + 17].keyOff(intSlmpRate);
 		}
 	}
 	protected void sysExCmd(ubyte[] msg) @nogc pure nothrow {
@@ -1535,26 +1538,27 @@ public class QM816 : AudioModule {
 	*/
 	protected void prgRecall(ubyte ch, ubyte prg, ubyte bank) @nogc @safe pure nothrow {
 		Preset p = soundBank[bank & 7][prg];
+		const int opOffset = ch * 2;
 		if (p.channel.chCtrl & ChCtrlFlags.ComboModeTest) {
 			if (ch > 7) ch -= 8;
-			operators[ch * 2].preset = p.operators[0];
-			operators[ch * 2].setEG(intSlmpRate, 40);
-			operators[ch * 2 + 1].preset = p.operators[1];
-			operators[ch * 2 + 1].setEG(intSlmpRate, 40);
+			operators[opOffset].preset = p.operators[0];
+			operators[opOffset].setEG(intSlmpRate, 40);
+			operators[opOffset + 1].preset = p.operators[1];
+			operators[opOffset + 1].setEG(intSlmpRate, 40);
 			channels[ch].preset = p.channel;
 			channels[ch].setEEG(intSlmpRate);
 			Preset upper = soundBank[(bank & 7) + 1][prg];
-			operators[ch * 2 + 16].preset = upper.operators[0];
-			operators[ch * 2 + 16].setEG(intSlmpRate, 40);
-			operators[ch * 2 + 17].preset = upper.operators[1];
-			operators[ch * 2 + 17].setEG(intSlmpRate, 40);
+			operators[opOffset + 16].preset = upper.operators[0];
+			operators[opOffset + 16].setEG(intSlmpRate, 40);
+			operators[opOffset + 17].preset = upper.operators[1];
+			operators[opOffset + 17].setEG(intSlmpRate, 40);
 			channels[ch + 8].preset = upper.channel;
 			channels[ch + 8].setEEG(intSlmpRate);
 		} else {
-			operators[ch * 2].preset = p.operators[0];
-			operators[ch * 2].setEG(intSlmpRate, 40);
-			operators[ch * 2 + 1].preset = p.operators[1];
-			operators[ch * 2 + 1].setEG(intSlmpRate, 40);
+			operators[opOffset].preset = p.operators[0];
+			operators[opOffset].setEG(intSlmpRate, 40);
+			operators[opOffset + 1].preset = p.operators[1];
+			operators[opOffset + 1].setEG(intSlmpRate, 40);
 			channels[ch].preset = p.channel;
 			channels[ch].setEEG(intSlmpRate);
 		}
@@ -2135,8 +2139,10 @@ public class QM816 : AudioModule {
 					ch.preset.shpAX : ch.preset.shpRX);
 			const float vibrAm = pLFOOut * ch.preset.pLFOlevel * 
 					(ch.preset.chCtrl & ChCtrlFlags.MWToVibr ? chCtrl.pitchBend : 1.0);
-			op0.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
-			op1.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op0.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, 
+					ch.preset.chnlTun);
+			op1.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, 
+					ch.preset.chnlTun);
 		}
 	}
 	///Updates automatic and manual pitchbend values (channel-assignable envelop, LFO, pitchbend CTRL) for 4 operators.
@@ -2149,10 +2155,14 @@ public class QM816 : AudioModule {
 					ch.preset.shpAX : ch.preset.shpRX);
 			const float vibrAm = pLFOOut * ch.preset.pLFOlevel * 
 					(ch.preset.chCtrl & ChCtrlFlags.MWToVibr ? chCtrl.pitchBend : 1.0);
-			op0.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
-			op1.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
-			op2.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
-			op3.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, ch.preset.chnlTun);
+			op0.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, 
+					ch.preset.chnlTun);
+			op1.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, 
+					ch.preset.chnlTun);
+			op2.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, 
+					ch.preset.chnlTun);
+			op3.setFrequency(intSlmpRate, chCtrl.note, chCtrl.pitchBend + (ch.preset.eegDetuneAm * eegOut) * vibrAm, 
+					ch.preset.chnlTun);
 		}
 	}
 	///Macro for channel update constants that need to be calculated once per frame
@@ -2270,10 +2280,11 @@ public class QM816 : AudioModule {
 			channels[chNum].eeg.advance();
 		}
 	}
-	///Algorithm Mode0/1 (Parallel)
+	///Algorithm Mode 0/1 (Parallel)
 	protected void updateChannelM01(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		updatePitchbend2Op(operators[opOffset], operators[opOffset + 1], channels[chNum], chCtrls[chNum]);
+		const int resMode = (channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? 1 : 0;
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			updateOperator(operators[opOffset], opCtrl0);
@@ -2282,7 +2293,8 @@ public class QM816 : AudioModule {
 			const float outSum0 = operators[opOffset].output_0 + operators[opOffset + 1].output_0;
 			const float outSum1 = ((cast(uint)(operators[opOffset].output - short.min) * 
 					cast(uint)(operators[opOffset + 1].output - short.min))>>16) * outCtrlOp1 + operators[opOffset].output_0;
-			__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
+			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
+			__m128 outSum = __m128((outSum1 * resMode) + (outSum0 * (1 - resMode)));
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 		}
@@ -2291,7 +2303,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM100(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
-
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2305,7 +2318,6 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			//const int outSum = operators[opOffset + 1].output_0;
 			__m128 outSum = __m128(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
@@ -2325,6 +2337,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM110(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2338,7 +2352,6 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			//const int outSum = operators[opOffset + 1].output_0;
 			__m128 outSum = __m128(operators[opOffset + 1].output_0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
@@ -2353,6 +2366,9 @@ public class QM816 : AudioModule {
 	protected void updateChannelM101(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
+		const int resMode = (channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? 1 : 0;
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2370,7 +2386,8 @@ public class QM816 : AudioModule {
 			const float outSum0 = operators[opOffset].output_0 + operators[opOffset + 1].output_0;
 			const float outSum1 = ((cast(uint)(operators[opOffset].output - short.min) * 
 					cast(uint)(operators[opOffset + 1].output - short.min))>>16) * outCtrlOp1 + operators[opOffset].output_0;
-			__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
+			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
+			__m128 outSum = __m128((outSum1 * resMode) + (outSum0 * (1 - resMode)));
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2385,6 +2402,9 @@ public class QM816 : AudioModule {
 	protected void updateChannelM111(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
+		const int resMode = (channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? 1 : 0;
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2402,7 +2422,8 @@ public class QM816 : AudioModule {
 			const float outSum0 = operators[opOffset].output_0 + operators[opOffset + 1].output_0;
 			const float outSum1 = ((cast(uint)(operators[opOffset].output - short.min) * 
 					cast(uint)(operators[opOffset + 1].output - short.min))>>16) * outCtrlOp1 + operators[opOffset].output_0;
-			__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
+			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
+			__m128 outSum = __m128((outSum1 * resMode) + (outSum0 * (1 - resMode)));
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
@@ -2417,6 +2438,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM200(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2446,6 +2469,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM210(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2476,6 +2501,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM201(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2505,6 +2532,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM211(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2533,6 +2562,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM300(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2562,6 +2593,10 @@ public class QM816 : AudioModule {
 	protected void updateChannelM310(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
+		const int resMode = (channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? 1 : 0;
+		const int resSrc = (channels[chNum].preset.chCtrl & ChCtrlFlags.ResSrc) ? 1 : 0;
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2578,11 +2613,16 @@ public class QM816 : AudioModule {
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			const float outSum0 = operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
 					operators[opOffset + 16].output_0;
-			const float outSum1 = ((cast(uint)(((channels[chNum].preset.chCtrl & ChCtrlFlags.ResSrc) ? operators[opOffset].output :
+			/* const float outSum1 = ((cast(uint)(((channels[chNum].preset.chCtrl & ChCtrlFlags.ResSrc) ? operators[opOffset].output :
 					operators[opOffset + 16].output) - short.min) * 
 					cast(uint)(operators[opOffset + 17].output - short.min))>>16) * outCtrlOp1 + 
+					operators[opOffset + 1].output_0 + operators[opOffset + 16].output_0; */
+			const float outSum1 = ((cast(uint)(((resSrc * operators[opOffset + 1].output) + 
+					(operators[opOffset + 16].output * (1 - resSrc))) - short.min) * 
+					cast(uint)(operators[opOffset + 17].output - short.min))>>16) * outCtrlOp1 + 
 					operators[opOffset + 1].output_0 + operators[opOffset + 16].output_0;
-			__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
+			__m128 outSum = __m128((outSum1 * resMode) + (outSum0 * (1 - resMode)));
+			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
 			/* __m128 outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
 					operators[opOffset + 16].output_0); */
 			mixin(CHNL_UPDATE_MIX);
@@ -2599,6 +2639,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM301(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2630,6 +2672,8 @@ public class QM816 : AudioModule {
 	protected void updateChannelM311(int chNum, size_t length) @nogc pure nothrow {
 		mixin(CHNL_UPDATE_CONSTS);
 		mixin(CHNL_UPDATE_CONSTS0);
+		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
+				channels[chNum], chCtrls[chNum]);
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
