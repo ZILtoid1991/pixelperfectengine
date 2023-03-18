@@ -482,6 +482,7 @@ public class QM816 : AudioModule {
 		void setEG(int sampleRate, ubyte note, float vel = 1.0) @nogc @safe pure nothrow {
 			const double timeAmount = (!(preset.opCtrl & OpCtrlFlags.FixedPitch) && preset.kslBegin < note) ?
 					1 - ((note - preset.kslBegin) * (0.1 * (preset.kslAttenADSR / 255))) : 1;
+			eg.sustainLevel = preset.susLevel;
 			//Set attack phase
 			if (preset.atk) {
 				eg.attackRate = calculateRate(ADSR_TIME_TABLE[preset.atk] * timeAmount, sampleRate);
@@ -1382,8 +1383,8 @@ public class QM816 : AudioModule {
 				hardResetCmb();
 			} else if (channels[ch].preset.chCtrl & ChCtrlFlags.ResetMode) {
 				if ((channels[ch].eeg.position | channels[ch + 8].eeg.position | operators[ch].eg.position |
-						operators[opOffset + 1].eg.position | operators[opOffset + 16].eg.position | operators[opOffset + 17].eg.position) == 
-						ADSREnvelopGenerator.Stage.Off) {
+						operators[opOffset + 1].eg.position | operators[opOffset + 16].eg.position | operators[opOffset + 17].eg.position) 
+						== ADSREnvelopGenerator.Stage.Off) {
 					hardReset();
 					hardResetCmb();
 				} else {
@@ -1538,16 +1539,18 @@ public class QM816 : AudioModule {
 	*/
 	protected void prgRecall(ubyte ch, ubyte prg, ubyte bank) @nogc @safe pure nothrow {
 		Preset p = soundBank[bank & 7][prg];
-		const int opOffset = ch * 2;
 		if (p.channel.chCtrl & ChCtrlFlags.ComboModeTest) {
 			if (ch > 7) ch -= 8;
+			if (bank & 1)
+				p = soundBank[bank & 6][prg];
+			const int opOffset = ch * 2;
 			operators[opOffset].preset = p.operators[0];
 			operators[opOffset].setEG(intSlmpRate, 40);
 			operators[opOffset + 1].preset = p.operators[1];
 			operators[opOffset + 1].setEG(intSlmpRate, 40);
 			channels[ch].preset = p.channel;
 			channels[ch].setEEG(intSlmpRate);
-			Preset upper = soundBank[(bank & 7) + 1][prg];
+			Preset upper = soundBank[(bank & 6) + 1][prg];
 			operators[opOffset + 16].preset = upper.operators[0];
 			operators[opOffset + 16].setEG(intSlmpRate, 40);
 			operators[opOffset + 17].preset = upper.operators[1];
@@ -1555,6 +1558,7 @@ public class QM816 : AudioModule {
 			channels[ch + 8].preset = upper.channel;
 			channels[ch + 8].setEEG(intSlmpRate);
 		} else {
+			const int opOffset = ch * 2;
 			operators[opOffset].preset = p.operators[0];
 			operators[opOffset].setEG(intSlmpRate, 40);
 			operators[opOffset + 1].preset = p.operators[1];

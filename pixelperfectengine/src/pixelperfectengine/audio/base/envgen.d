@@ -68,7 +68,7 @@ public struct ADSREnvelopGenerator {
 				counter -= decayRate;
 				if (counter <= sustainLevel) {
 					counter = sustainLevel;
-					currStage = isPercussive ? Stage.Release : Stage.Sustain;
+					currStage = isPercussive || !_keyState ? Stage.Release : Stage.Sustain;
 				}
 				break;
 			case Sustain:
