@@ -12,7 +12,7 @@ This synth uses the Chowning-formula most commonly associated with phase modulat
 
 Simplified formula of such engines for two operators and sine waveforms is:
 
-y = a₁ * sin(x * n₁ + a₂ * sin(x * n²))                (a = amplitude of the given operator ; n = freqency multiplier)
+y = a₁ * sin(x * n₁ + a₂ * sin(x * n₂))                (a = amplitude of the given operator ; n = freqency multiplier)
 
 One can manipulate the waveform of the carrier (1) by manipulating the amplitude and frequency of the modulator (2), thus making the waveform richer in upper harmonics. By using a frequency multiplier of 2 for the modulator, the carrier can be turned into a square wave. 
 
@@ -331,30 +331,31 @@ In this mode, the output levels of P1 (or S1 in case of Mode 3) control the amou
 
 The synth shares two LFOs (tremolo and vibrato) and four filters between channels. MSB 16 selects global parameters on any channel.
 
-`PLFORate` [0]: Sets the frequency of the vibrato (0-16Hz).
-`PLFOWF` [1]: Selects a waveform for the vibrato.
-`ALFORate` [2]: Sets the frequency of the tremolo (0-16Hz, or a MIDI note if changed to ring modulation).
-`ALFOWF` [3]: Selects a waveform for the tremolo.
-`FilterLCFreq` [4]: Sets the filter frequency for the left channel (0-20 000Hz).
-`FilterLCQ` [5]: Sets the filter resonance for the left channel.
-`FilterRCFreq` [6]: Sets the filter frequency for the right channel (0-20 000Hz).
-`FilterRCQ` [7]: Sets the filter resonance for the right channel.
-`FilterACFreq` [8]: Sets the filter frequency for the Aux A channel (0-20 000Hz).
-`FilterACQ` [9]: Sets the filter resonance for the Aux A channel.
-`FilterBCFreq` [10]: Sets the filter frequency for the Aux B channel (0-20 000Hz).
-`FilterBCQ` [11]: Sets the filter resonance for the Aux B channel.
-`HPFLFreq` [12]: Sets the high-pass filter frequency for the left channel (0-20 000Hz)
-`HPFRFreq` [13]: Sets the high-pass filter frequency for the right channel (0-20 000Hz)
-`HPFAFreq` [14]: Sets the high-pass filter frequency for the Aux A channel (0-20 000Hz)
-`HPFBFreq` [15]: Sets the high-pass filter frequency for the Aux B channel (0-20 000Hz)
-`Ringmod` [16]: Enables ring modulation, by setting the tremolo frequency into audible territory and bypassing the aliasing filter.
+* `PLFORate` [0]: Sets the frequency of the vibrato (0-16Hz).
+* `PLFOWF` [1]: Selects a waveform for the vibrato.
+* `ALFORate` [2]: Sets the frequency of the tremolo (0-16Hz, or a MIDI note if changed to ring modulation).
+* `ALFOWF` [3]: Selects a waveform for the tremolo.
+* `FilterLCFreq` [4]: Sets the filter frequency for the left channel (0-20 000Hz).
+* `FilterLCQ` [5]: Sets the filter resonance for the left channel.
+* `FilterRCFreq` [6]: Sets the filter frequency for the right channel (0-20 000Hz).
+* `FilterRCQ` [7]: Sets the filter resonance for the right channel.
+* `FilterACFreq` [8]: Sets the filter frequency for the Aux A channel (0-20 000Hz).
+* `FilterACQ` [9]: Sets the filter resonance for the Aux A channel.
+* `FilterBCFreq` [10]: Sets the filter frequency for the Aux B channel (0-20 000Hz).
+* `FilterBCQ` [11]: Sets the filter resonance for the Aux B channel.
+* `HPFLFreq` [12]: Sets the high-pass filter frequency for the left channel (0-20 000Hz)
+* `HPFRFreq` [13]: Sets the high-pass filter frequency for the right channel (0-20 000Hz)
+* `HPFAFreq` [14]: Sets the high-pass filter frequency for the Aux A channel (0-20 000Hz)
+* `HPFBFreq` [15]: Sets the high-pass filter frequency for the Aux B channel (0-20 000Hz)
+* `Ringmod` [16]: Enables ring modulation, by setting the tremolo frequency into audible territory and bypassing the aliasing filter.
 
 # Setting guidelines
 
 * Small amounts of release times can function as a pop filter.
 * Feedback control works in conjunction with the output level in many cases, unless the envelop generator is bypassed.
-* Some overtones will naturally occur due to the lack of an aliasing filter and using a nearest interpolation. This must be taken into account when designing sounds, some of it can be filtered out.
+* Some overtones will naturally occur due to the lack of an aliasing filter and using nearest interpolation for oscillator outputs. This must be taken into account when designing sounds, some of it can be filtered out.
 * There used to be some nasty artifacting at every A note when high amounts of feedback was applied to oscillators. This seems to have been fixed by introducing an inaudible tuning error, but I cannot guarantee it won't reappear with pitch-bends or whatever.
+* The range of the oscillator outputs are very wide, with the most usable range is being under 0.25-0.3. It is left as is, as "overdriving" the operators can result in some interesting sound effects.
 
 ## General differences from other phase modulation-based synthesis engines
 
