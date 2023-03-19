@@ -111,7 +111,8 @@ public struct ADSREnvelopGenerator {
 	 */
 	public void keyOff() @nogc @safe pure nothrow {
 		_keyState = false;
-		currStage = Stage.Release;
+		if (!isPercussive)
+			currStage = Stage.Release;
 	}
 	///Returns the current stage
 	public ubyte position() @nogc @safe pure nothrow const {
