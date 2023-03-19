@@ -27,6 +27,7 @@ import pixelperfectengine.system.file;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.systemutility;
 import pixelperfectengine.system.config;
+import pixelperfectengine.system.timer;
 
 import pixelperfectengine.system.common;
 
@@ -41,6 +42,7 @@ import iota.audio.midiin;
 import test1.audioconfig;
 import test1.preseteditor;
 import test1.modulerouter;
+import test1.virtmidikeyb;
 
 /** 
  * Audio subsystem test.
@@ -126,6 +128,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	WindowHandler	wh;
 	Window			tlw;
 	PresetEditor	preEdit;
+	VirtualMIDIKeyboard virtMIDIkeyb;
 	ModuleRouter	router;
 	ModuleConfig	mcfg;
 	BitFlags!StateFlags	state;
@@ -197,7 +200,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		while (state.isRunning) {
 			mainRaster.refresh();
 			ih.test();
-			
+			timer.test();
 		}
 		if (mm !is null) {
 			synchronized
