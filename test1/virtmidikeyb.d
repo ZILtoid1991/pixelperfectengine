@@ -13,12 +13,13 @@ public class VirtualMidiKeyboard : Window {
 	TextBox			textBox_NoteOffset;
 	TextBox			textBox_Channel;
 	TextBox			textBox_PrgChange;
-	ubyte			noteOffset;
+	ubyte			noteOffset = 36;
 	ubyte			channel;
+	bool			typematicBlock;
 	AudioDevKit		app;
 	public this(AudioDevKit app) {
 		this.app = app;
-		super(Box.bySize(0,0,200,50), "Virtual MIDI keyboard");
+		super(Box.bySize(0,0,200,85), "Virtual MIDI keyboard");
 		for (int i ; i < 20 ; i++) {
 			Box b;
 			const int note = i % 12, oct = i / 12;
@@ -87,6 +88,7 @@ public class VirtualMidiKeyboard : Window {
 			sb.onMouseLClick = &onKey!(0xFFFF_0000);
 			sb.onMouseMClick = &onKey!(0x7FFF_0000);
 			sb.onMouseRClick = &onKey!(0x3FFF_0000);
+			addElement(sb);
 			keys ~= sb;
 		}
 		textBox_NoteOffset = new TextBox("36", "textBox_NoteOffset", Box(5, 25+16+16 , 45, 25+16+16+20));
@@ -95,10 +97,22 @@ public class VirtualMidiKeyboard : Window {
 		addElement(textBox_NoteOffset);
 		addElement(textBox_Channel);
 		addElement(textBox_PrgChange);
+		textBox_NoteOffset.onTextInput = &textBox_NoteOffset_onTextInput;
+		textBox_Channel.onTextInput = &textBox_Channel_onTextInput;
+		textBox_PrgChange.onTextInput = &textBox_PrgChange_onTextInput;
+		onClose = &app.onVirtMIDIKeybClose;
 	}
 	public int keyEventReceive(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		if (!active)
 			return 0;
+		if (isPressed) {
+			if (typematicBlock) {
+				return 1;
+			}
+			typematicBlock = true;
+		} else {
+			typematicBlock = false;
+		}
 		ubyte note;
 		switch (id) {
 			case hashCalc("VirtMIDIKB-C-0"):
@@ -176,8 +190,8 @@ public class VirtualMidiKeyboard : Window {
 			default:
 				return 0;
 		}
-		UMP midiPacket = UMP(MessageType.MIDI2, channel>>4, isPressed ? MIDI2_0Cmd.NoteOn : MIDI2_0Cmd.NoteOff, 
-				channel&0x0F, note + noteOffset, 0);
+		UMP midiPacket = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), isPressed ? MIDI2_0Cmd.NoteOn : MIDI2_0Cmd.NoteOff, 
+				cast(ubyte)(channel&0x0F), cast(ubyte)(note + noteOffset), 0x00);
 		uint velo = 0xFFFF_0000;
 		if (app.selectedModule !is null) {
 			app.selectedModule.midiReceive(midiPacket, velo);
@@ -186,9 +200,9 @@ public class VirtualMidiKeyboard : Window {
 	}
 	protected void onKey(uint velo)(Event ev) {
 		SmallButton sender = cast(SmallButton)ev.sender;
-		ubyte note = noteOffset + sender.getSource[0];
-		UMP midiPacket = UMP(MessageType.MIDI2, channel>>4, sender.isPressed ? MIDI2_0Cmd.NoteOn : MIDI2_0Cmd.NoteOff, 
-				channel&0x0F, note + noteOffset, 0);
+		ubyte note = cast(ubyte)(noteOffset + sender.getSource[0]);
+		UMP midiPacket = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), sender.isPressed ? MIDI2_0Cmd.NoteOn : 
+				MIDI2_0Cmd.NoteOff, cast(ubyte)(channel&0x0F), cast(ubyte)(note + noteOffset), 0x00);
 		//uint velo = 0xFFFF_0000;
 		if (app.selectedModule !is null) {
 			app.selectedModule.midiReceive(midiPacket, velo);
@@ -211,8 +225,8 @@ public class VirtualMidiKeyboard : Window {
 				text = text[2..$];
 			}
 			prg = to!uint(text, 16);
-			UMP midiPacket = UMP(MessageType.MIDI2, channel>>4, MIDI2_0Cmd.PrgCh, 
-					channel&0x0F, 0, 0);
+			UMP midiPacket = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.PrgCh, 
+					cast(ubyte)(channel&0x0F), 0x00, 0x00);
 			uint velo = (prg<<24) | (bankMSB<<8) | bankLSB;
 			if (app.selectedModule !is null) {
 				app.selectedModule.midiReceive(midiPacket, velo);

@@ -80,6 +80,7 @@ public class TopLevelWindow : Window {
 
 		menuElements ~= new PopUpMenuElement("view", "View", "", [
 			new PopUpMenuElement("router", "Routing layout editor"),
+			new PopUpMenuElement("virtmidikeyb", "Virtual MIDI keyboard"),
 			new PopUpMenuElement("sequencer", "Sequencer")
 		]);
 
@@ -128,7 +129,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	WindowHandler	wh;
 	Window			tlw;
 	PresetEditor	preEdit;
-	VirtualMIDIKeyboard virtMIDIkeyb;
+	VirtualMidiKeyboard virtMIDIkeyb;
 	ModuleRouter	router;
 	ModuleConfig	mcfg;
 	BitFlags!StateFlags	state;
@@ -187,6 +188,57 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		ih.inputListener = this;
 		ih.mouseListener = wh;
 		WindowElement.inputHandler = ih;
+		{
+			import pixelperfectengine.system.input.scancode;
+			ih.addBinding(BindingCode(ScanCode.Q, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-C-0"));
+			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-C#0"));
+			ih.addBinding(BindingCode(ScanCode.W, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-D-0"));
+			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-D#0"));
+			ih.addBinding(BindingCode(ScanCode.E, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-E-0"));
+			ih.addBinding(BindingCode(ScanCode.R, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-F-0"));
+			ih.addBinding(BindingCode(ScanCode.n5, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-F#0"));
+			ih.addBinding(BindingCode(ScanCode.T, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-G-0"));
+			ih.addBinding(BindingCode(ScanCode.n6, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-G#0"));
+			ih.addBinding(BindingCode(ScanCode.Y, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-A-0"));
+			ih.addBinding(BindingCode(ScanCode.n7, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-A#0"));
+			ih.addBinding(BindingCode(ScanCode.U, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-B-0"));
+			ih.addBinding(BindingCode(ScanCode.I, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-C-1"));
+			ih.addBinding(BindingCode(ScanCode.n9, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-C#1"));
+			ih.addBinding(BindingCode(ScanCode.O, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-D-1"));
+			ih.addBinding(BindingCode(ScanCode.n0, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-D#1"));
+			ih.addBinding(BindingCode(ScanCode.P, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-E-1"));
+			ih.addBinding(BindingCode(ScanCode.LEFTBRACKET, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-F-1"));
+			ih.addBinding(BindingCode(ScanCode.EQUALS, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-F#1"));
+			ih.addBinding(BindingCode(ScanCode.RIGHTBRACKET, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-G-1"));
+			ih.addBinding(BindingCode(ScanCode.HOME, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-oct+"));
+			ih.addBinding(BindingCode(ScanCode.END, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-oct-"));
+			ih.addBinding(BindingCode(ScanCode.PAGEUP, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-note+"));
+			ih.addBinding(BindingCode(ScanCode.PAGEDOWN, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+					InputBinding("VirtMIDIKB-note-"));
+		}
 
 		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);
 	
@@ -242,8 +294,20 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			case "saveAs":
 				onSaveAs();
 				break;
+			case "virtmidikeyb":
+				onVirtMIDIKeyb();
+				break;
 			default: break;
 		}
+	}
+	public void onVirtMIDIKeyb() {
+		if (virtMIDIkeyb is null) {
+			virtMIDIkeyb = new VirtualMidiKeyboard(this);
+			wh.addWindow(virtMIDIkeyb);
+		}
+	}
+	public void onVirtMIDIKeybClose() {
+		virtMIDIkeyb = null;
 	}
 	public void onAudioThreadSwitch() {
 		if (state.audioThreadRunning) {
@@ -327,7 +391,10 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			wh.addWindow(new PresetEditor(this));
 	}
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
-		
+		if (virtMIDIkeyb !is null) {
+			if (virtMIDIkeyb.keyEventReceive(id, code, timestamp, isPressed))
+				return;
+		}
 	}
 	public void midiInCallback(ubyte[] data, size_t timestamp) @nogc nothrow {
 		if (selectedModule !is null) {
