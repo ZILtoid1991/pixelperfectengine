@@ -1524,6 +1524,7 @@ public class QM816 : AudioModule {
 						chDeleg[chNum] = &updateChannelMD;
 						break;
 				}
+				chDeleg[chNum + 8] = &updateChannelMD;
 			} else {
 				chDeleg[chNum] = &updateChannelMD;
 			}
