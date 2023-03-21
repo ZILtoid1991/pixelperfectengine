@@ -202,7 +202,7 @@ public class VirtualMidiKeyboard : Window {
 		SmallButton sender = cast(SmallButton)ev.sender;
 		ubyte note = cast(ubyte)(noteOffset + sender.getSource[0]);
 		UMP midiPacket = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), sender.isPressed ? MIDI2_0Cmd.NoteOn : 
-				MIDI2_0Cmd.NoteOff, cast(ubyte)(channel&0x0F), cast(ubyte)(note + noteOffset), 0x00);
+				MIDI2_0Cmd.NoteOff, cast(ubyte)(channel&0x0F), note, 0x00);
 		//uint velo = 0xFFFF_0000;
 		if (app.selectedModule !is null) {
 			app.selectedModule.midiReceive(midiPacket, velo);

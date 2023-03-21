@@ -2178,7 +2178,7 @@ public class QM816 : AudioModule {
 					chCtrls[chNum].modwheel : 1.0);
 			const float auxSendAmMW = (channels[chNum].preset.chCtrl & ChCtrlFlags.MWToAux ? 
 					chCtrls[chNum].modwheel : 1.0);
-			__m128 opCtrl0, opCtrl1, mwAuxCtrl;
+			__m128 opCtrl0 = __m128(0), opCtrl1 = __m128(0), mwAuxCtrl;
 			opCtrl0[0] = operators[opOffset].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
 					chCtrls[chNum].velocity;
 			opCtrl1[0] = operators[opOffset + 1].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
@@ -2200,7 +2200,7 @@ public class QM816 : AudioModule {
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS0 =
 		q{
-			__m128 opCtrl2, opCtrl3;
+			__m128 opCtrl2 = __m128(0), opCtrl3 = __m128(0);
 			opCtrl2[0] = operators[opOffset + 16].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
 					chCtrls[chNum].velocity;
 			opCtrl3[0] = operators[opOffset + 17].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
@@ -2678,6 +2678,7 @@ public class QM816 : AudioModule {
 		mixin(CHNL_UPDATE_CONSTS0);
 		updatePitchbend4Op(operators[opOffset], operators[opOffset + 1], operators[opOffset + 16], operators[opOffset + 17], 
 				channels[chNum], chCtrls[chNum]);
+		const int resMode = (channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? 1 : 0;
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
@@ -2695,9 +2696,8 @@ public class QM816 : AudioModule {
 					((cast(uint)(operators[opOffset + 16].output - short.min) * 
 					cast(uint)(operators[opOffset + 17].output - short.min))>>16) * outCtrlOp1 + 
 					(operators[opOffset + 17].output_0>>12);
-			__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
-			/* __m128i outSum = __m128i(operators[opOffset].output_0 + operators[opOffset].output_0 +
-					operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0); */
+			__m128 outSum = __m128((outSum1 * resMode) + (outSum0 * (1 - resMode)));
+			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 			channels[chNum + 8].eeg.advance();
