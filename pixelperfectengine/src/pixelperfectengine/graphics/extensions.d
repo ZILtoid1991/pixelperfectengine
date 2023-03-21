@@ -96,17 +96,17 @@ public class ObjectSheet (Size = ushort) {
 		const Header h = reinterpretGet!Header(source[0..Header.sizeof]);
 		source = source[Header.sizeof..$];
 		id = h.id;
-		indexes.length = h.nOfIndexes;
+		objects.length = h.nOfIndexes;
 		if(h.nameLength){
 			name = reinterpretCast!char(source[0..h.nameLength]).idup;
 			source = source[h.nameLength..$];
 		}
-		for(ushort i ; i < indexes.length ; i++){
+		for(ushort i ; i < objects.length ; i++){
 			const Index!false index = reinterpretGet!(Index!(false))(source[0..(Index!(false)).sizeof]);
 			source = source[(Index!(false)).sizeof..$];
-			indexes[i] = Index!(true)(index);
+			objects[i] = Index!(true)(index);
 			if (index.nameLength) {
-				indexes[i].name = reinterpretCast!char(source[0..index.nameLength]).idup;
+				objects[i].name = reinterpretCast!char(source[0..index.nameLength]).idup;
 				source = source[index.nameLength..$];
 			}
 		}
@@ -134,9 +134,9 @@ public class ObjectSheet (Size = ushort) {
 	 */
 	public ubyte[] serialize() @safe pure {
 		ubyte[] result;
-		result ~= toStream(Header(id, cast(uint)indexes.length), cast(ubyte)_name.length);
+		result ~= toStream(Header(id, cast(uint)objects.length), cast(ubyte)_name.length);
 		result ~= reinterpretCast!ubyte(_name.dup);
-		foreach (i ; indexes) {
+		foreach (i ; objects) {
 			result ~= toStream(Index!(false)(i));
 			if (i.name.length)
 				result ~= reinterpretCast!ubyte(i.name.dup);

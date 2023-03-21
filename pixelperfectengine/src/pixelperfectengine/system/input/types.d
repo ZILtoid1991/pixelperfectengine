@@ -82,15 +82,15 @@ public enum ButtonState : ubyte {
  * Converts key modifier codes from SDL to the engine's own
  */
 public ubyte keyModConv(ushort input) @nogc pure nothrow @safe {
-	import bindbc.sdl.bind.sdlkeycode : SDL_Keymod;
+	import sdl.keycode;
 	ubyte result;
-	if (input & SDL_Keymod.KMOD_SHIFT) result |= KeyModifier.Shift;
-	if (input & SDL_Keymod.KMOD_CTRL) result |= KeyModifier.Ctrl;
-	if (input & SDL_Keymod.KMOD_ALT) result |= KeyModifier.Alt;
-	if (input & SDL_Keymod.KMOD_GUI) result |= KeyModifier.GUI;
-	if (input & SDL_Keymod.KMOD_NUM) result |= KeyModifier.NumLock;
-	if (input & SDL_Keymod.KMOD_CAPS) result |= KeyModifier.CapsLock;
-	if (input & SDL_Keymod.KMOD_MODE) result |= KeyModifier.Mode;
+	if (input & KMOD_SHIFT) result |= KeyModifier.Shift;
+	if (input & KMOD_CTRL) result |= KeyModifier.Ctrl;
+	if (input & KMOD_ALT) result |= KeyModifier.Alt;
+	if (input & KMOD_GUI) result |= KeyModifier.GUI;
+	if (input & KMOD_NUM) result |= KeyModifier.NumLock;
+	if (input & KMOD_CAPS) result |= KeyModifier.CapsLock;
+	if (input & KMOD_MODE) result |= KeyModifier.Mode;
 	return result;
 }
 

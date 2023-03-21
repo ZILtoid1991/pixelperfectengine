@@ -1,6 +1,6 @@
 module pixelperfectengine.system.input.handler;
 
-import bindbc.sdl.bind;
+import bindbc.sdl;
 
 import collections.treemap;
 import collections.linkedlist;

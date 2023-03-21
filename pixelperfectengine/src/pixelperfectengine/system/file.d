@@ -30,7 +30,7 @@ import vfile;
 
 import mididi;
 
-import bindbc.sdl.mixer;
+import sdl_mixer;
 
 /** 
  * Pads a scanline to be on size_t's bounds.
@@ -223,26 +223,6 @@ public Color[] loadPaletteFromImage (Image img) {
 		}
 	}
 	return palette;
-}
-
-/**
- * Loads a *.wav file if SDL2 mixer is used
- * Deprecated, use pixelperfect.audio instead!
- */
-public deprecated Mix_Chunk* loadSoundFromFile(const char* filename){
-	return Mix_LoadWAV(filename);
-}
-
-File loadFileFromDisk(string filename){
-	return File(filename, "r");
-}
-
-MIDI loadMidiFile(F)(F source) {
-	ubyte[] src;
-	src.length = cast(size_t)source.size;
-	src = source.rawRead(src);
-	MIDIReader!(ubyte[]) reader = MIDIReader!(ubyte[])(src);
-	return reader.readMIDI();
 }
 
 /**

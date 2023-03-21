@@ -13,7 +13,7 @@ public import pixelperfectengine.graphics.layers : ISpriteLayer;
 import collections.linkedlist;
 import pixelperfectengine.system.etc : cmpObjPtr;
 
-import bindbc.sdl.bind.sdlmouse;
+import sdl.mouse;
 import std.math : nearbyint;
 
 /**
