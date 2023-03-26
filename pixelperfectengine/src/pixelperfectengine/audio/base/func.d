@@ -469,3 +469,7 @@ alias ADPCMStream = NibbleArray;
 	    u.x[0] = 0;
 	    return u.d;
 	}
+	double smoothstep(double a, double b, double x) @safe {
+		x = (x - a) / (b - a);
+		return x * x * (3 - 2 * x);
+	}
