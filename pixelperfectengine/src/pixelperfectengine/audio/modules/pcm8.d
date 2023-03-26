@@ -169,8 +169,8 @@ public class PCM8 : AudioModule {
 
 		float			pitchBend = 0;		///Current amount of pitch bend.
 
-		float			velocity;			///Velocity normalized between 0 and 1
-		float			modWheel;			///Modulation wheel normalized between 0 and 1
+		float			velocity = 0;		///Velocity normalized between 0 and 1
+		float			modWheel = 0;		///Modulation wheel normalized between 0 and 1
 
 		float			currShpA;			///The current attack shape
 		float			currShpR;			///The current release shape
@@ -230,8 +230,11 @@ public class PCM8 : AudioModule {
 			//decodeAm++;	//Flip decode buffer
 		}
 		///Calculates jump amount for the sample.
-		void calculateJumpAm(int sampleRate) @nogc @safe pure nothrow {
-			freqRatio = sampleRate / bendFreq(presetCopy.sampleMapping[currNote & 127].baseFreq, pitchBend);
+		void calculateJumpAm(int sampleRate, float lfoOut) @nogc @safe pure nothrow {
+			freqRatio = sampleRate / bendFreq(presetCopy.sampleMapping[currNote & 127].baseFreq, pitchBend + 
+					(presetCopy.vibrAm * lfoOut * (presetCopy.flags & PresetFlags.modwheelToLFO ? modWheel : 1.0)) + 
+					(presetCopy.adsrToDetune * 
+					envGen.shp(envGen.position == ADSREnvelopGenerator.Stage.Attack ? currShpA : currShpR)));
 			jumpAm = cast(uint)((1<<24) / freqRatio);
 		}
 		///Resets all internal states.
@@ -252,6 +255,41 @@ public class PCM8 : AudioModule {
 			currShpR = presetCopy.eRelShp - (presetCopy.velToRelShp * presetCopy.eRelShp) + 
 					(presetCopy.velToRelShp * presetCopy.eRelShp * vel);
 		}
+		void setADSR(int sampleRate) @nogc @safe pure nothrow {
+			envGen.sustainLevel = presetCopy.eSusLev;
+			if (presetCopy.eAtk) {
+				envGen.attackRate = calculateRate(ADSR_TIME_TABLE[presetCopy.eAtk], sampleRate);
+			} else {
+				envGen.attackRate = 1.0;
+			}
+			if (presetCopy.eDec) {
+				envGen.decayRate = calculateRate(ADSR_TIME_TABLE[presetCopy.eDec] * 2, sampleRate, 
+						ADSREnvelopGenerator.maxOutput, envGen.sustainLevel);
+			} else {
+				envGen.decayRate = 1.0;
+			}
+			if (presetCopy.eSusC) {
+				envGen.isPercussive = false;
+				if (presetCopy.eSusC == 64) {
+					envGen.sustainControl = 0.0;
+				} else if (presetCopy.eSusC < 64) {
+					envGen.sustainControl =  
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[62 - (presetCopy.eSusC - 1)], sampleRate);
+				} else {
+					envGen.sustainControl = -1.0 *
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[presetCopy.eSusC - 64], sampleRate);
+				}
+			} else {
+				envGen.isPercussive = true;
+				envGen.sustainControl = 0.0;
+			}
+			//Set release phase
+			if (presetCopy.eRel) {
+				envGen.releaseRate = calculateRate(ADSR_TIME_TABLE[presetCopy.eRel] * 2, sampleRate, envGen.sustainLevel);
+			} else {
+				envGen.releaseRate = 1.0;
+			}
+		}
 	}
 	alias SampleMap = TreeMap!(uint, Sample);
 	alias PresetMap = TreeMap!(uint, Preset);
@@ -260,9 +298,9 @@ public class PCM8 : AudioModule {
 	protected Channel[8]	channels;			///Channel status data.
 	protected MultiTapOsc	lfo;				///Low frequency oscillator to modify values in real-time
 	protected float[]		lfoOut;				///LFO output buffer
-	protected uint			lfoFlags;			///LFO state flags
-	protected float			lfoFreq;			///LFO frequency
-	protected float			lfoPWM;				///LFO pulse width modulation
+	protected uint			lfoFlags = LFOFlags.triangle;///LFO state flags containing info about current waveform data
+	protected float			lfoFreq = 6.0;		///LFO frequency
+	protected float			lfoPWM = 0.5;		///LFO pulse width modulation
 	protected float[]		dummyBuf;			///Dummy buffer if one or more output aren't used
 	protected int[]			iBuf;				///Integer output buffers
 	protected __m128[]		lBuf;				///Local output buffer
@@ -312,6 +350,7 @@ public class PCM8 : AudioModule {
 			filterVals[8][i] = 0;
 			filterVals[9][i] = 0;
 		}
+		resetLFO();
 	}
 	///Recalculates the low pass filter vlues for the given output channel.
 	protected void resetLPF(int i) @nogc @safe pure nothrow {
@@ -445,8 +484,10 @@ public class PCM8 : AudioModule {
 	protected void keyOn(ubyte note, ubyte ch, float vel) @nogc pure nothrow {
 		channels[ch].currNote = note;
 		channels[ch].velocity = vel;
-		channels[ch].calculateJumpAm(sampleRate);
+		channels[ch].calculateJumpAm(sampleRate, lfoOut[0]);
 		channels[ch].setShpVals(vel);
+		channels[ch].setADSR(sampleRate);
+		channels[ch].envGen.keyOn();
 		//reset all on channel
 		channels[ch].reset();
 		//set noteOn status flag
@@ -456,8 +497,9 @@ public class PCM8 : AudioModule {
 		if (!(channels[ch].currNote & 128))
 			channels[ch].currNote = note;
 		channels[ch].velocity = vel;
-		channels[ch].calculateJumpAm(sampleRate);
+		channels[ch].calculateJumpAm(sampleRate, lfoOut[0]);
 		channels[ch].setShpVals(vel);
+		channels[ch].envGen.keyOff();
 		channels[ch].status &= ~ChannelStatusFlags.noteOn;
 	}
 	protected void ctrlCh(ubyte ch, ubyte param, uint val) @nogc pure nothrow {
@@ -784,7 +826,7 @@ public class PCM8 : AudioModule {
 		}
 		for (int i ; i < 8 ; i++) {
 			if (!(channels[i].currNote & 128) && channels[i].jumpAm) {
-				channels[i].calculateJumpAm(sampleRate);
+				channels[i].calculateJumpAm(sampleRate, lfoOut[0]);
 				//get the data for the sample
 				SampleAssignment sa = channels[i].presetCopy.sampleMapping[channels[i].currNote];	//get sample assignment data
 				Sample slmp = sampleBank[sa.sampleNum];		//get sample
@@ -954,16 +996,16 @@ public class PCM8 : AudioModule {
 		} else {
 			switch (paramID) {
 				case 0x00:
-					presetPtr.eAtk = cast(ubyte)value;
+					presetPtr.eAtk = cast(ubyte)(value & 0x7F);
 					return 0;
 				case 0x01:
-					presetPtr.eDec = cast(ubyte)value;
+					presetPtr.eDec = cast(ubyte)(value & 0x7F);
 					return 0;
 				case 0x02:
-					presetPtr.eSusC = cast(ubyte)value;
+					presetPtr.eSusC = cast(ubyte)(value & 0x7F);
 					return 0;
 				case 0x03:
-					presetPtr.eRel = cast(ubyte)value;
+					presetPtr.eRel = cast(ubyte)(value & 0x7F);
 					return 0;
 				case 0x10:
 					presetPtr.flags = value;
@@ -1069,7 +1111,18 @@ public class PCM8 : AudioModule {
 					break;
 			}
 		} else {
-			
+			switch (paramID) {
+				case 0x00_14:
+					presetPtr.adsrToDetune = value;
+					return 0;
+				case 0x00_15:
+					presetPtr.vibrAm = value;
+					return 0;
+				case 0x00_20:
+					presetPtr.pitchBendAm = value;
+					return 0;
+				default: break;
+			}
 			if (value < 0 || value > 1) return 2;
 			switch (paramID) {
 				case 0x00_04:
@@ -1108,9 +1161,7 @@ public class PCM8 : AudioModule {
 				case 0x00_0F:
 					presetPtr.adsrToVol = value;
 					return 0;
-				case 0x00_20:
-					presetPtr.pitchBendAm = value;
-					return 0;
+				
 				default:
 					break;
 			}
@@ -1130,13 +1181,14 @@ public class PCM8 : AudioModule {
 	public override MValue[] getParameters() nothrow {
 		return [
 			MValue(MValueType.Int32, 0x00_00, "envGenAtk"), MValue(MValueType.Int32, 0x00_01, "envGenDec"),
-			MValue(MValueType.Int32, 0x00_02, "envGenSusC"), MValue(MValueType.Int32, 0x00_03, "envGenDec"),
+			MValue(MValueType.Int32, 0x00_02, "envGenSusC"), MValue(MValueType.Int32, 0x00_03, "envGenRel"),
 			MValue(MValueType.Float, 0x00_04, "envGenAtkShp"), MValue(MValueType.Float, 0x00_05, "envGenDecShp"),
 			MValue(MValueType.Float, 0x00_06, "envGenSusLevel"), MValue(MValueType.Float, 0x00_07, "masterVol"),
 			MValue(MValueType.Float, 0x00_08, "balance"), MValue(MValueType.Float, 0x00_09, "auxSendA"),
 			MValue(MValueType.Float, 0x00_0A, "auxSendB"), MValue(MValueType.Float, 0x00_0B, "velToLevelAm"),
 			MValue(MValueType.Float, 0x00_0C, "velToAuxSendAm"), MValue(MValueType.Float, 0x00_0D, "velToAtkShp"),
 			MValue(MValueType.Float, 0x00_0E, "velToRelShp"), MValue(MValueType.Float, 0x00_0F, "adsrToVol"),
+			MValue(MValueType.Float, 0x00_14, "adsrToDetune"), MValue(MValueType.Float, 0x00_15, "vibrAm"),
 			MValue(MValueType.Int32, 0x00_10, "flags"),
 			MValue(MValueType.Boolean, 0x00_11, "f_cutoffOnKeyOff"),
 			MValue(MValueType.Boolean, 0x00_12, "f_modwheelToLFO"),
@@ -1296,6 +1348,10 @@ public class PCM8 : AudioModule {
 					return presetPtr.velToRelShp;
 				case 0x00_0F:
 					return presetPtr.adsrToVol;
+				case 0x00_14:
+					return presetPtr.adsrToDetune;
+				case 0x00_15:
+					return presetPtr.vibrAm;
 				case 0x0020:
 					return presetPtr.pitchBendAm;
 				default:
