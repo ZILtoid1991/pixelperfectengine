@@ -69,6 +69,10 @@ public class AudioDeviceHandler {
 	public void initAudioDevice(int id = -1) {
 		int errCode = openDevice(id, device);
 		if (errCode) throw new AudioInitException("Failed to initialize audio device. Error code: " ~ errCode.to!string);
+		int recSlmpRate = device.getRecommendedSampleRate();
+		if (recSlmpRate > 0) {
+			specs.sampleRate = recSlmpRate;
+		}
 		specs = device.requestSpecs(specs);
 		// Recalculate block sizes if buffer size changed
 		if (specs.bufferSize_slmp != blockSize * nOfBlocks) {
