@@ -176,16 +176,28 @@ public class VirtualMidiKeyboard : Window {
 				note = 19;
 				break;
 			case hashCalc("VirtMIDIKB-oct+"):
-				noteOffset += 12;
+				if (!isPressed) {
+					noteOffset += 12;
+					textBox_NoteOffset.setText(to!dstring(noteOffset));
+				}
 				return 1;
 			case hashCalc("VirtMIDIKB-oct-"):
-				noteOffset -= 12;
+				if (!isPressed) {
+					noteOffset -= 12;
+					textBox_NoteOffset.setText(to!dstring(noteOffset));
+				}
 				return 1;
 			case hashCalc("VirtMIDIKB-note+"):
-				noteOffset++;
+				if (!isPressed) {
+					noteOffset++;
+					textBox_NoteOffset.setText(to!dstring(noteOffset));
+				}
 				return 1;
 			case hashCalc("VirtMIDIKB-note-"):
-				noteOffset--;
+				if (!isPressed) {
+					noteOffset--;
+					textBox_NoteOffset.setText(to!dstring(noteOffset));
+				}
 				return 1;
 			default:
 				return 0;
