@@ -323,7 +323,7 @@ Pitch, and output can be set only with the lower half's parameters, either envel
 
 ### Resonant mode
 
-The resonant mode can mimic the resonant waveforms of phase distortion synthesis engines, but with greater control over the waveform, and can generate a resonant form of any waveform, including the result of phase modulation synthesis. It is available on M0/1, M1/01, M1/11, M3/10, M3/11, with the last one has an additional ability of selecting between two sources (P1 output or S0 output).
+The resonant mode can mimic the resonant waveforms of phase distortion synthesis engines, but with greater control over the waveform, and can generate a resonant form of any waveform, including the result of phase modulation synthesis. It is available on M0/1, M1/01, M1/11, M3/10, M3/11, with M3/10 has an additional ability of selecting between two sources (P1 output or S0 output).
 
 In this mode, the output levels of P1 (or S1 in case of Mode 3) control the amount of resonance output. Since the source is taken from the unattenuated output of the source oscillator, its output does not affect the output levels of the resonant waveform, and can be turned off completely if the original waveform is not wanted in the audio output.
 
@@ -356,6 +356,7 @@ The synth shares two LFOs (tremolo and vibrato) and four filters between channel
 * Some overtones will naturally occur due to the lack of an aliasing filter and using nearest interpolation for oscillator outputs. This must be taken into account when designing sounds, some of it can be filtered out.
 * There used to be some nasty artifacting at every A note when high amounts of feedback was applied to oscillators. This seems to have been fixed by introducing an inaudible tuning error, but I cannot guarantee it won't reappear with pitch-bends or whatever.
 * The range of the oscillator outputs are very wide, with the most usable range is being under 0.25-0.3. It is left as is, as "overdriving" the operators can result in some interesting sound effects.
+* In the preset editor, combination mode must be set for both upper and lower half of the preset, failure to do so might result in the upper half also being configured to still run in 2 operator mode. Can be exploited for soe effects, but the nature of effect will be dependent on frame size.
 
 ## General differences from other phase modulation-based synthesis engines
 
