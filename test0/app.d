@@ -90,12 +90,12 @@ class TileLayerTest : SystemEventListener, InputListener {
 		dlangManCS = dlangMan.generateStandardCollisionModel();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 		{
-			Image i = loadImage(loadFileFromDisk("../assets/basn3p04.png"));
+			Image i = loadImage(File("../assets/basn3p04.png"));
 			r.addPaletteChunk(loadPaletteFromImage(i));
 			s.addSprite(loadBitmapFromImage!Bitmap4Bit(i), 65_537, 320, 200, 0x21);//34
 		}
 		{
-			Image i = loadImage(loadFileFromDisk("../assets/basn3p02.png"));
+			Image i = loadImage(File("../assets/basn3p02.png"));
 			r.addPaletteChunk(loadPaletteFromImage(i));
 			s.addSprite(loadBitmapFromImage!Bitmap2Bit(i), 65_538, 352, 200, 0x88);//0x88
 		}
