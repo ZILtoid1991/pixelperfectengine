@@ -163,8 +163,12 @@ public class VertScrollBar : ScrollBar {
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
 		if (state != ElementState.Enabled) return;
 		if (mme.buttonState == MouseButtonFlags.Left && mme.y > position.height && mme.y < position.width - position.height) {
-			value = _value = mme.relY;
-			draw();
+			import std.math : nearbyint;
+			const double newVal = mme.y - position.width - (_barLength / 2.0);
+			if (newVal >= 0)
+				value = cast(int)nearbyint((newVal) * valRatio);
+			//value = _value = mme.relY;
+			//draw();
 		}
 		super.passMME(mec, mme);
 	}
@@ -249,8 +253,12 @@ public class HorizScrollBar : ScrollBar {
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
 		if (state != ElementState.Enabled) return;
 		if (mme.buttonState == MouseButtonFlags.Left && mme.x > position.width && mme.x < position.height) {
-			value = _value + mme.relX;
-			draw();
+			/* value = _value + mme.relX;
+			draw(); */
+			import std.math : nearbyint;
+			const double newVal = mme.x - position.height - (_barLength / 2.0);
+			if (newVal >= 0)
+				value = cast(int)nearbyint((newVal) * valRatio);
 		}
 		super.passMME(mec, mme);
 	}
