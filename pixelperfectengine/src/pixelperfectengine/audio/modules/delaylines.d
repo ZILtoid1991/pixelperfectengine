@@ -6,6 +6,7 @@ import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.func;
 import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.osc;
+import pixelperfectengine.audio.base.filter;
 import pixelperfectengine.system.etc : isPowerOf2;
 
 import inteli.emmintrin;
@@ -86,23 +87,7 @@ public class DelayLines : AudioModule {
 		__m128		outLevels	= __m128(0.0);///Output levels (0: Left; 1: Right, 2: Primary feedback, 3: Secondary feedback)
 		__m128[2]	fir = [__m128(0.0),__m128(0.0)];///Short finite impulse response after tap
 	}
-	/**
-	 * Defines an infinite response filter bank for various uses.
-	 */
-	protected struct IIRBank {
-		///All initial values + some precalculated ones.
-		__m128		x1, x2, y1, y2, b0a0, b1a0, b2a0, a1a0, a2a0;
-		///Calculates the output of the filter, then stores the input and output values.
-		pragma (inline, true)
-		__m128 output(__m128 x0) @nogc @safe pure nothrow {
-			const __m128 y0 = b0a0 * x0 + b1a0 * x1 + b2a0 * x2 + a1a0 * y1 + a2a0 * y2;
-			x2 = x1;
-			x1 = x0;
-			y2 = y1;
-			y1 = y0;
-			return y0;
-		}
-	}
+	
 	///Defines an LFO target
 	protected enum OscTarget : ubyte {
 		init		=	0,

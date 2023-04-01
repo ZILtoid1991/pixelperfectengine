@@ -3,6 +3,7 @@ module pixelperfectengine.audio.modules.qm816;
 import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.envgen;
 import pixelperfectengine.audio.base.func;
+import pixelperfectengine.audio.base.filter;
 
 import pixelperfectengine.system.etc : hashCalc;
 
@@ -808,9 +809,11 @@ public class QM816 : AudioModule {
 	protected float				aLFOFreq = 6;
 
 	//protected __m128[4]			resamplerVals;
-	///Stores output filter values.
+	/* ///Stores output filter values.
 	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: x[n-1]; 7: x[n-2]; 8: y[n-1] 9: y[n-2]
-	protected __m128[10]		filterVals;
+	protected __m128[10]		filterVals; */
+	protected IIRBank			lpf;
+	protected IIRBank			hpf;
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
 	protected float[8]			filterCtrl	=	[16_000, 0.707, 16_000, 0.707, 16_000, 0.707, 16_000, 0.707];
@@ -965,7 +968,9 @@ public class QM816 : AudioModule {
 		aLFOBuf.length = intBufSize;
 		resetBuffer(aLFOBuf);
 		//Reset filters
-		for (int i ; i < 4 ; i++) {
+		lpf.reset();
+		hpf.reset();
+		/* for (int i ; i < 4 ; i++) {
 			resetLPF(i);
 			resetHPF(i);
 			filterVals[6][i] = 0;
@@ -974,7 +979,7 @@ public class QM816 : AudioModule {
 			filterVals[9][i] = 0;
 			hpfVals[6][i] = 0;
 			hpfVals[7][i] = 0;
-		}
+		} */
 		//aLFO_y1 = 0;
 		setALFO();
 		setPLFO();
@@ -990,26 +995,34 @@ public class QM816 : AudioModule {
 		//test();
 	}
 	protected void resetLPF(int i) @nogc @safe pure nothrow {
-		BiquadFilterValues vals = createLPF(sampleRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
-		filterVals[0][i] = vals.a0;
-		filterVals[1][i] = vals.a1;
-		filterVals[2][i] = vals.a2;
-		filterVals[3][i] = vals.b0;
-		filterVals[4][i] = vals.b1;
-		filterVals[5][i] = vals.b2;
+		BiquadFilterValues vals = createLPF(intSlmpRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
+		lpf.setFilter(vals, 0);
+		lpf.setFilter(vals, 1);
+		lpf.setFilter(vals, 2);
+		lpf.setFilter(vals, 3);
+		//filterVals[0][i] = vals.a0;
+		//filterVals[1][i] = vals.a1;
+		//filterVals[2][i] = vals.a2;
+		//filterVals[3][i] = vals.b0;
+		//filterVals[4][i] = vals.b1;
+		//filterVals[5][i] = vals.b2;
 		//filterVals[6][i] = 0;
 		//filterVals[7][i] = 0;
 		//filterVals[8][i] = 0;
 		//filterVals[9][i] = 0;
 	}
 	protected void resetHPF(int i) @nogc @safe pure nothrow {
-		BiquadFilterValues hpf = createHPF(sampleRate, hpfCtrl[i * 2], hpfCtrl[(i * 2) + 1]);
-		hpfVals[0][i] = hpf.a0;
-		hpfVals[1][i] = hpf.a1;
-		hpfVals[2][i] = hpf.a2;
-		hpfVals[3][i] = hpf.b0;
-		hpfVals[4][i] = hpf.b1;
-		hpfVals[5][i] = hpf.b2;
+		BiquadFilterValues vals = createHPF(sampleRate, hpfCtrl[i * 2], hpfCtrl[(i * 2) + 1]);
+		hpf.setFilter(vals, 0);
+		hpf.setFilter(vals, 1);
+		hpf.setFilter(vals, 2);
+		hpf.setFilter(vals, 3);
+		//hpfVals[0][i] = hpf.a0;
+		//hpfVals[1][i] = hpf.a1;
+		//hpfVals[2][i] = hpf.a2;
+		//hpfVals[3][i] = hpf.b0;
+		//hpfVals[4][i] = hpf.b1;
+		//hpfVals[5][i] = hpf.b2;
 		//hpfVals[6][i] = 0;
 		//hpfVals[7][i] = 0;
 	}
@@ -2088,12 +2101,16 @@ public class QM816 : AudioModule {
 			pLFOPos += pLFORate;
 		}
 		//Render each channel
-		foreach (size_t i, ChFun fun ; chDeleg) {
-			
+		foreach (size_t i, ChFun fun ; chDeleg) {	
 			fun(cast(int)i, intBufSize);
 		}
-		//chDeleg[0](0, bufferSize);
 		//Filter and mix outputs
+		//Do the initial low-pass filtering to avoid issues from resampling later
+		for (int i ; i < initBuffers.length ; i++) {
+			initBuffers[i] = lpf.output(_mm_min_ps(_mm_max_ps(initBuffers[i] / __m128(mixdownVal), __m128(short.min)), 
+					__m128(short.max)));
+		}
+		//Set up output targets
 		float*[4] outBuf;
 		for (ubyte i, j ; i < 4 ; i++) {
 			if (enabledOutputs.has(i)) {
@@ -2127,33 +2144,34 @@ public class QM816 : AudioModule {
 						resamplerVals[0], j);
 			}
 		} */
-		const __m128 b0_a0l = filterVals[3] / filterVals[0], b1_a0l = filterVals[4] / filterVals[0], 
+		/* const __m128 b0_a0l = filterVals[3] / filterVals[0], b1_a0l = filterVals[4] / filterVals[0], 
 				b2_a0l = filterVals[5] / filterVals[0], a1_a0l = filterVals[1] / filterVals[0], 
 				a2_a0l = filterVals[2] / filterVals[0],
 				b0_a0h = hpfVals[3] / hpfVals[0], b1_a0h = hpfVals[4] / hpfVals[0], b2_a0h = hpfVals[5] / hpfVals[0],
-				a1_a0h = hpfVals[1] / hpfVals[0], a2_a0h = hpfVals[2] / hpfVals[0];
+				a1_a0h = hpfVals[1] / hpfVals[0], a2_a0h = hpfVals[2] / hpfVals[0]; */
 		
 		for (int i ; i < bufferSize ; i++) {
 			const int intBufPos = (i>>2) * 5;
 			const int intBP0 = intBufPos + (i & 3);
 			__m128 input0 = (initBuffers[intBP0] * RESAMPLING_TABLE[i & 3][0]) + 
 					(initBuffers[intBP0 + 1] * RESAMPLING_TABLE[i & 3][1]);
-			input0 /= __m128(mixdownVal);
+			/* input0 /= __m128(mixdownVal);
 			input0 = _mm_max_ps(input0, __m128(-1.0));
-			input0 = _mm_min_ps(input0, __m128(1.0));
-			__m128 output0 = b0_a0l * input0 + b1_a0l * filterVals[6] + b2_a0l * filterVals[7] - a1_a0l * filterVals[8] - 
+			input0 = _mm_min_ps(input0, __m128(1.0)); */
+			/* __m128 output0 = b0_a0l * input0 + b1_a0l * filterVals[6] + b2_a0l * filterVals[7] - a1_a0l * filterVals[8] - 
 					a2_a0l * filterVals[9];
 			__m128 output1 = b0_a0h * output0 + b1_a0h * filterVals[8] + b2_a0h * filterVals[9] - a1_a0h * hpfVals[6] -
-					a2_a0h * hpfVals[7];
+					a2_a0h * hpfVals[7]; */
+			const __m128 output0 = lpf.output(input0);
 			for (int j ; j < 4 ; j++)
-				outBuf[j][i] += output1[j];
+				outBuf[j][i] += output0[j];
 			//	outBuf[j][i] += input0[j];
-			filterVals[7] = filterVals[6];
+			/* filterVals[7] = filterVals[6];
 			filterVals[6] = input0;
 			filterVals[9] = filterVals[8];
 			filterVals[8] = output0;
 			hpfVals[7] = hpfVals[6];
-			hpfVals[6] = output1;
+			hpfVals[6] = output1; */
 			
 		}
 		resetBuffer(initBuffers);
