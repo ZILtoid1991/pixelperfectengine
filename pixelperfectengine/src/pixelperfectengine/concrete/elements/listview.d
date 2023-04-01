@@ -712,6 +712,10 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				return;
 			}
 		}
+		if (!textArea.isBetween(mce.x, mce.y) && (flags & TEXTINPUT_EN)){
+			inputHandler.stopTextInput();
+			return;
+		}
 
 		//if (mce.button != MouseButton.Left && !mce.state) return;
 
