@@ -6,6 +6,20 @@ The sample playback of the PCM8 module has been fixed. Looping is currently unte
 
 A bug caused skips in the frequency of sample decode calls, now it should work as should.
 
+## QM816
+
+### Channel fixes
+
+Some functions calculated the operator numbers incorrectly, now all channels work as intended.
+
+### Change to filtering structure
+
+Low-pass filtering is now done before resampling, so there should be a bit less artifacting from that, and will make it possible to upgrade the linear interpolation to something better (that can run live).
+
+### Replacing the linear interpolation with Cubic Lagrange
+
+Cubic Lagrange interpolation returns a more accurate result than linear interpolation while also having low latency.
+
 ## Removal of function isInteger
 
 `isInteger` was created to avoid exception handling, but due to issues I decided to remove it, and subtitute it with exception handling.
