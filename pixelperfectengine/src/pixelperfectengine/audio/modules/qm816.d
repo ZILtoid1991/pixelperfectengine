@@ -213,22 +213,19 @@ public class QM816 : AudioModule {
 		8.000, 7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500        //3
 	];
 	/**
-	Used for quick resampling of the 55.5/60kHz output to 44.4/48kHz.
+	Used for quick resampling of the 55.125/60kHz output to 44.1/48kHz.
 
 	So far this has the best results.
 	*/
-	public static immutable __m128[2][4] RESAMPLING_TABLE = [
-		[__m128([1.00, 1.00, 1.00, 1.00]), __m128([0.00, 0.00, 0.00, 0.00])],
-		[__m128([0.75, 0.75, 0.75, 0.75]), __m128([0.25, 0.25, 0.25, 0.25])],
-		[__m128([0.50, 0.50, 0.50, 0.50]), __m128([0.50, 0.50, 0.50, 0.50])],
-		[__m128([0.25, 0.25, 0.25, 0.25]), __m128([0.75, 0.75, 0.75, 0.75])],
+	public static immutable float[4][4] RESAMPLING_TABLE = [
+		[ 0.0,         1.0,         0.0,         0.0],
+		[-0.0546_875,  0.8203_125,  0.2734_375, -0.0390_625],
+		[-0.0625    ,  0.5625    ,  0.5625    , -0.0625    ],
+		[-0.0390_625,  0.2734_375,  0.8203_125, -0.0546_875]
 	];
-	/* public static immutable float[3][4] RESAMPLING_TABLE = [
-		[0.0 , 0.0        , 0.0               ],
-		[0.25, 0.25 * 0.25, 0.25 * 0.25 * 0.25],
-		[0.50, 0.50 * 0.50, 0.50 * 0.50 * 0.50],
-		[0.75, 0.75 * 0.75, 0.75 * 0.75 * 0.75],
-	]; */
+	/* getQuadrLagrCoeffs(2.25, [1,2,3,4]),
+		getQuadrLagrCoeffs(2.50, [1,2,3,4]),
+		getQuadrLagrCoeffs(2.75, [1,2,3,4]), */
 	/**
 	Defines operator parameter numbers, within the unregistered namespace.
 	*/
@@ -807,19 +804,14 @@ public class QM816 : AudioModule {
 	//protected float				aLFOff	=	1;
 	///ALFO frequency
 	protected float				aLFOFreq = 6;
-
-	//protected __m128[4]			resamplerVals;
-	/* ///Stores output filter values.
-	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: x[n-1]; 7: x[n-2]; 8: y[n-1] 9: y[n-2]
-	protected __m128[10]		filterVals; */
+	///Low pass filter, before interpolation filter.
 	protected IIRBank			lpf;
+	///High pass filter, after interpolation filter.
 	protected IIRBank			hpf;
 	///Stores control values of the output values.
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
 	protected float[8]			filterCtrl	=	[16_000, 0.707, 16_000, 0.707, 16_000, 0.707, 16_000, 0.707];
-	///Stores high-pass filter values.
-	///0: a0; 1: a1; 2: a2; 3: b0; 4: b1; 5: b2; 6: y[n-1] 7: y[n-2]
-	protected __m128[8]			hpfVals;
+	
 	///Stores high-pass filter control values
 	protected float[8]			hpfCtrl	=	[32, 0.707, 32, 0.707, 32, 0.707, 32, 0.707];
 	///Initial mixing buffers
@@ -959,10 +951,9 @@ public class QM816 : AudioModule {
 		intBufSize = bufferSize + (bufferSize / 4);
 		intSlmpRate = sampleRate + (sampleRate / 4);
 		//set up and reset buffers
-		initBuffers.length = intBufSize;
+		//initBuffers.length = intBufSize;
+		initBuffers.length = intBufSize + 2;
 		resetBuffer(initBuffers);
-		//resamplBuffers.length = bufferSize;
-		//resetBuffer(resamplBuffers);
 		dummyBuf.length = bufferSize;
 		resetBuffer(dummyBuf);
 		aLFOBuf.length = intBufSize;
@@ -970,17 +961,6 @@ public class QM816 : AudioModule {
 		//Reset filters
 		lpf.reset();
 		hpf.reset();
-		/* for (int i ; i < 4 ; i++) {
-			resetLPF(i);
-			resetHPF(i);
-			filterVals[6][i] = 0;
-			filterVals[7][i] = 0;
-			filterVals[8][i] = 0;
-			filterVals[9][i] = 0;
-			hpfVals[6][i] = 0;
-			hpfVals[7][i] = 0;
-		} */
-		//aLFO_y1 = 0;
 		setALFO();
 		setPLFO();
 		//Reset operator EGs
@@ -992,39 +972,20 @@ public class QM816 : AudioModule {
 			channels[i].setEEG(intSlmpRate);
 			channels[i].recalculateOutLevels();
 		}
+		for (int i ; i < 4 ; i++) {
+			resetLPF(i);
+			resetHPF(i);
+		}
 		//test();
 	}
 	protected void resetLPF(int i) @nogc @safe pure nothrow {
 		BiquadFilterValues vals = createLPF(intSlmpRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
-		lpf.setFilter(vals, 0);
-		lpf.setFilter(vals, 1);
-		lpf.setFilter(vals, 2);
-		lpf.setFilter(vals, 3);
-		//filterVals[0][i] = vals.a0;
-		//filterVals[1][i] = vals.a1;
-		//filterVals[2][i] = vals.a2;
-		//filterVals[3][i] = vals.b0;
-		//filterVals[4][i] = vals.b1;
-		//filterVals[5][i] = vals.b2;
-		//filterVals[6][i] = 0;
-		//filterVals[7][i] = 0;
-		//filterVals[8][i] = 0;
-		//filterVals[9][i] = 0;
+		lpf.setFilter(vals, i);
+		
 	}
 	protected void resetHPF(int i) @nogc @safe pure nothrow {
 		BiquadFilterValues vals = createHPF(sampleRate, hpfCtrl[i * 2], hpfCtrl[(i * 2) + 1]);
-		hpf.setFilter(vals, 0);
-		hpf.setFilter(vals, 1);
-		hpf.setFilter(vals, 2);
-		hpf.setFilter(vals, 3);
-		//hpfVals[0][i] = hpf.a0;
-		//hpfVals[1][i] = hpf.a1;
-		//hpfVals[2][i] = hpf.a2;
-		//hpfVals[3][i] = hpf.b0;
-		//hpfVals[4][i] = hpf.b1;
-		//hpfVals[5][i] = hpf.b2;
-		//hpfVals[6][i] = 0;
-		//hpfVals[7][i] = 0;
+		hpf.setFilter(vals, i);
 	}
 	/**
 	 * Receives waveform data that has been loaded from disk for reading. Returns zero if successful, or a specific 
@@ -2106,9 +2067,10 @@ public class QM816 : AudioModule {
 		}
 		//Filter and mix outputs
 		//Do the initial low-pass filtering to avoid issues from resampling later
-		for (int i ; i < initBuffers.length ; i++) {
+		for (int i = 2 ; i < initBuffers.length ; i++) {
 			initBuffers[i] = lpf.output(_mm_min_ps(_mm_max_ps(initBuffers[i] / __m128(mixdownVal), __m128(short.min)), 
 					__m128(short.max)));
+			//initBuffers[i+2] = initBuffers[i+2] / __m128(mixdownVal);
 		}
 		//Set up output targets
 		float*[4] outBuf;
@@ -2120,61 +2082,22 @@ public class QM816 : AudioModule {
 				outBuf[i] = dummyBuf.ptr;
 			}
 		}
-		/* __m128 cubicHermiteResampl(__m128 pm1, __m128 p_0, __m128 p_1, __m128 p_2, int tSel) @nogc nothrow pure {
-			const __m128 a = pm1 * __m128(-0.5) + p_0 * __m128(1.5) + p_1 * __m128(-1.5) + p_2 * __m128(0.5);
-			const __m128 b = pm1 + p_0 * __m128(-2.5) + p_1 * __m128(2.0) + p_2 * __m128(0.5);
-			const __m128 c = pm1 * __m128(-0.5) + p_1 * __m128(0.5);
-			//const __m128 d = p_0;
-
-			return a * __m128(RESAMPLING_TABLE[tSel][2]) + b * __m128(RESAMPLING_TABLE[tSel][1]) + 
-					c * __m128(RESAMPLING_TABLE[tSel][0]) + p_0;
-			
-		}
-		void trickleResamplBuffer(__m128 input) @nogc nothrow pure {
-			resamplerVals[3] = resamplerVals[2];
-			resamplerVals[2] = resamplerVals[1];
-			resamplerVals[1] = resamplerVals[0];
-			resamplerVals[0] = input;
-		}
-		for (int i ; i < (bufferSize / 4) ; i++) {
-			trickleResamplBuffer(initBuffers[i * 5]);
-			for (int j ; j < 3 ; j++) {
-				trickleResamplBuffer(initBuffers[i * 5 + j + 1]);
-				resamplBuffers[(i * 4) + j] = cubicHermiteResampl(resamplerVals[3], resamplerVals[2], resamplerVals[1], 
-						resamplerVals[0], j);
-			}
-		} */
-		/* const __m128 b0_a0l = filterVals[3] / filterVals[0], b1_a0l = filterVals[4] / filterVals[0], 
-				b2_a0l = filterVals[5] / filterVals[0], a1_a0l = filterVals[1] / filterVals[0], 
-				a2_a0l = filterVals[2] / filterVals[0],
-				b0_a0h = hpfVals[3] / hpfVals[0], b1_a0h = hpfVals[4] / hpfVals[0], b2_a0h = hpfVals[5] / hpfVals[0],
-				a1_a0h = hpfVals[1] / hpfVals[0], a2_a0h = hpfVals[2] / hpfVals[0]; */
+		
 		
 		for (int i ; i < bufferSize ; i++) {
 			const int intBufPos = (i>>2) * 5;
 			const int intBP0 = intBufPos + (i & 3);
-			__m128 input0 = (initBuffers[intBP0] * RESAMPLING_TABLE[i & 3][0]) + 
-					(initBuffers[intBP0 + 1] * RESAMPLING_TABLE[i & 3][1]);
-			/* input0 /= __m128(mixdownVal);
-			input0 = _mm_max_ps(input0, __m128(-1.0));
-			input0 = _mm_min_ps(input0, __m128(1.0)); */
-			/* __m128 output0 = b0_a0l * input0 + b1_a0l * filterVals[6] + b2_a0l * filterVals[7] - a1_a0l * filterVals[8] - 
-					a2_a0l * filterVals[9];
-			__m128 output1 = b0_a0h * output0 + b1_a0h * filterVals[8] + b2_a0h * filterVals[9] - a1_a0h * hpfVals[6] -
-					a2_a0h * hpfVals[7]; */
-			const __m128 output0 = lpf.output(input0);
+			const __m128 input0 = (initBuffers[intBP0 + 0] * __m128(RESAMPLING_TABLE[i & 3][0])) + 
+					(initBuffers[intBP0 + 1] * __m128(RESAMPLING_TABLE[i & 3][1])) +
+					(initBuffers[intBP0 + 2] * __m128(RESAMPLING_TABLE[i & 3][2])) +
+					(initBuffers[intBP0 + 3] * __m128(RESAMPLING_TABLE[i & 3][3]));
+			//const __m128 output0 = hpf.output(input0);
 			for (int j ; j < 4 ; j++)
-				outBuf[j][i] += output0[j];
-			//	outBuf[j][i] += input0[j];
-			/* filterVals[7] = filterVals[6];
-			filterVals[6] = input0;
-			filterVals[9] = filterVals[8];
-			filterVals[8] = output0;
-			hpfVals[7] = hpfVals[6];
-			hpfVals[6] = output1; */
-			
+				outBuf[j][i] += input0[j];
 		}
-		resetBuffer(initBuffers);
+		initBuffers[0] = initBuffers[$-2];
+		initBuffers[1] = initBuffers[$-1];
+		resetBuffer(initBuffers[2..$]);
 	}
 	///Updates an operator for a cycle
 	///chCtrl index notation: 0: velocity, 1: modulation wheel, 2: Amplitude LFO, 3: Extra Envelop Generator
@@ -2314,7 +2237,7 @@ public class QM816 : AudioModule {
 					channels[chNum].preset.eegLevels));
 			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * 
 					channels[chNum].preset.aLFOlevels));
-			initBuffers[i] += outlevels * outSum;
+			initBuffers[i + 2] += outlevels * outSum;
 		};
 	///Macro for output mixing in case of combo modes
 	static immutable string CHNL_UPDATE_MIX0 =
@@ -2326,7 +2249,7 @@ public class QM816 : AudioModule {
 			 (__m128(1.0) * channels[chNum + 8].preset.eegLevels));
 			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * 
 					channels[chNum].preset.aLFOlevels));
-			initBuffers[i] += outlevels * outSum;
+			initBuffers[i + 2] += outlevels * outSum;
 		};
 	
 

@@ -442,10 +442,14 @@ alias ADPCMStream = NibbleArray;
 	 * Params:
 	 *   targetBuffer = The buffer to be reset.
 	 */
-	public void resetBuffer(T)(ref T[] targetBuffer) @safe {
-		static if (is(T == __m128)) {
+	public void resetBuffer(T)(T[] targetBuffer) @safe {
+		static if (is(T == __m128) || is(T == __vector(float[4]))) {
 			for (size_t i ; i < targetBuffer.length ; i++) {
 				targetBuffer[i] = __m128(0);
+			}
+		} else static if (is(T == float[4]) || is(T == int[4])) {
+			for (size_t i ; i < targetBuffer.length ; i++) {
+				targetBuffer[i] = [0, 0, 0, 0];
 			}
 		} else {
 			for (size_t i ; i < targetBuffer.length ; i++) {
@@ -468,6 +472,24 @@ alias ADPCMStream = NibbleArray;
 	    u.x[1] = cast(int)(b * (u.x[1] - 1_072_632_447) + 1_072_632_447);
 	    u.x[0] = 0;
 	    return u.d;
+	}
+	float[4] getCubicLagrCoeffs(float x, float[4] x_n) @safe {
+		float[4] result;
+		result[0]= ((x - x_n[1]) * (x - x_n[2]) * (x - x_n[3])) / ((x_n[0] - x_n[1]) * (x_n[0] - x_n[2]) * (x_n[0] - x_n[3]));
+		result[1]= ((x - x_n[0]) * (x - x_n[2]) * (x - x_n[3])) / ((x_n[1] - x_n[0]) * (x_n[1] - x_n[2]) * (x_n[1] - x_n[3]));
+		result[2]= ((x - x_n[0]) * (x - x_n[1]) * (x - x_n[3])) / ((x_n[2] - x_n[0]) * (x_n[2] - x_n[1]) * (x_n[2] - x_n[3]));
+		result[3]= ((x - x_n[0]) * (x - x_n[1]) * (x - x_n[2])) / ((x_n[3] - x_n[0]) * (x_n[1] - x_n[1]) * (x_n[3] - x_n[2]));
+		/* for (int i ; i < 4 ; i++)
+			assert(result[i] >= 0.0 && result[i] <= 1.0); */
+		return result;
+	}
+	float[4] getCubicLagrCoeffs(float x) @safe {
+		float[4] result;
+		result[0] = (x * (x - 1) * (x - 2))       / -6;
+		result[1] = ((x + 1) * (x - 1) * (x - 2)) / -2;
+		result[2] = ((x + 1) * x * (x - 2))       / -2;
+		result[3] = ((x + 1) * x * (x - 1))       /  6;
+		return result;
 	}
 	double smoothstep(double a, double b, double x) @safe {
 		x = (x - a) / (b - a);
