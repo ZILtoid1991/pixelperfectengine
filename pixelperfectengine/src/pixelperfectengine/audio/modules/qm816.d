@@ -213,7 +213,7 @@ public class QM816 : AudioModule {
 		8.000, 7.750, 7.500, 7.250, 7.000, 6.750, 6.500, 6.250, 6.000, 5.750, 5.500, 5.250, 5.000, 4.750, 4.500        //3
 	];
 	/**
-	Used for quick resampling of the 55.125/60kHz output to 44.1/48kHz.
+	Used for quick resampling of the 55.125/60kHz output to 44.1/48kHz, based on Cubic Lagrange interpolation.
 
 	So far this has the best results.
 	*/
@@ -223,9 +223,6 @@ public class QM816 : AudioModule {
 		[-0.0625    ,  0.5625    ,  0.5625    , -0.0625    ],
 		[-0.0390_625,  0.2734_375,  0.8203_125, -0.0546_875]
 	];
-	/* getQuadrLagrCoeffs(2.25, [1,2,3,4]),
-		getQuadrLagrCoeffs(2.50, [1,2,3,4]),
-		getQuadrLagrCoeffs(2.75, [1,2,3,4]), */
 	/**
 	Defines operator parameter numbers, within the unregistered namespace.
 	*/
@@ -972,17 +969,28 @@ public class QM816 : AudioModule {
 			channels[i].setEEG(intSlmpRate);
 			channels[i].recalculateOutLevels();
 		}
+		//Set initial filter vals.
 		for (int i ; i < 4 ; i++) {
 			resetLPF(i);
 			resetHPF(i);
 		}
 		//test();
 	}
+	/**
+	Sets the given LPF with the given value.
+	Params:
+	* i = The ID of the LPF that needs to be set.
+	*/
 	protected void resetLPF(int i) @nogc @safe pure nothrow {
 		BiquadFilterValues vals = createLPF(intSlmpRate, filterCtrl[i * 2], filterCtrl[(i * 2) + 1]);
 		lpf.setFilter(vals, i);
 		
 	}
+	/**
+	Sets the given HPF with the given value.
+	Params:
+	* i = The ID of the HPF that needs to be set.
+	*/
 	protected void resetHPF(int i) @nogc @safe pure nothrow {
 		BiquadFilterValues vals = createHPF(sampleRate, hpfCtrl[i * 2], hpfCtrl[(i * 2) + 1]);
 		hpf.setFilter(vals, i);
@@ -1422,6 +1430,12 @@ public class QM816 : AudioModule {
 			operators[opOffset + 17].keyOff(intSlmpRate);
 		}
 	}
+	/**
+	Implements system exclusive command handling.
+	
+	Params:
+	  msg = Message data.
+	*/
 	protected void sysExCmd(ubyte[] msg) @nogc pure nothrow {
 		//Check manufacturer ID (7D: internal use)
 		if (msg[0] == 0x7D || msg[1] == 0x7D) {
@@ -1466,6 +1480,11 @@ public class QM816 : AudioModule {
 	}
 	/**
 	Sets the channel delegates
+	
+	Params:
+	  chCtrl = Main channel control flags.
+	  chNum = Channel number.
+	  chCtrl0 = Secondary channel control flags, used for channel combinations.
 	*/
 	protected void setChDeleg(uint chCtrl, uint chNum, uint chCtrl0 = 0) @nogc @safe pure nothrow {
 		if (chCtrl & ChCtrlFlags.ComboModeTest) {	//Test if channel is combined or not
@@ -1528,6 +1547,10 @@ public class QM816 : AudioModule {
 	}
 	/**
 	Recalls a program
+	Params:
+	  ch = channel number.
+	  prg = program number.
+	  bank = bank number LSB. MSB is not used.
 	*/
 	protected void prgRecall(ubyte ch, ubyte prg, ubyte bank) @nogc @safe pure nothrow {
 		Preset p = soundBank[bank & 7][prg];
