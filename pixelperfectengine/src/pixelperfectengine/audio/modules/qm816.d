@@ -2105,19 +2105,22 @@ public class QM816 : AudioModule {
 				outBuf[i] = dummyBuf.ptr;
 			}
 		}
-		
-		
+		//Mix to target alongside with reinterpolate to target frequency and high-pass filtering
 		for (int i ; i < bufferSize ; i++) {
 			const int intBufPos = (i>>2) * 5;
 			const int intBP0 = intBufPos + (i & 3);
+			//Apply Cubic Lagrange interpolation
 			const __m128 input0 = (initBuffers[intBP0 + 0] * __m128(RESAMPLING_TABLE[i & 3][0])) + 
 					(initBuffers[intBP0 + 1] * __m128(RESAMPLING_TABLE[i & 3][1])) +
 					(initBuffers[intBP0 + 2] * __m128(RESAMPLING_TABLE[i & 3][2])) +
 					(initBuffers[intBP0 + 3] * __m128(RESAMPLING_TABLE[i & 3][3]));
+			//Apply high-pass filter
 			//const __m128 output0 = hpf.output(input0);
+			//Mix to target
 			for (int j ; j < 4 ; j++)
 				outBuf[j][i] += input0[j];
 		}
+		//Save last two samples of the internal buffer for interpolation, then reset it.
 		initBuffers[0] = initBuffers[$-2];
 		initBuffers[1] = initBuffers[$-1];
 		resetBuffer(initBuffers[2..$]);
