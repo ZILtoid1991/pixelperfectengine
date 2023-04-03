@@ -13,7 +13,7 @@ public struct IIRBank {
    	///Calculates the output of the filter, then stores the input and output values.
 	pragma (inline, true)
 	__m128 output(__m128 x0) @nogc @safe pure nothrow {
-		const __m128 y0 = (b0a0 * x0) + (b1a0 * x1) + (b2a0 * x2) - (a1a0 * y1) + (a2a0 * y2);
+		const __m128 y0 = (b0a0 * x0) + (b1a0 * x1) + (b2a0 * x2) - (a1a0 * y1) - (a2a0 * y2);
 		x2 = x1;
 		x1 = x0;
 		y2 = y1;

@@ -2091,7 +2091,7 @@ public class QM816 : AudioModule {
 		//Filter and mix outputs
 		//Do the initial low-pass filtering to avoid issues from resampling later
 		for (int i = 2 ; i < initBuffers.length ; i++) {
-			initBuffers[i] = lpf.output(_mm_min_ps(_mm_max_ps(initBuffers[i] / __m128(mixdownVal), __m128(short.min)), 
+			initBuffers[i] = lpf.output(_mm_min_ps(_mm_max_ps(initBuffers[i], __m128(short.min)), 
 					__m128(short.max)));
 			//initBuffers[i+2] = initBuffers[i+2] / __m128(mixdownVal);
 		}
@@ -2115,10 +2115,10 @@ public class QM816 : AudioModule {
 					(initBuffers[intBP0 + 2] * __m128(RESAMPLING_TABLE[i & 3][2])) +
 					(initBuffers[intBP0 + 3] * __m128(RESAMPLING_TABLE[i & 3][3]));
 			//Apply high-pass filter
-			//const __m128 output0 = hpf.output(input0);
+			const __m128 output0 = hpf.output(input0) / __m128(mixdownVal);
 			//Mix to target
 			for (int j ; j < 4 ; j++)
-				outBuf[j][i] += input0[j];
+				outBuf[j][i] += output0[j];
 		}
 		//Save last two samples of the internal buffer for interpolation, then reset it.
 		initBuffers[0] = initBuffers[$-2];
