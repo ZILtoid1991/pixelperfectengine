@@ -270,6 +270,13 @@ alias ADPCMStream = NibbleArray;
 	 * Streches a buffer to the given amount using no interpolation.
 	 * Amount decided by `dest.length`.
 	 * Can be used to pitch the sample.
+	 * Params:
+	 *   src = source of the stream.
+	 *   dest = destination stream, it's length is also equals to how much samples are needed.
+	 *   wp = wave modulation workpad, storing information such as source position.
+	 *   modifier = jump amount, might be moved to a template parameter later on.
+	 *   clamping = Used for situations where not the whole waveform is decoded. Limits buffer size in a way, that it
+	 * allows for double buffered decoding by allowing it to turn around at the end of one buffer.
 	 */
 	public void stretchAudioNoIterpol(const(int)[] src, int[] dest, ref WavemodWorkpad wp, uint modifier = 0x1_00_00_00, 
 			uint clamping = 0xFF) @safe {
@@ -281,6 +288,9 @@ alias ADPCMStream = NibbleArray;
 	}
 	/**
 	 * Converts MIDI note to frequency.
+	 * Params:
+	 *   note = MIDI note number.
+	 *   baseFreq = A-4 note frequency
 	 */
 	public double midiToFreq(int note, const double baseFreq = 440.0) @safe {
 		double r = note - 69;
@@ -290,6 +300,9 @@ alias ADPCMStream = NibbleArray;
 	}
 	/**
 	 * Converts note number to frequency.
+	 * Params:
+	 *   note = MIDI note number.
+	 *   baseFreq = A-4 note frequency
 	 */
 	public double noteToFreq(double note, const double baseFreq = 440.0) @safe {
 		double r = note - 69;
@@ -473,16 +486,27 @@ alias ADPCMStream = NibbleArray;
 	    u.x[0] = 0;
 	    return u.d;
 	}
+	/**
+	 * Returns the Cubic Lagrange coefficients for the supplied positions
+	 * Params:
+	 *   x = position ideally between x_n[1] and x_n[2].
+	 *   x_n = the supplied positions. All values must be different, otherwise the returned value will be NaN.
+	 * Returns: an array with the coefficients.
+	 */
 	float[4] getCubicLagrCoeffs(float x, float[4] x_n) @safe {
 		float[4] result;
 		result[0]= ((x - x_n[1]) * (x - x_n[2]) * (x - x_n[3])) / ((x_n[0] - x_n[1]) * (x_n[0] - x_n[2]) * (x_n[0] - x_n[3]));
 		result[1]= ((x - x_n[0]) * (x - x_n[2]) * (x - x_n[3])) / ((x_n[1] - x_n[0]) * (x_n[1] - x_n[2]) * (x_n[1] - x_n[3]));
 		result[2]= ((x - x_n[0]) * (x - x_n[1]) * (x - x_n[3])) / ((x_n[2] - x_n[0]) * (x_n[2] - x_n[1]) * (x_n[2] - x_n[3]));
-		result[3]= ((x - x_n[0]) * (x - x_n[1]) * (x - x_n[2])) / ((x_n[3] - x_n[0]) * (x_n[1] - x_n[1]) * (x_n[3] - x_n[2]));
-		/* for (int i ; i < 4 ; i++)
-			assert(result[i] >= 0.0 && result[i] <= 1.0); */
+		result[3]= ((x - x_n[0]) * (x - x_n[1]) * (x - x_n[2])) / ((x_n[3] - x_n[0]) * (x_n[3] - x_n[1]) * (x_n[3] - x_n[2]));
 		return result;
 	}
+	/**
+	 * Returns the Cubic Lagrange coefficients for positions -1, 0, 1, 2.
+	 * Params:
+	 *   x = position ideally between 0 and 1
+	 * Returns: an array with the coefficients.
+	 */
 	float[4] getCubicLagrCoeffs(float x) @safe {
 		float[4] result;
 		result[0] = (x * (x - 1) * (x - 2))       / -6;
