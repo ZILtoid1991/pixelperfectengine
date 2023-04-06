@@ -840,8 +840,8 @@ public class PCM8 : AudioModule {
 					//If not, decode more.
 					if ((channels[i].outPos + samplesToAdvance) > (channels[i].samplesHave))
 						channels[i].decodeMore(sa, slmp);
+					//Get the amount of unused samples in the decoder buffer with fractions
 					const ulong decoderBufPos = channels[i].samplesHave - channels[i].outPos;
-					//const ulong decoderBufPos = (channels[i].decoderWorkpad.pos<<24L) - channels[i].outPos;		//Get the amount of unused samples in the decoder buffer with fractions
 					//Determine if there's enough decoded samples, if not then reduce the amount of samplesToAdvance
 					if ((128<<24L) - decoderBufPos < samplesToAdvance){
 						samplesToAdvance = (128<<24L) - decoderBufPos;

@@ -50,42 +50,6 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			ubyte, "bmpType", 4,
 		));
 		ubyte	masterAlpha = ubyte.max;/// Sets the master alpha value of the sprite, e.g. opacity
-		//ubyte wordLength;			/// Determines the word length of a sprite in a much quicker way than getting classinfo.
-		//ubyte paletteSh;			/// Palette shifting value. 8 is default for 8 bit, and 4 for 4 bit bitmaps. (see paletteSel for more info)
-		//static enum ubyte	PALETTESH_MASK = 0x0F;	/// Mask for paletteSh
-		//static enum ubyte	BMPTYPE_MASK = 0x80;	/// Mask for bmpType
-		/+ /**
-		 * Creates a display list item with palette selector.
-		 */
-		this(Coordinate position, ABitmap sprite, int priority, ushort paletteSel = 0, int scaleHoriz = 1024,
-				int scaleVert = 1024) pure @trusted nothrow {
-			this.position = position;
-			this.width = sprite.width;
-			this.height = sprite.height;
-			this.priority = priority;
-			this.paletteSel = paletteSel;
-			this.scaleVert = scaleVert;
-			this.scaleHoriz = scaleHoriz;
-			slice = Coordinate(0,0,sprite.width,sprite.height);
-			if (typeid(sprite) is typeid(Bitmap2Bit)) {
-				bmpType = BitmapTypes.Bmp2Bit;
-
-			} else if (typeid(sprite) is typeid(Bitmap4Bit)) {
-				bmpType = BitmapTypes.Bmp4Bit;
-				paletteSh = 4;
-				pixelData = (cast(Bitmap4Bit)(sprite)).getPtr;
-			} else if (typeid(sprite) is typeid(Bitmap8Bit)) {
-				bmpType = BitmapTypes.Bmp8Bit;
-				paletteSh = 8;
-				pixelData = (cast(Bitmap8Bit)(sprite)).getPtr;
-			} else if (typeid(sprite) is typeid(Bitmap16Bit)) {
-				bmpType = BitmapTypes.Bmp16Bit;
-				pixelData = (cast(Bitmap16Bit)(sprite)).getPtr;
-			} else if (typeid(sprite) is typeid(Bitmap32Bit)) {
-				bmpType = BitmapTypes.Bmp32Bit;
-				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
-			}
-		}+/
 		/** 
 		 * Creates a display list item according to the newer architecture.
 		 * Params:
@@ -194,8 +158,6 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		}
 	}
 	alias DisplayList = TreeMap!(int, DisplayListItem);
-	//alias OnScreenList = SortedList!(int, "a < b", false, "a == b");
-	//protected DisplayListItem[] displayList;	///Stores the display data
 	protected DisplayList		allSprites;			///All sprites of this layer
 	//protected OnScreenList		displayedSprites;	///Sprites that are being displayed
 	protected Color[2048]		src;				///Local buffer for scaling
@@ -447,16 +409,6 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			checkSprite(*sprt);
 			return newHeight;
 		}
-		/+if (!vScl) return -1;
-		for(int i; i < displayList.length ; i++){
-			if(displayList[i].priority == n){
-				displayList[i].scaleVert = vScl;
-				const int newHeight = cast(int)scaleNearestLength(displayList[i].height, vScl);
-				displayList[i].slice.bottom = newHeight;
-				return displayList[i].position.bottom = displayList[i].position.top + newHeight;
-			}
-		}
-		return -2;+/
 	}
 	///Gets the sprite's current horizontal scale value
 	public int getScaleSpriteHoriz(int n) @nogc @trusted nothrow {
@@ -473,37 +425,27 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		/*
 		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack. (Fixed!)
 		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches. (Fixed!!!)
+		 * TO DO: Replace AVL tree with an automatically sorting array with keying abilities.
 		 */
-		//foreach (priority ; displayedSprites) {
 		foreach_reverse (i ; allSprites) {
 			if(!(i.slice.width && i.slice.height 
 					&& (i.position.right > sX && i.position.bottom > sY && 
 					i.position.left < sX + rasterX && i.position.top < sY + rasterY))) continue;
-			//DisplayListItem i = allSprites[priority];
 			const int left = i.position.left + i.slice.left;
 			const int top = i.position.top + i.slice.top;
 			const int right = i.position.left + i.slice.right;
 			const int bottom = i.position.top + i.slice.bottom;
-			/+if((i.position.right > sX && i.position.bottom > sY) && (i.position.left < sX + rasterX && i.position.top < sY +
-					rasterY)){+/
-			//if((right > sX && left < sX + rasterX) && (bottom > sY && top < sY + rasterY) && i.slice.width && i.slice.height){
 			int offsetXA = sX > left ? sX - left : 0;//Left hand side offset, zero if not obscured
 			const int offsetXB = sX + rasterX < right ? right - (sX + rasterX) : 0; //Right hand side offset, zero if not obscured
 			const int offsetYA = sY > top ? sY - top : 0;		//top offset of sprite, zero if not obscured
 			const int offsetYB = sY + rasterY < bottom ? bottom - (sY + rasterY) + 1 : 1;	//bottom offset of sprite, zero if not obscured
-			//const int offsetYB0 = cast(int)scaleNearestLength(offsetYB, i.scaleVert);
 			const int sizeX = i.slice.width();		//total displayed width after slicing
 			const int offsetX = left - sX;
 			const int length = sizeX - offsetXA - offsetXB - 1; //total displayed width after considering screen borders
-			//int lengthY = i.slice.height - offsetYA - offsetYB;
-			//const int lfour = length * 4;
 			const int offsetY = sY < top ? (top-sY)*pitch : 0;	//used if top portion of the sprite is off-screen
-			//offset = i.scaleVert % 1024;
 			const int scaleVertAbs = i.scaleVert * (i.scaleVert < 0 ? -1 : 1);	//absolute value of vertical scaling, used in various calculations
 			const int scaleHorizAbs = i.scaleHoriz * (i.scaleHoriz < 0 ? -1 : 1);
-			//const int offsetAmount = scaleVertAbs;//= scaleVertAbs <= 1024 ? 1024 : scaleVertAbs;	//used to limit the amount of re-rendering every line
 			const int offsetYA0 = (offsetYA * scaleVertAbs)>>>10;		//amount of skipped lines in the bitmap source
-			//const int offsetYA0 = cast(int)(cast(double)offsetYA / (1024.0 / cast(double)scaleVertAbs));	//amount of skipped lines (I think) TODO: remove floating-point arithmetic
 			const int sizeXOffset = i.width * (i.scaleVert < 0 ? -1 : 1);
 			int offsetTarget;													//the target fractional lines
 			int offset = (offsetYA * scaleVertAbs) & 1023;						//the current amount of fractional lines, also contains the fractional offset bias by defauls
