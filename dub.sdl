@@ -73,11 +73,11 @@ subPackage {
 	importPaths "./test3/"
 }
 subPackage {
-	name "windowmakerforconcrete"
+	name "wmfc"
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"
 	targetPath "./bin-$ARCH-$PLATFORM/"
-	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_windowmakerforconcrete.pdb" platform="windows"
+	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_wmfc.pdb" platform="windows"
 	sourcePaths "./windowmakerforconcrete/src/"
 	importPaths "./windowmakerforconcrete/src/"
 }
