@@ -513,7 +513,7 @@ public class QM816 : AudioModule {
 							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[62 - (preset.susCC - 1)], sampleRate);
 				} else {
 					eg.sustainControl = -1.0 *
-							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCC - 64], sampleRate);
+							calculateRate(SUSTAIN_CONTROL_TIME_TABLE[preset.susCC - 65], sampleRate);
 				}
 			} else {
 				eg.isPercussive = true;
@@ -1055,43 +1055,47 @@ public class QM816 : AudioModule {
 								break;
 							case 18, (32+18):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][18], ccLow[ch][32+18]), [0, 0], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][18], ccLow[ch][32+18]), [0, OperatorParamNums.Level], ch);
 								break;
 							case 19, (32+19):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][19], ccLow[ch][32+19]), [1, 0], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][19], ccLow[ch][32+19]), [1, OperatorParamNums.Level], ch);
 								break;
 							case 16, (32+16):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][16], ccLow[ch][32+16]), [0, 3], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][16], ccLow[ch][32+16]), [0, OperatorParamNums.SusLevel], 
+										ch);
 								break;
 							case 17, (32+17):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][17], ccLow[ch][32+17]), [1, 3], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][17], ccLow[ch][32+17]), [1, OperatorParamNums.SusLevel], 
+										ch);
 								break;
 							case 20, (32+20):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][20], ccLow[ch][32+20]), [0, 10], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][20], ccLow[ch][32+20]), [0, OperatorParamNums.ShpA], ch);
 								break;
 							case 22, (32+22):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][22], ccLow[ch][32+22]), [1, 10], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][22], ccLow[ch][32+22]), [1, OperatorParamNums.ShpA], ch);
 								break;
 							case 21, (32+21):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][21], ccLow[ch][32+21]), [0, 10], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][21], ccLow[ch][32+21]), [0, OperatorParamNums.ShpR], ch);
 								break;
 							case 23, (32+23):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][23], ccLow[ch][32+23]), [1, 10], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][23], ccLow[ch][32+23]), [1, OperatorParamNums.ShpR], ch);
 								break;
 							case 30, (32+30):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][30], ccLow[ch][32+30]), [0, 9], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][30], ccLow[ch][32+30]), [0, OperatorParamNums.TuneFine], 
+										ch);
 								break;
 							case 31, (32+31):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][31], ccLow[ch][32+31]), [1, 9], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][31], ccLow[ch][32+31]), [1, OperatorParamNums.TuneFine], 
+										ch);
 								break;
 //
 							case 73:
@@ -1136,22 +1140,26 @@ public class QM816 : AudioModule {
 							case 76:
 								setUnregisteredParam(data0.value<<25, [0, 7], data0.channel);
 								break;
-//
+//Channel common 14 bit
 							case 7, 32+7:
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][7], ccLow[ch][32+7]), [4, 0], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][7], ccLow[ch][32+7]), [4, ChannelParamNums.MasterVol], 
+										data0.channel);
 								break;
 							case 8, 32+8:
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][8], ccLow[ch][32+8]), [4, 1], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][8], ccLow[ch][32+8]), [4, ChannelParamNums.Bal], 
+										data0.channel);
 								break;
 							case 24, 32+24:
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][24], ccLow[ch][32+24]), [4, 11], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][24], ccLow[ch][32+24]), [4, ChannelParamNums.ShpA], 
+										data0.channel);
 								break;
 							case 25, 32+25:
-								ccLow[data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][25], ccLow[ch][32+25]), [4, 12], data0.channel);
+								ccLow[ch][data0.note] = data0.value;
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][25], ccLow[ch][32+25]), [4, ChannelParamNums.ShpR], 
+										data0.channel);
 								break;
 //
 							case 91:
@@ -1581,6 +1589,13 @@ public class QM816 : AudioModule {
 			channels[ch].preset = p.channel;
 			channels[ch].setEEG(intSlmpRate);
 		}
+		if (channels[ch].preset.chCtrl & ChCtrlFlags.IndivOutChLev) {
+			channels[ch].outLevels[0] = channels[ch].preset.masterVol;
+			channels[ch].outLevels[1] = channels[ch].preset.masterBal;
+		} else {
+			channels[ch].outLevels[0] = channels[ch].preset.masterVol * sqrt(channels[ch].preset.masterBal);
+			channels[ch].outLevels[1] = channels[ch].preset.masterVol * (1.0 - sqrt(channels[ch].preset.masterBal));
+		}
 		if (ch <= 7)
 			setChDeleg(channels[ch].preset.chCtrl, ch, channels[ch + 8].preset.chCtrl);
 		else
@@ -1792,8 +1807,8 @@ public class QM816 : AudioModule {
 						if (channels[chNum].preset.chCtrl & ChCtrlFlags.IndivOutChLev) {
 							channels[chNum].outLevels[1] = channels[chNum].preset.masterBal * channels[chNum].preset.masterBal;
 						} else {
-							channels[chNum].outLevels[0] = channels[chNum].preset.masterVol - channels[chNum].preset.masterBal;
-							channels[chNum].outLevels[1] = channels[chNum].preset.masterVol - (1.0 - channels[chNum].preset.masterBal);
+							channels[chNum].outLevels[0] = channels[chNum].preset.masterVol * sqrt(channels[chNum].preset.masterBal);
+							channels[chNum].outLevels[1] = channels[chNum].preset.masterVol * (1.0 - sqrt(channels[chNum].preset.masterBal));
 						}
 						break;
 					case ChannelParamNums.ChCtrl:
@@ -1821,12 +1836,12 @@ public class QM816 : AudioModule {
 						break;
 					case ChannelParamNums.MasterVol: 
 						const double valF = cast(double)val / uint.max;
-						channels[chNum].outLevels[2] = valF * valF;
+						channels[chNum].preset.masterVol = valF * valF;
 						if (channels[chNum].preset.chCtrl & ChCtrlFlags.IndivOutChLev) {
 							channels[chNum].outLevels[1] = channels[chNum].preset.masterBal * channels[chNum].preset.masterBal;
 						} else {
-							channels[chNum].outLevels[0] = channels[chNum].preset.masterVol - channels[chNum].preset.masterBal;
-							channels[chNum].outLevels[1] = channels[chNum].preset.masterVol - (1.0 - channels[chNum].preset.masterBal);
+							channels[chNum].outLevels[0] = channels[chNum].preset.masterVol * sqrt(channels[chNum].preset.masterBal);
+							channels[chNum].outLevels[1] = channels[chNum].preset.masterVol * (1.0 - sqrt(channels[chNum].preset.masterBal));
 						}
 						break;
 					case ChannelParamNums.PLFO: 
@@ -2259,22 +2274,17 @@ public class QM816 : AudioModule {
 	static immutable string CHNL_UPDATE_MIX =
 		q{
 			__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;
-			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - (__m128(1.0) * 
-					channels[chNum].preset.eegLevels));
-			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * 
-					channels[chNum].preset.aLFOlevels));
+			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - channels[chNum].preset.eegLevels);
+			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - channels[chNum].preset.aLFOlevels);
 			initBuffers[i + 2] += outlevels * outSum;
 		};
 	///Macro for output mixing in case of combo modes
 	static immutable string CHNL_UPDATE_MIX0 =
 		q{
 			__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;
-			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - (__m128(1.0) * 
-					channels[chNum].preset.eegLevels));
-			outlevels *= (channels[chNum + 8].preset.eegLevels * eegToMast0) + (__m128(1.0) - 
-			 (__m128(1.0) * channels[chNum + 8].preset.eegLevels));
-			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - (__m128(1.0) * 
-					channels[chNum].preset.aLFOlevels));
+			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - channels[chNum].preset.eegLevels);
+			outlevels *= (channels[chNum + 8].preset.eegLevels * eegToMast0) + (__m128(1.0) - channels[chNum + 8].preset.eegLevels);
+			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - channels[chNum].preset.aLFOlevels);
 			initBuffers[i + 2] += outlevels * outSum;
 		};
 	
