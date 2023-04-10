@@ -10,14 +10,15 @@ public class TextInputDialog : Window {
 	//public ActionListener[] al;
 	private TextBox textInput;
 	private string source;
-	public void function(Text text) textOutput;
+	public void delegate(Text text) textOutput;
 	/**
 	 * Creates a TextInputDialog. Auto-sizing version is not implemented yet.
 	 */
-	public this(Coordinate size, string source, Text title, Text message, Text text = null, Text okBtnText = null, 
-			StyleSheet customStyle = null) {
+	public this(Box size, void delegate(Text text) textOutput, string source, Text title, Text message, Text text = null, 
+            Text okBtnText = null, StyleSheet customStyle = null) {
 		super(size, title, null, customStyle);
-		Label msg = new Label(message, "null", Coordinate(8, 20, size.width()-8, 39));
+        this.textOutput = textOutput;
+		Label msg = new Label(message, "null", Box(8, 20, size.width()-8, 39));
 		addElement(msg);
 
 		textInput = new TextBox(text, "textInput", Coordinate(8, 40, size.width()-8, 59));
@@ -30,10 +31,10 @@ public class TextInputDialog : Window {
 		this.source = source;
 	}
 	///Ditto
-	public this(Coordinate size, string source, dstring title, dstring message, dstring text = "", dstring okBtnText = "", 
-			StyleSheet customStyle = null) {
+	public this(Box size, void delegate(Text text) textOutput,string source, dstring title, dstring message, 
+            dstring text = "", dstring okBtnText = "", StyleSheet customStyle = null) {
 		this.customStyle = customStyle;
-		this(size, source, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), 
+		this(size, textOutput, source, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), 
 				new Text(message, getStyleSheet().getChrFormatting("windowHeader")), 
 				text.length ? new Text(text, getStyleSheet().getChrFormatting("label")) : null,
 				okBtnText.length ? new Text(okBtnText, getStyleSheet().getChrFormatting("button")) : null,
