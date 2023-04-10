@@ -260,7 +260,7 @@ tag(s) to describe the sprites, also can be used to override the file's own exte
 `SheetData id=56 name="Spritesheet"`
 
 The `id` attribute sets the ID of the sheet (otherwise it's zero), the `name` sets the name of the spritesheet. Can be 
-left out if needed.
+left out if not needed.
 
 The tag must have at least one unnamed child tag to describe sprites.
 
