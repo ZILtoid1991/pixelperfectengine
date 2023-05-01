@@ -569,7 +569,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 * Must be called every time when adding new items is finished.
 	 */
 	public void refresh() {
-		selection = -1;
+		if (selection >= entries.length)
+			selection = cast(int)entries.length - 1;
 		recalculateTotalSizes;
 		draw;
 	}
@@ -584,7 +585,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		foreach (ListViewItem key; entries) {
 			totalHeight += key.height;
 		}
-		totalHeight += _header.height;
+		if (_header)
+			totalHeight += _header.height;
 		StyleSheet ss = getStyleSheet();
 		bool needsVSB, needsHSB;
 		if (totalWidth > position.width) 
@@ -596,6 +598,11 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		if (needsHSB && totalHeight > position.height - ss.drawParameters["HorizScrollBarSize"])
 			needsVSB = true;
 		totalHeight -= _header.height;
+		int hPos, vPos;
+		if (horizSlider)
+			hPos = horizSlider.value;
+		if (vertSlider)
+			vPos = vertSlider.value;
 		if (needsVSB) {
 			const int maxvalue = needsHSB ? totalHeight - (position.height - ss.drawParameters["HorizScrollBarSize"]
 					- _header.height) : totalHeight - (position.height - _header.height);
@@ -604,9 +611,10 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 					position.right, needsHSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] : position.bottom);
 			vertSlider = new VertScrollBar(maxvalue, source ~ "VSB", target);
 			vertSlider.setParent(this);
+			vertSlider.value = vPos;
 			vertSlider.onScrolling = &scrollBarEventOut;
 		} else vertSlider = null;
-		if (needsHSB){
+		if (needsHSB) {
 			const int maxvalue = needsVSB ? totalWidth - (position.width - ss.drawParameters["VertScrollBarSize"]) : 
 					totalWidth - position.width;
 			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"] + 2, 
@@ -614,6 +622,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 					position.bottom);
 			horizSlider = new HorizScrollBar(maxvalue, source ~ "VSB", target);
 			horizSlider.setParent(this);
+			horizSlider.value = hPos;
 			horizSlider.onScrolling = &scrollBarEventOut;
 		} else horizSlider = null;
 	}
