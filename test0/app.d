@@ -104,7 +104,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
 		s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
 
-		for(int i = 1 ; i < 10 ; i++){
+		for(int i = 1 ; i < 500 ; i++){
 			const int x = uniform(0,320), y = uniform(0,240);
 			s.addSprite(dlangMan, i, x, y, 1);
 			ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);

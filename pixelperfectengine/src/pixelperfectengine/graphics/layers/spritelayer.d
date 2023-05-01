@@ -137,16 +137,16 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				pixelData = (cast(Bitmap32Bit)(sprite)).getPtr;
 			}
 		}
-		@nogc int opCmp(in DisplayListItem d) const pure @safe nothrow {
+		@nogc int opCmp(const DisplayListItem d) const pure @safe nothrow {
 			return priority - d.priority;
 		}
-		@nogc bool opEquals(in DisplayListItem d) const pure @safe nothrow {
+		@nogc bool opEquals(const DisplayListItem d) const pure @safe nothrow {
 			return priority == d.priority;
 		}
-		@nogc int opCmp(in int pri) const pure @safe nothrow {
+		@nogc int opCmp(const int pri) const pure @safe nothrow {
 			return priority - pri;
 		}
-		@nogc bool opEquals(in int pri) const pure @safe nothrow {
+		@nogc bool opEquals(const int pri) const pure @safe nothrow {
 			return priority == pri;
 		}
 		
@@ -157,7 +157,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				"; PaletteSel: " ~ to!string(paletteSel) ~ "; bmpType: " ~ to!string(bmpType) ~ "}";
 		}
 	}
-	alias DisplayList = TreeMap!(int, DisplayListItem);
+	//alias DisplayList = TreeMap!(int, DisplayListItem);
+	alias DisplayList = SortedList!(DisplayListItem, "a < b", false);
 	protected DisplayList		allSprites;			///All sprites of this layer
 	//protected OnScreenList		displayedSprites;	///Sprites that are being displayed
 	protected Color[2048]		src;				///Local buffer for scaling
@@ -203,27 +204,27 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 * Searches the DisplayListItem by priority and returns it.
 	 * Can be used for external use without any safety issues.
 	 */
-	public DisplayListItem getDisplayListItem(int n) @nogc pure @safe nothrow {
+	public DisplayListItem getDisplayListItem(int n) @nogc pure @trusted nothrow {
 		return allSprites[n];
 	}
-	/**
+	/*
 	 * Searches the DisplayListItem by priority and returns it.
 	 * Intended for internal use, as it returns it as a reference value.
-	 */
+	 
 	protected final DisplayListItem* getDisplayListItem_internal(int n) @nogc pure @safe nothrow {
-		return allSprites.ptrOf(n);
-	}
+		return allSprites.searchByPtr(n);
+	}*/
 	/+override public void setRasterizer(int rX,int rY) {
 		super.setRasterizer(rX,rY);
 	}+/
 	///Returns the displayed portion of the sprite.
-	public Coordinate getSlice(int n) @nogc pure @safe nothrow {
+	public Coordinate getSlice(int n) @nogc pure @trusted nothrow {
 		return getDisplayListItem(n).slice;
 	}
 	///Writes the displayed portion of the sprite.
 	///Returns the new slice, if invalid (greater than the bitmap, etc.) returns Coordinate.init.
-	public Coordinate setSlice(int n, Coordinate slice) @safe nothrow {
-		DisplayListItem* sprt = allSprites.ptrOf(n);
+	public Coordinate setSlice(int n, Coordinate slice) @trusted nothrow {
+		DisplayListItem* sprt = allSprites.searchByPtr(n);
 		if(sprt) {
 			sprt.slice = slice;
 			checkSprite(*sprt);
@@ -233,20 +234,22 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		}
 	}
 	///Returns the selected paletteID of the sprite.
-	public ushort getPaletteID(int n) @nogc pure @safe nothrow {
-		return allSprites[n].paletteSel;
+	public ushort getPaletteID(int n) @nogc pure @trusted nothrow {
+		return allSprites.searchBy(n).paletteSel;
 	}
 	///Sets the paletteID of the sprite. Returns the new ID, which is truncated to the possible values with a simple binary and operation
-	///Palette must exist in the parent Raster, otherwise AccessError might happen
-	public ushort setPaletteID(int n, ushort paletteID) @nogc pure @safe nothrow {
-		return getDisplayListItem_internal(n).paletteSel = paletteID;
+	///Palette must exist in the parent Raster, otherwise AccessError might happen during 
+	public ushort setPaletteID(int n, ushort paletteID) @nogc pure @trusted nothrow {
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return 0;
+		return item.paletteSel = paletteID;
 	}
 	/** 
 	 * Returns the sprite rendering function.
 	 * Params:
 	 *   n = Sprite priority ID.
 	 */
-	public RenderFunc getSpriteRenderingFunc(int n) @nogc @safe pure nothrow {
+	public RenderFunc getSpriteRenderingFunc(int n) @nogc @trusted pure nothrow {
 		return allSprites[n].renderFunc;
 	}
 	/** 
@@ -256,8 +259,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 *   mode = The rendering mode. (init for layer default)
 	 * Returns: The new rendering function.
 	 */
-	public RenderFunc setSpriteRenderingMode(int n, RenderingMode mode) @nogc @safe pure nothrow {
-		return allSprites.ptrOf(n).renderFunc = mode == RenderingMode.init ? mainRenderingFunction : getRenderingFunc(mode);
+	public RenderFunc setSpriteRenderingMode(int n, RenderingMode mode) @nogc @trusted pure nothrow {
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return null;
+		return item.renderFunc = mode == RenderingMode.init ? mainRenderingFunction : getRenderingFunc(mode);
 	}
 	/** 
 	 * Sets the sprite's rendering function. Can be a custom one.
@@ -266,8 +271,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 *   mode = The rendering mode. (init for layer default)
 	 * Returns: The new rendering function.
 	 */
-	public RenderFunc setSpriteRenderingFunc(int n, RenderFunc func) @nogc @safe pure nothrow {
-		return allSprites.ptrOf(n).renderFunc = func;
+	public RenderFunc setSpriteRenderingFunc(int n, RenderFunc func) @nogc @trusted pure nothrow {
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return null;
+		return item.renderFunc = func;
 	}
 	/** 
 	 * Creates a sprite from a bitmap with the given data, then places it to the display list. (New architecture)
@@ -294,11 +301,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			d.renderFunc = mainRenderingFunction;
 		else
 			d.renderFunc = getRenderingFunc(renderMode);
-		synchronized{
-			allSprites[n] = d;
-			//checkSprite(d);
-		}
-		return allSprites[n].position;
+		//synchronized{
+		allSprites.put(d);
+		//checkSprite(d);
+		//}
+		return d.position;
 	}
 	/**
 	 * Adds a sprite to the layer.
@@ -325,66 +332,66 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	/**
 	 * Replaces the bitmap of the given sprite.
 	 */
-	public void replaceSprite(ABitmap s, int n) @safe nothrow {
-		DisplayListItem* sprt = getDisplayListItem_internal(n);
-		sprt.replaceSprite(s);
-		//checkSprite(*sprt);
+	public void replaceSprite(ABitmap s, int n) @trusted nothrow {
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return;
+		item.replaceSprite(s);
 	}
 	///Ditto with move
-	public void replaceSprite(ABitmap s, int n, int x, int y) @safe nothrow {
-		DisplayListItem* sprt = getDisplayListItem_internal(n);
-		sprt.replaceSprite(s);
-		sprt.position.move(x, y);
-		//checkSprite(*sprt);
+	public void replaceSprite(ABitmap s, int n, int x, int y) @trusted nothrow {
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return;
+		item.replaceSprite(s);
+		item.position.move(x, y);
 	}
 	///Ditto with move
-	public void replaceSprite(ABitmap s, int n, Coordinate c) @safe nothrow {
-		DisplayListItem* sprt = allSprites.ptrOf(n);
-		sprt.replaceSprite(s);
-		sprt.position = c;
-		checkSprite(*sprt);
+	public void replaceSprite(ABitmap s, int n, Coordinate c) @trusted nothrow {
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return;
+		item.replaceSprite(s);
+		item.position = c;
 	}
 	/**
 	 * Removes a sprite from both displaylists by priority.
 	 */
 	public void removeSprite(int n) @safe nothrow {
-		synchronized {
-			//displayedSprites.removeByElem(n);
-			allSprites.remove(n);
-		}
+		allSprites.removeBy(n);
 	}
 	///Clears all sprite from the layer.
 	public void clear() @safe nothrow {
-		//displayedSprites = OnScreenList.init;
 		allSprites = DisplayList.init;
 	}
 	/**
 	 * Moves a sprite to the given position.
 	 */
-	public void moveSprite(int n, int x, int y) @safe nothrow {
-		DisplayListItem* sprt = allSprites.ptrOf(n);
-		sprt.position.move(x, y);
-		//checkSprite(*sprt);
+	public void moveSprite(int n, int x, int y) @trusted nothrow {
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return;
+		item.position.move(x, y);
 	}
 	/**
 	 * Moves a sprite by the given amount.
 	 */
-	public void relMoveSprite(int n, int x, int y) @safe nothrow {
-		DisplayListItem* sprt = allSprites.ptrOf(n);
-		sprt.position.relMove(x, y);
+	public void relMoveSprite(int n, int x, int y) @trusted nothrow {
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return;
+		item.position.relMove(x, y);
 		//checkSprite(*sprt);
 	}
-	///Sets the rendering function for the sprite (defaults to the layer's rendering function)
+	/* ///Sets the rendering function for the sprite (defaults to the layer's rendering function)
 	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe nothrow {
-		DisplayListItem* sprt = allSprites.ptrOf(n);
-		sprt.renderFunc = getRenderingFunc(mode);
-	}
-	public @nogc Coordinate getSpriteCoordinate(int n) @safe nothrow {
-		return allSprites[n].position;
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return 0;
+		item.renderFunc = getRenderingFunc(mode);
+	} */
+	public @nogc Box getSpriteCoordinate(int n) @trusted nothrow {
+		DisplayListItem* sprt = allSprites.searchByPtr(n);
+		if(!sprt) return Box.init;
+		return sprt.position;
 	}
 	///Scales sprite horizontally. Returns the new size, or -1 if the scaling value is invalid, or -2 if spriteID not found.
 	public int scaleSpriteHoriz(int n, int hScl) @trusted nothrow { 
-		DisplayListItem* sprt = allSprites.ptrOf(n);
+		DisplayListItem* sprt = allSprites.searchByPtr(n);
 		if(!sprt) return -2;
 		else if(!hScl) return -1;
 		else {
@@ -398,7 +405,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	}
 	///Scales sprite vertically. Returns the new size, or -1 if the scaling value is invalid, or -2 if spriteID not found.
 	public int scaleSpriteVert(int n, int vScl) @trusted nothrow {
-		DisplayListItem* sprt = allSprites.ptrOf(n);
+		DisplayListItem* sprt = allSprites.searchByPtr(n);
 		if(!sprt) return -2;
 		else if(!vScl) return -1;
 		else {
@@ -412,14 +419,18 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	}
 	///Gets the sprite's current horizontal scale value
 	public int getScaleSpriteHoriz(int n) @nogc @trusted nothrow {
-		return allSprites[n].scaleHoriz;
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return 0;
+		return item.scaleHoriz;
 	}
 	///Gets the sprite's current vertical scale value
 	public int getScaleSpriteVert(int n) @nogc @trusted nothrow {
-		return allSprites[n].scaleVert;
+		DisplayListItem* item = allSprites.searchByPtr(n);
+		if (item is null) return 0;
+		return item.scaleVert;
 	}
 	public override LayerType getLayerType() @nogc @safe pure nothrow const {
-		return LayerType.TransformableTile;
+		return LayerType.Sprite;
 	}
 	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {
 		/*
@@ -427,7 +438,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches. (Fixed!!!)
 		 * TO DO: Replace AVL tree with an automatically sorting array with keying abilities.
 		 */
-		foreach_reverse (i ; allSprites) {
+		foreach (i ; allSprites) {
 			if(!(i.slice.width && i.slice.height 
 					&& (i.position.right > sX && i.position.bottom > sY && 
 					i.position.left < sX + rasterX && i.position.top < sY + rasterY))) continue;

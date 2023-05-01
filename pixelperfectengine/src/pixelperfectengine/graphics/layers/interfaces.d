@@ -126,9 +126,9 @@ public interface ITTL {
  */
 public interface ISpriteLayer {
 	///Clears all sprite from the layer.
-	public void clear() @safe nothrow;
+	public void clear() @trusted nothrow;
 	///Removes the sprite with the given ID.
-	public void removeSprite(int n) @safe nothrow;
+	public void removeSprite(int n) @trusted nothrow;
 	/** 
 	 * Moves the sprite to the exact location.
 	 * Params:
@@ -136,7 +136,7 @@ public interface ISpriteLayer {
 	 *   x = New x position of the sprite.
 	 *   y = New y position of the sprite.
 	 */
-	public void moveSprite(int n, int x, int y) @safe nothrow;
+	public void moveSprite(int n, int x, int y) @trusted nothrow;
 	/** 
 	 * Relatively moves the sprite by the given values.
 	 * Params:
@@ -144,9 +144,9 @@ public interface ISpriteLayer {
 	 *   x = New x position of the sprite.
 	 *   y = New y position of the sprite.
 	 */
-	public void relMoveSprite(int n, int x, int y) @safe nothrow;
+	public void relMoveSprite(int n, int x, int y) @trusted nothrow;
 	///Gets the coordinate of the sprite.
-	public Box getSpriteCoordinate(int n) @nogc @safe nothrow;
+	public Box getSpriteCoordinate(int n) @nogc @trusted nothrow;
 	/** 
 	 * Creates a sprite from a bitmap with the given data, then places it to the display list. (New architecture)
 	 * Params:
@@ -166,7 +166,7 @@ public interface ISpriteLayer {
 	 */
 	public Box addSprite(ABitmap sprt, int n, int x, int y, ushort paletteSel = 0, ubyte paletteSh = 0, 
 			ubyte alpha = ubyte.max, int scaleHoriz = 1024, int scaleVert = 1024, RenderingMode renderMode = RenderingMode.init) 
-			@safe nothrow;
+			@trusted nothrow;
 	/+
 	/** 
 	 * Places a new sprite onto the layer with the given parameters.
@@ -184,23 +184,23 @@ public interface ISpriteLayer {
 	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
 			int scaleVert = 1024) @safe nothrow;+/
 	///Sets the rendering function for the sprite (defaults to the layer's rendering function)
-	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe nothrow;
+	public RenderFunc setSpriteRenderingMode(int n, RenderingMode mode) @nogc @trusted pure nothrow;
 	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
-	public void replaceSprite(ABitmap s, int n) @safe nothrow;
+	public void replaceSprite(ABitmap s, int n) @trusted nothrow;
 	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(ABitmap s, int n, int x, int y) @safe nothrow;
+	public void replaceSprite(ABitmap s, int n, int x, int y) @trusted nothrow;
 	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(ABitmap s, int n, Box c) @safe nothrow;
+	public void replaceSprite(ABitmap s, int n, Box c) @trusted nothrow;
 	///Returns the displayed portion of the sprite.
-	public @nogc Box getSlice(int n) @safe nothrow;
+	public @nogc Box getSlice(int n) @trusted nothrow;
 	///Writes the displayed portion of the sprite.
 	///Returns the new slice, if invalid (greater than the bitmap, etc.) returns the old one.
-	public Box setSlice(int n, Box slice) @safe nothrow;
+	public Box setSlice(int n, Box slice) @trusted nothrow;
 	///Returns the selected paletteID of the sprite.
-	public @nogc ushort getPaletteID(int n) @safe nothrow;
+	public @nogc ushort getPaletteID(int n) @trusted nothrow;
 	///Sets the paletteID of the sprite. Returns the new ID, which is truncated to the possible values with a simple binary and operation
 	///Palette must exist in the parent Raster, otherwise AccessError might happen
-	public @nogc ushort setPaletteID(int n, ushort paletteID) @safe nothrow;
+	public @nogc ushort setPaletteID(int n, ushort paletteID) @trusted nothrow;
 	///Scales bitmap horizontally
 	public int scaleSpriteHoriz(int n, int hScl) @trusted nothrow;
 	///Scales bitmap vertically
