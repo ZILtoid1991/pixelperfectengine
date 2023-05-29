@@ -323,6 +323,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		return value;
 	}
 	override public void draw() {
+		if (parent is null) return;
 		StyleSheet ss = getStyleSheet;
 		if (flags & TEXTINPUT_EN) { //only redraw the editing cell in this case
 			const int textPadding = ss.drawParameters["TextSpacingSides"];
@@ -649,59 +650,59 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	}
 	///Draws a line.
 	public void drawLine(Point from, Point to, ubyte color) @trusted {
-		parent.drawLine(from, to, color);
+		if (parent !is null) parent.drawLine(from, to, color);
 	}
 	///Draws a line pattern.
 	public void drawLinePattern(Point from, Point to, ubyte[] pattern) @trusted {
-		parent.drawLinePattern(from, to, pattern);
+		if (parent !is null) parent.drawLinePattern(from, to, pattern);
 	}
 	///Draws an empty rectangle.
 	public void drawBox(Box target, ubyte color) @trusted {
-		parent.drawBox(target, color);
+		if (parent !is null) parent.drawBox(target, color);
 	}
 	///Draws an empty rectangle with line patterns.
 	public void drawBoxPattern(Box target, ubyte[] pattern) @trusted {
-		parent.drawBoxPattern(target, pattern);
+		if (parent !is null) parent.drawBoxPattern(target, pattern);
 	}
 	///Draws a filled rectangle with a specified color.
 	public void drawFilledBox(Box target, ubyte color) @trusted {
-		parent.drawFilledBox(target, color);
+		if (parent !is null) parent.drawFilledBox(target, color);
 	}
 	///Pastes a bitmap to the given point using blitter, which threats color #0 as transparency.
 	public void bitBLT(Point target, ABitmap source) @trusted {
-		parent.bitBLT(target, source);
+		if (parent !is null) parent.bitBLT(target, source);
 	}
 	///Pastes a slice of a bitmap to the given point using blitter, which threats color #0 as transparency.
 	public void bitBLT(Point target, ABitmap source, Box slice) @trusted {
-		parent.bitBLT(target, source, slice);
+		if (parent !is null) parent.bitBLT(target, source, slice);
 	}
 	///Pastes a repeated bitmap pattern over the specified area.
 	public void bitBLTPattern(Box target, ABitmap pattern) @trusted {
-		parent.bitBLTPattern(target, pattern);
+		if (parent !is null) parent.bitBLTPattern(target, pattern);
 	}
 	///XOR blits a repeated bitmap pattern over the specified area.
 	public void xorBitBLT(Box target, ABitmap pattern) @trusted {
-		parent.xorBitBLT(target, pattern);
+		if (parent !is null) parent.xorBitBLT(target, pattern);
 	}
 	///XOR blits a color index over a specified area.
 	public void xorBitBLT(Box target, ubyte color) @trusted {
-		parent.xorBitBLT(target, color);
+		if (parent !is null) parent.xorBitBLT(target, color);
 	}
 	///Fills an area with the specified color.
 	public void fill(Point target, ubyte color, ubyte background = 0) @trusted {
-		parent.fill(target, color, background);
+		if (parent !is null) parent.fill(target, color, background);
 	}
 	///Draws a single line text within the given prelimiter.
 	public void drawTextSL(Box target, Text text, Point offset) @trusted {
-		parent.drawTextSL(target, text, offset);
+		if (parent !is null) parent.drawTextSL(target, text, offset);
 	}
 	///Draws a multi line text within the given prelimiter.
 	public void drawTextML(Box target, Text text, Point offset) @trusted {
-		parent.drawTextML(target, text, offset);
+		if (parent !is null) parent.drawTextML(target, text, offset);
 	}
 	///Clears the area within the target
 	public void clearArea(Box target) @trusted {
-		parent.clearArea(target);
+		if (parent !is null) parent.clearArea(target);
 	}
 	///Passes mouse click event
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
