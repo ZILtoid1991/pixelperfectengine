@@ -794,11 +794,11 @@ public class PCM8 : AudioModule {
 				else if (fmt.bitsPerSample == 16)
 					return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) {decode16bitPCM(cast(const(short)[])src, dest, wp);};
 				return null;
-			case AudioFormat.ADPCM:
+			case AudioFormat.ADPCM, AudioFormat.IMA_ADPCM:
 				return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) 
 						{decode4bitIMAADPCM(ADPCMStream(src, src.length*2), dest, wp);};
 				
-			case AudioFormat.DIALOGIC_OKI_ADPCM:
+			case AudioFormat.DIALOGIC_OKI_ADPCM, AudioFormat.OKI_ADPCM:
 				return (ubyte[] src, int[] dest, ref DecoderWorkpad wp) 
 						{decode4bitDialogicADPCM(ADPCMStream(src, src.length*2), dest, wp);};
 				
@@ -912,7 +912,8 @@ public class PCM8 : AudioModule {
 	public override int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow {
 		int result;
 		if (!(format.format == AudioFormat.PCM || format.format == AudioFormat.MULAW || format.format == AudioFormat.ALAW || 
-				format.format == AudioFormat.ADPCM || format.format == AudioFormat.DIALOGIC_OKI_ADPCM)) 
+				format.format == AudioFormat.ADPCM || format.format == AudioFormat.IMA_ADPCM || 
+				format.format == AudioFormat.DIALOGIC_OKI_ADPCM || format.format == AudioFormat.OKI_ADPCM)) 
 			result |= SampleLoadErrorCode.FormatNotSupported; 
 		result |= format.channels == 1 ? 0 : SampleLoadErrorCode.ChNumNotSupported;
 		if (result) {
@@ -921,6 +922,61 @@ public class PCM8 : AudioModule {
 			sampleBank[id] = Sample(rawData, format, getDecoderFunction(format));
 			return 0;
 		}
+	}
+	/** 
+	 * Creates a new waveform from an existing one using slicing.
+	 * Params:
+	 *   id = The ID of the new sample.
+	 *   src = The ID of the original sample.
+	 *   pos = The position where the slice begins.
+	 *   length = The length of the slice.
+	 * Returns: 0 on success, -1 if module don't support this feature, -2 if slice is out of bounds (longer than the
+	 * sample, etc.), -3 if sample is not slicable (ADPCM, etc.).
+	 */
+	public override int waveformSlice(uint id, uint src, uint pos, uint length) nothrow {
+		Sample srcSlmp = sampleBank[src];
+		switch (srcSlmp.format.format) {
+			case AudioFormat.UNKNOWN:
+				return -4;
+			case AudioFormat.ADPCM, AudioFormat.IMA_ADPCM, AudioFormat.OKI_ADPCM, AudioFormat.DIALOGIC_OKI_ADPCM:
+				return -3;
+			default:
+				break;
+		}
+		const size_t samplelen = srcSlmp.samplesLength();
+		if (pos > samplelen || pos + length > samplelen) {
+			return -2;
+		}
+		const size_t begin = (pos * 8) / srcSlmp.format.bitsPerSample, 
+				end = ((pos + length) * 8) / srcSlmp.format.bitsPerSample;
+		sampleBank[id] = Sample(srcSlmp.sampleData[begin..end], srcSlmp.format, srcSlmp.decode);
+		return 0;
+	}
+	/** 
+	 * Returns the waveform data from the
+	 * Params:
+	 *   id = The ID of the waveform.
+	 * Returns: The raw waveform data, or null on error (unsupported feature, waveform not found, etc.)
+	 */
+	public override const(ubyte)[] getWaveformData(uint id) nothrow {
+		return cast(const(ubyte)[])sampleBank[id].sampleData;
+	}
+	/** 
+	 * Returns the format of the selected waveform
+	 * Params:
+	 *   id = The ID of the waveform.
+	 * Returns: The format of the waveform data, or WaveFormat.init if not available.
+	 */
+	public override WaveFormat getWaveformDataFormat(uint id) nothrow {
+		return sampleBank[id].format;
+	}
+	///Returns the available waveform ID list
+	public override uint[] getWaveformIDList() nothrow {
+		uint[] result;
+		foreach (uint key, Sample elem; sampleBank) {
+			result ~= key;
+		}
+		return result;
 	}
 	/**
 	 * Restores a parameter to the given preset.

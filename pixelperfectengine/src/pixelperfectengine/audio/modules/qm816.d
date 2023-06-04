@@ -469,7 +469,7 @@ public class QM816 : AudioModule {
 				oscFreq = noteToFreq(actualNote, tuning);
 			}
 			calculateKSL(note);
-			const double cycLen = oscFreq / ((slmpFreq + 1) / 1024.0);
+			const double cycLen = oscFreq / ((slmpFreq - 1) / 1024.0);
 			//step = cast(uint)(cast(double)(1<<21) * cycLen);
 			step = cast(uint)(cast(double)(1<<22) * cycLen);
 		}
@@ -1020,6 +1020,39 @@ public class QM816 : AudioModule {
 				memcpy(wavetables[id].ptr, rawData.ptr, 1024 * 2);
 			return 0;
 		}
+	}
+	/** 
+	 * Returns the waveform data from the
+	 * Params:
+	 *   id = The ID of the waveform
+	 * Returns: The raw waveform data, or null on error (unsupported feature, waveform not found, etc.)
+	 */
+	public override const(ubyte)[] getWaveformData(uint id) nothrow {
+		if (id <= 127)
+			return cast(const(ubyte)[])wavetables[id];
+		else
+			return null;
+	}
+	/** 
+	 * Returns the format of the selected waveform
+	 * Params:
+	 *   id = The ID of the waveform.
+	 * Returns: The format of the waveform data, or WaveFormat.init if not available.
+	 */
+	public override WaveFormat getWaveformDataFormat(uint id) nothrow {
+		if (id <= 127)
+			return WaveFormat(intSlmpRate, intSlmpRate * 2, AudioFormat.PCM, 1, 2, 16);
+		else
+			return WaveFormat.init;
+	}
+	///Returns the available waveform ID list
+	public override uint[] getWaveformIDList() nothrow {
+		uint[] result;
+		result.length = 128;
+		for (int i = 0; i < result.length ; i++) {
+			result[i] = i;
+		}
+		return null;
 	}
 	/**
 	 * MIDI 2.0 data received here.

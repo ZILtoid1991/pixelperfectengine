@@ -93,6 +93,41 @@ public abstract class AudioModule {
 	 * format: The format of the wave data, including the data type, bit depth, base sampling rate
 	 */
 	public abstract int waveformDataReceive(uint id, ubyte[] rawData, WaveFormat format) nothrow;
+	/** 
+	 * Creates a new waveform from an existing one using slicing.
+	 * Params:
+	 *   id = The ID of the new sample.
+	 *   src = The ID of the original sample.
+	 *   pos = The position where the slice begins.
+	 *   length = The length of the slice.
+	 * Returns: 0 on success, -1 if module don't support this feature, -2 if slice is out of bounds (longer than the
+	 * sample, etc.), -3 if sample is not slicable (ADPCM, etc.).
+	 */
+	public int waveformSlice(uint id, uint src, uint pos, uint length) nothrow {
+		return -1;
+	}
+	/** 
+	 * Returns the waveform data from the
+	 * Params:
+	 *   id = The ID of the waveform.
+	 * Returns: The raw waveform data, or null on error (unsupported feature, waveform not found, etc.)
+	 */
+	public const(ubyte)[] getWaveformData(uint id) nothrow {
+		return null;
+	}
+	/** 
+	 * Returns the format of the selected waveform
+	 * Params:
+	 *   id = The ID of the waveform.
+	 * Returns: The format of the waveform data, or WaveFormat.init if not available.
+	 */
+	public WaveFormat getWaveformDataFormat(uint id) nothrow {
+		return WaveFormat.init;
+	}
+	///Returns the available waveform ID list
+	public uint[] getWaveformIDList() nothrow {
+		return null;
+	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.
