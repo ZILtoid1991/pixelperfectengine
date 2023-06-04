@@ -43,6 +43,7 @@ public class DelayLines : AudioModule {
 			SET_VALS ~= MValue(MValueType.Float, (i<<7) | (19), "Tap" ~ i.to!string ~ "_FeedbackSec");
 			SET_VALS ~= MValue(MValueType.Int32, (i<<7) | (20), "Tap" ~ i.to!string ~ "_Pos");
 			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (21), "Tap" ~ i.to!string ~ "_TapEnable");
+			SET_VALS ~= MValue(MValueType.Boolean, (i<<7) | (22), "Tap" ~ i.to!string ~ "_BypassFIR");
 		}
 		for (uint i ; i < 4 ; i++) {
 			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (0), "LFO" ~ i.to!string ~ "_Waveform");
@@ -51,10 +52,10 @@ public class DelayLines : AudioModule {
 			SET_VALS ~= MValue(MValueType.Float, (8<<7) | (i<<3) | (3), "LFO" ~ i.to!string ~ "_PWM");
 			SET_VALS ~= MValue(MValueType.Int32, (8<<7) | (i<<3) | (4), "LFO" ~ i.to!string ~ "_Target");
 		}
-		for (uint i ; i < 4 ; i++) {
-			SET_VALS ~= MValue(MValueType.Float, (9<<7) | (i<<3) | (0), "EQ" ~ i.to!string ~ "_Level");
-			SET_VALS ~= MValue(MValueType.Float, (9<<7) | (i<<3) | (1), "EQ" ~ i.to!string ~ "_Freq");
-			SET_VALS ~= MValue(MValueType.Float, (9<<7) | (i<<3) | (2), "EQ" ~ i.to!string ~ "_Q");
+		for (uint i ; i < 8 ; i++) {
+			SET_VALS ~= MValue(MValueType.Float, (9<<7) | (i<<2) | (0), "EQ" ~ i.to!string ~ "_Level");
+			SET_VALS ~= MValue(MValueType.Float, (9<<7) | (i<<2) | (1), "EQ" ~ i.to!string ~ "_Freq");
+			SET_VALS ~= MValue(MValueType.Float, (9<<7) | (i<<2) | (2), "EQ" ~ i.to!string ~ "_Q");
 		}
 		SET_VALS ~= MValue(MValueType.Float, (10<<7) | (0), "InputAtoPri");
 		SET_VALS ~= MValue(MValueType.Float, (10<<7) | (1), "InputAtoSec");
@@ -73,6 +74,7 @@ public class DelayLines : AudioModule {
 		__m128[4]	fir = [__m128(0.0),__m128(0.0),__m128(0.0),__m128(0.0)];///Short finite impulse response for the tap tap
 		uint		pos;		///Median position of the tap (unaffected by LFO)
 		bool		tapEnable;	///True if tap is enabled
+		bool		bypassFIR;	///Bypasses FIR calculation
 	}
 	
 	///Defines an LFO target
@@ -80,7 +82,7 @@ public class DelayLines : AudioModule {
 		init		=	0,
 		TapOut		=	1,
 		TapFeedback	=	2,
-		TapPosition	=	3,
+		TapPosition	=	4,
 		ToA			=	8,
 		ToB			=	16,
 	}
@@ -111,10 +113,11 @@ public class DelayLines : AudioModule {
 		Tap[4][2]				taps;			///Defines delay line taps
 		__m128[2]				iirFreq;		///Defines IIR frequencies
 		__m128[2]				iirQ;			///Defines IIR Q value
+		__m128[2]				eqLevels;		///Stores EQ send levels
 		__m128					inputLevel;
 		__m128					oscLevels;		///Defines the amount of effect a given LFO has on a parameter
 		float[4]				oscFrequencies;	///Defines LFO freqencies
-		float[4]				oscPWM;			///Defines the PWM of the LFOs
+		uint[4]					oscPWM;			///Defines the PWM of the LFOs
 		float[2]				outputLevel;
 		ubyte[4]				oscTargets;		///Sets the target of a given LFO
 		ubyte[4][2]				iirType;		///Defines IIR types
@@ -185,12 +188,44 @@ public class DelayLines : AudioModule {
 		
 	}
 
-	protected void controlChangeCmd(uint paramID, uint val) @nogc nothrow {
+	protected void controlChangeCmd(ubyte paramMSB, ubyte paramLSB, uint val) @nogc nothrow {
 
 	}
 
-	protected void presetChangeCmd(uint preset) @nogc nothrow {
+	protected void resetFilter(int filterID) @safe @nogc nothrow pure {
+		filterBanks[filterID>>2].setFilter(createBPF1(sampleRate, currPreset.iirFreq[filterID>>2][filterID & 3], 
+				currPreset.iirFreq[filterID>>2][filterID & 3]), filterID & 3);
+		filterBanks[filterID>>2].fixFilter();
+	}
 
+	protected void resetLFO(int lfoID) @safe @nogc nothrow pure {
+		osc.setRate(sampleRate, currPreset.oscFrequencies[lfoID], lfoID);
+		osc.pulseWidth[lfoID] = currPreset.oscPWM[lfoID];
+		const int waveNum = cast(int)currPreset.oscWaveform[lfoID].sawtooth + cast(int)currPreset.oscWaveform[lfoID].triangle 
+				+ cast(int)currPreset.oscWaveform[lfoID].pulse + cast(int)currPreset.oscWaveform[lfoID].sawpulse;
+		if (waveNum) {
+			const short level = cast(short)((short.max * currPreset.oscWaveform[lfoID].phaseInvert) / waveNum);
+			if (currPreset.oscWaveform[lfoID].sawtooth)
+				osc.levelCtrl01[lfoID * 2] = level;
+			if (currPreset.oscWaveform[lfoID].triangle)
+				osc.levelCtrl01[lfoID * 2 + 1] = level;
+			if (currPreset.oscWaveform[lfoID].pulse)
+				osc.levelCtrl23[lfoID * 2] = level;
+			if (currPreset.oscWaveform[lfoID].sawpulse)
+				osc.levelCtrl23[lfoID * 2 + 1] = level;
+		}
+	}
+
+	protected void presetChangeCmd(uint preset) @nogc nothrow {
+		Preset* presetPtr = presetBank.ptrOf(preset);
+		if (presetPtr is null) return;
+		currPreset = *presetPtr;
+		for (int i = 0 ; i < 8 ; i++) {
+			resetFilter(i);
+		}
+		for (int i = 0 ; i < 4 ; i++) {
+			resetLFO(i);
+		}
 	}
 
 	override public void renderFrame(float*[] input, float*[] output) @nogc nothrow {
@@ -203,6 +238,9 @@ public class DelayLines : AudioModule {
 				}
 			}
 			return result;
+		}
+		float readDL0(int linenum, uint pos) @nogc @safe pure nothrow {
+			return delayLines[linenum][dLMod[linenum] * (dLPos[linenum] - pos)];
 		}
 		float*[2] inBuf, outBuf;			//Set up input and output buffers
 		for (ubyte i, j, k ; i < 2 ; i++) {
@@ -220,15 +258,15 @@ public class DelayLines : AudioModule {
 			}
 		}
 		//Precalculate values, so they don't need to be done on a per-cycle basis.
+		
 		__m128i[2] tapLFOOffset;
-		__m128[2] tapLFOOffsetSt;
-		__m128[2] tapLFOLevel = __m128(0.0), tapLFOLevelSt;
-		__m128[2] tapLFOFB = __m128(0.0), tapLFOFBSt;
+		__m128[2] tapLFOLevel;
+		__m128[2] tapLFOFB;
 		for (int i ; i < 2 ; i++) {
 			for (int j ; j < 4 ; j++) {
-				tapLFOLevelSt[i][j] = currPreset.oscTargets[j] == ((8<<i) | OscTarget.TapOut) ? 1.0 : 0.0;
-				tapLFOOffsetSt[i][j] = currPreset.oscTargets[j] == ((8<<i) | OscTarget.TapPosition) ? 1.0 : 0.0;
-				tapLFOFBSt[i][j] = currPreset.oscTargets[j] == ((8<<i) | OscTarget.TapFeedback) ? 1.0 : 0.0;
+				tapLFOLevel[i][j] = currPreset.oscTargets[j] == ((8<<i) | OscTarget.TapOut) ? 1.0 : 0.0;
+				tapLFOOffset[i][j] = currPreset.oscTargets[j] == ((8<<i) | OscTarget.TapPosition) ? 1 : 0;
+				tapLFOFB[i][j] = currPreset.oscTargets[j] == ((8<<i) | OscTarget.TapFeedback) ? 1.0 : 0.0;
 			}
 		}
 		{	//Render LFO outs.
@@ -244,16 +282,31 @@ public class DelayLines : AudioModule {
 			}
 		}
 		for (int outputPos ; outputPos < bufferSize ; outputPos++) {
+			__m128 allSums = __m128(0.0);
 			for (int d ; d < 2 ; d++) {
 				for (int t ; t < 4 ; t++) {
 					if (currPreset.taps[d][t].tapEnable) {
-						__m128[4] impulse = readDL(d, currPreset.taps[d][t].pos);
-						for (int i ; i < 4 ; i++) {
-							impulse[i] *= currPreset.taps[d][t].fir[i];
+						float sum;
+						if (currPreset.taps[d][t].bypassFIR) {
+							sum = readDL0(d, currPreset.taps[d][t].pos + (oscOut[outputPos][t] * tapLFOOffset[d][t]));
+						} else {
+							__m128[4] impulse = readDL(d, currPreset.taps[d][t].pos);
+							__m128 acc = __m128(0.0);
+							for (int i ; i < 4 ; i++) {
+								acc += impulse[i] * currPreset.taps[d][t].fir[i];
+							}
+							sum = acc[0] + acc[1] + acc[2] + acc[3];
 						}
+						allSums += currPreset.taps[d][t].outLevels * __m128(sum);
 					}
 				}
 			}
+			__m128 filterOutL = filterBanks[0].output(__m128(allSums[0])) * currPreset.eqLevels[0];
+			__m128 filterOutR = filterBanks[1].output(__m128(allSums[1])) * currPreset.eqLevels[1];
+			outBuf[0][outputPos] += allSums[0] + filterOutL[0] + filterOutL[1] + filterOutL[2] + filterOutL[3];
+			outBuf[1][outputPos] += allSums[1] + filterOutR[0] + filterOutR[1] + filterOutR[2] + filterOutR[3];
+			delayLines[0][dLMod[0] & dLPos[0]] = allSums[2];
+			delayLines[1][dLMod[1] & dLPos[1]] = allSums[3];
 			dLPos[0]++;
 			dLPos[1]++;
 		}
@@ -275,28 +328,16 @@ public class DelayLines : AudioModule {
 				const uint tapID = paramGr & 3, lineID = paramGr>>2;
 				const uint subParamID = paramID & 0x3F;
 				switch (subParamID) {
-					case 0: .. case 7:
+					case 0: .. case 19:
 						return 1;
-					case 8: .. case 19:
-						const uint filterID = (subParamID - 8) / 4, filterParamID = (subParamID - 8) % 4;
-						switch (filterParamID) {
-							case 2:	
-								
-								return 0;
-							default:
-								return 1;
-						}
-					case 28:	//Position
+					case 20:	//Position
 						presetPtr.taps[lineID][tapID].pos = value;
 						return 0;
-					case 29:	//Tap enable
+					case 21:	//Tap enable
 						presetPtr.taps[lineID][tapID].tapEnable = value != 0;
 						return 0;
-					case 30:	//Bypass dry signal
-						
-						return 0;
-					case 31:	//Filter algorithm
-			
+					case 22:	//Bypass FIR
+						presetPtr.taps[lineID][tapID].bypassFIR = value != 0;
 						return 0;
 					default:
 						break;
@@ -350,8 +391,8 @@ public class DelayLines : AudioModule {
 						presetPtr.taps[lineID][tapID].fir[3][subParamID - 12] = value;
 						return 0;
 					
-					case 24: .. case 27:	//Output Levels
-						const uint levelID = (subParamID - 24) & 3;
+					case 16: .. case 19:	//Output Levels
+						const uint levelID = (subParamID - 16) & 3;
 						presetPtr.taps[lineID][tapID].outLevels[levelID] = value;
 						return 0;
 					default:
@@ -368,13 +409,29 @@ public class DelayLines : AudioModule {
 						presetPtr.oscFrequencies[lfoID] = value;
 						return 0;
 					case 3:
-						presetPtr.oscPWM[lfoID] = value;
+						presetPtr.oscPWM[lfoID] = cast(uint)(value * uint.max);
 						return 0;
 					default:
 						break;
 				}
 				break;
-			case 9: //Levels
+			case 9: //EQ
+				const uint EQID = (paramID>>2) & 7;
+				switch (paramID & 3) {
+					case 0:
+						presetPtr.eqLevels[EQID>>2][EQID & 3] = value;
+						return 0;
+					case 1:
+						presetPtr.iirFreq[EQID>>2][EQID & 3] = value;
+						return 0;
+					case 2:
+						presetPtr.iirQ[EQID>>2][EQID & 3] = value;
+						return 0;
+					default:
+						break;
+				}
+				break;
+			case 10: //Levels
 				const uint subParamID = paramID & 7;
 				switch (subParamID) {
 					case 0: .. case 3:
@@ -413,9 +470,11 @@ public class DelayLines : AudioModule {
 				const uint subParamID = paramID & 0x3F;
 				switch (subParamID) {
 					
-					case 28:	//Position
+					case 20:	//Position
 						return presetPtr.taps[lineID][tapID].pos;
-					case 29:	//Tap enable
+					case 21:	//Tap enable
+						return presetPtr.taps[lineID][tapID].tapEnable ? 1 : 0;
+					case 22:	//Bypass FIR
 						return presetPtr.taps[lineID][tapID].tapEnable ? 1 : 0;
 					default:
 						break;
@@ -472,12 +531,25 @@ public class DelayLines : AudioModule {
 					case 2:
 						return presetPtr.oscFrequencies[lfoID];
 					case 3:
-						return presetPtr.oscPWM[lfoID];
+						return presetPtr.oscPWM[lfoID] / uint.max;
 					default:
 						break;
 				}
 				break;
-			case 9: //Levels
+			case 9:	//EQ
+				const uint EQID = (paramID>>2) & 7;
+				switch (paramID & 3) {
+					case 0:
+						return presetPtr.eqLevels[EQID>>2][EQID & 3];
+					case 1:
+						return presetPtr.iirFreq[EQID>>2][EQID & 3];
+					case 2:
+						return presetPtr.iirQ[EQID>>2][EQID & 3];
+					default:
+						break;
+				}
+				break;
+			case 10: //Levels
 				const uint subParamID = paramID & 7;
 				switch (subParamID) {
 					case 0: .. case 3:
