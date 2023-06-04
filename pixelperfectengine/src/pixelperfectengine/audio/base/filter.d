@@ -2,6 +2,7 @@ module pixelperfectengine.audio.base.filter;
 
 import inteli.emmintrin;
 import pixelperfectengine.audio.base.func;
+import std.math;
 
 /**
  * Defines a biquad infinite response filter bank for various uses.
@@ -44,5 +45,17 @@ public struct IIRBank {
 		b2a0 = __m128(0);
 		a1a0 = __m128(0);
 		a2a0 = __m128(0);
+	}
+	/// Resets filter values, if NaN or infinity has been hit.
+	void fixFilter() @nogc @safe pure nothrow {
+		for (int i = 0 ; i < 4 ; i++) {
+			if (isNaN(x1[i]) || isNaN(x2[i]) || isNaN(y1[i]) || isNaN(y2[i]) || isInfinity(x1[i]) || isInfinity(x2[i]) || 
+					isInfinity(y1[i]) || isInfinity(y2[i])) {
+				x1[i] = 0.0;
+				x2[i] = 0.0;
+				y1[i] = 0.0;
+				y2[i] = 0.0;
+			}
+		}
 	}
 }
