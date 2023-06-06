@@ -120,7 +120,6 @@ public class DelayLines : AudioModule {
 		uint[4]					oscPWM;			///Defines the PWM of the LFOs
 		float[2]				outputLevel;
 		ubyte[4]				oscTargets;		///Sets the target of a given LFO
-		ubyte[4][2]				iirType;		///Defines IIR types
 		OscWaveform[4]			oscWaveform;	///Sets the waveform output of the LFOs
 		
 	}
@@ -138,7 +137,7 @@ public class DelayLines : AudioModule {
 	protected size_t[2]			dLMod;			///Delay line modulo
 	protected float[]			dummyBuf;		///Buffer used for unused inputs/outputs
 	protected uint				presetNum;
-	protected uint				unregCC;
+	protected ubyte[68][8]		chCtrlLower;	///Lower parts of the channel controllers (0-31 / 32-63) + Unregistered parameter set
 	
 	/**
 	 * Creates an instance of this module using the supplied parameters.
@@ -185,7 +184,14 @@ public class DelayLines : AudioModule {
 	}
 
 	override public void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
-		
+		switch (data0.msgType) {
+			case MessageType.MIDI1:
+				break;
+			case MessageType.MIDI2:
+				break;
+			default:
+				break;
+		}
 	}
 
 	protected void controlChangeCmd(ubyte paramMSB, ubyte paramLSB, uint val) @nogc nothrow {
