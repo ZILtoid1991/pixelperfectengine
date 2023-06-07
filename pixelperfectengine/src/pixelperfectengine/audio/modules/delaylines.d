@@ -195,7 +195,66 @@ public class DelayLines : AudioModule {
 	}
 
 	protected void controlChangeCmd(ubyte paramMSB, ubyte paramLSB, uint val) @nogc nothrow {
-
+		switch (paramMSB) {
+			case 0: .. case 7://Taps
+				switch ( paramLSB ) {
+					case 0: .. case 15:
+						const int firGr = paramLSB / 4;
+						currPreset.taps[paramMSB>>2][paramMSB&3].fir[firGr][paramLSB - 0] = (val / cast(double)int.max) - 1.0;
+						break;
+					case 16: .. case 19:
+						currPreset.taps[paramMSB>>2][paramMSB&3].outLevels[paramMSB - 16] = val / cast(double)uint.max;
+						break;
+					case 20:
+						currPreset.taps[paramMSB>>2][paramMSB&3].pos = 
+								cast(uint)((val / cast(double)uint.max) * delayLines[paramMSB>>2].length);
+						break;
+					case 21:
+						currPreset.taps[paramMSB>>2][paramMSB&3].tapEnable = val != 0;
+						break;
+					case 22:
+						currPreset.taps[paramMSB>>2][paramMSB&3].bypassFIR = val != 0;
+						break;
+					default:
+						break;
+				}
+				break;
+			case 8:
+				const int lfoGr = paramLSB>>3;
+				switch (paramLSB & 7) {
+					case 0:
+						currPreset.oscWaveform[lfoGr].raw = cast(ubyte)val;
+						break;
+					case 1:
+						currPreset.oscLevels[lfoGr] = val / cast(double)uint.max;
+						break;
+					case 2:
+						currPreset.oscFrequencies[lfoGr] = val / cast(double)uint.max * 20;
+						break;
+					case 3:
+						currPreset.oscPWM[lfoGr] = val;
+						break;
+					case 4:
+						currPreset.oscTargets = cast(ubyte)val;
+						break;
+					default:
+						break;
+				}
+				break;
+			case 9:
+				const int eqGr = paramLSB>>2;
+				switch (paramLSB & 3) {
+					case 0:
+						break;
+					default:
+						break;
+				}
+				break;
+			case 10:
+				break;
+			default:
+				break;
+		}
 	}
 
 	protected void resetFilter(int filterID) @safe @nogc nothrow pure {
