@@ -186,8 +186,47 @@ public class DelayLines : AudioModule {
 	override public void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {
 		switch (data0.msgType) {
 			case MessageType.MIDI1:
+				switch (data0.status) {
+					case MIDI1_0Cmd.CtrlCh:
+						if (data0.channel >= 8)
+							return;
+						if (data0.note < 63) {
+							chCtrlLower[data0.channel][data0.note] = data0.value;
+							if ((data0.note & 31) >= 16 && (data0.note & 31) <= 31) {
+								controlChangeCmd(data0.channel, cast(ubyte)((data0.note & 31) - 16), 
+										convertM1CtrlValToM2(chCtrlLower[data0.channel][data0.note & 31], 
+										chCtrlLower[data0.channel][(data0.note & 31) + 32]));
+							} else {
+								switch (data0.note & 31) {
+									case 0:
+										chCtrlLower[0][data0.note] = data0.value;
+										break;
+									default:
+										break;
+								}
+							}
+						}
+						break;
+					case MIDI1_0Cmd.PrgCh:
+						presetChangeCmd((data0.program) | (chCtrlLower[0][0]<<8) | (chCtrlLower[0][32]<<16));
+						break;
+					default:
+						break;
+				}
 				break;
 			case MessageType.MIDI2:
+				switch (data0.status) {
+					case MIDI2_0Cmd.CtrlCh:
+						controlChangeCmd(data0.note, data0.value, data1);
+						break;
+					case MIDI2_0Cmd.PrgCh:
+						chCtrlLower[0][0] = cast(ubyte)((data1>>8) & ubyte.max);
+						chCtrlLower[0][32] = cast(ubyte)(data1 & ubyte.max);
+						presetChangeCmd((data1>>24) | (chCtrlLower[0][0]<<8) | (chCtrlLower[0][32]<<16));
+						break;
+					default:
+						break;
+				}
 				break;
 			default:
 				break;
@@ -219,7 +258,7 @@ public class DelayLines : AudioModule {
 						break;
 				}
 				break;
-			case 8:
+			case 8://LFOs
 				const int lfoGr = paramLSB>>3;
 				switch (paramLSB & 7) {
 					case 0:
@@ -240,17 +279,36 @@ public class DelayLines : AudioModule {
 					default:
 						break;
 				}
+				resetLFO(lfoGr);
 				break;
-			case 9:
+			case 9://EQ
 				const int eqGr = paramLSB>>2;
 				switch (paramLSB & 3) {
 					case 0:
+						currPreset.eqLevels[eqGr>>2][eqGr&3] = sqrt(val / cast(double)uint.max) * 1.5 - 0.5;
+						break;
+					case 1:
+						currPreset.iirFreq[eqGr>>2][eqGr&3] = pow(val / cast(double)uint.max, 2) * 20_000;
+						break;
+					case 2:
+						currPreset.iirQ[eqGr>>2][eqGr&3] = pow(val / cast(double)uint.max, 2) * 9.99 + 0.01;
 						break;
 					default:
 						break;
 				}
+				resetFilter(eqGr);
 				break;
-			case 10:
+			case 10://Master
+				switch (paramLSB) {
+					case 0: .. case 3:
+						currPreset.inputLevel[paramLSB] = pow(val / cast(double)uint.max, 2);
+						break;
+					case 4: case 5:
+						currPreset.outputLevel[paramLSB - 4] = pow(val / cast(double)uint.max, 2);
+						break;
+					default:
+						break;
+				}
 				break;
 			default:
 				break;
