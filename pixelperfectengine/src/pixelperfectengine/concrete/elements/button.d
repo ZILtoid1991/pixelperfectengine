@@ -32,6 +32,7 @@ public class Button : WindowElement {
 		//output = new BitmapDrawer(coordinates.width, coordinates.height);
 	}
 	public override void draw() {
+		if (parent is null) return;
 		StyleSheet ss = getStyleSheet();
 		parent.clearArea(position);
 		if (isPressed) {
