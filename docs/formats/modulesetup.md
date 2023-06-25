@@ -1,3 +1,5 @@
+Note: the document often use terms waveform and sample interchangeably.
+
 # Introduction to Audio Module Setup Files
 
 ## What is an "audio module"?
@@ -16,6 +18,8 @@ executable, it won't be done.
 
 Instrument-type audio modules can create music and various sound effects on the fly, while effect-type audio modules
 can alter their outputs. Streaming-types will be used in the future to stream audio data from disk, network, etc.
+
+Note that it doesn't mean "module" as in tracker modules.
 
 ## What is an "audio module setup file"?
 
@@ -37,6 +41,9 @@ module "QM816" "fmsynth" {...}
 Modules can be created by condition if needed. Name should only contain latin letters (either upper or lowercase), 
 numbers, or the `_` character.
 
+Some modules might have extra fields for configuration. Please refer to those module's documentation for further 
+information about them.
+
 ## Sample loading
 
 To load a sample into the module, just simply use:
@@ -48,6 +55,17 @@ loadSample "drum.wav" 56 dpk="../audio/instruments.dpk"
 Where the first parameter is the filename in string format (can be unicode), the second parameter is the sample ID in 
 unsigned 32 bit integer format, and the `dpk` optional attribute tells if the file is in a datapak file and where it
 can be found.
+
+## Sample slicing
+
+One can create a shorter sample from a longer one using the command:
+
+```s
+waveformSlice 57 56 2680 1024
+```
+
+Where the first parameter is the ID of the new waveform, the second parameter is the ID of the source waveform, the 
+third parameter is the position where the new sample will begin, and the fourth one is the length of the new sample.
 
 ## Preset recall
 
@@ -117,7 +135,7 @@ tells which module should be the target for the output.
 
 # Condition codes
 
-The following condition codes exist:
+The following condition codes will exist:
 * `ifNodeExists`
 * `ifNodeNotExists`
 * `ifHeadphones`
@@ -139,3 +157,10 @@ route "Reverb:auxSendB" "Reverb:inR" ifNodeExists="rearL&rearR"
 route "Reverb:outL" "Reverb:rearL" ifNodeExists="rearL&rearR"
 route "Reverb:outR" "Reverb:rearR" ifNodeExists="rearL&rearR"
 ```
+
+# Version history
+
+## Revision 1:
+
+* Added mention of auxillary tags that might be used for module configuration.
+* Added some notes on various things to clear up potential misconceptions.
