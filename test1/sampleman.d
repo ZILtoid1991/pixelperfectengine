@@ -1,0 +1,110 @@
+module test1.sampleman;
+
+import pixelperfectengine.concrete.window;
+import pixelperfectengine.audio.base.types;
+import pixelperfectengine.audio.base.func;
+import std.math : floor;
+
+public class WaveformViewer : WindowElement {
+	int[] waveform;
+	public this(string source, Box position) {
+		this.source = source;
+		this.position = position;
+	}
+	public void setWaveform(const(ubyte)[] src, WaveFormat fmt) {
+		DecoderWorkpad wp;
+		switch (fmt.format) {		//Hope this branching won't impact performance too much
+			case AudioFormat.PCM:
+				if (fmt.bitsPerSample == 8) {
+					waveform.length = src.length;
+					decode8bitPCM(cast(const(ubyte)[])src, waveform, wp);
+				} else if (fmt.bitsPerSample == 16)
+					waveform.length = src.length / 2;
+					decode16bitPCM(cast(const(short)[])src, waveform, wp);
+				break;
+			case AudioFormat.ADPCM, AudioFormat.IMA_ADPCM:
+				waveform.length = src.length * 2;
+				decode4bitIMAADPCM(ADPCMStream(src.dup, src.length*2), waveform, wp);
+				break;
+			case AudioFormat.DIALOGIC_OKI_ADPCM, AudioFormat.OKI_ADPCM:
+				waveform.length = src.length * 2;
+				decode4bitDialogicADPCM(ADPCMStream(src.dup, src.length*2), waveform, wp);
+				break;
+			case AudioFormat.MULAW:
+				waveform.length = src.length;
+				decodeMuLawStream(cast(const(ubyte)[])src, waveform, wp);
+				break;
+			case AudioFormat.ALAW:
+				waveform.length = src.length;
+				decodeALawStream(cast(const(ubyte)[])src, waveform, wp);
+				break;
+			default:
+				return;
+		}
+	}
+	public override draw() {
+		if (parent is null) return;
+		StyleSheet ss = getStyleSheet();
+		parent.clearArea(position);
+		parent.drawBox(position, 24);
+		real ratio = position.width / cast(real)waveform.length;
+		const int divident = ushort.max / position.height();
+		{
+			Point o = Point(0, position.height / 2);
+			parent.drawLine(position.cornerUL + o, position.cornerUR + o, 23);
+		}
+		for (int i ; i < position.width ; i++) {
+			Point p = 
+					Point(i + position.left, (waveform[cast(size_t)floor(i * ratio)]/divident) + position.top + (position.height / 2));
+			parent.drawLine(p, p, ss.getColor("text"));
+		}
+
+		if (isFocused) {
+			const int textPadding = ss.drawParameters["horizTextPadding"];
+			parent.drawBoxPattern(position - textPadding, ss.pattern["blackDottedLine"]);
+		}
+		if (state == ElementState.Disabled) {
+			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
+		}
+		if (onDraw !is null) {
+			onDraw();
+		}
+	}
+}
+
+public class SampleMan : Window {
+	ListView listView0;
+	Button button_load;
+	Button button_slice;
+	Button button_remove;
+	Label label_info;
+	Label label_format;
+	Label label_slmpR;
+	Label label_len;
+	//TextBox textBox0;
+	public this(){
+		super(Box(0, 0, 520, 322), "Sample manager");
+		listView0 = new ListView(new ListViewHeader(16, [40 ,250], ["ID" ,"file source"]), null, "listView0", Box(5, 20, 335, 185));
+		button_load = new Button("Load"d, "button0", Box(340, 20, 440, 40));
+		button_slice = new Button("Slice"d, "button1", Box(340, 45, 440, 65));
+		button_remove = new Button("Remove"d, "button0", Box(340, 70, 440, 90));
+		label_info = new Label("Info:"d, "label0", Box(340, 95, 500, 115));
+		label_format = new Label("Format:"d, "label1", Box(340, 118, 512, 138));
+		label_slmpR = new Label("Orig. samplerate:"d, "label2", Box(340, 140, 512, 160));
+		label_len = new Label("Length:"d, "label3", Box(340, 162, 512, 182));
+		//textBox0 = new TextBox("Placeholder"d, "textBox0", Box(4, 190, 516, 318));
+
+		addElement(listView0);
+		addElement(button_load);
+		addElement(button_slice);
+		addElement(button_remove);
+		addElement(label_info);
+		addElement(label_format);
+		addElement(label_slmpR);
+		addElement(label_len);
+	}
+}
+
+public class SliceDialog : Window {
+
+}
