@@ -129,6 +129,10 @@ public class ModuleConfig {
 							import pixelperfectengine.audio.modules.pcm8;
 							currMod = new PCM8();
 							break;
+						case "delaylines":
+							import pixelperfectengine.audio.modules.delaylines;
+							currMod = new DelayLines(t0.expectTagValue!int("priLen"), t0.expectTagValue!int("secLen"));
+							break;
 						default:
 							break;
 					}
@@ -139,6 +143,9 @@ public class ModuleConfig {
 							case "loadSample":
 								const string dpkSource = t1.getAttribute!string("dpk", null);
 								loadAudioFile(currMod, t1.values[1].get!int(), t1.values[0].get!string(), dpkSource);
+								break;
+							case "waveformSlice":
+								currMod.waveformSlice(t1.values[0].get!int, t1.values[1].get!int, t1.values[2].get!int, t1.values[3].get!int);
 								break;
 							case "presetRecall":
 								const int presetID = t1.values[0].get!int();
