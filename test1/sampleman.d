@@ -4,6 +4,7 @@ import pixelperfectengine.concrete.window;
 import pixelperfectengine.audio.base.types;
 import pixelperfectengine.audio.base.func;
 import std.math : floor;
+import std.conv;
 
 public class WaveformViewer : WindowElement {
 	int[] waveform;
@@ -81,9 +82,14 @@ public class SampleMan : Window {
 	Label label_format;
 	Label label_slmpR;
 	Label label_len;
+	WaveformViewer wfv;
+
+	string moduleName;
 	//TextBox textBox0;
-	public this(){
-		super(Box(0, 0, 520, 322), "Sample manager");
+	public this(string moduleName){
+		this.moduleName = moduleName;
+
+		super(Box(0, 0, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
 		listView0 = new ListView(new ListViewHeader(16, [40 ,250], ["ID" ,"file source"]), null, "listView0", Box(5, 20, 335, 185));
 		button_load = new Button("Load"d, "button0", Box(340, 20, 440, 40));
 		button_slice = new Button("Slice"d, "button1", Box(340, 45, 440, 65));
@@ -93,6 +99,7 @@ public class SampleMan : Window {
 		label_slmpR = new Label("Orig. samplerate:"d, "label2", Box(340, 140, 512, 160));
 		label_len = new Label("Length:"d, "label3", Box(340, 162, 512, 182));
 		//textBox0 = new TextBox("Placeholder"d, "textBox0", Box(4, 190, 516, 318));
+		wfv = new WaveformViewer("wfv", Box(4, 190, 516, 318));
 
 		addElement(listView0);
 		addElement(button_load);
@@ -103,8 +110,35 @@ public class SampleMan : Window {
 		addElement(label_slmpR);
 		addElement(label_len);
 	}
+	protected void button_load_onClick(Event ev) {
+
+	}
 }
 
 public class SliceDialog : Window {
+	Label label_newID;
+	Label label_from;
+	Label label_to;
+	TextBox textBox_newID;
+	TextBox textBox_from;
+	TextBox textBox_to;
+	Button button_create;
+	public this(){
+		super(Box.bySize(0,0,125,120), "Create new slice");
+		label_newID = new Label("New ID:", "label_newID", Box(5,20,55,40));
+		label_from = new Label("From:", "label_from", Box(5,45,55,65));
+		label_to = new Label("To:", "label_to", Box(5,70,55,90));
+		textBox_newID = new TextBox("", "textBox_newID", Box(55, 20, 120, 40));
+		textBox_from = new TextBox("", "textBox_from", Box(55, 45, 120, 65));
+		textBox_to = new TextBox("", "textBox_to", Box(55, 70, 120, 90));
+		button_create = new Button("Create", "button_create", Box(60, 95, 120, 115));
 
+		addElement(label_newID);
+		addElement(label_from);
+		addElement(label_to);
+		addElement(textBox_newID);
+		addElement(textBox_from);
+		addElement(textBox_to);
+		addElement(button_create);
+	}
 }
