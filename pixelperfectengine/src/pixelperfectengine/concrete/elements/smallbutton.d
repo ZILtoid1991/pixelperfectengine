@@ -2,13 +2,26 @@ module pixelperfectengine.concrete.elements.smallbutton;
 
 public import pixelperfectengine.concrete.elements.base;
 
+/**
+ * SmallButton is used to implement small buttons for toolbars, on window headers, etc.
+ * Icons contain the frame of the buttons, etc., and are recalled from the closest 
+ * available stylesheet.
+ */
 public class SmallButton : WindowElement, ISmallButton {
+	///Defines what icons will the button use for its states.
 	public string			iconPressed, iconUnpressed;
-	private bool			_isPressed;
-	//protected IRadioButtonGroup		radioButtonGroup;	//If set, the element works like a radio button
-
-	//public int brushPressed, brushNormal;
-
+	
+	/**
+	 * Creates an instance of SmallButton.
+	 * Params:
+	 *   iconPressed = the string ID of the icon to be shown when the button is pressed.
+	 *   iconUnpressed = the string ID of the icon to be shown when the button is not 
+	 * pressed.
+	 *   source = the source identifier passed in the event class.
+	 *   position = the position where the button will be drawn. If the button will be 
+	 * used as a window header button, you only need to set the size, since the final 
+	 * position will be set by the window itself.
+	 */
 	public this(string iconPressed, string iconUnpressed, string source, Box position){
 		this.position = position;
 
@@ -19,7 +32,8 @@ public class SmallButton : WindowElement, ISmallButton {
 		
 		
 	}
-	public override void draw(){
+	public override void draw() {
+		if (parent is null) return;
 		StyleSheet ss = getStyleSheet();
 		Bitmap8Bit icon = isPressed ? ss.getImage(iconPressed) : ss.getImage(iconUnpressed);
 		parent.bitBLT(position.cornerUL, icon);
@@ -38,6 +52,9 @@ public class SmallButton : WindowElement, ISmallButton {
 			onDraw();
 		}
 	}
+	/**
+	 * Returns true if the SmallButton is of size `height`, false otherwise.
+	 */
 	public bool isSmallButtonHeight(int height) {
 		if (position.width == height && position.height == height) return true;
 		else return false;
