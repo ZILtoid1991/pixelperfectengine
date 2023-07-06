@@ -113,6 +113,18 @@ public class SampleMan : Window {
 	protected void button_load_onClick(Event ev) {
 
 	}
+	protected void onSampleLoad(Event ev) {
+
+	}
+	protected void button_slice_onClick(Event ev) {
+
+	}
+	protected void onSliceCreate(int id, int begin, int end) {
+
+	}
+	protected void button_remove_onClick(Event ev) {
+
+	}
 }
 
 public class SliceDialog : Window {
@@ -123,7 +135,9 @@ public class SliceDialog : Window {
 	TextBox textBox_from;
 	TextBox textBox_to;
 	Button button_create;
-	public this(){
+	void delegate(int id, int begin, int end) onCreate;
+	public this(void delegate(int id, int begin, int end) onCreate) {
+		this.onCreate = onCreate;
 		super(Box.bySize(0,0,125,120), "Create new slice");
 		label_newID = new Label("New ID:", "label_newID", Box(5,20,55,40));
 		label_from = new Label("From:", "label_from", Box(5,45,55,65));
@@ -133,6 +147,10 @@ public class SliceDialog : Window {
 		textBox_to = new TextBox("", "textBox_to", Box(55, 70, 120, 90));
 		button_create = new Button("Create", "button_create", Box(60, 95, 120, 115));
 
+		textBox_newID.setFilter(TextInputFieldType.IntegerP);
+		textBox_from.setFilter(TextInputFieldType.IntegerP);
+		textBox_to.setFilter(TextInputFieldType.IntegerP);
+
 		addElement(label_newID);
 		addElement(label_from);
 		addElement(label_to);
@@ -140,5 +158,9 @@ public class SliceDialog : Window {
 		addElement(textBox_from);
 		addElement(textBox_to);
 		addElement(button_create);
+		button_create.onMouseLClick = &button_create_onClick;
+	}
+	protected void button_create_onClick(Event ev) {
+
 	}
 }
