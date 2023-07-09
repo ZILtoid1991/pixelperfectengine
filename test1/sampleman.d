@@ -111,13 +111,16 @@ public class SampleMan : Window {
 		addElement(label_len);
 	}
 	protected void button_load_onClick(Event ev) {
-
+		import pixelperfectengine.concrete.dialogs.filedialog;
+		handler.addWindow(new FileDialog("Add sample", "sampleLoad", &onSampleLoad, 
+				[FileDialog.FileAssociationDescriptor("Wave file", [".wav"]), 
+				FileDialog.FileAssociationDescriptor("Dialogic ADPCM file", [".vox", ".ad4"])]));
 	}
 	protected void onSampleLoad(Event ev) {
-
+		
 	}
 	protected void button_slice_onClick(Event ev) {
-
+		handler.addWindow(new SliceDialog(&onSliceCreate));
 	}
 	protected void onSliceCreate(int id, int begin, int end) {
 
@@ -161,6 +164,8 @@ public class SliceDialog : Window {
 		button_create.onMouseLClick = &button_create_onClick;
 	}
 	protected void button_create_onClick(Event ev) {
-
+		onCreate(to!int(textBox_newID.getText.toDString), to!int(textBox_from.getText.toDString), 
+				to!int(textBox_to.getText.toDString));
+		close();
 	}
 }
