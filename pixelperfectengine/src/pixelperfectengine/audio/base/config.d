@@ -297,11 +297,13 @@ public class ModuleConfig {
 	 */
 	protected void loadVocFile(AudioModule mod, int waveID, string path, string dataPak = null) {
 		import std.stdio : File;
+		import std.path : extension;
 		File f = File(path);
 		ubyte[] buf;
 		buf.length = cast(size_t)f.size();
 		f.rawRead(buf);
-		mod.waveformDataReceive(waveID, buf, WaveFormat(8000, 4000, AudioFormat.DIALOGIC_OKI_ADPCM, 1, 1, 4));
+		const int samplerate = extension(path) == ".voc" ? 8000 : 36_000;
+		mod.waveformDataReceive(waveID, buf, WaveFormat(samplerate, samplerate / 2, AudioFormat.DIALOGIC_OKI_ADPCM, 1, 1, 4));
 	}
 	/**
 	 * Edits a preset parameter.
@@ -586,6 +588,17 @@ public class ModuleConfig {
 				}
 			}
 		}
+		return result;
+	}
+	public void addWaveFile(string path, string modID) {
+
+	}
+	public auto getWaveFileList(string modID) {
+		struct WaveFileData {
+			int id;
+			string path;
+		}
+		WaveFileData[] result;
 		return result;
 	}
 }
