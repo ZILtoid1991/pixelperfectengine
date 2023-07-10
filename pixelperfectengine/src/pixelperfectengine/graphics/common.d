@@ -29,6 +29,9 @@ public struct Point {
 	bool opEquals(const Point other) @safe @nogc pure nothrow const {
 		return this.x == other.x && this.y == other.y;
 	}
+	public Point opBinary(string op, R)(const R rhs) const {
+		mixin("return Point(x " ~  op ~ " rhs.x , y " ~ op ~ "rhs.y);");
+	}
 }
 /**
  * Graphics primitive. Represents a box on a 2D field.
