@@ -43,7 +43,7 @@ public class WaveformViewer : WindowElement {
 				return;
 		}
 	}
-	public override draw() {
+	public override void draw() {
 		if (parent is null) return;
 		StyleSheet ss = getStyleSheet();
 		parent.clearArea(position);
@@ -112,9 +112,9 @@ public class SampleMan : Window {
 	}
 	protected void button_load_onClick(Event ev) {
 		import pixelperfectengine.concrete.dialogs.filedialog;
-		handler.addWindow(new FileDialog("Add sample", "sampleLoad", &onSampleLoad, 
+		handler.addWindow(new FileDialog("Add sample"d, "sampleLoad", &onSampleLoad, 
 				[FileDialog.FileAssociationDescriptor("Wave file", [".wav"]), 
-				FileDialog.FileAssociationDescriptor("Dialogic ADPCM file", [".vox", ".ad4"])]));
+				FileDialog.FileAssociationDescriptor("Dialogic ADPCM file", [".vox", ".ad4"])], "./"));
 	}
 	protected void onSampleLoad(Event ev) {
 		
