@@ -128,6 +128,12 @@ public abstract class AudioModule {
 	public uint[] getWaveformIDList() nothrow {
 		return null;
 	}
+	public uint[] getInternalWaveformIDList() nothrow {
+		return null;
+	}
+	public string[] getInternalWaveformNames() nothrow {
+		return null;
+	}
 	/**
 	 * Restores a parameter to the given preset.
 	 * Returns an errorcode on failure.

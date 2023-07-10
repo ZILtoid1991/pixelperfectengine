@@ -9,6 +9,7 @@ import collections.commons : defaultHash;
 
 import std.algorithm.searching : countUntil;
 import std.array : split;
+import std.conv : to;
 
 /** 
  * Module and audio routin configurator.
@@ -590,15 +591,110 @@ public class ModuleConfig {
 		}
 		return result;
 	}
-	public void addWaveFile(string path, string modID) {
-
+	public Tag addWaveFile(string path, string modID, int waveID, string dpkPath, string name) {
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					Attribute[] attr;
+					if (name.length) {
+						attr ~= new Attribute("name", Value(name));
+					}
+					if (dpkPath.length) {
+						attr ~= new Attribute("dpkPath", Value(dpkPath));
+					}
+					Tag t1 = new Tag(t0, null, "loadSample", [Value(path), Value(waveID)], attr);
+					return t1;
+				}
+			}
+		}
+		return null;
+	}
+	public Tag addWaveSlice(string modID, int waveID, int src, int pos, int len, string name) {
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					Attribute[] attr;
+					if (name.length) {
+						attr ~= new Attribute("name", Value(name));
+					}
+					Tag t1 = new Tag(t0, null, "waveformSlice", [Value(waveID), Value(src), Value(pos), Value(len)], attr);
+					return t1;
+				}
+			}
+		}
+		return null;
+	}
+	public void addWaveFromBackup(string modID, Tag backup) {
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					t0.add(backup);
+					return;
+				}
+			}
+		}
+	}
+	public Tag removeWave(string modID, int waveID) {
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					foreach (Tag t1 ; t0.tags) {
+						switch (t1.name) {
+							case "loadSample":
+								if (t1.values[1].get!int == waveID)
+									return t1.remove();
+								break;
+							case "waveformSlice":
+								if (t1.values[0].get!int == waveID)
+									return t1.remove();
+								break;
+							default: break;
+						}
+					}
+				}
+			}
+		}
+		return null;
 	}
 	public auto getWaveFileList(string modID) {
 		struct WaveFileData {
 			int id;
+			string dpkPath;
 			string path;
+			string name;
+			bool isSlice;
+			bool isInternal;
 		}
 		WaveFileData[] result;
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					foreach (Tag t1 ; t0.tags) {
+						switch (t1.name) {
+							case "loadSample":
+								result ~= WaveFileData(t1.values[1].get!int, t1.getAttribute!string("dpkPath"), t1.values[0].get!string, 
+										t1.getAttribute!string("name"), false, false);
+								break;
+							case "waveformSlice":
+								result ~= WaveFileData(t1.values[0].get!int, null, "SLICE FROM:" ~ to!string(t1.values[1].get!int), 
+										t1.getAttribute!string("name"), true, false);
+								break;
+							default: break;
+						}
+					}
+					AudioModule m = getModule(modID);
+					if (m !is null) {
+						uint[] internalIDList = m.getInternalWaveformIDList();
+						string[] internalNameList = m.getInternalWaveformNames();
+						assert (internalIDList.length == internalNameList.length);
+						for (int i ; i < internalIDList.length ; i++) {
+							result ~= WaveFileData(internalIDList[i], null, "INTERNAL", internalNameList[i], false, true);
+						}
+					}
+					return result;
+				}
+			}
+		}
 		return result;
 	}
 }
