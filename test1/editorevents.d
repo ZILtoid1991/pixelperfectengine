@@ -177,3 +177,12 @@ public class RemovePresetEvent : UndoableEvent {
 		mcfg.addPreset(modID, backup);
 	}
 }
+public class AddSampleFile : UndoableEvent {
+
+}
+public class AddSampleSlice : UndoableEvent {
+
+}
+public class RemoveSample : UndoableEvent {
+	
+}
