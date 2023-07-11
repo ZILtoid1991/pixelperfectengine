@@ -289,7 +289,7 @@ public class ModuleConfig {
 				f.header.bytesPerSample, f.header.bitsPerSample));
 	}
 	/**
-	 * Loads a Dialogic ADPCM (voc) file into a module.
+	 * Loads a Dialogic ADPCM (voc/af4) file into a module.
 	 * Params:
 	 *  mod = The module, that needs the waveform data.
 	 *  waveID = The waveform ID. Conflicting waveforms will be automatically overwitten.
@@ -591,6 +591,16 @@ public class ModuleConfig {
 		}
 		return result;
 	}
+	/**
+	 * Adds a wave file to the given module.
+	 * Params:
+	 *   path = the path of the wave file.
+	 *   modID = the ID of the module, that will use the wave file.
+	 *   waveID = the ID of the waveform to be loaded.
+	 *   dpkPath = path to the DataPak file if there's one.
+	 *   name = name of the waveform if there's one specified.
+	 * Returns: The tag that was added to the configuration file, or null on error.
+	 */
 	public Tag addWaveFile(string path, string modID, int waveID, string dpkPath, string name) {
 		foreach (Tag t0 ; root.tags) {
 			if (t0.name == "module") {
@@ -609,6 +619,16 @@ public class ModuleConfig {
 		}
 		return null;
 	}
+	/**
+	 * Creates a waveform from another by slicing.
+	 * Params:
+	 *   modID = ID of the target module.
+	 *   waveID = ID of the new waveform.
+	 *   src = ID of the source waveform.
+	 *   pos = Position of the beginning of the slice.
+	 *   len = Length of the slice.
+	 * Returns: The tag that was added to the configuration file, or null on error.
+	 */
 	public Tag addWaveSlice(string modID, int waveID, int src, int pos, int len, string name) {
 		foreach (Tag t0 ; root.tags) {
 			if (t0.name == "module") {
@@ -624,6 +644,9 @@ public class ModuleConfig {
 		}
 		return null;
 	}
+	/**
+	 * Adds a waveform data tag from `backup` to the module described by `modID`.
+	 */
 	public void addWaveFromBackup(string modID, Tag backup) {
 		foreach (Tag t0 ; root.tags) {
 			if (t0.name == "module") {
@@ -634,6 +657,10 @@ public class ModuleConfig {
 			}
 		}
 	}
+	/**
+	 * Removes a waveform identified by `waveID` from the module described by `modID`,
+	 * then returns the configuration tag as backup. Returns null if module and/or waveform not found.
+	 */
 	public Tag removeWave(string modID, int waveID) {
 		foreach (Tag t0 ; root.tags) {
 			if (t0.name == "module") {
@@ -656,6 +683,9 @@ public class ModuleConfig {
 		}
 		return null;
 	}
+	/**
+	 * Returns the waveform list belonging to the audio module identified by `modID`.
+	 */
 	public auto getWaveFileList(string modID) {
 		struct WaveFileData {
 			int id;
