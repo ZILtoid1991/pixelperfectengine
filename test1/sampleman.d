@@ -3,6 +3,7 @@ module test1.sampleman;
 import pixelperfectengine.concrete.window;
 import pixelperfectengine.audio.base.types;
 import pixelperfectengine.audio.base.func;
+import pixelperfectengine.audio.base.config;
 import std.math : floor;
 import std.conv;
 
@@ -74,7 +75,7 @@ public class WaveformViewer : WindowElement {
 }
 
 public class SampleMan : Window {
-	ListView listView0;
+	ListView listView_sampleList;
 	Button button_load;
 	Button button_slice;
 	Button button_remove;
@@ -84,13 +85,17 @@ public class SampleMan : Window {
 	Label label_len;
 	WaveformViewer wfv;
 
+	WaveFileData[] waveFileData;
+	string path;
+
 	string moduleName;
 	//TextBox textBox0;
 	public this(string moduleName){
 		this.moduleName = moduleName;
 
 		super(Box(0, 0, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
-		listView0 = new ListView(new ListViewHeader(16, [40 ,250], ["ID" ,"file source"]), null, "listView0", Box(5, 20, 335, 185));
+		listView_sampleList = new ListView(new ListViewHeader(16, [40 ,250], ["ID" ,"file source"]), null, "listView0", 
+				Box(5, 20, 335, 185));
 		button_load = new Button("Load"d, "button0", Box(340, 20, 440, 40));
 		button_slice = new Button("Slice"d, "button1", Box(340, 45, 440, 65));
 		button_remove = new Button("Remove"d, "button0", Box(340, 70, 440, 90));
@@ -101,7 +106,7 @@ public class SampleMan : Window {
 		//textBox0 = new TextBox("Placeholder"d, "textBox0", Box(4, 190, 516, 318));
 		wfv = new WaveformViewer("wfv", Box(4, 190, 516, 318));
 
-		addElement(listView0);
+		addElement(listView_sampleList);
 		addElement(button_load);
 		addElement(button_slice);
 		addElement(button_remove);
@@ -110,6 +115,9 @@ public class SampleMan : Window {
 		addElement(label_slmpR);
 		addElement(label_len);
 	}
+	protected void refreshSampleList() {
+
+	}
 	protected void button_load_onClick(Event ev) {
 		import pixelperfectengine.concrete.dialogs.filedialog;
 		handler.addWindow(new FileDialog("Add sample"d, "sampleLoad", &onSampleLoad, 
@@ -117,7 +125,20 @@ public class SampleMan : Window {
 				FileDialog.FileAssociationDescriptor("Dialogic ADPCM file", [".vox", ".ad4"])], "./"));
 	}
 	protected void onSampleLoad(Event ev) {
-		
+		import pixelperfectengine.concrete.dialogs.textinputdialog;
+		FileEvent fev = cast(FileEvent)ev;
+		path = fev.getFullPath();
+		handler.addWindow(new TextInputDialog(Box.bySize(0, 0, 500, 120), &onSampleCreate, "sampleID", "Add sample", 
+				"Sample ID?"));
+	}
+	protected void onSampleCreate(Text tx) {
+		try {
+			int sampleID = to!int(tx.toDString);
+			//check if sample exists
+			
+		} catch (Exception e) {
+
+		}
 	}
 	protected void button_slice_onClick(Event ev) {
 		handler.addWindow(new SliceDialog(&onSliceCreate));
