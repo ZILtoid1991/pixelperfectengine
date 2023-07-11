@@ -686,15 +686,7 @@ public class ModuleConfig {
 	/**
 	 * Returns the waveform list belonging to the audio module identified by `modID`.
 	 */
-	public auto getWaveFileList(string modID) {
-		struct WaveFileData {
-			int id;
-			string dpkPath;
-			string path;
-			string name;
-			bool isSlice;
-			bool isInternal;
-		}
+	public WaveFileData[] getWaveFileList(string modID) {
 		WaveFileData[] result;
 		foreach (Tag t0 ; root.tags) {
 			if (t0.name == "module") {
@@ -727,4 +719,12 @@ public class ModuleConfig {
 		}
 		return result;
 	}
+}
+struct WaveFileData {
+	int id;
+	string dpkPath;
+	string path;
+	string name;
+	bool isSlice;
+	bool isInternal;
 }
