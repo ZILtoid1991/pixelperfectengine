@@ -128,9 +128,11 @@ public abstract class AudioModule {
 	public uint[] getWaveformIDList() nothrow {
 		return null;
 	}
+	///Returns the list of internal waveform IDs if there are any.
 	public uint[] getInternalWaveformIDList() nothrow {
 		return null;
 	}
+	///Returns the names of the internal waveforms if there are any.
 	public string[] getInternalWaveformNames() nothrow {
 		return null;
 	}
