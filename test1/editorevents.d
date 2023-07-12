@@ -178,11 +178,72 @@ public class RemovePresetEvent : UndoableEvent {
 	}
 }
 public class AddSampleFile : UndoableEvent {
-
+	ModuleConfig mcfg;
+	string modID;
+	int sampleID;
+	string path;
+	Tag backup;
+	public this (ModuleConfig mcfg, string modID, int sampleID, string path, Tag backup) {
+		this.mcfg = mcfg;
+		this.modID = modID;
+		this.sampleID = sampleID;
+		this.path = path;
+		this.backup = backup;
+	}
+	public void redo() {
+		if (backup is null) {
+			mcfg.addWaveFile(path, modID, sampleID, null, null);
+		} else {
+			mcfg.addWaveFromBackup(path, backup);
+		}
+	}
+	public void undo() {
+		backup = mcfg.removeWave(modID, sampleID);
+	}
 }
 public class AddSampleSlice : UndoableEvent {
-
+	ModuleConfig mcfg;
+	string modID;
+	int sampleID;
+	int src;
+	int begin;
+	int len;
+	Tag backup;
+	public this (ModuleConfig mcfg, string modID, int sampleID, int src, int begin, int len, Tag backup) {
+		this.mcfg = mcfg;
+		this.modID = modID;
+		this.sampleID = sampleID;
+		this.src = src;
+		this.begin = begin;
+		this.len = len;
+		this.backup = backup;
+	}
+	public void redo() {
+		if (backup is null) {
+			mcfg.addWaveSlice(modID, sampleID, src, begin, len, null);
+		} else {
+			mcfg.addWaveFromBackup(path, backup);
+		}
+	}
+	public void undo() {
+		backup = mcfg.removeWave(modID, sampleID);
+	}
 }
 public class RemoveSample : UndoableEvent {
-	
+	ModuleConfig mcfg;
+	string modID;
+	int sampleID;
+	Tag backup;
+	public this (ModuleConfig mcfg, string modID, int sampleID, Tag backup) {
+		this.mcfg = mcfg;
+		this.modID = modID;
+		this.sampleID = sampleID;
+		this.backup = backup;
+	}
+	public void redo() {
+		backup = mcfg.removeWave(modID, sampleID);
+	}
+	public void undo() {
+		mcfg.addWaveFromBackup(path, backup);
+	}
 }

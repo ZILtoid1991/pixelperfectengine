@@ -6,6 +6,7 @@ import pixelperfectengine.audio.base.func;
 import pixelperfectengine.audio.base.config;
 import std.math : floor;
 import std.conv;
+import test1.app;
 
 public class WaveformViewer : WindowElement {
 	int[] waveform;
@@ -84,13 +85,15 @@ public class SampleMan : Window {
 	Label label_slmpR;
 	Label label_len;
 	WaveformViewer wfv;
+	
+	AudioDevKit adk;
 
 	WaveFileData[] waveFileData;
 	string path;
 
 	string moduleName;
 	//TextBox textBox0;
-	public this(string moduleName){
+	public this(string moduleName, AudioDevKit adk){
 		this.moduleName = moduleName;
 
 		super(Box(0, 0, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
