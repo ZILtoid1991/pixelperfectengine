@@ -183,12 +183,11 @@ public class AddSampleFile : UndoableEvent {
 	int sampleID;
 	string path;
 	Tag backup;
-	public this (ModuleConfig mcfg, string modID, int sampleID, string path, Tag backup) {
+	public this (ModuleConfig mcfg, string modID, int sampleID, string path) {
 		this.mcfg = mcfg;
 		this.modID = modID;
 		this.sampleID = sampleID;
 		this.path = path;
-		this.backup = backup;
 	}
 	public void redo() {
 		if (backup is null) {
@@ -209,14 +208,13 @@ public class AddSampleSlice : UndoableEvent {
 	int begin;
 	int len;
 	Tag backup;
-	public this (ModuleConfig mcfg, string modID, int sampleID, int src, int begin, int len, Tag backup) {
+	public this (ModuleConfig mcfg, string modID, int sampleID, int src, int begin, int len) {
 		this.mcfg = mcfg;
 		this.modID = modID;
 		this.sampleID = sampleID;
 		this.src = src;
 		this.begin = begin;
 		this.len = len;
-		this.backup = backup;
 	}
 	public void redo() {
 		if (backup is null) {
@@ -234,11 +232,10 @@ public class RemoveSample : UndoableEvent {
 	string modID;
 	int sampleID;
 	Tag backup;
-	public this (ModuleConfig mcfg, string modID, int sampleID, Tag backup) {
+	public this (ModuleConfig mcfg, string modID, int sampleID) {
 		this.mcfg = mcfg;
 		this.modID = modID;
 		this.sampleID = sampleID;
-		this.backup = backup;
 	}
 	public void redo() {
 		backup = mcfg.removeWave(modID, sampleID);

@@ -7,6 +7,7 @@ import pixelperfectengine.audio.base.config;
 import std.math : floor;
 import std.conv;
 import test1.app;
+import test1.editorevents;
 
 public class WaveformViewer : WindowElement {
 	int[] waveform;
@@ -93,8 +94,9 @@ public class SampleMan : Window {
 
 	string moduleName;
 	//TextBox textBox0;
-	public this(string moduleName, AudioDevKit adk){
-		this.moduleName = moduleName;
+	public this(AudioDevKit adk){
+		moduleName = selectedModID;
+		this.adk = adk;
 
 		super(Box(0, 0, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
 		listView_sampleList = new ListView(new ListViewHeader(16, [40 ,250], ["ID" ,"file source"]), null, "listView0", 
@@ -136,9 +138,12 @@ public class SampleMan : Window {
 	}
 	protected void onSampleCreate(Text tx) {
 		try {
-			int sampleID = to!int(tx.toDString);
+			const int sampleID = to!int(tx.toDString);
 			//check if sample exists
-			
+			foreach (WaveFileData key; waveFileData) {
+				if (key.id == sampleID) return;
+			}
+			adk.eventStack.addToTop(new AddSampleFile(adk.mcfg, moduleName, sampleID, path));
 		} catch (Exception e) {
 
 		}
@@ -147,7 +152,11 @@ public class SampleMan : Window {
 		handler.addWindow(new SliceDialog(&onSliceCreate));
 	}
 	protected void onSliceCreate(int id, int begin, int end) {
-
+		if (listView_sampleList >= 0) {
+			const int src = waveFileData[listView_sampleList.value];
+			const int len = end - begin;
+			adk.eventStack.addToTop(new AddSampleSlice(adk.mcfg, moduleName, id, begin, len));
+		}
 	}
 	protected void button_remove_onClick(Event ev) {
 
