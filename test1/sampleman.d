@@ -121,7 +121,7 @@ public class SampleMan : Window {
 		addElement(label_len);
 	}
 	protected void refreshSampleList() {
-
+		waveFileData = adk.mcfg.getWaveFileList(moduleName);
 	}
 	protected void button_load_onClick(Event ev) {
 		import pixelperfectengine.concrete.dialogs.filedialog;
