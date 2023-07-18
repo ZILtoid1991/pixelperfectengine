@@ -159,7 +159,10 @@ public class SampleMan : Window {
 		}
 	}
 	protected void button_remove_onClick(Event ev) {
-
+		if (listView_sampleList >= 0) {
+			const int selID = waveFileData[listView_sampleList.value];
+			adk.eventStack.addToTop(new RemoveSample(adk.mcfg, moduleName, selID));
+		}
 	}
 }
 
