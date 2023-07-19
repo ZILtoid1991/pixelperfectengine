@@ -449,7 +449,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		return entries.length;
 	}
 	/**
-	 * Returns the number of the selected item.
+	 * Returns the number of the selected item, or minus one if nothing is selected.
 	 */
 	public @property int value() @nogc @safe pure nothrow const {
 		return selection;
