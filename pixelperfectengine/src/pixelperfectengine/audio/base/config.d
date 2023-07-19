@@ -720,11 +720,14 @@ public class ModuleConfig {
 		return result;
 	}
 }
+/**
+ * Implements a structure for wave file data storage.
+ */
 struct WaveFileData {
-	int id;
-	string dpkPath;
-	string path;
-	string name;
-	bool isSlice;
-	bool isInternal;
+	int id;				//Waveform ID.
+	string dpkPath;		//DataPak file path if exists, null otherwise.
+	string path;		//Path to the source file, null if slice of internal.
+	string name;		//Name of the waveform.
+	bool isSlice;		//True if waveform is a slice of another one.
+	bool isInternal;	//True if waveform is internal to the module.
 }
