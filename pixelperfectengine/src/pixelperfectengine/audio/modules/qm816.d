@@ -762,9 +762,8 @@ public class QM816 : AudioModule {
 		Ch				channel;		///Channel common values
 	}
 	///Contains the wavetables for the operators and LFOs.
-	///Value might be divided to limit the values between 2047 and -2048 via bitshifting,
-	///otherwise the full range can be used for audio output, etc.
 	///Loaded from a 16 bit wave file.
+	///Full range is used for extra precision.
 	protected short[1024][128]	wavetables;
 	///Stores presets.
 	///8 banks of 128 presets are available for a total of 1024.
@@ -1052,7 +1051,23 @@ public class QM816 : AudioModule {
 		for (int i = 0; i < result.length ; i++) {
 			result[i] = i;
 		}
-		return null;
+		return result;
+	}
+	///Returns the list of internal waveform IDs if there are any.
+	public override uint[] getInternalWaveformIDList() nothrow {
+		uint[] result;
+		result.length = 33;
+		for (int i = 0; i < result.length ; i++) {
+			result[i] = i;
+		}
+		return result;
+	}
+	///Returns the names of the internal waveforms if there are any.
+	public override string[] getInternalWaveformNames() nothrow {
+		return ["Sine", "Half Sine", "Full Sine", "Pulse Sine", "75% Sine", "25% Sine", "Alt Pulse Sine", "Alt Sine", 
+				"Camel Sine", "Var Sine 0", "Var Sine 1", "Var Sine 2", "Var Sine 3", "Var Sine 4", "Var Sine 5", "Var Sine 6", 
+				"Var Sine 7", "Pulse 75%", "Pulse 50%", "Pulse 25%", "Pulse 12.5%", "Pulse 10%", "Pulse 5%", "Ramp", "Morphed Ramp",
+				"Triangle", "Morphed Saw", "Saw", "Int Ramp", "Int M Ramp", "Int Tri", "Int M Saw", "Int Saw"];
 	}
 	/**
 	 * MIDI 2.0 data received here.
