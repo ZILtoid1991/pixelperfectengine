@@ -193,7 +193,7 @@ public class AddSampleFile : UndoableEvent {
 		if (backup is null) {
 			mcfg.addWaveFile(path, modID, sampleID, null, null);
 		} else {
-			mcfg.addWaveFromBackup(path, backup);
+			mcfg.addWaveFromBackup(modID, backup);
 		}
 	}
 	public void undo() {
@@ -220,7 +220,7 @@ public class AddSampleSlice : UndoableEvent {
 		if (backup is null) {
 			mcfg.addWaveSlice(modID, sampleID, src, begin, len, null);
 		} else {
-			mcfg.addWaveFromBackup(path, backup);
+			mcfg.addWaveFromBackup(modID, backup);
 		}
 	}
 	public void undo() {
@@ -241,6 +241,6 @@ public class RemoveSample : UndoableEvent {
 		backup = mcfg.removeWave(modID, sampleID);
 	}
 	public void undo() {
-		mcfg.addWaveFromBackup(path, backup);
+		mcfg.addWaveFromBackup(modID, backup);
 	}
 }
