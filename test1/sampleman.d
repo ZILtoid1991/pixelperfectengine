@@ -95,7 +95,7 @@ public class SampleMan : Window {
 	string moduleName;
 	//TextBox textBox0;
 	public this(AudioDevKit adk){
-		moduleName = selectedModID;
+		moduleName = adk.selectedModID;
 		this.adk = adk;
 
 		super(Box(0, 0, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
@@ -152,15 +152,15 @@ public class SampleMan : Window {
 		handler.addWindow(new SliceDialog(&onSliceCreate));
 	}
 	protected void onSliceCreate(int id, int begin, int end) {
-		if (listView_sampleList >= 0) {
-			const int src = waveFileData[listView_sampleList.value];
+		if (listView_sampleList.value >= 0) {
+			const int src = waveFileData[listView_sampleList.value].id;
 			const int len = end - begin;
-			adk.eventStack.addToTop(new AddSampleSlice(adk.mcfg, moduleName, id, begin, len));
+			adk.eventStack.addToTop(new AddSampleSlice(adk.mcfg, moduleName, src, id, begin, len));
 		}
 	}
 	protected void button_remove_onClick(Event ev) {
-		if (listView_sampleList >= 0) {
-			const int selID = waveFileData[listView_sampleList.value];
+		if (listView_sampleList.value >= 0) {
+			const int selID = waveFileData[listView_sampleList.value].id;
 			adk.eventStack.addToTop(new RemoveSample(adk.mcfg, moduleName, selID));
 		}
 	}
