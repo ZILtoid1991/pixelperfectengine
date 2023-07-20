@@ -244,3 +244,22 @@ public class RemoveSample : UndoableEvent {
 		mcfg.addWaveFromBackup(modID, backup);
 	}
 }
+public class RenameSample : UndoableEvent {
+	ModuleConfig mcfg;
+	string modID;
+	int sampleID;
+	string newName;
+	string oldName;
+	public this (ModuleConfig mcfg, string modID, int sampleID, string newName) {
+		this.mcfg = mcfg;
+		this.modID = modID;
+		this.sampleID = sampleID;
+		this.newName = newName;
+	}
+	public void redo() {
+		oldName = mcfg.renameWave(modID, sampleID, newName);
+	}
+	public void undo() {
+		mcfg.renameWave(modID, sampleID, oldName);
+	}
+}

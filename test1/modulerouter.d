@@ -14,7 +14,7 @@ public class ModuleRouter : Window {
 	Button button_addMod;
 	Button button_remMod;
 	Button button_preset;
-	Button button_setup;
+	Button button_sampleman;
 	Button button_audNode;
 	Button button_midiNode;
 	Button button_remNode;
@@ -28,7 +28,7 @@ public class ModuleRouter : Window {
 		button_addMod = new Button("Add module..."d, "button_addMod", Box(535, 20, 635, 40));
 		button_remMod = new Button("Remove module"d, "button_remMod", Box(535, 45, 635, 65));
 		button_preset = new Button("Presets..."d, "button_preset", Box(535, 70, 635, 90));
-		button_setup = new Button("Settings..."d, "button_setup", Box(535, 95, 635, 115));
+		button_sampleman = new Button("Samples..."d, "button_samples", Box(535, 95, 635, 115));
 		button_audNode = new Button("Add audio node"d, "button_audNode", Box(535, 180, 635, 200));
 		//button_midiNode = new Button("Add MIDI node"d, "button1", Box(535, 205, 635, 225));
 		button_remNode = new Button("Remove node"d, "button_remNode", Box(535, 205, 635, 225));
@@ -45,7 +45,7 @@ public class ModuleRouter : Window {
 		addElement(listView_routing);
 		addElement(button_addMod);
 		addElement(button_remMod);
-		addElement(button_setup);
+		addElement(button_sampleman);
 		addElement(button_preset);
 		addElement(button_audNode);
 		//addElement(button_midiNode);
@@ -100,6 +100,10 @@ public class ModuleRouter : Window {
 		listView_routing ~= new ListViewItem(16, ["!NONE!", "!NONE!"], 
 				[TextInputFieldType.ASCIIText, TextInputFieldType.ASCIIText]);
 		listView_routing.refresh();
+	}
+	private void button_sampleman_onClick(Event e) {
+		import test1.sampleman;
+		adk.wh.addWindow(new SampleMan(adk));
 	}
 	private void listView_modules_onTextEdit(Event e) {
 		//CellEditEvent ce = cast(CellEditEvent)e;

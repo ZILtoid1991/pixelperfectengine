@@ -17,7 +17,7 @@ public class WaveformViewer : WindowElement {
 	}
 	public void setWaveform(const(ubyte)[] src, WaveFormat fmt) {
 		DecoderWorkpad wp;
-		switch (fmt.format) {		//Hope this branching won't impact performance too much
+		switch (fmt.format) {		
 			case AudioFormat.PCM:
 				if (fmt.bitsPerSample == 8) {
 					waveform.length = src.length;
@@ -51,21 +51,23 @@ public class WaveformViewer : WindowElement {
 		StyleSheet ss = getStyleSheet();
 		parent.clearArea(position);
 		parent.drawBox(position, 24);
-		real ratio = position.width / cast(real)waveform.length;
-		const int divident = ushort.max / position.height();
-		{
-			Point o = Point(0, position.height / 2);
-			parent.drawLine(position.cornerUL + o, position.cornerUR + o, 23);
-		}
-		for (int i ; i < position.width ; i++) {
-			Point p = 
-					Point(i + position.left, (waveform[cast(size_t)floor(i * ratio)]/divident) + position.top + (position.height / 2));
-			parent.drawLine(p, p, ss.getColor("text"));
-		}
+		if (waveform.length) {
+			real ratio = position.width / cast(real)waveform.length;
+			const int divident = ushort.max / position.height();
+			{
+				Point o = Point(0, position.height / 2);
+				parent.drawLine(position.cornerUL + o, position.cornerUR + o, 23);
+			}
+			for (int i ; i < position.width ; i++) {
+				Point p = 
+						Point(i + position.left, (waveform[cast(size_t)floor(i * ratio)]/divident) + position.top + (position.height / 2));
+				parent.drawLine(p, p, ss.getColor("text"));
+			}
 
-		if (isFocused) {
-			const int textPadding = ss.drawParameters["horizTextPadding"];
-			parent.drawBoxPattern(position - textPadding, ss.pattern["blackDottedLine"]);
+			if (isFocused) {
+				const int textPadding = ss.drawParameters["horizTextPadding"];
+				parent.drawBoxPattern(position - textPadding, ss.pattern["blackDottedLine"]);
+			}
 		}
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
@@ -94,13 +96,13 @@ public class SampleMan : Window {
 
 	string moduleName;
 	//TextBox textBox0;
-	public this(AudioDevKit adk){
+	public this(AudioDevKit adk) {
 		moduleName = adk.selectedModID;
 		this.adk = adk;
 
 		super(Box(0, 0, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
-		listView_sampleList = new ListView(new ListViewHeader(16, [40 ,250], ["ID" ,"file source"]), null, "listView0", 
-				Box(5, 20, 335, 185));
+		listView_sampleList = new ListView(new ListViewHeader(16, [40, 120, 250], ["ID" ,"name" ,"file source"]), null, 
+				"listView0", Box(5, 20, 335, 185));
 		button_load = new Button("Load"d, "button0", Box(340, 20, 440, 40));
 		button_slice = new Button("Slice"d, "button1", Box(340, 45, 440, 65));
 		button_remove = new Button("Remove"d, "button0", Box(340, 70, 440, 90));
@@ -119,9 +121,40 @@ public class SampleMan : Window {
 		addElement(label_format);
 		addElement(label_slmpR);
 		addElement(label_len);
+
+		button_load.onMouseLClick = &button_load_onClick;
+		button_slice.onMouseLClick = &button_slice_onClick;
+		button_remove.onMouseLClick = &button_remove_onClick;
+		listView_sampleList.onItemSelect = &listView_sampleList_onSelect;
+		listView_sampleList.onTextInput = &listView_sampleList_onTextEdit;
+		listView_sampleList.editEnable = true;
+
+		refreshSampleList();
 	}
 	protected void refreshSampleList() {
 		waveFileData = adk.mcfg.getWaveFileList(moduleName);
+		listView_sampleList.clear();
+		foreach (WaveFileData key; waveFileData) {
+			listView_sampleList ~= new ListViewItem(16, [to!dstring(key.id), to!dstring(key.name), to!dstring(key.path)], 
+					[TextInputFieldType.None, TextInputFieldType.ASCIIText, TextInputFieldType.None]);
+		}
+		listView_sampleList.refresh();
+	}
+	protected void listView_sampleList_onSelect(Event ev) {
+		if (listView_sampleList.value >= 0) {
+			import pixelperfectengine.audio.base.modulebase;
+			ModuleConfig mcfg = adk.mcfg;
+			AudioModule am = mcfg.getModule(moduleName);
+			wfv.setWaveform(am.getWaveformData(listView_sampleList.value), am.getWaveformDataFormat(listView_sampleList.value));
+			wfv.draw();
+		}
+	}
+	protected void listView_sampleList_onTextEdit(Event ev) {
+		CellEditEvent cev = cast(CellEditEvent)ev;
+		if (listView_sampleList.value >= 0) {
+			WaveFileData wfd = waveFileData[listView_sampleList.value];
+			adk.eventStack.addToTop(new RenameSample(adk.mcfg, moduleName, wfd.id, to!string(cev.text.toDString)));
+		}
 	}
 	protected void button_load_onClick(Event ev) {
 		import pixelperfectengine.concrete.dialogs.filedialog;
@@ -144,6 +177,7 @@ public class SampleMan : Window {
 				if (key.id == sampleID) return;
 			}
 			adk.eventStack.addToTop(new AddSampleFile(adk.mcfg, moduleName, sampleID, path));
+			refreshSampleList();
 		} catch (Exception e) {
 
 		}
@@ -156,12 +190,14 @@ public class SampleMan : Window {
 			const int src = waveFileData[listView_sampleList.value].id;
 			const int len = end - begin;
 			adk.eventStack.addToTop(new AddSampleSlice(adk.mcfg, moduleName, src, id, begin, len));
+			refreshSampleList();
 		}
 	}
 	protected void button_remove_onClick(Event ev) {
 		if (listView_sampleList.value >= 0) {
 			const int selID = waveFileData[listView_sampleList.value].id;
 			adk.eventStack.addToTop(new RemoveSample(adk.mcfg, moduleName, selID));
+			refreshSampleList();
 		}
 	}
 }
