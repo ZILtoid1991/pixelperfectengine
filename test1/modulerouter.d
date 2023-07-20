@@ -35,6 +35,7 @@ public class ModuleRouter : Window {
 		button_addMod.onMouseLClick = &button_addMod_onClick;
 		button_audNode.onMouseLClick = &button_addNode_onClick;
 		button_preset.onMouseLClick = &button_preset_onClick;
+		button_sampleman.onMouseLClick = &button_sampleman_onClick;
 		listView_modules.editEnable = true;
 		listView_modules.onTextInput = &listView_modules_onTextEdit;
 		listView_modules.onItemSelect = &listView_modules_onItemSelect;

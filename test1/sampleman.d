@@ -52,7 +52,7 @@ public class WaveformViewer : WindowElement {
 		parent.clearArea(position);
 		parent.drawBox(position, 24);
 		if (waveform.length) {
-			real ratio = position.width / cast(real)waveform.length;
+			real ratio = cast(real)waveform.length / position.width;
 			const int divident = ushort.max / position.height();
 			{
 				Point o = Point(0, position.height / 2);
@@ -61,7 +61,7 @@ public class WaveformViewer : WindowElement {
 			for (int i ; i < position.width ; i++) {
 				Point p = 
 						Point(i + position.left, (waveform[cast(size_t)floor(i * ratio)]/divident) + position.top + (position.height / 2));
-				parent.drawLine(p, p, ss.getColor("text"));
+				parent.drawLine(p, p, 0x1F);
 			}
 
 			if (isFocused) {
@@ -121,6 +121,7 @@ public class SampleMan : Window {
 		addElement(label_format);
 		addElement(label_slmpR);
 		addElement(label_len);
+		addElement(wfv);
 
 		button_load.onMouseLClick = &button_load_onClick;
 		button_slice.onMouseLClick = &button_slice_onClick;
