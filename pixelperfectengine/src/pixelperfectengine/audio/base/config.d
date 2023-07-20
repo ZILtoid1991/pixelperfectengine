@@ -683,6 +683,42 @@ public class ModuleConfig {
 		}
 		return null;
 	}
+	public string renameWave(string modID, int waveID, string newName) {
+		string oldName;
+		foreach (Tag t0 ; root.tags) {
+			if (t0.name == "module") {
+				if (t0.values[1] == modID) {
+					foreach (Tag t1 ; t0.tags) {
+						void doThing() {
+							if (t1.getAttribute!string("name")) {
+								oldName = t1.getAttribute!string("name");
+								t1.attributes["name"][0].remove;
+							}
+							if (newName.length) {
+								t1.add(new Attribute("name", Value(newName)));
+							}
+						}
+						switch (t1.name) {
+							case "loadSample":
+								if (t1.values[1].get!int == waveID) {
+									doThing();
+									return oldName;
+								}
+								break;
+							case "waveformSlice":
+								if (t1.values[0].get!int == waveID) {
+									doThing();
+									return oldName;
+								}
+								break;
+							default: break;
+						}
+					}
+				}
+			}
+		}
+		return oldName;
+	}
 	/**
 	 * Returns the waveform list belonging to the audio module identified by `modID`.
 	 */
