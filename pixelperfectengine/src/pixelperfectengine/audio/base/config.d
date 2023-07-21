@@ -683,6 +683,15 @@ public class ModuleConfig {
 		}
 		return null;
 	}
+	/**
+	 * Renames a wave file definition.
+	 * Does not affect internal waves if they're overridden.
+	 * Params:
+	 *   modID = module ID.
+	 *   waveID = Waveform ID.
+	 *   newName = The new name for the waveform.
+	 * Returns: The old name if there's any.
+	 */
 	public string renameWave(string modID, int waveID, string newName) {
 		string oldName;
 		foreach (Tag t0 ; root.tags) {

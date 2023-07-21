@@ -31,9 +31,7 @@ supplied with the synth's code.
 
 To do:
 * Implement glissando/legato support.
-* Find an interpolation algorithm that is better than linear and can work in this case,
-and isn't just either some DLL or Python code, that was so strictly designed to work 
-with predefined datasets, that it's hard or impossible to rework to this kind of usecase.
+* Maybe replace the interpolation filter later on.
 */
 public class QM816 : AudioModule {
 	shared static this() {
@@ -184,7 +182,7 @@ public class QM816 : AudioModule {
 		import pixelperfectengine.system.etc : clamp;
 		short[1024] result;
 		for (int i ; i < input.length ; i++) {
-			result[i] = cast(short)((input[i] * input[i] * (input[i] < 0 ? -1 : 1))>>16);
+			result[i] = cast(short)((input[i] * input[i] * (input[i] < 0 ? -1 : 1))>>15);
 		}
 		return result;
 	}
@@ -868,9 +866,9 @@ public class QM816 : AudioModule {
 			waveformDataReceive(5, reinterpretCast!ubyte(buffer), f);		///Pulse-sine 25%
 			buffer = generateSinewave([0x01, 0x00, 0x11, 0x00]);
 			waveformDataReceive(6, reinterpretCast!ubyte(buffer), f);		///Alternating pulse-sine
-			buffer = generateSinewave([0x05, 0x00, 0x1d, 0x00]);
+			buffer = generateSinewave([0x05, 0x15, 0x00, 0x00]);
 			waveformDataReceive(7, reinterpretCast!ubyte(buffer), f);		///Alternating sine (from OPL3)
-			buffer = generateSinewave([0x05, 0x05, 0x1d, 0x1d]);
+			buffer = generateSinewave([0x05, 0x05, 0x15, 0x15]);
 			waveformDataReceive(8, reinterpretCast!ubyte(buffer), f);		///Camel sine (from OPL3)
 			buffer = generateSinewave([0x01, 0x09, 0x11, 0x1f]);
 			waveformDataReceive(9, reinterpretCast!ubyte(buffer), f);		///Variant sine 0
@@ -886,7 +884,7 @@ public class QM816 : AudioModule {
 			waveformDataReceive(14, reinterpretCast!ubyte(buffer), f);		///Variant sine 5
 			buffer = generateSinewave([0x01, 0x09, 0x0d, 0x00]);
 			waveformDataReceive(15, reinterpretCast!ubyte(buffer), f);		///Variant sine 6
-			buffer = generateSinewave([0x01, 0x09, 0x1f, 0x1f]);
+			buffer = generateSinewave([0x01, 0x09, 0x1d, 0x1d]);
 			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Variant sine 7
 			buffer = generatePulseWave(768);
 			waveformDataReceive(17, reinterpretCast!ubyte(buffer), f);		///Pulse wave 75%
