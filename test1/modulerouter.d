@@ -16,7 +16,7 @@ public class ModuleRouter : Window {
 	Button button_preset;
 	Button button_sampleman;
 	Button button_audNode;
-	Button button_midiNode;
+	Button button_midiRout;
 	Button button_remNode;
 	AudioDevKit adk;
 	public this(AudioDevKit adk){
@@ -32,10 +32,12 @@ public class ModuleRouter : Window {
 		button_audNode = new Button("Add audio node"d, "button_audNode", Box(535, 180, 635, 200));
 		//button_midiNode = new Button("Add MIDI node"d, "button1", Box(535, 205, 635, 225));
 		button_remNode = new Button("Remove node"d, "button_remNode", Box(535, 205, 635, 225));
+		button_midiRout = new Button("Set MIDI..."d, "button_midiRout", Box(535, 230, 635, 250));
 		button_addMod.onMouseLClick = &button_addMod_onClick;
 		button_audNode.onMouseLClick = &button_addNode_onClick;
 		button_preset.onMouseLClick = &button_preset_onClick;
 		button_sampleman.onMouseLClick = &button_sampleman_onClick;
+		button_midiRout.onMouseLClick = &button_midiRout_onClick;
 		listView_modules.editEnable = true;
 		listView_modules.onTextInput = &listView_modules_onTextEdit;
 		listView_modules.onItemSelect = &listView_modules_onItemSelect;
@@ -49,7 +51,7 @@ public class ModuleRouter : Window {
 		addElement(button_sampleman);
 		addElement(button_preset);
 		addElement(button_audNode);
-		//addElement(button_midiNode);
+		addElement(button_midiRout);
 		addElement(button_remNode);
 
 		this.adk = adk;
@@ -110,6 +112,10 @@ public class ModuleRouter : Window {
 		//CellEditEvent ce = cast(CellEditEvent)e;
 		ListViewItem item = cast(ListViewItem)e.aux;
 		adk.eventStack.addToTop(new AddModuleEvent(adk.mcfg, item[0].getText().to!string, item[1].getText().to!string));
+	}
+	private void button_midiRout_onClick(Event ev) {
+		import test1.midirout;
+		handler.addWindow(new MIDIRouting(adk.mcfg));
 	}
 	private void listView_routing_onTextEdit(Event e) {
 		ListViewItem item = cast(ListViewItem)e.aux;

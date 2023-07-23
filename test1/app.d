@@ -34,6 +34,7 @@ import pixelperfectengine.system.common;
 import pixelperfectengine.audio.base.handler;
 import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.config;
+import pixelperfectengine.audio.base.midiseq;
 //import pixelperfectengine.audio.modules.qm816;
 import core.thread;
 import iota.audio.midi;
@@ -43,6 +44,7 @@ import test1.audioconfig;
 import test1.preseteditor;
 import test1.modulerouter;
 import test1.virtmidikeyb;
+import test1.midiseq;
 
 /** 
  * Audio subsystem test.
@@ -126,6 +128,8 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	AudioSpecs		aS;
 	SpriteLayer		windowing;
 	MIDIInput		midiIn;
+	SequencerM1		midiSeq;
+	
 	WindowHandler	wh;
 	Window			tlw;
 	PresetEditor	preEdit;
@@ -181,6 +185,13 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[27], "exportB");
 			globalDefaultStyle.setImage(customGUIElems[28], "macroA");
 			globalDefaultStyle.setImage(customGUIElems[29], "macroB");
+		}
+		{
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE2.tga", 16, 16);
+			globalDefaultStyle.setImage(customGUIElems[0], "playA");
+			globalDefaultStyle.setImage(customGUIElems[1], "playB");
+			globalDefaultStyle.setImage(customGUIElems[2], "stopA");
+			globalDefaultStyle.setImage(customGUIElems[3], "stopB");
 		}
 
 		ih = new InputHandler();
@@ -297,6 +308,9 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			case "virtmidikeyb":
 				onVirtMIDIKeyb();
 				break;
+			case "sequencer":
+				openSequencer();
+				break;
 			default: break;
 		}
 	}
@@ -329,6 +343,11 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void onCompileAudioConfig() {
 		try {
 			mcfg.compile(state.audioThreadRunning);
+			if (mcfg.midiRouting.length) {
+				midiSeq = new SequencerM1(mcfg.modules, mcfg.midiRouting, mcfg.midiGroups);
+			} else {
+				midiSeq = null;
+			}
 		} catch (Exception e) {
 			writeln(e);
 		}
@@ -378,6 +397,21 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		} catch(Exception e) {
 			debug writeln(e);
 		}
+	}
+	public void openSequencer() {
+		if (midiSeq !is null) {
+			wh.addWindow(new SequencerCtrl(this));
+		}
+	}
+	public void onMIDILoad() {
+		import pixelperfectengine.concrete.dialogs.filedialog;
+		wh.addWindow(new FileDialog("Load MIDI file.", "loadMidiDialog", &onMIDIFileLoad, 
+			[FileDialog.FileAssociationDescriptor("MIDI file", ["*.mid"])], "./"));
+	}
+	public void onMIDIFileLoad(Event ev) {
+		import mididi;
+		FileEvent fe = cast(FileEvent)ev;
+		midiSeq.openMIDI(readMIDIFile(fe.getFullPath));
 	}
 	public void openRouter() {
 		if (router is null)

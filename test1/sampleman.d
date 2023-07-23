@@ -4,7 +4,7 @@ import pixelperfectengine.concrete.window;
 import pixelperfectengine.audio.base.types;
 import pixelperfectengine.audio.base.func;
 import pixelperfectengine.audio.base.config;
-import std.math : floor;
+import std.math : floor, nearbyint;
 import std.conv;
 import test1.app;
 import test1.editorevents;
@@ -22,9 +22,10 @@ public class WaveformViewer : WindowElement {
 				if (fmt.bitsPerSample == 8) {
 					waveform.length = src.length;
 					decode8bitPCM(cast(const(ubyte)[])src, waveform, wp);
-				} else if (fmt.bitsPerSample == 16)
+				} else if (fmt.bitsPerSample == 16) {
 					waveform.length = src.length / 2;
 					decode16bitPCM(cast(const(short)[])src, waveform, wp);
+				}
 				break;
 			case AudioFormat.ADPCM, AudioFormat.IMA_ADPCM:
 				waveform.length = src.length * 2;
@@ -53,15 +54,21 @@ public class WaveformViewer : WindowElement {
 		parent.drawBox(position, 24);
 		if (waveform.length) {
 			real ratio = cast(real)waveform.length / position.width;
-			const int divident = ushort.max / position.height();
+			const int divident = ushort.max / position.height() * -1;
 			{
 				Point o = Point(0, position.height / 2);
 				parent.drawLine(position.cornerUL + o, position.cornerUR + o, 23);
 			}
+			Point p0 = Point(position.left, (waveform[0] / divident) + position.top + (position.height / 2));
 			for (int i ; i < position.width ; i++) {
-				Point p = 
-						Point(i + position.left, (waveform[cast(size_t)floor(i * ratio)]/divident) + position.top + (position.height / 2));
-				parent.drawLine(p, p, 0x1F);
+				/+Point p0 = 
+						Point(i + position.left, 
+						(waveform[cast(size_t)nearbyint(i * ratio)] / divident) + position.top + (position.height / 2));+/
+				const Point p1 =
+						Point(i + position.left + 1, 
+						(waveform[cast(size_t)nearbyint(i * ratio) + 1] / divident) + position.top + (position.height / 2));
+				parent.drawLine(p0, p1, 0x1F);
+				p0 = p1;
 			}
 
 			if (isFocused) {
