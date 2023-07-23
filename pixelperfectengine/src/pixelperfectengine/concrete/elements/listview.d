@@ -544,6 +544,14 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			return null;
 		return item;
 	}
+	public void moveEntry(size_t index, size_t at) {
+		ListViewItem[] backup = entries[0..index - 1] ~ entries[index..$];
+		entries = backup[0..at] ~ entries[index] ~ backup[at..$];
+	}
+	/** 
+	 * 
+	 * Returns: 
+	 */
 	public int[2] scroll() {
 		int[2] result;
 		if (horizSlider !is null)
@@ -552,6 +560,12 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			result[1] = vertSlider.value;
 		return result;
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   pos = 
+	 * Returns: 
+	 */
 	public int[2] scroll(int[2] pos) {
 		if (horizSlider !is null)
 			horizSlider.value = pos[0];
