@@ -884,7 +884,7 @@ public class QM816 : AudioModule {
 			waveformDataReceive(14, reinterpretCast!ubyte(buffer), f);		///Variant sine 5
 			buffer = generateSinewave([0x01, 0x09, 0x0d, 0x00]);
 			waveformDataReceive(15, reinterpretCast!ubyte(buffer), f);		///Variant sine 6
-			buffer = generateSinewave([0x01, 0x09, 0x1d, 0x1d]);
+			buffer = generateSinewave([0x01, 0x0F, 0x17, 0x19]);
 			waveformDataReceive(16, reinterpretCast!ubyte(buffer), f);		///Variant sine 7
 			buffer = generatePulseWave(768);
 			waveformDataReceive(17, reinterpretCast!ubyte(buffer), f);		///Pulse wave 75%
