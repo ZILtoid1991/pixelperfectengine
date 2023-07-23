@@ -190,7 +190,7 @@ alias ADPCMStream = NibbleArray;
 	public void decode8bitPCM(const(ubyte)[] src, int[] dest, ref DecoderWorkpad wp) @safe {
 		for (size_t i ; i < dest.length ; i++) {
 			const ubyte val = src[wp.pos + i];
-			dest[i] = (val + val<<8) + short.min;
+			dest[i] = ((val) | (val<<8)) + short.min;
 		}
 		wp.pos += dest.length;
 	}
@@ -243,7 +243,7 @@ alias ADPCMStream = NibbleArray;
 			if(index & 0b1000)
 				d_n *= -1;
 			d_n += wp.outn1;
-			dest[i] = (d_n<<4) + (d_n>>8) + short.min;
+			dest[i] = ((d_n<<4) | (d_n>>8)) + short.min;
 			wp.outn1 = d_n;
 		}
 		wp.pos += dest.length;
