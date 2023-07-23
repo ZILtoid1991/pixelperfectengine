@@ -47,13 +47,13 @@ public class ModuleConfig {
 	///Routing nodes that have been parsed so far.
 	protected RoutingNode[]			rns;
 	///The audio modules stored by this configuration.
-	protected AudioModule[]			modules;
+	public AudioModule[]			modules;
 	///Track routing for MIDI devices.
 	public uint[]					midiRouting;
 	///Group identifiers for tracks.
 	public ubyte[]					midiGroups;
 	///The names of the modules.
-	protected string[]				modNames;
+	public string[]					modNames;
 	/**
 	 * Loads an audio configuration, and parses it. Does not automatically compile it.
 	 * Params:
@@ -266,7 +266,7 @@ public class ModuleConfig {
 			case ".wav":
 				loadWaveFile(mod, waveID, path, dataPak);
 				break;
-			case ".voc":
+			case ".voc", ".adp", ".ad4":
 				loadVocFile(mod, waveID, path, dataPak);
 				break;
 			default:
@@ -511,12 +511,19 @@ public class ModuleConfig {
 	/**
 	 * Returns the module with the given `name`, or null if not found.
 	 */
-	public AudioModule getModule(string name) {
+	public AudioModule getModule(string name) @safe {
 		foreach (size_t i, string n; modNames) {
 			if (n == name)
 				return modules[i];
 		}
 		return null;
+	}
+	sizediff_t getModuleNum(string name) @safe const {
+		foreach (size_t i, string n; modNames) {
+			if (n == name)
+				return i;
+		}
+		return -1;
 	}
 	/**
 	 * Returns a list of modules.
@@ -763,6 +770,21 @@ public class ModuleConfig {
 			}
 		}
 		return result;
+	}
+	///Creates a MIDI routing table from the supplied values.
+	public void setMIDIrouting(uint[] table) {
+		Tag t0 = root.getTag("midiRouting");
+		if (t0 is null) {
+			t0 = new Tag(root, null, "midiRouting");
+		}
+		if (t0.tags.length) {
+			foreach (Tag t1 ; t0.tags) {
+				t1.remove();
+			}
+		}
+		foreach (uint i ; table) {
+			new Tag(t0, null, null, [Value(cast(int)i)]);
+		}
 	}
 }
 /**
