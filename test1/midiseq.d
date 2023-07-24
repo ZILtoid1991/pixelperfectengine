@@ -22,8 +22,11 @@ public class SequencerCtrl : Window {
 		button_stop = new SmallButton("stopB", "stopA", "stop", Box.bySize(32, 16, 16, 16));
 
 		addElement(button_load);
+		button_load.onMouseLClick = &button_load_onClick;
 		addElement(button_play);
+		button_play.onMouseLClick = &button_play_onClick;
 		addElement(button_stop);
+		button_stop.onMouseLClick = &button_stop_onClick;
 	}
 	protected void button_load_onClick(Event ev) {
 		adk.onMIDILoad();

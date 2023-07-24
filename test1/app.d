@@ -345,6 +345,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			mcfg.compile(state.audioThreadRunning);
 			if (mcfg.midiRouting.length) {
 				midiSeq = new SequencerM1(mcfg.modules, mcfg.midiRouting, mcfg.midiGroups);
+				mm.midiSeq = midiSeq;
 			} else {
 				midiSeq = null;
 			}
