@@ -518,6 +518,7 @@ public class ModuleConfig {
 		}
 		return null;
 	}
+	///Returns the number of the module, or -1 if the module name does not exist.
 	sizediff_t getModuleNum(string name) @safe const {
 		foreach (size_t i, string n; modNames) {
 			if (n == name)
