@@ -544,13 +544,18 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			return null;
 		return item;
 	}
-	public void moveEntry(size_t index, size_t at) {
+	/**
+	 * Moves the entry to the given position.
+	 * Params:
+	 *   index: the entry to be moved.
+	 *   target: the position to be moved to.
+	 */
+	public void moveEntry(size_t index, size_t target) {
 		ListViewItem[] backup = entries[0..index - 1] ~ entries[index..$];
-		entries = backup[0..at] ~ entries[index] ~ backup[at..$];
+		entries = backup[0..target] ~ entries[index] ~ backup[target..$];
 	}
 	/** 
-	 * 
-	 * Returns: 
+	 * Returns the current x and y scroll positions.
 	 */
 	public int[2] scroll() {
 		int[2] result;
@@ -561,10 +566,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		return result;
 	}
 	/** 
-	 * 
-	 * Params:
-	 *   pos = 
-	 * Returns: 
+	 * Sets the scrolling to `pos`, then returns the new scrolling positions.
 	 */
 	public int[2] scroll(int[2] pos) {
 		if (horizSlider !is null)
