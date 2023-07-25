@@ -126,7 +126,7 @@ public class SequencerM1 : Sequencer {
 		if (src.headerChunk.trackFormat == TrackFormat.simultaneous) {
 			if (src.headerChunk.division.getFormat == 0) {
 				for (int t ; t < usecPerTic.length ; t++)
-					usecPerTic[t] = usecPerQNote / src.headerChunk.division.getTicksPerQuarterNote();
+					usecPerTic[t] = (usecPerQNote / src.headerChunk.division.getTicksPerQuarterNote()) * 10;
 			} else {
 				switch (src.headerChunk.division.getNegativeSMPTEFormat()) {
 					case -29:
@@ -142,7 +142,7 @@ public class SequencerM1 : Sequencer {
 			}
 		} else {
 			if (src.headerChunk.division.getFormat == 0) {
-				usecPerTic[track] = usecPerQNote / src.headerChunk.division.getTicksPerQuarterNote();
+				usecPerTic[track] = (usecPerQNote / src.headerChunk.division.getTicksPerQuarterNote()) * 10;
 			} else {
 				switch (src.headerChunk.division.getNegativeSMPTEFormat()) {
 					case -29:
