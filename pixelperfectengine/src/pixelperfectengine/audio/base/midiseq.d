@@ -165,13 +165,12 @@ public class SequencerM1 : Sequencer {
 	 */
 	public void lapseTime(Duration amount) @nogc nothrow {
 		if (!(status & Status.IsRunning)) return;
-		foreach (size_t i , ref Duration d ; positionTime) {
-			if (!(trackState[i] & 1) && (positionBlock[i] < src.trackChunks[i].events.length)) {
-				d += amount;
+		foreach (size_t i , ref Duration d ; positionTime) { //process each channel
+			d += amount;		//shift position by current time delta
+			while (d > usecs(0) && (positionBlock[i] < src.trackChunks[i].events.length) && !(trackState[i] & 1)) {
 				Duration toEvent = ticsToDuration(src.trackChunks[i].events[positionBlock[i]].deltaTime, i);
-				if (d >= toEvent) {	//process event
-					d = toEvent - d;
-					//MIDIEvent currEv = src.trackChunks[i].events[positionBlock[i]];
+				if (d >= toEvent) {
+					d -= toEvent;
 					switch (src.trackChunks[i].events[positionBlock[i]].statusByte()) {
 						case 0xF0:	///SYSEX event
 							SysExEvent* ev = src.trackChunks[i].events[positionBlock[i]].asSysExEvent;
@@ -248,6 +247,8 @@ public class SequencerM1 : Sequencer {
 							break;
 					}
 					positionBlock[i]++;
+				} else {
+					break;
 				}
 			}
 		}

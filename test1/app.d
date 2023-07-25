@@ -413,6 +413,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		import mididi;
 		FileEvent fe = cast(FileEvent)ev;
 		midiSeq.openMIDI(readMIDIFile(fe.getFullPath));
+		midiSeq.reset();
 	}
 	public void openRouter() {
 		if (router is null)
