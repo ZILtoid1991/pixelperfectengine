@@ -123,17 +123,36 @@ public class SequencerM1 : Sequencer {
 	 *   track = The track number, in case if a tempo change event happens.
 	 */
 	protected final void setTimeDiv(uint usecPerQNote, size_t track = 0) @nogc @safe pure nothrow {
-		if (src.headerChunk.division.getFormat == 0) {
-			usecPerTic[track] = usecPerQNote / src.headerChunk.division.getTicksPerQuarterNote();
+		if (src.headerChunk.trackFormat == TrackFormat.simultaneous) {
+			if (src.headerChunk.division.getFormat == 0) {
+				for (int t ; t < usecPerTic.length ; t++)
+					usecPerTic[t] = usecPerQNote / src.headerChunk.division.getTicksPerQuarterNote();
+			} else {
+				switch (src.headerChunk.division.getNegativeSMPTEFormat()) {
+					case -29:
+						for (int t ; t < usecPerTic.length ; t++)
+							usecPerTic[t] = cast(uint)(29.97 * src.headerChunk.division.getTicksPerFrame());
+						break;
+					default:
+						for (int t ; t < usecPerTic.length ; t++)
+							usecPerTic[t] = cast(uint)(-1 * src.headerChunk.division.getNegativeSMPTEFormat() * 
+								src.headerChunk.division.getTicksPerFrame());
+						break;
+				}
+			}
 		} else {
-			switch (src.headerChunk.division.getNegativeSMPTEFormat()) {
-				case -29:
-					usecPerTic[track] = cast(uint)(29.97 * src.headerChunk.division.getTicksPerFrame());
-					break;
-				default:
-					usecPerTic[track] = cast(uint)(-1 * src.headerChunk.division.getNegativeSMPTEFormat() * 
-							src.headerChunk.division.getTicksPerFrame());
-					break;
+			if (src.headerChunk.division.getFormat == 0) {
+				usecPerTic[track] = usecPerQNote / src.headerChunk.division.getTicksPerQuarterNote();
+			} else {
+				switch (src.headerChunk.division.getNegativeSMPTEFormat()) {
+					case -29:
+						usecPerTic[track] = cast(uint)(29.97 * src.headerChunk.division.getTicksPerFrame());
+						break;
+					default:
+						usecPerTic[track] = cast(uint)(-1 * src.headerChunk.division.getNegativeSMPTEFormat() * 
+								src.headerChunk.division.getTicksPerFrame());
+						break;
+				}
 			}
 		}
 	}
