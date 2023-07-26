@@ -111,14 +111,14 @@ public class DelayLines : AudioModule {
 			}
 		}
 		Tap[4][2]				taps;			///Defines delay line taps
-		__m128[2]				iirFreq;		///Defines IIR frequencies
-		__m128[2]				iirQ;			///Defines IIR Q value
-		__m128[2]				eqLevels;		///Stores EQ send levels
-		__m128					inputLevel;
-		__m128					oscLevels;		///Defines the amount of effect a given LFO has on a parameter
-		float[4]				oscFrequencies;	///Defines LFO freqencies
+		__m128[2]				iirFreq = [__m128([100, 500, 1000, 10_000]), __m128([100, 500, 1000, 10_000])];///Defines IIR frequencies
+		__m128[2]				iirQ = [__m128(0.707), __m128(0.707)];///Defines IIR Q value
+		__m128[2]				eqLevels = [__m128(0), __m128(0)];///Stores EQ send levels
+		__m128					inputLevel = __m128(1);
+		__m128					oscLevels = __m128(0);///Defines the amount of effect a given LFO has on a parameter
+		float[4]				oscFrequencies = [4, 4, 4, 4];///Defines LFO freqencies
 		uint[4]					oscPWM;			///Defines the PWM of the LFOs
-		float[2]				outputLevel;
+		float[2]				outputLevel = [1.0, 1.0];
 		ubyte[4]				oscTargets;		///Sets the target of a given LFO
 		OscWaveform[4]			oscWaveform;	///Sets the waveform output of the LFOs
 		
@@ -181,6 +181,8 @@ public class DelayLines : AudioModule {
 			key = __m128i(0);
 		}
 		resetBuffer(dummyBuf);
+		filterBanks[0].reset();
+		filterBanks[1].reset();
 	}
 
 	override public void midiReceive(UMP data0, uint data1 = 0, uint data2 = 0, uint data3 = 0) @nogc nothrow {

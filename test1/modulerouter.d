@@ -86,8 +86,11 @@ public class ModuleRouter : Window {
 		}
 	}
 	private void button_addMod_onClick(Event e) {
-		handler.addPopUpElement(new PopUpMenu([new PopUpMenuElement("qm816", "QM816"), new PopUpMenuElement("pcm8", "PCM8")], 
-				"moduleSelector", &onModuleTypeSelect));
+		handler.addPopUpElement(new PopUpMenu([new PopUpMenuElement("qm816", "QM816"), new PopUpMenuElement("pcm8", "PCM8"),
+				new PopUpMenuElement("delaylines1010", "DelayLines:1024/1024"), 
+				new PopUpMenuElement("delaylines1012", "DelayLines:1024/4096"), 
+				new PopUpMenuElement("delaylines1212", "DelayLines:4096/4964"), 
+				], "moduleSelector", &onModuleTypeSelect));
 	}
 	private void button_preset_onClick(Event e) {
 		adk.openPresetEditor();

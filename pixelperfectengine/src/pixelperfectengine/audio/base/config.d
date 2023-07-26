@@ -132,7 +132,7 @@ public class ModuleConfig {
 							break;
 						case "delaylines":
 							import pixelperfectengine.audio.modules.delaylines;
-							currMod = new DelayLines(t0.expectTagValue!int("priLen"), t0.expectTagValue!int("secLen"));
+							currMod = new DelayLines(t0.values[2].get!int(), t0.values[3].get!int());
 							break;
 						default:
 							break;
@@ -303,7 +303,7 @@ public class ModuleConfig {
 		ubyte[] buf;
 		buf.length = cast(size_t)f.size();
 		f.rawRead(buf);
-		const int samplerate = extension(path) == ".voc" ? 8000 : 36_000;
+		const int samplerate = extension(path) == ".voc" || extension(path) == ".adp" ? 8000 : 36_000;
 		mod.waveformDataReceive(waveID, buf, WaveFormat(samplerate, samplerate / 2, AudioFormat.DIALOGIC_OKI_ADPCM, 1, 1, 4));
 	}
 	/**
@@ -465,7 +465,20 @@ public class ModuleConfig {
 	 *   name = Name and ID of the module.
 	 */
 	public void addModule(string type, string name) {
-		new Tag(root, null, "module", [Value(type), Value(name)]);
+		switch (type) {
+			case "delaylines1010":
+				new Tag(root, null, "module", [Value("delaylines"), Value(name), Value(1024), Value(1024)]);
+				break;
+			case "delaylines1012":
+				new Tag(root, null, "module", [Value("delaylines"), Value(name), Value(1024), Value(4096)]);
+				break;
+			case "delaylines1212":
+				new Tag(root, null, "module", [Value("delaylines"), Value(name), Value(4096), Value(4096)]);
+				break;
+			default:
+				new Tag(root, null, "module", [Value(type), Value(name)]);
+				break;
+		}
 	}
 	/** 
 	 * Adds a module from backup.
