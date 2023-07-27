@@ -406,8 +406,12 @@ public class DelayLines : AudioModule {
 				}
 			}
 		}
+		__m128 allSums = __m128(0.0);
 		for (int outputPos ; outputPos < bufferSize ; outputPos++) {
-			__m128 allSums = __m128(0.0);
+			delayLines[0][dLMod[0] & dLPos[0]] = inBuf[0][outputPos] * currPreset.inputLevel[0] + 
+					inBuf[1][outputPos] * currPreset.inputLevel[1] + allSums[2];
+			delayLines[1][dLMod[1] & dLPos[1]] = inBuf[0][outputPos] * currPreset.inputLevel[0] + 
+					inBuf[1][outputPos] * currPreset.inputLevel[1] + allSums[3];
 			for (int d ; d < 2 ; d++) {
 				for (int t ; t < 4 ; t++) {
 					if (currPreset.taps[d][t].tapEnable) {
@@ -430,10 +434,10 @@ public class DelayLines : AudioModule {
 			__m128 filterOutR = filterBanks[1].output(__m128(allSums[1])) * currPreset.eqLevels[1];
 			outBuf[0][outputPos] += allSums[0] + filterOutL[0] + filterOutL[1] + filterOutL[2] + filterOutL[3];
 			outBuf[1][outputPos] += allSums[1] + filterOutR[0] + filterOutR[1] + filterOutR[2] + filterOutR[3];
-			delayLines[0][dLMod[0] & dLPos[0]] = allSums[2];
-			delayLines[1][dLMod[1] & dLPos[1]] = allSums[3];
 			dLPos[0]++;
 			dLPos[1]++;
+			//delayLines[0][dLMod[0] & dLPos[0]] = allSums[2];
+			//delayLines[1][dLMod[1] & dLPos[1]] = allSums[3];
 		}
 	}
 
@@ -641,7 +645,7 @@ public class DelayLines : AudioModule {
 						return presetPtr.taps[lineID][tapID].fir[2][subParamID - 8];
 					case 12: .. case 15://FIR 3
 						return presetPtr.taps[lineID][tapID].fir[3][subParamID - 12];
-					case 24: .. case 27:	//Output Levels
+					case 16: .. case 19:	//Output Levels
 						const uint levelID = (subParamID - 24) & 3;
 						return presetPtr.taps[lineID][tapID].outLevels[levelID];
 					default:
