@@ -1,4 +1,4 @@
-# PixelPerfectEngine ver 0.10-rc
+# PixelPerfectEngine ver 0.10.0
 
 A retro engine for 2D and pseudo-3D games written in D by László Szerémi.
 
@@ -125,12 +125,16 @@ the slow replacement of SDL2's graphical side with something faster.
 extra features (such as undo/redo, snapping to grid and components), then the latter can be developed without an issue.
 * Error handling isn't fully realized, so a lot of errors might happen. You can help me by reporting errors, testing on
 various systems.
+* Lots of untested and not fully tested features. Many are tested to at least run somewhat, but not tested in-depth. 
+Currently, I'm the sole maintainer of this project, and things are quite tough, especially after you factor in my 
+full-time job.
 
 # Future plans:
 
 * Compressed data file handling.
 * Effects layer with some sort of programmability.
 * Transformable sprites.
+* Moving most of the rendering pipeline to OpenGL, then using various tricks to ensure pixels will align as they should.
 * Support for MacOS. (Contact me, if you have hardware for it and willing to contribute to the project)
 * Support for Android. (Either will be done by me later on, or contact me if you're up for this challenge)
 * Support for iOS. (Contact me if you have the hardware and you willing to contribute)
