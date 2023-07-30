@@ -60,7 +60,7 @@ public class WaveformViewer : WindowElement {
 				parent.drawLine(position.cornerUL + o, position.cornerUR + o, 23);
 			}
 			Point p0 = Point(position.left, (waveform[0] / divident) + position.top + (position.height / 2));
-			for (int i ; i < position.width ; i++) {
+			for (int i ; i < position.width - 1 ; i++) {
 				/+Point p0 = 
 						Point(i + position.left, 
 						(waveform[cast(size_t)nearbyint(i * ratio)] / divident) + position.top + (position.height / 2));+/
@@ -155,6 +155,35 @@ public class SampleMan : Window {
 			AudioModule am = mcfg.getModule(moduleName);
 			wfv.setWaveform(am.getWaveformData(listView_sampleList.value), am.getWaveformDataFormat(listView_sampleList.value));
 			wfv.draw();
+			WaveFormat wf = am.getWaveformDataFormat(listView_sampleList.value);
+			dstring format;
+			switch(wf.format) {
+				case AudioFormat.PCM:
+					if (wf.bitsPerSample == 8) {
+						format = "PCM 8Bit U"d;
+					} else if (wf.bitsPerSample == 16) {
+						format = "PCM 16Bit S"d;
+					}
+					break;
+				case AudioFormat.ADPCM, AudioFormat.IMA_ADPCM:
+					format = "IMA ADPCM 4Bit"d;
+					break;
+				case AudioFormat.DIALOGIC_OKI_ADPCM, AudioFormat.OKI_ADPCM:
+					format = "Dialogic ADPCM"d;
+					break;
+				case AudioFormat.MULAW:
+					format = "Mu-Law ADPCM"d;
+					break;
+				case AudioFormat.ALAW:
+					format = "A-Law ADPCM"d;
+					break;
+				default:
+					format = "UNKNOWN";
+					break;
+			}
+			label_format.setText("Format: "d ~ format);
+			label_slmpR.setText("Orig. samplerate:"d ~ to!dstring(wf.samplerate));
+			label_len.setText("Length:"d ~ to!dstring(wfv.waveform.length));
 		}
 	}
 	protected void listView_sampleList_onTextEdit(Event ev) {
@@ -197,7 +226,7 @@ public class SampleMan : Window {
 		if (listView_sampleList.value >= 0) {
 			const int src = waveFileData[listView_sampleList.value].id;
 			const int len = end - begin;
-			adk.eventStack.addToTop(new AddSampleSlice(adk.mcfg, moduleName, src, id, begin, len));
+			adk.eventStack.addToTop(new AddSampleSlice(adk.mcfg, moduleName, id, src, begin, len));
 			refreshSampleList();
 		}
 	}
