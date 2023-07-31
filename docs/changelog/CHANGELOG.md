@@ -1,4 +1,27 @@
-# 0.10.0-beta10 (current)
+# 0.10.0 (current)
+
+## Fixed function getLayerType for all layers
+
+Certain layers had the bug of me not rewriting the function `getLayerType` when copying.
+
+## QM816
+
+### MIDI CC fix
+
+Lower portion of MIDI 1.0 CC has been fixed.
+
+## Other audio features
+
+* Added `DelayLines` for implementing certain time-based effects (delay, reverb, etc.).
+* Added sample slicing capabilities to the module API.
+
+## Test1/PixelPerfectEngine Audio Development Kit
+
+* Added Sample manager and loader.
+* Added MIDI router.
+* Added basic graphical user interface for sequencer.
+
+# 0.10.0-beta10
 
 ## PCM8 sample playback fix
 
