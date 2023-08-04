@@ -79,7 +79,7 @@ public class TextBox : WindowElement, TextInputListener {
 		super.passMCE(mec, mce);
 	}
 	public override void draw(){
-		
+		if (parent is null) return;
 		StyleSheet ss = getStyleSheet();
 		const int textPadding = ss.drawParameters["TextSpacingSides"];
 		with (parent) {

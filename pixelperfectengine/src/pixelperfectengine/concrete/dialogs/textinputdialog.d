@@ -16,6 +16,7 @@ public class TextInputDialog : Window {
 	 */
 	public this(Box size, void delegate(Text text) textOutput, string source, Text title, Text message, Text text = null, 
             Text okBtnText = null, StyleSheet customStyle = null) {
+		assert(text !is null);
 		super(size, title, null, customStyle);
         this.textOutput = textOutput;
 		Label msg = new Label(message, "null", Box(8, 20, size.width()-8, 39));
@@ -36,7 +37,7 @@ public class TextInputDialog : Window {
 		this.customStyle = customStyle;
 		this(size, textOutput, source, new Text(title, getStyleSheet().getChrFormatting("windowHeader")), 
 				new Text(message, getStyleSheet().getChrFormatting("windowHeader")), 
-				text.length ? new Text(text, getStyleSheet().getChrFormatting("label")) : null,
+				new Text(text, getStyleSheet().getChrFormatting("label")),
 				okBtnText.length ? new Text(okBtnText, getStyleSheet().getChrFormatting("button")) : null,
 				customStyle);
 	}
