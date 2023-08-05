@@ -349,6 +349,33 @@ The synth shares two LFOs (tremolo and vibrato) and four filters between channel
 * `HPFBFreq` [15]: Sets the high-pass filter frequency for the Aux B channel (0-20 000Hz)
 * `Ringmod` [16]: Enables ring modulation, by setting the tremolo frequency into audible territory and bypassing the aliasing filter.
 
+# Special SysEx commands
+
+## 7 Bit command 0x20
+
+Layout:
+
+`20 WF TY [...]`
+
+`WF` choses the waveform to be set, `TY` sets the type of the waveform.
+
+* 0x50 creates a pulse wave. It is followed by two bytes, which set the pulse-width of the wave.
+* 0x54 creates a triangular wave. It is followed by two bytes, which set the sigma of the wave.
+* 0x74 creates an integrated triangular wave. It is followed by two bytes, which set the sigma of the wave.
+* 0x53 creates a sine wave. It is followed by four bytes, each which set a quadrant of the sine wave.
+
+Sine wave quadrants can be defined with the following bits:
+
+* bit 0 = If set, then the sine fragment is present. If not, this portion will be replaced with all zeros instead.
+* bit 1-2 = Doubling mode:
+* * 0 = No doubling.
+* * 1 = Same cycle twice.
+* * 2 = Same cycle mirrored, effectively putting a half-sine into a quarter with the right settings.
+* * 3 = The second half is all zeros, the sine fragment is effectively "stuffed" into an eight of the waveform.
+* bit 3 = Horizontal mirroring of the cycle.
+* bit 4 = Vertical mirroring of the cycle.
+* bit 5 = Modifies the curve of the sinewave for a bit more square-ish shape.
+
 # Setting guidelines
 
 * Small amounts of release times can function as a pop filter.
