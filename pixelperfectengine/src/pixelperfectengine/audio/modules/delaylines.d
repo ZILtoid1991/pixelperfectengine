@@ -284,7 +284,7 @@ public class DelayLines : AudioModule {
 				resetLFO(lfoGr);
 				break; */
 			case 9://EQ
-				const int eqGr = paramLSB>>2;
+				const int eqGr = (paramLSB>>2) & 7;
 				switch (paramLSB & 3) {
 					case 0:
 						currPreset.eqLevels[eqGr>>2][eqGr&3] = sqrt(val / cast(double)uint.max) * 1.5 - 0.5;
