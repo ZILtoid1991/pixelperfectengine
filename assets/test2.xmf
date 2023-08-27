@@ -77,8 +77,12 @@ Layer:Tile "64" 0 16 16 45 45 {
 }
 Layer:Sprite "sprites" 16 {
 	File:SpriteSource 0 "../assets/d-man.tga" name="dlangman"
+	File:SpriteSource 1 "../assets/d-man.tga" name="nothing" horizOffset=0 vertOffset=0 width=12 height=12
 	File:Palette "../assets/d-man.tga" offset=256
 	Object:Sprite "player" 65536 0 16 16 palSel=1 {
+		ToCollision
+	}
+	Object:Sprite "test" 65537 1 0 0 palSel=1 {
 		ToCollision
 	}
 	Object:Box "testObject" 0 16 16 24 24 {

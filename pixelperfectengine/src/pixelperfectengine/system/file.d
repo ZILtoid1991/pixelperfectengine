@@ -49,9 +49,9 @@ package size_t[] padScanLine(ubyte[] scanline) @safe {
  * Ideal for loading sprite sheets.
  */
 public T loadBitmapSliceFromImage(T)(Image img, int x, int y, int w, int h) {
-	T src = loadBitmapFromImage!T(img);
-	T result = src.window(x, y, x + w, y + h);
-	return result;
+	synchronized{T src = loadBitmapFromImage!T(img), result;
+	result = src.window(x, y, x + w - 1, y + h - 1);
+	return result;}
 }
 /**
  * Loads an Image from a File or VFile.

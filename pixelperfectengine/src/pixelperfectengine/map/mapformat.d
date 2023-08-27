@@ -190,8 +190,10 @@ public class MapFormat {
 						imageBuffer[filename] = loadImage(File(filename));
 					}
 					const int id = t0.expectValue!int();
-					if ("horizOffset" in t0.attributes && "vertOffset" in t0.attributes && "width" in t0.attributes && 
-							"height" in t0.attributes){
+					/+if ("horizOffset" in t0.attributes && "vertOffset" in t0.attributes && "width" in t0.attributes && 
+							"height" in t0.attributes) {+/
+					if (t0.getAttribute!int("horizOffset", -1) != -1 && t0.getAttribute!int("vertOffset") != -1 && 
+							t0.getAttribute!int("width") && t0.getAttribute!int("height")) {
 						const int hOffset = t0.getAttribute!int("horizOffset"), vOffset = t0.getAttribute!int("vertOffset"),
 							w = t0.getAttribute!int("width"), h = t0.getAttribute!int("height");
 						switch (imageBuffer[filename].getBitdepth) {

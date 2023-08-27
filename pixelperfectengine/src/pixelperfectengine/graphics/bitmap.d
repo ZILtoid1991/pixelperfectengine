@@ -162,11 +162,13 @@ public class Bitmap(string S,T) : ABitmap {
 		 */
 		public Bitmap!(S,T) window(int iX0, int iY0, int iX1, int iY1) @safe pure {
 			T[] workpad;
-			const int localWidth = (iX1 - iX0), localHeight = (iY1 - iY0);
+			const int localWidth = (iX1 - iX0 + 1), localHeight = (iY1 - iY0 + 1);
+			assert (localWidth <= width && localWidth);
+			assert (localHeight <= height && localHeight);
 			workpad.length  = localWidth * localHeight;
 			for (int y ; y < localHeight ; y++) {
 				for (int x ; x < localWidth ; x++) {
-					workpad[x = (y * localWidth)] = pixels[iX0 + x + ((y + iY0) * _width)];
+					workpad[x + (y * localWidth)] = pixels[iX0 + x + ((y + iY0) * _width)];
 				}
 			}
 			return new Bitmap!(S,T)(workpad, localWidth, localHeight);
@@ -355,7 +357,9 @@ public class Bitmap(string S,T) : ABitmap {
 		 * Returns a 2D slice (window) of the bitmap.
 		 */
 		public Bitmap!(S,T) window(int iX0, int iY0, int iX1, int iY1) @safe pure {
-			const int localWidth = (iX1 - iX0), localHeight = (iY1 - iY0);
+			const int localWidth = iX1 - iX0 + 1, localHeight = iY1 - iY0 + 1;
+			assert (localWidth <= width && localWidth > 0);
+			assert (localHeight <= height && localHeight > 0);
 			Bitmap!(S,T) result = new Bitmap!(S,T)(localWidth, localHeight);
 			for (int y ; y < localHeight ; y++) {
 				for (int x ; x < localWidth ; x++) {
