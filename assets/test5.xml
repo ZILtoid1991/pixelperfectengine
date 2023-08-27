@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ETML>
+<etml>
+    <text id="example1">
+        Hello world! <br />
+        This is an examle of a <i>multiline</i> text done in ETML.
+    </text>
+    <text id="example2">
+        This even supports Unicode characters as long as the target system is capable of displaying them. <br />
+        árvíztűrő tükörfúrógép ÁRVÍZTŰRŐ TÜKÖRFÚRÓGÉP <br />
+        おはよう世界、これは日本語だよねー。または、カタカナも使える！ <br />
+        ﾊﾙﾌｳｨｯﾄｶﾀｶﾅ
+    </text>
+</etml>

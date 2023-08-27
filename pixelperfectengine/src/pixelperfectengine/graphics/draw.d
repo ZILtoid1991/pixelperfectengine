@@ -242,15 +242,29 @@ public class BitmapDrawer{
 	 * lineOffset specifies how much lines in pixels are skipped on the top.
 	 * Return value contains state flags on wheter certain portions of the text were out of bound.
 	 */
-	public uint drawMultiLineText(Coordinate pos, Text text, int offset = 0, int lineOffset = 0) pure {
-		int lineCount = lineOffset;
+	public uint drawMultiLineText(Box pos, Text text, int offset = 0, int lineOffset = 0) {
+		Text[] lineChunks = text.breakTextIntoMultipleLines(pos.width);
+		assert (lineChunks.length);
+		return drawMultiLineText(pos, lineChunks, offset, lineOffset);
+	}
+	/**
+	 * Draws fully formatted text within a given prelimiter specified by pos.
+	 * Offset specifies how much of the text is being obscured from the left hand side.
+	 * lineOffset specifies how much lines in pixels are skipped on the top.
+	 * Return value contains state flags on wheter certain portions of the text were out of bound.
+	 */
+	public uint drawMultiLineText(Box pos, Text[] lineChunks, int offset = 0, int lineOffset = 0) {
+		//Text[] lineChunks = text.breakTextIntoMultipleLines(pos.width);
+		int lineNum;
 		const int maxLines = pos.height + lineOffset;
-			if(lineCount >= lineOffset) {	//draw if linecount is greater or equal than offset
-				//special
-			}
-		do {
-
-		} while(lineCount < maxLines);
+		/* if(lineCount >= lineOffset) {	//draw if linecount is greater or equal than offset
+			//special
+		} */
+		while (lineOffset > (maxLines * -1) && lineNum < lineChunks.length) {
+			drawSingleLineText(pos, lineChunks[lineNum], offset, lineOffset);
+			lineOffset -= lineChunks[lineNum].getHeight;
+			lineNum++;
+		}
 		return 0;
 	}
 	/**
@@ -266,6 +280,7 @@ public class BitmapDrawer{
 
 		const int textWidth = text.getWidth();	//Total with of the text
 		if (textWidth < offset) return TextDrawStatus.TooMuchOffset;
+		if (text.font.size < lineOffset) return TextDrawStatus.TooMuchLineOffset;
 		int pX = text.frontTab;							//The current position, where the first letter will be drawn
 		
 		//Currently it was chosen to use a workpad to make things simpler
@@ -418,4 +433,5 @@ enum TextDrawStatus : uint {
 	TPOutOfBound			=	0x00_04,	///Top portion out of bound
 	BPOutOfBound			=	0x00_08,	///Bottom portion out of bound
 	TooMuchOffset			=	0x1_00_00,
+	TooMuchLineOffset		=	0x1_00_01,
 }

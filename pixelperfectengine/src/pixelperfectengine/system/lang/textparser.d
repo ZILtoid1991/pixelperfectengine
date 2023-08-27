@@ -39,9 +39,12 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	private bool					inTextChunk;///Set to true if currently in a text chunk to allow detection of cascading 
 	
 	///Creates a new instance with a select string input.
-	public this(dstring _input, CharacterFormattingInfo!BitmapType val) @safe pure nothrow {
+	///Params:
+	///  _input = the input text containing the xml file.
+	///  _defFrmt = the default character formatting
+	public this(dstring _input, CharacterFormattingInfo!BitmapType _defFrmt) @safe pure nothrow {
 		this._input = _input;
-		chrFrmt = [val];
+		chrFrmt = [_defFrmt];
 	}
 	///Gets the default formatting
 	public CharacterFormattingInfo!BitmapType defaultFormatting() @property @safe pure nothrow @nogc {
@@ -65,12 +68,15 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		parser.setSource(_input);
 		parser.onElementStart = &onElementStart;
 		parser.onElementEnd = &onElementEnd;
+		parser.onText = &onText;
 		try {
 			parser.processDocument();
 		} catch (XMLException e) {	//XML formatting issue
 			throw new XMLTextParsingException("XML file is badly formatted!", e);
 		} catch (RangeError e) {	//Missing mandatory attributes
 			throw new XMLTextParsingException("Missing mandatory attribute found!", e);
+		} finally {
+			_input.length = 0;
 		}
 	}
 	protected void onText(dstring content) @safe {
@@ -269,8 +275,8 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		currTextBlock.formatting = namedFormats[toUTF8(attributes["id"])];
 	}
 	protected void onFormatDefElement(dstring[dstring] attributes) @safe {
-		bool checkBoolean(dstring val) @safe {
-			if (val == "true" || val == "yes")
+		bool checkBoolean(dstring defFrmt) @safe {
+			if (defFrmt == "true" || defFrmt == "yes")
 				return true;
 			else
 				return false;

@@ -54,8 +54,8 @@ other tags. The `id` attribute is mandatory.
 # Example document
 
 ```xml
-<!xml version = "1.0" encoding = "utf8">
-<?DOCTYPE ETML?>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ETML>
 <etml>
     <text id="example1">
         Hello world! <br />

@@ -195,21 +195,10 @@ public class Raster : IRaster, PaletteContainer{
     public void addRefreshListener(RefreshListener r){
         rL ~= r;
     }
-	///Edits the given color index.
-	///Will be set deprecated in 0.10.0
-	public void editColor(ushort c, Color val){
-		_palette[c] = val;
-	}
 	///Sets the number of colors.
-	///Will be set deprecated in 0.10.0
 	public void setupPalette(int i) {
 		_palette.length = i;
 	}
-    ///Replaces the layer at the given number.
-	///Deprecated!
-    public deprecated void replaceLayer(Layer l, int i){
-		addLayer(l, i);
-    }
     ///Adds a layer at the given priority.
     public void addLayer(Layer l, int i) @safe pure nothrow {
 		l.setRasterizer(rX, rY);

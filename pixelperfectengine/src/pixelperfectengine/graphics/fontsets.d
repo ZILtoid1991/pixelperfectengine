@@ -20,16 +20,18 @@ static import std.stdio;
 public class Fontset(T)
 		if(T.stringof == Bitmap8Bit.stringof || T.stringof == Bitmap16Bit.stringof || T.stringof == Bitmap32Bit.stringof) {
 	//If the kerning map will cost too much memory etc, this will be used instead.
-	/+protected struct KerningInfo {
+	protected struct KerningInfo {
 	align(2):
 		dchar		a;
 		dchar		b;
 		short		amount;
-	}+/
+	}
 	//public Font 						fontinfo;	///BMFont information on drawing the letters (might be removed later on)
-	alias CharMap = TreeMap!(dchar, Font.Char, true);
-	alias KerningMapB = TreeMap!(dchar, short, true);
-	alias KerningMap = TreeMap!(dchar, KerningMapB, true);
+	//alias CharMap = TreeMap!(dchar, Font.Char, true);
+	alias CharMap = Font.Char[];
+	/* alias KerningMapB = TreeMap!(dchar, short, true);
+	alias KerningMap = TreeMap!(dchar, KerningMapB, true); */
+	alias KerningMap = KerningInfo[];
 	protected CharMap					_chars;		///Contains character information in a fast lookup form
 	protected KerningMap				_kerning;	///Contains kerning information
 	public T[] 							pages;		///Character pages
@@ -49,18 +51,20 @@ public class Fontset(T)
 		buffer.length = cast(size_t)file.size;
 		file.rawRead(buffer);
 		Font fontinfo = parseFnt(buffer);
-		foreach(ch; fontinfo.chars){
+		/* foreach(ch; fontinfo.chars){
 			_chars[ch.id] = ch;
-		}
+		} */
+		_chars = fontinfo.chars;
 		foreach(krn; fontinfo.kernings){
-			KerningMapB* mapB = _kerning.ptrOf(krn.first);
+			_kerning ~= KerningInfo(krn.first, krn.second, krn.amount);
+			/* KerningMapB* mapB = _kerning.ptrOf(krn.first);
 			if (mapB !is null) {
 				(*mapB)[krn.second] = krn.amount;
 			} else {
 				KerningMapB newMap;
 				newMap[krn.second] = krn.amount;
 				_kerning[krn.first] = newMap;
-			}
+			} */
 			//_kerning[krn.first][krn.second] = krn.amount;
 		}
 		_size = fontinfo.info.fontSize;
@@ -120,11 +124,11 @@ public class Fontset(T)
 	public string getName() @nogc @safe nothrow pure @property const {
 		return name;
 	}
-	///Returns the height of the font.
+	/* ///Returns the height of the font.
 	///WILL BE DEPRECATED!
 	public deprecated int getSize() @nogc @safe nothrow pure const {
 		return _size;
-	}
+	} */
 	///returns the height of the font.
 	public int size() @nogc @safe nothrow pure @property const {
 		return _size;
@@ -141,23 +145,29 @@ public class Fontset(T)
 	 * Returns the character info if present, or a substitute from either a fallback font if it found in them or 
 	 * the default substitute character (0xFFFD)
 	 */
-	public Font.Char chars(dchar i) @nogc @trusted nothrow pure {
-		Font.Char result = _chars[i];
-		if(result.id != dchar.init) return result;
-		else {
-			foreach(fntSt ; fallbacks) {
-				result = fntSt.chars(i);
-				if(result.id != dchar.init) return result;
-			}
+	public Font.Char chars(dchar c) @nogc @trusted nothrow pure {
+		foreach (key; _chars) {
+			if (key.id == c)
+				return key;
 		}
-		return _chars[0xFFFD];
+		assert(c != 0xFFFD);
+		foreach(fntSt ; fallbacks) {
+			Font.Char result = fntSt.chars(c);
+			if(result.id != dchar.init) return result;
+		}
+		
+		return chars(0xFFFD);
 	}
 	/**
 	 * Returns the kerning for the given character pair if there's any, or 0.
 	 * Should be called through CharacterFormattingInfo, which can bypass it if formatting flag is enabled.
 	 */
 	public final short getKerning(const dchar first, const dchar second) @nogc @safe pure nothrow {
-		return _kerning[first][second];
+		foreach (KerningInfo key ; _kerning) {
+			if (key.a == first && key.b == second)
+				return key.amount;
+		}
+		return 0;
 	}
 	/**
 	 * Breaks the input text into multiple lines according to the parameters.

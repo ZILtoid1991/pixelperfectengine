@@ -213,6 +213,9 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		if (next && end > 0) return localWidth + next.getWidth(begin, end);
 		else return localWidth;
 	}
+	public int getHeight() @safe pure {
+		return formatting.rowHeight;
+	}
 	/**
 	 * Returns the number of characters fully offset by the amount of pixel.
 	 */
@@ -271,31 +274,43 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 					if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start new word.
 						currentLineLength += currentWordLength;
 						currentLine._text ~= currentWord ~ ch;
+						currentWord.length = 0;
+						currentWordLength = 0;
 					} else {
 						result ~= currentLine;
 						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
 						currentChunk = currentLine;
+						currentWord.length = 0;
+						currentWordLength = 0;
+						currentLineLength = 0;
 					}
 				} else {
 					if (currentWordLength > width) {		//Break word to avoid going out of the line
 						result ~= currentLine;
 						result ~= new TextTempl!(BitmapType)(currentWord.idup, curr.formatting, null, 0, null);
-						currentWord.length = 0;
 						currentWordLength = curr.formatting.font.chars(ch).xadvance;
 						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
 						currentChunk = currentLine;
+						currentWord.length = 0;
+						currentWordLength = 0;
 					}
 					currentWord ~= ch;
 				}
 			}
-			curr = curr.next;
-			if (curr.flags.newLine || curr.flags.newParagraph) {		//Force text breakage, put text chunk into the array.
+			if (currentLine._text.length) {
 				result ~= currentLine;
-				currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
-				currentChunk = currentLine;
-			} else {
-				currentChunk = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
-				currentLine.addToEnd(currentChunk);
+				currentLine = new Text(null, curr.formatting, null, curr.frontTab, curr.icon);
+			}
+			curr = curr.next; 
+			if (curr) {
+				if (curr.flags.newLine || curr.flags.newParagraph) {		//Force text breakage, put text chunk into the array.
+					result ~= currentLine;
+					currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+					currentChunk = currentLine;
+				} else {
+					currentChunk = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+					currentLine.addToEnd(currentChunk);
+				}
 			}
 		}
 		return result;
