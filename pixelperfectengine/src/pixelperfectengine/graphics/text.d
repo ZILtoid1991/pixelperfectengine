@@ -279,6 +279,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 					} else {
 						result ~= currentLine;
 						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
+						currentLine._text ~= currentWord ~ ch;
 						currentChunk = currentLine;
 						currentWord.length = 0;
 						currentWordLength = 0;
