@@ -31,7 +31,8 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	public byte				iconOffsetX;	///X offset of the icon if any
 	public byte				iconOffsetY;	///Y offset of the icon if any
 	public byte				iconSpacing;	///Spacing after the icon if any
-	public BitFlags!Flags	flags;			///Text flags
+	//public BitFlags!Flags	flags;			
+	public ubyte			flags;			///Text flags
 	/**
 	 * Creates a unit of formatted text from the supplied data.
 	 */
@@ -287,10 +288,11 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 					}
 				} else {
 					if (currentWordLength > width) {		//Break word to avoid going out of the line
+						currentLine._text = currentWord.dup;
 						result ~= currentLine;
-						result ~= new TextTempl!(BitmapType)(currentWord.idup, curr.formatting, null, 0, null);
+						//result ~= new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
 						currentWordLength = curr.formatting.font.chars(ch).xadvance;
-						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
 						currentChunk = currentLine;
 						currentWord.length = 0;
 						currentWordLength = 0;
@@ -298,18 +300,24 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 					currentWord ~= ch;
 				}
 			}
-			if (currentLine._text.length) {
-				result ~= currentLine;
-				currentLine = new Text(null, curr.formatting, null, curr.frontTab, curr.icon);
-			}
-			curr = curr.next; 
+			//if (currentLine._text.length) {
+				//result ~= currentLine;
+				//currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+				//currentWord.length = 0;
+				//currentWordLength = 0;
+				//currentLineLength = 0;
+			//}
+ 			curr = curr.next; 
 			if (curr) {
-				if (curr.flags.newLine || curr.flags.newParagraph) {		//Force text breakage, put text chunk into the array.
+				if ((curr.flags & Flags.newLine) || (curr.flags & Flags.newParagraph)) {		//Force text breakage, put text chunk into the array.
 					result ~= currentLine;
-					currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+					currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, curr.icon);
 					currentChunk = currentLine;
+					currentLineLength = 0;
+ 					currentWord.length = 0;
+					currentWordLength = 0;
 				} else {
-					currentChunk = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
+					currentChunk = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, curr.icon);
 					currentLine.addToEnd(currentChunk);
 				}
 			}

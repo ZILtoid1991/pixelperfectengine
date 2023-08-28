@@ -67,7 +67,7 @@ public class Test5 : SystemEventListener, InputListener {
 		//Setup textparsing and parse texts from included ETML file
 		Fontset!Bitmap8Bit fnt = new Fontset!Bitmap8Bit(File(args[2]), dirName(args[2]) ~ "/");
 		CharacterFormattingInfo!Bitmap8Bit defFrmt = new CharacterFormattingInfo!Bitmap8Bit(fnt, 0x01, 0, 0x01, 
-				cast(short)fnt.size, 0x00);
+				cast(short)(fnt.size + 1), 0x00);
 		dstring input;
 		File xml = File(args[1]);
 		char[] buffer;
@@ -94,7 +94,7 @@ public class Test5 : SystemEventListener, InputListener {
 
 		textOutput = new BitmapDrawer(424, 240);
 		s.addSprite(textOutput.output, 0, 0, 0);
-		//textOutput.drawMultiLineText();
+		
 		drawNextText();
 	}
 	public void whereTheMagicHappens() {

@@ -68,6 +68,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		parser.setSource(_input);
 		parser.onElementStart = &onElementStart;
 		parser.onElementEnd = &onElementEnd;
+		parser.onElementEmpty = &onElementEmpty;
 		parser.onText = &onText;
 		try {
 			parser.processDocument();
@@ -175,7 +176,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		}
 		testFormatting(newFrmt);
 		currTextBlock.formatting = currFrmt;
-		currTextBlock.flags.newParagraph = true;
+		currTextBlock.flags |= TextType.Flags.newParagraph;
 	}
 	protected void onLineFormatElementStart(string Type)(dstring[dstring] attributes) @safe {
 		closeTextBlockIfNotEmpty();
@@ -336,7 +337,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	protected void onBrElement() @safe {
 		currTextBlock.next = new TextType(null, currFrmt);
 		currTextBlock = currTextBlock.next;
-		currTextBlock.flags.newLine = true;
+		currTextBlock.flags |= TextType.Flags.newLine;
 	}
 	protected void onFrontTabElement(dstring[dstring] attributes) @safe {
 		closeTextBlockIfNotEmpty();
@@ -356,6 +357,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		if (currTextBlock.charLength) {
 			currTextBlock.next = new TextType(null, currFrmt);
 			currTextBlock = currTextBlock.next;
+			//currTextBlock.flags |= TextType.Flags.newLine;
 		}
 	}
 	protected final void removeTopFromFrmtStack() @safe {

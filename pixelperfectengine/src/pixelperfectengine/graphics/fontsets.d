@@ -317,6 +317,18 @@ public class CharacterFormattingInfo(T) {
 		return this.color == rhs.color && this.font == rhs.font && this.formatFlags == rhs.formatFlags &&
 				this.paragraphSpace == rhs.paragraphSpace && this.rowHeight == rhs.rowHeight;
 	}
+	public int getItalicsAm() @nogc @safe pure nothrow {
+		switch (formatFlags & FormattingFlags.forceItalicsMask) {
+			case FormattingFlags.forceItalics1per2:
+				return 2;
+			case FormattingFlags.forceItalics1per3:
+				return 3;
+			case FormattingFlags.forceItalics1per4:
+				return 4;
+			default:
+				return 1;
+		}
+	}
 	alias opEquals = Object.opEquals;
 }
 ///Defines formatting characters.

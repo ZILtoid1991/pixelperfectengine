@@ -260,9 +260,16 @@ public class BitmapDrawer{
 		/* if(lineCount >= lineOffset) {	//draw if linecount is greater or equal than offset
 			//special
 		} */
-		while (lineOffset > (maxLines * -1) && lineNum < lineChunks.length) {
-			drawSingleLineText(pos, lineChunks[lineNum], offset, lineOffset);
-			lineOffset -= lineChunks[lineNum].getHeight;
+		int currLine = lineOffset * -1;
+		
+		while (currLine < maxLines && lineNum < lineChunks.length) {
+			Box currPos = Box.bySize(0, currLine, pos.width, lineChunks[lineNum].getHeight);
+			if (currPos.top >= 0) {
+				drawSingleLineText(currPos, lineChunks[lineNum], 0, 0);
+			} else if (currPos.bottom >= 0) {
+				drawSingleLineText(currPos, lineChunks[lineNum], 0, currPos.top * -1);
+			}
+			currLine += lineChunks[lineNum].getHeight;
 			lineNum++;
 		}
 		return 0;
@@ -287,7 +294,7 @@ public class BitmapDrawer{
 		//TODO: modify the algorithm to work without a workpad
 		Bitmap8Bit workPad = new Bitmap8Bit(textWidth + 1, text.font.size * 2);
 		///Inserts a color letter.
-		void _insertColorLetter(Point pos, Bitmap8Bit bitmap, ubyte color, Coordinate slice) pure nothrow {
+		void _insertColorLetter(Point pos, Bitmap8Bit bitmap, ubyte color, Box slice, int italics) pure nothrow {
 			if(slice.width - 1 <= 0) return;
 			if(slice.height - 1 <= 0) return;
 			ubyte* psrc = bitmap.getPtr, pdest = workPad.getPtr;
@@ -295,8 +302,9 @@ public class BitmapDrawer{
 			const int bmpWidth = bitmap.width;
 			psrc += slice.left + bmpWidth * slice.top;
 			//int length = slice.width;
-			for(int iy ; iy < slice.height ; iy++){
-				specblt.textBlitter(psrc,pdest,slice.width,color);
+			for(int iy ; iy < slice.height ; iy++) {
+				const int italicsOffset = italics != 1 ? (slice.height - iy) / italics : 0;
+				specblt.textBlitter(psrc, pdest + italicsOffset, slice.width, color);
 				psrc += bmpWidth;
 				pdest += workPad.width;
 			}
@@ -347,10 +355,12 @@ public class BitmapDrawer{
 					Font.Char chrInfo = text.font.chars(chr);
 					//check if the character exists in the fontset, if not, then substitute it and set flag for missing character
 					if(chrInfo.id == 0xFFFD && chr != 0xFFFD) status |= TextDrawStatus.CharacterNotFound;
-					Box letterSrc = Box(chrInfo.x, chrInfo.y, chrInfo.x + chrInfo.width, chrInfo.y + 
-							chrInfo.height);
+					/* Box letterSrc = Box(chrInfo.x, chrInfo.y, chrInfo.x + chrInfo.width, chrInfo.y + 
+							chrInfo.height); */
+					Box letterSrc = Box.bySize(chrInfo.x, chrInfo.y, chrInfo.width, chrInfo.height);
 					Point chrPos = Point (pX + chrInfo.xoffset, chrInfo.yoffset);
-					_insertColorLetter(chrPos, currTextChunk.font.pages[chrInfo.page], currTextChunk.formatting.color, letterSrc);
+					_insertColorLetter(chrPos, currTextChunk.font.pages[chrInfo.page], currTextChunk.formatting.color, letterSrc, 
+							currTextChunk.formatting.getItalicsAm);
 					pX += chrInfo.xadvance + currTextChunk.formatting.getKerning(prevChar, chr);
 					currCharPos++;
 				}
