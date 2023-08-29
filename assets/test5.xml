@@ -9,6 +9,7 @@
         This even supports Unicode characters as long as the target system is capable of displaying them. <br />
         árvíztűrő tükörfúrógép ÁRVÍZTŰRŐ TÜKÖRFÚRÓGÉP <br />
         おはよう世界、これは日本語だよねー。または、カタカナも使える！ <br />
+        ｆｕｌｌｗｉｄｔｈ　ＴＥＸＴ mixed with halfwidth. <br />
         ﾊﾙﾌｳｨｯﾄｶﾀｶﾅ <br />
     </text>
     <text id="example3">
@@ -22,5 +23,18 @@
         Short text. <br />
         Short text. <br />
         Short text. <br />
+    </text>
+    <text id="example4">
+        <font color="2">Color Nr.2</font>
+        <font color="3">Color Nr.3</font>
+        <font color="4">Color Nr.4</font>
+        <font color="5">Color Nr.5</font>
+    </text>
+    <text id="example5">
+        <u>Underline</u>&spc;test.<br />
+        <u style="double">Underline</u> test.<br />
+        <u style="triple">Underline</u> test.<br />
+        <u lines="dotted">Underline</u> test.<br />
+        <u lines="stripes">Underline</u> test.<br />
     </text>
 </etml>

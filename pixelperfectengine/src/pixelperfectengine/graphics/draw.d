@@ -19,14 +19,15 @@ import draw0 = CPUblit.drawing.foodfill;
 import bmfont;
 public import pixelperfectengine.graphics.fontsets;
 public import pixelperfectengine.graphics.common;
-import pixelperfectengine.graphics.text : Text;
+import pixelperfectengine.graphics.text : Text, isWhiteSpaceMB;
 //import system.etc;
 /**
  * Draws into a 8bit bitmap.
  */
 public class BitmapDrawer{
 	public Bitmap8Bit output;
-	public ubyte brushTransparency;
+	protected immutable ubyte[2] dottedLine = [0x00, 0xFF];
+	protected immutable ubyte[8] stripesLine = [0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
 	///Creates the object alongside its output.
 	public this(int x, int y) pure {
 		output = new Bitmap8Bit(x, y);
@@ -319,6 +320,28 @@ public class BitmapDrawer{
 				dest += workPad.width;
 			}
 		}
+		void _drawUnderlineSegment(uint style, int vOffset, int from, int to, ubyte color) pure {
+
+			switch ( style & FormattingFlags.ulLineStyle ) {
+			case FormattingFlags.underlineDotted:
+				for (int x = from ; x <= to ; x++) {
+					workPad.writePixel(x, vOffset, dottedLine[x & 1] & color);
+				}
+				break;
+			case FormattingFlags.underlineStripes:
+				for (int x = from ; x <= to ; x++) {
+					workPad.writePixel(x, vOffset, stripesLine[x & 7] & color);
+				}
+				break;
+			default:
+				for (int i = (style & FormattingFlags.ulLineMultiplier) ; i >= 0 ; i--){
+					for (int x = from ; x <= to ; x++) {
+						workPad.writePixel(x, vOffset, color);
+					}
+				}
+				break;
+			}
+		}
 		//const int targetX = textWidth - offset > pos.width ? pos.right : pos.left + textWidth;
 		Text currTextChunk = text;
 		int currCharPos;// = text.offsetAmount(offset);
@@ -351,7 +374,7 @@ public class BitmapDrawer{
 					pX += currTextChunk.frontTab;
 				} else {
 					//if there's enough space for the next character, then draw it
-					const dchar chr = text.text[currCharPos];
+					const dchar chr = currTextChunk.text[currCharPos];
 					Font.Char chrInfo = text.font.chars(chr);
 					//check if the character exists in the fontset, if not, then substitute it and set flag for missing character
 					if(chrInfo.id == 0xFFFD && chr != 0xFFFD) status |= TextDrawStatus.CharacterNotFound;
@@ -361,8 +384,14 @@ public class BitmapDrawer{
 					Point chrPos = Point (pX + chrInfo.xoffset, chrInfo.yoffset);
 					_insertColorLetter(chrPos, currTextChunk.font.pages[chrInfo.page], currTextChunk.formatting.color, letterSrc, 
 							currTextChunk.formatting.getItalicsAm);
+					//draw underline if needed
+					if ((currTextChunk.formatting.formatFlags & FormattingFlags.underline) && 
+							!((currTextChunk.formatting.formatFlags & FormattingFlags.underlinePerWord) && isWhiteSpaceMB(chr)))
+						_drawUnderlineSegment(currTextChunk.formatting.formatFlags, currTextChunk.formatting.font.size, pX, 
+								pX + chrInfo.xadvance, currTextChunk.formatting.color);
 					pX += chrInfo.xadvance + currTextChunk.formatting.getKerning(prevChar, chr);
 					currCharPos++;
+					prevChar = chr;
 				}
 			}
 		}

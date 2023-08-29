@@ -64,14 +64,16 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	 * Parses the formatted text, then sets the output values.
 	 */
 	public void parse()  {
-		auto parser = _input.lexer.parser.cursor.saxParser;
-		parser.setSource(_input);
-		parser.onElementStart = &onElementStart;
-		parser.onElementEnd = &onElementEnd;
-		parser.onElementEmpty = &onElementEmpty;
-		parser.onText = &onText;
+		auto parser0 = _input.lexer.parser.cursor.saxParser;
+		parser0.setSource(_input);
+		//add whitespace entities
+		//parser0.cursor.parser.chrEntities["spc"] = " ";
+		parser0.onElementStart = &onElementStart;
+		parser0.onElementEnd = &onElementEnd;
+		parser0.onElementEmpty = &onElementEmpty;
+		parser0.onText = &onText;
 		try {
-			parser.processDocument();
+			parser0.processDocument();
 		} catch (XMLException e) {	//XML formatting issue
 			throw new XMLTextParsingException("XML file is badly formatted!", e);
 		} catch (RangeError e) {	//Missing mandatory attributes
@@ -92,6 +94,9 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		switch (name) {
 			case "text":
 				onTextElementStart(attr);
+				break;
+			case "font":
+				onFontElementStart(attr);
 				break;
 			case "p":
 				onPElementStart(attr);

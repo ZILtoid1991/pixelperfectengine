@@ -269,12 +269,12 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		TextTempl!(BitmapType)[] result;
 		int currentWordLength, currentLineLength;
 		while (curr) {
-			foreach(ch ; curr._text) {
+			foreach(size_t i, dchar ch ; curr._text) {
 				currentWordLength += curr.formatting.font.chars(ch).xadvance;
 				if (isWhiteSpaceMB(ch)){
 					if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start new word.
 						currentLineLength += currentWordLength;
-						currentLine._text ~= currentWord ~ ch;
+						currentChunk._text ~= currentWord ~ ch;
 						currentWord.length = 0;
 						currentWordLength = 0;
 					} else {
@@ -300,6 +300,20 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 					currentWord ~= ch;
 				}
 			}
+			if (currentWord.length) {		//Flush any remaining words to current chunk.
+				if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start new word.
+					currentLineLength += currentWordLength;
+					currentChunk._text ~= currentWord;
+				} else {
+					result ~= currentLine;
+					currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
+					currentLine._text ~= currentWord;
+					currentChunk = currentLine;
+					currentLineLength = 0;
+				}
+				currentWord.length = 0;
+				currentWordLength = 0;
+			}
 			//if (currentLine._text.length) {
 				//result ~= currentLine;
 				//currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
@@ -322,6 +336,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 				}
 			}
 		}
+		if (!result.length) return [currentLine];
 		return result;
 	}
 }
