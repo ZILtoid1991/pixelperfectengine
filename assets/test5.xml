@@ -31,10 +31,14 @@
         <font color="5">Color Nr.5</font>
     </text>
     <text id="example5">
-        <u>Underline</u>&spc;test.<br />
-        <u style="double">Underline</u> test.<br />
-        <u style="triple">Underline</u> test.<br />
-        <u lines="dotted">Underline</u> test.<br />
-        <u lines="stripes">Underline</u> test.<br />
+        <u>Underline</u>&#32;test.<br />
+        <!-- <u style="double">Underline</u>&#32;test.<br />
+        <u style="triple">Underline</u>&#32;test.<br /> -->
+        <u lines="dotted">Underline</u>&#32;test.<br />
+        <u lines="stripes">Underline</u>&#32;test.<br />
+        <s>Strikethrough</s>&#32;test.<br />
+        <o>Overstrike</o>&#32;test.<br />
+        <u perWord="yes">Per-word underline test.</u><br />
+        <u>This example shouldn't leave out whitespace characters.</u><br />
     </text>
 </etml>

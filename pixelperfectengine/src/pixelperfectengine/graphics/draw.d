@@ -190,7 +190,7 @@ public class BitmapDrawer{
 			pdest += output.width;
 		}
 	}
-	///Inserts a midsection of the bitmap defined by slice (DEPRECATED)
+	/* ///Inserts a midsection of the bitmap defined by slice (DEPRECATED)
 	public deprecated void insertBitmapSlice(int x, int y, Bitmap8Bit bitmap, Coordinate slice) pure {
 		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
 		pdest += x + output.width * y;
@@ -202,8 +202,8 @@ public class BitmapDrawer{
 			psrc += bmpWidth;
 			pdest += output.width;
 		}
-	}
-	///Inserts a midsection of the bitmap defined by slice as a color letter (DEPRECATED)
+	} */
+	/* ///Inserts a midsection of the bitmap defined by slice as a color letter (DEPRECATED)
 	public deprecated void insertColorLetter(int x, int y, Bitmap8Bit bitmap, ubyte color, Coordinate slice) pure {
 		if(slice.width - 1 <= 0) return;
 		if(slice.height - 1 <= 0) return;
@@ -217,9 +217,9 @@ public class BitmapDrawer{
 			psrc += bmpWidth;
 			pdest += output.width;
 		}
-	}
+	} */
 		
-	///Draws colored text from monocromatic font.
+	/* ///Draws colored text from monocromatic font.
 	public void drawColorText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, ubyte color, uint style = 0) pure {
 		//color = 1;
 		const int length = fontset.getTextLength(text);
@@ -236,7 +236,7 @@ public class BitmapDrawer{
 			insertColorLetter(x + chinfo.xoffset, y + chinfo.yoffset, fontset.pages[chinfo.page], color, letterSlice);
 			x += chinfo.xadvance;
 		}
-	}
+	} */
 	/**
 	 * Draws fully formatted text within a given prelimiter specified by pos.
 	 * Offset specifies how much of the text is being obscured from the left hand side.
@@ -296,8 +296,8 @@ public class BitmapDrawer{
 		Bitmap8Bit workPad = new Bitmap8Bit(textWidth + 1, text.font.size * 2);
 		///Inserts a color letter.
 		void _insertColorLetter(Point pos, Bitmap8Bit bitmap, ubyte color, Box slice, int italics) pure nothrow {
-			if(slice.width - 1 <= 0) return;
-			if(slice.height - 1 <= 0) return;
+			if(slice.width <= 0) return;
+			if(slice.height <= 0) return;
 			ubyte* psrc = bitmap.getPtr, pdest = workPad.getPtr;
 			pdest += pos.x + workPad.width * pos.y;
 			const int bmpWidth = bitmap.width;
@@ -321,8 +321,7 @@ public class BitmapDrawer{
 			}
 		}
 		void _drawUnderlineSegment(uint style, int vOffset, int from, int to, ubyte color) pure {
-
-			switch ( style & FormattingFlags.ulLineStyle ) {
+			switch (style & FormattingFlags.ulLineStyle) {
 			case FormattingFlags.underlineDotted:
 				for (int x = from ; x <= to ; x++) {
 					workPad.writePixel(x, vOffset, dottedLine[x & 1] & color);
@@ -334,12 +333,25 @@ public class BitmapDrawer{
 				}
 				break;
 			default:
-				for (int i = (style & FormattingFlags.ulLineMultiplier) ; i >= 0 ; i--){
-					for (int x = from ; x <= to ; x++) {
-						workPad.writePixel(x, vOffset, color);
-					}
+				/* for (int i = (style & FormattingFlags.ulLineMultiplier) ; i >= 0 ; i--){
+					if (vOffset + ((i>>7) * 2) > workPad.height) continue; */
+				for (int x = from ; x <= to ; x++) {
+					workPad.writePixel(x, vOffset/*  + ((i>>7) * 2) */, color);
 				}
+				/* } */
 				break;
+			}	
+		}
+		void _drawOtherLines(uint style, int vOffset, int from, int to, ubyte color) pure {
+			if (style & FormattingFlags.strikeThrough) {
+				for (int x = from ; x <= to ; x++) {
+					workPad.writePixel(x, vOffset / 2, color);
+				}
+			}
+			if (style & FormattingFlags.overline) {
+				for (int x = from ; x <= to ; x++) {
+					workPad.writePixel(x, 0, color);
+				}
 			}
 		}
 		//const int targetX = textWidth - offset > pos.width ? pos.right : pos.left + textWidth;
@@ -389,6 +401,8 @@ public class BitmapDrawer{
 							!((currTextChunk.formatting.formatFlags & FormattingFlags.underlinePerWord) && isWhiteSpaceMB(chr)))
 						_drawUnderlineSegment(currTextChunk.formatting.formatFlags, currTextChunk.formatting.font.size, pX, 
 								pX + chrInfo.xadvance, currTextChunk.formatting.color);
+					_drawOtherLines(currTextChunk.formatting.formatFlags, currTextChunk.formatting.font.size, pX, 
+							pX + chrInfo.xadvance, currTextChunk.formatting.color);
 					pX += chrInfo.xadvance + currTextChunk.formatting.getKerning(prevChar, chr);
 					currCharPos++;
 					prevChar = chr;
@@ -419,7 +433,7 @@ public class BitmapDrawer{
 			bitBLT(renderTarget, workPad, textSlice);
 		return status;
 	}
-	///Draws text to the given point. DEPRECATED!
+	/* ///Draws text to the given point. DEPRECATED!
 	deprecated public void drawText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, uint style = 0) pure {
 		const int length = fontset.getTextLength(text);
 		//writeln(text);
@@ -439,8 +453,8 @@ public class BitmapDrawer{
 			insertBitmapSlice(x + chinfo.xoffset, y + chinfo.yoffset, fontset.pages[chinfo.page], letterSlice);
 			x += chinfo.xadvance;
 		}
-	}
-	///Inserts a bitmap using blitter. DEPRECATED
+	} */
+	/* ///Inserts a bitmap using blitter. DEPRECATED
 	deprecated public void insertBitmap(int x, int y, Bitmap8Bit bitmap) pure {
 		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
 		pdest += x + output.width * y;
@@ -450,7 +464,7 @@ public class BitmapDrawer{
 			psrc += length;
 			pdest += output.width;
 		}
-	}
+	} */
 }
 /**
  * Font formatting flags.

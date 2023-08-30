@@ -7,7 +7,7 @@ public import pixelperfectengine.graphics.text;
 public import pixelperfectengine.system.exc;
 //public import pixelperfectengine.system.etc : isInteger;
 
-import newxml;
+
 import newxml.interfaces : XMLException;
 import std.utf : toUTF32, toUTF8;
 import std.conv : to;
@@ -50,10 +50,10 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	public CharacterFormattingInfo!BitmapType defaultFormatting() @property @safe pure nothrow @nogc {
 		return defFrmt;
 	}
-	private final ChrFormat currFrmt() @property @safe pure nothrow @nogc {
+	private ChrFormat currFrmt() @property @safe pure nothrow @nogc {
 		return frmtStack[$ - 1];
 	}
-	private final ref ChrFormat defFrmt() @property @safe pure nothrow @nogc {
+	private ref ChrFormat defFrmt() @property @safe pure nothrow @nogc {
 		return chrFrmt[0];
 	}
 	///Sets/gets the input
@@ -64,7 +64,11 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	 * Parses the formatted text, then sets the output values.
 	 */
 	public void parse()  {
-		auto parser0 = _input.lexer.parser.cursor.saxParser;
+		auto createParser() {
+			import newxml;
+			return _input.lexer.parser.cursor.saxParser;
+		}
+		auto parser0 = createParser;
 		parser0.setSource(_input);
 		//add whitespace entities
 		//parser0.cursor.parser.chrEntities["spc"] = " ";
@@ -196,10 +200,10 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 					newFrmt.formatFlags |= FormattingFlags.underlineDouble;
 					break;
 				case "triple":
-					newFrmt.formatFlags |= FormattingFlags.underlineDouble;
+					newFrmt.formatFlags |= FormattingFlags.underlineTriple;
 					break;
 				case "quad":
-					newFrmt.formatFlags |= FormattingFlags.underlineDouble;
+					newFrmt.formatFlags |= FormattingFlags.underlineQuadruple;
 					break;
 				default:
 					break;
@@ -209,7 +213,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 				newFrmt.formatFlags &= ~FormattingFlags.ulLineStyle;
 			switch (lines) {
 				case "dotted":
-					newFrmt.formatFlags |= FormattingFlags.underlineDouble;
+					newFrmt.formatFlags |= FormattingFlags.underlineDotted;
 					break;
 				case "wavy":
 					newFrmt.formatFlags |= FormattingFlags.underlineWavy;
