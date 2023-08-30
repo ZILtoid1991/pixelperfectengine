@@ -1,4 +1,16 @@
-# 0.10.0 (current)
+# 0.10.1 (current)
+
+## Fixed bitmap slicing with sprites
+
+Should no longer create the previous issue of either sprite sheets not getting detected, or bitmap slicing causing the application to crash.
+
+## Text parsing tested and working, multiline text drawing implemented
+
+Text parsing wasn't tested previously, now it's working. Multiline texts also working now.
+
+I haven't implemented the full ETML specification yet, as even this level is more than useful.
+
+# 0.10.0
 
 ## Fixed function getLayerType for all layers
 
