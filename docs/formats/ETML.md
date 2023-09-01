@@ -59,7 +59,7 @@ other tags. The `id` attribute is mandatory.
 <etml>
     <text id="example1">
         Hello world! <br />
-        This is an examle of a <i>multiline</i> text done in ETML.
+        This is an example of a <i>multiline</i> text done in ETML.
     </text>
     <text id="example2">
         This even supports Unicode characters as long as the target system is capable of displaying them. <br />

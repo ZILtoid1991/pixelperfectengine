@@ -3,7 +3,7 @@
 <etml>
     <text id="example1">
         Hello world! <br />
-        This is an examle of a <i>multiline </i> text done in ETML. <br />
+        This is an example of a <i>multiline </i> text done in ETML. <br />
     </text>
     <text id="example2">
         This even supports Unicode characters as long as the target system is capable of displaying them. <br />
@@ -40,5 +40,15 @@
         <o>Overstrike</o>&#32;test.<br />
         <u perWord="yes">Per-word underline test.</u><br />
         <u>This example shouldn't leave out whitespace characters.</u><br />
+    </text>
+    <text id="example6">
+        <p>
+            Testing of multiple paragraph text.<br />
+            Testing of multiple paragraph text.<br />
+        </p>
+        <p>
+            Testing of multiple paragraph text.<br />
+            Testing of multiple paragraph text.<br />
+        </p>
     </text>
 </etml>
