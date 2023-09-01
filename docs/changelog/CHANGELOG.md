@@ -10,6 +10,8 @@ Text parsing wasn't tested previously, now it's working. Multiline texts also wo
 
 I haven't implemented the full ETML specification yet, as even this level is more than useful.
 
+KNOWN ISSUE: Not ending lines with `<br />` at end of each text chunk and paragraphs will result in some lines missing and random `[cr][lf]` whitespace. Will be fixed later on.
+
 # 0.10.0
 
 ## Fixed function getLayerType for all layers
