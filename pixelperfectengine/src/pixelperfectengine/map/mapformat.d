@@ -209,10 +209,8 @@ public class MapFormat {
 							case 16:
 								result[id] = loadBitmapSliceFromImage!Bitmap16Bit(imageBuffer[filename], hOffset, vOffset, w, h);
 								break;
-							case 32:
-								result[id] = loadBitmapSliceFromImage!Bitmap32Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-								break;
 							default:
+								result[id] = loadBitmapSliceFromImage!Bitmap32Bit(imageBuffer[filename], hOffset, vOffset, w, h);
 								break;
 						}
 					} else {
@@ -229,10 +227,8 @@ public class MapFormat {
 							case 16:
 								result[id] = loadBitmapFromImage!Bitmap16Bit(imageBuffer[filename]);
 								break;
-							case 32:
-								result[id] = loadBitmapFromImage!Bitmap32Bit(imageBuffer[filename]);
-								break;
 							default:
+								result[id] = loadBitmapFromImage!Bitmap32Bit(imageBuffer[filename]);
 								break;
 						}
 					}
@@ -260,10 +256,8 @@ public class MapFormat {
 									case 16:
 										result[id] = loadBitmapSliceFromImage!Bitmap16Bit(imageBuffer[filename], hOffset, vOffset, w, h);
 										break;
-									case 32:
-										result[id] = loadBitmapSliceFromImage!Bitmap32Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-										break;
 									default:
+										result[id] = loadBitmapSliceFromImage!Bitmap32Bit(imageBuffer[filename], hOffset, vOffset, w, h);
 										break;
 								}
 							}
@@ -276,8 +270,8 @@ public class MapFormat {
 						imageBuffer[filename] = loadImage(File(filename));
 					}
 					Color[] pal = loadPaletteFromImage(imageBuffer[filename]);
-					const size_t palLength = "palShift" in t0.attributes ? 1<<(t0.getAttribute!int("palShift")) : pal.length;
-					const int palOffset = "offset" in t0.attributes ? t0.getAttribute!int("offset") : 0;
+					const size_t palLength = t0.getAttribute!int("palShift") ? 1<<(t0.getAttribute!int("palShift")) : pal.length;
+					const int palOffset = t0.getAttribute!int("offset");
 					paletteTarget.loadPaletteChunk(pal[0..palLength], cast(ushort)palOffset);
 					break;
 				default:
