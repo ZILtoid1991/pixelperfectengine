@@ -1,4 +1,13 @@
-# 0.10.1 (current)
+# 0.10.3 (current)
+
+* Added code of conduct, and branding guidelines.
+* Fixed the offscreen popup issue by adding some additional calculations to the popup placement.
+
+# 0.10.2
+
+Fixed loading of 24 bit bitmaps as sprites.
+
+# 0.10.1
 
 ## Fixed bitmap slicing with sprites
 
