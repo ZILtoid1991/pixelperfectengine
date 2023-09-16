@@ -299,8 +299,12 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		p.draw;
 		/+mouseX -= (p.getPosition.width/2);
 		mouseY -= (p.getPosition.height/2);+/
-		
-		p.move(mouseX, mouseY);
+		int posX = mouseX, posY = mouseY;
+		if (posX + p.getPosition.width > rasterWidth)
+			posX -= p.getPosition.width;
+		if (posY + p.getPosition.height > rasterHeight)
+			posY -= p.getPosition.height;
+		p.move(posX, posY);
 		numOfPopUpElements--;
 		spriteLayer.addSprite(p.getOutput(), numOfPopUpElements, p.getPosition.left, p.getPosition.top);
 
