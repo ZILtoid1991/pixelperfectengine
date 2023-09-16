@@ -1,6 +1,6 @@
 # PixelPerfectEngine Extendible Map Format
 
-## Prerequirements
+## Pre-requirements
 
 * Knowledge of SDLang (https://sdlang.org/)
 * Basic knowledge of the engine architecture
@@ -29,7 +29,7 @@ Extensions: `.XMF` (Extendible Map Format) or `.ZMF` (Compressed Extendible Map 
 ## Compression
 
 NOTE: DataPak can compress multiple files together. In that case, uncompressed files should be used since multiple 
-compression has diminishing returns, often resulting in bigger filesizes and slower access.
+compression has diminishing returns, often resulting in bigger file sizes and slower access.
 
 The first four bytes are compression algorithm identifiers. `ZLIB` are used for ZLib, and `ZSTD` are used for 
 Zstandard. The rest is the compressed SDLang data.
@@ -37,7 +37,7 @@ Zstandard. The rest is the compressed SDLang data.
 # 'Metadata'
 
 * Has no namespace
-* Position restraint: in root tag, preferrably the first tag in the file if the file doesn't start with a comment
+* Position restraint: in root tag, preferably the first tag in the file if the file doesn't start with a comment
 
 Contains various metadata for the map.
 
@@ -81,7 +81,7 @@ should be absent.
 
 # Namespace 'Layer'
 
-* Position constraints: In root tag, preferrably in order of display from bottom to top.
+* Position constraints: In root tag, preferably in order of display from bottom to top.
 
 Contains data about the layers. First value is always the layer name, second value is always the priority.
 
@@ -138,11 +138,13 @@ restricted to internal use.
 Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
 "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
 
-### 'ScrollRate'
+### 'ScrollRate#' X and Y
 
-`ScrollRate 0.325 0.25`
+`ScrollRateX 0.325` and `ScrollRateY 0.25`
 
 Sets the relative scrolling speed of the layers relative to the main one.
+
+### 'TileFlagName#' 0 through 5
 
 ## Reserved tags
 
