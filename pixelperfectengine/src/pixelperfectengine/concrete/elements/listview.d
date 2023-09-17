@@ -1056,4 +1056,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	private void deleteCharacter(size_t n){
 		text.removeChar(n);
 	}
+	public int[2] getRasterSizes() {
+		return parent.getRasterSizes();
+	}
 }

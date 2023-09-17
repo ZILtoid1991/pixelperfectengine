@@ -427,6 +427,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
 
 	}
+	public int[2] getRasterSizes() {
+		return [rasterWidth, rasterHeight];
+	}
 }
 
 

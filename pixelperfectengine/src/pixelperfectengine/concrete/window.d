@@ -587,5 +587,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 			sb.customStyle = ss;
 		return sb;
 	}
+	public int[2] getRasterSizes() {
+		return handler.getRasterSizes();
+	}
 }
 

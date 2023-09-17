@@ -147,6 +147,7 @@ public interface StyleSheetContainer {
 	 * Returns the stylesheet stored by the object.
 	 */
 	public StyleSheet getStyleSheet();
+	public int[2] getRasterSizes();
 }
 /**
  * Implements mouse event passing.
@@ -190,8 +191,4 @@ public interface PopUpHandler : StyleSheetContainer {
 	 * Closes a single popup element.
 	 */
 	public void closePopUp(PopUpElement p);
-	//public Coordinate getAbsolutePosition(PopUpElement sender);
-	//public void drawUpdate(PopUpElement sender);
-	//public StyleSheet getDefaultStyleSheet();
-
 }

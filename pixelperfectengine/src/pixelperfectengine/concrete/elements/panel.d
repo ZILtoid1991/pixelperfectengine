@@ -225,4 +225,7 @@ public class Panel : WindowElement, ElementContainer {
 		}
 		super.passMWE(mec, mwe);
 	}
+	public int[2] getRasterSizes() {
+		return parent.getRasterSizes();
+	}
 }
