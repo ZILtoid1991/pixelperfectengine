@@ -97,6 +97,7 @@ public class PopUpMenu : PopUpElement {
 		if (mce.state) {
 			mce.y -= position.top;
 			mce.y /= height / elements.length;
+			mce.y = mce.y >= elements.length ? cast(int)elements.length - 1 : mce.y;
 			if(elements[mce.y].source == "\\submenu\\"){
 				PopUpMenu m = new PopUpMenu(elements[mce.y].subElements, this.source, onMenuSelect);
 				m.onMouseClick = onMouseClick;
