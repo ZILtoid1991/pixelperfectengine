@@ -224,7 +224,10 @@ public Color[] loadPaletteFromImage (Image img) {
 	}
 	return palette;
 }
-
+public string getPathToLocalizationFile (string country, string language, string filename) @safe pure nothrow {
+	if (filename[0] == '.') filename = filename[1..$];
+	return "../local/" ~ country ~ "-" ~ language ~ "." ~ filename;
+}
 /**
  * Implements the RIFF serialization system
  */
