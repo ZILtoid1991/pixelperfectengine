@@ -100,6 +100,7 @@ public class StyleSheet{
 		drawParameters["PopUpMenuHorizPadding"] = 4;
 		drawParameters["PopUpMenuVertPadding"] = 1;
 		drawParameters["PopUpMenuMinTextSpace"] = 8;
+		drawParameters["PopUpMenuSeparatorSize"] = 7;
 		drawParameters["ButtonPaddingHoriz"] = 8;
 		drawParameters["PanelTitleFirstCharOffset"] = 16;
 		drawParameters["PanelPadding"] = 4;
@@ -122,6 +123,10 @@ public class StyleSheet{
 		drawParameters["HorizScrollBarSize"] = 16;
 		drawParameters["VertScrollBarSize"] = 16;
 		drawParameters["horizTextPadding"] = 1;
+
+		drawParameters["PopUpLabelHorizPadding"] = 2;
+		drawParameters["PopUpLabelVertPadding"] = 2;
+
 
 		pattern["blackDottedLine"] = [0x1f, 0x1f, 0x10, 0x10];
 	}

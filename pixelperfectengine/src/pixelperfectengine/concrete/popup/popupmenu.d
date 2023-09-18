@@ -49,33 +49,41 @@ public class PopUpMenu : PopUpElement {
 		Box position0 = Box(0, 0, width - 1, height - 1);
 		output.drawFilledBox(position0, ss.getColor("window"));//output.drawFilledRectangle(0,width - 1,0,height - 1,ss.getColor("window"));
 
-		if(select > -1){
+		/* if(select > -1){
 			int y0 = cast(int)((height / elements.length) * select);
 			int y1 = cast(int)((height / elements.length) + y0);
 			output.drawFilledBox(Box(1, y0 + 1, position0.width - 1, y1 - 1), ss.getColor("selection")); //output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
-		}
+		} */
 
 
 		int y = 1 + ss.drawParameters["PopUpMenuVertPadding"];
-		foreach(e; elements){
-			if(e.secondaryText !is null){
+		foreach(size_t i, PopUpMenuElement e; elements){
+			if (e.text !is null) {	//Draw normal menuelement
+				if (select == i) {
+					output.drawFilledBox(Box(1, y + 1, position0.width - 1, y + text.getHeight() - 1), ss.getColor("selection"));
+				}
+				if (e.secondaryText !is null) {
 				/+output.drawColorText(width - ss.drawParameters["PopUpMenuHorizPadding"] - 1, y, e.secondaryText,
 						ss.getFontset("default"), ss.getColor("PopUpMenuSecondaryTextColor"), FontFormat.RightJustified);+/
 				//const int textLength = e.secondaryText.getWidth;
+					const Box textPos = Box(ss.drawParameters["PopUpMenuHorizPadding"], y,
+							position0.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.secondaryText.getHeight());
+					output.drawSingleLineText(textPos, e.secondaryText);
+				}
+			
 				const Box textPos = Box(ss.drawParameters["PopUpMenuHorizPadding"], y,
-						position0.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.secondaryText.font.size);
-				output.drawSingleLineText(textPos, e.secondaryText);
+						position0.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.text.getHeight());
+				output.drawSingleLineText(textPos, e.text);
+			
+				y += e.text.getHeight() + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
+			} else {				//Draw separator
+				const int linePoint = ss.drawParameters["PopUpMenuSeparatorSize"] / 2 + 
+						(ss.drawParameters["PopUpMenuSeparatorSize"] & 1);
+				output.drawLine(Point(ss.drawParameters["PopUpMenuHorizPadding"], y + linePoint), 
+						Point(position.width - ss.drawParameters["PopUpMenuHorizPadding"] - 1, y + linePoint),
+						ss.getColor("windowinactive"));
+				y += ss.drawParameters["PopUpMenuSeparatorSize"];
 			}
-			/+output.drawColorText(ss.drawParameters["PopUpMenuHorizPadding"] + iconWidth, y, e.text, ss.getFontset("default"),
-					ss.getColor("normaltext"), 0);+/
-			//const int textLength = e.text.getWidth;
-			const Box textPos = Box(ss.drawParameters["PopUpMenuHorizPadding"], y,
-					position0.width - ss.drawParameters["PopUpMenuHorizPadding"], y + e.text.font.size);
-			output.drawSingleLineText(textPos, e.text);
-			/+if(e.getIcon() !is null){
-				//output.insertBitmap(ss.drawParameters["PopUpMenuHorizPadding"], y, e.getIcon());
-			}+/
-			y += e.text.font.size + (ss.drawParameters["PopUpMenuVertPadding"] * 2);
 		}
 
 		//output.drawRectangle(1,1,height-1,width-1,ss.getColor("windowascent"));
@@ -96,15 +104,29 @@ public class PopUpMenu : PopUpElement {
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (mce.state) {
 			mce.y -= position.top;
-			mce.y /= height / elements.length;
-			mce.y = mce.y >= elements.length ? cast(int)elements.length - 1 : mce.y;
-			if(elements[mce.y].source == "\\submenu\\"){
+			/* mce.y /= height / elements.length;
+			mce.y = mce.y >= elements.length ? cast(int)elements.length - 1 : mce.y; */
+			int num, vPos = 1 + getStyleSheet().drawParameters["PopUpMenuVertPadding"];
+			foreach (PopUpMenuElement key; elements) {
+				if (key.text !is null) {
+					vPos += key.text.getHeight() + getStyleSheet.drawParameters["PopUpMenuVertPadding"] * 2;
+				} else {
+					vPos += getStyleSheet.drawParameters["PopUpMenuSeparatorSize"];
+				}
+				if (vPos < mce.y) {
+					break;
+				} else {
+					num++;
+				}
+			}
+			if (num >= elements.length) return;
+			if (elements[num].source == "\\submenu\\") {
 				PopUpMenu m = new PopUpMenu(elements[mce.y].subElements, this.source, onMenuSelect);
 				m.onMouseClick = onMouseClick;
 				//parent.getAbsolutePosition()
-				parent.addPopUpElement(m, position.left + width, position.top + mce.y * cast(int)(height / elements.length));
+				parent.addPopUpElement(m, position.left + width, position.top + vPos - text.getHeight);
 				//parent.closePopUp(this);
-			}else{
+			} else if (elements[num].text !is null) {
 				//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
 				if(onMenuSelect !is null)
 					onMenuSelect(new MenuEvent(this, SourceType.PopUpElement, elements[mce.y].text, mce.y, elements[mce.y].source));
@@ -115,18 +137,26 @@ public class PopUpMenu : PopUpElement {
 
 	}
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
-		if(!position.isBetween(mme.x, mme.y)){
+		if (!position.isBetween(mme.x, mme.y)) {
 			if(select != -1){
 				select = -1;
 				draw;
 			}
-		}else{
-			mme.y -= position.top;
-			mme.y /= height / elements.length;
-			if(mme.y < elements.length){
-				select = mme.y;
+		} else {
+			int num, vPos = getStyleSheet().drawParameters["PopUpMenuVertPadding"];
+			foreach (PopUpMenuElement key; elements) {
+				if (key.text !is null) {
+					vPos += key.text.getHeight();
+				} else {
+					vPos += getStyleSheet.drawParameters["PopUpMenuSeparatorSize"];
+				}
+				if (vPos < mme.y) {
+					select = num;
+					return;
+				} else {
+					num++;
+				}
 			}
-			draw();
 		}
 	}
 
@@ -167,12 +197,12 @@ public class PopUpMenuElement {
 	}
 	///DEPRECATED!
 	///REMOVE BY VER 0.11!
-	public Bitmap8Bit getIcon(){
+	public deprecated Bitmap8Bit getIcon(){
 		return text.icon;
 	}
 	///DEPRECATED!
 	///REMOVE BY VER 0.11!
-	public void setIcon(Bitmap8Bit icon){
+	public deprecated void setIcon(Bitmap8Bit icon){
 		text.icon = icon;
 	}
 	///Returns all subelements of this menu element.
