@@ -41,6 +41,8 @@ public class TopLevelWindow : Window {
 
 		menuElements[1] ~= new PopUpMenuElement("undo", "Undo");
 		menuElements[1] ~= new PopUpMenuElement("redo", "Redo");
+		Text nulltext = null;
+		menuElements[1] ~= new PopUpMenuElement("\\separator\\", nulltext, nulltext);
 		menuElements[1] ~= new PopUpMenuElement("copy", "Copy");
 		menuElements[1] ~= new PopUpMenuElement("cut", "Cut");
 		menuElements[1] ~= new PopUpMenuElement("paste", "Paste");

@@ -97,10 +97,10 @@ public void INIT_CONCRETE() {
 	ss.setImage(loadBitmapFromFile!Bitmap8Bit("../system/concreteGUIDisable.tga"), "ElementDisabledPtrn");
 	ss.addFontset(defaultFont, "default");
 	ss.addFontset(fixedWidthFont, "fixedWidth");
-	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.leftJustify, 0, 0, 2),"default");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.leftJustify, 0, 15, 2),"default");
 	ss.duplicateChrFormatting("default", "windowHeader");
-	ss.addChrFormatting(new ChrFormat(defaultFont, 0x17, FormattingFlags.leftJustify, 0, 0, 2),"windowHeaderInactive");
-	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.centerJustify, 0, 0, 2),"defaultCJ");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x17, FormattingFlags.leftJustify, 0, 15, 2),"windowHeaderInactive");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.centerJustify, 0, 15, 2),"defaultCJ");
 	ss.duplicateChrFormatting("defaultCJ", "button");
 	ss.duplicateChrFormatting("default", "textBox");
 	ss.duplicateChrFormatting("default", "label");
@@ -112,8 +112,8 @@ public void INIT_CONCRETE() {
 	ss.duplicateChrFormatting("default", "popUpMenu");
 	ss.duplicateChrFormatting("default", "panel");
 
-	ss.addChrFormatting(new ChrFormat(defaultFont, 0x14, FormattingFlags.rightJustify, 0, 0, 2),"popUpMenuSecondary");
-	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.rightJustify, 0, 0, 2),"defaultRJ");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x14, FormattingFlags.rightJustify, 0, 15, 2),"popUpMenuSecondary");
+	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.rightJustify, 0, 15, 2),"defaultRJ");
 	/+wh.defaultStyle = ss;
 	Window.defaultStyle = ss;
 	WindowElement.styleSheet = ss;
