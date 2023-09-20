@@ -1,4 +1,4 @@
-# PixelPerfectEngine ver 0.10.0
+# PixelPerfectEngine
 
 A retro engine for 2D and pseudo-3D games written in D by László Szerémi.
 
@@ -34,7 +34,7 @@ to be run on many smartphones and even single-board computers.
 ## Open-source without the hassle
 
 This engine is licensed under the Boost Software License 1.0, which means it can be used without attribution and even 
-in commercial applications. Be aware that many components are on different licenses, such as SDL2 and ZLib.
+in commercial applications, without any associated fees (licensing fee, per-install fee, etc.). Be aware that many components are on different licenses, such as SDL2 and ZLib.
 
 # How to build
 
@@ -43,7 +43,7 @@ to speed up the rendering.
 
 To compile windowmakerforconcrete, launch a simple :
 ```
-dub build :windowmakerforconcrete --compiler=ldc2
+dub build :wmfc --compiler=ldc2
 ```
 
 ## Test cases, demos, and tools
@@ -90,7 +90,7 @@ Arkanoid-clone game. Currently under development.
 
 ### Windowmaker for Concrete/PPE
 
-Window layout editor with code generation features.
+Window layout editor with code generation features. (Dub package name is `wmfc`, to avoid issues from too long paths under Windows)
 
 ### PixelPerfectEditor
 
@@ -128,6 +128,7 @@ various systems.
 * Lots of untested and not fully tested features. Many are tested to at least run somewhat, but not tested in-depth. 
 Currently, I'm the sole maintainer of this project, and things are quite tough, especially after you factor in my 
 full-time job.
+* As of now, your executable must be in the folder `./bin-[cpuarch]-[OS]`, but it'll change soon, since certain companies (console manufacturers, phone OS suppliers, etc.) would like me to put the executable into the root folder, and likely to group together all the asset folders into a bigger one.
 
 # Future plans:
 
