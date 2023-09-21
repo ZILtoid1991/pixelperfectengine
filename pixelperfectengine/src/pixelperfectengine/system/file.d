@@ -31,6 +31,7 @@ import vfile;
 import mididi;
 
 import sdl_mixer;
+import std.utf;
 
 /** 
  * Pads a scanline to be on size_t's bounds.
@@ -224,9 +225,45 @@ public Color[] loadPaletteFromImage (Image img) {
 	}
 	return palette;
 }
+package immutable string pathRoot;
+shared static this () {
+	import std.path;
+	import std.file : exists;
+	string path;
+	version (Posix) {
+		import core.sys.posix.unistd : getcwd;
+		import std.string : fromStringz;
+		{
+			char[2048] _path;
+			getcwd(_path.ptr, _path.length);
+			path = fromStringz(_path).idup;
+		}
+	} else version (Windows) {
+		import core.sys.windows.windows : GetCurrentDirectoryW, DWORD;
+		import std.string : fromStringz;
+		import std.utf : toUTF8;
+		{
+			wchar[2048] _path;
+			GetCurrentDirectoryW(cast(DWORD)_path.length, _path.ptr);
+			path = toUTF8(fromStringz(_path.ptr).idup);
+		}
+	} else static assert (0, "Please contact me about implementation!");
+	if (exists(buildNormalizedPath(path, "../system/")))
+		pathRoot = "..";
+	else if (exists(buildNormalizedPath(path, "./system/")))
+		pathRoot = ".";
+	else {
+		debug assert(0, "Folder /system/ does not exist! Check your development environment and the documentation for info.");
+		else assert(0, "Folder /system/ does not exist! Please reinstall the software or contact the developer if that does 
+				not solve the issue.");
+		}
+}
 public string getPathToLocalizationFile (string country, string language, string filename) @safe pure nothrow {
 	if (filename[0] == '.') filename = filename[1..$];
-	return "../local/" ~ country ~ "-" ~ language ~ "." ~ filename;
+	return pathRoot ~ "/local/" ~ country ~ "-" ~ language ~ "." ~ filename;
+}
+public string getPathToAsset (string path) @safe pure nothrow {
+	return pathRoot ~ "/" ~ path;
 }
 /**
  * Implements the RIFF serialization system
