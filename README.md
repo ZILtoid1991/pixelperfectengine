@@ -128,14 +128,15 @@ various systems.
 * Lots of untested and not fully tested features. Many are tested to at least run somewhat, but not tested in-depth. 
 Currently, I'm the sole maintainer of this project, and things are quite tough, especially after you factor in my 
 full-time job.
-* As of now, your executable must be in the folder `./bin-[cpuarch]-[OS]`, but it'll change soon, since certain companies (console manufacturers, phone OS suppliers, etc.) would like me to put the executable into the root folder, and likely to group together all the asset folders into a bigger one.
+* As of now, your executable must be in the folder `./bin-[cpuarch]-[OS]`, but it'll change likely by v1.0.0, since 
+certain companies (console manufacturers, phone OS suppliers, etc.) would like me to put the executable into the root 
+folder, and likely to group together all the asset folders into a bigger one.
 
 # Future plans:
 
 * Compressed data file handling.
-* Effects layer with some sort of programmability.
-* Transformable sprites.
-* Moving most of the rendering pipeline to OpenGL, then using various tricks to ensure pixels will align as they should.
+* Moving most of the rendering pipeline to OpenGL, then using various tricks to ensure pixels will align as they 
+should, and it will enable things like transformable sprites, some 3D objects, etc.
 * Support for MacOS. (Contact me, if you have hardware for it and willing to contribute to the project)
 * Support for Android. (Either will be done by me later on, or contact me if you're up for this challenge)
 * Support for iOS. (Contact me if you have the hardware and you willing to contribute)
