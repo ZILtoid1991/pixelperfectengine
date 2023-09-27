@@ -258,10 +258,19 @@ shared static this () {
 				not solve the issue.");
 		}
 }
+/** 
+ * 
+ * Params:
+ *   country = 
+ *   language = 
+ *   filename = 
+ * Returns: 
+ */
 public string getPathToLocalizationFile (string country, string language, string filename) @safe pure nothrow {
 	if (filename[0] == '.') filename = filename[1..$];
 	return pathRoot ~ "/local/" ~ country ~ "-" ~ language ~ "." ~ filename;
 }
+///NOTE: probably redo it for 1.0.0, or make a system that bypasses it.
 public string getPathToAsset (string path) @safe pure nothrow {
 	return pathRoot ~ "/" ~ path;
 }
