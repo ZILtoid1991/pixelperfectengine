@@ -11,6 +11,8 @@ import pixelperfectengine.graphics.bitmap;
 
 import pixelperfectengine.system.file;
 
+import pixelperfectengine.audio.base.modulebase;
+
 import bindbc.lua;
 
 import std.conv : to;
@@ -75,6 +77,9 @@ public void registerLibForScripting(lua_State* state) {
 
 	lua_register(state, "getBitmapWidth", &registerDDelegate!(ABitmap.width));
 	lua_register(state, "getBitmapHeight", &registerDDelegate!(ABitmap.height));
+
+	lua_register(state, "getAudioModule", &registerDFunction!getAudioModule);
+	lua_register(state, "midiCMD", &registerDFunction!midiCMD);
 }
 package void scrollLayer(Layer l, LuaVar x, LuaVar y) {
 	l.scroll(cast(int)x, cast(int)y);
@@ -96,6 +101,19 @@ package LuaVar getLayer(int n) {
 		return LuaVar.voidType();
 	else
 		return LuaVar(l);
+}
+package LuaVar getAudioModule(int n) {
+	if (n >= 0 && modMan.moduleList.length < n) {
+		AudioModule a = modMan.moduleList[n];
+		return LuaVar(a);
+	} else return LuaVar.voidType();
+}
+package void midiCMD(void* target, uint a, uint b, uint c, uint d) @nogc nothrow {
+	import midi2.types.structs;
+	AudioModule am = cast(AudioModule)target;
+	UMP u;
+	u.base = a;
+	am.midiReceive(u, b, c, d);
 }
 package string getLayerType(Layer l) {
 	return l.getLayerType().to!string();
@@ -278,4 +296,9 @@ package short ttl_setx_0(ITTL target, LuaVar val) {
 }
 package short ttl_sety_0(ITTL target, LuaVar val) {
 	return target.y_0(cast(short)val);
+}
+package LuaVar getBitmapResource(string resID) {
+	ABitmap src = scrptResMan[resID];
+	if (src !is null) return LuaVar(src);
+	else return LuaVar.voidType();
 }
