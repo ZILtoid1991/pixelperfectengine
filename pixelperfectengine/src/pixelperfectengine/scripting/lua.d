@@ -39,16 +39,16 @@ package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @sys
  * Calls a Lua function with the given name and arguments.
  * Params:
  *   state = The Lua state, where the function is located.
+ *   funcName = The name of the function.
  *   ... = The arguments to be passed to the function.
  * Template params:
  *   T = The return type.
- *   funcName = The name of the function.
  * Returns: An expected return type, which can be set to a tagged algebraic type to avoid potential mismatches.
  * Throws: A LuaException if the return type isn't matched, the execution ran into an error, or the function isn't 
  * found.
  */
-public T callLuaFunc(T, string funcName)(lua_State* state, ...) @system {
-	lua_getglobal(state, funcName);
+public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
+	lua_getglobal(state, toStringz(funcName));
 	if (!lua_isfunction(state, 0 /* LUA_TOP */))
 		throw new LuaException(8,"Function not found");
 	foreach (arg; _arguments) {
@@ -77,6 +77,7 @@ public T callLuaFunc(T, string funcName)(lua_State* state, ...) @system {
 		} else assert(0, "Argument not supported!");
 	}
 	int errorCode = lua_pcall(state, cast(int)_arguments.length, is(T == void) ? 0 : 1, 0);
+	if (errorCode > 1) throw new LuaException(errorCode, "");
 	static if (!is(T == void)) {
 		LuaVar result = LuaVar(state, -1);
 		lua_pop(state, 1);
@@ -513,7 +514,7 @@ public class LuaScript {
 	 * Throws: A LuaException if the execution ran into an error, or the function isn't found.
 	 */
 	public LuaVar runMain() {
-		return callLuaFunc!(LuaVar, "main")(state);
+		return callLuaFunc!(LuaVar)(state, "main");
 	}
 	extern(C)
 	private static const(char*) reader(lua_State* st, void* data, size_t* size) nothrow {
@@ -532,6 +533,17 @@ public class LuaScript {
  * Thrown on errors encountered during Lua script execution.
  */
 public class LuaException : PPEException {
+	public static string createMessageString(int ec) {
+		switch (ec) {
+		case 0: return "No errors";
+		case 1: return "Coroutine yield";
+		case 2: return "Runtime error";
+		case 3: return "Syntax error";
+		case 4: return "Memory allocation error";
+		case 5: return "Error while running the message handler";
+		default: return "Error happened on the engine side";
+		}
+	}
 	public int errorCode;
 	///
 	@nogc @safe pure nothrow this(int errorCode, string msg, string file = __FILE__, size_t line = __LINE__, 

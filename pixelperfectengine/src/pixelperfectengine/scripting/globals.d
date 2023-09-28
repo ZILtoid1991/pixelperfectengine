@@ -3,6 +3,8 @@ module pixelperfectengine.scripting.globals;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.bitmap;
 import pixelperfectengine.audio.base.handler;
+public import pixelperfectengine.system.timer;
+public import pixelperfectengine.system.rng;
 
 import collections.hashmap;
 
@@ -15,3 +17,4 @@ public ModuleManager modMan;
 ///external entity (DLL, etc), should be stored here to keep a reference around to avoid 
 ///them being destroyed by the garbage collector.
 public HashMap!(string, ABitmap) scrptResMan;
+public RandomNumberGenerator rng;

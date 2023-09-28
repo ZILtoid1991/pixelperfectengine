@@ -302,3 +302,56 @@ package LuaVar getBitmapResource(string resID) {
 	if (src !is null) return LuaVar(src);
 	else return LuaVar.voidType();
 }
+package int loadBitmapResource(string path, string resID, int paletteOffset) {
+	try {
+		import std.stdio : File;
+		Image img = loadImage(File(path));
+		switch (img.getBitdepth) {
+		case 1:
+			scrptResMan[resID] = loadBitmapFromImage!Bitmap1Bit(img);
+			break;
+		case 2:
+			scrptResMan[resID] = loadBitmapFromImage!Bitmap2Bit(img);
+			mainRaster.loadPaletteChunk(loadPaletteFromImage(img), cast(ushort)paletteOffset);
+			break;
+		case 4:
+			scrptResMan[resID] = loadBitmapFromImage!Bitmap4Bit(img);
+			mainRaster.loadPaletteChunk(loadPaletteFromImage(img), cast(ushort)paletteOffset);
+			break;
+		case 8:
+			scrptResMan[resID] = loadBitmapFromImage!Bitmap8Bit(img);
+			mainRaster.loadPaletteChunk(loadPaletteFromImage(img), cast(ushort)paletteOffset);
+			break;
+		case 16:
+			scrptResMan[resID] = loadBitmapFromImage!Bitmap16Bit(img);
+			mainRaster.loadPaletteChunk(loadPaletteFromImage(img), cast(ushort)paletteOffset);
+			break;
+		default:
+			scrptResMan[resID] = loadBitmapFromImage!Bitmap32Bit(img);
+			break;
+		}
+	} catch (Exception e) {
+		return 2;
+	}
+	return 0;
+}
+package int setTileMaterial(int layerID, int tileID, string resID, int paletteSh) {
+	ITileLayer itl = cast(ITileLayer)mainRaster.layerMap[layerID];
+	if (itl !is null) {
+		try {
+			itl.addTile(scrptResMan[resID], cast(wchar)tileID, cast(ubyte)paletteSh);
+		} catch (Exception e) {
+			return 2;
+		}
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+package ulong rngSeed() @nogc nothrow {
+	return rng.seed();
+}
+package ulong rngDice(uint s) @nogc nothrow {
+	return rng.dice(s);
+}

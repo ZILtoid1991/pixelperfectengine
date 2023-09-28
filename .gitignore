@@ -1,4 +1,5 @@
 .dub
+.history
 docs.json
 __dummy.html
 *.o

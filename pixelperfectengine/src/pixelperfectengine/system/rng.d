@@ -26,6 +26,13 @@ public struct RandomNumberGenerator {
 		reg = (reg>>1) | (bit<<63);
 		return reg;
 	}
+	/** 
+	 * Calls seed, then returns the remainder of the seed divided by s.
+	 * Intended to simplify the use of `rng.seed() % s` style of use of this 
+	 */
+	public ulong dice(const uint s) @nogc @safe pure nothrow {
+		return seed % s;
+	}
 	public ulong opCall() @nogc @safe pure nothrow {
 		return seed();
 	}
