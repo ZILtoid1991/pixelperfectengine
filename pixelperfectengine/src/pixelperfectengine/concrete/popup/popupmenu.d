@@ -6,16 +6,15 @@ import pixelperfectengine.concrete.popup.base;
  * To create drop-down lists, menu bars, etc.
  */
 public class PopUpMenu : PopUpElement {
-	//private wstring[] texts;
-	//private string[] sources;
-
-	//private uint[int] hotkeyCodes;
-	//protected Bitmap8Bit[int] icons;
 	protected int width, height, select;
 	PopUpMenuElement[] elements;
 	public EventDeleg onMenuSelect;
 	/**
 	 * Creates a single PopUpMenu.
+	 * Params:
+	 *   elements = entries for the menu.
+	 *   source = source identifier.
+	 *   onMenuSelect = event delegate called on item selection.
 	 */
 	public this(PopUpMenuElement[] elements, string source, EventDeleg onMenuSelect){
 		this.elements = elements;
@@ -160,17 +159,22 @@ public class PopUpMenu : PopUpElement {
 * Defines a single MenuElement, also can contain multiple subelements.
 */
 public class PopUpMenuElement {
-	public string source;
-	public Text text, secondaryText;
+	public string source;					///Source identifier.
+	public Text text, secondaryText;		///Primary and secondary display texts
 	//protected Bitmap8Bit icon;
-	private PopUpMenuElement[] subElements;
-	private ushort keymod;
-	private int keycode;
-	public int iconWidth;
+	private PopUpMenuElement[] subElements;	///Any child element the menu may have
+	//private ushort keymod;
+	//private int keycode;
+	//public int iconWidth;
 
 	/**
 	 * Generates a menu element with the supplied parameters.
 	 * Uses the default formatting to initialize texts.
+	 * Params:
+	 *   source = source identifier.
+	 *   text = primary text, forced to be left justified.
+	 *   secondaryText = secondary text, forced to be right justified.
+	 *   subElements = any child elements for further submenus.
 	 */
 	public this(string source, dstring text, dstring secondaryText = "", PopUpMenuElement[] subElements = null) {
 		StyleSheet ss = globalDefaultStyle;
@@ -183,12 +187,22 @@ public class PopUpMenuElement {
 	/**
 	 * Generates a menu element with the supplied parameters.
 	 * Text formatting can be supplied with the objects.
+	 * Params:
+	 *   source = source identifier.
+	 *   text = primary text, forced to be left justified.
+	 *   secondaryText = secondary text, forced to be right justified.
+	 *   subElements = any child elements for further submenus.
 	 */
 	public this(string source, Text text, Text secondaryText = null, PopUpMenuElement[] subElements = []) {
 		this.source = source;
 		this.text = text;
 		this.secondaryText = secondaryText;
 		this.subElements = subElements;
+	}
+	///Creates an empty separator element.
+	public static PopUpMenuElement createSeparator() {
+		Text nulltext = null;
+		return new PopUpMenuElement("\\separator\\", nulltext, nulltext);
 	}
 	///DEPRECATED!
 	///REMOVE BY VER 0.11!
