@@ -95,6 +95,7 @@ public class CoarseTimer {
 			timeSuspend = MonoTime.currTime;
 		}
 	}
+	alias suspend = suspendTimer;
 	/** 
 	 * Resumes timer and shifts all entries by given time delta.
 	 */
@@ -109,4 +110,5 @@ public class CoarseTimer {
 			}
 		}
 	}
+	alias resume = resumeTimer;
 }

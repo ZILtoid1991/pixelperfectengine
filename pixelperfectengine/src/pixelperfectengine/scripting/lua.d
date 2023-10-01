@@ -136,17 +136,18 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
 		return 1;
 	}
 }
+
 /** 
- * Registers a D delegate to be called from Lua.
+ * Registers a D member function to be called from Lua.
  * Code is modified from MrcSnm's example found in the HipremeEngine.
  * Params:
  *   state = The Lua state to handle the data from the Lua side of things.
  * Template params:
  *   Func = The function to be registered.
- * Note: When calling a D delegate from Lua, the first parameter is always a light user data
- * containing the class instance that the delegate should be executed on.
+ * Note: When calling a D member function from Lua, the first parameter is always a light user data
+ * containing the class instance that the member function should be executed on.
  */
-extern (C) public int registerDDelegate(alias Func)(lua_State* state) nothrow
+extern (C) public int registerDMemberFunc(alias Func)(lua_State* state) nothrow
 		if(isSomeFunction!(Func)) {
 	import std.traits:Parameters, ReturnType;
 	alias ClassType = __traits(parent, Func);
@@ -156,6 +157,10 @@ extern (C) public int registerDDelegate(alias Func)(lua_State* state) nothrow
 	ClassType c;
 	try {
 		c = luaGetFromIndex!ClassType(state, stackCounter);
+		if (c is null) {
+			luaL_error(state, "Wrong lightweight userdata was passed to member function!");
+			return 1;
+		}
 		foreach_reverse(ref param; params) {
 			stackCounter--;
 			param = luaGetFromIndex!(typeof(param))(state, stackCounter);
@@ -260,6 +265,14 @@ public struct LuaVar {
 	public this(T)(T val) @safe pure nothrow {
 		static if (is(T == void*) || is(T == LuaTable*)) {
 			dataPtr = val;
+		} else static if (is(T == class) || is(T == interface)) {
+			void __workaround() @system pure nothrow {
+				dataPtr = cast(void*)val;
+			}
+			void _workaround() @trusted pure nothrow {
+				__workaround();
+			}
+			_workaround();
 		} else static if (isIntegral!T || isBoolean!T) {
 			dataInt = val;
 		} else static if (isFloatingPoint!T) {
@@ -499,6 +512,7 @@ public class LuaScript {
 				throw new LuaException(LUA_ERRMEM, "Memory error!");
 		}
 		registerLibForScripting(state);
+		/* lua_register(state, "getLuaState", &registerDFunction!(function void*(){return this.getLuaState_internal();})); */
 	}
 	///Automatically deallocates the lua_State variable.
 	~this() {
@@ -508,13 +522,16 @@ public class LuaScript {
 	public lua_State* getState() @nogc nothrow pure {
 		return state;
 	}
+	/* protected void* getLuaState_internal() @nogc nothrow {
+		return cast(void*)state;
+	} */
 	/**
 	 * Executes the main function of the scipt.
 	 * Returns: A LuaVar variable with the appropriate return value if there was any.
 	 * Throws: A LuaException if the execution ran into an error, or the function isn't found.
 	 */
 	public LuaVar runMain() {
-		return callLuaFunc!(LuaVar)(state, "main");
+		return callLuaFunc!(LuaVar)(state, "Main", cast(void*)state);
 	}
 	extern(C)
 	private static const(char*) reader(lua_State* st, void* data, size_t* size) nothrow {

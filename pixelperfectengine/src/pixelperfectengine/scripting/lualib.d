@@ -31,22 +31,24 @@ public void registerLibForScripting(lua_State* state) {
 	lua_register(state, "setLayerRenderingMode", &registerDFunction!setLayerRenderingMode);
 	lua_register(state, "scrollLayer", &registerDFunction!(scrollLayer));
 	lua_register(state, "relScrollLayer", &registerDFunction!(relScrollLayer));
-	lua_register(state, "getLayerScrollX", &registerDDelegate!(Layer.getSX));
-	lua_register(state, "getLayerScrollY", &registerDDelegate!(Layer.getSY));
+	lua_register(state, "getLayerScrollX", &registerDMemberFunc!(Layer.getSX));
+	lua_register(state, "getLayerScrollY", &registerDMemberFunc!(Layer.getSY));
+	lua_register(state, "addTile", &registerDMemberFunc!(ITileLayer.addTile));
+	//lua_register(state, "setTileMaterial", &registerDFunction!(setTileMaterial));
 
 	lua_register(state, "readMapping", &registerDFunction!readMapping);
 	lua_register(state, "tileByPixel", &registerDFunction!tileByPixel);
 	lua_register(state, "writeMapping", &registerDFunction!writeMapping);
-	lua_register(state, "getTileWidth", &registerDDelegate!(ITileLayer.getTileWidth));
-	lua_register(state, "getTileHeight", &registerDDelegate!(ITileLayer.getTileHeight));
-	lua_register(state, "getMapWidth", &registerDDelegate!(ITileLayer.getMX));
-	lua_register(state, "getMapHeight", &registerDDelegate!(ITileLayer.getMY));
-	lua_register(state, "getTileWidth", &registerDDelegate!(ITileLayer.getTX));
-	lua_register(state, "getTileHeight", &registerDDelegate!(ITileLayer.getTY));
-	lua_register(state, "clearTilemap", &registerDDelegate!(ITileLayer.clearTilemap));
-	lua_register(state, "addTile", &registerDDelegate!(ITileLayer.addTile));
-	lua_register(state, "getTile", &registerDDelegate!(ITileLayer.getTile));
-	lua_register(state, "removeTile", &registerDDelegate!(ITileLayer.removeTile));
+	lua_register(state, "getTileWidth", &registerDMemberFunc!(ITileLayer.getTileWidth));
+	lua_register(state, "getTileHeight", &registerDMemberFunc!(ITileLayer.getTileHeight));
+	lua_register(state, "getMapWidth", &registerDMemberFunc!(ITileLayer.getMX));
+	lua_register(state, "getMapHeight", &registerDMemberFunc!(ITileLayer.getMY));
+	lua_register(state, "getTileWidth", &registerDMemberFunc!(ITileLayer.getTX));
+	lua_register(state, "getTileHeight", &registerDMemberFunc!(ITileLayer.getTY));
+	lua_register(state, "clearTilemap", &registerDMemberFunc!(ITileLayer.clearTilemap));
+	lua_register(state, "addTile", &registerDMemberFunc!(ITileLayer.addTile));
+	lua_register(state, "getTile", &registerDMemberFunc!(ITileLayer.getTile));
+	lua_register(state, "removeTile", &registerDMemberFunc!(ITileLayer.removeTile));
 
 	lua_register(state, "ttl_setA", &registerDFunction!ttl_setA);
 	lua_register(state, "ttl_setB", &registerDFunction!ttl_setB);
@@ -63,23 +65,33 @@ public void registerLibForScripting(lua_State* state) {
 
 	lua_register(state, "moveSprite", &registerDFunction!(moveSprite));
 	lua_register(state, "relMoveSprite", &registerDFunction!(relMoveSprite));
-	lua_register(state, "getSpriteCoordinate", &registerDDelegate!(ISpriteLayer.getSpriteCoordinate));
+	lua_register(state, "getSpriteCoordinate", &registerDMemberFunc!(ISpriteLayer.getSpriteCoordinate));
 	lua_register(state, "setSpriteSlice", &registerDFunction!setSpriteSlice);
-	lua_register(state, "getSpriteSlice", &registerDDelegate!(ISpriteLayer.getSlice));
-	lua_register(state, "addSprite", &registerDDelegate!(ISpriteLayer.addSprite));
-	lua_register(state, "removeSprite", &registerDDelegate!(ISpriteLayer.removeSprite));
-	lua_register(state, "getPaletteID", &registerDDelegate!(ISpriteLayer.getPaletteID));
-	lua_register(state, "setPaletteID", &registerDDelegate!(ISpriteLayer.setPaletteID));
-	lua_register(state, "scaleSpriteHoriz", &registerDDelegate!(ISpriteLayer.scaleSpriteHoriz));
-	lua_register(state, "scaleSpriteVert", &registerDDelegate!(ISpriteLayer.scaleSpriteVert));
-	lua_register(state, "getScaleSpriteHoriz", &registerDDelegate!(ISpriteLayer.getScaleSpriteHoriz));
-	lua_register(state, "getScaleSpriteVert", &registerDDelegate!(ISpriteLayer.getScaleSpriteVert));
+	lua_register(state, "getSpriteSlice", &registerDMemberFunc!(ISpriteLayer.getSlice));
+	lua_register(state, "addSprite", &registerDMemberFunc!(ISpriteLayer.addSprite));
+	lua_register(state, "removeSprite", &registerDMemberFunc!(ISpriteLayer.removeSprite));
+	lua_register(state, "getPaletteID", &registerDMemberFunc!(ISpriteLayer.getPaletteID));
+	lua_register(state, "setPaletteID", &registerDMemberFunc!(ISpriteLayer.setPaletteID));
+	lua_register(state, "scaleSpriteHoriz", &registerDMemberFunc!(ISpriteLayer.scaleSpriteHoriz));
+	lua_register(state, "scaleSpriteVert", &registerDMemberFunc!(ISpriteLayer.scaleSpriteVert));
+	lua_register(state, "getScaleSpriteHoriz", &registerDMemberFunc!(ISpriteLayer.getScaleSpriteHoriz));
+	lua_register(state, "getScaleSpriteVert", &registerDMemberFunc!(ISpriteLayer.getScaleSpriteVert));
 
-	lua_register(state, "getBitmapWidth", &registerDDelegate!(ABitmap.width));
-	lua_register(state, "getBitmapHeight", &registerDDelegate!(ABitmap.height));
+	lua_register(state, "getBitmapWidth", &registerDMemberFunc!(ABitmap.width));
+	lua_register(state, "getBitmapHeight", &registerDMemberFunc!(ABitmap.height));
+
+	lua_register(state, "getBitmapResource", &registerDFunction!getBitmapResource);
+	lua_register(state, "loadBitmapResource", &registerDFunction!loadBitmapResource);
 
 	lua_register(state, "getAudioModule", &registerDFunction!getAudioModule);
 	lua_register(state, "midiCMD", &registerDFunction!midiCMD);
+
+	lua_register(state, "rng_Seed", &registerDFunction!rng_Seed);
+	lua_register(state, "rng_Dice", &registerDFunction!rng_Dice);
+
+	lua_register(state, "timer_resume", &registerDFunction!timer_resume);
+	lua_register(state, "timer_suspend", &registerDFunction!timer_suspend);
+	lua_register(state, "timer_register", &registerDFunction!timer_register);
 }
 package void scrollLayer(Layer l, LuaVar x, LuaVar y) {
 	l.scroll(cast(int)x, cast(int)y);
@@ -335,7 +347,7 @@ package int loadBitmapResource(string path, string resID, int paletteOffset) {
 	}
 	return 0;
 }
-package int setTileMaterial(int layerID, int tileID, string resID, int paletteSh) {
+/* package int setTileMaterial(int layerID, int tileID, string resID, int paletteSh) {
 	ITileLayer itl = cast(ITileLayer)mainRaster.layerMap[layerID];
 	if (itl !is null) {
 		try {
@@ -347,11 +359,21 @@ package int setTileMaterial(int layerID, int tileID, string resID, int paletteSh
 	} else {
 		return 1;
 	}
-}
+} */
 
-package ulong rngSeed() @nogc nothrow {
+package ulong rng_Seed() @nogc nothrow {
 	return rng.seed();
 }
-package ulong rngDice(uint s) @nogc nothrow {
+package ulong rng_Dice(uint s) @nogc nothrow {
 	return rng.dice(s);
+}
+
+package void timer_suspend() {
+	timer.suspendTimer;
+}
+package void timer_resume() {
+	timer.resumeTimer;
+}
+package void timer_register(void* state, uint ms, string func) {
+	timer.register(delegate void(Duration){callLuaFunc!void(cast(lua_State*)state, func);}, msecs(ms));
 }

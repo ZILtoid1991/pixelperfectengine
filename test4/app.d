@@ -36,6 +36,9 @@ import pixelperfectengine.audio.base.midiseq;	//MIDI sequencer
 import pixelperfectengine.map.mapformat;
 //Other imports that might be important. Uncomment any you feel you'll need.
 /* import pixelperfectengine.system.common; */
+import pixelperfectengine.scripting.lua;
+import pixelperfectengine.scripting.globals;
+
 
 ///Our main function, needed for the program to operate.
 ///You can add `string[] args` if your either really need or really want.
@@ -86,8 +89,8 @@ public class GameApp : SystemEventListener, InputListener {
 	///Contains pointer to the game field, so we can easily interact with it.
 	SpriteLayer		gameField;
 	///Contains the random number generator and its state.
-	RandomNumberGenerator	rng;
-	ConfigurationProfile	cfg;
+	//RandomNumberGenerator	rng;
+	//ConfigurationProfile	cfg;
 	//Audio related stuff goes here.
 	//Note: some of the audio stuff is preliminary. It works, but cannot handle certain cases, such as sample rate mismatches, or device disconnection.
 	//Sequencer is untested as of now due to a lack of time and manpower.
@@ -114,23 +117,40 @@ public class GameApp : SystemEventListener, InputListener {
 		textLayer.paletteOffset = 512;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
 		textLayer.masterVal = 127;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
 
-		cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
+		//cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
 		//Comment the next part out, if you're having too much trouble with audio working, since you still can add sound later on.
 		//audio related part begin
 		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);	//Initializes the driver
-		AudioSpecs as = AudioSpecs(predefinedFormats[PredefinedFormats.FP32], cfg.audioFrequency, 0, 2, cfg.audioBufferLen, 
+		AudioSpecs as = AudioSpecs(predefinedFormats[PredefinedFormats.FP32], 48_000, 0, 2, cfg.audioBufferLen, 
 				Duration.init);								//Sets up a default audio specification
-		adh = new AudioDeviceHandler(as, cfg.audioBufferLen, cfg.audioBufferLen / cfg.audioFrameLen);	//Creates a new AudioDeviceHandler and sets up the basics
+		adh = new AudioDeviceHandler(as, 1024, 1024 / 128);	//Creates a new AudioDeviceHandler and sets up the basics
 		adh.initAudioDevice(-1);							//Initializes the default device
 		modMan = new ModuleManager(adh);					//Initializes the module manager
 		modCfg = new ModuleConfig(modMan);					//Initializes the module configurator
-		modCfg.loadConfigFromFile("yourAudioConfiguration.sdl");//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
+		modCfg.loadConfigFromFile("../assets/test4_audio.sdl");//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
 		modCfg.compile(false);								//Compiles the current module configuration.
 		midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
 		modMan.runAudioThread();							//Runs the audio thread.
 		//audio related part end
 
 		//<Put other initialization code here>
+		{
+			import pixelperfectengine.system.input.scancode;
+			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("up"));
+			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("down"));
+			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("left"));
+			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("right"));
+			ih.addBinding(BindingCode(ScanCode.SPACE, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("space"));
+			ih.addBinding(BindingCode(ScanCode.LALT, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("leftalt"));
+
+			ih.addBinding(BindingCode(11, 0, Devicetype.Joystick), InputBinding("up"));
+			ih.addBinding(BindingCode(12, 0, Devicetype.Joystick), InputBinding("down"));
+			ih.addBinding(BindingCode(13, 0, Devicetype.Joystick), InputBinding("left"));
+			ih.addBinding(BindingCode(14, 0, Devicetype.Joystick), InputBinding("right"));
+			ih.addBinding(BindingCode(1, 0, Devicetype.Joystick), InputBinding("space"));
+			ih.addBinding(BindingCode(2, 0, Devicetype.Joystick), InputBinding("leftalt"));
+		}
+
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {

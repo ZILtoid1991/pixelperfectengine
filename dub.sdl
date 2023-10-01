@@ -72,6 +72,15 @@ subPackage {
 	sourcePaths "./test3/"
 	importPaths "./test3/"
 }
+/* subPackage {
+	name "test4"
+	dependency "pixelperfectengine" version="*"
+	targetType "executable"
+	targetPath "./bin-$ARCH-$PLATFORM/"
+	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_test4.pdb" platform="windows"
+	sourcePaths "./test4/"
+	importPaths "./test4/"
+} */
 subPackage {
 	name "test5"
 	dependency "pixelperfectengine" version="*"
