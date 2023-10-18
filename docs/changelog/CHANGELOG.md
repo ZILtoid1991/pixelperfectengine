@@ -1,4 +1,15 @@
-# 0.10.3 (current)
+# 0.10.5
+
+* Fixed a bug that caused out of bounds reads when downscaling 32 bit sprites, and also when they're being upscaled but only a small portion of them will be visible.
+* Fixed layer-order bug.
+
+# 0.10.4
+
+* Added separators for pop up menus.
+* Removed some ancient code from the pop up menu rendering and input handling.
+* Some minor work on the scripting engine (still not in testing phase :( ).
+
+# 0.10.3
 
 * Added code of conduct, and branding guidelines.
 * Fixed the offscreen popup issue by adding some additional calculations to the popup placement.
