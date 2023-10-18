@@ -461,7 +461,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			int offsetTarget;													//the target fractional lines
 			int offset = (offsetYA * scaleVertAbs) & 1023;						//the current amount of fractional lines, also contains the fractional offset bias by defauls
 			//const size_t p0offset = (i.scaleHoriz > 0 ? offsetXA : offsetXB); //determines offset based on mirroring
-			const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
+			//const int scalelength = i.position.width < 2048 ? i.width : 2048;	//limit width to 2048, the minimum required for this scaling method to work
 			void* dest = workpad + (offsetX + offsetXA)*4 + offsetY;
 			final switch (i.bmpType) with (BitmapTypes) {
 				case Bmp2Bit:
@@ -530,7 +530,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				case Bmp32Bit:
 					Color* p0 = cast(Color*)i.pixelData + i.width * (i.scaleVert < 0 ? (i.height - offsetYA0 - 1) : offsetYA0);
 					for (int y = offsetYA ; y < i.slice.height - offsetYB ; ) {
-						horizontalScaleNearest(p0[0..i.width], src, scalelength, i.scaleHoriz, offsetXA * scaleHorizAbs);
+						horizontalScaleNearest(p0[0..i.width], src, length, i.scaleHoriz, offsetXA * scaleHorizAbs);
 						offsetTarget += 1024;
 						for (; offset < offsetTarget && y < i.slice.height - offsetYB; offset += scaleVertAbs) {
 							y++;
