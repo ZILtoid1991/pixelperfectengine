@@ -35,7 +35,7 @@ public class TestElements : InputListener, SystemEventListener {
     public this() {
         sprtL = new SpriteLayer(RenderingMode.Copy);
 		outScrn = new OutputScreen("Test nr. 3",1696,960);
-		mainRaster = new Raster(848,480,outScrn,0);
+		mainRaster = new Raster(848,480,outScrn,0,1);
 		mainRaster.addLayer(sprtL,0);
         mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
         wh = new WindowHandler(1696,960,848,480,sprtL);
