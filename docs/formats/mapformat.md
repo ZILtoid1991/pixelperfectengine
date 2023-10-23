@@ -138,6 +138,14 @@ restricted to internal use.
 Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
 "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
 
+### 'RepeatMode'
+
+`RepeatMode "SingleTile"`
+
+Sets the repeat mode of the layer (only works on tile layers).
+
+Possible values: "On", "Off", "SingleTile"
+
 ### 'ScrollRate#' X and Y
 
 `ScrollRateX 0.325` and `ScrollRateY 0.25`
@@ -145,6 +153,8 @@ Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Bl
 Sets the relative scrolling speed of the layers relative to the main one.
 
 ### 'TileFlagName#' 0 through 5
+
+Names the tileflags for the tile editor.
 
 ## Reserved tags
 
@@ -286,7 +296,7 @@ Specifies a script for a layer or object.
 
 # Namespace 'Object'
 
-* Position constraints: Within the tag of any layer, with no preferrence of order.
+* Position constraints: Within the tag of any layer, with no preference of order.
 
 Contains data related to a single object. These objects can be used for collision detection, events, sprites (only on 
 sprite layers), etc.
@@ -294,7 +304,7 @@ sprite layers), etc.
 First value is a string, the name of the instance, the second one is a priority ID (must be unique per layer!). Third 
 value is usually the identifier of source.
 
-Ancilliary tags are currently handled differently than in layers, meaning that more complex tag structure can be used. 
+Ancillary tags are currently handled differently than in layers, meaning that more complex tag structure can be used. 
 Processing of those should be done by the end user.
 
 ## 'Box'
