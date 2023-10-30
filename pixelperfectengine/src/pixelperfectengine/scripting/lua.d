@@ -451,6 +451,9 @@ public struct LuaVar {
 		setType!T;
 		return this;
 	}
+	size_t toHash() const @nogc @safe pure nothrow {
+		return cast(size_t)dataInt;
+	}
 	/**
 	 * Casts the type to `T` if possible.
 	 * Throws: LuaException, if implicit type casting is impossible.
