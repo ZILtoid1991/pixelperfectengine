@@ -122,7 +122,7 @@ public class PopUpMenu : PopUpElement {
 			} else if (elements[num].text !is null) {
 				//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));
 				if(onMenuSelect !is null)
-					onMenuSelect(new MenuEvent(this, SourceType.PopUpElement, elements[num].text, mce.y, elements[num].source));
+					onMenuSelect(new MenuEvent(this, SourceType.PopUpElement, elements[num].text, num, elements[num].source));
 				parent.endPopUpSession(this);
 				//parent.closePopUp(this);
 			}
