@@ -10,6 +10,7 @@ Feel free to modify this, or even create your own templates (you might want to m
 //Some commonly used stuff
 import std.stdio;
 import std.typecons : BitFlags;					//This is a good way to create bitflags, so you don't need to keep track of a bunch of boolean values.
+import std.file : readText;
 
 import bindbc.sdl;								//As of now, this is needed to initialize the SDL API. Might be changed in the future
 //Graphics related imports
@@ -98,6 +99,7 @@ public class GameApp : SystemEventListener, InputListener {
 	ModuleManager	modMan;	///Handles the modules and their output.
 	ModuleConfig	modCfg;	///Loads and handles module configuration, including routing, patches, and samples.
 	SequencerM1		midiSeq;///MIDI sequencer for MIDI playback.
+	LuaScript		scrp;
 	
 	/// Initializes our application.
 	/// Put other things here if you need them.
@@ -111,14 +113,14 @@ public class GameApp : SystemEventListener, InputListener {
 		ih.systemEventListener = this;	//Sets the system event target to this instance
 		ih.inputListener = this;		//Sets the input event target to this instance
 		
-		ocd = new ObjectCollisionDetector(&onCollision, 0);	//Creates an object collision detector
+		//ocd = new ObjectCollisionDetector(&onCollision, 0);	//Creates an object collision detector
 		//Let's create our layer for statuses, etc
-		textLayer = new TileLayer(8,8, RenderingMode.AlphaBlend);	//Creates a TileLayer with 8x8 tiles and alpha blending
-		textLayer.paletteOffset = 512;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
-		textLayer.masterVal = 127;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
-
+		textLayer = new TileLayer(8,8, RenderingMode.Copy);	//Creates a TileLayer with 8x8 tiles and alpha blending
+		textLayer.paletteOffset = 0;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
+		textLayer.masterVal = 255;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
+		rstr.addLayer(textLayer);
 		//cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
-		//Comment the next part out, if you're having too much trouble with audio working, since you still can add sound later on.
+		/* //Comment the next part out, if you're having too much trouble with audio working, since you still can add sound later on.
 		//audio related part begin
 		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);	//Initializes the driver
 		AudioSpecs as = AudioSpecs(predefinedFormats[PredefinedFormats.FP32], 48_000, 0, 2, cfg.audioBufferLen, 
@@ -131,26 +133,20 @@ public class GameApp : SystemEventListener, InputListener {
 		modCfg.compile(false);								//Compiles the current module configuration.
 		midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
 		modMan.runAudioThread();							//Runs the audio thread.
-		//audio related part end
-
+		//audio related part end 
+		*/
+		textLayer.loadMapping(64, 32, new MappingElement[](32*64));
+		
 		//<Put other initialization code here>
+		mainRaster = rstr;
 		{
-			import pixelperfectengine.system.input.scancode;
-			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("up"));
-			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("down"));
-			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("left"));
-			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("right"));
-			ih.addBinding(BindingCode(ScanCode.SPACE, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("space"));
-			ih.addBinding(BindingCode(ScanCode.LALT, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("leftalt"));
-
-			ih.addBinding(BindingCode(11, 0, Devicetype.Joystick), InputBinding("up"));
-			ih.addBinding(BindingCode(12, 0, Devicetype.Joystick), InputBinding("down"));
-			ih.addBinding(BindingCode(13, 0, Devicetype.Joystick), InputBinding("left"));
-			ih.addBinding(BindingCode(14, 0, Devicetype.Joystick), InputBinding("right"));
-			ih.addBinding(BindingCode(1, 0, Devicetype.Joystick), InputBinding("space"));
-			ih.addBinding(BindingCode(2, 0, Devicetype.Joystick), InputBinding("leftalt"));
+			Image dlangMan = loadImage(File("../assets/d-man.tga"));
+			scrptResMan["dlangman"] = loadBitmapFromImage!Bitmap8Bit(dlangMan);
+			rstr.loadPaletteChunk(loadPaletteFromImage(dlangMan),0);
 		}
 
+		scrp = new LuaScript(readText("../assets/test4.lua"), "test4.lua");
+		scrp.runMain();
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
@@ -158,14 +154,15 @@ public class GameApp : SystemEventListener, InputListener {
 			rstr.refresh();
 			//Tests the input devices for events.
 			ih.test();
+			
 			//Tests the timer for any registered events that are to happen.
 			//Note: You can put this call into a separate thread for more precision.
 			timer.test();
 			//Calling the RNG for every frame will make it less deterministic. Speed runners might hate you for this.
-			rng();
+			//rng();
 			//This calls the collision detector on all registered objects.
 			//You'll want to only call it on moving objects, especially when you have a lot of objects on screen.
-			ocd.testAll();
+			//ocd.testAll();
 
 			//<Per-frame code comes here>
 		}

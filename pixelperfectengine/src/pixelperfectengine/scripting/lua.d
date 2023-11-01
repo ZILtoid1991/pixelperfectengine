@@ -117,10 +117,13 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
 			return 0;
 		} else static if(is(ReturnType!Func == struct)) {
 			auto retVal = Func(params);
+			lua_newtable(state);
 			static foreach (key ; (ReturnType!Func).tupleof) {
 				LuaVar(__traits(child, retVal, key)).pushToLuaState(state);
+				lua_setfield(state, -2, __traits(identifier, key));
 			}
-			return cast(int)retVal.tupleof.length;
+			//lua_settable(state, -3);
+			return 1;//cast(int)retVal.tupleof.length;
 		} else {
 			LuaVar(Func(params)).pushToLuaState(state);
 			return 1;
@@ -175,10 +178,13 @@ extern (C) public int registerDMemberFunc(alias Func)(lua_State* state) nothrow
 			return 0;
 		} else static if(is(ReturnType!Func == struct)) {
 			ReturnType!Func retVal = __traits(child, c, Func)(params);//auto retVal = c.Func(params);
+			lua_newtable(state);
 			static foreach (key ; (ReturnType!Func).tupleof) {
 				LuaVar(__traits(child, retVal, key)).pushToLuaState(state);
+				lua_setfield(state, -2, __traits(identifier, key));
 			}
-			return cast(int)retVal.tupleof.length;
+			//lua_settable(state, -3);
+			return 1;//cast(int)retVal.tupleof.length;
 		} else {
 			LuaVar(__traits(child, c, Func)(params)).pushToLuaState(state);//LuaVar(c.Func(params)).pushToLuaState(state);
 			return 1;
@@ -252,6 +258,7 @@ public struct LuaVar {
 		void*				dataPtr;
 		long				dataInt;
 		double				dataNum;
+		lua_CFunction		fnPtr;
 	}
 	///Creates a Lua variable of type `void`.
 	public static LuaVar voidType() @safe pure nothrow {
@@ -329,6 +336,8 @@ public struct LuaVar {
 			_type = LuaVarType.Boolean;
 		} else static if (isFloatingPoint!T) {
 			_type = LuaVarType.Number;
+		} else static if (is(T == lua_CFunction)) {
+			_type = LuaVarType.Function;
 		} else static if (is(T == string) || is(T == const(char)*)) {
 			_type = LuaVarType.String;
 		} else static if (is(T == void*) || is(T == class) || is(T == interface)) {
@@ -351,6 +360,8 @@ public struct LuaVar {
 			return cast(T)dataInt;
 		} else static if (isFloatingPoint!T) {
 			return cast(T)dataNum;
+		} else static if (is(T == lua_CFunction)) {
+			return fnPtr;
 		} else static if (is(T == string)) {
 			return fromStringz(cast(const(char*))dataPtr);
 		} else static if (is(T == const(char*))) {
@@ -378,6 +389,7 @@ public struct LuaVar {
 				lua_pushstring(state, cast(const(char*))dataPtr);
 				break;
 			case Function:
+				lua_pushcfunction(state, fnPtr);
 				break;
 			case Userdata:
 				lua_pushlightuserdata(state, dataPtr);
@@ -385,6 +397,13 @@ public struct LuaVar {
 			case Thread:
 				break;
 			case Table:
+				lua_newtable(state);
+				LuaTable lt = *deRef!(LuaTable*);
+				foreach (LuaVar key, ref LuaVar val ; lt) {
+					key.pushToLuaState(state);
+					val.pushToLuaState(state);
+					lua_settable(state, -3);
+				}
 				break;
 		}
 	}
@@ -525,9 +544,6 @@ public class LuaScript {
 	public lua_State* getState() @nogc nothrow pure {
 		return state;
 	}
-	/* protected void* getLuaState_internal() @nogc nothrow {
-		return cast(void*)state;
-	} */
 	/**
 	 * Executes the main function of the scipt.
 	 * Returns: A LuaVar variable with the appropriate return value if there was any.
@@ -535,6 +551,9 @@ public class LuaScript {
 	 */
 	public LuaVar runMain() {
 		return callLuaFunc!(LuaVar)(state, "Main", cast(void*)state);
+	}
+	public T callFunction(T)(string name, ...) {
+		return callLuaFunc(state, name, _arguments);
 	}
 	extern(C)
 	private static const(char*) reader(lua_State* st, void* data, size_t* size) nothrow {
