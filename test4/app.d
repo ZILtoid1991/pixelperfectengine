@@ -25,6 +25,7 @@ import pixelperfectengine.collision.objectcollision;
 import pixelperfectengine.system.input;			//Every game needs some sort of interaction capability, and thus here's the input
 import pixelperfectengine.system.file;			//Used to load bitmap and image files
 import pixelperfectengine.system.config;		//Needed for configuration files
+import pixelperfectengine.system.common;
 
 import pixelperfectengine.system.rng;			//64 bit LFSR random number generator
 import pixelperfectengine.system.timer;			//Low-precision timer for keeping time-based events relatively precise
@@ -118,7 +119,9 @@ public class GameApp : SystemEventListener, InputListener {
 		textLayer = new TileLayer(8,8, RenderingMode.Copy);	//Creates a TileLayer with 8x8 tiles and alpha blending
 		textLayer.paletteOffset = 0;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
 		textLayer.masterVal = 255;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
-		rstr.addLayer(textLayer);
+		rstr.addLayer(textLayer, 0);
+		gameField = new SpriteLayer();
+		rstr.addLayer(gameField, 16);
 		//cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
 		/* //Comment the next part out, if you're having too much trouble with audio working, since you still can add sound later on.
 		//audio related part begin
