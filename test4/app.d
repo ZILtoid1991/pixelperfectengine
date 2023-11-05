@@ -116,7 +116,7 @@ public class GameApp : SystemEventListener, InputListener {
 		
 		//ocd = new ObjectCollisionDetector(&onCollision, 0);	//Creates an object collision detector
 		//Let's create our layer for statuses, etc
-		textLayer = new TileLayer(8,8, RenderingMode.Copy);	//Creates a TileLayer with 8x8 tiles and alpha blending
+		textLayer = new TileLayer(32,32, RenderingMode.Copy);	//Creates a TileLayer with 8x8 tiles and alpha blending
 		textLayer.paletteOffset = 0;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
 		textLayer.masterVal = 255;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
 		rstr.addLayer(textLayer, 0);
@@ -147,7 +147,11 @@ public class GameApp : SystemEventListener, InputListener {
 			scrptResMan["dlangman"] = loadBitmapFromImage!Bitmap8Bit(dlangMan);
 			rstr.loadPaletteChunk(loadPaletteFromImage(dlangMan),0);
 		}
-
+		for (int y ; y < 32 ; y++) {
+			for (int x ; x < 64 ; x++) {
+				
+			}
+		}
 		scrp = new LuaScript(readText("../assets/test4.lua"), "test4.lua");
 		scrp.runMain();
 	}
