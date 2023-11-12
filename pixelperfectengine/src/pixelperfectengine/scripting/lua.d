@@ -48,8 +48,9 @@ package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @sys
  * found.
  */
 public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
-	lua_getglobal(state, toStringz(funcName));
-	if (!lua_isfunction(state, 0 /* LUA_TOP */))
+	const int type = lua_getglobal(state, toStringz(funcName));
+	/* if (!lua_isfunction(state, 0))*/
+	if (type != LUA_TFUNCTION)
 		throw new LuaException(8,"Function not found");
 	foreach (arg; _arguments) {
 		if (arg == typeid(byte)) {
@@ -66,6 +67,8 @@ public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
 			lua_pushinteger(state, va_arg!uint(_argptr));
 		} else if (arg == typeid(ubyte)) {
 			lua_pushinteger(state, va_arg!ubyte(_argptr));
+		} else if (arg == typeid(void*) || arg == typeid(Object)) {
+			lua_pushlightuserdata(state, cast(void*)arg);
 		} else if (arg == typeid(bool)) {
 			lua_pushboolean(state, va_arg!bool(_argptr));
 		} else if (arg == typeid(double)) {
@@ -77,7 +80,7 @@ public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
 		} else assert(0, "Argument not supported!");
 	}
 	int errorCode = lua_pcall(state, cast(int)_arguments.length, is(T == void) ? 0 : 1, 0);
-	if (errorCode > 1) throw new LuaException(errorCode, "");
+	if (errorCode > 1) throw new LuaException(errorCode, "Error during script execution!");
 	static if (!is(T == void)) {
 		LuaVar result = LuaVar(state, -1);
 		lua_pop(state, 1);
@@ -524,16 +527,19 @@ public class LuaScript {
 	this(string source, const(char*) name) {
 		this.source = source;
 		state = lua_newstate(&luaAllocator, null);
+		if (state is null) throw new LuaException(-1, "Cannot allocate Lua state!");
+		registerLibForScripting(state);
 		const int errorCode = lua_load(state, &reader, cast(void*)this, name, null);
 		switch (errorCode) {
-			default:
+			case LUA_OK:
 				break;
+			default:
+				throw new LuaException(errorCode, "Miscelleranious Lua Error!");
 			case LUA_ERRSYNTAX:
 				throw new LuaException(LUA_ERRSYNTAX, "Syntax error in file!");
 			case LUA_ERRMEM:
 				throw new LuaException(LUA_ERRMEM, "Memory error!");
 		}
-		registerLibForScripting(state);
 		/* lua_register(state, "getLuaState", &registerDFunction!(function void*(){return this.getLuaState_internal();})); */
 	}
 	///Automatically deallocates the lua_State variable.

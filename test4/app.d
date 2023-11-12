@@ -46,6 +46,7 @@ import pixelperfectengine.scripting.globals;
 ///You can add `string[] args` if your either really need or really want.
 int main() {
 	initialzeSDL();						//Initializes the SDL subsystem, so we will have input and graphics
+	initLua();
 	try {								//A try-catch block to handle any errors. A bit ugly, but can save us when there's issues with debug symbols, or an error happened outside of a D code
 		GameApp app = new GameApp();
 		app.whereTheMagicHappens();
@@ -116,7 +117,7 @@ public class GameApp : SystemEventListener, InputListener {
 		
 		//ocd = new ObjectCollisionDetector(&onCollision, 0);	//Creates an object collision detector
 		//Let's create our layer for statuses, etc
-		textLayer = new TileLayer(32,32, RenderingMode.Copy);	//Creates a TileLayer with 8x8 tiles and alpha blending
+		textLayer = new TileLayer(16,16, RenderingMode.Copy);	//Creates a TileLayer with 8x8 tiles and alpha blending
 		textLayer.paletteOffset = 0;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
 		textLayer.masterVal = 255;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
 		rstr.addLayer(textLayer, 0);
@@ -138,7 +139,7 @@ public class GameApp : SystemEventListener, InputListener {
 		modMan.runAudioThread();							//Runs the audio thread.
 		//audio related part end 
 		*/
-		textLayer.loadMapping(64, 32, new MappingElement[](32*64));
+		textLayer.loadMapping(32, 16, new MappingElement[](32*16));
 		
 		//<Put other initialization code here>
 		mainRaster = rstr;
@@ -146,10 +147,12 @@ public class GameApp : SystemEventListener, InputListener {
 			Image dlangMan = loadImage(File("../assets/d-man.tga"));
 			scrptResMan["dlangman"] = loadBitmapFromImage!Bitmap8Bit(dlangMan);
 			rstr.loadPaletteChunk(loadPaletteFromImage(dlangMan),0);
+			Image kumapu = loadImage(File("../assets/kumapu.png"));
+			textLayer.addTile(loadBitmapFromImage!Bitmap32Bit(kumapu), 0x0000);
 		}
-		for (int y ; y < 32 ; y++) {
-			for (int x ; x < 64 ; x++) {
-				
+		for (int y ; y < 16 ; y++) {
+			for (int x ; x < 32 ; x++) {
+				textLayer.writeMapping(x, y, MappingElement(0x0000));
 			}
 		}
 		scrp = new LuaScript(readText("../assets/test4.lua"), "test4.lua");

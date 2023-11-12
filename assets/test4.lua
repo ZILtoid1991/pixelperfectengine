@@ -10,7 +10,7 @@ function Main(luastate)
     addSprite(SprtLayer, getBitmapResource("dlangman"), 0, 0, 0, 0, 0, 255, 1024, 1024, 0)
     timer_register(Globalstate, 20, "UpdateFunc")
 end
-
+--Make D man bounce on the screen
 function UpdateFunc()
     relMoveSprite(SprtLayer, 0, MoveX, MoveY)
     local spritePos = getSpriteCoordinate(SprtLayer, 0)
