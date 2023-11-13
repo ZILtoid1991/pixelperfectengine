@@ -16,6 +16,8 @@ public import pixelperfectengine.scripting.globals;
 
 import collections.linkedmap;
 
+static enum LUA_TOP = -1;
+
 /** 
  * Initializes the Lua scripting engine.
  * Returns: true if successful.
@@ -48,9 +50,8 @@ package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @sys
  * found.
  */
 public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
-	const int type = lua_getglobal(state, toStringz(funcName));
-	/* if (!lua_isfunction(state, 0))*/
-	if (type != LUA_TFUNCTION)
+	lua_getglobal(state, toStringz(funcName));
+	if (!lua_isfunction(state, LUA_TOP))
 		throw new LuaException(8,"Function not found");
 	foreach (arg; _arguments) {
 		if (arg == typeid(byte)) {
@@ -67,7 +68,7 @@ public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
 			lua_pushinteger(state, va_arg!uint(_argptr));
 		} else if (arg == typeid(ubyte)) {
 			lua_pushinteger(state, va_arg!ubyte(_argptr));
-		} else if (arg == typeid(void*) || arg == typeid(Object)) {
+		} else if (arg == typeid(void*)) {
 			lua_pushlightuserdata(state, cast(void*)arg);
 		} else if (arg == typeid(bool)) {
 			lua_pushboolean(state, va_arg!bool(_argptr));
@@ -77,7 +78,10 @@ public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
 			lua_pushstring(state, toStringz(va_arg!string(_argptr)));
 		} else if (arg == typeid(LuaVar)) {
 			va_arg!LuaVar(_argptr).pushToLuaState(state);
-		} else assert(0, "Argument not supported!");
+		} else {
+			lua_pushlightuserdata(state, cast(void*)arg);
+		}
+		 /* assert(0, "Argument not supported!"); */
 	}
 	int errorCode = lua_pcall(state, cast(int)_arguments.length, is(T == void) ? 0 : 1, 0);
 	if (errorCode > 1) throw new LuaException(errorCode, "Error during script execution!");
@@ -528,8 +532,9 @@ public class LuaScript {
 		this.source = source;
 		state = lua_newstate(&luaAllocator, null);
 		if (state is null) throw new LuaException(-1, "Cannot allocate Lua state!");
+		luaL_openlibs(state);
 		registerLibForScripting(state);
-		const int errorCode = lua_load(state, &reader, cast(void*)this, name, null);
+		const int errorCode = lua_load(state, &reader, cast(void*)this, name, "bt");
 		switch (errorCode) {
 			case LUA_OK:
 				break;
@@ -556,6 +561,7 @@ public class LuaScript {
 	 * Throws: A LuaException if the execution ran into an error, or the function isn't found.
 	 */
 	public LuaVar runMain() {
+		lua_pcall(state, 0, LUA_MULTRET, 0);
 		return callLuaFunc!(LuaVar)(state, "Main", cast(void*)state);
 	}
 	public T callFunction(T)(string name, ...) {
@@ -566,6 +572,7 @@ public class LuaScript {
 		LuaScript ls = cast(LuaScript)data;
 		if (ls.isLoaded) {
 			*size = 0;
+			ls.source.length = 0;
 			return null;
 		} else {
 			ls.isLoaded = true;
