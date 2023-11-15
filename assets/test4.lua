@@ -8,8 +8,8 @@ function Main(luastate)
     Globalstate = luastate
     local sprtLayer = getLayer(16)
     local dlangman = getBitmapResource("dlangman")
-    addSprite(SprtLayer, dlangman, 0, 0, 0, 0, 0, 255, 1024, 1024, 0)
-    timer_register(Globalstate, 20, "UpdateFunc")
+    addSprite(sprtLayer, dlangman, 0, 0, 0, 0, 0, 255, 1024, 1024, 0)
+    --timer_register(Globalstate, 20, "UpdateFunc")
     return 0
 end
 --Make D man bounce on the screen

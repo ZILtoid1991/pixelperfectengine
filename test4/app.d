@@ -164,7 +164,7 @@ public class GameApp : SystemEventListener, InputListener {
 			rstr.refresh();
 			//Tests the input devices for events.
 			ih.test();
-			
+			scrp.callFunction("UpdateFunc");
 			//Tests the timer for any registered events that are to happen.
 			//Note: You can put this call into a separate thread for more precision.
 			timer.test();

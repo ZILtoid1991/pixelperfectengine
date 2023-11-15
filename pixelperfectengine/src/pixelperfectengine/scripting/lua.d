@@ -50,9 +50,9 @@ package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @sys
  * found.
  */
 public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
-	lua_getglobal(state, toStringz(funcName));
+	const funcType = lua_getglobal(state, toStringz(funcName));
 	if (!lua_isfunction(state, LUA_TOP))
-		throw new LuaException(8,"Function not found");
+		throw new LuaException(8 + funcType,"Function not found");
 	foreach (arg; _arguments) {
 		if (arg == typeid(byte)) {
 			lua_pushinteger(state, va_arg!byte(_argptr));
@@ -163,17 +163,17 @@ extern (C) public int registerDMemberFunc(alias Func)(lua_State* state) nothrow
 	alias ClassType = __traits(parent, Func);
 	Parameters!Func params;
 	int stackCounter = 0;
-	stackCounter--;
 	ClassType c;
 	try {
+		foreach_reverse(ref param; params) {
+			stackCounter--;
+			param = luaGetFromIndex!(typeof(param))(state, stackCounter);
+		}
+		stackCounter--;
 		c = luaGetFromIndex!ClassType(state, stackCounter);
 		if (c is null) {
 			luaL_error(state, "Wrong lightweight userdata was passed to member function!");
 			return 1;
-		}
-		foreach_reverse(ref param; params) {
-			stackCounter--;
-			param = luaGetFromIndex!(typeof(param))(state, stackCounter);
 		}
 	} catch (Exception e) {
 		luaL_error(state, "Argument type mismatch with D functions!");
@@ -564,8 +564,8 @@ public class LuaScript {
 		lua_pcall(state, 0, LUA_MULTRET, 0);
 		return callLuaFunc!(LuaVar)(state, "Main", cast(void*)state);
 	}
-	public T callFunction(T)(string name, ...) {
-		return callLuaFunc(state, name, _arguments);
+	public LuaVar callFunction(Args...)(string name, Args args) {
+		return callLuaFunc!(LuaVar)(state, name, args);
 	}
 	extern(C)
 	private static const(char*) reader(lua_State* st, void* data, size_t* size) nothrow {

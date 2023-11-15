@@ -107,12 +107,8 @@ package uint setPaletteIndex(ushort n, uint c) @nogc nothrow {
 	c0.base = c;
 	return mainRaster.setPaletteIndex(n, c0).base;
 }
-package LuaVar getLayer(int n) {
-	Layer l = mainRaster.getLayer(n);
-	if (l is null)
-		return LuaVar.voidType();
-	else
-		return LuaVar(l);
+package Layer getLayer(int n) {
+	return mainRaster.getLayer(n);
 }
 package LuaVar getAudioModule(int n) {
 	if (n >= 0 && modMan.moduleList.length < n) {
@@ -309,10 +305,11 @@ package short ttl_setx_0(ITTL target, LuaVar val) {
 package short ttl_sety_0(ITTL target, LuaVar val) {
 	return target.y_0(cast(short)val);
 }
-package LuaVar getBitmapResource(string resID) {
-	ABitmap src = scrptResMan[resID];
+package ABitmap getBitmapResource(string resID) {
+	/* ABitmap src = scrptResMan[resID];
 	if (src !is null) return LuaVar(src);
-	else return LuaVar.voidType();
+	else return LuaVar.voidType(); */
+	return scrptResMan[resID];
 }
 package int loadBitmapResource(string path, string resID, int paletteOffset) {
 	try {
