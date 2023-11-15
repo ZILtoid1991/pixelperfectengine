@@ -251,7 +251,7 @@ public enum LuaVarType {
 	Integer,
 	String,
 	Function,
-	Userdata,
+	LightUserdata,
 	Thread,
 	Table
 }
@@ -312,7 +312,7 @@ public struct LuaVar {
 		switch (type) {
 			case LUA_TLIGHTUSERDATA:
 				dataPtr = lua_touserdata(state, idx);
-				_type = LuaVarType.Userdata;
+				_type = LuaVarType.LightUserdata;
 				break;
 			case LUA_TBOOLEAN:
 				dataInt = lua_toboolean(state, idx);
@@ -348,7 +348,7 @@ public struct LuaVar {
 		} else static if (is(T == string) || is(T == const(char)*)) {
 			_type = LuaVarType.String;
 		} else static if (is(T == void*) || is(T == class) || is(T == interface)) {
-			_type = LuaVarType.Userdata;
+			_type = LuaVarType.LightUserdata;
 		} else static if (is(T == LuaTable)) {
 			_type = LuaVarType.Table;
 		} else {
@@ -432,7 +432,7 @@ public struct LuaVar {
 			if (_type == LuaVarType.String)
 				return deRef!(const(char*));
 		} else static if (is(T == void*)) {
-			if (_type == LuaVarType.Userdata)
+			if (_type == LuaVarType.LightUserdata)
 				return deRef!(void*);
 		} else static if (is(T == bool)) {
 			if (_type == LuaVarType.Boolean)
@@ -457,7 +457,7 @@ public struct LuaVar {
 				return deRef!string() == other.deRef!string();
 			case LuaVarType.Boolean:
 				return deRef!bool() == other.deRef!bool();
-			case LuaVarType.Userdata:
+			case LuaVarType.LightUserdata:
 				return deRef!(void*)() == other.deRef!(void*)();
 			default:
 				return false;
