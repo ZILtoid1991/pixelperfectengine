@@ -398,7 +398,7 @@ public struct LuaVar {
 			case Function:
 				lua_pushcfunction(state, fnPtr);
 				break;
-			case Userdata:
+			case LightUserdata:
 				lua_pushlightuserdata(state, dataPtr);
 				break;
 			case Thread:
