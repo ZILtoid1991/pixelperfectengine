@@ -102,12 +102,15 @@ public T callLuaFunc(T)(lua_State* state, string funcName, ...) @system {
  *   state = The Lua state to handle the data from the Lua side of things.
  * Template params:
  *   Func = The function to be registered.
+ * Bugs: 
+ *   LuaVar types zero out by the time they reach the target function for currently unknown reasons. They seem to get
+ * the correct values, it's just like static map `params` is fundamentally broken.
  */
 extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
 		if(isSomeFunction!(Func)) {
 	import std.traits:Parameters, ReturnType;
-	
-	Parameters!Func params;
+	import std.meta:staticMap;
+	staticMap!(Unqual,Parameters!Func) params;
 	int stackCounter = 0;
 	try {
 		foreach_reverse(ref param; params) {
@@ -156,12 +159,16 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
  *   Func = The function to be registered.
  * Note: When calling a D member function from Lua, the first parameter is always a light user data
  * containing the class instance that the member function should be executed on.
+ * Bugs: 
+ *   LuaVar types zero out by the time they reach the target function for currently unknown reasons. They seem to get
+ * the correct values, it's just like static map `params` is fundamentally broken.
  */
 extern (C) public int registerDMemberFunc(alias Func)(lua_State* state) nothrow
 		if(isSomeFunction!(Func)) {
 	import std.traits:Parameters, ReturnType;
+	import std.meta:staticMap;
 	alias ClassType = __traits(parent, Func);
-	Parameters!Func params;
+	staticMap!(Unqual,Parameters!Func) params;
 	int stackCounter = 0;
 	ClassType c;
 	try {
@@ -211,7 +218,9 @@ extern (C) public int registerDMemberFunc(alias Func)(lua_State* state) nothrow
 public static Exception lastLuaToDException;
 ///Fetches a value from a lua_State variable.
 package T luaGetFromIndex(T)(lua_State* L, int ind) {
-	static if(isIntegral!T || isSomeChar!T) {
+	static if(is(T == LuaVar)) {
+		return LuaVar(L, ind);
+	} else static if(isIntegral!T || isSomeChar!T) {
 		if (!lua_isinteger(L, ind)) 
 			throw new LuaException(7,"Type mismatch!");
 		lua_Integer i = lua_tointeger(L, ind);
@@ -236,8 +245,6 @@ package T luaGetFromIndex(T)(lua_State* L, int ind) {
 			throw new LuaException(7,"Type mismatch!");
 		void* data = lua_touserdata(L, ind);
 		return data;
-	} else static if(is(T == LuaVar)) {
-		return LuaVar(L, ind);
 	} else static assert(0, "Type not supported!");
 	
 }
