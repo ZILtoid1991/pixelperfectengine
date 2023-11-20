@@ -52,6 +52,7 @@ int main() {
 		app.whereTheMagicHappens();
 	} catch (Throwable e) {
 		writeln(e);
+		debug readln();					//RemedyBG closes cmd line windows immediately, this stops that.
 	}
 	return 0;
 }
@@ -176,6 +177,7 @@ public class GameApp : SystemEventListener, InputListener {
 
 			//<Per-frame code comes here>
 		}
+		//scrp.deinit();
 	}
 	///This function will load a map file to display levels, or portions of levels.
 	///If you're clever, you can store other things in map files

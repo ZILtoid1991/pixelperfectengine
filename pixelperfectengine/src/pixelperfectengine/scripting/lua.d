@@ -30,11 +30,14 @@ public bool initLua() {
 extern(C)
 package void* luaAllocator(void* ud, void* ptr, size_t osize, size_t nsize) @system nothrow {
 	import core.memory;
+	import core.stdc.stdlib;
 	if (nsize == 0) {
-		GC.free(ptr);
+		free(ptr);
+		//GC.free(ptr);
 		return null;
 	} else {
-		return GC.realloc(ptr, nsize);
+		//return GC.realloc(ptr, nsize);
+		return realloc(ptr, nsize);
 	}
 }
 /** 
@@ -152,6 +155,7 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
 
 /** 
  * Registers a D member function to be called from Lua.
+ * This makes binding of D class members easy, by treating the class as light user data on the Lua side
  * Code is modified from MrcSnm's example found in the HipremeEngine.
  * Params:
  *   state = The Lua state to handle the data from the Lua side of things.
@@ -162,6 +166,8 @@ extern(C) public int registerDFunction(alias Func)(lua_State* state) nothrow
  * Bugs: 
  *   LuaVar types zero out by the time they reach the target function for currently unknown reasons. They seem to get
  * the correct values, it's just like static map `params` is fundamentally broken.
+ *   Member function does not seem to be actually called for some unknown reason. This seems to be true if member functions
+ * are being called with a regular function.
  */
 extern (C) public int registerDMemberFunc(alias Func)(lua_State* state) nothrow
 		if(isSomeFunction!(Func)) {
@@ -554,7 +560,7 @@ public class LuaScript {
 		}
 		/* lua_register(state, "getLuaState", &registerDFunction!(function void*(){return this.getLuaState_internal();})); */
 	}
-	///Automatically deallocates the lua_State variable.
+	///Automatic deinitialization
 	~this() {
 		lua_close(state);
 	}

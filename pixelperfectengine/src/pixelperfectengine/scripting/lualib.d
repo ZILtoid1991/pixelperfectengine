@@ -63,12 +63,15 @@ public void registerLibForScripting(lua_State* state) {
 	lua_register(state, "ttl_getx_0", &registerDFunction!ttl_getx_0);
 	lua_register(state, "ttl_gety_0", &registerDFunction!ttl_gety_0);
 
+	//lua_register(state, "moveSprite", &registerDMemberFunc!(ISpriteLayer.moveSprite));
 	lua_register(state, "moveSprite", &registerDFunction!(moveSprite));
+	//lua_register(state, "relMoveSprite", &registerDMemberFunc!(ISpriteLayer.relMoveSprite));
 	lua_register(state, "relMoveSprite", &registerDFunction!(relMoveSprite));
 	lua_register(state, "getSpriteCoordinate", &registerDMemberFunc!(ISpriteLayer.getSpriteCoordinate));
 	lua_register(state, "setSpriteSlice", &registerDFunction!setSpriteSlice);
 	lua_register(state, "getSpriteSlice", &registerDMemberFunc!(ISpriteLayer.getSlice));
-	lua_register(state, "addSprite", &registerDMemberFunc!(ISpriteLayer.addSprite));
+	//lua_register(state, "addSprite", &registerDMemberFunc!(ISpriteLayer.addSprite));
+	lua_register(state, "addSprite", &registerDFunction!(addSprite));
 	lua_register(state, "removeSprite", &registerDMemberFunc!(ISpriteLayer.removeSprite));
 	lua_register(state, "getPaletteID", &registerDMemberFunc!(ISpriteLayer.getPaletteID));
 	lua_register(state, "setPaletteID", &registerDMemberFunc!(ISpriteLayer.setPaletteID));
@@ -259,16 +262,18 @@ package Box setSpriteSlice(void* target, int n, LuaVar x0, LuaVar y0, LuaVar x1,
 	ISpriteLayer l = cast(ISpriteLayer)target;
 	return l.setSlice(n, Box(cast(int)x0, cast(int)y0, cast(int)x1, cast(int)y1));
 }
-package void moveSprite(ISpriteLayer target, int n, LuaVar x, LuaVar y) {
+//package void moveSprite(ISpriteLayer target, int n, LuaVar x, LuaVar y) {
+package void moveSprite(ISpriteLayer target, int n, int x, int y) {
 	target.moveSprite(n, cast(int)x, cast(int)y);
 }
-package void relMoveSprite(ISpriteLayer target, int n, LuaVar x, LuaVar y) {
+//package void relMoveSprite(ISpriteLayer target, int n, LuaVar x, LuaVar y) {
+package void relMoveSprite(ISpriteLayer target, int n, int x, int y) {
 	target.relMoveSprite(n, cast(int)x, cast(int)y);
 }
-/+package void addSprite(ISpriteLayer target, ABitmap s, int n, LuaVar x, LuaVar y, ushort paletteSel, 
-		LuaVar scaleHoriz, LuaVar scaleVert) {
-	target.addSprite(s, n, cast(int)x, cast(int)y, paletteSel, cast(int)scaleHoriz, cast(int)scaleVert);
-}+/
+package void addSprite(ISpriteLayer target, ABitmap s, int n, int x, int y, ushort paletteSel, 
+		ubyte paletteSh, ubyte alpha, int scaleHoriz, int scaleVert) {
+	target.addSprite(s, n, x, y, paletteSel, paletteSh, alpha, scaleHoriz, scaleVert, RenderingMode.init);
+}
 package short ttl_getA(ITTL target) @nogc nothrow {
 	return target.A;
 }
