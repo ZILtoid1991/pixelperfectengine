@@ -1,3 +1,8 @@
+# 0.10.6
+
+* Fixed a bug in `PopUpMenu.passMCE`.
+* Testcase for scripting mostly done (does not work correctly, see roadmap!).
+
 # 0.10.5
 
 * Fixed a bug that caused out of bounds reads when downscaling 32 bit sprites, and also when they're being upscaled but only a small portion of them will be visible.

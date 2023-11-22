@@ -131,6 +131,7 @@ full-time job.
 * As of now, your executable must be in the folder `./bin-[cpuarch]-[OS]`, but it'll change likely by v1.0.0, since 
 certain companies (console manufacturers, phone OS suppliers, etc.) would like me to put the executable into the root 
 folder, and likely to group together all the asset folders into a bigger one.
+* Due to hard to debug reasons, the scripting doesn't work as intended.
 
 # Future plans:
 
