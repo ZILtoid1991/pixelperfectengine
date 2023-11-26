@@ -1,6 +1,6 @@
 module pixelperfectengine.audio.m2.types;
 
-public import core.time : Duration, hnsecs;
+public import core.time : Duration, hnsecs, nsecs;
 import std.typecons : BitFlags;
 import collections.treemap;
 
@@ -28,22 +28,29 @@ public enum OpCode : ubyte {
 	lshi		=   0x10,		///Logically shift left RA by RB immediate value, store in RD
 	rshi		=   0x11,		///Logically shift right RA by RB immediate value, store in RD
 	rasi		=   0x12,		///Arithmetically shift right RA by RB immediate value, store in RD
-	adds		=   0x13,		///Add two registers, store in third
-	subs		=   0x14,		///Subtract two registers, store in third
-	muls		=   0x15,		///Multiply two registers, store in third
-	divs		=   0x16,		///Divide two registers, store in third
+	adds		=   0x13,		///Add two registers, store in third (signed)
+	subs		=   0x14,		///Subtract two registers, store in third (signed)
+	muls		=   0x15,		///Multiply two registers, store in third (signed)
+	divs		=   0x16,		///Divide two registers, store in third (signed)
 	lsh         =   0x17,		///Logically shift left RA by RB, store in RD
 	rsh         =   0x18,		///Logically shift right RA by RB, store in RD
 	ras         =   0x19,		///Arithmetically shift right RA by RB, store in RD
 	mov         =   0x1a,		///Move register content of RA to RD
+	satadd		=	0x1b,		///Saturated add
+	satsub		=	0x1c,		///Saturated subtract
+	satmul		=	0x1d,		///Saturated multiply
+	satadds		=	0x1e,		///Saturated signed add
+	satsubs		=	0x1f,		///Saturated signed subtract
+	satmuls		=	0x20,		///Saturated signed multiply
 	//Math operations on registers end
-	cmp			=	0x1b,		///Compare two register values
-	chain		=	0x1c,		///Abandon current pattern to next one
-	emit_r0		=	0x1d,		///Emit command with value from register
-	emit_0r		=	0x1e,		///Emit command to group/channel from register
-	emit_rr		=	0x1f,		///Emit command to group/channel from register with value from register
-	cue			=	0x20,		///Set cue point/marker
-	trnsps		=	0x21,		///Transpose
+	cmp			=	0x40,		///Compare two register values
+	chain		=	0x41,		///Abandon current pattern to next one
+	emit_r0		=	0x42,		///Emit command with value from register
+	emit_0r		=	0x43,		///Emit command to group/channel from register
+	emit_rr		=	0x44,		///Emit command to group/channel from register with value from register
+	cue			=	0x48,		///Set cue point/marker
+	trnsps		=	0x49,		///Transpose
+	ctrl		=	0xf0,		///Control command
 	display		=	0xff,		///Display command
 }
 /** 
@@ -78,45 +85,48 @@ public enum JmpCode : ubyte {
 }
 ///Compare register number.
 public enum CR = 127;
+///ID used to designate inactive pattern slots.
 public enum PATTERN_SLOT_INACTIVE_ID = uint.max;
 
+/** 
+ * Defines an M2 pattern slot status data.
+ */
 public struct M2PatternSlot {
 	public enum StatusFlags : uint {
-		isRunning		=	1<<0,
-		hasEnded		=	1<<1,
-		suspend			=	1<<2,
-		error_badOpCode =	1<<16,
-		error_selfRef	=	1<<17,
-		error_illegalJmp=	1<<18,
+		isRunning		=	1<<0,		///Set if pattern is running
+		hasEnded		=	1<<1,		///Set if pattern has ended(slot can be reused)
+		suspend			=	1<<2,		///Set if pattern is on suspension
 	}
-	public uint[128] localReg;
-	public uint[16] patternSt;
-	public BitFlags!StatusFlags status;
-	public uint lastCue;
-	public uint id;
-	public uint position;
-	public double timeMult = 1.0;
-	public Duration timeToWait;
-	
+	public uint[128] localReg;			///Local register bank
+	public BitFlags!StatusFlags status;	///Status flags
+	public uint lastCue;				///ID of the last reached cue
+	public uint id = PATTERN_SLOT_INACTIVE_ID;///ID of the currently played pattern
+	public uint position;				///Position within the pattern
+	public uint timeMult = 0x1_00_00;	///Time multiplier (16bit precision)
+	public uint backLink = uint.max;	///Backlinking for pattern nesting
+	public Duration timeToWait;			///Time until next command chunk
+	public void reset() @nogc @safe nothrow {
+		status = status.init;
+		foreach (ref uint key; localReg) {
+			key = 0;
+		}
+		lastCue = 0;
+		position = 0;
+		timeMult = 0x1_00_00;
+		timeToWait = hnsecs(0);
+	}
 }
 
 public struct M2Song {
-	public enum StatusFlags : uint {
-		isRunning		=	1<<0,
-		hasEnded		=	1<<1,
-		haltOnError		=	1<<8,
-	}
 	public uint[128] globalReg;
 	public M2PatternSlot[] ptrnSl;
-	public uint[] activePtrnNums;
-	public double globTimeMult = 1.0;
-	public ulong timebase;
+	//public uint[] activePtrnNums;
+	public uint globTimeMult = 0x1_00_00;///Time multiplier (16bit precision)
+	public ulong timebase;				///nsecs of a single tic
 	public TreeMap!(uint, uint[]) ptrnData;
 	this (uint parPtrnNum, TreeMap!(uint, uint[]) ptrnData, ulong timebase) @safe nothrow {
 		ptrnSl.length = parPtrnNum;
-		activePtrnNums.length = parPtrnNum;
-		foreach (ref i; activePtrnNums)
-			i = PATTERN_SLOT_INACTIVE_ID;
+		
 		this.ptrnData = ptrnData;
 	}
 }
