@@ -18,6 +18,7 @@ public class SequencerM2 : Sequencer {
 		unrecognizedCode=		1<<3,
 		outOfPatternSlots=		1<<4,
 		unrecognizedPattern=	1<<5,
+		illegalMIDICmd	=		1<<6,
 	}
 	enum StatusFlags : uint {
 		play			=		1<<0,
@@ -345,7 +346,6 @@ public class SequencerM2 : Sequencer {
 						status.play = false;
 					}
 				}
-				
 				return;
 			}
 		}
@@ -368,17 +368,20 @@ public class SequencerM2 : Sequencer {
 	 */
 	private void emitMIDIData(uint[] data, uint targetID) @nogc nothrow {
 		uint pos;
+		AudioModule am = modTrgt[targetID];
+		if (am is null) {
+			errors.unrecognizedCode = true;
+			if (status.cfg_StopOnError) status.play = false;
+			return;
+		}
 		while (pos < data.length) {
 			UMP midiPck;
 			midiPck.base = data[pos];
 			const uint cmdSize = umpSizes[midiPck.msgType]>>4;
-			AudioModule am = modTrgt[targetID];
-			if (am is null) {
-				errors.unrecognizedCode = true;
-				if (status.cfg_StopOnError) {
-					status.play = false;
-					return;
-				}
+			if (cmdSize + pos >= data.length) {
+				errors.illegalMIDICmd = true;
+				if (status.cfg_StopOnError) status.play = false;
+				return;
 			} else {
 				switch (cmdSize) {
 					case 2:
