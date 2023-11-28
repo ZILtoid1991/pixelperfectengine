@@ -132,10 +132,29 @@ public struct M2Song {
 	public uint globTimeMult = 0x1_00_00;///Time multiplier (16bit precision)
 	public ulong timebase;				///nsecs of a single tic
 	public TreeMap!(uint, uint[]) ptrnData;
-	this (uint parPtrnNum, TreeMap!(uint, uint[]) ptrnData, ulong timebase) @safe nothrow {
+	this (uint parPtrnNum, M2TimeFormat timefrmt, uint timeper, uint timeres) @safe nothrow {
 		ptrnSl.length = parPtrnNum;
+		final switch (timefrmt) with(M2TimeFormat) {
+			case ms:
+				timebase = 1_000_000;
+				break;
+			case us:
+				timebase = 1_000;
+				break;
+			case hns:
+				timebase = 100;
+				break;
+			case fmt3:
+				timebase = cast(ulong)((1 / (cast(real)timeper / timeres)) * 1_000_000_000);
+				break;
+			case fmt4:
+				timebase = cast(ulong)((1 / (timeper / 256.0 / timeres)) * 1_000_000_000);
+				break;
+			case fmt5:
+				timebase = cast(ulong)((1 / (timeper / 65_536.0 / timeres)) * 1_000_000_000);
+				break;
+		}
 		
-		this.ptrnData = ptrnData;
 	}
 }
 
@@ -143,6 +162,7 @@ public struct M2File {
 	public M2Song songdata;
 	public string[string] metadata;
 	public string[uint] devicelist;
+	public ushort patternNum;
 	public M2TimeFormat timeFormat;
 	public uint timeFrmtPer;
 	public uint timeFrmtRes;
