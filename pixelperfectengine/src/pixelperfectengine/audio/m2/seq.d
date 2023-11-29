@@ -29,11 +29,13 @@ public class SequencerM2 : Sequencer {
 	}
 	public BitFlags!ErrorFlags errors;
 	protected BitFlags!StatusFlags status;
+	protected Duration timePos;
 	public TreeMap!(uint, AudioModule) modTrgt;
 	public M2Song songdata;
 
 	public void lapseTime(Duration amount) @nogc nothrow {
 		if (!status.play) return;
+		timePos += amount;
 		foreach (ref M2PatternSlot ptrnSl ; songdata.ptrnSl) {
 			if (ptrnSl.status.isRunning && !ptrnSl.status.suspend && status.play) {
 				advancePattern(ptrnSl, amount);
@@ -58,17 +60,17 @@ public class SequencerM2 : Sequencer {
 					case OpCode.lnwait:			//Long wait
 						const ulong tics = (((data.bytes[1]<<16) | data.hwords[1])<<24) | patternData[ptrn.position + 1];	//Get amount of tics for this wait command
 						const ulong timeBase = getTimeBase();
-						ptrn.timeToWait = nsecs(timeBase * tics) - ptrn.timeToWait;		//calculate new wait amount, plus add any overshoot from the previous time
+						ptrn.timeToWait += nsecs(timeBase * tics);		//calculate new wait amount, plus amount for any inaccuracy from sequencer steping.
 						ptrn.position += 2;
-						//return;
-						goto exitLoop;
+						if (!ptrn.timeToWait.isNegative) goto exitLoop;	//hazard case: even after wait time is l
+						break;
 					case OpCode.shwait:			//Short wait
 						const uint tics = (data.bytes[1]<<16) | data.hwords[1];
 						const ulong timeBase = getTimeBase();
-						ptrn.timeToWait = nsecs(timeBase * tics) - ptrn.timeToWait;		//calculate new wait amount, plus add any overshoot from the previous time
+						ptrn.timeToWait += nsecs(timeBase * tics);
 						ptrn.position += 1;
-						//return;
-						goto exitLoop;
+						if (!ptrn.timeToWait.isNegative) goto exitLoop;
+						break;
 					case OpCode.emit:			//MIDI data emit
 						const device = data.hwords[1];
 						const dataAm = data.bytes[1];

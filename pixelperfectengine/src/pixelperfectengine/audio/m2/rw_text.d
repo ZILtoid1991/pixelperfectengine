@@ -22,6 +22,18 @@ public M2File loadM2FromText(string src) {
 		if (commentPos == -1) return s;
 		return s[0..commentPos];
 	}
+	int parseNote(string n) {
+		//return cast(int)countUntil(NOTE_LOOKUP_TABLE, n);
+		n = capitalize(n);
+		for (int i = 0; i < 128 ; i++) {
+			if (NOTE_LOOKUP_TABLE[i] == n) return i;
+		}
+		return -1;
+	}
+	ulong parseRhythm(string n, float bpm, long timebase) {
+		const long whNoteLen = cast(long)((1_000_000_000 / cast(double)timebase) * (60 / bpm) * 4);
+		return 0;
+	}
 	enum Context {
 		init,
 		headerParse,
@@ -35,6 +47,15 @@ public M2File loadM2FromText(string src) {
 		size_t lineNum;
 		uint lineLen;
 		float currBPM = 120;
+		size_t[string] positionLabels;
+	}
+	struct NoteData {
+		uint device;
+		ubyte ch;
+		ubyte note;
+		ushort velocity;
+		long durRemain;
+		long durTotal;
 	}
 	M2File result;
 	Context context, prevContext;
@@ -46,11 +67,14 @@ public M2File loadM2FromText(string src) {
 	//First pass: parse header, etc.
 	for (size_t lineNum = 1 ; lineNum < lines.length ; lineNum++) {
 		string[] words = removeComment(lines[lineNum]).split!isWhite();
+		if (!words.length) continue;
 		switch (context) {
 			case Context.patternParse:
 				if (words[0] == "END") {	//Calculate line numbers then close current pattern parsing.
 					ptrnData[$-1].lineLen = cast(uint)(lineNum - ptrnData[$-1].lineNum - 1);
 					context = Context.init;
+				} else if (startsWith(words[0], "@")) {
+					ptrnData[$-1].positionLabels[words[0][1..$]] = lineNum;
 				}
 				break;
 			case Context.headerParse:
@@ -143,6 +167,32 @@ public M2File loadM2FromText(string src) {
 	//Initialize song data
 	result.songdata = M2Song(result.patternNum, result.timeFormat, result.timeFrmtPer, result.timeFrmtRes);
 	//Second pass: parse patterns
+	foreach (PatternData key; ptrnData) {
+		uint[] currEmitStr;
+		void flushEmitStr() {
 
+		}
+		for (sizediff_t lineNum = key.lineNum ; lineNum < key.lineNum + key.lineLen ; lineNum++) {
+			string[] words = removeComment(lines[lineNum]).split!isWhite();
+			if (!words.length) continue;
+			if (words[0][0] == '$') {	//parse MIDI emit commands
+				const sizediff_t f = countUntil(words[0], '['), t =countUntil(words[0], ']');
+				const uint deviceNum = cast(uint)parsenum(words[0][f + 1..t]);
+				if (currEmitStr.length > 251) flushEmitStr();	//flush emit string if it's not guaranteed that a 4 word long data won't fit
+				switch (words[1]) {
+					default:
+						break;
+				}
+			} else {					//parse any other command
+				if (currEmitStr.length) {	//flush emit string to command list before moving onto parsing any other data.
+					flushEmitStr();
+				}
+				switch (words[0]) {
+					default:
+						break;
+				}
+			}
+		}
+	}
 	return result;
 }

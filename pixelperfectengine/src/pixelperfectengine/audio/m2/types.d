@@ -179,7 +179,7 @@ package struct DataReaderHelper {
 	}
 }
 
-package immutable string[128] noteLookupTable =
+package immutable string[128] NOTE_LOOKUP_TABLE =
 	[
 		"C-00", "C#00", "D-00", "D#00", "E-00", "F-00", "F#00", "G-00", //0
 		"G#00", "A-00", "A#00", "B-00", "C-0", "C#0", "D-0", "D#0", 	//1
