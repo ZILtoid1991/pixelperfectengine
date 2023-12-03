@@ -113,6 +113,7 @@ public struct M2PatternSlot {
 	public uint timeMult = 0x1_00_00;	///Time multiplier (16bit precision)
 	public uint backLink = uint.max;	///Backlinking for pattern nesting
 	public Duration timeToWait;			///Time until next command chunk
+	public Duration patternTime;		///Stores the current time of the pattern
 	public void reset() @nogc @safe nothrow {
 		status = status.init;
 		foreach (ref uint key; localReg) {
@@ -122,6 +123,7 @@ public struct M2PatternSlot {
 		position = 0;
 		timeMult = 0x1_00_00;
 		timeToWait = hnsecs(0);
+		patternTime = hnsecs(0);
 	}
 }
 
