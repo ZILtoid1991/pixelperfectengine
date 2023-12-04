@@ -45,9 +45,7 @@ public enum OpCode : ubyte {
 	//Math operations on registers end
 	cmp			=	0x40,		///Compare two register values
 	chain		=	0x41,		///Abandon current pattern to next one
-	emit_r0		=	0x42,		///Emit command with value from register
-	emit_0r		=	0x43,		///Emit command to group/channel from register
-	emit_rr		=	0x44,		///Emit command to group/channel from register with value from register
+	emit_r		=	0x42,		///Emit command with value from register
 	cue			=	0x48,		///Set cue point/marker
 	trnsps		=	0x49,		///Transpose
 	ctrl		=	0xf0,		///Control command
@@ -82,6 +80,17 @@ public enum JmpCode : ubyte {
 	ne,							///Jump if condition code is not equal to condition register
 	sh,							///Jump if at least some of the same bits are high in both the condition code and the condition register
 	op,							///Jump is all the bits are opposite in the condition code from the condition register
+}
+public enum DisplayCmdCode : ubyte {
+	init,
+	setVal					=	0x01,
+	setVal64Bit				=	0x02,
+
+	strCue					=	0xF0,
+	strNotation				=	0xF1,
+	strLyrics				=	0xF2,
+
+	strPrevBlC				=	0xFF,
 }
 public enum M2TimeFormat : ubyte {
 	ms,
