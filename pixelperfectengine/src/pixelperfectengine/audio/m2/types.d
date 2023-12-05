@@ -92,6 +92,13 @@ public enum DisplayCmdCode : ubyte {
 
 	strPrevBlC				=	0xFF,
 }
+public enum SetDispValCode : ushort {
+	init,
+	BPM						=	0x00_01,
+	timeSignature			=	0x00_02,
+	clef					=	0x00_03,
+	keySignature			=	0x00_04,
+}
 public enum M2TimeFormat : ubyte {
 	ms,
 	us,

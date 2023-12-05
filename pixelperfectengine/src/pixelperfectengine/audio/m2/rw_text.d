@@ -151,6 +151,13 @@ public M2File loadM2FromText(string src) {
 	string parsedString;
 	string[] lines = src.splitLines;
 	PatternData[] ptrnData;
+	sizediff_t searchPatternByName(const string name) @nogc @safe pure nothrow const {
+		for (sizediff_t i = 0; i < ptrnData.length ; i++) {
+			if (ptrnData[i].name == name)
+				return i;
+		}
+		return -1;
+	}
 	//Validate file
 	enforce(lines[0][0..12] == "MIDI2.0 VER " && lines[0][12] == '1', "Wrong version or file!");
 	//First pass: parse header, etc.
@@ -279,6 +286,25 @@ public M2File loadM2FromText(string src) {
 					*ptrnData ~= [0x02_00_00_00 | cast(uint)(amount>>24), cast(uint)amount];
 				}
 			}
+		}
+		void insertCmd(uint[] cmdStr) {
+			if (cmdStr.length) {
+				auto ptrnData = result.songdata.ptrnData.ptrOf(cast(uint)i);
+				*ptrnData ~= cmdStr;
+			}
+		}
+		void insertJmpCmd(const sizediff_t currLineNum, uint cmdCode, string[] words) {
+			const int targetAm = cast(int)(key.positionLabels[words[1]] - currLineNum);
+			const uint conditionMask = cast(uint)parsenum(words[0]);
+			insertCmd([cmdCode, conditionMask, targetAm]);
+		}
+		void insertMathCmd(const uint cmdCode, string[] words) {
+			enforce(words.length == 3, "Incorrect number of registers");
+			const int ra = parseRegister(words[0]);
+			const int rb = parseRegister(words[1]);
+			const int rd = parseRegister(words[2]);
+			enforce((ra|rb|rd) != -1, "Bad register number");
+			insertCmd([cmdCode | (ra<<16) | (rb<<8) | rd]);
 		}
 		for (sizediff_t lineNum = key.lineNum ; lineNum < key.lineNum + key.lineLen ; lineNum++) {
 			string[] words = removeComment(lines[lineNum]).split!isWhite();
@@ -517,7 +543,7 @@ public M2File loadM2FromText(string src) {
 								NoteData nd = noteMacroHandler.remove(0);
 								currEmitStr ~= [0x40_A0_00_00 | ((nd.ch & 0xF0)<<20) | ((nd.ch & 0x0F)<<16) | (nd.note<<8), nd.velocity<<16];
 							}
-							if (num == 0) {											//if there's no expired note macros
+							if (num == 0) {											//if there's no (more) expired note macros, then just simply emit a wait command with the current amount
 								insertWaitCmd(amount);
 								timepos += amount;
 								amount = 0;
@@ -529,20 +555,34 @@ public M2File loadM2FromText(string src) {
 						} while(amount);
 						break;
 					case "chain-par":
+						sizediff_t refPtrnID = searchPatternByName(words[1]);
+						enforce(refPtrnID != -1, "Pattern not found");
+						insertCmd([0x05_00_00_00 | cast(uint)refPtrnID]);
 						break;
 					case "chain-ser":
+						sizediff_t refPtrnID = searchPatternByName(words[1]);
+						enforce(refPtrnID != -1, "Pattern not found");
+						insertCmd([0x06_00_00_00 | cast(uint)refPtrnID]);
 						break;
 					case "chain":
+						sizediff_t refPtrnID = searchPatternByName(words[1]);
+						enforce(refPtrnID != -1, "Pattern not found");
+						insertCmd([0x41_00_00_00 | cast(uint)refPtrnID]);
 						break;
 					case "jmpnc", "jmp":
+						insertJmpCmd(lineNum, 0x04_00_00_00, words[1..$]);
 						break;
 					case "jmpeq":
+						insertJmpCmd(lineNum, 0x04_01_00_00, words[1..$]);
 						break;
 					case "jmpne":
+						insertJmpCmd(lineNum, 0x04_02_00_00, words[1..$]);
 						break;
 					case "jmpsh":
+						insertJmpCmd(lineNum, 0x04_03_00_00, words[1..$]);
 						break;
 					case "jmpop":
+						insertJmpCmd(lineNum, 0x04_04_00_00, words[1..$]);
 						break;
 					case "add": 
 						break;
