@@ -40,7 +40,11 @@ package int parseNote(string n) {
 	return cast(int)parsenum(n);
 }
 package int parseRegister(const string s) {
-	if (s[0] == 'R') return s[1..$].to!int(16);
+	if (s[0] == 'R') {
+		try
+			return s[1..$].to!int(16);
+		catch (Exception e) {}
+	}
 	return -1;
 }
 package double getRhythmDur(const char c) @nogc @safe pure nothrow {
@@ -303,8 +307,89 @@ public M2File loadM2FromText(string src) {
 			const int ra = parseRegister(words[0]);
 			const int rb = parseRegister(words[1]);
 			const int rd = parseRegister(words[2]);
-			enforce((ra|rb|rd) != -1, "Bad register number");
+			enforce((ra|rb|rd) <= -1, "Bad register number");
 			insertCmd([cmdCode | (ra<<16) | (rb<<8) | rd]);
+		}
+		void insertShImmCmd(const uint cmdCode, string[] words) {
+			enforce(words.length == 3, "Incorrect number of registers");
+			const int ra = parseRegister(words[0]);
+			const int rb = cast(int)parsenum(words[1]);
+			const int rd = parseRegister(words[2]);
+			enforce((ra|rd) <= -1, "Bad register number");
+			enforce(rb <= 31 && rb >= 0, "Bad immediate amount");
+			insertCmd([cmdCode | (ra<<16) | (rb<<8) | rd]);
+		}
+		void insertTwoOpCmd(const uint cmdCode, string[] words) {
+			enforce(words.length == 2, "Incorrect number of registers");
+			const int ra = parseRegister(words[0]);
+			const int rd = parseRegister(words[1]);
+			enforce((ra|rd) <= -1, "Bad register number");
+			insertCmd([cmdCode | (ra<<16) | rd]);
+		}
+		void insertCmpInstr(const uint cmdCode, string[] words) {
+			enforce(words.length == 2, "Incorrect number of registers");
+			const int ra = parseRegister(words[0]);
+			const int rb = parseRegister(words[1]);
+			enforce((ra|rb) <= -1, "Bad register number");
+			insertCmd([cmdCode | (ra<<8) | rb]);
+		}
+		void insertMIDI2Cmd(bool longfield, bool note)(const uint cmdCode, string chField, string upperField, 
+				string lowerField, string valueField, string aux) {
+			uint emitWithRegVal;
+			int rCh, rNote, rValue, rAux = -1;
+			uint value, upper, lower, channel;
+			static if (note) {
+				rValue = parseRegister(valueField);
+				if (rValue != -1) emitWithRegVal |= 0x08;
+				else value = (cast(int)parsenum(valueField))<<16;
+				if (aux.length) {
+					if (aux.length >= 4) {
+						switch (aux[0..2]) {
+							case "ms": lower = 0x01; break;
+							case "ps": lower = 0x02; break;
+							case "pt": lower = 0x03; break;
+							default: break;
+						}
+						rAux = parseRegister(aux[3..$]);
+						if (rAux != -1) emitWithRegVal |= 0x01;
+						else value |= cast(int)parsenum(aux[3..$]);
+					}
+				}
+			} else {
+				rValue = parseRegister(valueField);
+				if (rValue != -1) emitWithRegVal |= 0x08;
+				else value = cast(int)parsenum(valueField);
+			}
+			static if (longfield) {
+				rNote = parseRegister(upperField);
+				if (rNote != -1) emitWithRegVal |= 0x04;
+				else {
+					const uint lf = cast(uint)parsenum(upperField);
+					lower = lf & 0x7F;
+					upper = (lf>>7)<<8;
+				}
+			} else {
+				rNote = parseRegister(upperField);
+				if (rNote != -1) emitWithRegVal |= 0x04;
+				else {
+					static if (note) {
+						upper = parseNote(upperField);
+					} 
+				}
+				if (lowerField.length) {
+					rAux = parseRegister(lowerField);
+					if (rAux != -1) emitWithRegVal |= 0x01;
+					else lower = parsenum(lowerField);
+				}
+			}
+			rCh = parseRegister(chField);
+			if (rCh != -1) emitWithRegVal |= 0x02;
+			else channel = parsenum(chField);
+			if (emitWithRegVal) {
+				flushEmitStr();
+			} else {
+
+			}
 		}
 		for (sizediff_t lineNum = key.lineNum ; lineNum < key.lineNum + key.lineLen ; lineNum++) {
 			string[] words = removeComment(lines[lineNum]).split!isWhite();
@@ -585,72 +670,106 @@ public M2File loadM2FromText(string src) {
 						insertJmpCmd(lineNum, 0x04_04_00_00, words[1..$]);
 						break;
 					case "add": 
+						insertMathCmd(0x07_00_00_00, words[1..$]);
 						break;
-					case "sub": 
+					case "sub":
+						insertMathCmd(0x08_00_00_00, words[1..$]);
 						break;
-					case "mul": 
+					case "mul":
+						insertMathCmd(0x09_00_00_00, words[1..$]);
 						break;
-					case "div": 
+					case "div":
+						insertMathCmd(0x0A_00_00_00, words[1..$]);
 						break;
-					case "mod": 
+					case "mod":
+						insertMathCmd(0x0B_00_00_00, words[1..$]);
 						break;
-					case "and": 
+					case "and":
+						insertMathCmd(0x0C_00_00_00, words[1..$]);
 						break;
-					case "or": 
+					case "or":
+						insertMathCmd(0x0D_00_00_00, words[1..$]);
 						break;
-					case "xor": 
+					case "xor":
+						insertMathCmd(0x0E_00_00_00, words[1..$]);
 						break;
-					case "not": 
+					case "not":
+						insertTwoOpCmd(0x0F_00_00_00, words[1..$]);
 						break;
 					case "lshi": 
+						insertShImmCmd(0x10_00_00_00, words[1..$]);
 						break;
 					case "rshi": 
+						insertShImmCmd(0x11_00_00_00, words[1..$]);
 						break;
 					case "rasi": 
+						insertShImmCmd(0x12_00_00_00, words[1..$]);
 						break;
 					case "adds": 
+						insertMathCmd(0x13_00_00_00, words[1..$]);
 						break;
 					case "subs": 
+						insertMathCmd(0x14_00_00_00, words[1..$]);
 						break;
 					case "muls": 
+						insertMathCmd(0x15_00_00_00, words[1..$]);
 						break;
 					case "divs": 
+						insertMathCmd(0x16_00_00_00, words[1..$]);
 						break;
 					case "lsh": 
+						insertMathCmd(0x17_00_00_00, words[1..$]);
 						break;
 					case "rsh": 
+						insertMathCmd(0x18_00_00_00, words[1..$]);
 						break;
 					case "ras": 
+						insertMathCmd(0x19_00_00_00, words[1..$]);
 						break;
-					case "mov": 
+					case "mov":
+						insertTwoOpCmd(0x1A_00_00_00, words[1..$]);
 						break;
 					case "cmpeq":
+						insertCmpInstr(0x40_01_00_00, words[1..$]);
 						break;
 					case "cmpne":
+						insertCmpInstr(0x40_02_00_00, words[1..$]);
 						break;
 					case "cmpgt":
+						insertCmpInstr(0x40_03_00_00, words[1..$]);
 						break;
 					case "cmpge":
+						insertCmpInstr(0x40_04_00_00, words[1..$]);
 						break;
 					case "cmplt":
+						insertCmpInstr(0x40_05_00_00, words[1..$]);
 						break;
 					case "cmple":
+						insertCmpInstr(0x40_06_00_00, words[1..$]);
 						break;
 					case "cmpze":
+						insertCmpInstr(0x40_07_00_00, words[1..$]);
 						break;
 					case "cmpnz":
+						insertCmpInstr(0x40_08_00_00, words[1..$]);
 						break;
 					case "cmpng":
+						insertCmpInstr(0x40_09_00_00, words[1..$]);
 						break;
 					case "cmppo":
+						insertCmpInstr(0x40_0a_00_00, words[1..$]);
 						break;
 					case "cmpsgt":
+						insertCmpInstr(0x40_0b_00_00, words[1..$]);
 						break;
 					case "cmpsge":
+						insertCmpInstr(0x40_0c_00_00, words[1..$]);
 						break;
 					case "cmpslt":
+						insertCmpInstr(0x40_0d_00_00, words[1..$]);
 						break;
 					case "cmpsle":
+						insertCmpInstr(0x40_0e_00_00, words[1..$]);
 						break;
 					default:
 						break;
