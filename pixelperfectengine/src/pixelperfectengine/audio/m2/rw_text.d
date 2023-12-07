@@ -341,7 +341,7 @@ public M2File loadM2FromText(string src) {
 			static if (note) {
 				rValue = parseRegister(valueField);
 				if (rValue != -1) emitWithRegVal |= 0x08;
-				else value = (cast(int)parsenum(valueField))<<16;
+				else value = (cast(uint)parsenum(valueField))<<16;
 				if (aux.length) {
 					if (aux.length >= 4) {
 						switch (aux[0..2]) {
@@ -352,13 +352,13 @@ public M2File loadM2FromText(string src) {
 						}
 						rAux = parseRegister(aux[3..$]);
 						if (rAux != -1) emitWithRegVal |= 0x01;
-						else value |= cast(int)parsenum(aux[3..$]);
+						else value |= cast(uint)parsenum(aux[3..$]);
 					}
 				}
 			} else {
 				rValue = parseRegister(valueField);
 				if (rValue != -1) emitWithRegVal |= 0x08;
-				else value = cast(int)parsenum(valueField);
+				else value = cast(uint)parsenum(valueField);
 			}
 			static if (longfield) {
 				rNote = parseRegister(upperField);
@@ -369,26 +369,30 @@ public M2File loadM2FromText(string src) {
 					upper = (lf>>7)<<8;
 				}
 			} else {
-				rNote = parseRegister(upperField);
-				if (rNote != -1) emitWithRegVal |= 0x04;
-				else {
-					static if (note) {
-						upper = parseNote(upperField);
-					} 
+				if (upperField.length) {
+					rNote = parseRegister(upperField);
+					if (rNote != -1) emitWithRegVal |= 0x04;
+					else {
+						static if (note) {
+							upper = cast(uint)parseNote(upperField)<<8;
+						} 
+					}
 				}
 				if (lowerField.length) {
 					rAux = parseRegister(lowerField);
 					if (rAux != -1) emitWithRegVal |= 0x01;
-					else lower = parsenum(lowerField);
+					else lower = cast(uint)parsenum(lowerField);
 				}
 			}
 			rCh = parseRegister(chField);
 			if (rCh != -1) emitWithRegVal |= 0x02;
-			else channel = parsenum(chField);
+			else channel = cast(uint)parsenum(chField);
 			if (emitWithRegVal) {
 				flushEmitStr();
+				insertCmd([0x42_00_00_00 | currDevNum | (rValue<<16), (rNote<<24) | (rCh<<16) | (rAux<<8) | emitWithRegVal,
+						cmdCode | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | upper | lower, value]);
 			} else {
-
+				currEmitStr ~= [cmdCode | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | upper | lower, value];
 			}
 		}
 		for (sizediff_t lineNum = key.lineNum ; lineNum < key.lineNum + key.lineLen ; lineNum++) {
@@ -488,45 +492,54 @@ public M2File loadM2FromText(string src) {
 					//MIDI 1.0 end
 					//MIDI 2.0 begin
 					case "nf":			//MIDI note off
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint note = parseNote(words[3]);
 						const uint vel = cast(uint)parsenum(words[4]);
 						enforce(channel <= 255, "Channel number too high");
 						enforce(vel <= 65_535, "Velocity number too high");
-						currEmitStr ~= [0x20_80_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel<<16];
+						currEmitStr ~= [0x20_80_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel<<16]; */
+						string auxField;
+						if (words.length == 6) auxField = words[5];
+						insertMIDI2Cmd!(false, true)(0x20_80_00_00, words[2], words[3], null, words[4], auxField);
 						break;
 					case "nn":			//MIDI note on
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint note = parseNote(words[3]);
 						const uint vel = cast(uint)parsenum(words[4]);
 						enforce(channel <= 255, "Channel number too high");
 						enforce(vel <= 65_535, "Velocity number too high");
-						currEmitStr ~= [0x20_90_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel<<16];
+						currEmitStr ~= [0x20_90_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel<<16]; */
+						string auxField;
+						if (words.length == 6) auxField = words[5];
+						insertMIDI2Cmd!(false, true)(0x20_90_00_00, words[2], words[3], null, words[4], auxField);
 						break;
 					case "ppres":		//Poly aftertouch
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint note = parseNote(words[3]);
 						const uint vel = cast(uint)parsenum(words[4]);
 						enforce(channel <= 255, "Channel number too high");
-						currEmitStr ~= [0x20_A0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel];
+						currEmitStr ~= [0x20_A0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel]; */
+						insertMIDI2Cmd!(false, false)(0x20_A0_00_00, words[2], words[3], null, words[4], null);
 						break;
 					case "pccr":		//Poly registered per-note controller change
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint note = parseNote(words[3]);
 						const uint index = cast(uint)parsenum(words[4]);
 						const uint val = cast(uint)parsenum(words[5]);
 						enforce(channel <= 255, "Channel number too high");
 						enforce(index <= 255, "Index number too high");
-						currEmitStr ~= [0x20_00_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | index, val];
+						currEmitStr ~= [0x20_00_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | index, val]; */
+						insertMIDI2Cmd!(false, false)(0x20_00_00_00, words[2], words[3], words[4], words[5], null);
 						break;
 					case "pcca":		//Poly assignable per-note controller change
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint note = parseNote(words[3]);
 						const uint index = cast(uint)parsenum(words[4]);
 						const uint val = cast(uint)parsenum(words[5]);
 						enforce(channel <= 255, "Channel number too high");
 						enforce(index <= 255, "Index number too high");
-						currEmitStr ~= [0x20_10_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | index, val];
+						currEmitStr ~= [0x20_10_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | index, val]; */
+						insertMIDI2Cmd!(false, false)(0x20_10_00_00, words[2], words[3], words[4], words[5], null);
 						break;
 					case "pnoteman":	//Poly management message
 						const uint channel = cast(uint)parsenum(words[2]);
@@ -540,14 +553,27 @@ public M2File loadM2FromText(string src) {
 						currEmitStr ~= [0x20_F0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | option, 0];
 						break;
 					case "ccl":			//Legacy controller change
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint index = cast(uint)parsenum(words[3]);
 						const uint val = cast(uint)parsenum(words[4]);
 						enforce(channel <= 255, "Channel number too high");
 						enforce(index <= 127, "Index number too high");
-						currEmitStr ~= [0x20_B0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (index<<8), val];
+						currEmitStr ~= [0x20_B0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (index<<8), val]; */
+						insertMIDI2Cmd!(false, false)(0x20_B0_00_00, words[2], words[3], null, words[4], null);
 						break;
-					case "cc", "ccr", "rcc", "rccr"://Controller change commands
+					case "ccr":
+						insertMIDI2Cmd!(true, false)(0x20_20_00_00, words[2], words[3], null, words[4], null);
+						break;
+					case "cc":
+						insertMIDI2Cmd!(true, false)(0x20_30_00_00, words[2], words[3], null, words[4], null);
+						break;
+					case "rccr":
+						insertMIDI2Cmd!(true, false)(0x20_40_00_00, words[2], words[3], null, words[4], null);
+						break;
+					case "rcc":
+						insertMIDI2Cmd!(true, false)(0x20_50_00_00, words[2], words[3], null, words[4], null);
+						break;
+					/* case "cc", "ccr", "rcc", "rccr"://Controller change commands
 						const uint channel = cast(uint)parsenum(words[2]);
 						const uint index = cast(uint)parsenum(words[3]);
 						const uint val = cast(uint)parsenum(words[4]);
@@ -558,7 +584,7 @@ public M2File loadM2FromText(string src) {
 						enforce(index <= 16_383, "Index number too high");
 						currEmitStr ~= [cmdNum | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | 
 								((index & 0x3F_80)<<1) | (index & 0x7F), val];
-						break;
+						break; */
 					case "pc":			//Program change
 						const uint channel = cast(uint)parsenum(words[2]);
 						const uint prg = cast(uint)parsenum(words[3]);
@@ -574,23 +600,26 @@ public M2File loadM2FromText(string src) {
 								(prg<<24) | bank];
 						break;
 					case "cpres":		//Channel aftertouch
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint val = cast(uint)parsenum(words[3]);
 						enforce(channel <= 255, "Channel number too high");
-						currEmitStr ~= [0x20_D0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16), val];
+						currEmitStr ~= [0x20_D0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16), val]; */
+						insertMIDI2Cmd!(false, false)(0x20_D0_00_00, words[2], null, null, words[3], null);
 						break;
 					case "pb":			//Pitch bend
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint val = cast(uint)parsenum(words[3]);
 						enforce(channel <= 255, "Channel number too high");
-						currEmitStr ~= [0x20_E0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16), val];
+						currEmitStr ~= [0x20_E0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16), val]; */
+						insertMIDI2Cmd!(false, false)(0x20_E0_00_00, words[2], null, null, words[3], null);
 						break;
 					case "ppb":			//Poly pitch bend
-						const uint channel = cast(uint)parsenum(words[2]);
+						/* const uint channel = cast(uint)parsenum(words[2]);
 						const uint note = parseNote(words[3]);
 						const uint val = cast(uint)parsenum(words[4]);
 						enforce(channel <= 255, "Channel number too high");
-						currEmitStr ~= [0x20_60_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), val];
+						currEmitStr ~= [0x20_60_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), val]; */
+						insertMIDI2Cmd!(false, false)(0x20_60_00_00, words[2], words[3], null, words[4], null);
 						break;
 					//MIDI 2.0 end
 					default:
