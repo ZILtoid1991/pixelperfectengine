@@ -81,10 +81,13 @@ public enum JmpCode : ubyte {
 	sh,							///Jump if at least some of the same bits are high in both the condition code and the condition register
 	op,							///Jump is all the bits are opposite in the condition code from the condition register
 }
+/** 
+ * Defines display command codes.
+ */
 public enum DisplayCmdCode : ubyte {
 	init,
 	setVal					=	0x01,
-	setVal64Bit				=	0x02,
+	setVal64				=	0x02,
 
 	strCue					=	0xF0,
 	strNotation				=	0xF1,
@@ -92,6 +95,9 @@ public enum DisplayCmdCode : ubyte {
 
 	strPrevBlC				=	0xFF,
 }
+/** 
+ * Defines values that can be modified by the display command.
+ */
 public enum SetDispValCode : ushort {
 	init,
 	BPM						=	0x00_01,
@@ -99,6 +105,25 @@ public enum SetDispValCode : ushort {
 	clef					=	0x00_03,
 	keySignature			=	0x00_04,
 }
+/** 
+ * Defines control command codes.
+ */
+public enum CtrlCmdCode : ubyte {
+	init,
+	setRegister				=	0x01,
+	setEnvVal				=	0x02,
+}
+/** 
+ * Defines environment values that can be modified by the control command.
+ */
+public enum SetEnvValCode : ushort {
+	init,
+	setTimeMultLocal		=	0x00_01,
+	setTimeMultGlobal		=	0x00_02,
+}
+/**
+ * Defines the time formats that are possible within the M2 format.
+ */
 public enum M2TimeFormat : ubyte {
 	ms,
 	us,
@@ -142,10 +167,12 @@ public struct M2PatternSlot {
 		patternTime = hnsecs(0);
 	}
 }
-
+/** 
+ * Defines M2 song data.
+ */
 public struct M2Song {
-	public uint[128] globalReg;
-	public M2PatternSlot[] ptrnSl;
+	public uint[128] globalReg;			///Global (shared) register bank
+	public M2PatternSlot[] ptrnSl;		///Pattern slots that can be used for the 
 	//public uint[] activePtrnNums;
 	public uint globTimeMult = 0x1_00_00;///Time multiplier (16bit precision)
 	public ulong timebase;				///nsecs of a single tic
@@ -175,7 +202,9 @@ public struct M2Song {
 		
 	}
 }
-
+/** 
+ * Contains all officially recognized M2 file data.
+ */
 public struct M2File {
 	public M2Song songdata;
 	public string[string] metadata;
@@ -185,7 +214,7 @@ public struct M2File {
 	public uint timeFrmtPer;
 	public uint timeFrmtRes;
 }
-
+///Used by the sequencer for reading command data.
 package struct DataReaderHelper {
 	union {
 		uint word;
@@ -196,11 +225,11 @@ package struct DataReaderHelper {
 		word = base;
 	}
 }
-
+///Used for note lookup when reading and writing textual M2 files.
 package immutable string[128] NOTE_LOOKUP_TABLE =
 	[
-		"C-00", "C#00", "D-00", "D#00", "E-00", "F-00", "F#00", "G-00", //0
-		"G#00", "A-00", "A#00", "B-00", "C-0", "C#0", "D-0", "D#0", 	//1
+		"C-00","C#00","D-00","D#00","E-00","F-00","F#00","G-00",		//0
+		"G#00","A-00","A#00","B-00","C-0", "C#0", "D-0", "D#0",			//1
 		"E-0", "F-0", "F#0", "G-0", "G#0", "A-0", "A#0", "B-0", 		//2
 		"C-1", "C#1", "D-1", "D#1", "E-1", "F-1", "F#1", "G-1", 		//3
 		"G#1", "A-1", "A#1", "B-1", "C-2", "C#2", "D-2", "D#2", 		//4

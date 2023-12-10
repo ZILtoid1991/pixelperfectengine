@@ -113,6 +113,7 @@ package ulong parseRhythm(string n, float bpm, long timebase) {
 	enforce (!isNaN(duration), "Rhythm syntax error");
 	return cast(ulong)(duration * whNoteLen);
 }
+///Reads textual M2 files and compiles them into binary.
 public M2File loadM2FromText(string src) {
 	
 	enum Context {
@@ -799,6 +800,10 @@ public M2File loadM2FromText(string src) {
 						break;
 					case "cmpsle":
 						insertCmpInstr(0x40_0e_00_00, words[1..$]);
+						break;
+					case "ctrl":
+						break;
+					case "display":
 						break;
 					default:
 						break;
