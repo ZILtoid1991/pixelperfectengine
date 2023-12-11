@@ -25,7 +25,7 @@ import std.string : toLowerInPlace;
 public void registerLibForScripting(lua_State* state) {
 	lua_register(state, "setPaletteIndex", &registerDFunction!setPaletteIndex);
 	lua_register(state, "getPaletteIndex", &registerDFunction!getPaletteIndex);
-	lua_register(state, "getLayer", &registerDFunction!getLayer);
+	//lua_register(state, "getLayer", &registerDFunction!getLayer);
 
 	lua_register(state, "getLayerType", &registerDFunction!(getLayerType));
 	lua_register(state, "setLayerRenderingMode", &registerDFunction!setLayerRenderingMode);
@@ -86,7 +86,7 @@ public void registerLibForScripting(lua_State* state) {
 	lua_register(state, "getBitmapResource", &registerDFunction!getBitmapResource);
 	lua_register(state, "loadBitmapResource", &registerDFunction!loadBitmapResource);
 
-	lua_register(state, "getAudioModule", &registerDFunction!getAudioModule);
+	//lua_register(state, "getAudioModule", &registerDFunction!getAudioModule);
 	lua_register(state, "midiCMD", &registerDFunction!midiCMD);
 
 	lua_register(state, "rng_Seed", &registerDFunction!rng_Seed);
@@ -96,11 +96,15 @@ public void registerLibForScripting(lua_State* state) {
 	lua_register(state, "timer_suspend", &registerDFunction!timer_suspend);
 	lua_register(state, "timer_register", &registerDFunction!timer_register);
 }
-package void scrollLayer(Layer l, LuaVar x, LuaVar y) {
-	l.scroll(cast(int)x, cast(int)y);
+package void scrollLayer(int n, int x, int y) {
+	Layer l = mainRaster.getLayer(n);
+	if (l)
+		l.scroll(cast(int)x, cast(int)y);
 }
-package void relScrollLayer(Layer l, LuaVar x, LuaVar y) {
-	l.relScroll(cast(int)x, cast(int)y);
+package void relScrollLayer(int n, int x, int y) {
+	Layer l = mainRaster.getLayer(n);
+	if (l)
+		l.relScroll(cast(int)x, cast(int)y);
 }
 package uint getPaletteIndex(ushort n) @safe @nogc nothrow {
 	return mainRaster.getPaletteIndex(n).base;
@@ -110,36 +114,36 @@ package uint setPaletteIndex(ushort n, uint c) @nogc nothrow {
 	c0.base = c;
 	return mainRaster.setPaletteIndex(n, c0).base;
 }
-package Layer getLayer(int n) {
-	return mainRaster.getLayer(n);
-}
-package LuaVar getAudioModule(int n) {
-	if (n >= 0 && modMan.moduleList.length < n) {
-		AudioModule a = modMan.moduleList[n];
-		return LuaVar(a);
-	} else return LuaVar.voidType();
-}
-package void midiCMD(void* target, uint a, uint b, uint c, uint d) @nogc nothrow {
+package void midiCMD(int n, uint a, uint b, uint c, uint d) @nogc nothrow {
 	import midi2.types.structs;
-	AudioModule am = cast(AudioModule)target;
-	UMP u;
-	u.base = a;
-	am.midiReceive(u, b, c, d);
+	if (n >= 0 && modMan.moduleList.length < n) {
+		AudioModule am = modMan.moduleList[n];
+		UMP u;
+		u.base = a;
+		am.midiReceive(u, b, c, d);
+	}
 }
 package string getLayerType(Layer l) {
 	return l.getLayerType().to!string();
 }
-package long readMapping(void* target, int x, int y) @nogc nothrow {
-	ITileLayer l = cast(ITileLayer)target;
-	MappingElement me = l.readMapping(x, y);
-	return *cast(uint*)&me;
+package long readMapping(int target, int x, int y) @nogc nothrow {
+	ITileLayer l = cast(ITileLayer)mainRaster.getLayer(target);
+	if (l) {
+		MappingElement me = l.readMapping(x, y);
+		return *cast(uint*)&me;
+	}
+	return 0;
 }
-package long tileByPixel(void* target, int x, int y) @nogc nothrow {
-	ITileLayer l = cast(ITileLayer)target;
-	MappingElement me = l.tileByPixel(x, y);
-	return *cast(uint*)&me;
+package long tileByPixel(int target, int x, int y) @nogc nothrow {
+	ITileLayer l = cast(ITileLayer)mainRaster.getLayer(target);
+	if (l) {
+		MappingElement me = l.tileByPixel(x, y);
+		return *cast(uint*)&me;
+	}
+	return 0;
 }
-package bool setLayerRenderingMode(Layer target, string mode) {
+package bool setLayerRenderingMode(int n, string mode) {
+	Layer target = mainRaster.getLayer(n);
 	char[] mode0 = mode.dup;
 	toLowerInPlace(mode0);
 	switch (mode0) {
@@ -196,7 +200,8 @@ package bool setLayerRenderingMode(Layer target, string mode) {
 	}
 	return true;
 }
-package void setSpriteRenderingMode(ISpriteLayer target, int n, string mode) {
+package void setSpriteRenderingMode(int t, int n, string mode) {
+	ISpriteLayer target = cast(ISpriteLayer)mainRaster.getLayer(t);
 	char[] mode0 = mode.dup;
 	toLowerInPlace(mode0);
 	switch (mode0) {
@@ -253,61 +258,77 @@ package void setSpriteRenderingMode(ISpriteLayer target, int n, string mode) {
 			break;
 	}
 }
-package void writeMapping(void* target, int x, int y, uint val) @nogc nothrow {
-	ITileLayer l = cast(ITileLayer)target;
+package void writeMapping(int t, int x, int y, uint val) @nogc nothrow {
+	ITileLayer l = cast(ITileLayer)mainRaster.getLayer(t);
 	MappingElement me = *cast(MappingElement*)&val;
 	l.writeMapping(x, y, me);
 }
-package Box setSpriteSlice(void* target, int n, LuaVar x0, LuaVar y0, LuaVar x1, LuaVar y1) {
-	ISpriteLayer l = cast(ISpriteLayer)target;
+//package Box setSpriteSlice(int t, int n, LuaVar x0, LuaVar y0, LuaVar x1, LuaVar y1) {
+package Box setSpriteSlice(int t, int n, int x0, int y0, int x1, int y1) {
+	ISpriteLayer l = cast(ISpriteLayer)mainRaster.getLayer(t);
 	return l.setSlice(n, Box(cast(int)x0, cast(int)y0, cast(int)x1, cast(int)y1));
 }
 //package void moveSprite(ISpriteLayer target, int n, LuaVar x, LuaVar y) {
-package void moveSprite(ISpriteLayer target, int n, int x, int y) {
+package void moveSprite(int t, int n, int x, int y) {
+	ISpriteLayer target = cast(ISpriteLayer)mainRaster.getLayer(t);
 	target.moveSprite(n, cast(int)x, cast(int)y);
 }
 //package void relMoveSprite(ISpriteLayer target, int n, LuaVar x, LuaVar y) {
-package void relMoveSprite(ISpriteLayer target, int n, int x, int y) {
+package void relMoveSprite(int t, int n, int x, int y) {
+	ISpriteLayer target = cast(ISpriteLayer)mainRaster.getLayer(t);
 	target.relMoveSprite(n, cast(int)x, cast(int)y);
 }
-package void addSprite(ISpriteLayer target, ABitmap s, int n, int x, int y, ushort paletteSel, 
+package void addSprite(int t, string s, int n, int x, int y, ushort paletteSel, 
 		ubyte paletteSh, ubyte alpha, int scaleHoriz, int scaleVert) {
-	target.addSprite(s, n, x, y, paletteSel, paletteSh, alpha, scaleHoriz, scaleVert, RenderingMode.init);
+	ISpriteLayer target = cast(ISpriteLayer)mainRaster.getLayer(t);
+	target.addSprite(scrptResMan[s], n, x, y, paletteSel, paletteSh, alpha, scaleHoriz, scaleVert, RenderingMode.init);
 }
-package short ttl_getA(ITTL target) @nogc nothrow {
+package short ttl_getA(int t) @nogc nothrow {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.A;
 }
-package short ttl_getB(ITTL target) @nogc nothrow {
+package short ttl_getB(int t) @nogc nothrow {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.B;
 }
-package short ttl_getC(ITTL target) @nogc nothrow {
+package short ttl_getC(int t) @nogc nothrow {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.C;
 }
-package short ttl_getD(ITTL target) @nogc nothrow {
+package short ttl_getD(int t) @nogc nothrow {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.D;
 }
-package short ttl_getx_0(ITTL target) @nogc nothrow {
+package short ttl_getx_0(int t) @nogc nothrow {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.x_0;
 }
-package short ttl_gety_0(ITTL target) @nogc nothrow {
+package short ttl_gety_0(int t) @nogc nothrow {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.y_0;
 }
-package short ttl_setA(ITTL target, LuaVar val) {
+package short ttl_setA(int t, LuaVar val) {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.A(cast(short)val);
 }
-package short ttl_setB(ITTL target, LuaVar val) {
+package short ttl_setB(int t, LuaVar val) {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.B(cast(short)val);
 }
-package short ttl_setC(ITTL target, LuaVar val) {
+package short ttl_setC(int t, LuaVar val) {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.C(cast(short)val);
 }
-package short ttl_setD(ITTL target, LuaVar val) {
+package short ttl_setD(int t, LuaVar val) {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.D(cast(short)val);
 }
-package short ttl_setx_0(ITTL target, LuaVar val) {
+package short ttl_setx_0(int t, LuaVar val) {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.x_0(cast(short)val);
 }
-package short ttl_sety_0(ITTL target, LuaVar val) {
+package short ttl_sety_0(int t, LuaVar val) {
+	ITTL target = cast(ITTL)mainRaster.getLayer(t);
 	return target.y_0(cast(short)val);
 }
 package ABitmap getBitmapResource(string resID) {
