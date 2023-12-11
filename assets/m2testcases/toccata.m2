@@ -18,6 +18,14 @@ END
 
 PATTERN main
 display BPM 55
+@[0]: pc 0 16
+@[0]: pc 1 16
+@[0]: pc 2 16
+@[0]: pc 3 16
+@[0]: pc 4 16
+@[0]: pc 5 16
+@[0]: pc 6 16
+@[0]: pc 7 17
 ;bar 1
 @[0]: note 0 0x7FFF o:a-5
 @[0]: note 1 0x7FFF o:a-4
@@ -81,19 +89,19 @@ wait t
 @[0]: note 1 0x7FFF s:d-2
 wait s+s+o
 @[0]: nn 7 0x7FFF d-2
-wait q
+wait s
 @[0]: nn 6 0x7FFF c#3
-wait q
+wait s
 @[0]: nn 5 0x7FFF e-3
-wait q
+wait s
 @[0]: nn 4 0x7FFF g-3
-wait q
+wait s
 @[0]: nn 3 0x7FFF a#3
-wait q
+wait s
 @[0]: nn 2 0x7FFF c#4
-wait q
+wait s
 @[0]: nn 1 0x7FFF e-4
-wait q
+wait s
 ;bar 3
 wait q
 @[0]: nf 6 0x7FFF c#3
@@ -114,68 +122,68 @@ wait o
 wait q+o+s
 @[0]: note 0 0x7FFF s:c#4
 @[0]: note 1 0x7FFF s:c#3
+wait s
 ;bar 4
-wait s
+@[0]: note 0 0x7FFF 3s:d-4
+@[0]: note 1 0x7FFF 3s:d-3
+wait 3s
+@[0]: note 0 0x7FFF s:e-4
+@[0]: note 1 0x7FFF s:e-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:c#4
+@[0]: note 1 0x7FFF 3s:c#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-4
+@[0]: note 1 0x7FFF 3s:d-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-4
+@[0]: note 1 0x7FFF 3s:e-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:c#4
+@[0]: note 1 0x7FFF 3s:c#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-4
+@[0]: note 1 0x7FFF 3s:d-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-4
+@[0]: note 1 0x7FFF 3s:e-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:c#4
+@[0]: note 1 0x7FFF 3s:c#3
+wait 3s
 @[0]: note 0 0x7FFF s:d-4
 @[0]: note 1 0x7FFF s:d-3
 wait s
 @[0]: note 0 0x7FFF s:e-4
 @[0]: note 1 0x7FFF s:e-3
 wait s
-@[0]: note 0 0x7FFF s:c#4
-@[0]: note 1 0x7FFF s:c#3
-wait s
-@[0]: note 0 0x7FFF s:d-4
-@[0]: note 1 0x7FFF s:d-3
-wait s
-@[0]: note 0 0x7FFF s:e-4
-@[0]: note 1 0x7FFF s:e-3
-wait s
-@[0]: note 0 0x7FFF s:c#4
-@[0]: note 1 0x7FFF s:c#3
-wait s
-@[0]: note 0 0x7FFF s:d-4
-@[0]: note 1 0x7FFF s:d-3
-wait s
-@[0]: note 0 0x7FFF s:e-4
-@[0]: note 1 0x7FFF s:e-3
-wait s
-@[0]: note 0 0x7FFF s:c#4
-@[0]: note 1 0x7FFF s:c#3
-wait s
-@[0]: note 0 0x7FFF s:d-4
-@[0]: note 1 0x7FFF s:d-3
-wait s
-@[0]: note 0 0x7FFF s:e-4
-@[0]: note 1 0x7FFF s:e-3
-wait s
-@[0]: note 0 0x7FFF s:f-4
-@[0]: note 1 0x7FFF s:f-3
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:e-4
-@[0]: note 1 0x7FFF s:e-3
-wait s
-@[0]: note 0 0x7FFF s:f-4
-@[0]: note 1 0x7FFF s:f-3
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:e-4
-@[0]: note 1 0x7FFF s:e-3
-wait s
-@[0]: note 0 0x7FFF s:f-4
-@[0]: note 1 0x7FFF s:f-3
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:e-4
-@[0]: note 1 0x7FFF s:e-3
-wait s
+@[0]: note 0 0x7FFF 3s:f-4
+@[0]: note 1 0x7FFF 3s:f-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-4
+@[0]: note 1 0x7FFF 3s:e-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-4
+@[0]: note 1 0x7FFF 3s:f-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-4
+@[0]: note 1 0x7FFF 3s:e-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-4
+@[0]: note 1 0x7FFF 3s:f-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-4
+@[0]: note 1 0x7FFF 3s:e-3
+wait 3s
 @[0]: note 0 0x7FFF s:f-4
 @[0]: note 1 0x7FFF s:f-3
 wait s
@@ -183,33 +191,33 @@ wait s
 @[0]: note 1 0x7FFF s:g-3
 wait s
 ;bar 5
-@[0]: note 0 0x7FFF s:a-4
-@[0]: note 1 0x7FFF s:a-3
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:a-4
-@[0]: note 1 0x7FFF s:a-3
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:a-4
-@[0]: note 1 0x7FFF s:a-3
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
+@[0]: note 0 0x7FFF 3s:a-4
+@[0]: note 1 0x7FFF 3s:a-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-4
+@[0]: note 1 0x7FFF 3s:a-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-4
+@[0]: note 1 0x7FFF 3s:a-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
 @[0]: note 0 0x7FFF s:a-4
 @[0]: note 1 0x7FFF s:a-3
 wait s+s+q+o+s
@@ -217,66 +225,66 @@ wait s+s+q+o+s
 @[0]: note 1 0x7FFF s:c#4
 wait s
 ;bar 6
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:c#5
+@[0]: note 1 0x7FFF 3s:c#4
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:c#5
+@[0]: note 1 0x7FFF 3s:c#4
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:c#5
+@[0]: note 1 0x7FFF 3s:c#4
+wait 3s
 @[0]: note 0 0x7FFF s:d-5
 @[0]: note 1 0x7FFF s:d-4
 wait s
 @[0]: note 0 0x7FFF s:e-5
 @[0]: note 1 0x7FFF s:e-4
 wait s
-@[0]: note 0 0x7FFF s:c#5
-@[0]: note 1 0x7FFF s:c#4
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:c#5
-@[0]: note 1 0x7FFF s:c#4
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:c#5
-@[0]: note 1 0x7FFF s:c#4
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:f-5
-@[0]: note 1 0x7FFF s:f-4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:f-5
-@[0]: note 1 0x7FFF s:f-4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:f-5
-@[0]: note 1 0x7FFF s:f-4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
+@[0]: note 0 0x7FFF 3s:f-5
+@[0]: note 1 0x7FFF 3s:f-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-5
+@[0]: note 1 0x7FFF 3s:f-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-5
+@[0]: note 1 0x7FFF 3s:f-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
 @[0]: note 0 0x7FFF s:f-5
 @[0]: note 1 0x7FFF s:f-4
 wait s
@@ -284,33 +292,33 @@ wait s
 @[0]: note 1 0x7FFF s:g-4
 wait s
 ;bar 7
-@[0]: note 0 0x7FFF s:a-5
-@[0]: note 1 0x7FFF s:a-4
-wait s
-@[0]: note 0 0x7FFF s:a#5
-@[0]: note 1 0x7FFF s:a#4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:a-5
-@[0]: note 1 0x7FFF s:a-4
-wait s
-@[0]: note 0 0x7FFF s:a#5
-@[0]: note 1 0x7FFF s:a#4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:a-5
-@[0]: note 1 0x7FFF s:a-4
-wait s
-@[0]: note 0 0x7FFF s:a#5
-@[0]: note 1 0x7FFF s:a#4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
+@[0]: note 0 0x7FFF 3s:a-5
+@[0]: note 1 0x7FFF 3s:a-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#5
+@[0]: note 1 0x7FFF 3s:a#4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-5
+@[0]: note 1 0x7FFF 3s:a-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#5
+@[0]: note 1 0x7FFF 3s:a#4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-5
+@[0]: note 1 0x7FFF 3s:a-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#5
+@[0]: note 1 0x7FFF 3s:a#4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
 @[0]: note 0 0x7FFF s:a-5
 @[0]: note 1 0x7FFF s:a-4
 wait s+s+q+o+s
@@ -318,150 +326,150 @@ wait s+s+q+o+s
 @[0]: note 1 0x7FFF s:a-4
 wait s
 ;bar 8
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:a#5
-@[0]: note 1 0x7FFF s:a#4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:a#5
-@[0]: note 1 0x7FFF s:a#4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:f-5
-@[0]: note 1 0x7FFF s:f-4
-wait s
-@[0]: note 0 0x7FFF s:a-5
-@[0]: note 1 0x7FFF s:a-4
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:f-5
-@[0]: note 1 0x7FFF s:f-4
-wait s
-@[0]: note 0 0x7FFF s:a-5
-@[0]: note 1 0x7FFF s:a-4
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:c-5
-@[0]: note 1 0x7FFF s:c-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:g-5
-@[0]: note 1 0x7FFF s:g-4
-wait s
-@[0]: note 0 0x7FFF s:c-5
-@[0]: note 1 0x7FFF s:c-4
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:f-5
-@[0]: note 1 0x7FFF s:f-4
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:f-5
-@[0]: note 1 0x7FFF s:f-4
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#5
+@[0]: note 1 0x7FFF 3s:a#4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#5
+@[0]: note 1 0x7FFF 3s:a#4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-5
+@[0]: note 1 0x7FFF 3s:f-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-5
+@[0]: note 1 0x7FFF 3s:a-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-5
+@[0]: note 1 0x7FFF 3s:f-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-5
+@[0]: note 1 0x7FFF 3s:a-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:c-5
+@[0]: note 1 0x7FFF 3s:c-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-5
+@[0]: note 1 0x7FFF 3s:g-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:c-5
+@[0]: note 1 0x7FFF 3s:c-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-5
+@[0]: note 1 0x7FFF 3s:f-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-5
+@[0]: note 1 0x7FFF 3s:f-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
 ;bar 9
-@[0]: note 0 0x7FFF s:c-5
-@[0]: note 1 0x7FFF s:c-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:a-4
-@[0]: note 1 0x7FFF s:a-3
-wait s
-@[0]: note 0 0x7FFF s:c-5
-@[0]: note 1 0x7FFF s:c-4
-wait s
-@[0]: note 0 0x7FFF s:e-5
-@[0]: note 1 0x7FFF s:e-4
-wait s
-@[0]: note 0 0x7FFF s:a-4
-@[0]: note 1 0x7FFF s:a-3
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
-@[0]: note 0 0x7FFF s:d-5
-@[0]: note 1 0x7FFF s:d-4
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:a-4
-@[0]: note 1 0x7FFF s:a-3
-wait s
-@[0]: note 0 0x7FFF s:c-5
-@[0]: note 1 0x7FFF s:c-4
-wait s
-@[0]: note 0 0x7FFF s:f-4
-@[0]: note 1 0x7FFF s:f-3
-wait s
-@[0]: note 0 0x7FFF s:a-4
-@[0]: note 1 0x7FFF s:a-3
-wait s
-@[0]: note 0 0x7FFF s:c-5
-@[0]: note 1 0x7FFF s:c-4
-wait s
-@[0]: note 0 0x7FFF s:f-4
-@[0]: note 1 0x7FFF s:f-3
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
-@[0]: note 0 0x7FFF s:e-4
-@[0]: note 1 0x7FFF s:e-3
-wait s
-@[0]: note 0 0x7FFF s:g-4
-@[0]: note 1 0x7FFF s:g-3
-wait s
-@[0]: note 0 0x7FFF s:a#4
-@[0]: note 1 0x7FFF s:a#3
-wait s
-@[0]: note 0 0x7FFF s:e-4
-@[0]: note 1 0x7FFF s:e-3
-wait s
+@[0]: note 0 0x7FFF 3s:c-5
+@[0]: note 1 0x7FFF 3s:c-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-4
+@[0]: note 1 0x7FFF 3s:a-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:c-5
+@[0]: note 1 0x7FFF 3s:c-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-5
+@[0]: note 1 0x7FFF 3s:e-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-4
+@[0]: note 1 0x7FFF 3s:a-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:d-5
+@[0]: note 1 0x7FFF 3s:d-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-4
+@[0]: note 1 0x7FFF 3s:a-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:c-5
+@[0]: note 1 0x7FFF 3s:c-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-4
+@[0]: note 1 0x7FFF 3s:f-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a-4
+@[0]: note 1 0x7FFF 3s:a-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:c-5
+@[0]: note 1 0x7FFF 3s:c-4
+wait 3s
+@[0]: note 0 0x7FFF 3s:f-4
+@[0]: note 1 0x7FFF 3s:f-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-4
+@[0]: note 1 0x7FFF 3s:e-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:g-4
+@[0]: note 1 0x7FFF 3s:g-3
+wait 3s
+@[0]: note 0 0x7FFF 3s:a#4
+@[0]: note 1 0x7FFF 3s:a#3
+wait 3s
+@[0]: note 0 0x7FFF 3s:e-4
+@[0]: note 1 0x7FFF 3s:e-3
+wait 3s
 ;bar 10
 END
