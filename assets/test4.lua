@@ -3,20 +3,15 @@ Globalstate = 0
 MoveX = 1
 MoveY = 1
 
---Script entry point
-function Main(luastate)
-    Globalstate = luastate
-    local sprtLayer = getLayer(16)
-    local dlangman = getBitmapResource("dlangman")
-    addSprite(sprtLayer, dlangman, 0, 0, 0, 0, 0, 255, 1024, 1024)
-    --timer_register(Globalstate, 20, "UpdateFunc")
-    return 0
+--Script initialization
+function Initialize()
+    addSprite(16, "dlangman", 0, 0, 0, 0, 255, 1024, 1024)
 end
 --Make D man bounce on the screen
 function UpdateFunc()
-    local sprtLayer = getLayer(16)
-    relMoveSprite(sprtLayer, 0, MoveX, MoveY)
-    local spritePos = getSpriteCoordinate(sprtLayer, 0)
+    relMoveSprite(16, 0, MoveX, MoveY)
+    local spritePos = getSpriteCoordinate(16, 0)
+    --test sprite if it touched the edges
     if spritePos.left <= 0 then
         MoveX = 1
     end
