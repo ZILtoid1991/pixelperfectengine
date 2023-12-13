@@ -38,8 +38,8 @@ import pixelperfectengine.audio.base.midiseq;	//MIDI sequencer
 import pixelperfectengine.map.mapformat;
 //Other imports that might be important. Uncomment any you feel you'll need.
 /* import pixelperfectengine.system.common; */
-import pixelperfectengine.scripting.lua;
-import pixelperfectengine.scripting.globals;
+/* import pixelperfectengine.scripting.lua;
+import pixelperfectengine.scripting.globals; */
 
 
 ///Our main function, needed for the program to operate.
@@ -102,7 +102,7 @@ public class GameApp : SystemEventListener, InputListener {
 	ModuleManager	modMan;	///Handles the modules and their output.
 	ModuleConfig	modCfg;	///Loads and handles module configuration, including routing, patches, and samples.
 	SequencerM1		midiSeq;///MIDI sequencer for MIDI playback.
-	LuaScript		scrp;
+	/* LuaScript		scrp; */
 	
 	/// Initializes our application.
 	/// Put other things here if you need them.
@@ -156,8 +156,9 @@ public class GameApp : SystemEventListener, InputListener {
 				textLayer.writeMapping(x, y, MappingElement(0x0000));
 			}
 		}
-		scrp = new LuaScript(readText("../assets/test4.lua"), "test4.lua");
-		scrp.runMain();
+		/* scrp = new LuaScript(readText("../assets/test4.lua"), "test4.lua"); */
+		//scrp.runMain();
+		//scrp.callFunction("Initialize");
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
@@ -165,7 +166,7 @@ public class GameApp : SystemEventListener, InputListener {
 			rstr.refresh();
 			//Tests the input devices for events.
 			ih.test();
-			scrp.callFunction("UpdateFunc");
+			/* scrp.callFunction("UpdateFunc"); */
 			//Tests the timer for any registered events that are to happen.
 			//Note: You can put this call into a separate thread for more precision.
 			timer.test();
