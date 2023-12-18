@@ -203,6 +203,16 @@ public struct M2Song {
 	}
 }
 /** 
+ * Contains information related to transposing.
+ */
+public struct TransposingData {
+	ubyte		mode;			//Scale ID, or zero for chromatic mode
+	byte		amount;			//The amount of (semi)notes
+	ubyte		exclCh;			//Excluded channel(s)'s ID
+	ubyte		exclType;		//Exclusion type (0: none, 1: single channel, 2: all channels above ID)
+}
+	
+/** 
  * Contains all officially recognized M2 file data.
  */
 public struct M2File {

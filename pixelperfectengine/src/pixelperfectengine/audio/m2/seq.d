@@ -11,6 +11,10 @@ import midi2.types.structs;
 import midi2.types.enums;
 
 public class SequencerM2 : Sequencer {
+	struct DeviceData {
+		AudioModule		mod;
+		TransposingData	trnsp;
+	}
 	enum ErrorFlags : uint {
 		badOpcode		=		1<<0,
 		illegalJump		=		1<<1,
@@ -30,8 +34,9 @@ public class SequencerM2 : Sequencer {
 	public BitFlags!ErrorFlags errors;
 	protected BitFlags!StatusFlags status;
 	protected Duration timePos;
-	public TreeMap!(uint, AudioModule) modTrgt;
+	public TreeMap!(uint, DeviceData) modTrgt;
 	public M2Song songdata;
+
 
 	public void lapseTime(Duration amount) @nogc nothrow {
 		if (!status.play) return;
@@ -54,64 +59,64 @@ public class SequencerM2 : Sequencer {
 			uint[] patternData = songdata.ptrnData[ptrn.id];
 			while (patternData.length > ptrn.position && status.play) {	//Loop until end is reached or certain opcode is reached (handle that within the switch statement)
 				DataReaderHelper data = DataReaderHelper(patternData[ptrn.position]);
+				ptrn.position++;//Move data position forward by one (always needed for each reads)
 				switch (data.bytes[0]) {		//Process commands
 					case OpCode.nullcmd:		//Null command (do nothing)
 						break;
 					case OpCode.lnwait:			//Long wait
-						const ulong tics = (((data.bytes[1]<<16) | data.hwords[1])<<24) | patternData[ptrn.position + 1];	//Get amount of tics for this wait command
+						const ulong tics = (((data.bytes[1]<<16) | data.hwords[1])<<24) | patternData[ptrn.position];	//Get amount of tics for this wait command
 						const ulong timeBase = getTimeBase();
 						ptrn.timeToWait += nsecs(timeBase * tics);		//calculate new wait amount, plus amount for any inaccuracy from sequencer steping.
-						ptrn.position += 2;
+						ptrn.position++;
 						if (!ptrn.timeToWait.isNegative) goto exitLoop;	//hazard case: even after wait time is l
 						break;
 					case OpCode.shwait:			//Short wait
 						const uint tics = (data.bytes[1]<<16) | data.hwords[1];
 						const ulong timeBase = getTimeBase();
 						ptrn.timeToWait += nsecs(timeBase * tics);
-						ptrn.position += 1;
 						if (!ptrn.timeToWait.isNegative) goto exitLoop;
 						break;
 					case OpCode.emit:			//MIDI data emit
 						const device = data.hwords[1];
 						const dataAm = data.bytes[1];
 						emitMIDIData(patternData[ptrn.position..ptrn.position + dataAm], device);
-						ptrn.position += 1 + dataAm;
+						ptrn.position += dataAm;
 						break;
 					case OpCode.jmp:			//Conditional jump
 						switch (data.bytes[1]) {
 							case JmpCode.nc:	//Always jump
-								ptrn.position += cast(int)patternData[ptrn.position + 2];
+								ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
 								break;
 							case JmpCode.eq:	//Jump if condition code and condition register are equal
-								if (ptrn.localReg[CR] == patternData[ptrn.position + 1]) {
-									ptrn.position += cast(int)patternData[ptrn.position + 2];
+								if (ptrn.localReg[CR] == patternData[ptrn.position]) {
+									ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
 								} else {
-									ptrn.position += 3;
+									ptrn.position += 2;
 								}
 								break;
 							case JmpCode.ne:	//Jump if condition code and condition register are not equal
-								if (ptrn.localReg[CR] != patternData[ptrn.position + 1]) {
-									ptrn.position += cast(int)patternData[ptrn.position + 2];
+								if (ptrn.localReg[CR] != patternData[ptrn.position]) {
+									ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
 								} else {
-									ptrn.position += 3;
+									ptrn.position += 2;
 								}
 								break;
-							case JmpCode.sh:
-								if (ptrn.localReg[CR] & patternData[ptrn.position + 1]) {
-									ptrn.position += cast(int)patternData[ptrn.position + 2];
+							case JmpCode.sh:	//Jump if at least some bits of the condition code is also high in the condition register
+								if (ptrn.localReg[CR] & patternData[ptrn.position]) {
+									ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
 								} else {
-									ptrn.position += 3;
+									ptrn.position += 2;
 								}
 								break;
 							case JmpCode.op:	//Jump if condition code bits are opposite of CR
-								if (ptrn.localReg[CR] == ~patternData[ptrn.position + 1]) {
-									ptrn.position += cast(int)patternData[ptrn.position + 2];
+								if (ptrn.localReg[CR] == ~patternData[ptrn.position]) {
+									ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
 								} else {
-									ptrn.position += 3;
+									ptrn.position += 2;
 								}
 								break;
 							default:
-								ptrn.position += 3;
+								ptrn.position += 2;
 								errors.unrecognizedCode = true;
 								if (status.cfg_StopOnError) {
 									status.play = false;
@@ -131,12 +136,10 @@ public class SequencerM2 : Sequencer {
 						break;
 					case OpCode.chain_par:
 						initNewPattern((data.bytes[1]<<24) | data.hwords[1], PATTERN_SLOT_INACTIVE_ID);
-						ptrn.position++;
 						break;
 					case OpCode.chain_ser:
 						initNewPattern((data.bytes[1]<<24) | data.hwords[1], ptrn.id);
 						ptrn.status.suspend = true;
-						ptrn.position++;
 						return;
 					//Math operations on registers begin
 					case OpCode.add: .. case OpCode.satmuls:
@@ -240,7 +243,6 @@ public class SequencerM2 : Sequencer {
 						} else {
 							ptrn.localReg[data.bytes[3]] = rd;
 						}
-						ptrn.position++;
 						break;
 					//Math operations on registers end
 					case OpCode.cmp:		//compare instruction
@@ -300,7 +302,6 @@ public class SequencerM2 : Sequencer {
 						}
 						ptrn.localReg[CR]<<=1;		//Shift in new bit depending on compare result;
 						if (cmpRes) ptrn.localReg[CR] |= 1;
-						ptrn.position++;
 						break;
 					case OpCode.chain:
 						ptrn.status.isRunning = false;
@@ -309,6 +310,56 @@ public class SequencerM2 : Sequencer {
 						return;
 					case OpCode.cue:
 						ptrn.lastCue = (data.bytes[1]<<24) | data.hwords[1];
+						break;
+					case OpCode.ctrl:				//Control commands
+						switch (data.bytes[1]) {
+							case CtrlCmdCode.setRegister:
+								if (data.bytes[3] & 0x80) songdata.globalReg[data.bytes[3] & 0x7F] = patternData[ptrn.position];
+								else ptrn.localReg[data.bytes[3]] = patternData[ptrn.position];
+								ptrn.position += 1;
+								break;
+							case CtrlCmdCode.setEnvVal:
+								switch (data.hwords[1]) {
+									case SetEnvValCode.setTimeMultGlobal:
+										songdata.globTimeMult = patternData[ptrn.position];
+										break;
+									case SetEnvValCode.setTimeMultLocal:
+										ptrn.timeMult = patternData[ptrn.position];
+										break;
+									default:
+										break;
+								}
+								ptrn.position += 1;
+								break;
+							default:
+								errors.unrecognizedCode = true;
+								if (status.cfg_StopOnError) {
+									status.play = false;
+									return;
+								}
+								break;
+						}
+
+						break;
+					case OpCode.display:			//Display command (ignored by the sequencer)
+						switch (data.bytes[1]) {
+							case DisplayCmdCode.setVal:
+								ptrn.position += 1;
+								break;
+							case DisplayCmdCode.setVal64:
+								ptrn.position += 2;
+								break;
+							case 0xF0: .. case 0xFF:
+								ptrn.position += data.hwords[1]>>2 + (data.hwords[1] & 3 ? 1 : 0);
+								break;
+							default:
+								errors.unrecognizedCode = true;
+								if (status.cfg_StopOnError) {
+									status.play = false;
+									return;
+								}
+								break;
+						}
 						break;
 					default:
 						errors.badOpcode = true;
@@ -370,11 +421,15 @@ public class SequencerM2 : Sequencer {
 	 */
 	private void emitMIDIData(uint[] data, uint targetID) @nogc nothrow {
 		uint pos;
-		AudioModule am = modTrgt[targetID];
+		DeviceData dd = modTrgt[targetID];
+		AudioModule am = dd.mod;
 		if (am is null) {
 			errors.unrecognizedCode = true;
 			if (status.cfg_StopOnError) status.play = false;
 			return;
+		}
+		if (dd.trnsp.amount) {
+
 		}
 		while (pos < data.length) {
 			UMP midiPck;
