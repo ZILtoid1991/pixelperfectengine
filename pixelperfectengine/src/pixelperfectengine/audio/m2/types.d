@@ -82,6 +82,14 @@ public enum JmpCode : ubyte {
 	op,							///Jump is all the bits are opposite in the condition code from the condition register
 }
 /** 
+ * Sets the mode/scale for the transposing mode
+ */
+public enum TransposeMode : ubyte {
+	chromatic,
+	maj,
+	min,
+}
+/** 
  * Defines display command codes.
  */
 public enum DisplayCmdCode : ubyte {
@@ -209,7 +217,7 @@ public struct TransposingData {
 	ubyte		mode;			//Scale ID, or zero for chromatic mode
 	byte		amount;			//The amount of (semi)notes
 	ubyte		exclCh;			//Excluded channel(s)'s ID
-	ubyte		exclType;		//Exclusion type (0: none, 1: single channel, 2: all channels above ID)
+	ubyte		exclType;		//Exclusion type (0: none, 1: single channel, 2: all channels above ID, 3 all channels below ID)
 }
 	
 /** 
@@ -233,6 +241,9 @@ package struct DataReaderHelper {
 	}
 	this (uint base) @nogc @safe pure nothrow {
 		word = base;
+	}
+	bool bitField(uint n) @nogc @safe pure nothrow const {
+		return ((word<<n) & 0x8000_0000) == 0x8000_0000;
 	}
 }
 ///Used for note lookup when reading and writing textual M2 files.

@@ -311,6 +311,38 @@ public class SequencerM2 : Sequencer {
 					case OpCode.cue:
 						ptrn.lastCue = (data.bytes[1]<<24) | data.hwords[1];
 						break;
+					case OpCode.trnsps:
+						DeviceData* dd = modTrgt.ptrOf(data.hwords[1]);
+						if (dd is null) {
+							errors.unrecognizedDevice = true;
+							if (status.cfg_StopOnError) {
+								status.play = false;
+								return;
+							}
+						}
+						DataReaderHelper data0 = DataReaderHelper(patternData[ptrn.position]);
+						dd.trnsp.mode = data0.bytes[0];
+						if (!data0.bitField(15)) {
+							if (data0.bitField(16)) {
+								dd.trnsp.amount = cast(byte)(data0.bytes[1] & 0x80 ? 
+										songdata.globalReg[data0.bytes[1] & 0x7F] : ptrn.localReg[data0.bytes[1]]);
+							} else dd.trnsp.amount = data0.bytes[1];
+							if (data0.bitField(14)) {
+								dd.trnsp.exclCh = data.bytes[1];
+								if (data0.bitField(13)) {
+									if (data0.bitField(12)) dd.trnsp.exclType = 3;
+									else dd.trnsp.exclType = 2;
+								} else dd.trnsp.exclType = 1;
+							} else {
+								dd.trnsp.exclCh = 0x00;
+								dd.trnsp.exclType = 0x00;
+							}
+						} else {
+							dd.trnsp.amount = 0x00;
+						}
+
+						ptrn.position += 1;
+						break;
 					case OpCode.ctrl:				//Control commands
 						switch (data.bytes[1]) {
 							case CtrlCmdCode.setRegister:
@@ -428,37 +460,66 @@ public class SequencerM2 : Sequencer {
 			if (status.cfg_StopOnError) status.play = false;
 			return;
 		}
-		if (dd.trnsp.amount) {
-
+		UMP trnsps(UMP u, TransposingData td) @nogc nothrow {
+			if (td.mode == TransposeMode.chromatic) {
+				u.note = cast(ubyte)(u.note + td.amount);
+			}
+			return u;
 		}
-		while (pos < data.length) {
-			UMP midiPck;
-			midiPck.base = data[pos];
-			const uint cmdSize = umpSizes[midiPck.msgType]>>4;
-			if (cmdSize + pos >= data.length) {
-				errors.illegalMIDICmd = true;
-				if (status.cfg_StopOnError) status.play = false;
-				return;
-			} else {
-				switch (cmdSize) {
-					case 2:
-						am.midiReceive(midiPck, data[pos + 1]);
-						pos += 2;
-						break;
-					case 3:
-						am.midiReceive(midiPck, data[pos + 1], data[pos + 2]);
-						pos += 3;
-						break;
-					case 4:
-						am.midiReceive(midiPck, data[pos + 1], data[pos + 2], data[pos + 3]);
-						pos += 4;
-						break;
-					default:
-						am.midiReceive(midiPck);
-						pos += 1;
-						break;
+		void intrnl(bool transpose = false)() @nogc nothrow {
+			while (pos < data.length) {
+				UMP midiPck;
+				midiPck.base = data[pos];
+				const uint cmdSize = umpSizes[midiPck.msgType]>>4;
+				if (cmdSize + pos >= data.length) {
+					errors.illegalMIDICmd = true;
+					if (status.cfg_StopOnError) status.play = false;
+					return;
+				} else {
+					switch (cmdSize) {
+						case 2:
+							static if (transpose) {
+								switch (midiPck.status) {
+									case MIDI2_0Cmd.NoteOn, MIDI2_0Cmd.NoteOff, MIDI2_0Cmd.PolyAftrTch, MIDI2_0Cmd.PolyPitchBend, 
+											MIDI2_0Cmd.PolyCtrlCh, MIDI2_0Cmd.PolyCtrlChR:
+										midiPck = trnsps(midiPck, dd.trnsp);
+									default: break;
+								}
+							}
+							am.midiReceive(midiPck, data[pos + 1]);
+							pos += 2;
+							break;
+						case 3:
+							am.midiReceive(midiPck, data[pos + 1], data[pos + 2]);
+							pos += 3;
+							break;
+						case 4:
+							am.midiReceive(midiPck, data[pos + 1], data[pos + 2], data[pos + 3]);
+							pos += 4;
+							break;
+						default:
+							static if (transpose) {
+								switch (midiPck.status) {
+									case MIDI1_0Cmd.NoteOn, MIDI1_0Cmd.NoteOff, MIDI1_0Cmd.PolyAftrTch:
+										midiPck = trnsps(midiPck, dd.trnsp);
+									default: break;
+								}
+							} 
+							am.midiReceive(midiPck);
+							pos += 1;
+							break;
+					}
 				}
 			}
 		}
+		
+		if (dd.trnsp.amount) {
+			intrnl!true;
+		} else {
+			intrnl!false;
+		}
+	}
+	private void emitMIDIwRegData(uint[] data, uint targetID, uint channel, uint value, uint note, uint aux) @nogc nothrow {
+
 	}
 }
