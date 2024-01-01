@@ -3,6 +3,8 @@ module pixelperfectengine.audio.m2.seq;
 public import pixelperfectengine.audio.m2.types;
 public import pixelperfectengine.audio.base.midiseq : Sequencer;
 public import pixelperfectengine.audio.base.modulebase;
+public import pixelperfectengine.audio.base.handler : ModuleManager;
+public import pixelperfectengine.audio.base.config;
 import collections.treemap;
 
 import std.typecons : BitFlags;
@@ -37,6 +39,46 @@ public class SequencerM2 : Sequencer {
 	public TreeMap!(uint, DeviceData) modTrgt;
 	public M2Song songdata;
 
+	public this() {
+		status.cfg_StopOnError = true;
+	}
+
+	public void loadSong(M2File file, ModuleConfig mcfg) {
+		songdata = file.songdata;
+		if (mcfg !is null) {
+			foreach (uint id, string name; file.devicelist) {
+				modTrgt[id] = DeviceData(mcfg.getModule(name), TransposingData.init);
+			}
+		}
+		reset();
+	}
+	public void start() @nogc @safe pure nothrow {
+		status.play = true;
+		status.pause = false;
+	}
+
+	public void stop() @nogc @safe pure nothrow {
+		status.play = false;
+		reset();
+	}
+
+	public void reset() @nogc @safe pure nothrow {
+		timePos = Duration.init;
+		songdata.globTimeMult = 0x1_00_00;
+		foreach (ref M2PatternSlot ptrn ; songdata.ptrnSl) {
+			ptrn.reset();
+		}
+		foreach (ref DeviceData dd ; modTrgt) {
+			dd.trnsp = TransposingData.init;
+		}
+		//Enter main pattern
+		initNewPattern(0, PATTERN_SLOT_INACTIVE_ID);
+	}
+
+	public void pause() @nogc @safe pure nothrow {
+		status.play = false;
+		status.pause = true;
+	}
 
 	public void lapseTime(Duration amount) @nogc nothrow {
 		if (!status.play) return;
@@ -55,23 +97,25 @@ public class SequencerM2 : Sequencer {
 		ulong getTimeBase() @nogc @safe pure nothrow const {
 			return (((songdata.timebase * songdata.globTimeMult)>>16) * ptrn.timeMult)>>16;
 		}
-		if ((ptrn.timeToWait -= amount) <= hnsecs(0)) {	//If enough time has passed, then proceed to compute commands
+		ptrn.timeToWait -= amount;
+		if (ptrn.timeToWait <= nsecs(0)) {	//If enough time has passed, then proceed to compute commands
 			uint[] patternData = songdata.ptrnData[ptrn.id];
-			while (patternData.length > ptrn.position && status.play) {	//Loop until end is reached or certain opcode is reached (handle that within the switch statement)
-				DataReaderHelper data = DataReaderHelper(patternData[ptrn.position]);
+			while (ptrn.position < patternData.length && status.play) {	//Loop until end is reached or certain opcode is reached (handle that within the switch statement)
+				M2Command data = M2Command(patternData[ptrn.position]);
 				ptrn.position++;//Move data position forward by one (always needed for each reads)
 				switch (data.bytes[0]) {		//Process commands
 					case OpCode.nullcmd:		//Null command (do nothing)
+						debug assert(!data.word);
 						break;
 					case OpCode.lnwait:			//Long wait
-						const ulong tics = (((data.bytes[1]<<16) | data.hwords[1])<<24) | patternData[ptrn.position];	//Get amount of tics for this wait command
+						const ulong tics = data.read24BitField | patternData[ptrn.position];	//Get amount of tics for this wait command
 						const ulong timeBase = getTimeBase();
 						ptrn.timeToWait += nsecs(timeBase * tics);		//calculate new wait amount, plus amount for any inaccuracy from sequencer steping.
 						ptrn.position++;
 						if (!ptrn.timeToWait.isNegative) goto exitLoop;	//hazard case: even after wait time is l
 						break;
 					case OpCode.shwait:			//Short wait
-						const uint tics = (data.bytes[1]<<16) | data.hwords[1];
+						const uint tics = data.read24BitField;
 						const ulong timeBase = getTimeBase();
 						ptrn.timeToWait += nsecs(timeBase * tics);
 						if (!ptrn.timeToWait.isNegative) goto exitLoop;
@@ -320,7 +364,7 @@ public class SequencerM2 : Sequencer {
 								return;
 							}
 						}
-						DataReaderHelper data0 = DataReaderHelper(patternData[ptrn.position]);
+						M2Command data0 = M2Command(patternData[ptrn.position]);
 						dd.trnsp.mode = data0.bytes[0];
 						if (!data0.bitField(15)) {
 							if (data0.bitField(16)) {
@@ -403,7 +447,7 @@ public class SequencerM2 : Sequencer {
 				}
 			}
 			exitLoop:
-			if (patternData.length >= ptrn.position && !hasUsefulDataLeft(patternData[ptrn.position..$])) {	//Free up pattern slot if ended or has no useful data left.
+			if (patternData.length <= ptrn.position && !hasUsefulDataLeft(patternData[ptrn.position..$])) {	//Free up pattern slot if ended or has no useful data left.
 				ptrn.status.isRunning = false;
 				ptrn.status.hasEnded = true;
 				if (ptrn.backLink != PATTERN_SLOT_INACTIVE_ID) {
@@ -413,11 +457,12 @@ public class SequencerM2 : Sequencer {
 						}
 					}
 				}
+				ptrn.id = PATTERN_SLOT_INACTIVE_ID;
 			}
 		}
 	}
 	///Initializes new pattern with the given ID
-	private void initNewPattern(uint patternID, uint backLink) @nogc nothrow {
+	private void initNewPattern(uint patternID, uint backLink) @nogc @safe pure nothrow {
 		foreach (size_t i, ref M2PatternSlot ptrnSl ; songdata.ptrnSl) {
 			if (ptrnSl.id == PATTERN_SLOT_INACTIVE_ID || ptrnSl.status.hasEnded) {	//Search for lowest unused pattern slot
 				ptrnSl.reset;
@@ -431,6 +476,7 @@ public class SequencerM2 : Sequencer {
 						status.play = false;
 					}
 				}
+				ptrnSl.status.isRunning = true;
 				return;
 			}
 		}
@@ -443,7 +489,7 @@ public class SequencerM2 : Sequencer {
 	private bool hasUsefulDataLeft(uint[] patternData) @nogc nothrow pure const {
 		if (patternData.length == 0) return false;
 		foreach (key; patternData) {
-			DataReaderHelper data = DataReaderHelper(key);
+			M2Command data = M2Command(key);
 			if (data.bytes[0] != 0x00 || data.bytes[0] != 0xff) return true;    //Has at least one potential command.
 		}
 		return false;
@@ -463,14 +509,14 @@ public class SequencerM2 : Sequencer {
 		UMP trnsps(UMP u, TransposingData td) @nogc nothrow {
 			if (td.mode == TransposeMode.chromatic) {
 				u.note = cast(ubyte)(u.note + td.amount);
-			}
+			}//TODO: Implement non-chromatic transposing
 			return u;
 		}
 		void intrnl(bool transpose = false)() @nogc nothrow {
 			while (pos < data.length) {
 				UMP midiPck;
 				midiPck.base = data[pos];
-				const uint cmdSize = umpSizes[midiPck.msgType]>>4;
+				const uint cmdSize = umpSizes[midiPck.msgType]/8;
 				if (cmdSize + pos >= data.length) {
 					errors.illegalMIDICmd = true;
 					if (status.cfg_StopOnError) status.play = false;
@@ -483,6 +529,7 @@ public class SequencerM2 : Sequencer {
 									case MIDI2_0Cmd.NoteOn, MIDI2_0Cmd.NoteOff, MIDI2_0Cmd.PolyAftrTch, MIDI2_0Cmd.PolyPitchBend, 
 											MIDI2_0Cmd.PolyCtrlCh, MIDI2_0Cmd.PolyCtrlChR:
 										midiPck = trnsps(midiPck, dd.trnsp);
+									break;
 									default: break;
 								}
 							}
@@ -502,6 +549,7 @@ public class SequencerM2 : Sequencer {
 								switch (midiPck.status) {
 									case MIDI1_0Cmd.NoteOn, MIDI1_0Cmd.NoteOff, MIDI1_0Cmd.PolyAftrTch:
 										midiPck = trnsps(midiPck, dd.trnsp);
+									break;
 									default: break;
 								}
 							} 
@@ -519,6 +567,7 @@ public class SequencerM2 : Sequencer {
 			intrnl!false;
 		}
 	}
+	///TODO: Implement
 	private void emitMIDIwRegData(uint[] data, uint targetID, uint channel, uint value, uint note, uint aux) @nogc nothrow {
 
 	}

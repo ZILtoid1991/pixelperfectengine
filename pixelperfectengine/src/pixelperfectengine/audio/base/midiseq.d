@@ -71,6 +71,7 @@ public class SequencerM1 : Sequencer {
 		usecPerTic.length = src.headerChunk.nTracks;
 		//trackState.length = 0;
 		trackState.length = src.headerChunk.nTracks;
+		reset();
 	}
 	/** 
 	 * Starts the sequencer.
@@ -99,6 +100,7 @@ public class SequencerM1 : Sequencer {
 	/** 
 	 * Pauses the sequencer.
 	 * Note: Won't pause states of associated modules.
+	 * TODO: implement pausing the associated modules.
 	 */
 	public void pause() @nogc @safe pure nothrow {
 		status &= ~Status.IsRunning;

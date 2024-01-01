@@ -35,6 +35,8 @@ import pixelperfectengine.audio.base.handler;
 import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.config;
 import pixelperfectengine.audio.base.midiseq;
+import pixelperfectengine.audio.m2.seq;
+import pixelperfectengine.audio.m2.rw_text;
 //import pixelperfectengine.audio.modules.qm816;
 import core.thread;
 import iota.audio.midi;
@@ -129,6 +131,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	SpriteLayer		windowing;
 	MIDIInput		midiIn;
 	SequencerM1		midiSeq;
+	SequencerM2		m2Seq;
 	
 	WindowHandler	wh;
 	Window			tlw;
@@ -146,6 +149,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		isRunning		=	1<<0,
 		audioThreadRunning=	1<<1,
 		configurationCompiled=1<<2,
+		m2Toggle		=	1<<3,
 	}
 	
 	public this(string[] args) {
@@ -341,16 +345,21 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		}
 	}
 	public void onCompileAudioConfig() {
-		try {
-			mcfg.compile(state.audioThreadRunning);
-			if (mcfg.midiRouting.length) {
-				midiSeq = new SequencerM1(mcfg.modules, mcfg.midiRouting, mcfg.midiGroups);
-				mm.midiSeq = midiSeq;
-			} else {
-				midiSeq = null;
+		if (mcfg is null) {
+			wh.message("Error!", "Audio configuration profile has not been initialized!");
+		} else {
+			try {
+				mcfg.compile(state.audioThreadRunning);
+				if (mcfg.midiRouting.length) {
+					midiSeq = new SequencerM1(mcfg.modules, mcfg.midiRouting, mcfg.midiGroups);
+					//mm.midiSeq = midiSeq;
+				} else {
+					midiSeq = null;
+				}
+				m2Seq = new SequencerM2();
+			} catch (Exception e) {
+				writeln(e);
 			}
-		} catch (Exception e) {
-			writeln(e);
 		}
 	}
 	public void onNew() {
@@ -400,20 +409,45 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		}
 	}
 	public void openSequencer() {
-		if (midiSeq !is null) {
-			wh.addWindow(new SequencerCtrl(this));
-		}
+		if (m2Seq is null && midiSeq is null) wh.message("Error!", "Audio has not been initialized!");
+		else wh.addWindow(new SequencerCtrl(this));
 	}
 	public void onMIDILoad() {
 		import pixelperfectengine.concrete.dialogs.filedialog;
 		wh.addWindow(new FileDialog("Load MIDI file.", "loadMidiDialog", &onMIDIFileLoad, 
-			[FileDialog.FileAssociationDescriptor("MIDI file", ["*.mid"])], "./"));
+			[FileDialog.FileAssociationDescriptor("MIDI file", ["*.mid"]), 
+			FileDialog.FileAssociationDescriptor("M2 file", ["*.m2"])], "./"));
 	}
 	public void onMIDIFileLoad(Event ev) {
 		import mididi;
+		import pixelperfectengine.audio.m2.rw;
 		FileEvent fe = cast(FileEvent)ev;
-		midiSeq.openMIDI(readMIDIFile(fe.getFullPath));
-		midiSeq.reset();
+		switch (fe.extension) {
+			case ".mid":
+				if (midiSeq !is null) {
+					midiSeq.openMIDI(readMIDIFile(fe.getFullPath));
+					state.m2Toggle = false;
+					mm.midiSeq = midiSeq;
+				} else {
+					wh.message("Error!", "No routing table has been initialized in current audio configuration!");
+				}
+				break;
+			case ".m2":
+				m2Seq.loadSong(loadM2File(fe.getFullPath), mcfg);
+				state.m2Toggle = true;
+				mm.midiSeq = m2Seq;
+				break;
+			default:
+				break;
+		}
+	}
+	public void seqStart() {
+		if (state.m2Toggle) m2Seq.start();
+		else if (midiSeq) midiSeq.start();
+	}
+	public void seqStop() {
+		if (state.m2Toggle) m2Seq.stop();
+		else if (midiSeq) midiSeq.stop();
 	}
 	public void openRouter() {
 		if (router is null)
@@ -435,9 +469,9 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void midiInCallback(ubyte[] data, size_t timestamp) @nogc nothrow {
 		if (selectedModule !is null) {
 			UMP msb = UMP(MessageType.MIDI1, 0, 0, 0);
-			msb.bytes[1] = data.length > 0 ? data[0] : 0;
-			msb.bytes[2] = data.length > 1 ? data[1] : 0;
-			msb.bytes[3] = data.length > 2 ? data[2] : 0;
+			msb.bytes[2] = data.length > 0 ? data[0] : 0;
+			msb.bytes[1] = data.length > 1 ? data[1] : 0;
+			msb.bytes[0] = data.length > 2 ? data[2] : 0;
 			selectedModule.midiReceive(msb);
 		}
 	}

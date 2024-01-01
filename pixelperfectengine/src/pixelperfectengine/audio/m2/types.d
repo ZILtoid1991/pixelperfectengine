@@ -163,7 +163,7 @@ public struct M2PatternSlot {
 	public uint backLink = uint.max;	///Backlinking for pattern nesting
 	public Duration timeToWait;			///Time until next command chunk
 	public Duration patternTime;		///Stores the current time of the pattern
-	public void reset() @nogc @safe nothrow {
+	public void reset() @nogc @safe pure nothrow {
 		status = status.init;
 		foreach (ref uint key; localReg) {
 			key = 0;
@@ -173,6 +173,7 @@ public struct M2PatternSlot {
 		timeMult = 0x1_00_00;
 		timeToWait = hnsecs(0);
 		patternTime = hnsecs(0);
+		id = PATTERN_SLOT_INACTIVE_ID;
 	}
 }
 /** 
@@ -180,7 +181,7 @@ public struct M2PatternSlot {
  */
 public struct M2Song {
 	public uint[128] globalReg;			///Global (shared) register bank
-	public M2PatternSlot[] ptrnSl;		///Pattern slots that can be used for the 
+	public M2PatternSlot[] ptrnSl;		///Pattern slots that can be used for pattern processing
 	//public uint[] activePtrnNums;
 	public uint globTimeMult = 0x1_00_00;///Time multiplier (16bit precision)
 	public ulong timebase;				///nsecs of a single tic
@@ -232,8 +233,8 @@ public struct M2File {
 	public uint timeFrmtPer;
 	public uint timeFrmtRes;
 }
-///Used by the sequencer for reading command data.
-package struct DataReaderHelper {
+///Used by the sequencer for reading command data, and by compilers to create new commands.
+package struct M2Command {
 	union {
 		uint word;
 		ushort[2] hwords;
@@ -241,6 +242,28 @@ package struct DataReaderHelper {
 	}
 	this (uint base) @nogc @safe pure nothrow {
 		word = base;
+	}
+	this (ubyte[4] bytes) @nogc @safe pure nothrow {
+		this.bytes = bytes;
+	}
+	static M2Command emit(size_t length, uint target) @nogc @safe pure nothrow {
+		M2Command result;
+		result.bytes[0] = OpCode.emit;
+		result.bytes[1] = cast(byte)length;
+		result.hwords[1] = cast(ushort)target;
+		return result;
+	}
+	static M2Command cmd24bit(ubyte op, uint val) @nogc @safe pure nothrow {
+		M2Command result;
+		result.bytes[0] = op;
+		result.bytes[1] = cast(ubyte)(val);
+		result.bytes[2] = cast(ubyte)(val>>8);
+		result.bytes[3] = cast(ubyte)(val>>16);
+		return result;
+	}
+	
+	uint read24BitField() @nogc @safe pure nothrow const {
+		return (bytes[1]) | (bytes[2]<<8) | (bytes[3]<<16);
 	}
 	bool bitField(uint n) @nogc @safe pure nothrow const {
 		return ((word<<n) & 0x8000_0000) == 0x8000_0000;

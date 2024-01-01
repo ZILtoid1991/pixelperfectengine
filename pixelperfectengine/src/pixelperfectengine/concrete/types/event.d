@@ -82,8 +82,12 @@ public class FileEvent : Event {
 	string		filename;	///The name of the target file.
 	string		extension;	///The selected file extension.
 	///Default CTOR
-	this (Object sender, SourceType srcType, string path, string filename, string extension) @nogc @safe pure nothrow {
+	this (Object sender, SourceType srcType, string path, string filename, string extension) @safe pure nothrow {
 		super(sender, EventType.File, srcType);
+		if (path[$-1] != '/' || path[$-1] != '\\') {
+			version (Windows) path ~= '\\';
+			else path ~= '/';
+		}
 		this.path = path;
 		this.filename = filename;
 		this.extension = extension;
