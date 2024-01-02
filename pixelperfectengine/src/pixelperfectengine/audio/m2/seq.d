@@ -71,6 +71,7 @@ public class SequencerM2 : Sequencer {
 		foreach (ref DeviceData dd ; modTrgt) {
 			dd.trnsp = TransposingData.init;
 		}
+		errors = BitFlags!(ErrorFlags).init;
 		//Enter main pattern
 		initNewPattern(0, PATTERN_SLOT_INACTIVE_ID);
 	}
@@ -494,11 +495,65 @@ public class SequencerM2 : Sequencer {
 		}
 		return false;
 	}
+	private UMP trnsps(UMP u, TransposingData td) @nogc nothrow {
+		if (td.mode == TransposeMode.chromatic) {
+			u.note = cast(ubyte)(u.note + td.amount);
+		}//TODO: Implement non-chromatic transposing
+		return u;
+	}
+	private void emitMIDIData_intrnl(bool transpose = false)(uint[] data, DeviceData dd, AudioModule am) @nogc nothrow {
+		uint pos;
+		while (pos < data.length) {
+			UMP midiPck;
+			midiPck.base = data[pos];
+			const uint cmdSize = umpSizes[midiPck.msgType]>>5;
+			if (cmdSize + pos > data.length) {
+				errors.illegalMIDICmd = true;
+				if (status.cfg_StopOnError) status.play = false;
+				return;
+			} else {
+				switch (cmdSize) {
+					case 2:
+						static if (transpose) {
+							switch (midiPck.status) {
+								case MIDI2_0Cmd.NoteOn, MIDI2_0Cmd.NoteOff, MIDI2_0Cmd.PolyAftrTch, MIDI2_0Cmd.PolyPitchBend, 
+										MIDI2_0Cmd.PolyCtrlCh, MIDI2_0Cmd.PolyCtrlChR:
+									midiPck = trnsps(midiPck, dd.trnsp);
+								break;
+								default: break;
+							}
+						}
+						am.midiReceive(midiPck, data[pos + 1]);
+						pos += 2;
+						break;
+					case 3:
+						am.midiReceive(midiPck, data[pos + 1], data[pos + 2]);
+						pos += 3;
+						break;
+					case 4:
+						am.midiReceive(midiPck, data[pos + 1], data[pos + 2], data[pos + 3]);
+						pos += 4;
+						break;
+					default:
+						static if (transpose) {
+							switch (midiPck.status) {
+								case MIDI1_0Cmd.NoteOn, MIDI1_0Cmd.NoteOff, MIDI1_0Cmd.PolyAftrTch:
+									midiPck = trnsps(midiPck, dd.trnsp);
+								break;
+								default: break;
+							}
+						} 
+						am.midiReceive(midiPck);
+						pos += 1;
+						break;
+				}
+			}
+		}
+	}
 	/** 
 	 * Emits MIDI data to the target module. Takes care of data length, transposing (TODO: implement), etc.
 	 */
 	private void emitMIDIData(uint[] data, uint targetID) @nogc nothrow {
-		uint pos;
 		DeviceData dd = modTrgt[targetID];
 		AudioModule am = dd.mod;
 		if (am is null) {
@@ -506,65 +561,10 @@ public class SequencerM2 : Sequencer {
 			if (status.cfg_StopOnError) status.play = false;
 			return;
 		}
-		UMP trnsps(UMP u, TransposingData td) @nogc nothrow {
-			if (td.mode == TransposeMode.chromatic) {
-				u.note = cast(ubyte)(u.note + td.amount);
-			}//TODO: Implement non-chromatic transposing
-			return u;
-		}
-		void intrnl(bool transpose = false)() @nogc nothrow {
-			while (pos < data.length) {
-				UMP midiPck;
-				midiPck.base = data[pos];
-				const uint cmdSize = umpSizes[midiPck.msgType]/8;
-				if (cmdSize + pos >= data.length) {
-					errors.illegalMIDICmd = true;
-					if (status.cfg_StopOnError) status.play = false;
-					return;
-				} else {
-					switch (cmdSize) {
-						case 2:
-							static if (transpose) {
-								switch (midiPck.status) {
-									case MIDI2_0Cmd.NoteOn, MIDI2_0Cmd.NoteOff, MIDI2_0Cmd.PolyAftrTch, MIDI2_0Cmd.PolyPitchBend, 
-											MIDI2_0Cmd.PolyCtrlCh, MIDI2_0Cmd.PolyCtrlChR:
-										midiPck = trnsps(midiPck, dd.trnsp);
-									break;
-									default: break;
-								}
-							}
-							am.midiReceive(midiPck, data[pos + 1]);
-							pos += 2;
-							break;
-						case 3:
-							am.midiReceive(midiPck, data[pos + 1], data[pos + 2]);
-							pos += 3;
-							break;
-						case 4:
-							am.midiReceive(midiPck, data[pos + 1], data[pos + 2], data[pos + 3]);
-							pos += 4;
-							break;
-						default:
-							static if (transpose) {
-								switch (midiPck.status) {
-									case MIDI1_0Cmd.NoteOn, MIDI1_0Cmd.NoteOff, MIDI1_0Cmd.PolyAftrTch:
-										midiPck = trnsps(midiPck, dd.trnsp);
-									break;
-									default: break;
-								}
-							} 
-							am.midiReceive(midiPck);
-							pos += 1;
-							break;
-					}
-				}
-			}
-		}
-		
 		if (dd.trnsp.amount) {
-			intrnl!true;
+			emitMIDIData_intrnl!(true)(data, dd, am);
 		} else {
-			intrnl!false;
+			emitMIDIData_intrnl!(false)(data, dd, am);
 		}
 	}
 	///TODO: Implement

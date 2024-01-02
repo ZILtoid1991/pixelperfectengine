@@ -696,7 +696,7 @@ public M2File loadM2FromText(string src) {
 							}
 							for (size_t j ; j < num ; j++) {						//if there are expired note macros: put noteoff commands into the emit string and remove them from the list
 								NoteData nd = noteMacroHandler.remove(0);
-								currEmitStr ~= [0x40_A0_00_00 | ((nd.ch & 0xF0)<<20) | ((nd.ch & 0x0F)<<16) | (nd.note<<8), nd.velocity<<16];
+								currEmitStr ~= [UMP(MessageType.MIDI2, nd.ch>>4, MIDI2_0Cmd.NoteOff, nd.ch & 0x0F, nd.note).base, nd.velocity];
 							}
 							if (num == 0) {											//if there's no (more) expired note macros, then just simply emit a wait command with the current amount
 								insertWaitCmd(amount);

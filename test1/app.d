@@ -328,19 +328,23 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		virtMIDIkeyb = null;
 	}
 	public void onAudioThreadSwitch() {
-		if (state.audioThreadRunning) {
-			const int errorCode = mm.suspendAudioThread();
-			state.audioThreadRunning = false;
-			if (errorCode) {
-				wh.message("Audio thread error!", "An error occured during audio thread runtime!\nError code:" ~ 
-						errorCode.to!dstring);
-			}
+		if (mcfg is null) {
+			wh.message("Error!", "Audio configuration profile has not been initialized!");
 		} else {
-			const int errorCode = mm.runAudioThread();
-			if (!errorCode) {
-				state.audioThreadRunning = true;
+			if (state.audioThreadRunning) {
+				const int errorCode = mm.suspendAudioThread();
+				state.audioThreadRunning = false;
+				if (errorCode) {
+					wh.message("Audio thread error!", "An error occured during audio thread runtime!\nError code:" ~ 
+							errorCode.to!dstring);
+				}
 			} else {
-				wh.message("Audio thread error!", "Failed to initialize audio thread!\nError code:" ~ errorCode.to!dstring);
+				const int errorCode = mm.runAudioThread();
+				if (!errorCode) {
+					state.audioThreadRunning = true;
+				} else {
+					wh.message("Audio thread error!", "Failed to initialize audio thread!\nError code:" ~ errorCode.to!dstring);
+				}
 			}
 		}
 	}
