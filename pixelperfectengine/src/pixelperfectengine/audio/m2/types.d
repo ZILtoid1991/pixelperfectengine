@@ -185,30 +185,37 @@ public struct M2Song {
 	//public uint[] activePtrnNums;
 	public uint globTimeMult = 0x1_00_00;///Time multiplier (16bit precision)
 	public ulong timebase;				///nsecs of a single tic
+	public ulong ticsPerSecs;			///Tics per second
 	public TreeMap!(uint, uint[]) ptrnData;
 	this (uint parPtrnNum, M2TimeFormat timefrmt, uint timeper, uint timeres) @safe nothrow {
 		ptrnSl.length = parPtrnNum;
 		final switch (timefrmt) with(M2TimeFormat) {
 			case ms:
-				timebase = 1_000_000;
+				//timebase = 1_000_000;
+				ticsPerSecs = 1000;
 				break;
 			case us:
-				timebase = 1_000;
+				//timebase = 1_000;
+				ticsPerSecs = 1_000_000;
 				break;
 			case hns:
-				timebase = 100;
+				//timebase = 100;
+				ticsPerSecs = 10_000_000;
 				break;
 			case fmt3:
-				timebase = cast(ulong)((1 / (cast(real)timeper / timeres)) * 1_000_000_000);
+				//timebase = cast(ulong)((1 / (cast(real)timeper / timeres)) * 1_000_000_000);
+				ticsPerSecs = timeper * timeres;
 				break;
 			case fmt4:
-				timebase = cast(ulong)((1 / (timeper / 256.0 / timeres)) * 1_000_000_000);
+				//timebase = cast(ulong)((1 / (timeper / 256.0 / timeres)) * 1_000_000_000);
+				ticsPerSecs = cast(ulong)((timeper / 16.0) * timeres);
 				break;
 			case fmt5:
-				timebase = cast(ulong)((1 / (timeper / 65_536.0 / timeres)) * 1_000_000_000);
+				//timebase = cast(ulong)((1 / (timeper / 65_536.0 / timeres)) * 1_000_000_000);
+				ticsPerSecs = cast(ulong)((timeper / 256.0) * timeres);
 				break;
 		}
-		
+		timebase = cast(ulong)((1.0 / ticsPerSecs) * 1_000_000_000);	
 	}
 }
 /** 

@@ -85,7 +85,7 @@ package double getTupletDiv(const string c, const double base) @nogc @safe pure 
 	}
 }
 package ulong parseRhythm(string n, float bpm, long timebase) {
-	const long whNoteLen = cast(long)((1_000_000_000 / cast(double)timebase) * (15 / bpm));
+	const long whNoteLen = cast(long)(timebase * (1.0 / (bpm / 60.0)));
 	double duration = 0.0;
 	n = toAllCaps(n);
 	string[] indiv = n.split("+");
@@ -277,7 +277,7 @@ public M2File loadM2FromText(string src) {
 		SortedList!(NoteData) noteMacroHandler;
 		uint[] currEmitStr;
 		uint currDevNum;
-		float bpm = 120;
+		//float bpm = 120;
 		ulong timepos;
 		void flushEmitStr() {
 			if (currEmitStr.length) {
@@ -429,7 +429,7 @@ public M2File loadM2FromText(string src) {
 						enforce(channel <= 255, "Channel number too high");
 						enforce(vel <= 65_535, "Velocity number too high");
 						if (words[4][0] == '~') {	//use the same duration to all the notes
-							const ulong noteDur = parseRhythm(words[4][1..$], bpm, result.songdata.timebase);
+							const ulong noteDur = parseRhythm(words[4][1..$], key.currBPM, result.songdata.timebase);
 							for (int j = 5 ; j < words.length ; j++) {
 								const uint note = parseNote(words[j]);
 								UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.NoteOn, cast(ubyte)(channel&0x0F), 
@@ -441,7 +441,7 @@ public M2File loadM2FromText(string src) {
 						} else {	//each note should have their own duration
 							for (int j = 4 ; j < words.length ; j++) {
 								string[] notebase = words[j].split(":");
-								const ulong noteDur = parseRhythm(notebase[0], bpm, result.songdata.timebase);
+								const ulong noteDur = parseRhythm(notebase[0], key.currBPM, result.songdata.timebase);
 								const uint note = parseNote(notebase[1]);
 								UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.NoteOn, cast(ubyte)(channel&0x0F), 
 										cast(ubyte)note);
@@ -675,7 +675,7 @@ public M2File loadM2FromText(string src) {
 						try {	//Try to parse it as a number
 							amount = parsenum(words[1]);
 						} catch (Exception e) {	//It is not a number, try to parse it as a rhythm
-							amount = parseRhythm(words[1], bpm, result.songdata.timebase);
+							amount = parseRhythm(words[1], key.currBPM, result.songdata.timebase);
 						}
 						//go through all the note macros if any of them have expired, and insert one or more wait commands if needed
 						do {
