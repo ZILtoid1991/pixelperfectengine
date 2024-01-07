@@ -215,7 +215,8 @@ public struct M2Song {
 				ticsPerSecs = cast(ulong)((timeper / 256.0) * timeres);
 				break;
 		}
-		timebase = cast(ulong)((1.0 / ticsPerSecs) * 1_000_000_000);	
+		//timebase = cast(ulong)((1.0 / ticsPerSecs) * 10_000_000_000L);	
+		timebase = cast(ulong)(1_000_000_000.0 / ticsPerSecs);
 	}
 }
 /** 

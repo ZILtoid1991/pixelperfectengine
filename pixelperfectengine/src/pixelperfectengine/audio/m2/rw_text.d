@@ -429,7 +429,7 @@ public M2File loadM2FromText(string src) {
 						enforce(channel <= 255, "Channel number too high");
 						enforce(vel <= 65_535, "Velocity number too high");
 						if (words[4][0] == '~') {	//use the same duration to all the notes
-							const ulong noteDur = parseRhythm(words[4][1..$], key.currBPM, result.songdata.timebase);
+							const ulong noteDur = parseRhythm(words[4][1..$], key.currBPM, result.songdata.ticsPerSecs);
 							for (int j = 5 ; j < words.length ; j++) {
 								const uint note = parseNote(words[j]);
 								UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.NoteOn, cast(ubyte)(channel&0x0F), 
@@ -441,7 +441,7 @@ public M2File loadM2FromText(string src) {
 						} else {	//each note should have their own duration
 							for (int j = 4 ; j < words.length ; j++) {
 								string[] notebase = words[j].split(":");
-								const ulong noteDur = parseRhythm(notebase[0], key.currBPM, result.songdata.timebase);
+								const ulong noteDur = parseRhythm(notebase[0], key.currBPM, result.songdata.ticsPerSecs);
 								const uint note = parseNote(notebase[1]);
 								UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.NoteOn, cast(ubyte)(channel&0x0F), 
 										cast(ubyte)note);
