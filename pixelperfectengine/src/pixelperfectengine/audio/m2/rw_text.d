@@ -274,7 +274,7 @@ public M2File loadM2FromText(string src) {
 	foreach (size_t i, PatternData key; ptrnData) {
 		result.songdata.ptrnData[cast(uint)i] = [];
 		//NoteData[] noteMacroHandler;
-		SortedList!(NoteData) noteMacroHandler;
+		SortedList!(NoteData, "a > b") noteMacroHandler;
 		uint[] currEmitStr;
 		uint currDevNum;
 		//float bpm = 120;
