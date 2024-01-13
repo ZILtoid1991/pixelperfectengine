@@ -25,7 +25,7 @@ $[0]: pc 3 16
 $[0]: pc 4 16
 $[0]: pc 5 16
 $[0]: pc 6 16
-$[0]: pc 7 17
+$[0]: pc 7 16
 ;bar 1
 $[0]: note 0 0x7FFF o:a-5
 $[0]: note 1 0x7FFF o:a-4
@@ -124,6 +124,7 @@ $[0]: note 0 0x7FFF s:c#4
 $[0]: note 1 0x7FFF s:c#3
 wait s
 ;bar 4
+display BPM 200
 $[0]: note 0 0x7FFF 3s:d-4
 $[0]: note 1 0x7FFF 3s:d-3
 wait 3s
@@ -472,4 +473,6 @@ $[0]: note 0 0x7FFF 3s:e-4
 $[0]: note 1 0x7FFF 3s:e-3
 wait 3s
 ;bar 10
+wait w
+$[0]: nf 1 0xFFFF 
 END
