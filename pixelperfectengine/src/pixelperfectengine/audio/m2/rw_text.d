@@ -52,16 +52,16 @@ package int parseRegister(const string s) {
 package double getRhythmDur(const char c) @nogc @safe pure nothrow {
 	switch (c) {
 		case 'W': return 1.0;
-		case 'H': return 1.0 / 2;
-		case 'Q': return 1.0 / 4;
-		case 'O': return 1.0 / 8;
-		case 'S': return 1.0 / 16;
-		case 'T': return 1.0 / 32;
-		case 'I': return 1.0 / 64;
-		case 'X': return 1.0 / 128;
-		case 'Y': return 1.0 / 256;
-		case 'Z': return 1.0 / 512;
-		case 'U': return 1.0 / 1024;
+		case 'H': return 1.0 / 2.0;
+		case 'Q': return 1.0 / 4.0;
+		case 'O': return 1.0 / 8.0;
+		case 'S': return 1.0 / 16.0;
+		case 'T': return 1.0 / 32.0;
+		case 'I': return 1.0 / 64.0;
+		case 'X': return 1.0 / 128.0;
+		case 'Y': return 1.0 / 256.0;
+		case 'Z': return 1.0 / 512.0;
+		case 'U': return 1.0 / 1024.0;
 		default: return double.nan;
 	}
 }
@@ -535,7 +535,7 @@ public M2File loadM2FromText(string src) {
 						currEmitStr ~= [0x20_80_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel<<16]; */
 						string auxField;
 						if (words.length == 6) auxField = words[5];
-						insertMIDI2Cmd!(false, true)(MIDI2_0Cmd.NoteOff, words[2], words[3], null, words[4], auxField);
+						insertMIDI2Cmd!(false, true)(MIDI2_0Cmd.NoteOff, words[2], words[4], null, words[3], auxField);
 						break;
 					case "nn":			//MIDI note on
 						/* const uint channel = cast(uint)parsenum(words[2]);
@@ -546,7 +546,7 @@ public M2File loadM2FromText(string src) {
 						currEmitStr ~= [0x20_90_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel<<16]; */
 						string auxField;
 						if (words.length == 6) auxField = words[5];
-						insertMIDI2Cmd!(false, true)(MIDI2_0Cmd.NoteOn, words[2], words[3], null, words[4], auxField);
+						insertMIDI2Cmd!(false, true)(MIDI2_0Cmd.NoteOn, words[2], words[4], null, words[3], auxField);
 						break;
 					case "ppres":		//Poly aftertouch
 						/* const uint channel = cast(uint)parsenum(words[2]);
@@ -554,7 +554,7 @@ public M2File loadM2FromText(string src) {
 						const uint vel = cast(uint)parsenum(words[4]);
 						enforce(channel <= 255, "Channel number too high");
 						currEmitStr ~= [0x20_A0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel]; */
-						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.PolyAftrTch, words[2], words[3], null, words[4], null);
+						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.PolyAftrTch, words[2], words[4], null, words[3], null);
 						break;
 					case "pccr":		//Poly registered per-note controller change
 						/* const uint channel = cast(uint)parsenum(words[2]);
@@ -671,44 +671,49 @@ public M2File loadM2FromText(string src) {
 				flushEmitStr();
 				switch (words[0]) {
 					case "wait":		//parse wait command
-						ulong amount;
+						long amount;
 						try {	//Try to parse it as a number
 							amount = parsenum(words[1]);
 						} catch (Exception e) {	//It is not a number, try to parse it as a rhythm
-							amount = parseRhythm(words[1], key.currBPM, result.songdata.timebase);
+							amount = parseRhythm(words[1], key.currBPM, result.songdata.ticsPerSecs);
 						}
 						//go through all the note macros if any of them have expired, and insert one or more wait commands if needed
-						do {
+						while (amount > 0) {
 							flushEmitStr();
 							size_t num;
-							ulong lowestAmount;
-							for (size_t j ; j < noteMacroHandler.length ; j++) {	//search for few first elements with the same wait amounts
-								if (noteMacroHandler[i].durTo <= timepos + amount) {
-									if (!lowestAmount) {
-										lowestAmount = (timepos + amount) - noteMacroHandler[j].durTo;
-									} else if (lowestAmount != noteMacroHandler[j].durTo) {
-										break;
+							long lowestAmount;
+							if (noteMacroHandler.length) {
+								//check if there's any expired note macros
+								if (noteMacroHandler[0].durTo <= timepos + amount) {
+									num = 1;
+									//get current lowest amount
+									lowestAmount = amount - (timepos + amount - noteMacroHandler[0].durTo);
+									assert (lowestAmount >= 0);
+									//check if there's more with the same amount
+									for (size_t searchPos = 1 ; searchPos < noteMacroHandler.length ; searchPos++) {
+										if (noteMacroHandler[0].durTo == noteMacroHandler[searchPos].durTo) {
+											num = searchPos + 1;
+										} else {
+											break;	//Break immediately on different wait times
+										}
 									}
-									num = j + 1;
-								} else {
-									break;
 								}
 							}
-							for (size_t j ; j < num ; j++) {						//if there are expired note macros: put noteoff commands into the emit string and remove them from the list
+							for (size_t outputPos ; outputPos < num ; outputPos++) {	//emit all expired note macros
 								NoteData nd = noteMacroHandler.remove(0);
 								currEmitStr ~= [UMP(MessageType.MIDI2, nd.ch>>4, MIDI2_0Cmd.NoteOff, nd.ch & 0x0F, nd.note).base, nd.velocity];
 								if (currEmitStr.length >= 254) flushEmitStr();
 							}
-							if (num == 0) {											//if there's no (more) expired note macros, then just simply emit a wait command with the current amount
+							if (!num) {			//if there's no (more) expired note macros, then just simply emit a wait command with the current amount
 								insertWaitCmd(amount);
 								timepos += amount;
 								amount = 0;
-							} else {
+							} else {				//if there's some, insert wait command, and subtract 
 								insertWaitCmd(lowestAmount);
 								timepos += lowestAmount;
 								amount -= lowestAmount;
 							}
-						} while(amount);
+						}
 						break;
 					case "chain-par":
 						sizediff_t refPtrnID = searchPatternByName(words[1]);
@@ -864,6 +869,8 @@ public M2File loadM2FromText(string src) {
 			}
 			
 		}
+		//flush any potential remaining MIDI commands
+		flushEmitStr();
 	}
 	return result;
 }
