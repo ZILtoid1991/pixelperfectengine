@@ -111,14 +111,14 @@ public class SequencerM2 : Sequencer {
 					case OpCode.lnwait:			//Long wait
 						const ulong tics = data.read24BitField | patternData[ptrn.position];	//Get amount of tics for this wait command
 						const ulong timeBase = getTimeBase();
-						ptrn.timeToWait += nsecs(timeBase * tics);		//calculate new wait amount, plus amount for any inaccuracy from sequencer steping.
+						ptrn.timeToWait += hnsecs(timeBase * tics);		//calculate new wait amount, plus amount for any inaccuracy from sequencer steping.
 						ptrn.position++;
 						if (!ptrn.timeToWait.isNegative) goto exitLoop;	//hazard case: even after wait time is l
 						break;
 					case OpCode.shwait:			//Short wait
 						const uint tics = data.read24BitField;
 						const ulong timeBase = getTimeBase();
-						ptrn.timeToWait += nsecs(timeBase * tics);
+						ptrn.timeToWait += hnsecs(timeBase * tics);
 						if (!ptrn.timeToWait.isNegative) goto exitLoop;
 						break;
 					case OpCode.emit:			//MIDI data emit
