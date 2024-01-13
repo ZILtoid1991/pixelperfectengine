@@ -1640,7 +1640,7 @@ public class QM816 : AudioModule {
 			channels[ch].outLevels[1] = channels[ch].preset.masterBal;
 		} else {
 			channels[ch].outLevels[0] = channels[ch].preset.masterVol * sqrt(channels[ch].preset.masterBal);
-			channels[ch].outLevels[1] = channels[ch].preset.masterVol * (1.0 - sqrt(channels[ch].preset.masterBal));
+			channels[ch].outLevels[1] = channels[ch].preset.masterVol * sqrt(1.0 - channels[ch].preset.masterBal);
 		}
 		if (ch <= 7)
 			setChDeleg(channels[ch].preset.chCtrl, ch, channels[ch + 8].preset.chCtrl);
