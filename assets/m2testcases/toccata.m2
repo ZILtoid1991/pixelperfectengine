@@ -27,9 +27,18 @@ $[0]: pc 5 16
 $[0]: pc 6 16
 $[0]: pc 7 16
 ;bar 1
-$[0]: note 0 0x7FFF o:a-5
-$[0]: note 1 0x7FFF o:a-4
-wait o+t
+;$[0]: note 0 0x7FFF o:a-5
+;$[0]: note 1 0x7FFF o:a-4
+;wait o+t
+$[0]: note 0 0x7FFF i:a-5
+$[0]: note 1 0x7FFF i:a-4
+wait i
+$[0]: note 0 0x7FFF i:g-5
+$[0]: note 1 0x7FFF i:g-4
+wait i
+$[0]: note 0 0x7FFF s.:a-5
+$[0]: note 1 0x7FFF s.:a-4
+wait s.+t
 $[0]: note 0 0x7FFF i:g-5
 $[0]: note 1 0x7FFF i:g-4
 wait i
@@ -48,9 +57,18 @@ wait t
 $[0]: note 0 0x7FFF s:d-5
 $[0]: note 1 0x7FFF s:d-4
 wait s+s+o
-$[0]: note 0 0x7FFF o:a-4
-$[0]: note 1 0x7FFF o:a-3
-wait o+t
+;$[0]: note 0 0x7FFF o:a-4
+;$[0]: note 1 0x7FFF o:a-3
+;wait o+t
+$[0]: note 0 0x7FFF i:a-4
+$[0]: note 1 0x7FFF i:a-3
+wait i
+$[0]: note 0 0x7FFF i:g-4
+$[0]: note 1 0x7FFF i:g-3
+wait i
+$[0]: note 0 0x7FFF s.:a-4
+$[0]: note 1 0x7FFF s.:a-3
+wait s.+t
 $[0]: note 0 0x7FFF t:e-4
 $[0]: note 1 0x7FFF t:e-3
 wait t
@@ -63,13 +81,22 @@ wait t
 $[0]: note 0 0x7FFF s:d-4
 $[0]: note 1 0x7FFF s:d-3
 wait s+s+o
-$[0]: note 0 0x7FFF o:f-5
-$[0]: note 1 0x7FFF o:f-4
-wait o+t
+;$[0]: note 0 0x7FFF o:f-5
+;$[0]: note 1 0x7FFF o:f-4
+;wait o+t
 ;bar 2
-$[0]: note 0 0x7FFF o:a-3
-$[0]: note 1 0x7FFF o:a-2
-wait o+t
+;$[0]: note 0 0x7FFF o:a-3
+;$[0]: note 1 0x7FFF o:a-2
+;wait o+t
+$[0]: note 0 0x7FFF i:a-3
+$[0]: note 1 0x7FFF i:a-2
+wait i
+$[0]: note 0 0x7FFF i:g-3
+$[0]: note 1 0x7FFF i:g-2
+wait i
+$[0]: note 0 0x7FFF s.:a-3
+$[0]: note 1 0x7FFF s.:a-2
+wait s.+t
 $[0]: note 0 0x7FFF i:g-3
 $[0]: note 1 0x7FFF i:g-2
 wait i
@@ -120,11 +147,11 @@ $[0]: note 4 0x7FFF s:f#3
 wait o
 $[0]: nf 7 0x7FFF d-2
 wait q+o+s
+display BPM 200
 $[0]: note 0 0x7FFF s:c#4
 $[0]: note 1 0x7FFF s:c#3
 wait s
 ;bar 4
-display BPM 200
 $[0]: note 0 0x7FFF 3s:d-4
 $[0]: note 1 0x7FFF 3s:d-3
 wait 3s
