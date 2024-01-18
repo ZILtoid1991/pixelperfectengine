@@ -122,6 +122,7 @@ public M2File loadM2FromText(string src) {
 	enum Context {
 		init,
 		headerParse,
+		arrayParse,
 		metadataParse,
 		deviceParse,
 		patternParse,
@@ -159,6 +160,7 @@ public M2File loadM2FromText(string src) {
 	string parsedString;
 	string[] lines = src.splitLines;
 	PatternData[] ptrnData;
+	string[] arrayNames;
 	sizediff_t searchPatternByName(const string name) @nogc @safe pure nothrow const {
 		for (sizediff_t i = 0; i < ptrnData.length ; i++) {
 			if (ptrnData[i].name == name)
@@ -223,6 +225,10 @@ public M2File loadM2FromText(string src) {
 						break;
 				}
 				break;
+			case Context.arrayParse:
+				if (words[0] == "END") context = Context.init;
+				else result.songdata.arrays[$-1] ~= cast(uint)parsenum(words[0]);
+				break;
 			case Context.metadataParse:
 				if (words[0] == "END") context = Context.init;
 				break;
@@ -243,6 +249,11 @@ public M2File loadM2FromText(string src) {
 						break;
 					case "DEVLIST":
 						context = Context.deviceParse;
+						break;
+					case "ARRAY":
+						context = Context.arrayParse;
+						arrayNames ~= words[1];
+						result.songdata.arrays ~= [];
 						break;
 					case "PATTERN":
 						context = Context.patternParse;

@@ -48,6 +48,7 @@ public enum OpCode : ubyte {
 	emit_r		=	0x42,		///Emit command with value from register
 	cue			=	0x48,		///Set cue point/marker
 	trnsps		=	0x49,		///Transpose
+	array		=	0x4a,		///Array operation
 	ctrl		=	0xf0,		///Control command
 	display		=	0xff,		///Display command
 }
@@ -129,6 +130,14 @@ public enum SetEnvValCode : ushort {
 	setTimeMultLocal		=	0x00_01,
 	setTimeMultGlobal		=	0x00_02,
 }
+public enum ArrayOpCode : ubyte {
+	init,
+	read					=	0x01,
+	write					=	0x02,
+	readsat					=	0x03,
+	writesat				=	0x04,
+	length					=	0x05,
+}
 /**
  * Defines the time formats that are possible within the M2 format.
  */
@@ -187,6 +196,7 @@ public struct M2Song {
 	public ulong timebase;				///nsecs of a single tic
 	public ulong ticsPerSecs;			///Tics per second
 	public TreeMap!(uint, uint[]) ptrnData;
+	public uint[][] arrays;				///List of registered arrays
 	this (uint parPtrnNum, M2TimeFormat timefrmt, uint timeper, uint timeres) @safe nothrow {
 		ptrnSl.length = parPtrnNum;
 		final switch (timefrmt) with(M2TimeFormat) {
