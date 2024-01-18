@@ -4,6 +4,7 @@ import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.concrete.window;
+import pixelperfectengine.concrete.dialogs.filedialog;
 import pixelperfectengine.system.input;
 import pixelperfectengine.system.systemutility;
 import pixelperfectengine.system.file;
@@ -93,6 +94,7 @@ public class TestWindow : Window {
     RadioButtonGroup    radioButtonTestGr;
     ListView            listViewTest;
     Button              buttonTest0, buttonTest1;
+    Button              btn_fileDialog;
     VertScrollBar       vScrollBarTest;
     public this() {
         super(Box.bySize(0, 0, 848, 480), "Test");
@@ -121,7 +123,14 @@ public class TestWindow : Window {
         buttonTest0 = new Button("A", "", Box(205, 20, 205 + 39, 20 + 39));
         addElement(buttonTest0);
         buttonTest0.state = ElementState.Disabled;
-        
+        btn_fileDialog = new Button("Filedialog", "", Box.bySize(300, 20, 70, 20));
+        addElement(btn_fileDialog);
     }
+    private void btn_fileDialog_onClick(Event ev) {
+        handler.addWindow(new FileDialog("Test filedialog", "", &fileDialogEvent, 
+                [FileDialog.FileAssociationDescriptor("All files", ["*.*"])], "./"));
+    }
+    private void fileDialogEvent(Event ev) {
 
+    }
 }

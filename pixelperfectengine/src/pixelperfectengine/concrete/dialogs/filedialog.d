@@ -67,7 +67,7 @@ public class FileDialog : Window {
 		this.save = save;
 		this.onFileselect = onFileselect;
 		//al = a;
-		directory = absolutePath(startDir);
+		directory = buildNormalizedPath(absolutePath(startDir));
 		auto btnFrmt = getStyleSheet().getChrFormatting("button");
 		button_up = new Button(new Text(buttonTexts[0], btnFrmt),"up",Coordinate(4, 154, 54, 174));
 		button_up.onMouseLClick = &up;
