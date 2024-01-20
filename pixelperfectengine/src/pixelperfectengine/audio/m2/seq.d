@@ -8,6 +8,7 @@ public import pixelperfectengine.audio.base.config;
 import collections.treemap;
 
 import std.typecons : BitFlags;
+import pixelperfectengine.system.etc : max, min;
 import core.time : MonoTime;
 import midi2.types.structs;
 import midi2.types.enums;
@@ -180,10 +181,10 @@ public class SequencerM2 : Sequencer {
 						}
 						break;
 					case OpCode.chain_par:
-						initNewPattern((data.bytes[1]<<24) | data.hwords[1], PATTERN_SLOT_INACTIVE_ID);
+						initNewPattern(data.read24BitField, PATTERN_SLOT_INACTIVE_ID);
 						break;
 					case OpCode.chain_ser:
-						initNewPattern((data.bytes[1]<<24) | data.hwords[1], ptrn.id);
+						initNewPattern(data.read24BitField, ptrn.id);
 						ptrn.status.suspend = true;
 						return;
 					//Math operations on registers begin
@@ -348,13 +349,60 @@ public class SequencerM2 : Sequencer {
 						ptrn.localReg[CR]<<=1;		//Shift in new bit depending on compare result;
 						if (cmpRes) ptrn.localReg[CR] |= 1;
 						break;
+					case OpCode.array:
+						const uint arrayID = patternData[ptrn.position];
+						ptrn.position++;
+						switch (data.bytes[1]) {
+							case ArrayOpCode.read:
+								const size_t arrayPos = 
+										(data.bytes[3] & 0x80 ? songdata.globalReg[data.bytes[3]&0x7F] : ptrn.localReg[data.bytes[3]]) %
+										songdata.arrays[arrayID].length;
+								const uint val = songdata.arrays[arrayID][arrayPos];
+								if (data.bytes[2] & 0x80) songdata.globalReg[data.bytes[2]&0x7F] = val;
+								else ptrn.localReg[data.bytes[2]] = val;
+								break;
+							case ArrayOpCode.readsat:
+								const size_t arrayPos = min
+										((data.bytes[3] & 0x80 ? songdata.globalReg[data.bytes[3]&0x7F] : ptrn.localReg[data.bytes[3]]), 
+										songdata.arrays[arrayID].length - 1);
+								const uint val = songdata.arrays[arrayID][arrayPos];
+								if (data.bytes[2] & 0x80) songdata.globalReg[data.bytes[2]&0x7F] = val;
+								else ptrn.localReg[data.bytes[2]] = val;
+								break;
+							case ArrayOpCode.write:
+								const size_t arrayPos = 
+										(data.bytes[3] & 0x80 ? songdata.globalReg[data.bytes[3]&0x7F] : ptrn.localReg[data.bytes[3]]) %
+										songdata.arrays[arrayID].length;
+								if (data.bytes[2] & 0x80) songdata.arrays[arrayID][arrayPos] = songdata.globalReg[data.bytes[2]&0x7F];
+								else songdata.arrays[arrayID][arrayPos] = ptrn.localReg[data.bytes[2]];
+								break;
+							case ArrayOpCode.writesat:
+								const size_t arrayPos = min
+										((data.bytes[3] & 0x80 ? songdata.globalReg[data.bytes[3]&0x7F] : ptrn.localReg[data.bytes[3]]), 
+										songdata.arrays[arrayID].length - 1);
+								if (data.bytes[2] & 0x80) songdata.arrays[arrayID][arrayPos] = songdata.globalReg[data.bytes[2]&0x7F];
+								else songdata.arrays[arrayID][arrayPos] = ptrn.localReg[data.bytes[2]];
+								break;
+							case ArrayOpCode.length:
+								if (data.bytes[2] & 0x80) songdata.globalReg[data.bytes[2]&0x7F] = cast(uint)songdata.arrays[arrayID].length;
+								else ptrn.localReg[data.bytes[2]] = cast(uint)songdata.arrays[arrayID].length;
+								break;
+							default:
+								errors.unrecognizedCode = true;
+								if (status.cfg_StopOnError) {
+									status.play = false;
+									return;
+								}
+								break;
+						}
+						break;
 					case OpCode.chain:
 						ptrn.status.isRunning = false;
 						ptrn.status.hasEnded = true;
-						initNewPattern((data.bytes[1]<<24) | data.hwords[1], PATTERN_SLOT_INACTIVE_ID);
+						initNewPattern(data.read24BitField, PATTERN_SLOT_INACTIVE_ID);
 						return;
 					case OpCode.cue:
-						ptrn.lastCue = (data.bytes[1]<<24) | data.hwords[1];
+						ptrn.lastCue = data.read24BitField;
 						break;
 					case OpCode.trnsps:
 						DeviceData* dd = modTrgt.ptrOf(data.hwords[1]);
