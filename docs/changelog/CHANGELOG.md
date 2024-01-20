@@ -1,3 +1,33 @@
+# 0.11.0-alpha
+
+## Introduction of the M2 support
+
+Due to the lack of an official (and unofficial) MIDI 2.0 capable file format, I decided to take the matters in my hand and implement my own. In addition to MIDI 2.0, it also has scripting support that could be used for adaptive soundtracks.
+
+As of now, support is quite preliminary, with certain features not fully implemented and/or tested. In the future, external interaction with arrays and global registers, as well as external calls to patterns.
+
+## Dropping the default Lua engine
+
+Due to inability to get it working together with D in any meaningful way, the Lua engine had to be dropped.
+
+At one point, I got it working for some part, but then it had issues with classes passed through LightUserData, once removed, the Lua code stopped compiling.
+
+Currently, I have two options:
+1. Look for another Lua engine, but most don't implement integers since "floating-point can represent them".
+2. Look for another scripting language. Wren even has an official D port, but no integers. Same with most other scripting languages. Integer support with no floating-point would be preferable to the other way around. Some are not very D friendly either, and would introduce complicated build tools, which are extremely difficult to use.
+3. Add a popular VM to allow many other languages, including D itself with some, but many are so bloated that their DLLs are larger than the whole project.
+4. Port a pre-exiting one to D, that would otherwise involve complicated build processes. This would allow one popular Python implementation to be ported. However, this might need relicensing of my code, which I was thinking about already.
+5. Write a lightweight VM myself. I already done something like that with M2, all I need is to add heap allocation support, support for function calls, etc. The harder part is to implement compilers for it, also it would take precious time from other parts of the engine, which is already suffering from feature creep relative to my time I can invest into it.
+
+## Bug fixes
+
+* Fix to popup menus. Event class now contains the number of selected item, previously due to an overlooked bug, it returned the mouse position.
+* Fix to file dialogs. Now they can exit the root directory.
+
+## Known issues
+
+* Test 3: Button "Filedialog" does nothing as of now.
+
 # 0.10.6
 
 * Fixed a bug in `PopUpMenu.passMCE`.
@@ -12,7 +42,7 @@
 
 * Added separators for pop up menus.
 * Removed some ancient code from the pop up menu rendering and input handling.
-* Some minor work on the scripting engine (still not in testing phase :( ).
+* Some minor work on the scripting engine (still not in testing phase).
 
 # 0.10.3
 

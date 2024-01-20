@@ -27,22 +27,18 @@
 
 Should I relicense the engine to the MIT license?
 
-## Fix lua scripting
+## Get a better scripting engine
 
-Current state of Lua scripting:
+Due to inability to get it working together with D in any meaningful way, the Lua engine had to be dropped.
 
-* Initialization works.
-* Automatic deinitialization works through D garbage collection.
-* Passing class references as light userdata works.
-* Class references can be recovered from light userdata.
-* Calling class member functions from said class references have no effect, neither by hand-writing said functions, nor by using the class member binding template. Also does not create any errors on D side.
-* LuaVar seems to work. However the metaprogramming used to make it useful either resets it to zero, some extra steps I don't know are missing, or undetected memory leakage happens to it. Once in the template functions, everything goes wrong!
+At one point, I got it working for some part, but then it had issues with classes passed through LightUserData, once removed, the Lua code stopped compiling.
 
-### Candidate 3rd party library 'Lumars'
-
-The biggest pro for it is it's a very nice to use library. However, it only supports the now obsolete 5.1 version of Lua, which only has floating point numbers instead of fixed point, which makes a lot of things in my engine hard to support and account for.
-
-Also it's under the MIT license. I can relicense my engine to MIT (was thinking about it), but Boost would be the best.
+Currently, I have two options:
+1. Look for another Lua engine, but most don't implement integers since "floating-point can represent them".
+2. Look for another scripting language. Wren even has an official D port, but no integers. Same with most other scripting languages. Integer support with no floating-point would be preferable to the other way around. Some are not very D friendly either, and would introduce complicated build tools, which are extremely difficult to use.
+3. Add a popular VM to allow many other languages, including D itself with some, but many are so bloated that their DLLs are larger than the whole project.
+4. Port a pre-exiting one to D, that would otherwise involve complicated build processes. This would allow one popular Python implementation to be ported. However, this might need relicensing of my code, which I was thinking about already.
+5. Write a lightweight VM myself. I already done something like that with M2, all I need is to add heap allocation support, support for function calls, etc. The harder part is to implement compilers for it, also it would take precious time from other parts of the engine, which is already suffering from feature creep relative to my time I can invest into it.
 
 ## Path management
 
@@ -66,7 +62,7 @@ Mostly finishing iota to a state it can replace the current SDL functionality.
 
 ### Things probably need to be changed before, through, or after the GPU transition
 
-* Tile rendering needs to be figured out yet again. Either needs to stay on the CPU, completely offloaded to the GPU, or some hybrid approach. The GPU approach would limit the scanline effects.
+* Tile rendering needs to be figured out yet again. Either needs to stay on the CPU, completely offloaded to the GPU, or some hybrid approach. ~~The GPU approach would limit the scanline effects.~~ Scanline effects can be done with a special texture and rendering a larger size of the screen.
 * In order to better take advantage of the GPU, the Tile Format has to be rewritten, probably to 64 bit words. This would give the user extra bitflags, per-tile alpha channel, per-tile compositing function, flags for rotation, etc.
 
 ### Complications
@@ -75,4 +71,4 @@ The Transformable Tile Layer likely cannot be done without either heavy compromi
 
 ## Logging
 
-Add a logger to record events and errors.
+Add a logger to record events and errors (Do it by 0.11.0!).
