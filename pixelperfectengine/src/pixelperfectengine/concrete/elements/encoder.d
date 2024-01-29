@@ -58,6 +58,7 @@ public class SlidingEncoder : WindowElement {
 		return _value;
 	}
 	override public void draw() {
+		if (parent is null || state == ElementState.Hidden) return;
 		parent.bitBLT(position.cornerUL, background);
 		const Point sliderpos = Point(position.left + track.left, position.top + track.top + cast(uint)(valRatio * _value));
 		parent.bitBLT(sliderpos, slider);

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ETML>
+<etml>
+    <text id="multilinedialog">
+        This is a multiline dialog. <br />
+        This dialog has multiple lines. <br />
+    </text>
+    <text id="multilinelabel">
+        This is a multiline label. <br />
+        This label has multiple lines.
+    </text>
+</etml>

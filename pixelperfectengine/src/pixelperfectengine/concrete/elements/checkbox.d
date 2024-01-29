@@ -51,6 +51,7 @@ public class CheckBox : WindowElement, ISmallButton {
 		isChecked = checked;
 	}
 	public override void draw() {
+		if (parent is null || state == ElementState.Hidden) return;
 		parent.clearArea(position);
 		StyleSheet ss = getStyleSheet;
 		Bitmap8Bit icon = isChecked ? ss.getImage(iconChecked) : ss.getImage(iconUnchecked);

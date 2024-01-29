@@ -79,7 +79,7 @@ public class TextBox : WindowElement, TextInputListener {
 		super.passMCE(mec, mce);
 	}
 	public override void draw(){
-		if (parent is null) return;
+		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		const int textPadding = ss.drawParameters["TextSpacingSides"];
 		with (parent) {

@@ -33,7 +33,7 @@ public class SmallButton : WindowElement, ISmallButton {
 		
 	}
 	public override void draw() {
-		if (parent is null) return;
+		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		Bitmap8Bit icon = isPressed ? ss.getImage(iconPressed) : ss.getImage(iconUnpressed);
 		parent.bitBLT(position.cornerUL, icon);

@@ -32,7 +32,7 @@ public class Button : WindowElement {
 		//output = new BitmapDrawer(coordinates.width, coordinates.height);
 	}
 	public override void draw() {
-		if (parent is null) return;
+		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		parent.clearArea(position);
 		if (isPressed) {

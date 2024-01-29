@@ -15,9 +15,11 @@ public class Label : WindowElement {
 		this.source = source;
 	}
 	public override void draw() {
+		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		parent.drawFilledBox(position, ss.getColor("window"));
-		parent.drawTextSL(position, text, Point(0,0));
+		//parent.drawTextSL(position, text, Point(0,0));
+		parent.drawTextML(position, text, Point(0,0));
 		if (isFocused) {
 			const int textPadding = ss.drawParameters["horizTextPadding"];
 			parent.drawBoxPattern(position - textPadding, ss.pattern["blackDottedLine"]);

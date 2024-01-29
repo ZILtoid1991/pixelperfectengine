@@ -35,7 +35,11 @@ public class Panel : WindowElement, ElementContainer {
 		}
 		return super.state(state);
 	}
+	public override ElementState state() @property @nogc @safe const pure nothrow {
+		return super.state();
+	}
 	public override void draw() {
+		if (parent is null || state() == ElementState.Hidden) return;
 		foreach (key; subElems) {
 			key.draw;
 		}

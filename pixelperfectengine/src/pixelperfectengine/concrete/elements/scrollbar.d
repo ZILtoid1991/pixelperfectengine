@@ -99,7 +99,7 @@ public class VertScrollBar : ScrollBar {
 		this.maxValue = maxValue;
 	}
 	public override void draw(){
-		if (parent is null) return;
+		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		//draw background
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
@@ -190,7 +190,7 @@ public class HorizScrollBar : ScrollBar {
 		this.maxValue = maxValue;
 	}
 	public override void draw(){
-		if (parent is null) return;
+		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		//draw background
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));

@@ -14,6 +14,7 @@ public enum ElementState : ubyte {
 	Enabled				=	0,	///Means the element is enabled.
 	DisabledWOGray		=	1,	///Disabled without grayout, should be only used by elements contained within other elements.
 	Disabled			=	2,	///Means the element is disabled.
+	Hidden				=	3,	///Element isn't drawn on the screen.
 }
 /**
  * All Window elements inherit from this class. Provides basic interfacing with containers.

@@ -37,6 +37,7 @@ public class MenuBar : WindowElement {
 		}
 	}
 	public override void draw() {
+		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		with (parent) {
 			drawFilledBox(position, ss.getColor("window"));

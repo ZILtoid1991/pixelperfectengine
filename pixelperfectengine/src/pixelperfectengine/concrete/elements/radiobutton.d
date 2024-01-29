@@ -34,6 +34,7 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 			group.add(this);
 	}
 	override public void draw() {
+		if (parent is null || state == ElementState.Hidden) return;
 		parent.clearArea(position);
 		StyleSheet ss = getStyleSheet();
 		Bitmap8Bit icon = isChecked ? ss.getImage(iconLatched) : ss.getImage(iconUnlatched);

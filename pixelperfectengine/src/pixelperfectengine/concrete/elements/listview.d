@@ -323,7 +323,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		return value;
 	}
 	override public void draw() {
-		if (parent is null) return;
+		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet;
 		if (flags & TEXTINPUT_EN) { //only redraw the editing cell in this case
 			const int textPadding = ss.drawParameters["TextSpacingSides"];
