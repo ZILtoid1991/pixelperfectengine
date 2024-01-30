@@ -5,8 +5,7 @@ module pixelperfectengine.system.systemutility;
  * Pixel Perfect Engine, system.systemUtility module
  */
 
-public immutable dstring engineVer = "0.10.0";	///Defines engine version
-public immutable dstring sdlVer = "2.0.5";		///Defines SDL version
+public immutable dstring engineVer = "0.11.0";	///Defines engine version
 version(X86){
 	public immutable dstring sysInfo = "x86";	///Defines what CPU architecture the software is being built for.
 }else version(X86_64){
@@ -30,31 +29,15 @@ version(Windows){
 	public immutable dstring osInfo = "UNDEFINED";
 }
 version(X86){
-	version(NO_SSE2){
-		public immutable dstring renderInfo = "CPUBLiT/MMX";
-	}else{
-		public immutable dstring renderInfo = "CPUBLiT/SSE2";	///Renderer information.
-	}
+	public immutable dstring renderInfo = "CPUBLiT/SSE2";	///Renderer information.
 }else version(X86_64){
-	version(USE_AVX){
-		public immutable dstring renderInfo = "CPUBLiT/AVX";
-	}else{
-		public immutable dstring renderInfo = "CPUBLiT/SSE2";
-	}
+	public immutable dstring renderInfo = "CPUBLiT/SSE2";
 }else version(ARM){
-	version(NEON){
-		public immutable dstring renderInfo = "CPUBLiT/NEON";
-	}else{
-		public immutable dstring renderInfo = "Slow";
-	}
+	public immutable dstring renderInfo = "CPUBLiT/NEON";
 }else version(AArch64){
-	version(NEON){
-		public immutable dstring renderInfo = "CPUBLiT/NEON";
-	}else{
-		public immutable dstring renderInfo = "Slow";
-	}
+	public immutable dstring renderInfo = "CPUBLiT/NEON";
 }else{
-	public immutable dstring renderInfo = "Slow";
+	public immutable dstring renderInfo = "CPUBLiT";
 }
 
 
@@ -71,8 +54,9 @@ public void INIT_CONCRETE() {
 	import pixelperfectengine.graphics.fontsets;
 	import pixelperfectengine.graphics.bitmap;
 	import std.stdio;
-	Fontset!Bitmap8Bit defaultFont = new Fontset!Bitmap8Bit(File("../system/OpenSans-reg-14.fnt"), "../system/");
-	Fontset!Bitmap8Bit fixedWidthFont = new Fontset!Bitmap8Bit(File("../system/scp-14-reg.fnt"), "../system/");
+	const string sysPath = getPathToAsset("/system/");
+	Fontset!Bitmap8Bit defaultFont = new Fontset!Bitmap8Bit(File(sysPath ~ "/OpenSans-reg-14.fnt"), sysPath);
+	Fontset!Bitmap8Bit fixedWidthFont = new Fontset!Bitmap8Bit(File(sysPath ~ "../system/scp-14-reg.fnt"), sysPath);
 	alias ChrFormat = CharacterFormattingInfo!Bitmap8Bit;
 	Bitmap8Bit[] ssOrigin = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE0.tga", 16, 16);
 	StyleSheet ss = new StyleSheet();
@@ -94,7 +78,7 @@ public void INIT_CONCRETE() {
 	ss.setImage(ssOrigin[13],"leftArrowB");
 	ss.setImage(ssOrigin[14],"rightArrowA");
 	ss.setImage(ssOrigin[15],"rightArrowB");
-	ss.setImage(loadBitmapFromFile!Bitmap8Bit("../system/concreteGUIDisable.tga"), "ElementDisabledPtrn");
+	ss.setImage(loadBitmapFromFile!Bitmap8Bit(sysPath ~ "/concreteGUIDisable.tga"), "ElementDisabledPtrn");
 	ss.addFontset(defaultFont, "default");
 	ss.addFontset(fixedWidthFont, "fixedWidth");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.leftJustify, 0, 15, 2),"default");

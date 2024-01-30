@@ -9,6 +9,7 @@ import std.file;
 import std.path;
 import std.stdio;
 import std.conv : to;
+import std.algorithm.searching : startsWith;
 import core.stdc.string : memcpy;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.exc;
@@ -225,33 +226,19 @@ public Color[] loadPaletteFromImage (Image img) {
 	}
 	return palette;
 }
-package immutable string pathRoot;
+///Path to the root folder, where assets etc. are stored.
+public immutable string pathRoot;
+///Path to the executable folder, null if not eveilable for security reasons.
+public immutable string pathExec;
 shared static this () {
 	import std.path;
 	import std.file : exists;
-	string path;
-	version (Posix) {
-		import core.sys.posix.unistd : getcwd;
-		import std.string : fromStringz;
-		{
-			char[2048] _path;
-			getcwd(_path.ptr, _path.length);
-			path = fromStringz(_path).idup;
-		}
-	} else version (Windows) {
-		import core.sys.windows.windows : GetCurrentDirectoryW, DWORD;
-		import std.string : fromStringz;
-		import std.utf : toUTF8;
-		{
-			wchar[2048] _path;
-			GetCurrentDirectoryW(cast(DWORD)_path.length, _path.ptr);
-			path = toUTF8(fromStringz(_path.ptr).idup);
-		}
-	} else static assert (0, "Please contact me about implementation!");
-	if (exists(buildNormalizedPath(path, "../system/")))
-		pathRoot = "..";
-	else if (exists(buildNormalizedPath(path, "./system/")))
-		pathRoot = ".";
+	pathExec = thisExePath();	//Note: once we go to consoles/phones, we might need to make more 
+	string pathToExec = pathExec[0..$-baseName(pathExec).length];
+	if (exists(buildNormalizedPath(pathToExec, "../system/")))
+		pathRoot = buildNormalizedPath(pathToExec, "../system/");
+	else if (exists(buildNormalizedPath(pathToExec, "./system/")))
+		pathRoot = buildNormalizedPath(pathToExec, "./system/");
 	else {
 		debug assert(0, "Folder /system/ does not exist! Check your development environment and the documentation for info.");
 		else assert(0, "Folder /system/ does not exist! Please reinstall the software or contact the developer if that does 
@@ -259,20 +246,24 @@ shared static this () {
 		}
 }
 /** 
- * 
+ * Builds a path to the language file.
  * Params:
- *   country = 
- *   language = 
- *   filename = 
+ *   country = Country code.
+ *   language = Language code.
+ *   fileext = Extension of the language file
  * Returns: 
  */
-public string getPathToLocalizationFile (string country, string language, string filename) @safe pure nothrow {
-	if (filename[0] == '.') filename = filename[1..$];
-	return pathRoot ~ "/local/" ~ country ~ "-" ~ language ~ "." ~ filename;
+public string getPathToLocalizationFile (string country, string language, string fileext) @safe pure nothrow {
+	if (fileext[0] == '.') fileext = fileext[1..$];
+	return pathRoot ~ "/local/" ~ country ~ "-" ~ language ~ "." ~ fileext;
 }
-///NOTE: probably redo it for 1.0.0, or make a system that bypasses it.
-public string getPathToAsset (string path) @safe pure nothrow {
-	return pathRoot ~ "/" ~ path;
+///Builds a path to the asset path.
+public string getPathToAsset (string path) @safe pure {
+	if (startsWith(path, "%PATH%")) path = path[6..$];
+	else if (startsWith(path, "../", "..\\")) path = path[3..$];
+	//else if (startsWith(path, ["./", ".\\"])) path = path[2..$];
+	 
+	return buildNormalizedPath(pathRoot ~ dirSeparator ~ path);
 }
 /**
  * Implements the RIFF serialization system
