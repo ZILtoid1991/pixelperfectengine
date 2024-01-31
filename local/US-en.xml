@@ -9,4 +9,7 @@
         This is a multiline label. <br />
         This label has multiple lines.
     </text>
+    <text id="singlelinelabel">
+        This is a single line label.
+    </text>
 </etml>
