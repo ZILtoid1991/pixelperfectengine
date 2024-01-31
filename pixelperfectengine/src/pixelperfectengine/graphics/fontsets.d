@@ -13,6 +13,7 @@ import dimage;
 import collections.treemap;
 import collections.sortedlist;
 static import std.stdio;
+import std.path : dirSeparator;
 /**
  * Stores the letters and all the data associated with the font, also has functions related to text lenght and line formatting. Supports variable letter width.
  * TODO: Add ability to load from dpk files through the use of vfiles.
@@ -70,7 +71,7 @@ public class Fontset(T)
 		_size = fontinfo.info.fontSize;
 		name = fontinfo.info.fontName;
 		foreach (path; fontinfo.pages) {
-			std.stdio.File pageload = std.stdio.File(basepath ~ path);
+			std.stdio.File pageload = std.stdio.File(basepath ~ dirSeparator ~ path);
 			switch (extension(path)) {
 				case ".tga", ".TGA":
 					TGA fontPage = TGA.load(pageload);

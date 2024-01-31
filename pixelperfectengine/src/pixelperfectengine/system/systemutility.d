@@ -54,11 +54,12 @@ public void INIT_CONCRETE() {
 	import pixelperfectengine.graphics.fontsets;
 	import pixelperfectengine.graphics.bitmap;
 	import std.stdio;
-	const string sysPath = getPathToAsset("/system/");
-	Fontset!Bitmap8Bit defaultFont = new Fontset!Bitmap8Bit(File(sysPath ~ "/OpenSans-reg-14.fnt"), sysPath);
-	Fontset!Bitmap8Bit fixedWidthFont = new Fontset!Bitmap8Bit(File(sysPath ~ "../system/scp-14-reg.fnt"), sysPath);
+	import std.path : dirSeparator;
+	const string sysPath = getPathToAsset(dirSeparator ~ "system");
+	Fontset!Bitmap8Bit defaultFont = new Fontset!Bitmap8Bit(File(sysPath ~ dirSeparator ~ "OpenSans-reg-14.fnt"), sysPath);
+	Fontset!Bitmap8Bit fixedWidthFont = new Fontset!Bitmap8Bit(File(sysPath ~ dirSeparator ~ "scp-14-reg.fnt"), sysPath);
 	alias ChrFormat = CharacterFormattingInfo!Bitmap8Bit;
-	Bitmap8Bit[] ssOrigin = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE0.tga", 16, 16);
+	Bitmap8Bit[] ssOrigin = loadBitmapSheetFromFile!Bitmap8Bit(sysPath ~ dirSeparator ~ "concreteGUIE0.tga", 16, 16);
 	StyleSheet ss = new StyleSheet();
 	ss.setImage(ssOrigin[0],"closeButtonA");
 	ss.setImage(ssOrigin[1],"closeButtonB");
@@ -78,7 +79,7 @@ public void INIT_CONCRETE() {
 	ss.setImage(ssOrigin[13],"leftArrowB");
 	ss.setImage(ssOrigin[14],"rightArrowA");
 	ss.setImage(ssOrigin[15],"rightArrowB");
-	ss.setImage(loadBitmapFromFile!Bitmap8Bit(sysPath ~ "/concreteGUIDisable.tga"), "ElementDisabledPtrn");
+	ss.setImage(loadBitmapFromFile!Bitmap8Bit(sysPath ~ dirSeparator ~ "concreteGUIDisable.tga"), "ElementDisabledPtrn");
 	ss.addFontset(defaultFont, "default");
 	ss.addFontset(fixedWidthFont, "fixedWidth");
 	ss.addChrFormatting(new ChrFormat(defaultFont, 0x1f, FormattingFlags.leftJustify, 0, 15, 2),"default");
