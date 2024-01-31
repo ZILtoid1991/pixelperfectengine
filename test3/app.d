@@ -96,6 +96,8 @@ public class TestWindow : Window {
     Button              buttonTest0, buttonTest1;
     Button              btn_fileDialog;
     VertScrollBar       vScrollBarTest;
+    Label               singleLineLabel;
+    Label               multiLineLabel;
     public this() {
         super(Box.bySize(0, 0, 848, 480), "Test");
         panelTest = new Panel("Selections", "", Box(5, 20, 200, 200));
