@@ -235,10 +235,10 @@ shared static this () {
 	import std.file : exists;
 	pathExec = thisExePath();	//Note: once we go to consoles/phones, we might need to make more 
 	string pathToExec = pathExec[0..$-baseName(pathExec).length];
-	if (exists(buildNormalizedPath(pathToExec, "../system/")))
-		pathRoot = buildNormalizedPath(pathToExec, "../system/");
-	else if (exists(buildNormalizedPath(pathToExec, "./system/")))
-		pathRoot = buildNormalizedPath(pathToExec, "./system/");
+	if (exists(buildNormalizedPath(pathToExec, "../system/")))	//Inside of a bin-[arch]-[os] folder
+		pathRoot = buildNormalizedPath(pathToExec, "../");
+	else if (exists(buildNormalizedPath(pathToExec, "./system/")))	//Outside of a bin-[arch]-[os] folder
+		pathRoot = buildNormalizedPath(pathToExec);
 	else {
 		debug assert(0, "Folder /system/ does not exist! Check your development environment and the documentation for info.");
 		else assert(0, "Folder /system/ does not exist! Please reinstall the software or contact the developer if that does 
@@ -250,7 +250,7 @@ shared static this () {
  * Params:
  *   country = Country code.
  *   language = Language code.
- *   fileext = Extension of the language file
+ *   fileext = Extension/rest of the language file
  * Returns: 
  */
 public string getPathToLocalizationFile (string country, string language, string fileext) @safe pure nothrow {
