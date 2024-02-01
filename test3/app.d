@@ -10,6 +10,7 @@ import pixelperfectengine.system.systemutility;
 import pixelperfectengine.system.file;
 import pixelperfectengine.system.common;
 import pixelperfectengine.system.timer;
+import pixelperfectengine.system.lang.textparser;
 
 import core.thread;
 import std.conv;
@@ -32,6 +33,7 @@ public class TestElements : InputListener, SystemEventListener {
     WindowHandler		wh;
     InputHandler        ih;
     bool                isRunning, flipScreen;
+    TextParser          txtParser;
 
     public this() {
         sprtL = new SpriteLayer(RenderingMode.Copy);
@@ -98,7 +100,7 @@ public class TestWindow : Window {
     VertScrollBar       vScrollBarTest;
     Label               singleLineLabel;
     Label               multiLineLabel;
-    public this() {
+    public this(Text[string] lang) {
         super(Box.bySize(0, 0, 848, 480), "Test");
         panelTest = new Panel("Selections", "", Box(5, 20, 200, 200));
         addElement(panelTest);
