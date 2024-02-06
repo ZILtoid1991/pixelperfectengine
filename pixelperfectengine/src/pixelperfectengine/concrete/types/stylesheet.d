@@ -127,6 +127,7 @@ public class StyleSheet{
 		drawParameters["PopUpLabelHorizPadding"] = 2;
 		drawParameters["PopUpLabelVertPadding"] = 2;
 
+		drawParameters["defDialogPadding"] = 10;
 
 		pattern["blackDottedLine"] = [0x1f, 0x1f, 0x10, 0x10];
 	}
