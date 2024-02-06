@@ -45,6 +45,7 @@ public class PresetEditor : Window {
 		addElement(listView_presets);
 		listView_presets.onItemSelect = &listView_presets_onSelect;
 		listView_presets.onTextInput = &listView_presets_onTextEdit;
+		listView_presets.onItemAdd = &listView_presets_onItemAdd;
 		listView_values.editEnable = true;
 		addElement(checkBox_Globals);
 		checkBox_Globals.onToggle = &checkBox_Globals_onToggle;
@@ -126,9 +127,9 @@ public class PresetEditor : Window {
 		SmallButton sender = cast(SmallButton)ev.sender;
 		switch (sender.getSource) {
 			case "add":
-				listView_presets ~= new ListViewItem(16, ["!", "!", ""], 
-						[TextInputFieldType.DecimalP, TextInputFieldType.DecimalP, TextInputFieldType.Text]);
-				listView_presets.refresh();
+				listView_presets.insertAndEdit(0, new ListViewItem(16, ["!", "!", ""], 
+						[TextInputFieldType.DecimalP, TextInputFieldType.DecimalP, TextInputFieldType.Text]));
+				//listView_presets.refresh();
 				break;
 			case "remove":
 				if (presetID == 1<<21)
@@ -152,6 +153,15 @@ public class PresetEditor : Window {
 					(preset<<24) | (bank & 0x7F) | ((bank>>7)<<8));
 			/* editedModule.midiReceive(UMP(MessageType.MIDI2, 0, MIDI2_0Cmd.PrgCh, 0), 
 					((presetID & 127)<<24) | ((presetID>>7) & 0x7F) | ((presetID>>14)<<8)); */
+		}
+	}
+	protected void listView_presets_onItemAdd(Event ev) {
+		ListViewItem item = cast(ListViewItem)ev.aux;
+		if (item[0].getText != "!" && item[1].getText != "!") {
+			const uint bank = item[0].getText().to!uint;
+			const uint preset = item[1].getText().to!uint;
+			presetID = preset | (bank<<7);
+			presetName = item[2].getText().toUTF8;
 		}
 	}
 	protected void listView_presets_onTextEdit(Event ev) {

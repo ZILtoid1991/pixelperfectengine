@@ -160,11 +160,12 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		windowing = new SpriteLayer(RenderingMode.Copy);
 		//windowing.addSprite(new Bitmap8Bit(848, 480), -65_536, 0, 0);
 		wh = new WindowHandler(1696,960,848,480,windowing);
-		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
+		mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")));
 		mainRaster.addLayer(windowing, 0);
 		INIT_CONCRETE();
 		{
-			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUI_ADK.tga", 16, 16);
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit(
+					getPathToAsset("/system/concreteGUI_ADK.tga"), 16, 16);
 			globalDefaultStyle.setImage(customGUIElems[6], "newA");
 			globalDefaultStyle.setImage(customGUIElems[7], "newB");
 			globalDefaultStyle.setImage(customGUIElems[8], "saveA");
@@ -191,7 +192,8 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[29], "macroB");
 		}
 		{
-			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit("../system/concreteGUIE2.tga", 16, 16);
+			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit(
+					getPathToAsset("/system/concreteGUIE2.tga"), 16, 16);
 			globalDefaultStyle.setImage(customGUIElems[0], "playA");
 			globalDefaultStyle.setImage(customGUIElems[1], "playB");
 			globalDefaultStyle.setImage(customGUIElems[2], "stopA");

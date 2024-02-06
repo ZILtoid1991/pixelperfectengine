@@ -19,6 +19,7 @@ public class ModuleRouter : Window {
 	Button button_midiRout;
 	Button button_remNode;
 	AudioDevKit adk;
+	string[2][] moduleList;
 	public this(AudioDevKit adk){
 		super(Box(0, 16, 640, 480), "Modules and Routing");
 		listView_modules = new ListView(new ListViewHeader(16, [256, 256], ["Type", "Name"]), null, "listView_modules", 
@@ -40,10 +41,12 @@ public class ModuleRouter : Window {
 		button_midiRout.onMouseLClick = &button_midiRout_onClick;
 		listView_modules.editEnable = true;
 		listView_modules.onTextInput = &listView_modules_onTextEdit;
+		listView_modules.onItemAdd = &listView_modules_onItemAdd;
 		listView_modules.onItemSelect = &listView_modules_onItemSelect;
 		listView_routing.editEnable = true;
 		listView_routing.multicellEditEnable = true;
-		listView_routing.onTextInput = &listView_routing_onTextEdit;
+		//listView_routing.onTextInput = &listView_routing_onTextEdit;
+		listView_routing.onItemAdd = &listView_modules_onItemAdd;
 		addElement(listView_modules);
 		addElement(listView_routing);
 		addElement(button_addMod);
@@ -70,7 +73,7 @@ public class ModuleRouter : Window {
 	}
 	public void refreshModuleList() {
 		ModuleConfig mcfg = adk.mcfg;
-		string[2][] moduleList = mcfg.getModuleList;
+		moduleList = mcfg.getModuleList;
 		listView_modules.clear();
 		foreach (string[2] key; moduleList) {
 			listView_modules ~= new ListViewItem(16, [key[0].to!dstring, key[1].to!dstring,], 
@@ -97,21 +100,27 @@ public class ModuleRouter : Window {
 	}
 	private void onModuleTypeSelect(Event e) {
 		MenuEvent me = cast(MenuEvent)e;
-		listView_modules ~= new ListViewItem(16, [me.itemSource.to!dstring, "Rename me!"], 
-				[TextInputFieldType.None, TextInputFieldType.ASCIIText]);
-		listView_modules.refresh();
+		listView_modules.insertAndEdit(0, new ListViewItem(16, [me.itemSource.to!dstring, "Rename me!"], 
+				[TextInputFieldType.None, TextInputFieldType.ASCIIText]));
+		//listView_modules.refresh();
 		//adk.eventStack.addToTop(new AddModuleEvent(adk.mcfg, me.itemSource, me.itemSource));
 	}
 	private void button_addNode_onClick(Event e) {
-		listView_routing ~= new ListViewItem(16, ["!NONE!", "!NONE!"], 
-				[TextInputFieldType.ASCIIText, TextInputFieldType.ASCIIText]);
-		listView_routing.refresh();
+		listView_routingnew.insertAndEdit(0, ListViewItem(16, ["!NONE!", "!NONE!"], 
+				[TextInputFieldType.ASCIIText, TextInputFieldType.ASCIIText]));
+		//listView_routing.refresh();
 	}
 	private void button_sampleman_onClick(Event e) {
 		import test1.sampleman;
 		adk.wh.addWindow(new SampleMan(adk));
 	}
 	private void listView_modules_onTextEdit(Event e) {
+		ListViewItem item = cast(ListViewItem)e.aux;
+		adk.eventStack.addToTop(new RenameModuleEvent(adk.mcfg, moduleList[1][listView_modules.value], 
+				item[1].getText().to!string));
+		moduleList[1][listView_modules.value] = item[1].getText().to!string;
+	}
+	private void listView_modules_onItemAdd(Event e) {
 		//CellEditEvent ce = cast(CellEditEvent)e;
 		ListViewItem item = cast(ListViewItem)e.aux;
 		adk.eventStack.addToTop(new AddModuleEvent(adk.mcfg, item[0].getText().to!string, item[1].getText().to!string));
@@ -120,7 +129,7 @@ public class ModuleRouter : Window {
 		import test1.midirout;
 		handler.addWindow(new MIDIRouting(adk.mcfg));
 	}
-	private void listView_routing_onTextEdit(Event e) {
+	private void listView_routing_onItemAdd(Event e) {
 		ListViewItem item = cast(ListViewItem)e.aux;
 		if (item[0].getText != "!NONE!" && item[1].getText != "!NONE!") {
 			adk.eventStack.addToTop(new AddRoutingNodeEvent(adk.mcfg, item[0].getText().to!string, item[1].getText().to!string));
