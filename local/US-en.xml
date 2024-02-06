@@ -6,8 +6,8 @@
         This dialog has multiple lines. <br />
     </text>
     <text id="multilinelabel">
-        This is a multiline label. <br />
-        This label has multiple lines.
+        This is a multiline label.<br />
+        This label has multiple lines.&#32;
     </text>
     <text id="singlelinelabel">
         This is a single line label.
