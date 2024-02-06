@@ -214,8 +214,17 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		if (next && end > 0) return localWidth + next.getWidth(begin, end);
 		else return localWidth;
 	}
+	///Returns the rowheight
 	public int getHeight() @safe pure {
-		return formatting.rowHeight;
+		return formatting.rowHeight + (flags & Flags.newParagraph ? formatting.paragraphSpace : 0);
+	}
+	public int getTotalHeight(const int width) @safe {
+		TextTempl!(BitmapType)[] lines = breakTextIntoMultipleLines(width);
+		int result;
+		foreach (TextTempl!(BitmapType) key; lines) {
+			result += key.getHeight;
+		}
+		return result;
 	}
 	/**
 	 * Returns the number of characters fully offset by the amount of pixel.
@@ -260,8 +269,11 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 *   width = The width of the text.
 	 * Returns: An array of text objects, with each new element representing a new line. Each text objects might still
 	 * have more subelements for formatting reasons.
+	 * Bugs:
+	 *   Does not flush final word if it's either not followed by a whitespace character or a text break tag. Reason is
+	 * currently unknown, I'll debug it once I have the time and/or energy.
 	 */
-	public TextTempl!(BitmapType)[] breakTextIntoMultipleLines(int width) {
+	public TextTempl!(BitmapType)[] breakTextIntoMultipleLines(const int width) @safe {
 		TextTempl!BitmapType curr = this;
 		TextTempl!BitmapType currentLine = new Text(null, curr.formatting, null, curr.frontTab, curr.icon);
 		TextTempl!BitmapType currentChunk = currentLine;
@@ -271,7 +283,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 		while (curr) {
 			foreach(size_t i, dchar ch ; curr._text) {
 				currentWordLength += curr.formatting.font.chars(ch).xadvance;
-				if (isWhiteSpaceMB(ch)){
+				if (isWhiteSpaceMB(ch) || i + 1 == curr._text.length){
 					if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start new word.
 						currentLineLength += currentWordLength;
 						currentChunk._text ~= currentWord ~ ch;
@@ -297,11 +309,12 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 						currentWord.length = 0;
 						currentWordLength = 0;
 					}
-					currentWord ~= ch;
+					if (!(ch == '\n' || ch == '\r')) currentWord ~= ch;
 				}
+				
 			}
-			if (currentWord.length) {		//Flush any remaining words to current chunk.
-				if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start new word.
+			if (currentWord.length) {		//Flush any remaining words to current chunk. BUG: is not reached for some reason.
+				if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start a new line.
 					currentLineLength += currentWordLength;
 					currentChunk._text ~= currentWord;
 				} else {
@@ -314,13 +327,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 				currentWord.length = 0;
 				currentWordLength = 0;
 			}
-			//if (currentLine._text.length) {
-				//result ~= currentLine;
-				//currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, curr.frontTab, curr.icon);
-				//currentWord.length = 0;
-				//currentWordLength = 0;
-				//currentLineLength = 0;
-			//}
+			
  			curr = curr.next; 
 			if (curr) {
 				if ((curr.flags & Flags.newLine) || (curr.flags & Flags.newParagraph)) {		//Force text breakage, put text chunk into the array.
