@@ -120,9 +120,6 @@ public class VertScrollBar : ScrollBar {
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
 		}
-		/+if (isFocused) {
-			parent.drawBoxPattern(position, ss.pattern["blackDottedLine"]);
-		}+/
 		if (onDraw !is null) {
 			onDraw();
 		}
@@ -152,9 +149,6 @@ public class VertScrollBar : ScrollBar {
 				import std.math : nearbyint;
 				const double newVal = mce.y - position.width - (_barLength / 2.0);
 				if (newVal >= 0) {
-					//const int travelLength = position.height - (position.width * 2) - _barLength;
-					//const double valRatio = isNaN(largeVal) ? 1.0 : largeVal;
-					//value = cast(int)nearbyint((travelLength / newVal) * valRatio);
 					value = cast(int)nearbyint((newVal) * valRatio);
 				}
 			}
@@ -209,11 +203,11 @@ public class HorizScrollBar : ScrollBar {
 		Point lower = position.cornerUR;
 		lower.x -= position.height;
 		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("rightArrowB") : ss.getImage("rightArrowA"));
-		/+if (isFocused) {
-			parent.drawBoxPattern(position, ss.pattern["blackDottedLine"]);
-		}+/
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
+		}
+		if (onDraw !is null) {
+			onDraw();
 		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
@@ -241,9 +235,6 @@ public class HorizScrollBar : ScrollBar {
 				import std.math : nearbyint;
 				const double newVal = mce.x - position.height - (_barLength / 2.0);
 				if (newVal >= 0) {
-					//const int travelLength = position.width - position.height * 2 - _barLength;
-					//const double valRatio = isNaN(largeVal) ? 1.0 : largeVal;
-					//value = cast(int)nearbyint((travelLength / newVal) * valRatio);
 					value = cast(int)nearbyint((newVal) * valRatio);
 				}
 			}
