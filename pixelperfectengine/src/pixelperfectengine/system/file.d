@@ -226,6 +226,32 @@ public Color[] loadPaletteFromImage (Image img) {
 	}
 	return palette;
 }
+///PRELIMINARY FUNCTION! WILL CHANGE IN THE FUTURE!
+///Reads text (e.g. XML) from file, and returns it as a string.
+///Does some automatic conversion using BOM detection.
+///TODO: Add the encoding detection and conversion utility to the newxml library.
+public dstring loadTextFile(F = File)(F file) {
+	import std.encoding;
+	import std.utf;
+	file.seek(0);
+	dstring result;
+	char[] buffer;
+	buffer.length = cast(size_t)file.size;
+	file.rawRead(buffer);
+	const BOMSeq encodingType = getBOM(reinterpretCast!(immutable(ubyte))(buffer));
+	switch (encodingType.schema) {
+		case BOM.utf16le:
+			result = cast(dstring)toUTF32(reinterpretCast!wchar(buffer));
+			break;
+		case BOM.utf32le:
+			result = reinterpretCast!(const(dchar))(buffer);
+			break;
+		default:		//treat it as UTF8!
+			result = cast(dstring)toUTF32(buffer);
+			break;
+	}
+	return result;
+}
 ///Path to the root folder, where assets etc. are stored.
 public immutable string pathRoot;
 ///Path to the executable folder, null if not eveilable for security reasons.
@@ -251,11 +277,12 @@ shared static this () {
  *   country = Country code.
  *   language = Language code.
  *   fileext = Extension/rest of the language file
- * Returns: 
+ * Returns: The path to the localization file.
  */
 public string getPathToLocalizationFile (string country, string language, string fileext) @safe pure nothrow {
 	if (fileext[0] == '.') fileext = fileext[1..$];
-	return pathRoot ~ "/local/" ~ country ~ "-" ~ language ~ "." ~ fileext;
+	if (country.length) return pathRoot ~ "/local/" ~ country ~ "-" ~ language ~ "." ~ fileext;
+	return pathRoot ~ "/local/" ~ language ~ "." ~ fileext;
 }
 ///Builds a path to the asset path.
 public string getPathToAsset (string path) @safe pure {

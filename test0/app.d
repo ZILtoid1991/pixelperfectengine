@@ -53,10 +53,10 @@ class TileLayerTest : SystemEventListener, InputListener {
 	this (int mapWidth, int mapHeight) {
 		theta = 0;
 		isRunning = true;
-		Image tileSource = loadImage(File("../assets/sci-fi-tileset.png"));
+		Image tileSource = loadImage(File(getPathToAsset("/assets/sci-fi-tileset.png")));
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
-		Image spriteSource = loadImage(File("../assets/d-man.tga"));
-		Image fontSource = loadImage(File("../system/codepage_8_8.png"));
+		Image spriteSource = loadImage(File(getPathToAsset("/assets/d-man.tga")));
+		Image fontSource = loadImage(File(getPathToAsset("/system/codepage_8_8.png")));
 		output = new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
 		r = new Raster(424,240,output,0);
 		output.setMainRaster(r);
@@ -90,12 +90,12 @@ class TileLayerTest : SystemEventListener, InputListener {
 		dlangManCS = dlangMan.generateStandardCollisionModel();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 		{
-			Image i = loadImage(File("../assets/basn3p04.png"));
+			Image i = loadImage(File(getPathToAsset("/assets/basn3p04.png")));
 			r.addPaletteChunk(loadPaletteFromImage(i));
 			s.addSprite(loadBitmapFromImage!Bitmap4Bit(i), 65_537, 320, 200, 0x21);//34
 		}
 		{
-			Image i = loadImage(File("../assets/basn3p02.png"));
+			Image i = loadImage(File(getPathToAsset("/assets/basn3p02.png")));
 			r.addPaletteChunk(loadPaletteFromImage(i));
 			s.addSprite(loadBitmapFromImage!Bitmap2Bit(i), 65_538, 352, 200, 0x88);//0x88
 		}
