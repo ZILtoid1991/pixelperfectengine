@@ -135,6 +135,7 @@ public enum EventType {
 	Selection,
 	Toggle,
 	CellEdit,
+	ListViewEntryCreate,
 }
 /**
  * Defines source types.

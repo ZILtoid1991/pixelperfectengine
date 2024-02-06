@@ -4,6 +4,7 @@ import pixelperfectengine.concrete.elements.base;
 import pixelperfectengine.concrete.elements.scrollbar;
 
 import pixelperfectengine.system.etc : clamp, min, max;
+import std.algorithm.iteration : sum;
 
 //import pixelperfectengine.system.input.types : TextInputFieldType;
 
@@ -257,10 +258,13 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	///Called when text input is finished and accepted
 	///Event value is `CellEditEvent`
 	public EventDeleg			onTextInput;
-	protected static enum	EDIT_EN = 1<<9;
-	protected static enum	MULTICELL_EDIT_EN = 1<<10;
-	protected static enum	TEXTINPUT_EN = 1<<11;
-	protected static enum	INSERT = 1<<12;
+	///Called when an item is added with the `insertAndEdit` function.
+	public EventDeleg			onItemAdd;
+	protected static enum	EDIT_EN = 1<<9;				///Edit enable mask
+	protected static enum	MULTICELL_EDIT_EN = 1<<10;	///Multicell edit enable mask
+	protected static enum	TEXTINPUT_EN = 1<<11;		///Textinput state mask
+	protected static enum	INSERT = 1<<12;				///Insert key toggle mask
+	protected static enum	NEW_ITEM_ADD_EDIT = 1<<13;	///Add new item while editing mask
 	/**
 	 * Creates an instance of a ListView with the supplied parameters.
 	 * Parameters:
@@ -544,6 +548,35 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			return null;
 		return item;
 	}
+	/** 
+	 * Inserts a new element at the given index, and activates data entry mode on it.
+	 * Params:
+	 *   index = Where the new element should be inserted.
+	 *   item = The item to be inserted.
+	 * Returns: The inserted element, or null if out of bounds.
+	 */
+	public ListViewItem insertAndEdit(size_t index, ListViewItem item) {
+		if (!index)
+			entries = item ~ entries;
+		else if (entries.length > index)
+			entries = entries[0..index] ~ item ~ entries[index..$];
+		else if (entries.length == index)
+			entries ~= item;
+		else
+			return null;
+		refresh();
+		selection = cast(int)index;
+		for (int i ; i < item.length ; i++) {
+			if (item[i].editable) {
+				hSelection = i;
+				flags |= NEW_ITEM_ADD_EDIT;
+				parent.requestFocus(this);
+				inputHandler.startTextInput(this);
+				return item;
+			}
+		}
+		return null;
+	}
 	/**
 	 * Moves the entry to the given position.
 	 * Params:
@@ -724,6 +757,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		///TODO: Handle mouse click when in text editing mode
 		if (state != ElementState.Enabled) return;
+		//if ((state & TEXTINPUT_EN) && !mce.state)
 		if (vertSlider) {
 			const Box p = vertSlider.getPosition();
 			if (p.isBetween(mce.x, mce.y)) {
@@ -742,14 +776,10 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			inputHandler.stopTextInput();
 			return;
 		}
-
-		//if (mce.button != MouseButton.Left && !mce.state) return;
-
 		mce.x -= position.left;
 		mce.y -= position.top;
 		if (entries.length && mce.y > _header.height && mce.button == MouseButton.Left && mce.state) {
-			textArea.top = position.top;
-			textArea.left = position.left;
+			
 			mce.y -= _header.height;
 			int pixelsTotal = mce.y, pos;
 			if (vertSlider) ///calculate outscrolled area
@@ -757,9 +787,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			while (pos < entries.length) {
 				if (pixelsTotal > entries[pos].height) {
 					pixelsTotal -= entries[pos].height;
-					textArea.top += entries[pos].height;
-					if (pos + 1 < entries.length)
-						pos++;
+					//if (pos + 1 < entries.length) 
+					pos++;
 				} else {
 					break;
 				}
@@ -767,52 +796,25 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			if (pos >= entries.length) {
 				selection = -1;
 			} else if (selection == pos && (flags & EDIT_EN)) {
-				//Calculate horizontal selection for Multicell editing if needed
-				/+if (flags & MULTICELL_EDIT_EN) {
 				
-				} else {+/
-				textArea.top += _header.height;
+				int hPixelsTotal;
+				if (horizSlider) hPixelsTotal -= horizSlider.value;
 				foreach (size_t i, ListViewItem.Field f ; entries[selection].fields) {
+					const int currWidth = _header.columnWidths[i];
 					if (f.editable) {
 						hSelection = cast(int)i;
 						
-						
-						with (textArea) {
-							bottom = entries[selection].height + textArea.top;
-							right = _header.columnWidths[i] + textArea.left;
-							left = max(textArea.left, position.left);
-							top = max(textArea.top, position.top);
-							right = min(textArea.right, position.right);
-							bottom = min(textArea.bottom, position.bottom);
-						}
-						text = new Text(entries[selection][hSelection].text);
-						cursorPos = 0;
-						tselect = cast(int)text.charLength;
 						//oldText = text;
-						if (flags & MULTICELL_EDIT_EN) {
-							if (textArea.left < mce.x && textArea.right > mce.x) {
-								if (vertSlider) {
-									textArea.top -= vertSlider.value;
-									textArea.bottom = entries[selection].height + textArea.top;
-								}
-								if (horizSlider) textArea.left -= horizSlider.value;
-								inputHandler.startTextInput(this);
-								break;
-							}
-						} else {
-							if (vertSlider) {
-								textArea.top -= vertSlider.value;
-								textArea.bottom = entries[selection].height + textArea.top;
-							}
-							if (horizSlider) textArea.left -= horizSlider.value;
+						if (hPixelsTotal < mce.x && hPixelsTotal + currWidth > mce.x) {
+							
 							inputHandler.startTextInput(this);
 							break;
 						}
-						
+												
 					}
-					textArea.left += _header.columnWidths[i];
+					hPixelsTotal += currWidth;
+					
 				}
-				//}
 				selection = pos;
 			} else 
 				selection = pos;
@@ -943,16 +945,30 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		switch(key) {
 			case TextInputKey.Enter:
 				entries[selection][hSelection].text = text;
-				inputHandler.stopTextInput();
-				if(onTextInput !is null)
-					onTextInput(new CellEditEvent(this, entries[selection], selection, hSelection));
+				if (flags & NEW_ITEM_ADD_EDIT) {
+					hSelection++;
+					for ( ; hSelection < entries[selection].length ; hSelection++) {
+						if (entries[selection][hSelection].editable) {
+							initTextInput();
+							draw();
+							return;
+						}
+					}
+					if (onItemAdd !is null) onItemAdd(new CellEditEvent(this, entries[selection], selection, -1));
+					inputHandler.stopTextInput();
+				} else {
+					if (onTextInput !is null) onTextInput(new CellEditEvent(this, entries[selection], selection, hSelection));
+					inputHandler.stopTextInput();
+				}
 					//onTextInput(new Event(source, null, null, null, text, 0, EventType.T, null, this));
 				break;
 			case TextInputKey.Escape:
 				//text = oldText;
+				if (flags & NEW_ITEM_ADD_EDIT) {
+					removeEntry(selection);
+					refresh();
+				} 
 				inputHandler.stopTextInput();
-				
-
 				break;
 			case TextInputKey.Backspace:
 				if(cursorPos > 0){
@@ -1017,13 +1033,15 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 */
 	public void dropTextInput() {
 		flags &= ~TEXTINPUT_EN;
-		draw;
+		if (flags & NEW_ITEM_ADD_EDIT) {
+			flags &= ~NEW_ITEM_ADD_EDIT;
+		}
+		draw();
 	}
 	/**
 	 * Called if text input should be initialized.
 	 */
 	public void initTextInput() {
-		flags |= TEXTINPUT_EN;
 		ListViewItem.Field f = opIndex(selection)[hSelection];
 		switch(f.textInputType) {
 			default:
@@ -1052,7 +1070,48 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			case TextInputFieldType.Bin:
 				break;
 		}
+		//alignCell();
+		const int posX = sum(_header.columnWidths[0..hSelection]), width = _header.columnWidths[hSelection];
+		const int height = entries[selection].height;
+		int posY, vSVal, hSVal, headerHeight;
+		bool onRepos;
+		foreach (ListViewItem i; entries[0..selection]) {
+			posY += i.height;
+		}
+		if (horizSlider) {
+			if (horizSlider.value > posX || (horizSlider.value + horizSlider.position.width) < posX + width) {
+				horizSlider.value = posX;
+				onRepos = true;
+			}
+			hSVal = horizSlider.value;
+		}
+		if (vertSlider) {
+			if (vertSlider.value > posY || (vertSlider.value + vertSlider.position.height) < posY + height) {
+				vertSlider.value = posY;
+				onRepos = true;
+			}
+			vSVal = vertSlider.value;
+		}
+		if (onRepos && (flags & (NEW_ITEM_ADD_EDIT | TEXTINPUT_EN))) {
+			flags &= !TEXTINPUT_EN;
+			draw();
+			flags |= TEXTINPUT_EN;
+		}
+		if (_header) headerHeight = _header.height;
+		textArea = Box.bySize(position.left + posX - hSVal, position.top + posY - vSVal + headerHeight, width, height);
+		with (textArea) {
+			left = max(textArea.left, position.left);
+			top = max(textArea.top, position.top);
+			right = min(textArea.right, position.right);
+			bottom = min(textArea.bottom, position.bottom);
+		}
+		text = new Text(entries[selection][hSelection].text);
+		cursorPos = 0;
+		tselect = cast(int)text.charLength;
+		flags |= TEXTINPUT_EN;
+		draw();
 	}
+	
 	private void deleteCharacter(size_t n){
 		text.removeChar(n);
 	}
