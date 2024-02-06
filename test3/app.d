@@ -14,6 +14,7 @@ import pixelperfectengine.system.lang.textparser;
 
 import core.thread;
 import std.conv;
+import std.stdio;
 
 /** 
  * Tests GUI elements by displaying them.
@@ -36,6 +37,7 @@ public class TestElements : InputListener, SystemEventListener {
     TextParser          txtParser;
 
     public this() {
+        
         sprtL = new SpriteLayer(RenderingMode.Copy);
 		outScrn = new OutputScreen("Test nr. 3",1696,960);
 		mainRaster = new Raster(848,480,outScrn,0,1);
@@ -47,9 +49,13 @@ public class TestElements : InputListener, SystemEventListener {
         ih.systemEventListener = this;
         ih.mouseListener = wh;
         WindowElement.onDraw = &rasterRefresh;
+        WindowElement.inputHandler = ih;
         Window.onDrawUpdate = &rasterRefresh;
         isRunning = true;
-        wh.addWindow(new TestWindow());
+        txtParser = new TextParser(loadTextFile(File(getPathToLocalizationFile("US","en","xml"))), 
+                globalDefaultStyle.getChrFormatting("default"));
+        txtParser.parse();
+        wh.addWindow(new TestWindow(txtParser.output));
     }
     protected void rasterRefresh() {
         flipScreen = true;
@@ -97,9 +103,12 @@ public class TestWindow : Window {
     ListView            listViewTest;
     Button              buttonTest0, buttonTest1;
     Button              btn_fileDialog;
+    Button              btn_messageDialog;
+    Button              btn_addElem;
     VertScrollBar       vScrollBarTest;
     Label               singleLineLabel;
     Label               multiLineLabel;
+    Text                multiLineDialog;
     public this(Text[string] lang) {
         super(Box.bySize(0, 0, 848, 480), "Test");
         panelTest = new Panel("Selections", "", Box(5, 20, 200, 200));
@@ -113,13 +122,23 @@ public class TestWindow : Window {
         radioButtonTestGr = new RadioButtonGroup(radioButtonTest);
 
         listViewTest = new ListView(new ListViewHeader(16, [50, 50], ["Column 1", "Column 2"]), [
-            new ListViewItem(16, ["First", "000000000000000000000"]),
+            new ListViewItem(16, ["First", "000000000000000000000"], [TextInputFieldType.Text,  
+                    TextInputFieldType.Text]),
             new ListViewItem(16, ["Second", "000000000000000000000"]),
-            new ListViewItem(16, ["Third", "000000000000000000000"]),
+            new ListViewItem(16, ["Third", "000000000000000000000"], [TextInputFieldType.Text,  
+                    TextInputFieldType.Text]),
             new ListViewItem(16, ["Fourth", "000000000000000000000"]),
             new ListViewItem(16, ["Last", "000000000000000000000"]),
         ], "", Box(5, 220, 105, 313));
+        listViewTest.editEnable = true;
+        listViewTest.multicellEditEnable = true;
         addElement(listViewTest);
+
+        singleLineLabel = new Label(lang["singlelinelabel"], "", Box(5, 340, 150, 360));
+        addElement(singleLineLabel);
+
+        multiLineLabel = new Label(lang["multilinelabel"], "", Box(5, 360, 150, 400));
+        addElement(multiLineLabel);
 
         vScrollBarTest = new VertScrollBar(1000, "", Box.bySize(110, 220, 16, 120));
         addElement(vScrollBarTest);
@@ -128,13 +147,32 @@ public class TestWindow : Window {
         addElement(buttonTest0);
         buttonTest0.state = ElementState.Disabled;
         btn_fileDialog = new Button("Filedialog", "", Box.bySize(300, 20, 70, 20));
+        btn_fileDialog.onMouseLClick = &btn_fileDialog_onClick;
         addElement(btn_fileDialog);
+        btn_messageDialog = new Button("Message", "", Box.bySize(300, 45, 70, 20));
+        btn_messageDialog.onMouseLClick = &btn_messageDialog_onClick;
+        addElement(btn_messageDialog);
+        btn_addElem = new Button("Add Elem", "", Box.bySize(300, 70, 70, 20));
+        btn_addElem.onMouseLClick = &btn_addElem_onClick;
+        addElement(btn_addElem);
+
+        multiLineDialog = lang["multilinedialog"];
+    }
+    private void btn_messageDialog_onClick(Event ev) {
+        handler.message("Message", multiLineDialog);
     }
     private void btn_fileDialog_onClick(Event ev) {
         handler.addWindow(new FileDialog("Test filedialog", "", &fileDialogEvent, 
                 [FileDialog.FileAssociationDescriptor("All files", ["*.*"])], "./"));
     }
+    private void btn_addElem_onClick(Event ev) {
+        listViewTest.insertAndEdit(2, new ListViewItem(16, ["Fifth", "000000000000000000000"], [TextInputFieldType.Text,  
+                    TextInputFieldType.Text]));
+    }
     private void fileDialogEvent(Event ev) {
-
+        FileEvent fe = cast(FileEvent)ev;
+        writeln(fe.path);
+        writeln(fe.filename);
+        writeln(fe.extension);
     }
 }
