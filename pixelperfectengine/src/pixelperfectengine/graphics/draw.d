@@ -257,20 +257,21 @@ public class BitmapDrawer{
 	public uint drawMultiLineText(Box pos, Text[] lineChunks, int offset = 0, int lineOffset = 0) {
 		//Text[] lineChunks = text.breakTextIntoMultipleLines(pos.width);
 		int lineNum;
-		const int maxLines = pos.height + lineOffset;
+		const int maxLines = lineOffset + pos.height;
 		/* if(lineCount >= lineOffset) {	//draw if linecount is greater or equal than offset
 			//special
 		} */
 		int currLine = lineOffset * -1;
 		
 		while (currLine < maxLines && lineNum < lineChunks.length) {
-			Box currPos = Box.bySize(0, currLine, pos.width, lineChunks[lineNum].getHeight);
+			Box currPos = Box.bySize(pos.left, pos.top + currLine, pos.width, lineChunks[lineNum].getHeight);
 			if (currPos.top >= 0) {
 				drawSingleLineText(currPos, lineChunks[lineNum], 0, 0);
 			} else if (currPos.bottom >= 0) {
 				drawSingleLineText(currPos, lineChunks[lineNum], 0, currPos.top * -1);
 			}
 			currLine += lineChunks[lineNum].getHeight;
+			if (lineChunks[lineNum].flags & Text.Flags.newParagraph) currLine += lineChunks[lineNum].formatting.paragraphSpace;
 			lineNum++;
 		}
 		return 0;
@@ -467,7 +468,7 @@ public class BitmapDrawer{
 	} */
 }
 /**
- * Font formatting flags.
+ * Font formatting flags. DEPRECATED!
  */
 enum FontFormat : uint {
 	HorizCentered			=	0x1,
