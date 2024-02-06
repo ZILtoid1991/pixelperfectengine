@@ -89,7 +89,6 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		w.draw();
 		setWindowToTop(w);
 	}
-
 	/**
 	 * Adds a DefaultDialog as a message box.
 	 * Params:
@@ -97,18 +96,32 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 *   message = The text that appears in the window.
 	 *   width = The width of the dialog window. 256 pixels is default.
 	 */
-	public void message(dstring title, dstring message, int width = 256) {
+	public void message(dstring title, dstring message, const int width = 256) {
 		import pixelperfectengine.concrete.dialogs.defaultdialog;
-		StyleSheet ss = getStyleSheet();
-		dstring[] formattedMessage = ss.getChrFormatting("label").font.breakTextIntoMultipleLines(message, width -
-				ss.drawParameters["WindowLeftPadding"] - ss.drawParameters["WindowRightPadding"]);
-		int height = cast(int)(formattedMessage.length * (ss.getChrFormatting("label").font.size +
-				ss.drawParameters["TextSpacingTop"] + ss.drawParameters["TextSpacingBottom"]));
-		height += ss.drawParameters["WindowTopPadding"] + ss.drawParameters["WindowBottomPadding"] +
-				ss.drawParameters["ComponentHeight"];
-		Coordinate c = Coordinate(mouseX - width / 2, mouseY - height / 2, mouseX + width / 2, mouseY + height / 2);
-		//Text title0 = new Text(title, ss.getChrFormatting("windowHeader"));
-		addWindow(new DefaultDialog(c, null, title, formattedMessage));
+		addWindow(new DefaultDialog(Point(mouseX, mouseY), width ,null, title, message));
+	}
+	/**
+	 * Adds a DefaultDialog as a message box.
+	 * Params:
+	 *   title = Title of the window.
+	 *   message = The text that appears in the window.
+	 *   width = The width of the dialog window. 256 pixels is default.
+	 */
+	public void message(dstring title, Text message, const int width = 256) {
+		import pixelperfectengine.concrete.dialogs.defaultdialog;
+		addWindow(new DefaultDialog(Point(mouseX, mouseY), width ,null, new Text(title, 
+				getStyleSheet().getChrFormatting("windowHeader")), message));
+	}
+	/**
+	 * Adds a DefaultDialog as a message box.
+	 * Params:
+	 *   title = Title of the window.
+	 *   message = The text that appears in the window.
+	 *   width = The width of the dialog window. 256 pixels is default.
+	 */
+	public void message(Text title, Text message, const int width = 256) {
+		import pixelperfectengine.concrete.dialogs.defaultdialog;
+		addWindow(new DefaultDialog(Point(mouseX, mouseY), width ,null, title, message));
 	}
 	/**
 	 * Adds a background to the spritelayer without disrupting window priorities.
