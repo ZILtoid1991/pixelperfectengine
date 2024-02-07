@@ -172,6 +172,19 @@ alias ADPCMStream = NibbleArray;
 			length--;
 		}
 	}
+	public void upsampleStereo(size_t length, uint times, float* src, float* dest) {
+		ulong* src0 = cast(ulong*)src;
+		ulong* dest0 = cast(ulong*)dest;
+		while (length) {
+			const currSlmp = src0[0];
+			src0++;
+			for (int i ; i < times ; i++){
+				dest0[0] = currSlmp;
+				dest0++;
+			}
+			length--;
+		}
+	}
 	/**
 	 * Converts a 32 bit extended integer stream to 32 bit floating point.
 	 */
