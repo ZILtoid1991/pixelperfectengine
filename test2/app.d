@@ -62,7 +62,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		output = new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
 		r = new Raster(424,240,output,0);
 		output.setMainRaster(r);
-		Image fontSource = loadImage(File("../system/codepage_8_8.png"));
+		Image fontSource = loadImage(File(getPathToAsset("/system/codepage_8_8.png")));
 		ih = new InputHandler();
 		ih.systemEventListener = this;
 		ih.inputListener = this;

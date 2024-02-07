@@ -121,7 +121,7 @@ public class MapFormat {
 			Tag[] tileSource = getAllTileSources(key);
 			foreach (t0; tileSource) {
 				string path = t0.getValue!string();
-				Image i = loadImage(File(path, "rb"));
+				Image i = loadImage(File(getPathToAsset(path), "rb"));
 				void helperFunc(T)(T[] bitmaps, Tag source) {
 					TileLayer tl = cast(TileLayer)layeroutput[key];
 					Tag tileInfo = source.getTag("Embed:TileInfo", null);
@@ -187,7 +187,7 @@ public class MapFormat {
 				case "File:SpriteSource":
 					string filename = t0.expectValue!string();
 					if (imageBuffer.get(filename, null) is null) {
-						imageBuffer[filename] = loadImage(File(filename));
+						imageBuffer[filename] = loadImage(File(getPathToAsset(filename)));
 					}
 					const int id = t0.expectValue!int();
 					/+if ("horizOffset" in t0.attributes && "vertOffset" in t0.attributes && "width" in t0.attributes && 
@@ -356,7 +356,7 @@ public class MapFormat {
 			if (t0 !is null) {
 				TileLayer tl = cast(TileLayer)layeroutput[key];
 				MapDataHeader mdf;
-				File mapfile = File(t0.expectValue!string());
+				File mapfile = File(getPathToAsset(t0.expectValue!string()));
 				tl.loadMapping(value.values[4].get!int(), value.values[5].get!int(), loadMapFile(mapfile, mdf));
 			}
 		}
@@ -444,7 +444,8 @@ public class MapFormat {
 					ushort palShift = cast(ushort)t0.getAttribute!int("palShift", 0);
 					if (t1 !is null) {
 						foreach (Tag t2 ; t1.tags) {
-							result ~= TileInfo(cast(wchar)t2.values[0].get!int(), palShift, t2.values[1].get!int(), t2.values[2].get!string());
+							result ~= TileInfo(cast(wchar)t2.values[0].get!int(), palShift, t2.values[1].get!int(), 
+									t2.values[2].get!string());
 						}
 					}
 				}
@@ -621,7 +622,8 @@ public class MapFormat {
 	public void addNewTileLayer(int pri, int tX, int tY, int mX, int mY, string name, TileLayer l) @trusted {
 		layeroutput[pri] = l;
 		l.setRasterizer(getHorizontalResolution, getVerticalResolution);
-		layerData[pri] = new Tag(root, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), Value(mY)]);
+		layerData[pri] = new Tag(root, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), 
+				Value(mY)]);
 		new Tag(layerData[pri], null, "RenderingMode", [Value("Copy")]);
 	}
 	/**
@@ -1035,6 +1037,10 @@ abstract class MapObject {
 	 */
 	public bool opEquals (MapObject rhs) @nogc @safe nothrow pure const {
 		return pID == rhs.pID && gID == rhs.gID;
+	}
+	override size_t toHash() const @nogc @safe pure nothrow {
+		static if (size_t.sizeof == 8) return pID | (cast(ulong)gID<<32L);
+		else return pID ^ (gID<<16) ^ (gID>>>16);
 	}
 }
 /**
