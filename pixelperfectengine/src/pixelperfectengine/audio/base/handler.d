@@ -123,6 +123,8 @@ public class ModuleManager {
 	protected int			blockSize;		///Rendering buffer size in samples, also the length of a single frame.
 	protected int			nOfBlocks;		///Number of maximum frames that can be put into the output buffer.
 	protected int			currBlock;		///Current audio frame.
+	//protected int			itrn_blockSize;	///Internal block size after upsampling.
+	protected int			itrn_sampleRate;///Internal sample rate before upsampling.
 	///Pointer to the audio device handler.
 	public AudioDeviceHandler	devHandler;
 	///Pointer to a MIDI sequencer, for synchronizing it with the audio stream.
@@ -166,28 +168,48 @@ public class ModuleManager {
 	protected int			channels;
 	/** 
 	 * Creates an instance of a module handler.
-	 *Params:
-	 * handler = The AudioDeviceHandler that contains the data about the audio device.
-	 * blockSize = The size of the buffer in samples.
-	 * nOfBlocks = The number of frames before they get queued to the audio device.
+	 * Params:
+	 *  handler = The AudioDeviceHandler that contains the data about the audio device.
+	 *  blockSize = The size of the buffer in samples.
+	 *  nOfBlocks = The number of frames before they get queued to the audio device.
 	 */
 	public this(AudioDeviceHandler handler) {
 		import pixelperfectengine.audio.base.func : resetBuffer;
 		devHandler = handler;
-		this.blockSize = handler.blockSize;
+		//this.blockSize = handler.blockSize;
 		outStrm = handler.device.createOutputStream();
 		if (outStrm is null) throw new AudioInitException("Audio stream couldn't be opened.");
 		this.nOfBlocks = handler.nOfBlocks;
-		finalBuffer.length = handler.getChannels() * blockSize * nOfBlocks;
+		
 		this.channels = handler.getChannels();
+		
+		switch (handler.getSamplingFrequency) {
+			case 44_100, 48_000:
+		outStrm.callback_buffer = &audioCallback;
+		blockSize = handler.blockSize;
+		itrn_sampleRate = handler.getSamplingFrequency;
+				break;
+			case 88_200, 96_000:
+				outStrm.callback_buffer = &audioCallback2_2;
+				blockSize = handler.blockSize / 2;
+				itrn_sampleRate = handler.getSamplingFrequency / 2;
+				break;
+			case 176_400, 192_000:
+				outStrm.callback_buffer = &audioCallback2_4;
+				blockSize = handler.blockSize / 4;
+				itrn_sampleRate = handler.getSamplingFrequency / 4;
+				break;
+			default:
+				break;
+		}
+		finalBuffer.length = handler.getChannels() * blockSize * nOfBlocks;
+		//itrn_blockSize = cast(int)finalBuffer.length;
 		resetBuffer(finalBuffer);
-
 		buffers.length = handler.getChannels();
 		for (int i ; i < buffers.length ; i++) {
 			buffers[i].length = blockSize;
 			resetBuffer(buffers[i]);
 		}
-		outStrm.callback_buffer = &audioCallback;
 		//super(&render);
 	}
 	/**
@@ -214,7 +236,48 @@ public class ModuleManager {
 		currBlock = 0;
 		
 		memcpy(destbuffer.ptr, finalBuffer.ptr, destbuffer.length);
-		
+	}
+	protected void audioCallback2_2(ubyte[] destbuffer) @nogc nothrow {
+		import pixelperfectengine.audio.base.func : interleave, resetBuffer, upsampleStereo;
+		import core.stdc.string : memcpy;
+
+		while (currBlock < nOfBlocks) {
+			foreach (ref key; buffers) {
+				resetBuffer(key);
+			}
+			foreach (size_t i, AudioModule am; moduleList) {
+				am.renderFrame(inBufferList[i], outBufferList[i]);
+			}
+			if (midiSeq !is null)
+				midiSeq.lapseTime(devHandler.getBufferDelay);
+			const size_t offset = currBlock * blockSize * channels;
+			interleave(blockSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
+			currBlock++;
+		}
+		currBlock = 0;
+		upsampleStereo(finalBuffer.length, 2, finalBuffer.ptr, cast(float*)destbuffer.ptr);
+		//memcpy(destbuffer.ptr, finalBuffer.ptr, destbuffer.length);
+	}
+	protected void audioCallback2_4(ubyte[] destbuffer) @nogc nothrow {
+		import pixelperfectengine.audio.base.func : interleave, resetBuffer, upsampleStereo;
+		import core.stdc.string : memcpy;
+
+		while (currBlock < nOfBlocks) {
+			foreach (ref key; buffers) {
+				resetBuffer(key);
+			}
+			foreach (size_t i, AudioModule am; moduleList) {
+				am.renderFrame(inBufferList[i], outBufferList[i]);
+			}
+			if (midiSeq !is null)
+				midiSeq.lapseTime(devHandler.getBufferDelay);
+			const size_t offset = currBlock * blockSize * channels;
+			interleave(blockSize, buffers[0].ptr, buffers[1].ptr, finalBuffer.ptr + offset);
+			currBlock++;
+		}
+		currBlock = 0;
+		upsampleStereo(finalBuffer.length, 4, finalBuffer.ptr, cast(float*)destbuffer.ptr);
+		//memcpy(destbuffer.ptr, finalBuffer.ptr, destbuffer.length);
 	}
 	/**
 	 * MIDI commands are received here from modules.
@@ -250,7 +313,7 @@ public class ModuleManager {
 	 * outCfg = list of audio output IDs to be used. Must be matched with `outBuffs`
 	 */
 	public void addModule(AudioModule md, size_t[] inBuffs, ubyte[] inCfg, size_t[] outBuffs, ubyte[] outCfg) nothrow {
-		md.moduleSetup(inCfg, outCfg, devHandler.getSamplingFrequency, blockSize, this);
+		md.moduleSetup(inCfg, outCfg, itrn_sampleRate, blockSize, this);
 		moduleList ~= md;
 		float*[] buffList0, buffList1;
 		buffList0.length = inBuffs.length;

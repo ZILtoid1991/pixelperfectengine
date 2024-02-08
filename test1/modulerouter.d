@@ -106,7 +106,7 @@ public class ModuleRouter : Window {
 		//adk.eventStack.addToTop(new AddModuleEvent(adk.mcfg, me.itemSource, me.itemSource));
 	}
 	private void button_addNode_onClick(Event e) {
-		listView_routingnew.insertAndEdit(0, ListViewItem(16, ["!NONE!", "!NONE!"], 
+		listView_routing.insertAndEdit(0, new ListViewItem(16, ["!NONE!", "!NONE!"], 
 				[TextInputFieldType.ASCIIText, TextInputFieldType.ASCIIText]));
 		//listView_routing.refresh();
 	}

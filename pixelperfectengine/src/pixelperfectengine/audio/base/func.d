@@ -173,16 +173,16 @@ alias ADPCMStream = NibbleArray;
 		}
 	}
 	public void upsampleStereo(size_t length, uint times, float* src, float* dest) {
-		ulong* src0 = cast(ulong*)src;
-		ulong* dest0 = cast(ulong*)dest;
 		while (length) {
-			const currSlmp = src0[0];
-			src0++;
+			const currSlmpL = src[0];
+			const currSlmpR = src[1];
+			src+=2;
 			for (int i ; i < times ; i++){
-				dest0[0] = currSlmp;
-				dest0++;
+				dest[0] = currSlmpL;
+				dest[1] = currSlmpR;
+				dest+=2;
 			}
-			length--;
+			length-=2;
 		}
 	}
 	/**
