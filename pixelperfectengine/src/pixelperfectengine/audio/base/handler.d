@@ -73,6 +73,18 @@ public class AudioDeviceHandler {
 		if (recSlmpRate > 0) {
 			specs.sampleRate = recSlmpRate;
 		}
+		switch (specs.sampleRate) {
+			case 88_200, 96_000:
+				blockSize *= 2;
+				specs.bufferSize_slmp *= 2;
+				break;
+			case 176_400, 192_000:
+				blockSize *= 4;
+				specs.bufferSize_slmp *= 4;
+				break;
+			default:
+				break;
+		}
 		specs = device.requestSpecs(specs);
 		// Recalculate block sizes if buffer size changed
 		if (specs.bufferSize_slmp != blockSize * nOfBlocks) {
@@ -185,9 +197,9 @@ public class ModuleManager {
 		
 		switch (handler.getSamplingFrequency) {
 			case 44_100, 48_000:
-		outStrm.callback_buffer = &audioCallback;
-		blockSize = handler.blockSize;
-		itrn_sampleRate = handler.getSamplingFrequency;
+				outStrm.callback_buffer = &audioCallback;
+				blockSize = handler.blockSize;
+				itrn_sampleRate = handler.getSamplingFrequency;
 				break;
 			case 88_200, 96_000:
 				outStrm.callback_buffer = &audioCallback2_2;
@@ -214,7 +226,7 @@ public class ModuleManager {
 	}
 	/**
 	 * Audio callback function.
-	 * Renders the audio, then it copies to the destination buffer. If needed, it'll do floating point to integer conversion.
+	 * Renders the audio, then it copies to the destination buffer. No upsampling and/or conversion.
 	 */
 	protected void audioCallback(ubyte[] destbuffer) @nogc nothrow {
 		import pixelperfectengine.audio.base.func : interleave, resetBuffer;
@@ -237,6 +249,10 @@ public class ModuleManager {
 		
 		memcpy(destbuffer.ptr, finalBuffer.ptr, destbuffer.length);
 	}
+	/**
+	 * Audio callback function.
+	 * Renders the audio, then it copies to the destination buffer. 2x upsampling.
+	 */
 	protected void audioCallback2_2(ubyte[] destbuffer) @nogc nothrow {
 		import pixelperfectengine.audio.base.func : interleave, resetBuffer, upsampleStereo;
 		import core.stdc.string : memcpy;
@@ -258,6 +274,10 @@ public class ModuleManager {
 		upsampleStereo(finalBuffer.length, 2, finalBuffer.ptr, cast(float*)destbuffer.ptr);
 		//memcpy(destbuffer.ptr, finalBuffer.ptr, destbuffer.length);
 	}
+	/**
+	 * Audio callback function.
+	 * Renders the audio, then it copies to the destination buffer. 4x upsampling.
+	 */
 	protected void audioCallback2_4(ubyte[] destbuffer) @nogc nothrow {
 		import pixelperfectengine.audio.base.func : interleave, resetBuffer, upsampleStereo;
 		import core.stdc.string : memcpy;
