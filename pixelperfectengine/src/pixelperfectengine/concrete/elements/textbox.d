@@ -70,9 +70,7 @@ public class TextBox : WindowElement, TextInputListener {
 	///Called when an object loses focus.
 	public void focusLost() {
 		flags &= ~IS_FOCUSED;
-		dropTextInput();
-		inputHandler.stopTextInput();
-		
+		if (flags & ENABLE_TEXT_EDIT) inputHandler.stopTextInput();
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (!(flags & ENABLE_TEXT_EDIT)) inputHandler.startTextInput(this, false, position);
