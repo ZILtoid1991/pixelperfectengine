@@ -172,6 +172,14 @@ alias ADPCMStream = NibbleArray;
 			length--;
 		}
 	}
+	/** 
+	 * Upsamples a stereo stream by the given amount.
+	 * Params:
+	 *   length = Length of the source stream.
+	 *   times = Amount of oversampling.
+	 *   src = The source stream.
+	 *   dest = The destination stream.
+	 */
 	public void upsampleStereo(size_t length, uint times, float* src, float* dest) {
 		while (length) {
 			const currSlmpL = src[0];
@@ -304,6 +312,7 @@ alias ADPCMStream = NibbleArray;
 	 * Params:
 	 *   note = MIDI note number.
 	 *   baseFreq = A-4 note frequency
+	 * Returns: The frequency of the note.
 	 */
 	public double midiToFreq(int note, const double baseFreq = 440.0) @safe {
 		double r = note - 69;
@@ -316,6 +325,7 @@ alias ADPCMStream = NibbleArray;
 	 * Params:
 	 *   note = MIDI note number.
 	 *   baseFreq = A-4 note frequency
+	 * Returns: The frequency of the note.
 	 */
 	public double noteToFreq(double note, const double baseFreq = 440.0) @safe {
 		double r = note - 69;
