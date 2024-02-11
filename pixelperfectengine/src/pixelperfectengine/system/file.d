@@ -289,7 +289,6 @@ public string getPathToAsset (string path) @safe pure {
 	if (startsWith(path, "%PATH%")) path = path[6..$];
 	else if (startsWith(path, "../", "..\\")) path = path[3..$];
 	//else if (startsWith(path, ["./", ".\\"])) path = path[2..$];
-	 
 	return buildNormalizedPath(pathRoot ~ dirSeparator ~ path);
 }
 /**

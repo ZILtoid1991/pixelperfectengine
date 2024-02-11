@@ -14,6 +14,7 @@ import std.conv;
 //import std.csv;
 
 import pixelperfectengine.system.input.handler;
+import pixelperfectengine.system.file;
 import pixelperfectengine.system.exc;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.dictionary;
@@ -88,7 +89,7 @@ public class ConfigurationProfile {
 	public this() {
 		path = vaultPath ~ "config.sdl";
 		if(!exists(path))
-			std.file.copy("../system/defaultConfig.sdl",path);			
+			std.file.copy(getPathToAsset("%PATH%/system/defaultConfig.sdl"),path);			
 		restore();
 	}
 	/// Initializes a basic configuration profile with user supplied values. 
@@ -108,8 +109,8 @@ public class ConfigurationProfile {
 		devicetypeStrings = [Devicetype.Joystick: "joystick", Devicetype.Keyboard: "keyboard", Devicetype.Mouse: "mouse",
 				Devicetype.Touchscreen: "touchscreen" ];
 		//keyNameDict = new Dictionary("../system/keycodeNamings.sdl");
-		keyNameDict = new Dictionary(parseFile("../system/scancodes.sdl"));
-		Tag xinput = parseFile("../system/xinputCodes.sdl");
+		keyNameDict = new Dictionary(parseFile(getPathToAsset("%PATH%/system/scancodes.sdl")));
+		Tag xinput = parseFile(getPathToAsset("%PATH%/system/xinputCodes.sdl"));
 		joyButtonNameDict = new Dictionary(xinput.expectTag("button"));
 		joyAxisNameDict = new Dictionary(xinput.expectTag("axis"));
 	}
@@ -401,8 +402,9 @@ public class ConfigurationProfile {
 	 * If ../_debug/ folder exists, it'll be used instead for emulation purposes.
 	 */
 	public static void setVaultPath(const char* developer, const char* application){
-		if (exists("../_debug/")) {
-			vaultPath = "../_debug/" ~ fromStringz(developer).idup ~ "_" ~ fromStringz(application).idup ~ "/";
+		if (exists(getPathToAsset("%PATH%/_debug/"))) {
+			vaultPath = getPathToAsset("%PATH%/_debug/") ~ "/" ~ fromStringz(developer).idup ~ "_" ~ 
+					fromStringz(application).idup ~ "/";
 			if (!std.file.exists(vaultPath))
 				std.file.mkdir(vaultPath);
 		} else {

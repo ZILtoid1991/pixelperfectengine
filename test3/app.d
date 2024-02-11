@@ -42,7 +42,7 @@ public class TestElements : InputListener, SystemEventListener {
 		outScrn = new OutputScreen("Test nr. 3",1696,960);
 		mainRaster = new Raster(848,480,outScrn,0,1);
 		mainRaster.addLayer(sprtL,0);
-        mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("/system/ConcreteGUIE1.tga")));
+        mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")));
         wh = new WindowHandler(1696,960,848,480,sprtL);
         ih = new InputHandler();
         ih.inputListener = this;

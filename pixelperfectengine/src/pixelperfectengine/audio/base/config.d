@@ -4,6 +4,7 @@ import sdlang;
 
 import pixelperfectengine.audio.base.handler;
 import pixelperfectengine.audio.base.modulebase;
+import pixelperfectengine.system.file : getPathToAsset;
 
 import collections.commons : defaultHash;
 
@@ -262,6 +263,7 @@ public class ModuleConfig {
 	 */
 	protected void loadAudioFile(AudioModule mod, int waveID, string path, string dataPak = null) {
 		import std.path : extension;
+		path = getPathToAsset(path);
 		switch (extension(path)) {
 			case ".wav":
 				loadWaveFile(mod, waveID, path, dataPak);
