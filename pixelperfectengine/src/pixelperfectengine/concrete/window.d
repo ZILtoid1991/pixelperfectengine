@@ -346,10 +346,11 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void requestFocus(WindowElement sender) {
 		if (focusables.has(sender)) {
 			try {
-				if (focusedElement != -1)
-					focusables[focusedElement].focusTaken();
 				Focusable f = cast(Focusable)(sender);
-				focusedElement = focusables.which(f);
+				const sizediff_t newFocusedElement = focusables.which(f);
+				if (focusedElement == newFocusedElement) return;
+				if (focusedElement != -1) focusables[focusedElement].focusTaken();
+				focusedElement = newFocusedElement;
 				focusables[focusedElement].focusGiven();
 			} catch (Exception e) {
 				debug writeln(e);

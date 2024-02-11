@@ -756,7 +756,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	///Passes mouse click event
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		///TODO: Handle mouse click when in text editing mode
-		if (state != ElementState.Enabled) return;
+		if (state != ElementState.Enabled || parent is null) return;
+		if (!(state & IS_FOCUSED)) parent.requestFocus(this);
 		//if ((state & TEXTINPUT_EN) && !mce.state)
 		if (vertSlider) {
 			const Box p = vertSlider.getPosition();
@@ -1027,6 +1028,15 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			default:
 				break;
 		}
+	}
+	override void focusTaken() {
+		if (flags & NEW_ITEM_ADD_EDIT) {
+			removeEntry(selection);
+			refresh();
+		}
+		if (flags & TEXTINPUT_EN) inputHandler.stopTextInput();
+		flags &= ~IS_FOCUSED;
+		//super.focusTaken();
 	}
 	/**
 	 * When called, the listener should drop all text input.
