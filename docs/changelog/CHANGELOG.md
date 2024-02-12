@@ -1,3 +1,19 @@
+# 0.11.0-alpha.2
+
+## New path handling system
+
+Running the executable from a different path environment will no longer crash the application with "file not found" exceptions, as long as the adequate functions are being used to generate the paths. Later versions might expand on the capabilities of the path generation functions.
+
+## Audio resampling
+
+Now audio will always run at 44.1/48kHz. Also automatically sets the buffer size to the given frequency to avoid confusion with the underlying sampling frequency.
+
+There's not much to gain from higher sampling frequencies in the audio quality department (QM816 is oversampling though at 55.5/60kHz), thus in order to make audio processing less CPU intensive.
+
+## Insert and edit function for ListView
+
+ListView now has a function to insert a new item, request focus, and put itself into editing mode. Some issues with how focus request and handling is being done is now fixed.
+
 # 0.11.0-alpha
 
 ## Introduction of the M2 support
