@@ -271,7 +271,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			ih.test();
 			timer.test();
 		}
-		version (linux) midiIn.stop();
+		version (linux) if (midiIn !is null) midiIn.stop();
 		if (mm !is null) {
 			synchronized
 				writeln(mm.suspendAudioThread());
