@@ -1,19 +1,21 @@
-# Planned features for 0.10.0 final
+# Roadmap
 
 ## Reverb/Delay/Chorus/Flanger effect (Delaylines) 
 
-* Status: in progress.
+* Status: Works, however initial architecture isn't well suited for modulation/type effects. Develop separate effector for that purpose.
 
 ## Audio support
 
-* Status: mostly works
+* Status: mostly works.
+* Potential issue: hotplug support isn't implemented at iota's side.
 
 ### MIDI sequencer
 
 * MIDI 1.0 status: done!
 * MIDI 2.0 status: 
   * Custom MIDI 2.0 format drafted.
-  * Write assembler and VM for it.
+  * Assembler and VM works so far, needs more testing.
+  * Implement binary format by 0.11.0!
 
 ### Audio development toolkit
 
@@ -21,11 +23,11 @@
 * Sample manager is mostly done.
 * Make music editor for a later version (0.11.0?).
 
+#### Music editor
+
+Due to the capabilities of the new format the engine uses (M2), a special editor will be needed, that can do some scripting, etc.
+
 # Features planned for later
-
-## License change?
-
-Should I relicense the engine to the MIT license?
 
 ## Get a better scripting engine
 
@@ -40,9 +42,13 @@ Currently, I have two options:
 4. Port a pre-exiting one to D, that would otherwise involve complicated build processes. This would allow one popular Python implementation to be ported. However, this might need relicensing of my code, which I was thinking about already.
 5. Write a lightweight VM myself. I already done something like that with M2, all I need is to add heap allocation support, support for function calls, etc. The harder part is to implement compilers for it, also it would take precious time from other parts of the engine, which is already suffering from feature creep relative to my time I can invest into it.
 
+### Current status
+
+Work on PingusVM have been started. At worst there will be an assembly-like scripting language, with options to write a compiler.
+
 ## Path management
 
-Do it by 0.11.0!
+There's now some preliminary path management, more features will be added later on.
 
 Potential users are being scared away by the engine's path system, and some stuff just outright tries to run the executable from random places where the `../system/` folder is not reachable.
 
@@ -52,7 +58,7 @@ It's likely possible to do pixel perfect graphics without resorting to compute. 
 
 * Turn off texture filtering (possible at all OpenGL versions).
 * Set rendering resolution (likely needs rendering to texture).
-* Use a 256*256 texture for color lookup (likely possible in even the oldest GLSL version).
+* Use a 256*256 texture for color lookup (likely possible in even the oldest GLSL versions).
 
 Added benefits are speed (10 000+ objects per frame!), the possibility of low-res 3D graphics, and easy implementation of transformable sprites.
 
