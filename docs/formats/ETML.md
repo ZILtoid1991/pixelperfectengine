@@ -47,9 +47,11 @@ other tags. The `id` attribute is mandatory.
 
 * `<image src="jeffrey" hoffset="10" voffset="3" spacing="5" />`: Inserts an image at the current position. The `src` attribute is mandatory.
 
-* `<text id="64"></text>`: Used for containing the multiple textchunks in a single file. The `id` attribute is mandatory. Contained within the document body. Cannot be cascading.
+* `<text id="64" formatID="menu"></text>`: Used for containing the multiple textchunks in a single file. The `id` attribute is mandatory. The `formatID` attribute specifies the default format for this block. Contained within the document body. Cannot be cascading.
 
 * `<formatDef id="menuText" u="yes" u_style="single" />`: Used for defining a text formatting for the `<format>` tags. Contained within the document body, the `id` attribute is mandatory. Attributes work like this: most single formatting tag names (e.g. `u`) are boolean values, and the `[formatting tag name]_[formatting attribute]` works similarly to the full formatting tag. `p` and `font` by themselves don't exists as boolean values. All default values are tied to the default formatting.
+
+* `<insert src="username" />`: Inserts an external string from the host program.
 
 # Example document
 
