@@ -22,12 +22,13 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	enum Flags : ubyte {
 		newLine			=	1 << 0,
 		newParagraph	=	1 << 1,
+		insertExtStr	=	1 << 2,
 	}
 	protected dchar[]		_text;			///The text to be displayed
 	public CharacterFormattingInfo!BitmapType 	formatting;	///The formatting of this text block
 	public TextTempl!BitmapType	next;			///The next piece of formatted text block
-	public int				frontTab;		///Space before the text chunk in pixels. Can be negative.
 	public BitmapType		icon;			///Icon inserted in front of the text chunk.
+	public int				frontTab;		///Space before the text chunk in pixels. Can be negative.
 	public byte				iconOffsetX;	///X offset of the icon if any
 	public byte				iconOffsetY;	///Y offset of the icon if any
 	public byte				iconSpacing;	///Spacing after the icon if any
@@ -60,10 +61,12 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * Returns the text as a 32bit string without the formatting.
 	 */
 	public dstring toDString() @safe pure nothrow {
-		if (next)
-			return text ~ next.toDString();
-		else
-			return text;
+		if (next) return text ~ next.toDString();
+		else return text;
+	}
+	public void interpolate(dstring[dstring] symbolList) @safe pure nothrow {
+		if (flags & Flags.insertExtStr) _text = symbolList[text].dup;
+		if (next) next.interpolate(symbolList);
 	}
 	/**
 	 * Indexing to refer to child items.
