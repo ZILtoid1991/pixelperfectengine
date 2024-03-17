@@ -370,11 +370,47 @@ S removeUnallowedDups(S)(S input, S symbolList) @safe pure nothrow {
 	}
 	return result;
 }
+/** 
+ * Replaces symbols put between two % symbols with one from the symbol list. If there's nothing between the two 
+ * percentage, a single % symbol will be inserted instead.
+ * Params:
+ *   input = The string that needs to be interpolated.
+ *   symbolList = The list of symbols to be interpolated into the string. Symbols should only consists of letters 
+ * and/or numbers.
+ * Returns: The interpolated string.
+ */
+S interpolateStr(S)(S input, S[S] symbolList) @safe pure nothrow {
+	S output;
+	while (input.length) {
+		ptrdiff_t begin = countUntil(input, '%');
+		if (begin == -1) {
+			output ~= input;
+			input.length = 0;
+		} else {
+			output ~= input[0..begin];
+			input = input[begin+1..$];
+			ptrdiff_t end = countUntil(input, '%');
+			if (end) output ~= symbolList[input[0..end]];
+			else output ~= '%';
+			input = input[end+1..$];
+		}
+	}
+	return output;
+}
 /**
  * Clamps a value between of two.
  */
 pragma(inline, true)
 T clamp(T)(ref T input, const T min, const T max) @nogc @safe pure nothrow {
+	if (input >= max) input = max;
+	else if (input <= min) input = min;
+	return input;
+}
+/**
+ * Clamps a value between of two.
+ */
+pragma(inline, true)
+T clamp(T)(T input, const T min, const T max) @nogc @safe pure nothrow {
 	if (input >= max) input = max;
 	else if (input <= min) input = min;
 	return input;
@@ -393,3 +429,4 @@ pragma(inline, true)
 T max(T)(T a, T b) @nogc @safe pure nothrow {
 	return a > b ? a : b;
 }
+
