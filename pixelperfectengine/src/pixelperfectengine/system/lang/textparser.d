@@ -15,6 +15,7 @@ import std.algorithm : countUntil;
 import std.exception : enforce;
 import std.typecons : BitFlags;
 import core.exception : RangeError;
+import core.internal.utf;
 
 /**
  * Parses text from XML/ETML
@@ -34,7 +35,7 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	public ChrFormat[string]		namedFormats;///Named format lookup table.
 	public Fontset!BitmapType[string]	fontsets;///Fontset name association table
 	public BitmapType[string]		icons;		///Icon name association table
-	public dstring[dstring]			customEntities;///Custom entities that are loaded during parsing.
+
 	private dstring					_input;		///The source XML/ETML document
 	private bool					inTextChunk;///Set to true if currently in a text chunk to allow detection of cascading 
 	
@@ -102,6 +103,9 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 			case "font":
 				onFontElementStart(attr);
 				break;
+			case "format":
+				onFormatElementStart(attr);
+				break;
 			case "p":
 				onPElementStart(attr);
 				break;
@@ -135,6 +139,9 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 			case "formatDef":
 				onFormatDefElement(attr);
 				break;
+			case "insert", "ins":
+				onInsertElement(attr);
+				break;
 			default:
 				break;
 		}
@@ -154,6 +161,11 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 				break;
 		}
 	}
+	protected void onInsertElement(dstring[dstring] attributes) @safe {
+		closeTextBlockIfNotEmpty();
+		currTextBlock.text = attributes["src"];
+		currTextBlock.flags |= Text.Flags.insertExtStr;
+	}
 	/** 
 	 * Begins a new text chain, and flushes the font stack.
 	 * Params:
@@ -161,9 +173,12 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 	 */
 	protected void onTextElementStart(dstring[dstring] attributes) @safe {
 		string textID = toUTF8(attributes["id"]);
-		currTextBlock = new TextType(null, defFrmt);
+		string startingFrmtName = attributes.get("formatId", null).toUTF8;
+		ChrFormat startingFrmt = namedFormats.get(startingFrmtName, null);
+		if (startingFrmt is null) startingFrmt = defFrmt;
+		currTextBlock = new TextType(null, startingFrmt);
 		//currFrmt = defFrmt;
-		frmtStack = [defFrmt];
+		frmtStack = [startingFrmt];
 		//Add first chunk to the output, so it can be recalled later on.
 		output[textID] = currTextBlock;
 	}
@@ -357,6 +372,10 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 			currTextBlock.next = new TextType(null, currFrmt);
 			currTextBlock = currTextBlock.next;
 		}
+		currTextBlock.icon = icons[attributes["id"].toUTF8];
+		currTextBlock.iconOffsetX = attributes["hoffset"].to!byte;
+		currTextBlock.iconOffsetY = attributes["voffset"].to!byte;
+		currTextBlock.iconSpacing = attributes["spacing"].to!byte;
 	}
 	protected void closeFormattingTag() @safe {
 		removeTopFromFrmtStack();
