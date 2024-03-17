@@ -79,7 +79,7 @@ public class ConfigurationProfile {
 	public InputDeviceData[] inputDevices;	///Stores all input devices and keybindings
 	private string	path;			///Path where the 
 	///Stores ancillary tags to be serialized into the config file
-	protected Tag[] ancillaryTags;
+	public Tag[] ancillaryTags;
 	private static string vaultPath;
 	private SDL_DisplayMode[] videoModes;
 	//public AuxillaryElements auxillaryElements[];
