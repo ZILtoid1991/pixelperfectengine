@@ -198,6 +198,24 @@ public class TextParserTempl(BitmapType = Bitmap8Bit)
 		} catch (Exception e) {
 			
 		}
+		switch (attributes.get("justify", null)) {
+			case "left":
+				newFrmt.formatFlags &= ~FormattingFlags.justifyMask;
+				break;
+			case "right":
+				newFrmt.formatFlags &= ~FormattingFlags.justifyMask;
+				newFrmt.formatFlags |= FormattingFlags.rightJustify;
+				break;
+			case "center":
+				newFrmt.formatFlags &= ~FormattingFlags.justifyMask;
+				newFrmt.formatFlags |= FormattingFlags.centerJustify;
+				break;
+			case "fill":
+				newFrmt.formatFlags &= ~FormattingFlags.justifyMask;
+				newFrmt.formatFlags |= FormattingFlags.fillEntireLine;
+				break;
+			default: break;
+		}
 		testFormatting(newFrmt);
 		currTextBlock.formatting = currFrmt;
 		currTextBlock.flags |= TextType.Flags.newParagraph;
