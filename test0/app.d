@@ -17,6 +17,7 @@ import pixelperfectengine.graphics.bitmap;
 
 import pixelperfectengine.collision.common;
 import pixelperfectengine.collision.objectcollision;
+import pixelperfectengine.collision.tilecollision;
 
 import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;
@@ -48,6 +49,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	SpriteLayer s;
 	InputHandler ih;
 	ObjectCollisionDetector ocd;
+	TileCollisionDetector tcd;
 	float theta;
 	int framecounter;
 	this (int mapWidth, int mapHeight) {
@@ -89,6 +91,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		dlangMan = loadBitmapFromImage!Bitmap8Bit(spriteSource);
 		dlangManCS = dlangMan.generateStandardCollisionModel();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
+		//tcd = new TileCollisionDetector(&onTileCollision, 1, t);
 		{
 			Image i = loadImage(File(getPathToAsset("/assets/basn3p04.png")));
 			r.addPaletteChunk(loadPaletteFromImage(i));
@@ -102,6 +105,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		//s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
 		s.addSprite(dlangMan, 65_536, 0, 0, 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
+		//tcd.objects[65_536] = ocd.objects[65_536];
 		s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
 
 		for(int i = 1 ; i < 1500 ; i++){
@@ -200,6 +204,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		textLayer.writeTextToMap(0, 0, 0, "Framerate:", BitmapAttrib(true, false));
 		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false));
 		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false));
+		textLayer.writeTextToMap(0, 3, 0, "Overlapping tiles:", BitmapAttrib(true, false));
 		//writeln(tt);
 		//r.palette[0] = 255;
 		//r.addRefreshListener(output, 0);
@@ -229,7 +234,10 @@ class TileLayerTest : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
 			}
 			ocd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
+			onTileCollision(getAllOverlappingTiles(s.getSpriteCoordinate(65_536), t));
+			//tcd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
 			ocd.testSingle(65_536);
+			//tcd.testAll();
 			if(scrup) {
 				t.relScroll(0,-1);
 				tt.relScroll(0,-1);
@@ -277,6 +285,14 @@ class TileLayerTest : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false));
 				break;
 		}
+	}
+	public void onTileCollision(MappingElement[] overlapList) {
+		wstring tileList = "[";
+		foreach (MappingElement me ; overlapList) {
+			tileList ~= format("%4X;"w, me.tileID);
+		}
+		tileList ~= "]";
+		textLayer.writeTextToMap(10,4,0,tileList,BitmapAttrib(true, false));
 	}
 	override public void onQuit() {
 		isRunning = false;

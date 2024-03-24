@@ -3,6 +3,7 @@ module test5.app;
 import std.stdio;
 import std.utf;
 import std.path;
+import std.conv : to;
 
 import bindbc.sdl;
 
@@ -108,7 +109,11 @@ public class Test5 : SystemEventListener, InputListener {
 		if (textPos >= availTexts.length) {
 			isRunning = false;
 		} else {
+			import std.datetime;
 			textOutput.drawFilledBox(Box.bySize(0, 0, 424, 240), 0);
+			dstring[dstring] symbols;
+			symbols["timenow"] = Clock.currTime().toISOString().to!dstring();
+			txprs.output[availTexts[textPos]].interpolate(symbols);
 			textOutput.drawMultiLineText(Box.bySize(0, 0, 424, 240), txprs.output[availTexts[textPos]]);
 			textPos++;
 		}
