@@ -100,7 +100,7 @@ public class ConfigurationProfile {
 			std.file.copy(defaultFile, path);			
 		restore();
 	}
-	static this() {
+	shared static this() {
 		keymodifierStrings =
 				["none"	: KeyModifier.None, "Shift": KeyModifier.Shift, "Ctrl": KeyModifier.Ctrl, "Alt": KeyModifier.Alt, 
 						"GUI": KeyModifier.GUI, "NumLock": KeyModifier.NumLock, "CapsLock": KeyModifier.CapsLock, "Mode": KeyModifier.Mode,
