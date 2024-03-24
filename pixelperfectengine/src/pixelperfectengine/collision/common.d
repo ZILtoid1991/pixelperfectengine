@@ -64,19 +64,36 @@ public class ObjectCollisionEvent {
 /**
  * Contains information about an object to TileLayer collision event.
  * Custom Bitmap shapes won't be used.
+ *
+ * Note: Might get removed in the future.
  */
-public class TileCollisionEvent {
-	/**
-	 * Defines individual tile collisions.
-	 */
-	public struct CollisionContext {
-		Point				position;	///Position of the tile on the map
-		MappingElement		data;		///Data of the mapping element read out from the layer
-	}
+public struct TileCollisionEvent {
 	CollisionShape*		a;			///Source object
 	int					contextID;	///The context of the collision (e.g. layer number)
-	CollisionContext[]	topEdge;	///Top edge collisions if any
-	CollisionContext[]	bottomEdge;	///Bottom edge collisions if any
-	CollisionContext[]	leftEdge;	///Left edge collisions if any
-	CollisionContext[]	rightEdge;	///Right edge collisions if any
+	int					objectID;	///The ID of the object
+	int					numTilesH;	///Number of overlapping tiles horizontally
+	int					numTilesV;	///Number of overlapping tiles vertically
+	MappingElement[]	overlapList;///List of overlapping elements
+	MappingElement[] edgeTop() @safe pure nothrow const {
+		return overlapList[0..numTilesH].dup;
+	}
+	MappingElement[] edgeBottom() @safe pure nothrow const {
+		return overlapList[$-numTilesH..$].dup;
+	}
+	MappingElement[] edgeLeft() @safe pure nothrow const {
+		MappingElement[] result;
+		result.reserve(numTilesV);
+		for (int i ; i < numTilesV ; i++) {
+			result ~= overlapList[i * numTilesH];
+		}
+		return result;
+	}
+	MappingElement[] edgeRight() @safe pure nothrow const {
+		MappingElement[] result;
+		result.reserve(numTilesV);
+		for (int i ; i < numTilesV ; i++) {
+			result ~= overlapList[(i * numTilesH) + numTilesH - 1];
+		}
+		return result;
+	}
 }
