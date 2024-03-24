@@ -51,4 +51,13 @@
             Testing of multiple paragraph text.<br />
         </p>
     </text>
+    <text id="example7">
+        <p justify="left">Left justified text.</p>
+        <p justify="center">Center justified text.</p>
+        <p justify="right">Right justified text.<br /></p>
+        &#32;
+    </text>
+    <text id="example8">
+        The current time is: <insert scr="timenow">
+    </text>
 </etml>
