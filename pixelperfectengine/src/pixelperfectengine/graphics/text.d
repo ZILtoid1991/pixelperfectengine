@@ -277,42 +277,44 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 	 * currently unknown, I'll debug it once I have the time and/or energy.
 	 */
 	public TextTempl!(BitmapType)[] breakTextIntoMultipleLines(const int width) @safe {
-		TextTempl!BitmapType curr = this;
-		TextTempl!BitmapType currentLine = new Text(null, curr.formatting, null, curr.frontTab, curr.icon);
-		TextTempl!BitmapType currentChunk = currentLine;
-		dchar[] currentWord;
-		TextTempl!(BitmapType)[] result;
-		int currentWordLength, currentLineLength;
-		while (curr) {
-			foreach(size_t i, dchar ch ; curr._text) {
-				currentWordLength += curr.formatting.font.chars(ch).xadvance;
-				if (isWhiteSpaceMB(ch) || i + 1 == curr._text.length){
+		TextTempl!BitmapType curr = this;					//Establish input with the current textchunk.
+		TextTempl!BitmapType currentLine = new Text(null, curr.formatting, null, curr.frontTab, curr.icon);	//Create output line
+		TextTempl!BitmapType currentChunk = currentLine;	//Establish current textchunk
+		dchar[] currentWord;								//Contains the currently processed word
+		TextTempl!(BitmapType)[] result;					//The text broken into a line each
+		int currentWordLength, currentLineLength;			//Current word and line lengths
+		while (curr) {										//Iterate on each 
+			foreach (size_t i, dchar ch ; curr._text) {		//Go over each character in the current textchunk
+				currentWordLength += curr.formatting.font.chars(ch).xadvance;//Add current character width to current word length
+				if (isWhiteSpaceMB(ch) || i + 1 == curr._text.length){ //Check if current character is whitespace or end of the input textchunk
 					if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start new word.
-						currentLineLength += currentWordLength;
-						currentChunk._text ~= currentWord ~ ch;
-						currentWord.length = 0;
-						currentWordLength = 0;
-					} else {
-						result ~= currentLine;
-						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
-						currentLine._text ~= currentWord ~ ch;
-						currentChunk = currentLine;
-						currentWord.length = 0;
-						currentWordLength = 0;
-						currentLineLength = 0;
+						currentLineLength += currentWordLength;	//Add current word length to current line length
+						currentChunk._text ~= currentWord ~ ch;	//Flush current word into the current output chunk
+					} else {								//Word doesn't fit into current line, break line
+						result ~= currentLine;				//Put current line into result
+						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);//Establish next line
+						currentLine._text ~= currentWord ~ ch;//Flush current word into the new line
+						currentChunk = currentLine;			//Set current chunk
+						currentLineLength = 0;				//Zero the line length
 					}
-				} else {
+					currentWord.length = 0;					//Clear the word buffer
+					currentWordLength = 0;					//Zero the word length
+				} else {									//Not whitespace, put character into current chunk
 					if (currentWordLength > width) {		//Break word to avoid going out of the line
-						currentLine._text = currentWord.dup;
-						result ~= currentLine;
+						if (currentLine._text.length) {		//If current line already has some text, then flush
+							result ~= currentLine;			//Put current line into result
+							currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);//Establish next line
+						}
+						currentLine._text = currentWord.dup;//Flush current word to current chunk if empty
+						result ~= currentLine;				//Flush current line to textchunk
 						//result ~= new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
-						currentWordLength = curr.formatting.font.chars(ch).xadvance;
-						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);
-						currentChunk = currentLine;
-						currentWord.length = 0;
-						currentWordLength = 0;
+						currentWordLength = curr.formatting.font.chars(ch).xadvance;//Put current char length into wordlength
+						currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, null);//Establish next line
+						currentChunk = currentLine;			//Set current chunk
+						currentWord.length = 0;				//Clear current word
+						currentWordLength = 0;				//Zero the line length
 					}
-					if (!(ch == '\n' || ch == '\r')) currentWord ~= ch;
+					if (!(ch == '\n' || ch == '\r')) currentWord ~= ch;//Skip line break characters (use intentional breakage instead), and add character to current word.
 				}
 				
 			}
