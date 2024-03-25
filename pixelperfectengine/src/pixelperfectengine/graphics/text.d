@@ -345,10 +345,9 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 					currentChunk = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, curr.icon);
 					currentLine.addToEnd(currentChunk);
 				}
-			} else if (result[$-1] !is currentLine) {	//end of text reached, flush any text if needed
-				result ~= currentLine;
-			}
+			} 
 		}
+		result ~= currentLine;//End of text reached, flush last line to output
 		if (!result.length) return [currentLine];
 		return result;
 	}
