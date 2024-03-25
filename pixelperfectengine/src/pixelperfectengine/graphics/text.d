@@ -318,7 +318,7 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 				}
 				
 			}
-			if (currentWord.length) {		//Flush any remaining words to current chunk. BUG: is not reached for some reason.
+			if (currentWord.length) {		//Flush any remaining words to current chunk. BUG: is not reached for some reason. NOTE: Likely isn't the reason for the no-flush error and is not needed.
 				if (currentLineLength + currentWordLength <= width) {	//Check if there's enough space in the line for the current word, if no, then start a new line.
 					currentLineLength += currentWordLength;
 					currentChunk._text ~= currentWord;
@@ -332,20 +332,21 @@ public class TextTempl(BitmapType = Bitmap8Bit) {
 				currentWord.length = 0;
 				currentWordLength = 0;
 			}
-			
- 			curr = curr.next; 
-			if (curr) {
+			curr = curr.next;	//Step to the next textchunk
+			if (curr) {			//If exists, do some checks
 				if ((curr.flags & Flags.newLine) || (curr.flags & Flags.newParagraph)) {		//Force text breakage, put text chunk into the array.
 					result ~= currentLine;
 					currentLine = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, curr.icon);
 					currentChunk = currentLine;
 					currentLineLength = 0;
- 					currentWord.length = 0;
+					currentWord.length = 0;
 					currentWordLength = 0;
-				} else {
+				} else {		//No new line needed, just create new chunk.
 					currentChunk = new TextTempl!(BitmapType)(null, curr.formatting, null, 0, curr.icon);
 					currentLine.addToEnd(currentChunk);
 				}
+			} else if (result[$-1] !is currentLine) {	//end of text reached, flush any text if needed
+				result ~= currentLine;
 			}
 		}
 		if (!result.length) return [currentLine];
