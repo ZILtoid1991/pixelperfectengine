@@ -3,14 +3,14 @@
 <etml>
     <text id="example1">
         Hello world! <br />
-        This is an example of a <i>multiline </i> text done in ETML. <br />
+        This is an example of a <i>multiline </i> text done in ETML.
     </text>
     <text id="example2">
         This even supports Unicode characters as long as the target system is capable of displaying them. <br />
         árvíztűrő tükörfúrógép ÁRVÍZTŰRŐ TÜKÖRFÚRÓGÉP <br />
         おはよう世界、これは日本語だよねー。または、カタカナも使える！ <br />
         ｆｕｌｌｗｉｄｔｈ　ＴＥＸＴ mixed with halfwidth. <br />
-        ﾊﾙﾌｳｨｯﾄｶﾀｶﾅ <br />
+        ﾊﾙﾌｳｨｯﾄｶﾀｶﾅ
     </text>
     <text id="example3">
         Short text. <br />
@@ -22,7 +22,7 @@
         Short text. <br />
         Short text. <br />
         Short text. <br />
-        Short text. <br />
+        Short text.
     </text>
     <text id="example4">
         <font color="2">Color Nr.2</font>
@@ -44,20 +44,23 @@
     <text id="example6">
         <p>
             Testing of multiple paragraph text.<br />
-            Testing of multiple paragraph text.<br />
+            Testing of multiple paragraph text.
         </p>
         <p>
             Testing of multiple paragraph text.<br />
-            Testing of multiple paragraph text.<br />
+            Testing of multiple paragraph text.
         </p>
     </text>
     <text id="example7">
         <p justify="left">Left justified text.</p>
         <p justify="center">Center justified text.</p>
-        <p justify="right">Right justified text.<br /></p>
+        <p justify="right">Right justified text.</p>
         &#32;
     </text>
     <text id="example8">
         The current time is: <insert scr="timenow">
+    </text>
+    <text id="example9">
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     </text>
 </etml>
