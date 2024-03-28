@@ -134,10 +134,10 @@ public class TestWindow : Window {
         listViewTest.multicellEditEnable = true;
         addElement(listViewTest);
 
-        singleLineLabel = new Label(lang["singlelinelabel"], "", Box(5, 340, 150, 360));
+        singleLineLabel = new Label(lang["singlelinelabel"], "", Box(5, 340, 160, 360));
         addElement(singleLineLabel);
 
-        multiLineLabel = new Label(lang["multilinelabel"], "", Box(5, 360, 150, 400));
+        multiLineLabel = new Label(lang["multilinelabel"], "", Box(5, 360, 160, 400));
         addElement(multiLineLabel);
 
         vScrollBarTest = new VertScrollBar(1000, "", Box.bySize(110, 220, 16, 120));
