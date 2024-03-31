@@ -74,6 +74,8 @@ public class ConfigurationProfile {
 	public string	resolution;		///Resolution, or window size in windowed mode
 	public string	scalingQuality;	///Scaling quality (what scaler it uses)
 	public string	gfxdriver;		///Graphics driver
+	public string	localCountry;	///Localization configuration (country)
+	public string	localLang;		///Localization configuration (language)
 	//public string[string] videoSettings;
 	//public KeyBinding[] keyBindingList;
 	public InputDeviceData[] inputDevices;	///Stores all input devices and keybindings
@@ -121,13 +123,16 @@ public class ConfigurationProfile {
 		try {
 			root = parseFile(path);
 			foreach(Tag t0; root.tags) {
-				if (t0.name == "configurationFile") {	//get configfile metadata
+				switch (t0.name) {
+				case "configurationFile": 	//get configfile metadata
 					appName = t0.values[0].get!string();
 					appVers = t0.values[1].get!string();
-				} else if (t0.name == "audio") {		//get values for the audio subsystem
+					break;
+				case "audio": 		//get values for the audio subsystem
 					sfxVol = t0.getTagValue!int("soundVol", 100);
 					musicVol = t0.getTagValue!int("musicVol", 100);
-				} else if (t0.name == "video") {	//get values for the video subsystem
+					break;
+				case "video": 	//get values for the video subsystem
 					foreach(Tag t1; t0.tags ){
 						switch(t1.name){
 							case "driver": gfxdriver = t1.getValue!string("software"); break;
@@ -138,7 +143,8 @@ public class ConfigurationProfile {
 							default: break;
 						}
 					}
-				} else if (t0.name == "input") {
+					break;
+				case "input":
 					foreach(Tag t1; t0.tags) {
 						switch(t1.name) {
 							case "device":
@@ -210,10 +216,15 @@ public class ConfigurationProfile {
 							default: break;
 						}
 					}
-				} else {
+					break;
+				case "local":
+					localCountry = t0.values[0].get!string();
+					localLang = t0.values[1].get!string();
+					break;
+				default:
 					//collect all ancillary tags into an array
-					//t0.remove();
 					ancillaryTags ~= t0;
+					break;
 				}
 			}
 		}
@@ -294,6 +305,9 @@ public class ConfigurationProfile {
 						break;
 				}
 			}
+			if (!localCountry.length) localCountry = "NULL";
+			if (!localLang.length) localLang = "NULL";
+			new Tag(root, null, "local", [Value(localCountry), Value(localLang)]);
 			//Tag t3 = new Tag(root, null, "etc");
 			foreach(at; ancillaryTags){
 				at.remove();
