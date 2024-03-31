@@ -210,7 +210,7 @@ public class Editor : SystemEventListener, InputListener{
 		typeSel = ElementType.NULL;
 
 		ewh = new WindowHandler(1696,960,848,480,sprtL);
-		mainRaster.loadPalette(loadPaletteFromFile("../system/concreteGUIE1.tga"));
+		mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("../system/concreteGUIE1.tga")));
 		INIT_CONCRETE();
 		inputH = new InputHandler();
 		inputH.systemEventListener = this;
@@ -218,7 +218,7 @@ public class Editor : SystemEventListener, InputListener{
 		inputH.mouseListener = ewh;
 		
 		//ewh.setBaseWindow(new TopLevelWindow(848, 480, this));
-		config = new ConfigurationProfile("config_wmfc.sdl", "../system/config_wmfc.sdl");
+		config = new ConfigurationProfile("config_wmfc.sdl", getPathToAsset("../system/config_wmfc.sdl"));
 		{
 			import pixelperfectengine.system.input.scancode;
 			inputH.addBinding(BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("sysesc"));
