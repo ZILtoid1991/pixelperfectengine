@@ -1,3 +1,21 @@
+# 0.11.0-alpha.3
+
+## Improvements upon the textparsing system
+
+### Bugfixes
+
+No more last line omitting bug, there's still some inconsistency with line breaking if the last word is followed by a space of not.
+
+### Added and/or implemented features
+
+* `justify` is now parsed and tested.
+* Tag `insert` has been added, which inserts a a block into the text. (testcase for it currently not working).
+
+## Configuration file parsing changes
+
+* Made auxiliary tags easily accessible without class inheritance.
+* Added tag `local`, and ways to accessing it.
+
 # 0.11.0-alpha.2
 
 ## New path handling system
