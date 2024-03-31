@@ -3,11 +3,11 @@
 <etml>
     <text id="multilinedialog">
         This is a multiline dialog. <br />
-        This dialog has multiple lines. 
+        This dialog has multiple lines.
     </text>
     <text id="multilinelabel">
         This is a multiline label.<br />
-        This label has multiple lines. 
+        This label has multiple lines.
     </text>
     <text id="singlelinelabel">
         This is a single line label.
