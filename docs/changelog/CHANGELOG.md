@@ -16,6 +16,10 @@ No more last line omitting bug, there's still some inconsistency with line break
 * Made auxiliary tags easily accessible without class inheritance.
 * Added tag `local`, and ways to accessing it.
 
+## Fixes to example game "Snake"
+
+It had a bug, that could cause the snake to lose its tail in case of rapid direction changes, also pressing up or down upon beginning was extremely buggy. These issues has been solved.
+
 # 0.11.0-alpha.2
 
 ## New path handling system
