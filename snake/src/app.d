@@ -253,12 +253,12 @@ public class SnakeGame : InputListener, SystemEventListener {
 				}
 			}
 		}
-		//If didn't escaped from the loop, then it means we can place no more apples, and the player have won.
+		//If didn't escape from the loop, then it means we can place no more apples, and the player have won.
 		state = 7;
 	}
 	///Moves the snake in the given direction.
 	public void moveSnake() {
-		prevDir = dir;
+		changeDir();
 		Point curr, prev = snakeHead;
 		bool appleFound;
 		switch (dir) {
@@ -349,7 +349,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 						prev.y += 1;
 					break;
 				default:
-					break;	//Not nice I know, but there's no better way currently to break from multiple levels
+					break;
 			}
 		}
 		
@@ -374,6 +374,59 @@ public class SnakeGame : InputListener, SystemEventListener {
 			moveSnake();
 		}
 	}
+	/// Changes the direction if a key was pressed
+	public void changeDir() {
+		if (dir != prevDir) {
+			switch (dir) {
+				case Direction.North:
+					switch (prevDir) {
+						case Direction.East:
+							playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeNW));
+							break;
+						case Direction.West:
+							playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeNE));
+							break;
+						default: break;
+					}
+					break;
+				case Direction.South:
+					switch (prevDir) {
+						case Direction.East:
+							playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeSW));
+							break;
+						case Direction.West:
+							playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeSE));
+							break;
+						default: break;
+					}
+					break;
+				case Direction.West:
+					switch (prevDir) {
+						case Direction.North:
+							playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeSW));
+							break;
+						case Direction.South:
+							playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeNW));
+							break;
+						default: break;
+					}
+					break;
+				case Direction.East:
+					switch (prevDir) {
+						case Direction.North:
+							playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeSE));
+							break;
+						case Direction.South:
+							playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeNE));
+							break;
+						default: break;
+					}
+					break;
+				default: break;
+			}
+			prevDir = dir;
+		}
+	}
 	/// Key event data is received here.
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
 		switch (id) {
@@ -381,56 +434,26 @@ public class SnakeGame : InputListener, SystemEventListener {
 				if (prevDir != Direction.South) {
 					dir = Direction.North;
 				}
-				switch (prevDir) {
-					case Direction.East:
-						playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeNW));
-						break;
-					case Direction.West:
-						playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeNE));
-						break;
-					default: break;
+				if (!prevDir) {
+					playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeV));
 				}
 				break;
 			case hashCalc("down"):
 				if (prevDir != Direction.North) {
 					dir = Direction.South;
 				}
-				switch (prevDir) {
-					case Direction.East:
-						playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeSW));
-						break;
-					case Direction.West:
-						playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeSE));
-						break;
-					default: break;
+				if (!prevDir) {
+					playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeV));
 				}
 				break;
 			case hashCalc("left"):
 				if (prevDir != Direction.East) {
 					dir = Direction.West;
 				}
-				switch (prevDir) {
-					case Direction.North:
-						playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeSW));
-						break;
-					case Direction.South:
-						playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeNW));
-						break;
-					default: break;
-				}
 				break;
 			case hashCalc("right"):
 				if (prevDir != Direction.West) {
 					dir = Direction.East;
-				}
-				switch (prevDir) {
-					case Direction.North:
-						playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeSE));
-						break;
-					case Direction.South:
-						playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeNE));
-						break;
-					default: break;
 				}
 				break;
 			case hashCalc("start"):
