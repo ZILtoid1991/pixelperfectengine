@@ -133,6 +133,7 @@ public class TestWindow : Window {
         listViewTest.editEnable = true;
         listViewTest.multicellEditEnable = true;
         addElement(listViewTest);
+        listViewTest.onItemAdd = &listView_onItemAdd;
 
         singleLineLabel = new Label(lang["singlelinelabel"], "", Box(5, 340, 160, 360));
         addElement(singleLineLabel);
@@ -174,5 +175,8 @@ public class TestWindow : Window {
         writeln(fe.path);
         writeln(fe.filename);
         writeln(fe.extension);
+    }
+    private void listView_onItemAdd(Event ev) {
+        writeln(ev);
     }
 }

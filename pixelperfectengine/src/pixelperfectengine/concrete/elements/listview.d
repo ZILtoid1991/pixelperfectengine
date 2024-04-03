@@ -946,7 +946,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		switch(key) {
 			case TextInputKey.Enter:
 				entries[selection][hSelection].text = text;
-				if (flags & NEW_ITEM_ADD_EDIT) {
+				if (flags & NEW_ITEM_ADD_EDIT) {	//Item add and edit mode
 					hSelection++;
 					for ( ; hSelection < entries[selection].length ; hSelection++) {
 						if (entries[selection][hSelection].editable) {
@@ -957,7 +957,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 					}
 					if (onItemAdd !is null) onItemAdd(new CellEditEvent(this, entries[selection], selection, -1));
 					inputHandler.stopTextInput();
-				} else {
+				} else {							//Regular cell edit
 					if (onTextInput !is null) onTextInput(new CellEditEvent(this, entries[selection], selection, hSelection));
 					inputHandler.stopTextInput();
 				}
@@ -1042,6 +1042,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 * When called, the listener should drop all text input.
 	 */
 	public void dropTextInput() {
+		hSelection = 0;
 		flags &= ~TEXTINPUT_EN;
 		if (flags & NEW_ITEM_ADD_EDIT) {
 			flags &= ~NEW_ITEM_ADD_EDIT;
@@ -1102,10 +1103,11 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			}
 			vSVal = vertSlider.value;
 		}
-		if (onRepos && (flags & (NEW_ITEM_ADD_EDIT | TEXTINPUT_EN))) {
+		if (onRepos && ((flags & NEW_ITEM_ADD_EDIT) || (flags & TEXTINPUT_EN))) {
+			const uint flagsBackup = flags;
 			flags &= !TEXTINPUT_EN;
 			draw();
-			flags |= TEXTINPUT_EN;
+			flags = flagsBackup;
 		}
 		if (_header) headerHeight = _header.height;
 		textArea = Box.bySize(position.left + posX - hSVal, position.top + posY - vSVal + headerHeight, width, height);
