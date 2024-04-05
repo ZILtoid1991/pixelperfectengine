@@ -1,3 +1,7 @@
+# 0.11.0-alpha.4
+
+Fixed a critical bug regarding of the insert and edit function of ListView.
+
 # 0.11.0-alpha.3
 
 ## Improvements upon the textparsing system
