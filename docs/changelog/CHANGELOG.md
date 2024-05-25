@@ -1,3 +1,7 @@
+# 0.11.0-alpha.5
+
+Fixed a bug related to submenus in popup menus, also a bug related to missing `onDraw` calls.
+
 # 0.11.0-alpha.4
 
 Fixed a critical bug regarding of the insert and edit function of ListView.

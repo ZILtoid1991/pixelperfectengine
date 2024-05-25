@@ -114,10 +114,10 @@ public class PopUpMenu : PopUpElement {
 			}
 			if (num >= elements.length) return;
 			if (elements[num].source == "\\submenu\\") {
-				PopUpMenu m = new PopUpMenu(elements[mce.y].subElements, this.source, onMenuSelect);
+				PopUpMenu m = new PopUpMenu(elements[num].subElements, this.source, onMenuSelect);
 				m.onMouseClick = onMouseClick;
 				//parent.getAbsolutePosition()
-				parent.addPopUpElement(m, position.left + width, position.top + vPos - text.getHeight);
+				parent.addPopUpElement(m, position.left + width, position.top + vPos - elements[num].text.getHeight);
 				//parent.closePopUp(this);
 			} else if (elements[num].text !is null) {
 				//invokeActionEvent(new Event(elements[offsetY].source, source, null, null, null, offsetY, EventType.CLICK));

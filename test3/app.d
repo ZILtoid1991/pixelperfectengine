@@ -48,6 +48,7 @@ public class TestElements : InputListener, SystemEventListener {
         ih.inputListener = this;
         ih.systemEventListener = this;
         ih.mouseListener = wh;
+        PopUpElement.onDraw = &rasterRefresh;
         WindowElement.onDraw = &rasterRefresh;
         WindowElement.inputHandler = ih;
         Window.onDrawUpdate = &rasterRefresh;
@@ -105,6 +106,7 @@ public class TestWindow : Window {
     Button              btn_fileDialog;
     Button              btn_messageDialog;
     Button              btn_addElem;
+    Button              btn_subMenu;
     VertScrollBar       vScrollBarTest;
     Label               singleLineLabel;
     Label               multiLineLabel;
@@ -156,6 +158,9 @@ public class TestWindow : Window {
         btn_addElem = new Button("Add Elem", "", Box.bySize(300, 70, 70, 20));
         btn_addElem.onMouseLClick = &btn_addElem_onClick;
         addElement(btn_addElem);
+        btn_subMenu = new Button("Submenu test", "", Box.bySize(300, 95, 70, 20));
+        btn_subMenu.onMouseLClick = &btn_subMenu_onClick;
+        addElement(btn_subMenu);
 
         multiLineDialog = lang["multilinedialog"];
     }
@@ -169,6 +174,22 @@ public class TestWindow : Window {
     private void btn_addElem_onClick(Event ev) {
         listViewTest.insertAndEdit(2, new ListViewItem(16, ["Fifth", "000000000000000000000"], [TextInputFieldType.Text,  
                     TextInputFieldType.Text]));
+    }
+    private void btn_subMenu_onClick(Event ev) {
+        PopUpMenuElement[] menutree;
+        menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 1");
+        menutree[0] ~= new PopUpMenuElement("", "Submenu 1/1");
+        menutree[0] ~= new PopUpMenuElement("", "Submenu 1/2");
+        menutree[0] ~= new PopUpMenuElement("", "Submenu 1/3");
+        menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 2");
+        menutree[1] ~= new PopUpMenuElement("", "Submenu 2/1");
+        menutree[1] ~= new PopUpMenuElement("", "Submenu 2/2");
+        menutree[1] ~= new PopUpMenuElement("", "Submenu 2/3");
+        menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 3");
+        menutree[2] ~= new PopUpMenuElement("", "Submenu 3/1");
+        menutree[2] ~= new PopUpMenuElement("", "Submenu 3/2");
+        menutree[2] ~= new PopUpMenuElement("", "Submenu 3/3");
+        handler.addPopUpElement(new PopUpMenu(menutree, "", null));
     }
     private void fileDialogEvent(Event ev) {
         FileEvent fe = cast(FileEvent)ev;

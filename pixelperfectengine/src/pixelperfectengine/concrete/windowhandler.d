@@ -344,23 +344,16 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		for ( ; numOfPopUpElements < 0 ; numOfPopUpElements++){
 			spriteLayer.removeSprite(numOfPopUpElements);
 		}
-		/+foreach (key ; popUpElements) {
-			key.destroy;
-		}+/
-		///Why didn't I add a method to clear linked lists? (slams head into wall)
 		popUpElements = PopUpSet(new PopUpElement[](0));
-		/+while (popUpElements.length) {
-			popUpElements.remove(0);
-		}+/
+		if (PopUpElement.onDraw !is null) PopUpElement.onDraw();
 	}
 	/**
 	 * Removes the pop-up element with the highest priority.
 	 */
 	private void removeTopPopUp(){
-
 		spriteLayer.removeSprite(numOfPopUpElements++);
-
 		popUpElements.remove(popUpElements.length - 1);
+		if (PopUpElement.onDraw !is null) PopUpElement.onDraw();
 	}
 	/**
 	 * Returns the default stylesheet (popup).
@@ -375,23 +368,15 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 */
 	public void endPopUpSession(PopUpElement p){
 		removeAllPopUps();
+		if (PopUpElement.onDraw !is null) PopUpElement.onDraw();
 	}
 	/**
 	 * Removes the given popup element.
 	 */
 	public void closePopUp(PopUpElement p){
 		popUpElements.removeByElem(p);
+		if (PopUpElement.onDraw !is null) PopUpElement.onDraw();
 	}
-	
-	
-	/*public Coordinate getAbsolutePosition(PopUpElement sender){
-		for(int i ; i < popUpElements.length ; i++){
-			if(popUpElements[i] = sender){
-
-			}
-		}
-		return Coordinate();
-	}*/
 	//implementation of the `InputListener` interface
 	/**
 	 * Called when a keybinding event is generated.
