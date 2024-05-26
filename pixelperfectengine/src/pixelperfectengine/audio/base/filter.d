@@ -59,3 +59,22 @@ public struct IIRBank {
 		}
 	}
 }
+public struct CtrlValFilter {
+	__m128 filterLine = __m128(0);
+	__m128 filterCoeff = __m128([1.0, 0.0, 0.0, 0.0]);
+	pragma (inline, true)
+	float output(float targetVal) @nogc @safe pure nothrow {
+		filterLine[0] = targetVal;
+		filterLine *= filterCoeff;
+		filterLine[0] = filterLine[1] + filterLine[2] + filterLine[3];
+		filterLine = cast(__m128)_mm_slli_si128!(4)(cast(__m128i)filterLine);
+		return filterLine[1];
+	}
+	__m128 calculateFilterCoeff(float amount) @nogc @safe pure nothrow {
+		filterCoeff[0] = 1.0 - amount;
+		filterCoeff[1] = amount / 3.0;
+		filterCoeff[2] = filterCoeff[1];
+		filterCoeff[3] = filterCoeff[1];
+		return filterCoeff;
+	}
+}
