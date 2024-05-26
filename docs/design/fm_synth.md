@@ -123,6 +123,7 @@ Notation: [bit index in parameter settings]{bit index in the operator itself}
 * `EasyTune` [6]{13}: Sets the operator into a fixed frequency ratio tune mode. Enabled by default.
 * `ContiTune` [7]{14}: Enables the use extra precision for TuneCor, which enables the continuous tuning of the operator from a single data source.
 * `ExprToMW` [8]{15}: Replaces MW controls with expression value controls for this operator.
+* `PitchEnvMode` [9]{16}: Disables the pitch envelop for this operator. Could be used to emulate filter sweeps.
 
 ### EasyTune prelimiters
 
