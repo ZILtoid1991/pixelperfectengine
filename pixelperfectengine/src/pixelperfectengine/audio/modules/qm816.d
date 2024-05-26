@@ -1527,6 +1527,26 @@ public class QM816 : AudioModule {
 							channels[ch].preset);
 					}
 					break;
+				case 0x20:	//Waveform builder
+					const waveSel = msg[msgPos + 1];
+					const waveformType = msg[msgPos + 2];
+					switch (waveformType) {
+						case 0x50:	//square waveform
+							wavetables[waveSel] = generatePulseWave((msg[msgPos + 2]<<3) | (msg[msgPos + 3]>>4));
+							break;
+						case 0x54:	//Triangular wave
+							wavetables[waveSel] = generateTriangularWave((msg[msgPos + 2]<<3) | (msg[msgPos + 3]>>4));
+							break;
+						case 0x74:	//Integrated triangular wave
+							wavetables[waveSel] = integrateTriangularWave(generateTriangularWave
+									((msg[msgPos + 2]<<3) | (msg[msgPos + 3]>>4)));
+							break;
+						case 0x53:	//Sine wave
+							wavetables[waveSel] = generateSinewave([msg[msgPos + 2], msg[msgPos + 3], msg[msgPos + 4], msg[msgPos + 5]]);
+							break;
+						default: break;
+					}
+					break;
 				default:
 					break;
 			}
