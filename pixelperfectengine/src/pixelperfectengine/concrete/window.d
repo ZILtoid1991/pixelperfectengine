@@ -46,16 +46,17 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	//public int header;//, sizeX, sizeY;
 	protected int 					moveX, moveY;	///Relative x and y coordinates for drag events
 	protected uint					flags;			///Stores various flags
-	protected static enum IS_ACTIVE = 1 << 0;
-	protected static enum NEEDS_FULL_UPDATE = 1 << 1;
-	protected static enum HEADER_UPDATE = 1 << 2;
-	protected static enum IS_MOVED = 1 << 3;
-	protected static enum IS_RESIZED = 1 << 4;
-	protected static enum IS_RESIZED_L = 1 << 5;
-	protected static enum IS_RESIZED_T = 1 << 6;
-	protected static enum IS_RESIZED_B = 1 << 7;
-	protected static enum IS_RESIZED_R = 1 << 8;
-	protected static enum IS_RESIZABLE_BY_MOUSE = 1 << 9;
+	protected static enum IS_ACTIVE = 1 << 0;		///Set if window is active
+	protected static enum NEEDS_FULL_UPDATE = 1 << 1;///Set if window needs full redraw (Deprecated)
+	protected static enum HEADER_UPDATE = 1 << 2;	///Set if header needs redraw (Deprecated)
+	protected static enum IS_MOVED = 1 << 3;		///Set if window is being moved
+	protected static enum IS_RESIZED = 0xF0;		///Used to test if window is being resized or not
+	protected static enum IS_RESIZED_L = 1 << 4;	///Set if window is being resized by the left edge
+	protected static enum IS_RESIZED_T = 1 << 5;	///Set if window is being resized by the top edge
+	protected static enum IS_RESIZED_B = 1 << 6;	///Set if window is being resized by the bottom edge
+	protected static enum IS_RESIZED_R = 1 << 7;	///Set if window is being resized by the right edge
+	protected static enum IS_RESIZABLE_BY_MOUSE_H = 1 << 8;///Set if window is horizontally resizable
+	protected static enum IS_RESIZABLE_BY_MOUSE_V = 1 << 9;///Set if window is vertically resizable
 	//protected bool 					fullUpdate;		///True if window needs full redraw
 	//protected bool 					isActive;		///True if window is currently active
 	//protected bool 					headerUpdate;	///True if needs header update
@@ -242,7 +243,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		drawTextSL(headerArea, title, Point(0,0));
 	}
 	///Returns true if the window is focused
-	public @property bool active() @safe @nogc pure nothrow {
+	public @property bool active() @safe @nogc pure nothrow const {
 		return flags & IS_ACTIVE;
 	}
 	///Sets the IS_ACTIVE flag to the given value
@@ -256,15 +257,34 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		}
 		return active();
 	}
+	public @property bool resizableH() @safe @nogc pure nothrow const {
+		return flags & IS_RESIZABLE_BY_MOUSE_H ? true : false;
+	}
+	public @property bool resizableH(bool val) @safe @nogc pure nothrow {
+		if (val) flags |= IS_RESIZABLE_BY_MOUSE_H;
+		else flags &= ~IS_RESIZABLE_BY_MOUSE_H;
+		return flags & IS_RESIZABLE_BY_MOUSE_H ? true : false;
+	}
+	public @property bool resizableV() @safe @nogc pure nothrow const {
+		return flags & IS_RESIZABLE_BY_MOUSE_V ? true : false;
+	}
+	public @property bool resizableV(bool val) @safe @nogc pure nothrow {
+		if (val) flags |= IS_RESIZABLE_BY_MOUSE_V;
+		else flags &= ~IS_RESIZABLE_BY_MOUSE_V;
+		return flags & IS_RESIZABLE_BY_MOUSE_V ? true : false;
+	}
+	public @property bool isResized() @safe @nogc pure nothrow const {
+		return flags & IS_RESIZED ? true : false;
+	}
 	///Returns whether the window is moved or not
-	public @property bool isMoved() @safe @nogc pure nothrow {
+	public @property bool isMoved() @safe @nogc pure nothrow const {
 		return flags & IS_MOVED ? true : false;
 	}
 	///Sets whether the window is moved or not
 	public @property bool isMoved(bool val) @safe @nogc pure nothrow {
 		if (val) flags |= IS_MOVED;
 		else flags &= ~IS_MOVED;
-		return isMoved();
+		return flags & IS_MOVED ? true : false;
 	}
 	///Sets the title of the window
 	public void setTitle(Text s) @trusted {
@@ -492,6 +512,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (!isMoved) {
 			lastMousePos = Point(mce.x - position.left, mce.y - position.top);
+			//WindowElement block
 			foreach (WindowElement we; elements) {
 				if (we.getPosition.isBetween(lastMousePos)) {
 					lastMouseEventTarget = we;
@@ -501,6 +522,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 					return;
 				}
 			}
+			//Header button block
 			foreach (ISmallButton sb; smallButtons) {
 				WindowElement we = cast(WindowElement)sb;
 				if (we.getPosition.isBetween(lastMousePos)) {
@@ -511,6 +533,61 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 					return;
 				}
 			}
+			//Resize event block
+			if (resizableH) {
+				if (mce.x - 2 <= position.left) { ///Left edge
+					if (resizableV) {
+						if (mce.y - 2 <= position.top) {///Top-left corner
+							flags |= IS_RESIZED_T | IS_RESIZED_L;
+							handler.initDragEvent(this);
+							return;
+						} else if (mce.y >= position.bottom - 2) {///Bottom-left corner
+							flags |= IS_RESIZED_B | IS_RESIZED_L;
+							handler.initDragEvent(this);
+							return;
+						}
+					}
+					flags |= IS_RESIZED_L;///Left edge in general
+					handler.initDragEvent(this);
+					return;
+				} else if (mce.x >= position.right - 2) {///Right edge
+					if (resizableV) {
+						if (mce.y - 2 <= position.top) {///Top-right corner
+							flags |= IS_RESIZED_T | IS_RESIZED_R;
+							handler.initDragEvent(this);
+							return;
+						} else if (mce.y >= position.bottom - 2) {///Bottom-right corner
+							flags |= IS_RESIZED_B | IS_RESIZED_R;
+							handler.initDragEvent(this);
+							return;
+						}
+					}
+					flags |= IS_RESIZED_R;///Right edge in general
+					handler.initDragEvent(this);
+					return;
+				} else if (resizableV) {///Top or bottom edge
+					if (mce.y - 2 <= position.top) {
+						flags |= IS_RESIZED_T;
+						handler.initDragEvent(this);
+						return;
+					} else if(mce.y >= position.bottom - 2) {
+						flags |= IS_RESIZED_B;
+						handler.initDragEvent(this);
+						return;
+					}
+				}
+			} else if (resizableV) {///The previous one already took care of the corner cases, so we won't have to deal with them here
+				if (mce.y - 2 <= position.top) {
+					flags |= IS_RESIZED_T;
+					handler.initDragEvent(this);
+					return;
+				} else if(mce.y >= position.bottom - 2) {
+					flags |= IS_RESIZED_B;
+					handler.initDragEvent(this);
+					return;
+				}
+			}
+			//Move even block
 			const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
 			if (lastMousePos.y < headerHeight) {
 				isMoved = true;
@@ -519,6 +596,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 			lastMouseEventTarget = null;
 		} else if (!mce.state) {
 			isMoved = false;
+			flags &= ~IS_MOVED;
 		}
 	}
 	///Passes mouse move event
@@ -529,6 +607,44 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 				relMove(mme.relX, mme.relY);
 			else
 				isMoved = false;
+		} else if (isResized) {
+			const Box safePosition = position;
+			const int windowMinSize = getStyleSheet().drawParameters["windowMinimumSizes"];
+			if (mme.buttonState) {
+				switch (flags & IS_RESIZED) {
+					case IS_RESIZED_L:
+						position.left += mme.relX;
+						break;
+					case IS_RESIZED_R:
+						position.right += mme.relX;
+						break;
+					case IS_RESIZED_T:
+						position.top += mme.relY;
+						break;
+					case IS_RESIZED_B:
+						position.bottom += mme.relY;
+						break;
+					case IS_RESIZED_L | IS_RESIZED_T:
+						position.left += mme.relX;
+						position.top += mme.relY;
+						break;
+					case IS_RESIZED_L | IS_RESIZED_B:
+						position.left += mme.relX;
+						position.bottom += mme.relY;
+						break;
+					case IS_RESIZED_R | IS_RESIZED_T:
+						position.right += mme.relX;
+						position.top += mme.relY;
+						break;
+					case IS_RESIZED_R | IS_RESIZED_B:
+						position.right += mme.relX;
+						position.bottom += mme.relY;
+						break;
+					default: break;
+				}
+				if (position.width < windowMinSize || position.height < windowMinSize) position = safePosition;
+				else draw();
+			} else flags &= ~IS_RESIZED;
 		} else if (lastMouseEventTarget) {
 			mme.x = lastMousePos.x;
 			mme.y = lastMousePos.y;
@@ -545,6 +661,46 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 					we.passMME(mec, mme);
 					return;
 				}
+			}
+			if (!position.isBetween(mme.x, mme.y)) {
+				if (handler.getCursor != CursorType.Arrow) handler.resetCursor();
+			} else {
+				if (resizableH) {
+					if (mme.x - 2 <= position.left) { ///Left edge
+						if (resizableV) {
+							if (mme.y - 2 <= position.top) {///Top-left corner
+								handler.setCursor(CursorType.ResizeNWSE);
+								return;
+							} else if (mme.y >= position.bottom - 2) {///Bottom-left corner
+								handler.setCursor(CursorType.ResizeNESW);
+								return;
+							}
+						}
+						handler.setCursor(CursorType.ResizeWE);///Left edge in general
+						return;
+					} else if (mme.x >= position.right - 2) {///Right edge
+						if (resizableV) {
+							if (mme.y - 2 <= position.top) {///Top-right corner
+								handler.setCursor(CursorType.ResizeNESW);
+								return;
+							} else if (mme.y >= position.bottom - 2) {///Bottom-right corner
+								handler.setCursor(CursorType.ResizeNWSE);
+								return;
+							}
+						}
+						handler.setCursor(CursorType.ResizeWE);///Right edge in general
+						return;
+					} else if ((mme.y - 2 <= position.top || mme.y >= position.bottom - 2) && resizableV) {///Top or bottom edge
+						handler.setCursor(CursorType.ResizeNS);
+						return;
+					}
+				} else if (resizableV) {///The previous one already took care of the corner cases, so we won't have to deal with them here
+					if (mme.y - 2 <= position.top || mme.y >= position.bottom - 2) {///Top or bottom edge
+						handler.setCursor(CursorType.ResizeNS);
+						return;
+					}
+				}
+				if (handler.getCursor != CursorType.Arrow) handler.resetCursor();
 			}
 		}
 	}

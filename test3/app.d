@@ -107,6 +107,7 @@ public class TestWindow : Window {
     Button              btn_messageDialog;
     Button              btn_addElem;
     Button              btn_subMenu;
+    Button              btn_resizeTest;
     VertScrollBar       vScrollBarTest;
     Label               singleLineLabel;
     Label               multiLineLabel;
@@ -161,6 +162,9 @@ public class TestWindow : Window {
         btn_subMenu = new Button("Submenu test", "", Box.bySize(300, 95, 70, 20));
         btn_subMenu.onMouseLClick = &btn_subMenu_onClick;
         addElement(btn_subMenu);
+        btn_resizeTest = new Button("Window resize", "", Box.bySize(300, 120, 70, 20));
+        btn_resizeTest.onMouseLClick = &btn_resizeTest_onClick;
+        addElement(btn_resizeTest);
 
         multiLineDialog = lang["multilinedialog"];
     }
@@ -191,6 +195,9 @@ public class TestWindow : Window {
         menutree[2] ~= new PopUpMenuElement("", "Submenu 3/3");
         handler.addPopUpElement(new PopUpMenu(menutree, "", null));
     }
+    private void btn_resizeTest_onClick(Event ev) {
+        handler.addWindow(new ResizableWindow());
+    }
     private void fileDialogEvent(Event ev) {
         FileEvent fe = cast(FileEvent)ev;
         writeln(fe.path);
@@ -199,5 +206,13 @@ public class TestWindow : Window {
     }
     private void listView_onItemAdd(Event ev) {
         writeln(ev);
+    }
+}
+
+public class ResizableWindow : Window {
+    public this() {
+        resizableH = true;
+        resizableV = true;
+        super(Box.bySize(0, 0, 200, 200), "Resizing test");
     }
 }

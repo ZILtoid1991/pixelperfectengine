@@ -129,6 +129,8 @@ public class StyleSheet{
 
 		drawParameters["defDialogPadding"] = 10;
 
+		drawParameters["windowMinimumSizes"] = 64;
+
 		pattern["blackDottedLine"] = [0x1f, 0x1f, 0x10, 0x10];
 	}
 	/**
