@@ -59,9 +59,17 @@ public struct IIRBank {
 		}
 	}
 }
+/**
+ * Defines a filter primarily designed for certan control values (volume, etc) to stop them
+ * from introducing unwanted noise to the output signal.
+ * Filter formula: y_n0 = x * (1 - a) + y_n1 * (a / 3) + y_n2 * (a / 3) + y_n3 * (a / 3).
+ */
 public struct CtrlValFilter {
 	__m128 filterLine = __m128(0);
 	__m128 filterCoeff = __m128([1.0, 0.0, 0.0, 0.0]);
+	/**
+	 * Filters the input value `targetVal` against `filterLine`, then returns the filtered
+	 */
 	pragma (inline, true)
 	float output(float targetVal) @nogc @safe pure nothrow {
 		filterLine[0] = targetVal;
