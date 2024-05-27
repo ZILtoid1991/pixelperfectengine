@@ -67,11 +67,17 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * Sets the cursor to the given type.
 	 */
 	public CursorType setCursor(CursorType type) {
-		cursor = type;
-		sdlCursor = SDL_CreateSystemCursor(cast(SDL_SystemCursor)cursor);
-		SDL_SetCursor(sdlCursor);
+		if (cursor != type) {
+			cursor = type;
+			sdlCursor = SDL_CreateSystemCursor(cast(SDL_SystemCursor)cursor);
+			SDL_SetCursor(sdlCursor);
+			}
+		}
 		return cursor;
 	}
+	/**
+	 * Resets cursor to the default type.
+	 */
 	public void resetCursor() {
 		setCursor(CursorType.Arrow);
 	}
