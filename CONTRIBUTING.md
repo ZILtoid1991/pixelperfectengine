@@ -34,6 +34,29 @@ If you're interested in long-time commitment, then we can dispatch you specifica
 
 ## Code
 
+By default, unless someone has broken either the contribution guidelines or the code of conduct to a given severity, commiting bugfixes are open for all as long as they're committed to a branch, so potential malicious commitments can be filtered.
+
+If you want to work on new features, please contact with us, so we can dispatch you to a given feature (which could be an auxilliary library), avoiding two people working on the same one.
+
+### Code formatting and naming conventions
+
+Brace style follows the OTLB convention, meaning that statements that are part of a previous one should be on the same line as the previous statement's closing bracket. 4 space wide tabs are also used for block formatting.
+
+```d
+if (...) {
+	...
+} else {
+	...
+}
+try {
+	...
+} catch (Exception e) {
+	...
+}
+```
+
+Maximum line length is 120 characters, except for single-line comments at the end of a line, which should be used sparingly, and if too long (80 characters or more), broken into multiple lines.
+
 ### Code outside of BSL licenses
 
 Engine extensions, such as additional audio modules, can be under other licenses, as long as they're compatible in some way or another. This can be useful when porting code to engine under a different license.
