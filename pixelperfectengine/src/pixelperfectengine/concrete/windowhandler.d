@@ -71,7 +71,6 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 			cursor = type;
 			sdlCursor = SDL_CreateSystemCursor(cast(SDL_SystemCursor)cursor);
 			SDL_SetCursor(sdlCursor);
-			}
 		}
 		return cursor;
 	}
