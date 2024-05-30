@@ -55,7 +55,9 @@ try {
 }
 ```
 
-Maximum line length is 120 characters, except for single-line comments at the end of a line, which should be used sparingly, and if too long (80 characters or more), broken into multiple lines.
+Single line `if else` and `case ...: ... break;` statements without braces are allowed only if they can fit into a single 120 character line, they're the top statement in the given scope and further `else if` statements in the same chain do not contain braces for any reason.
+
+Maximum line length is 120 characters excluding tabs, except for single-line comments at the end of a line, which should be used sparingly, and if too long (80 characters or more), broken into multiple lines. When breaking into multiple lines, try to keep function calls and type constructors in a single line.
 
 ### Code outside of BSL licenses
 
