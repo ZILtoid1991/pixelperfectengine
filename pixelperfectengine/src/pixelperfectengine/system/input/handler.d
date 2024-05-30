@@ -151,7 +151,8 @@ public class InputHandler {
 	/**
 	 * Starts text input handling.
 	 */
-	public void startTextInput(TextInputListener listener, bool reportTextEditingEvents = false, Box textEditingArea = Box.init) {
+	public void startTextInput(TextInputListener listener, bool reportTextEditingEvents = false, 
+			Box textEditingArea = Box.init) {
 		if (textInputListener !is null) textInputListener.dropTextInput();
 		textInputListener = listener;
 		statusFlags |= StatusFlags.TextInputEnable;
@@ -171,7 +172,8 @@ public class InputHandler {
 	/**
 	 * Initializes event recording.
 	 */
-	public void recordEvent(InputBinding code, bool delConflKeys, bool delConflCodes, bool cancelOnSysEsc, bool allowMouseEvents) {
+	public void recordEvent(InputBinding code, bool delConflKeys, bool delConflCodes, bool cancelOnSysEsc, 
+			bool allowMouseEvents) {
 		recordedCode = code;
 		statusFlags |= StatusFlags.CaptureEvent;
 		if (delConflCodes) statusFlags |= StatusFlags.CE_DelConflCodes;
@@ -234,18 +236,26 @@ public class InputHandler {
 					bc.deviceNum = cast(ubyte)event.button.which;
 					bc.deviceTypeID = Devicetype.Mouse;
 					bc.buttonNum = event.button.button;
-					if (mouseListener) mouseListener.mouseClickEvent(MouseEventCommons(event.button.timestamp, event.button.windowID, 
-							event.button.which), MouseClickEvent(event.button.x, event.button.y, event.button.button, event.button.clicks, 
-							event.button.state == 1));
+					if (mouseListener) {
+						mouseListener.mouseClickEvent(
+								MouseEventCommons(event.button.timestamp, event.button.windowID, event.button.which),
+								MouseClickEvent(event.button.x, event.button.y, event.button.button, event.button.clicks, 
+								event.button.state == 1));
+					}
 					break;
 				case SDL_MOUSEMOTION:
-					if (mouseListener) mouseListener.mouseMotionEvent(MouseEventCommons(event.motion.timestamp, event.motion.windowID, 
-							event.motion.which), MouseMotionEvent(event.motion.state, event.motion.x, event.motion.y, event.motion.xrel, 
-							event.motion.yrel));
+					if (mouseListener) {
+						mouseListener.mouseMotionEvent(
+								MouseEventCommons(event.motion.timestamp, event.motion.windowID, event.motion.which), 
+								MouseMotionEvent(event.motion.state, event.motion.x, event.motion.y, event.motion.xrel, 
+								event.motion.yrel));
+					}
 					break;
 				case SDL_MOUSEWHEEL:
-					if (mouseListener) mouseListener.mouseWheelEvent(MouseEventCommons(event.wheel.timestamp, event.wheel.windowID, event.wheel.which),
-							MouseWheelEvent(event.wheel.x, event.wheel.y));
+					if (mouseListener) {
+						mouseListener.mouseWheelEvent(MouseEventCommons(event.wheel.timestamp, event.wheel.windowID, event.wheel.which),
+								MouseWheelEvent(event.wheel.x, event.wheel.y));
+					}
 					break;
 				case SDL_TEXTINPUT:
 					import std.utf : toUTF32;
