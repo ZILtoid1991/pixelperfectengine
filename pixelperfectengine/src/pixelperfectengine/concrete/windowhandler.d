@@ -98,7 +98,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		setWindowToTop(w);
 	}
 	/**
-	 * Adds a DefaultDialog as a message box.
+	 * Creates a DefaultDialog as a message box, and displays it immediately.
 	 * Params:
 	 *   title = Title of the window.
 	 *   message = The text that appears in the window.
@@ -109,7 +109,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		addWindow(new DefaultDialog(Point(mouseX, mouseY), width ,null, title, message));
 	}
 	/**
-	 * Adds a DefaultDialog as a message box.
+	 * Creates a DefaultDialog as a message box, and displays it immediately.
 	 * Params:
 	 *   title = Title of the window.
 	 *   message = The text that appears in the window.
@@ -121,7 +121,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 				getStyleSheet().getChrFormatting("windowHeader")), message));
 	}
 	/**
-	 * Adds a DefaultDialog as a message box.
+	 * Creates a DefaultDialog as a message box, and displays it immediately.
 	 * Params:
 	 *   title = Title of the window.
 	 *   message = The text that appears in the window.
