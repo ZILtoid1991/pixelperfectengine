@@ -86,3 +86,44 @@ public struct CtrlValFilter {
 		return filterCoeff;
 	}
 }
+/**
+ * Implements a bak of linear interpolation-like filter algorithm.
+ * Formula:
+ *   output = target * (1.0 - (cntr / steps)) + output_n1 * (cntr / steps)
+ * This is optimized for:
+ *   output = target * (1.0 - cntrf) + output_n1 * cntrf
+ * Where:
+ *   cntrf = cntr / steps
+ * Or:
+ *   cntrf = cntr * factor
+ * `factor` is the reciprocal of steps (1 / steps).
+ */
+struct LinearFilter {
+	__m128i cntr;
+	__m128 out_0 = __m128(0.0);
+	__m128 out_1 = __m128(0.0);
+	/**
+	 * Sets the next target values for the filter.
+	 * Params:
+	 *   nextT = The next target value for the filter.
+	 *   nextC = The next counter amount (should be less or equal than 65535)
+	 *   factor = The filter factor for this turn.
+	 */
+	void setNextTarget(__m128 nextT, __m128i nextC, __m128 factor) pure @nogc nothrow @safe {
+		out_1 = output(factor);
+		out_0 = nextT;
+		cntr =nextC;
+	}
+	/**
+	 * Returns the output and subtracts one from the counter.
+	 * Params:
+	 *   factor = the filter factor for this turn.
+	 */
+	pragma(inline, true)
+	__m128 output(__m128 factor) pure @nogc nothrow @safe {
+		__m128 cntrf = _mm_cvtpi32x2_ps(cntr) * factor;
+		__m128 result = (out_0 * (__m128(1.0) - cntrf)) + (out_1 * cntrf);
+		cntr = _mm_subs_epu16(cntr, __m128i(1));
+		return result;
+	}
+}
