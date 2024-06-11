@@ -121,7 +121,7 @@ struct LinearFilter {
 	 */
 	pragma(inline, true)
 	__m128 output(__m128 factor) pure @nogc nothrow @safe {
-		__m128 cntrf = _mm_cvtpi32x2_ps(cntr) * factor;
+		__m128 cntrf = _mm_cvtepi32_ps(cntr) * factor;
 		__m128 result = (out_0 * (__m128(1.0) - cntrf)) + (out_1 * cntrf);
 		cntr = _mm_subs_epu16(cntr, __m128i(1));
 		return result;
