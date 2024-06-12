@@ -364,10 +364,10 @@ public class QM816 : AudioModule {
 		///Output affected by EEG and level.
 		///Either used for audible output, or to modulate other operators
 		int				output_0;
-		///Calculated output level containing KSL damping
-		float			outL	=	0;
-		///Calculated feedback level containing KSL damping
-		float			fbL		=	0;
+		///Key scale level factor for output level
+		float			outKSL	=	0;
+		///Key scale level factor for feedback level + phase
+		float			fbKSL	=	0;
 		///Live calculated out of shpA
 		float			shpA0	=	0.0;
 		///Live calculated out of shpR
@@ -475,12 +475,12 @@ public class QM816 : AudioModule {
 		void calculateKSL(ubyte note) @nogc @safe pure nothrow {
 			if (!(preset.opCtrl & OpCtrlFlags.FixedPitch) && preset.kslBegin < note) {
 				const double octaves = (note - preset.kslBegin) / 12.0;
-				outL = preset.outL * (1.0 - (octaves * ((preset.kslAttenOut / ubyte.max) * 0.75)));
-				fbL = (preset.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1) * 
-						preset.fbL * (1.0 - (octaves * ((preset.kslAttenFB / ubyte.max) * 0.75)));
+				outKSL = (1.0 - (octaves * ((preset.kslAttenOut / ubyte.max) * 0.75)));
+				fbKSL = (preset.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1) * 
+						(1.0 - (octaves * ((preset.kslAttenFB / ubyte.max) * 0.75)));
 			} else {
-				outL = preset.outL;
-				fbL = (preset.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1) * preset.fbL;
+				outKSL = 0.0;
+				fbKSL = (preset.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1);
 			}
 		}
 		///Sets the Envelop generator
@@ -776,6 +776,8 @@ public class QM816 : AudioModule {
 	protected Channel[16]		channels;
 	///Channel control data.
 	protected ChControllers[16]	chCtrls;
+	///Level-controlling smoothing. (OP1/2 - Channel)
+	protected LinearFilter[32]	levelCtrls;
 	///Preset numbers per channels.
 	protected ubyte[16]			presetNum;
 	///Bank numbers per channels.
@@ -833,6 +835,7 @@ public class QM816 : AudioModule {
 	protected int				intSlmpRate;
 	///Internal buffer sizes
 	protected size_t			intBufSize;
+	protected float				levelFF = 1.0 / 64;
 	alias ChFun = void delegate(int chNum, size_t length) @nogc pure nothrow;
 	///Channel update delegates
 	protected ChFun[16]			chDeleg;
@@ -2210,16 +2213,16 @@ public class QM816 : AudioModule {
 	///chCtrl index notation: 0: velocity, 1: modulation wheel, 2: Amplitude LFO, 3: Extra Envelop Generator
 	///Returns the sum of the level control values for use with the resonant mode
 	pragma(inline, true)
-	protected double updateOperator(ref Operator op, __m128 chCtrl) @nogc @safe pure nothrow {
+	protected double updateOperator(ref Operator op, __m128 chCtrl, float outLev, float fbLev) @nogc @safe pure nothrow {
 		op.output = wavetables
 				[op.preset.opCtrl & OpCtrlFlags.WavetableSelect][(op.pos + (op.input<<8) + (op.feedback<<6))>>22 & 1023];
 		const double egOut = op.eg.shp(op.eg.position == ADSREnvelopGenerator.Stage.Attack ? op.shpA0 : op.shpR0);
 		__m128 outCtrl = (__m128(1.0) - op.preset.outLCtrl) + (op.preset.outLCtrl * chCtrl);
 		__m128 fbCtrl = (__m128(1.0) - op.preset.fbLCtrl) + (op.preset.fbLCtrl * chCtrl);
 		
-		op.feedback = cast(int)((op.preset.opCtrl & OpCtrlFlags.FBMode ? (op.output<<12) : (op.output<<12) * egOut) * op.fbL * 
-				fbCtrl[0] * fbCtrl[1] * fbCtrl[2] * fbCtrl[3]);
-		const double levelCtrl = egOut * op.outL * outCtrl[0] * outCtrl[1] * outCtrl[2];
+		op.feedback = cast(int)((op.preset.opCtrl & OpCtrlFlags.FBMode ? (op.output<<12) : (op.output<<12) * egOut) * fbLev 
+				* op.fbKSL * fbCtrl[0] * fbCtrl[1] * fbCtrl[2] * fbCtrl[3]);
+		const double levelCtrl = outLev * egOut * op.outKSL * outCtrl[0] * outCtrl[1] * outCtrl[2];
 		op.output_0 = cast(int)((op.output<<12) * levelCtrl);
 		op.pos += op.step;
 		//op.input = 0;
@@ -2266,10 +2269,10 @@ public class QM816 : AudioModule {
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS =
 		q{
-			const int opOffset = chNum * 2;
+			int opOffset = chNum * 2;
 			__m128 aLFOOutMW = __m128(channels[chNum].preset.chCtrl & ChCtrlFlags.MWToTrem ? 
 					chCtrls[chNum].modwheel : 1.0);
-			const float auxSendAmMW = (channels[chNum].preset.chCtrl & ChCtrlFlags.MWToAux ? 
+			float auxSendAmMW = (channels[chNum].preset.chCtrl & ChCtrlFlags.MWToAux ? 
 					chCtrls[chNum].modwheel : 1.0);
 			__m128 opCtrl0 = __m128(0), opCtrl1 = __m128(0), mwAuxCtrl;
 			opCtrl0[0] = operators[opOffset].preset.opCtrl & OpCtrlFlags.VelNeg ? 1 - chCtrls[chNum].velocity : 
@@ -2286,8 +2289,10 @@ public class QM816 : AudioModule {
 			mwAuxCtrl[1] = 1.0;
 			mwAuxCtrl[2] = auxSendAmMW;
 			mwAuxCtrl[3] = auxSendAmMW;
-			const float lfopan = (channels[chNum].preset.chCtrl & ChCtrlFlags.LFOPan ? 1.0 : 0);
-			const float eegpan = (channels[chNum].preset.chCtrl & ChCtrlFlags.EEGPan ? 1.0 : 0);
+			float lfopan = (channels[chNum].preset.chCtrl & ChCtrlFlags.LFOPan ? 1.0 : 0);
+			float eegpan = (channels[chNum].preset.chCtrl & ChCtrlFlags.EEGPan ? 1.0 : 0);
+			float eegOut;
+			__m128 eegToMast, opLevelCtrl, outlevels, outSum, lfoToMast;
 		};
 	///Macro for channel update constants that need to be calculated once per frame, for combined channels' second half
 	///Kept in at one place to make updates easier and more consistent
@@ -2304,42 +2309,47 @@ public class QM816 : AudioModule {
 					chCtrls[chNum].modwheel;
 			opCtrl2[1] = operators[opOffset + 16].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - opCtrl0[1] : opCtrl0[1];
 			opCtrl3[1] = operators[opOffset + 17].preset.opCtrl & OpCtrlFlags.MWNeg ? 1 - opCtrl0[1] : opCtrl0[1];
-			const float eegpan0 = (channels[chNum + 8].preset.chCtrl & ChCtrlFlags.EEGPan ? 1.0 : 0);
+			float eegpan0 = (channels[chNum + 8].preset.chCtrl & ChCtrlFlags.EEGPan ? 1.0 : 0);
+			float eegOut0;
+			__m128 eegToMast0, eegToMast0;
 		};
 	///Macro for channel update constants that need to be calculated for each cycle
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS_CYCL = 
 		q{
-			const float eegOut = channels[chNum].eeg.shp(channels[chNum].eeg.position == 
+			eegOut = channels[chNum].eeg.shp(channels[chNum].eeg.position == 
 					ADSREnvelopGenerator.Stage.Attack ? channels[chNum].preset.shpAX : channels[chNum].preset.shpRX);
-			__m128 eegToMast = __m128(eegOut), lfoToMast = __m128(aLFOBuf[i]);
+			eegToMast = __m128(eegOut), lfoToMast = __m128(aLFOBuf[i]);
 			eegToMast[0] = abs(eegpan - eegToMast[0]);
 			lfoToMast[0] = abs(lfopan - lfoToMast[0]);
 			opCtrl0[2] = aLFOBuf[i];
 			opCtrl1[2] = aLFOBuf[i];
 			opCtrl0[3] = eegOut;
 			opCtrl1[3] = eegOut;
+			opLevelCtrl = levelCtrls[chNum<<1].output(levelFF);
+			outlevels = levelCtrls[(chNum<<1) + 1].output(levelFF);
 		};
 	
 	///Macro for channel update constants that need to be calculated for each cycle for combined channels' second half
 	///Kept in at one place to make updates easier and more consistent
 	static immutable string CHNL_UPDATE_CONSTS_CYCL0 = 
 		q{
-			const float eegOut0 = channels[chNum + 8].eeg.shp(channels[chNum + 8].eeg.position == 
+			eegOut0 = channels[chNum + 8].eeg.shp(channels[chNum + 8].eeg.position == 
 					ADSREnvelopGenerator.Stage.Attack ? channels[chNum + 8].preset.shpAX : 
 					channels[chNum + 8].preset.shpRX);
-			__m128 eegToMast0 = __m128(eegOut0);
+			eegToMast0 = __m128(eegOut0);
 			eegToMast0[0] = abs(eegpan0 - eegToMast0[0]);
 			opCtrl2[2] = aLFOBuf[i];
 			opCtrl3[2] = aLFOBuf[i];
 			opCtrl2[3] = eegOut0;
 			opCtrl3[3] = eegOut0;
+			opLevelCtrl0 = levelCtrls[(chNum + 8)<<1].output(levelFF);
 		};
 			
 	///Macro for output mixing
 	static immutable string CHNL_UPDATE_MIX =
 		q{
-			__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;
+			outlevels *= mwAuxCtrl;
 			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - channels[chNum].preset.eegLevels);
 			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - channels[chNum].preset.aLFOlevels);
 			initBuffers[i + 2] += outlevels * outSum;
@@ -2347,7 +2357,7 @@ public class QM816 : AudioModule {
 	///Macro for output mixing in case of combo modes
 	static immutable string CHNL_UPDATE_MIX0 =
 		q{
-			__m128 outlevels = channels[chNum].outLevels * mwAuxCtrl;
+			outlevels = * mwAuxCtrl;
 			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - channels[chNum].preset.eegLevels);
 			outlevels *= (channels[chNum + 8].preset.eegLevels * eegToMast0) + (__m128(1.0) - channels[chNum + 8].preset.eegLevels);
 			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - channels[chNum].preset.aLFOlevels);
@@ -2367,8 +2377,7 @@ public class QM816 : AudioModule {
 			operators[opOffset].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			__m128 outSum = _mm_min_ps(
-					_mm_max_ps(__m128(operators[opOffset + 1].output_0>>12), __m128(short.min)), __m128(short.max));
+			outSum = _mm_min_ps(_mm_max_ps(__m128(operators[opOffset + 1].output_0>>12), __m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 		}
@@ -2381,14 +2390,13 @@ public class QM816 : AudioModule {
 		for (size_t i ; i < length ; i++) {
 			mixin(CHNL_UPDATE_CONSTS_CYCL);
 			updateOperator(operators[opOffset], opCtrl0);
-			const double outCtrlOp1 = updateOperator(operators[opOffset + 1], opCtrl1);
+			double outCtrlOp1 = updateOperator(operators[opOffset + 1], opCtrl1);
 			//const int outSum = operators[opOffset].output_0 + operators[opOffset + 1].output_0;
-			const float outSum0 = (operators[opOffset].output_0 + operators[opOffset + 1].output_0)>>12;
-			const float outSum1 = ((cast(uint)(operators[opOffset].output - short.min) * 
+			float outSum0 = (operators[opOffset].output_0 + operators[opOffset + 1].output_0)>>12;
+			float outSum1 = ((cast(uint)(operators[opOffset].output - short.min) * 
 					cast(uint)(operators[opOffset + 1].output - short.min))>>16) * outCtrlOp1 + (operators[opOffset].output_0>>12);
 			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
-			__m128 outSum = _mm_min_ps(
-					_mm_max_ps(__m128((outSum1 * resMode) + (outSum0 * (1 - resMode))),__m128(short.min)), __m128(short.max));
+			outSum = _mm_min_ps(_mm_max_ps(__m128((outSum1 * resMode) + (outSum0 * (1 - resMode))),__m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX);
 			channels[chNum].eeg.advance();
 		}
@@ -2412,7 +2420,7 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128(operators[opOffset + 1].output_0>>12), __m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
 			channels[chNum].eeg.advance();
@@ -2447,7 +2455,7 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128(operators[opOffset + 1].output_0>>12), __m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
 			channels[chNum].eeg.advance();
@@ -2474,16 +2482,16 @@ public class QM816 : AudioModule {
 			operators[opOffset].input = operators[opOffset + 17].output_0;
 			updateOperator(operators[opOffset], opCtrl0);		//P0
 			//operators[opOffset + 1].input = operators[opOffset].output_0;
-			const double outCtrlOp1 = updateOperator(operators[opOffset + 1], opCtrl1);	//P1
+			double outCtrlOp1 = updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			const float outSum0 = (operators[opOffset].output_0 + operators[opOffset + 1].output_0)>>12;
-			const float outSum1 = ((cast(uint)(operators[opOffset].output - short.min) * 
+			float outSum0 = (operators[opOffset].output_0 + operators[opOffset + 1].output_0)>>12;
+			float outSum1 = ((cast(uint)(operators[opOffset].output - short.min) * 
 					cast(uint)(operators[opOffset + 1].output - short.min))>>16) * outCtrlOp1 + (operators[opOffset].output_0>>12);
 			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128((outSum1 * resMode) + (outSum0 * (1 - resMode))), __m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
 			channels[chNum].eeg.advance();
@@ -2520,7 +2528,7 @@ public class QM816 : AudioModule {
 			const float outSum1 = ((cast(uint)(operators[opOffset].output - short.min) * 
 					cast(uint)(operators[opOffset + 1].output - short.min))>>16) * outCtrlOp1 + (operators[opOffset].output_0>>12);
 			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128((outSum1 * resMode) + (outSum0 * (1 - resMode))), __m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
 			channels[chNum].eeg.advance();
@@ -2552,7 +2560,7 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128(operators[opOffset + 1].output_0>>12), __m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
 			channels[chNum].eeg.advance();
@@ -2580,12 +2588,12 @@ public class QM816 : AudioModule {
 			updateOperator(operators[opOffset], opCtrl0);		//P0
 			operators[opOffset + 1].input = operators[opOffset].output_0 + operators[opOffset + 17].output_0 + 
 					operators[opOffset + 16].output_0;
-			const double outCtrlOp1 = updateOperator(operators[opOffset + 1], opCtrl1);	//P1
+			double outCtrlOp1 = updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
 			//const int outSum = operators[opOffset + 1].output_0;
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128(operators[opOffset + 1].output_0>>12), __m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
 			channels[chNum].eeg.advance();
@@ -2617,7 +2625,7 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			__m128 outSum = _mm_min_ps(_mm_max_ps(
+			outSum = _mm_min_ps(_mm_max_ps(
 					__m128((operators[opOffset + 1].output_0 + operators[opOffset].output_0)>>12), __m128(short.min)), 
 					__m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
@@ -2650,7 +2658,7 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128((operators[opOffset + 1].output_0 + operators[opOffset].output_0)>>12), __m128(short.min)), 
 					__m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
@@ -2682,7 +2690,7 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 17].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128((operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0)>>12), __m128(short.min)), 
 					__m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
@@ -2717,17 +2725,17 @@ public class QM816 : AudioModule {
 			operators[opOffset].feedback += 
 				cast(int)(operators[opOffset + 1].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			const float outSum0 = (operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
+			float outSum0 = (operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
 					operators[opOffset + 16].output_0)>>12;
 			/* const float outSum1 = ((cast(uint)(((channels[chNum].preset.chCtrl & ChCtrlFlags.ResSrc) ? operators[opOffset].output :
 					operators[opOffset + 16].output) - short.min) * 
 					cast(uint)(operators[opOffset + 17].output - short.min))>>16) * outCtrlOp1 + 
 					operators[opOffset + 1].output_0 + operators[opOffset + 16].output_0; */
-			const float outSum1 = ((cast(uint)(((resSrc * operators[opOffset + 1].output) + 
+			float outSum1 = ((cast(uint)(((resSrc * operators[opOffset + 1].output) + 
 					(operators[opOffset + 16].output * (1 - resSrc))) - short.min) * 
 					cast(uint)(operators[opOffset + 17].output - short.min))>>16) * outCtrlOp1 + 
 					((operators[opOffset + 1].output_0 + operators[opOffset + 16].output_0)>>12);
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128((outSum1 * resMode) + (outSum0 * (1 - resMode))), __m128(short.min)), __m128(short.max));
 			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
 			/* __m128 outSum = __m128i(operators[opOffset + 1].output_0 + operators[opOffset + 17].output_0 + 
@@ -2762,7 +2770,7 @@ public class QM816 : AudioModule {
 			operators[opOffset + 16].feedback += 
 				cast(int)(operators[opOffset + 17].output_0 * channels[chNum].preset.globalFb * 
 				(channels[chNum].preset.chCtrl & ChCtrlFlags.FBMode ? eegOut : 1));
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128((operators[opOffset].output_0 + operators[opOffset + 1].output_0 + 
 					operators[opOffset + 17].output_0)>>12), __m128(short.min)), __m128(short.max));
 			mixin(CHNL_UPDATE_MIX0);
@@ -2788,19 +2796,19 @@ public class QM816 : AudioModule {
 			mixin(CHNL_UPDATE_CONSTS_CYCL0);
 			updateOperator(operators[opOffset + 16], opCtrl2);	//S0
 			//operators[opOffset + 17].input = operators[opOffset + 16].output_0;
-			const double outCtrlOp1 = updateOperator(operators[opOffset + 17], opCtrl3);	//S1
+			double outCtrlOp1 = updateOperator(operators[opOffset + 17], opCtrl3);	//S1
 			//operators[opOffset].input = operators[opOffset + 17].output_0;
 			updateOperator(operators[opOffset], opCtrl0);		//P0
 			//operators[opOffset + 1].input = operators[opOffset].output_0;
 			updateOperator(operators[opOffset + 1], opCtrl1);	//P1
 			//const int outSum = operators[opOffset + 1].output_0;
-			const float outSum0 = (operators[opOffset].output_0 + operators[opOffset + 1].output_0 +
+			float outSum0 = (operators[opOffset].output_0 + operators[opOffset + 1].output_0 +
 					operators[opOffset + 17].output_0 + operators[opOffset + 16].output_0)>>12;
-			const float outSum1 = ((operators[opOffset].output_0 + operators[opOffset + 1].output_0)>>12) +
+			float outSum1 = ((operators[opOffset].output_0 + operators[opOffset + 1].output_0)>>12) +
 					((cast(uint)(operators[opOffset + 16].output - short.min) * 
 					cast(uint)(operators[opOffset + 17].output - short.min))>>16) * outCtrlOp1 + 
 					(operators[opOffset + 17].output_0>>12);
-			__m128 outSum = _mm_min_ps(
+			outSum = _mm_min_ps(
 					_mm_max_ps(__m128((outSum1 * resMode) + (outSum0 * (1 - resMode))), __m128(short.min)), __m128(short.max));
 			//__m128 outSum = __m128((channels[chNum].preset.chCtrl & ChCtrlFlags.ResMode) ? outSum1 : outSum0);
 			mixin(CHNL_UPDATE_MIX0);
