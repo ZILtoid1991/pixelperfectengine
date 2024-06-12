@@ -99,9 +99,15 @@ public struct CtrlValFilter {
  * `factor` is the reciprocal of steps (1 / steps).
  */
 struct LinearFilter {
-	__m128i cntr;
-	__m128 out_0 = __m128(0.0);
-	__m128 out_1 = __m128(0.0);
+	__m128i cntr;		///Downwards counter. Should be at maximum of 65_535 to get around SSE2 limitations for saturated subtracts
+	__m128 out_0 = __m128(0.0);///Currently outputted value
+	__m128 out_1 = __m128(0.0);///Previously outputted value
+	void setNextTarget(int i, float nextT, int nextC, float factor) pure @nogc nothrow @safe {
+		float cntrf = cntr[i] * factor;
+		out_1[i] = (out_0[i] * (1.0 - cntrf)) + (out_1[i] * cntrf);
+		out_0[i] = nextT;
+		cntr[i] = nextC;
+	}
 	/**
 	 * Sets the next target values for the filter.
 	 * Params:
@@ -112,7 +118,7 @@ struct LinearFilter {
 	void setNextTarget(__m128 nextT, __m128i nextC, __m128 factor) pure @nogc nothrow @safe {
 		out_1 = output(factor);
 		out_0 = nextT;
-		cntr =nextC;
+		cntr = nextC;
 	}
 	/**
 	 * Returns the output and subtracts one from the counter.
