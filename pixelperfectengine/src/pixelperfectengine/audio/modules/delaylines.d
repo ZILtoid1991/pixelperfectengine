@@ -719,4 +719,14 @@ public class DelayLines : AudioModule {
 	override public string readParam_string(uint presetID, uint paramID) nothrow {
 		return string.init; // TODO: implement
 	}
+	/** 
+	 * Sets the master level of the module or the module's channel.
+	 * Params:
+	 *   level = the new audio level, linear, between 0.0 and 1.0.
+	 *   channel = the given channel, or -1 if module master level is needed.
+	 * Returns: The new level, or NaN if either channel number or value is out of bounds
+	 */
+	public override float setMasterLevel(float level, int channel = -1) @nogc nothrow {
+		return float.nan;
+	}
 }
