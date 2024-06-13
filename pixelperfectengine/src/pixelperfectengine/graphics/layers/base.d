@@ -132,14 +132,17 @@ abstract class Layer {
 	 * in other places, so that's why pointers are used instead.
 	 */
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
-	/* 
+	version (ppe_expglen) {
+	/**
 	 * TODO: Start to implement to texture rendering once Iota's OpenGL implementation is stable enough.
 	 * Renders the layer's content to the texture target.
 	 * Params:
 	 *   workpad = The target texture.
 	 *   palette = The texture containing the palette for color lookup.
+	 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
+	 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
 	 */
-	//public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, int[4] sizes) @nogc;
+	public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, int[4] sizes, int[2] offsets) @nogc;}
 	///Returns the type of the layer.
 	///Useful with certain scripting languages.
 	public abstract LayerType getLayerType() @nogc @safe pure nothrow const;
