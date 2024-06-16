@@ -1,4 +1,6 @@
-# The M2 format
+# The IMBC format
+
+Intelligent MIDI Bytecode.
 
 ## Background and rationale behind creating the M2 formats
 

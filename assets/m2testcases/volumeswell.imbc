@@ -1,0 +1,52 @@
+MIDI2.0 VER 1
+
+HEADER
+timeFormatID fmt3
+timeFormatPeriod 48000
+timeFormatRes 1
+maxPattern 4
+END
+
+METADATA
+name: "Volume swell testcase for IMBC and QM816"
+composer: "ZILtoid1991"
+END
+
+DEVLIST
+fmsynth: 0
+END
+
+PATTERN main
+display BPM 120         ;Initialize a BPM of 120
+$[0]: pc 0 16           ;Initialize organ preset for all 8 available channels (only 3 will be used)
+$[0]: pc 1 16
+$[0]: pc 2 16
+$[0]: pc 3 16
+$[0]: pc 4 16
+$[0]: pc 5 16
+$[0]: pc 6 16
+$[0]: pc 7 16
+
+$[0]: nn 0 0x7FFF C-4   ;Play a C major
+$[0]: nn 1 0x7FFF E-4
+$[0]: nn 2 0x7FFF G-4
+
+wait q                  ;Wait for a quarter note (test for pop elimination)
+ctrl setReg R5 1024     ;Target
+ctrl setReg R4 1        ;Increment amount
+ctrl setReg R3 0        ;Counter
+@loopentry:
+lshi R3 16 R0           ;Shift R3 left by 16 bits, store in R0
+$[0]: ccl 0 7 R0        ;Emit volume change command
+$[0]: ccl 1 7 R0
+$[0]: ccl 2 7 R0
+add R3 R4 R3            ;Increment R3 by R4
+wait i                  ;Wait for a 64th note (test for low-frequency rumble)
+cmpgt R5 R3             ;Compare if R5 is greater than R3
+jmpsh 1 loopentry       ;Jump if last compare was true 
+
+$[0]: nf 0 0x7FFF C-4   ;End C major
+$[0]: nf 1 0x7FFF E-4
+$[0]: nf 2 0x7FFF G-4
+
+END
