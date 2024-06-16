@@ -1304,6 +1304,122 @@ public class QM816 : AudioModule {
 							case 2:
 								chCtrls[data0.channel].auxCtrl = cast(double)data1 / uint.max;
 								break;
+							case 18:
+								setUnregisteredParam(data1, [0, OperatorParamNums.Level], data0.channel);
+								break;
+							case 19:
+								setUnregisteredParam(data1, [1, OperatorParamNums.Level], data0.channel);
+								break;
+							case 16:
+								setUnregisteredParam(data1, [0, OperatorParamNums.SusLevel], data0.channel);
+								break;
+							case 17:
+								setUnregisteredParam(data1, [1, OperatorParamNums.SusLevel], data0.channel);
+								break;
+							case 20:
+								setUnregisteredParam(data1, [0, OperatorParamNums.ShpA], data0.channel);
+								break;
+							case 22:
+								setUnregisteredParam(data1, [1, OperatorParamNums.ShpA], data0.channel);
+								break;
+							case 21:
+								setUnregisteredParam(data1, [0, OperatorParamNums.ShpR], data0.channel);
+								break;
+							case 23:
+								setUnregisteredParam(data1, [1, OperatorParamNums.ShpR], data0.channel);
+								break;
+							case 30:
+								setUnregisteredParam(data1, [0, OperatorParamNums.TuneFine], data0.channel);
+								break;
+							case 31:
+								setUnregisteredParam(data1, [1, OperatorParamNums.TuneFine], data0.channel);
+								break;
+//
+							case 73:
+								setUnregisteredParam(data1, [1, 1], data0.channel);
+								break;
+							case 78:
+								setUnregisteredParam(data1, [0, 1], data0.channel);
+								break;
+							case 74:
+								setUnregisteredParam(data1, [1, 2], data0.channel);
+								break;
+							case 79:
+								setUnregisteredParam(data1, [0, 2], data0.channel);
+								break;
+							case 85:
+								setUnregisteredParam(data1, [0, 4], data0.channel);
+								break;
+							case 86:
+								setUnregisteredParam(data1, [1, 4], data0.channel);
+								break;
+							case 87:
+								setUnregisteredParam(data1, [0, 8], data0.channel);
+								break;
+							case 88:
+								setUnregisteredParam(data1, [1, 8], data0.channel);
+								break;
+							case 72:
+								setUnregisteredParam(data1, [1, 5], data0.channel);
+								break;
+							case 77:
+								setUnregisteredParam(data1, [0, 5], data0.channel);
+								break;
+							case 70:
+								setUnregisteredParam(data1, [1, 6], data0.channel);
+								break;
+							case 75:
+								setUnregisteredParam(data1, [0, 6], data0.channel);
+								break;
+							case 71:
+								setUnregisteredParam(data1, [1, 7], data0.channel);
+								break;
+							case 76:
+								setUnregisteredParam(data1, [0, 7], data0.channel);
+								break;
+							case 7:
+								setUnregisteredParam(data1, [4, ChannelParamNums.MasterVol], data0.channel);
+								break;
+							case 8:
+								setUnregisteredParam(data1, [4, ChannelParamNums.Bal], data0.channel);
+								break;
+							case 24:
+								setUnregisteredParam(data1, [4, ChannelParamNums.ShpA], data0.channel);
+								break;
+							case 25:
+								setUnregisteredParam(data1, [4, ChannelParamNums.ShpR], data0.channel);
+								break;
+//
+							case 91:
+								setUnregisteredParam(data1, [4, 2], data0.channel);
+								break;
+							case 92:
+								setUnregisteredParam(data1, [4, 3], data0.channel);
+								break;
+							case 93:
+								setUnregisteredParam(data1, [4, 4], data0.channel);
+								break;
+							case 94:
+								setUnregisteredParam(data1, [4, 5], data0.channel);
+								break;
+							case 102:
+								setUnregisteredParam(data1, [4, 6], data0.channel);
+								break;
+							case 103:
+								setUnregisteredParam(data1, [4, 7], data0.channel);
+								break;
+							case 104:
+								setUnregisteredParam(data1, [4, 8], data0.channel);
+								break;
+							case 105:
+								setUnregisteredParam(data1, [4, 9], data0.channel);
+								break;
+							case 106:
+								setUnregisteredParam(data1, [4, 10], data0.channel);
+								break;
+							case 107:
+								setUnregisteredParam(data1, [4, 13], data0.channel);
+								break;
 							default:
 								break;
 						}
