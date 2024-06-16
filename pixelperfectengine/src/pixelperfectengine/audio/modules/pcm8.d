@@ -19,6 +19,7 @@ import midi2.types.structs;
 import midi2.types.enums;
 
 import bitleveld.datatypes;
+import pixelperfectengine.audio.base.filter;
 
 /**
 PCM8 - implements a sample-based synthesizer.
@@ -29,7 +30,7 @@ It has support for
  * IMA ADPCM
  * Dialogic ADPCM
 
-The module has 8 sample-based channels with looping capabilities and each has an ADSR envelop, and 4 outputs with a filter.
+The module has 16 sample-based channels with looping capabilities and each has an ADSR envelop, and 4 outputs with a filter.
 */
 public class PCM8 : AudioModule {
 	shared static this () {
@@ -157,10 +158,9 @@ public class PCM8 : AudioModule {
 		double			freqRatio;			///Sampling-to-playback frequency ratio, with pitch bend, LFO, and envGen applied.
 		ulong			outPos;				///Position in decoded amount, including fractions
 		ulong			samplesHave;		///Amount of decoded samples with fractions offsetted
-		//uint			decodeAm;			///Decoded amount, mainly used to determine output buffer half
 		uint 			jumpAm;				///Jump amount for current sample, calculated from freqRatio.
-		//WavemodWorkpad	savedWMWState;		///The state of the wave modulator when the beginning of the looppoint has been reached.
 		ADSREnvelopGenerator	envGen;		///Channel envelop generator.
+		LinearFilter	ctrlFilter;			///Control level filters.
 
 		ubyte			currNote = 255;		///The currently played note + Bit 8 indicates suspension.
 		ubyte			presetNum;			///Selected preset.
@@ -295,7 +295,7 @@ public class PCM8 : AudioModule {
 	alias PresetMap = TreeMap!(uint, Preset);
 	protected SampleMap		sampleBank;			///Stores all current samples.
 	protected PresetMap		presetBank;			///Stores all current presets. (bits: 0-6: preset number, 7-13: bank lsb, 14-20: bank msb)
-	protected Channel[8]	channels;			///Channel status data.
+	protected Channel[16]	channels;			///Channel status data.
 	protected MultiTapOsc	lfo;				///Low frequency oscillator to modify values in real-time
 	protected float[]		lfoOut;				///LFO output buffer
 	protected uint			lfoFlags = LFOFlags.triangle;///LFO state flags containing info about current waveform data
@@ -311,6 +311,7 @@ public class PCM8 : AudioModule {
 	///Layout: [LF, LQ, RF, RQ, AF, AQ, BF, BQ]
 	protected float[8]			filterCtrl	=	[16_000, 0.707, 16_000, 0.707, 16_000, 0.707, 16_000, 0.707];
 	protected float				mixdownVal = short.max + 1;
+	protected float[17]			masterLevels;
 	protected ubyte[32]			sysExBuf;		///SysEx command buffer [0-30] + length [31]
 	protected ubyte[68][9]		chCtrlLower;	///Lower parts of the channel controllers (0-31 / 32-63) + (Un)registered parameter select (64-65)
 	public this() @safe nothrow {
@@ -322,6 +323,8 @@ public class PCM8 : AudioModule {
 		info.hasMidiOut = true;
 		info.midiSendback = true;
 		lfo = MultiTapOsc.init;
+		//reset master level controls
+		foreach (ref float elem ; masterLevels) elem = 1.0;
 	}
 	/**
 	 * Sets the module up.
@@ -426,7 +429,7 @@ public class PCM8 : AudioModule {
 							keyOff(data0.note, data0.channel, nv.velocity / ushort.max);
 							break;
 						case MIDI2_0Cmd.CtrlChOld, MIDI2_0Cmd.CtrlCh:
-							ctrlCh(data0.channel, data0.note, data1);
+							ctrlCh(data0.channel|(data0.group << 4), data0.note, data1);
 							break;
 						case MIDI2_0Cmd.PrgCh:
 							channels[data0.channel].bankNum = data1 & ushort.max;
@@ -502,21 +505,31 @@ public class PCM8 : AudioModule {
 		channels[ch].envGen.keyOff();
 		channels[ch].status &= ~ChannelStatusFlags.noteOn;
 	}
-	protected void ctrlCh(ubyte ch, ubyte param, uint val) @nogc pure nothrow {
+	protected void ctrlCh(int ch, ubyte param, uint val) @nogc pure nothrow {
 		if (param >= 32 && param < 64) param &= 0x1F;
-		if (ch <= 7) {	//Channel locals
+		if (ch <= 15) {	//Channel locals
 			switch (param) {
 				case 7:
 					channels[ch].presetCopy.masterVol = (1.0 / uint.max) * val;
+					channels[ch].ctrlFilter.setNextTarget(0, 
+							channels[ch].presetCopy.masterVol * sqrt(channels[ch].presetCopy.balance), 64, 1.0 / 64.0);
+					channels[ch].ctrlFilter.setNextTarget(1, 
+							channels[ch].presetCopy.masterVol * sqrt(1.0-channels[ch].presetCopy.balance), 64, 1.0 / 64);
 					break;
 				case 8:
 					channels[ch].presetCopy.balance = (1.0 / uint.max) * val;
+					channels[ch].ctrlFilter.setNextTarget(0, 
+							channels[ch].presetCopy.masterVol * sqrt(channels[ch].presetCopy.balance), 64, 1.0 / 64.0);
+					channels[ch].ctrlFilter.setNextTarget(1, 
+							channels[ch].presetCopy.masterVol * sqrt(1.0-channels[ch].presetCopy.balance), 64, 1.0 / 64);
 					break;
 				case 91:
 					channels[ch].presetCopy.auxSendA = (1.0 / uint.max) * val;
+					channels[ch].ctrlFilter.setNextTarget(2, channels[ch].presetCopy.auxSendA, 64, 1.0 / 64);
 					break;
 				case 92:
 					channels[ch].presetCopy.auxSendB = (1.0 / uint.max) * val;
+					channels[ch].ctrlFilter.setNextTarget(3, channels[ch].presetCopy.auxSendB, 64, 1.0 / 64);
 					break;
 				case 73:
 					channels[ch].presetCopy.eAtk = cast(ubyte)(val>>25);
@@ -584,7 +597,7 @@ public class PCM8 : AudioModule {
 				default:
 					break;
 			}
-		} else if (ch == 8) {	//Module globals
+		} else {	//Module globals
 			switch (param) {
 				case 2:
 					filterCtrl[0] = (1.0 / uint.max) * val * 16_000;
@@ -721,7 +734,7 @@ public class PCM8 : AudioModule {
 					channels[msg[msgPos + 1]].decodeMore(sa, slmp);
 					break;
 				case 0x21:	//Dump codec data
-					if (msg[msgPos + 1] >= 8) return;
+					if (msg[msgPos + 1] >= 16) return;
 					uint[2] dump;
 					const int delta = channels[msg[msgPos + 1]].decoderWorkpad.outn1;
 					dump[0] = cast(uint)channels[msg[msgPos + 1]].decoderWorkpad.pos;
@@ -733,13 +746,13 @@ public class PCM8 : AudioModule {
 							dump[1]);
 					break;
 				case 0xA0:	//Jump to sample position by restoring codec data (8bit)
-					if (msg[msgPos + 1] >= 8) return;
-					channels[msg[msgPos + 1]].decoderWorkpad.pos = (msg[msgPos + 2] << 24) | (msg[msgPos + 3] << 16) | 
-						(msg[msgPos + 4] << 8) | msg[msgPos + 5];
+					if (msg[msgPos + 1] >= 16) return;
+					channels[msg[msgPos + 1]].decoderWorkpad.pos = (msg[msgPos + 5] << 24) | (msg[msgPos + 4] << 16) | 
+						(msg[msgPos + 3] << 8) | msg[msgPos + 2];
 					channels[msg[msgPos + 1]].waveModWorkpad.lookupVal = 0;
 					if (msg.length == msgPos + 9) {
 						channels[msg[msgPos + 1]].decoderWorkpad.pred = msg[msgPos + 6];
-						channels[msg[msgPos + 1]].decoderWorkpad.outn1 = (msg[msgPos + 7]<<24) | (msg[msgPos + 8]<<16);
+						channels[msg[msgPos + 1]].decoderWorkpad.outn1 = (msg[msgPos + 8]<<24) | (msg[msgPos + 7]<<16);
 						channels[msg[msgPos + 1]].decoderWorkpad.outn1>>=16;
 					}
 					//decode the sample
@@ -779,6 +792,12 @@ public class PCM8 : AudioModule {
 	}
 	protected void presetRecall(ubyte ch) @nogc pure nothrow {
 		channels[ch].presetCopy = presetBank[channels[ch].presetNum | (channels[ch].bankNum<<7)];
+		channels[ch].ctrlFilter.setNextTarget(0, 
+				channels[ch].presetCopy.masterVol * sqrt(channels[ch].presetCopy.balance), 64, 1.0 / 64);
+		channels[ch].ctrlFilter.setNextTarget(1, 
+				channels[ch].presetCopy.masterVol * sqrt(1.0 - channels[ch].presetCopy.balance), 64, 1.0 / 64);
+		channels[ch].ctrlFilter.setNextTarget(2, channels[ch].presetCopy.auxSendA, 64, 1.0 / 64);
+		channels[ch].ctrlFilter.setNextTarget(3, channels[ch].presetCopy.auxSendB, 64, 1.0 / 64);
 	}
 	/** 
 	 * Creates a decoder function.
@@ -824,7 +843,7 @@ public class PCM8 : AudioModule {
 		for (int i ; i < bufferSize ; i++) {
 			lfoOut[i] = lfo.outputF(0.5, 1.0 / ushort.max);
 		}
-		for (int i ; i < 8 ; i++) {
+		for (int i ; i < channels.length ; i++) {
 			if (!(channels[i].currNote & 128) && channels[i].jumpAm) {
 				channels[i].calculateJumpAm(sampleRate, lfoOut[0]);
 				//get the data for the sample
@@ -856,18 +875,20 @@ public class PCM8 : AudioModule {
 					outpos += samplesOutputted;				//shift the output position by the amount of the outputted samples
 				}
 				//apply envelop (if needed) and volume, then mix it to the local buffer
-				__m128 levels;
-				levels[0] = channels[i].presetCopy.masterVol * channels[i].presetCopy.balance;
-				levels[1] = channels[i].presetCopy.masterVol * (1 - channels[i].presetCopy.balance);
-				levels[2] = channels[i].presetCopy.auxSendA;
-				levels[3] = channels[i].presetCopy.auxSendB;
+				__m128 levels = __m128(masterLevels[i] * masterLevels[16]);
+				__m128 sample;
+				float adsrEnv;
+				//levels[0] *= channels[i].presetCopy.masterVol * channels[i].presetCopy.balance;
+				//levels[1] *= channels[i].presetCopy.masterVol * (1 - channels[i].presetCopy.balance);
+				//levels[2] *= channels[i].presetCopy.auxSendA;
+				//levels[3] *= channels[i].presetCopy.auxSendB;
 				for (int j ; j < bufferSize ; j++) {
-					__m128 sample = _mm_cvtepi32_ps(__m128i(iBuf[j]));
-					const float adsrEnv = channels[i].envGen.shp(channels[i].envGen.position == ADSREnvelopGenerator.Stage.Attack ? 
+					sample = _mm_cvtepi32_ps(__m128i(iBuf[j]));
+					adsrEnv = channels[i].envGen.shp(channels[i].envGen.position == ADSREnvelopGenerator.Stage.Attack ? 
 							channels[i].currShpA : channels[i].currShpR) * channels[i].presetCopy.adsrToVol;
 					channels[i].envGen.advance();
 					sample *= __m128((1 - channels[i].presetCopy.adsrToVol) + adsrEnv) * __m128((1 - channels[i].presetCopy.lfoToVol) + 
-							(lfoOut[j] * channels[i].presetCopy.lfoToVol)) * levels;
+							(lfoOut[j] * channels[i].presetCopy.lfoToVol)) * levels * channels[i].ctrlFilter.output(__m128(1.0 / 64.0));
 					lBuf[j] += sample;
 				}
 				resetBuffer(iBuf);
@@ -1434,6 +1455,14 @@ public class PCM8 : AudioModule {
 	 * Returns: The new level, or NaN if either channel number or value is out of bounds
 	 */
 	public override float setMasterLevel(float level, int channel = -1) @nogc nothrow {
+		if (level < 0.0 || level > 0.0) return float.nan;
+		if (channel == -1) {
+			masterLevels[16] = level;
+			return level;
+		} else if (channel >= 0 && channel <= 15) {
+			masterLevels[channel] = level;
+			return level;
+		}
 		return float.nan;
 	}
 }

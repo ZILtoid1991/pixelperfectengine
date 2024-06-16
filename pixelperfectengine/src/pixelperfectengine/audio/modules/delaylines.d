@@ -75,16 +75,6 @@ public class DelayLines : AudioModule {
 		bool		tapEnable;	///True if tap is enabled
 		bool		bypassFIR;	///Bypasses FIR calculation
 	}
-	/* 
-	///Defines an LFO target
-	protected enum OscTarget : ubyte {
-		init		=	0,
-		TapOut		=	1,
-		TapFeedback	=	2,
-		TapPosition	=	4,
-		ToA			=	8,
-		ToB			=	16,
-	} */
 	///Contains recallable preset data.
 	protected struct Preset {
 		///Defines oscillator waveform selection data.
@@ -114,12 +104,7 @@ public class DelayLines : AudioModule {
 		__m128[2]				iirQ = [__m128(0.707), __m128(0.707)];///Defines IIR Q value
 		__m128[2]				eqLevels = [__m128(0), __m128(0)];///Stores EQ send levels
 		__m128					inputLevel = __m128(1);
-		/* __m128i					oscLevels = __m128i(0);///Defines the amount of effect a given LFO has on a parameter
-		float[4]				oscFrequencies = [4, 4, 4, 4];///Defines LFO freqencies
-		uint[4]					oscPWM;			///Defines the PWM of the LFOs */
 		float[2]				outputLevel = [1.0, 1.0];
-		/* ubyte[4]				oscTargets;		///Sets the target of a given LFO
-		OscWaveform[4]			oscWaveform;	///Sets the waveform output of the LFOs */
 		
 	}
 	protected TreeMap!(uint,Preset)	presetBank;	///Stores presets
@@ -130,8 +115,6 @@ public class DelayLines : AudioModule {
 	protected __m128			inLevel;		///0: A to pri, 1: A to sec, 2: B to pri, 3: B to sec
 	protected float[2]			outLevel;		///Output levels
 	protected float[2]			feedbackSum;	///Feedback sums to be mixed in with the inputs
-	/* protected QuadMultitapOsc	osc;			///Oscillators to modify fix tap points
-	protected __m128i[]			oscOut;			///LFO buffer */
 	protected size_t[2]			dLPos;			///Delay line positions
 	protected size_t[2]			dLMod;			///Delay line modulo
 	protected float[]			dummyBuf;		///Buffer used for unused inputs/outputs
@@ -260,29 +243,7 @@ public class DelayLines : AudioModule {
 						break;
 				}
 				break;
-			/* case 8://LFOs
-				const int lfoGr = paramLSB>>3;
-				switch (paramLSB & 7) {
-					case 0:
-						currPreset.oscWaveform[lfoGr].raw = cast(ubyte)val;
-						break;
-					case 1:
-						currPreset.oscLevels[lfoGr] = cast(short)(val>>17);
-						break;
-					case 2:
-						currPreset.oscFrequencies[lfoGr] = val / cast(double)uint.max * 20;
-						break;
-					case 3:
-						currPreset.oscPWM[lfoGr] = val;
-						break;
-					case 4:
-						currPreset.oscTargets = cast(ubyte)val;
-						break;
-					default:
-						break;
-				}
-				resetLFO(lfoGr);
-				break; */
+			
 			case 9://EQ
 				const int eqGr = (paramLSB>>2) & 7;
 				switch (paramLSB & 3) {
@@ -322,25 +283,6 @@ public class DelayLines : AudioModule {
 				currPreset.iirFreq[filterID>>2][filterID & 3]), filterID & 3);
 		filterBanks[filterID>>2].fixFilter();
 	}
-
-	/* protected void resetLFO(int lfoID) @safe @nogc nothrow pure {
-		osc.setRate(sampleRate, currPreset.oscFrequencies[lfoID], lfoID);
-		osc.pulseWidth[lfoID] = currPreset.oscPWM[lfoID];
-		const int waveNum = cast(int)currPreset.oscWaveform[lfoID].sawtooth + cast(int)currPreset.oscWaveform[lfoID].triangle 
-				+ cast(int)currPreset.oscWaveform[lfoID].pulse + cast(int)currPreset.oscWaveform[lfoID].sawpulse;
-		if (waveNum) {
-			const short level = cast(short)((currPreset.oscLevels[lfoID] / waveNum) * 
-					(currPreset.oscWaveform[lfoID].phaseInvert ? -1 : 1));
-			if (currPreset.oscWaveform[lfoID].sawtooth)
-				osc.levelCtrl01[lfoID * 2] = level;
-			if (currPreset.oscWaveform[lfoID].triangle)
-				osc.levelCtrl01[lfoID * 2 + 1] = level;
-			if (currPreset.oscWaveform[lfoID].pulse)
-				osc.levelCtrl23[lfoID * 2] = level;
-			if (currPreset.oscWaveform[lfoID].sawpulse)
-				osc.levelCtrl23[lfoID * 2 + 1] = level;
-		}
-	} */
 
 	protected void presetChangeCmd(uint preset) @nogc nothrow {
 		Preset* presetPtr = presetBank.ptrOf(preset);
@@ -383,40 +325,6 @@ public class DelayLines : AudioModule {
 				outBuf[i] = dummyBuf.ptr;
 			}
 		}
-		//Precalculate values, so they don't need to be done on a per-cycle basis.
-		
-		/* __m128i[2] tapLFOOffset;
-		__m128[2] tapLFOLevel;
-		__m128[2] tapLFOFB;
-		for (int j ; j < 4 ; j++) {
-			if (currPreset.oscTargets[j] & OscTarget.ToA) {
-				tapLFOLevel[0][j] = (currPreset.oscTargets[j] & OscTarget.TapOut) ? 1.0 / short.max : 0.0;
-				tapLFOOffset[0][j] = (currPreset.oscTargets[j] & OscTarget.TapPosition) ? 1 : 0;
-				tapLFOFB[0][j] = (currPreset.oscTargets[j] & OscTarget.TapFeedback) ? 1.0 / short.max : 0.0;
-			}
-			if (currPreset.oscTargets[j] & OscTarget.ToB) {
-				tapLFOLevel[1][j] = (currPreset.oscTargets[j] & OscTarget.TapOut) ? 1.0 / short.max : 0.0;
-				tapLFOOffset[1][j] = (currPreset.oscTargets[j] & OscTarget.TapPosition) ? 1 : 0;
-				tapLFOFB[1][j] = (currPreset.oscTargets[j] & OscTarget.TapFeedback) ? 1.0 / short.max : 0.0;
-			}
-		} */
-		
-		/* {	//Render LFO outs.
-			for (int lfoPos ; lfoPos < bufferSize ; lfoPos++) {
-				oscOut[lfoPos] = osc.output();
-				oscOut[lfoPos][0]>>=15;
-				oscOut[lfoPos][1]>>=15;
-				oscOut[lfoPos][2]>>=15;
-				oscOut[lfoPos][3]>>=15;
-			}
-			for (int i ; i < 4 ; i++) {
-				if (currPreset.oscWaveform[i].integrate){	//integrate output if needed
-					for (int lfoPos ; lfoPos < bufferSize ; lfoPos++) {
-						oscOut[lfoPos][i] = (abs(oscOut[lfoPos][i]) * oscOut[lfoPos][i])>>16;
-					}
-				}
-			}
-		} */
 		
 		for (int outputPos ; outputPos < bufferSize ; outputPos++) {
 			delayLines[0][dLMod[0] & dLPos[0]] = inBuf[0][outputPos] * currPreset.inputLevel[0] + 
@@ -543,22 +451,6 @@ public class DelayLines : AudioModule {
 						break;
 				}
 				break;
-			/* case 8:	//LFO
-				const uint lfoID = (paramID>>3) & 3, subParamID = paramID & 7;
-				switch (subParamID) {
-					//case 1:
-					//	presetPtr.oscLevels[lfoID] = value;
-					//	return 0;
-					case 2:
-						presetPtr.oscFrequencies[lfoID] = value;
-						return 0;
-					case 3:
-						presetPtr.oscPWM[lfoID] = cast(uint)(value * uint.max);
-						return 0;
-					default:
-						break;
-				}
-				break; */
 			case 9: //EQ
 				const uint EQID = (paramID>>2) & 7;
 				switch (paramID & 3) {
@@ -624,19 +516,6 @@ public class DelayLines : AudioModule {
 						break;
 				}
 				break;
-			/* case 8:		//LFO
-				const uint lfoID = (paramID>>3) & 3, subParamID = paramID & 7;
-				switch (subParamID) {
-					case 0:
-						return presetPtr.oscWaveform[lfoID].raw;
-					case 1:
-						return presetPtr.oscLevels[lfoID];
-					case 4:
-						return presetPtr.oscTargets[lfoID];
-					default:
-						break;
-				}
-				break; */
 			default:
 				break;
 		}
@@ -669,19 +548,6 @@ public class DelayLines : AudioModule {
 						break;
 				}
 				break;
-			/* case 8:	//LFO
-				const uint lfoID = (paramID>>3) & 3, subParamID = paramID & 7;
-				switch (subParamID) {
-					//case 1:
-					//	return presetPtr.oscLevels[lfoID];
-					case 2:
-						return presetPtr.oscFrequencies[lfoID];
-					case 3:
-						return presetPtr.oscPWM[lfoID] / uint.max;
-					default:
-						break;
-				}
-				break; */
 			case 9:	//EQ
 				const uint EQID = (paramID>>2) & 7;
 				switch (paramID & 3) {

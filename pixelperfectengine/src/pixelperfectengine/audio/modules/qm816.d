@@ -365,9 +365,9 @@ public class QM816 : AudioModule {
 		///Either used for audible output, or to modulate other operators
 		int				output_0;
 		///Key scale level factor for output level
-		float			outKSL	=	0;
+		float			outKSL	=	1.0;
 		///Key scale level factor for feedback level + phase
-		float			fbKSL	=	0;
+		float			fbKSL	=	1.0;
 		///Live calculated out of shpA
 		float			shpA0	=	0.0;
 		///Live calculated out of shpR
@@ -479,7 +479,7 @@ public class QM816 : AudioModule {
 				fbKSL = (preset.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1) * 
 						(1.0 - (octaves * ((preset.kslAttenFB / ubyte.max) * 0.75)));
 			} else {
-				outKSL = 0.0;
+				outKSL = 1.0;
 				fbKSL = (preset.opCtrl & OpCtrlFlags.FBNeg ? -1 : 1);
 			}
 		}
@@ -621,12 +621,12 @@ public class QM816 : AudioModule {
 		 */
 		void recalculateOutLevels() @nogc @safe pure nothrow {
 			const float lc = 1.0 / 64.0;
-			if (preset.chCtrl == ChCtrlFlags.IndivOutChLev) {
+			if (preset.chCtrl & ChCtrlFlags.IndivOutChLev) {
 				outLevels.setNextTarget(0, preset.masterVol, 64, lc);
 				outLevels.setNextTarget(1, preset.masterBal, 64, lc);
 			} else {
 				outLevels.setNextTarget(0, preset.masterVol * sqrt(preset.masterBal), 64, lc);
-				outLevels.setNextTarget(1, preset.masterVol * (1 - sqrt(preset.masterBal)), 64, lc);
+				outLevels.setNextTarget(1, preset.masterVol * sqrt(1.0 - preset.masterBal), 64, lc);
 			}
 			outLevels.setNextTarget(2, preset.auxSendA, 64, lc);
 			outLevels.setNextTarget(3, preset.auxSendB, 64, lc);
@@ -930,6 +930,8 @@ public class QM816 : AudioModule {
 		for (int i ; i < chDeleg.length ; i++) {
 			chDeleg[i] = &updateChannelM00;
 		}
+		//reset master level controls
+		foreach (ref float elem ; masterLevels) elem = 1.0;
 	}
 	/**
 	 * Sets the module up.
@@ -1882,10 +1884,11 @@ public class QM816 : AudioModule {
 					case ChannelParamNums.Bal: 
 						channels[chNum].preset.masterBal = cast(double)val / uint.max;
 						if (channels[chNum].preset.chCtrl & ChCtrlFlags.IndivOutChLev) {
-							channels[chNum].outLevels.setNextTarget(1, channels[chNum].preset.masterBal * channels[chNum].preset.masterBal, 64, levelFF);
+							channels[chNum].outLevels.setNextTarget(1, 
+									channels[chNum].preset.masterBal * channels[chNum].preset.masterBal, 64, levelFF);
 						} else {
 							channels[chNum].outLevels.setNextTarget(0, channels[chNum].preset.masterVol * sqrt(channels[chNum].preset.masterBal), 64, levelFF);
-							channels[chNum].outLevels.setNextTarget(1, channels[chNum].preset.masterVol * (1.0 - sqrt(channels[chNum].preset.masterBal)), 64, levelFF);
+							channels[chNum].outLevels.setNextTarget(1, channels[chNum].preset.masterVol * sqrt(1.0 - channels[chNum].preset.masterBal), 64, levelFF);
 						}
 						break;
 					case ChannelParamNums.ChCtrl:
@@ -1918,7 +1921,7 @@ public class QM816 : AudioModule {
 							channels[chNum].outLevels.setNextTarget(0, channels[chNum].preset.masterVol * channels[chNum].preset.masterVol, 64, levelFF);
 						} else {
 							channels[chNum].outLevels.setNextTarget(0, channels[chNum].preset.masterVol * sqrt(channels[chNum].preset.masterBal), 64, levelFF);
-							channels[chNum].outLevels.setNextTarget(1, channels[chNum].preset.masterVol * (1.0 - sqrt(channels[chNum].preset.masterBal)), 64, levelFF);
+							channels[chNum].outLevels.setNextTarget(1, channels[chNum].preset.masterVol * sqrt(1.0 - channels[chNum].preset.masterBal), 64, levelFF);
 						}
 						break;
 					case ChannelParamNums.PLFO: 
@@ -2358,7 +2361,7 @@ public class QM816 : AudioModule {
 	///Macro for output mixing
 	static immutable string CHNL_UPDATE_MIX =
 		q{
-			outlevels = mwAuxCtrl * chMast;
+			outlevels = mwAuxCtrl * chMast * channels[chNum].outLevels.output(__m128(levelFF));
 			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - channels[chNum].preset.eegLevels);
 			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - channels[chNum].preset.aLFOlevels);
 			initBuffers[i + 2] += outlevels * outSum;
@@ -2366,7 +2369,7 @@ public class QM816 : AudioModule {
 	///Macro for output mixing in case of combo modes
 	static immutable string CHNL_UPDATE_MIX0 =
 		q{
-			outlevels = mwAuxCtrl * chMast;
+			outlevels = mwAuxCtrl * chMast * channels[chNum].outLevels.output(__m128(levelFF));
 			outlevels *= (channels[chNum].preset.eegLevels * eegToMast) + (__m128(1.0) - channels[chNum].preset.eegLevels);
 			outlevels *= (channels[chNum + 8].preset.eegLevels * eegToMast0) + (__m128(1.0) - channels[chNum + 8].preset.eegLevels);
 			outlevels *= (channels[chNum].preset.aLFOlevels * lfoToMast) + (__m128(1.0) - channels[chNum].preset.aLFOlevels);
