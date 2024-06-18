@@ -391,13 +391,13 @@ Bytecode layout:
 ```
 or
 ```
-[02]{24 most significant bits of time value}{32 least significant bits of time value}
+[02]{24 least significant bits of time value}{32 most significant bits of time value}
 ```
 
 Human-readable format:
 
 ```
-wait {int}
+wait {number of tics in time format}
 ```
 or
 ```
@@ -639,9 +639,19 @@ Control commands are used to control the processing of the file in real time.
 
 #### Set register
 
-`ctrl setReg R25 6181`
+`ctrl setReg [Register] [Data to be written to register]`
+
+`0xF0 0x01 [register number: 8 bits] [padding: 8 bits] [data to be written to register 32 bits]`
 
 `0x01`/`setReg` will set the register value specified by command code
+
+#### Sync for external chain
+
+`ctrl syncXC [sync flags as hexanumeric data]`
+
+`0xF0 0x02 [sync flags: 16 bits]`
+
+`0x02`/`syncXC` tells the sequencer that it's okay to process synchronized (external) pattern branching commands with the given flags.
 
 ## Display command
 
