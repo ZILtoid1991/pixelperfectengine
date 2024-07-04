@@ -44,7 +44,7 @@ Currently, I have two options:
 
 ### Current status
 
-Work on PingusVM have been started. At worst there will be an assembly-like scripting language, with options to write a compiler.
+~~Work on PingusVM have been started. At worst there will be an assembly-like scripting language, with options to write a compiler.~~ Dropped in favor of a binding to wasmtime.
 
 ## Path management
 
@@ -64,7 +64,7 @@ Added benefits are speed (10 000+ objects per frame!), the possibility of low-re
 
 ### Pre-requirements
 
-Mostly finishing iota to a state it can replace the current SDL functionality.
+Mostly finishing iota to a state it can replace the current SDL functionality. (DONE!)
 
 ### Things probably need to be changed before, through, or after the GPU transition
 
