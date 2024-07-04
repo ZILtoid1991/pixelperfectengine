@@ -281,7 +281,7 @@ Note: User can implement custom chunks, but user chunks should be all lowercase 
 
 Identifier: `PATTERN`
 
-*Binary layout:* Each pattern begin with a 32 bit identifier, of which only the 24 least significant bits are used, the rest are zeros. Then comes the binary data of the commands. The entry point is identified by `0x00_00_00_00`
+*Binary layout:* Each pattern begin with a 32 bit identifier, of which only the 24 least significant bits are used as an identifier, the rest are category identifier flags. Then comes the binary data of the commands. The entry point is identified by `0x00_00_00_00`
 
 *Human-readable Layout:*
 ```
