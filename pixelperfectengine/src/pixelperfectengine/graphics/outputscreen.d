@@ -4,8 +4,12 @@
  * Pixel Perfect Engine, graphics.outputScreen module
  */
 module pixelperfectengine.graphics.outputscreen;
-
-import bindbc.sdl;
+version (PPE_NOSDL) {
+	import iota.window.oswindow;
+	import iota.window.types;
+} else {
+	import bindbc.sdl;
+}
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.system.exc;
 import std.stdio;
@@ -14,8 +18,7 @@ import std.conv;
 
 /**
  * Output window, uses SDL to output the graphics on screen.
- * TODO: Add borderless window support for better concreteUI integration.
- * NOTE: Once the iota library gets raster output support, this subsystem will get refactored.
+ * TODO: Refactor it for use with iota instead!
  */
 public class OutputScreen : RefreshListener{
 	private SDL_Window* window;

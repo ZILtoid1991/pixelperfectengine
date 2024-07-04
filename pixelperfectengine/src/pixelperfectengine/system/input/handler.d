@@ -13,6 +13,7 @@ import pixelperfectengine.system.input.scancode;
 
 /**
  * Converts and redirects inputs as events.
+ * TODO: Refactor to use iota instead.
  */
 public class InputHandler {
 	/**
