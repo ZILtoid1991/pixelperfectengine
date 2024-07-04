@@ -256,6 +256,7 @@ public dstring loadTextFile(F = File)(F file) {
 public immutable string pathRoot;
 ///Path to the executable folder, null if not eveilable for security reasons.
 public immutable string pathExec;
+public string[string] pathSymbols;
 shared static this () {
 	import std.path;
 	import std.file : exists;
@@ -270,6 +271,9 @@ shared static this () {
 		else assert(0, "Folder /system/ does not exist! Please reinstall the software or contact the developer if that does 
 				not solve the issue.");
 		}
+	pathSymbols["PATH"] = pathRoot;
+	pathSymbols["EXEC"] = pathToExec;
+	pathSymbols["SYSTEM"] = pathRoot ~ "/system/";
 }
 /** 
  * Builds a path to the language file.
@@ -285,14 +289,21 @@ public string getPathToLocalizationFile (string country, string language, string
 	return pathRoot ~ "/local/" ~ language ~ "." ~ fileext;
 }
 ///Builds a path to the asset path.
+///This function will be favored less moving forward.
 public string getPathToAsset (string path) @safe pure {
 	if (startsWith(path, "%PATH%")) path = path[6..$];
 	else if (startsWith(path, "../", "..\\")) path = path[3..$];
 	//else if (startsWith(path, ["./", ".\\"])) path = path[2..$];
 	return buildNormalizedPath(pathRoot ~ dirSeparator ~ path);
 }
+///Subtitutes symbols found in `path`, then returns the resolved path.
+///This function will be favored more moving forward.
+public string resolvePath(string path) @safe {
+	import pixelperfectengine.system.etc : interpolateStr;
+	return interpolateStr(path, pathSymbols);
+}
 /**
- * Implements the RIFF serialization system
+ * Implements the RIFF serialization system (Maybe remove?)
  */
 public struct RIFFHeader{
 	char[4] data;

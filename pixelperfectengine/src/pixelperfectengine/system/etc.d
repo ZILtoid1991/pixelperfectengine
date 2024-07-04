@@ -379,7 +379,7 @@ S removeUnallowedDups(S)(S input, S symbolList) @safe pure nothrow {
  * and/or numbers.
  * Returns: The interpolated string.
  */
-S interpolateStr(S)(S input, S[S] symbolList) @safe pure nothrow {
+S interpolateStr(S)(S input, S[S] symbolList) @safe pure {
 	S output;
 	while (input.length) {
 		ptrdiff_t begin = countUntil(input, '%');
