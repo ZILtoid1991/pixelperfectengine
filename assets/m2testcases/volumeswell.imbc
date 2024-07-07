@@ -27,16 +27,23 @@ $[0]: pc 5 16
 $[0]: pc 6 16
 $[0]: pc 7 16
 
+$[0]: ccl 0 7 0x3F_FF_FF_FF;Reset volume levels
+$[0]: ccl 1 7 0x3F_FF_FF_FF
+$[0]: ccl 2 7 0x3F_FF_FF_FF
+
 $[0]: nn 0 0x7FFF C-4   ;Play a C major
 $[0]: nn 1 0x7FFF E-4
 $[0]: nn 2 0x7FFF G-4
 
 wait q                  ;Wait for a quarter note (test for pop elimination)
+$[0]: ccl 0 7 0         ;Set all volume values to zero immediate
+$[0]: ccl 1 7 0
+$[0]: ccl 2 7 0
 ctrl setReg R5 1024     ;Target
 ctrl setReg R4 1        ;Increment amount
 ctrl setReg R3 0        ;Counter
 @loopentry:
-lshi R3 16 R0           ;Shift R3 left by 16 bits, store in R0
+lshi R3 20 R0           ;Shift R3 left by 20 bits, store in R0
 $[0]: ccl 0 7 R0        ;Emit volume change command
 $[0]: ccl 1 7 R0
 $[0]: ccl 2 7 R0
@@ -44,6 +51,19 @@ add R3 R4 R3            ;Increment R3 by R4
 wait i                  ;Wait for a 64th note (test for low-frequency rumble)
 cmpgt R5 R3             ;Compare if R5 is greater than R3
 jmpsh 1 loopentry       ;Jump if last compare was true 
+
+ctrl setReg R3 0        ;Counter reset
+
+@loopentry0:
+sub R5 R3 R1            ;Subtract R3 from R5, store in R1
+lshi R1 20 R0           ;Shift R1 left by 20 bits, store in R0
+$[0]: ccl 0 7 R0        ;Emit volume change command
+$[0]: ccl 1 7 R0
+$[0]: ccl 2 7 R0
+add R3 R4 R3            ;Increment R3 by R4
+wait u                  ;Wait for a 1024th note (test for mid-frequency noise)
+cmpgt R5 R3             ;Compare if R5 is greater than R3
+jmpsh 1 loopentry0      ;Jump if last compare was true 
 
 $[0]: nf 0 0x7FFF C-4   ;End C major
 $[0]: nf 1 0x7FFF E-4

@@ -10,6 +10,7 @@ import std.format.read : formattedRead;
 import std.conv : to;
 import std.algorithm.searching : canFind, startsWith, countUntil;
 import collections.sortedlist;
+import collections.hashmap;
 import midi2.types.enums;
 import midi2.types.structs;
 
@@ -117,6 +118,8 @@ package ulong parseRhythm(string n, float bpm, long timebase) {
 	return cast(ulong)(duration * whNoteLen);
 }
 ///Reads textual M2 files and compiles them into binary.
+///Bugs: 
+/// * comment stripping is somehow inconsistent, sometimes just stops working altogether, thus certain checks are disabled for now.
 public M2File loadM2FromText(string src) {
 	
 	enum Context {
@@ -133,7 +136,8 @@ public M2File loadM2FromText(string src) {
 		size_t lineNum;
 		uint lineLen;
 		float currBPM = 120;
-		size_t[string] positionLabels;
+		//size_t[string] positionLabels;
+		HashMap!(string, size_t) positionLabels;
 	}
 	struct NoteData {
 		uint device;
@@ -179,9 +183,9 @@ public M2File loadM2FromText(string src) {
 				if (words[0] == "END") {	//Calculate line numbers then close current pattern parsing.
 					ptrnData[$-1].lineLen = cast(uint)(lineNum - ptrnData[$-1].lineNum - 1);
 					context = Context.init;
-				} else if (startsWith(words[0], "@")) {
-					ptrnData[$-1].positionLabels[words[0][1..$]] = lineNum;
-				}
+				} /* else if (startsWith(words[0], "@") && endsWith(words[0], ":")) {
+					ptrnData[$-1].positionLabels[words[0][1..$-1]] = lineNum;
+				} */
 				break;
 			case Context.headerParse:
 				switch (words[0]) {
@@ -282,7 +286,7 @@ public M2File loadM2FromText(string src) {
 	//Initialize song data
 	result.songdata = M2Song(result.patternNum, result.timeFormat, result.timeFrmtPer, result.timeFrmtRes);
 	//Second pass: parse patterns
-	foreach (size_t i, PatternData key; ptrnData) {
+	foreach (size_t i, ref PatternData key; ptrnData) {
 		result.songdata.ptrnData[cast(uint)i] = [];
 		//NoteData[] noteMacroHandler;
 		SortedList!(NoteData, "a > b") noteMacroHandler;
@@ -317,40 +321,42 @@ public M2File loadM2FromText(string src) {
 				*ptrn ~= cmdStr;
 			}
 		}
-		void insertJmpCmd(const sizediff_t currLineNum, uint cmdCode, string[] words) {
-			const int targetAm = cast(int)(key.positionLabels[words[1]] - currLineNum);
-			const uint conditionMask = cast(uint)parsenum(words[0]);
+		void insertJmpCmd(const sizediff_t currLineNum, uint cmdCode, string[] instr) {
+			enforce(key.positionLabels.has(instr[1]), "Position label not found");
+			flushEmitStr();
+			const int targetAm = cast(int)(key.positionLabels[instr[1]] - currLineNum);
+			const uint conditionMask = cast(uint)parsenum(instr[0]);
 			insertCmd([cmdCode, conditionMask, targetAm]);
 		}
-		void insertMathCmd(const ubyte cmdCode, string[] words) {
-			enforce(words.length == 3, "Incorrect number of registers");
-			const int ra = parseRegister(words[0]);
-			const int rb = parseRegister(words[1]);
-			const int rd = parseRegister(words[2]);
-			enforce((ra|rb|rd) <= -1, "Bad register number");
+		void insertMathCmd(const ubyte cmdCode, string[] instr) {
+			//enforce(instr.length == 3, "Incorrect number of registers");
+			const int ra = parseRegister(instr[0]);
+			const int rb = parseRegister(instr[1]);
+			const int rd = parseRegister(instr[2]);
+			//enforce((ra|rb|rd) <= -1, "Bad register number");
 			insertCmd([M2Command([cmdCode, cast(ubyte)ra, cast(ubyte)rb, cast(ubyte)rd]).word]);
 		}
-		void insertShImmCmd(const ubyte cmdCode, string[] words) {
-			enforce(words.length == 3, "Incorrect number of registers");
-			const int ra = parseRegister(words[0]);
-			const int rb = cast(int)parsenum(words[1]);
-			const int rd = parseRegister(words[2]);
-			enforce((ra|rd) <= -1, "Bad register number");
+		void insertShImmCmd(const ubyte cmdCode, string[] instr) {
+			//enforce(instr.length == 3, "Incorrect number of registers");
+			const int ra = parseRegister(instr[0]);
+			const int rb = cast(int)parsenum(instr[1]);
+			const int rd = parseRegister(instr[2]);
+			//enforce((ra|rd) <= -1, "Bad register number");
 			enforce(rb <= 31 && rb >= 0, "Bad immediate amount");
 			insertCmd([M2Command([cast(ubyte)cmdCode, cast(ubyte)ra, cast(ubyte)rb, cast(ubyte)rd]).word]);
 		}
-		void insertTwoOpCmd(const ubyte cmdCode, string[] words) {
-			enforce(words.length == 2, "Incorrect number of registers");
-			const int ra = parseRegister(words[0]);
-			const int rd = parseRegister(words[1]);
+		void insertTwoOpCmd(const ubyte cmdCode, string[] instr) {
+			//enforce(instr.length == 2, "Incorrect number of registers");
+			const int ra = parseRegister(instr[0]);
+			const int rd = parseRegister(instr[1]);
 			enforce((ra|rd) <= -1, "Bad register number");
 			insertCmd([M2Command([cmdCode, cast(ubyte)ra, cast(ubyte)0x00, cast(ubyte)rd]).word]);
 		}
-		void insertCmpInstr(const ubyte cmprCode, string[] words) {
-			enforce(words.length == 2, "Incorrect number of registers");
-			const int ra = parseRegister(words[0]);
-			const int rb = parseRegister(words[1]);
-			enforce((ra|rb) <= -1, "Bad register number");
+		void insertCmpInstr(const ubyte cmprCode, string[] instr) {
+			//enforce(instr.length == 2, "Incorrect number of registers");
+			const int ra = parseRegister(instr[0]);
+			const int rb = parseRegister(instr[1]);
+			//enforce((ra|rb) <= -1, "Bad register number");
 			insertCmd([M2Command([OpCode.cmp, cmprCode, cast(ubyte)ra, cast(ubyte)rb]).word]);
 		}
 		void insertMIDI2Cmd(bool longfield, bool note)(const ubyte cmdCode, string chField, string upperField, 
@@ -382,8 +388,9 @@ public M2File loadM2FromText(string src) {
 			}
 			static if (longfield) {
 				rNote = parseRegister(upperField);
-				if (rNote != -1) emitWithRegVal |= 0x04;
-				else {
+				if (rNote != -1) {
+					emitWithRegVal |= 0x04;
+				} else {
 					const uint lf = cast(uint)parsenum(upperField);
 					lower = lf & 0x7F;
 					upper = lf>>7;
@@ -391,8 +398,9 @@ public M2File loadM2FromText(string src) {
 			} else {
 				if (upperField.length) {
 					rNote = parseRegister(upperField);
-					if (rNote != -1) emitWithRegVal |= 0x04;
-					else {
+					if (rNote != -1) {
+						emitWithRegVal |= 0x04;
+					} else {
 						static if (note) {
 							upper = cast(uint)parseNote(upperField);
 						} 
@@ -414,21 +422,24 @@ public M2File loadM2FromText(string src) {
 				M2Command cmdUprHl = M2Command([OpCode.emit_r, cast(ubyte)rValue, 0, 0]);
 				cmdUprHl.hwords[1] = cast(ushort)currDevNum;
 				M2Command cmdLwrHl = M2Command([cast(ubyte)rNote, cast(ubyte)rCh, cast(ubyte)rAux, cast(ubyte)emitWithRegVal]);
-				currEmitStr ~= [cmdUprHl.word, cmdLwrHl.word, midiCMD.base, value];
-				/* insertCmd([0x42_00_00_00 | currDevNum | (rValue<<16), (rNote<<24) | (rCh<<16) | (rAux<<8) | emitWithRegVal,
-						cmdCode | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | upper | lower, value]); */
+				insertCmd([cmdUprHl.word, cmdLwrHl.word, midiCMD.base, value]);
+				//currEmitStr ~= [cmdUprHl.word, cmdLwrHl.word, midiCMD.base, value];
 			} else {
 				UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), cmdCode, cast(ubyte)(channel&0x0F), 
 						cast(ubyte)upper, cast(ubyte)lower);
 				currEmitStr ~= [midiCMD.base, value];
-				//currEmitStr ~= [cmdCode | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | upper | lower, value];
 			}
 		}
 		for (sizediff_t lineNum = key.lineNum ; lineNum < key.lineNum + key.lineLen ; lineNum++) {
 			string[] words = removeComment(lines[lineNum]).split!isWhite();
 			if (!words.length) continue;//If line is used as padding or just for comments, don't try to parse it
-			if (words[0][0] == '$') {	//parse MIDI emit commands
-				const sizediff_t f = countUntil(words[0], '['), t =countUntil(words[0], ']');
+			if (words[0][0] == '@') {			//parse jump label
+				flushEmitStr();					//Flush emit string as it might contain data
+				const sizediff_t endOfJumpLabel = countUntil(words[0], ':');
+				auto ptrn = result.songdata.ptrnData.ptrOf(cast(uint)i);
+				key.positionLabels[words[0][1..endOfJumpLabel]] = ptrn.length;
+			} else if (words[0][0] == '$') {	//parse MIDI emit commands
+				const sizediff_t f = countUntil(words[0], '['), t = countUntil(words[0], ']');
 				const uint deviceNum = cast(uint)parsenum(words[0][f + 1..t]);
 				enforce(deviceNum <= 65_535, "Device number too large");
 				if (currEmitStr.length > 251 || currDevNum != deviceNum) flushEmitStr();	//flush emit string if it's not guaranteed that a 4 word long data won't fit, or device isn't equal
@@ -538,53 +549,27 @@ public M2File loadM2FromText(string src) {
 					//MIDI 1.0 end
 					//MIDI 2.0 begin
 					case "nf":			//MIDI note off
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint note = parseNote(words[3]);
-						const uint vel = cast(uint)parsenum(words[4]);
-						enforce(channel <= 255, "Channel number too high");
-						enforce(vel <= 65_535, "Velocity number too high");
-						currEmitStr ~= [0x20_80_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel<<16]; */
+						
 						string auxField;
 						if (words.length == 6) auxField = words[5];
 						insertMIDI2Cmd!(false, true)(MIDI2_0Cmd.NoteOff, words[2], words[4], null, words[3], auxField);
 						break;
 					case "nn":			//MIDI note on
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint note = parseNote(words[3]);
-						const uint vel = cast(uint)parsenum(words[4]);
-						enforce(channel <= 255, "Channel number too high");
-						enforce(vel <= 65_535, "Velocity number too high");
-						currEmitStr ~= [0x20_90_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel<<16]; */
+						
 						string auxField;
 						if (words.length == 6) auxField = words[5];
 						insertMIDI2Cmd!(false, true)(MIDI2_0Cmd.NoteOn, words[2], words[4], null, words[3], auxField);
 						break;
 					case "ppres":		//Poly aftertouch
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint note = parseNote(words[3]);
-						const uint vel = cast(uint)parsenum(words[4]);
-						enforce(channel <= 255, "Channel number too high");
-						currEmitStr ~= [0x20_A0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), vel]; */
+						
 						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.PolyAftrTch, words[2], words[4], null, words[3], null);
 						break;
 					case "pccr":		//Poly registered per-note controller change
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint note = parseNote(words[3]);
-						const uint index = cast(uint)parsenum(words[4]);
-						const uint val = cast(uint)parsenum(words[5]);
-						enforce(channel <= 255, "Channel number too high");
-						enforce(index <= 255, "Index number too high");
-						currEmitStr ~= [0x20_00_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | index, val]; */
+						
 						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.PolyCtrlChR, words[2], words[3], words[4], words[5], null);
 						break;
 					case "pcca":		//Poly assignable per-note controller change
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint note = parseNote(words[3]);
-						const uint index = cast(uint)parsenum(words[4]);
-						const uint val = cast(uint)parsenum(words[5]);
-						enforce(channel <= 255, "Channel number too high");
-						enforce(index <= 255, "Index number too high");
-						currEmitStr ~= [0x20_10_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | index, val]; */
+						
 						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.PolyCtrlCh, words[2], words[3], words[4], words[5], null);
 						break;
 					case "pnoteman":	//Poly management message
@@ -602,12 +587,7 @@ public M2File loadM2FromText(string src) {
 						currEmitStr ~= [];
 						break;
 					case "ccl":			//Legacy controller change
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint index = cast(uint)parsenum(words[3]);
-						const uint val = cast(uint)parsenum(words[4]);
-						enforce(channel <= 255, "Channel number too high");
-						enforce(index <= 127, "Index number too high");
-						currEmitStr ~= [0x20_B0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (index<<8), val]; */
+						
 						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.CtrlChOld, words[2], words[3], null, words[4], null);
 						break;
 					case "ccr":
@@ -622,18 +602,6 @@ public M2File loadM2FromText(string src) {
 					case "rcc":
 						insertMIDI2Cmd!(true, false)(MIDI2_0Cmd.RelCtrlCh, words[2], words[3], null, words[4], null);
 						break;
-					/* case "cc", "ccr", "rcc", "rccr"://Controller change commands
-						const uint channel = cast(uint)parsenum(words[2]);
-						const uint index = cast(uint)parsenum(words[3]);
-						const uint val = cast(uint)parsenum(words[4]);
-						const uint cmdNum = words[1] == "ccr" ? 0x20_20_00_00 : 
-								(words[1] == "cc" ? 0x20_30_00_00 : 
-								(words[1] == "rccr" ? 0x20_40_00_00 : 0x20_50_00_00));
-						enforce(channel <= 255, "Channel number too high");
-						enforce(index <= 16_383, "Index number too high");
-						currEmitStr ~= [cmdNum | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | 
-								((index & 0x3F_80)<<1) | (index & 0x7F), val];
-						break; */
 					case "pc":			//Program change
 						const uint channel = cast(uint)parsenum(words[2]);
 						const uint prg = cast(uint)parsenum(words[3]);
@@ -652,25 +620,15 @@ public M2File loadM2FromText(string src) {
 						currEmitStr ~= [midiCMD.base, (prg<<24) | bank];
 						break;
 					case "cpres":		//Channel aftertouch
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint val = cast(uint)parsenum(words[3]);
-						enforce(channel <= 255, "Channel number too high");
-						currEmitStr ~= [0x20_D0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16), val]; */
+						
 						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.ChAftrTch, words[2], null, null, words[3], null);
 						break;
 					case "pb":			//Pitch bend
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint val = cast(uint)parsenum(words[3]);
-						enforce(channel <= 255, "Channel number too high");
-						currEmitStr ~= [0x20_E0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16), val]; */
+						
 						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.PitchBend, words[2], null, null, words[3], null);
 						break;
 					case "ppb":			//Poly pitch bend
-						/* const uint channel = cast(uint)parsenum(words[2]);
-						const uint note = parseNote(words[3]);
-						const uint val = cast(uint)parsenum(words[4]);
-						enforce(channel <= 255, "Channel number too high");
-						currEmitStr ~= [0x20_60_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8), val]; */
+						
 						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.PitchBend, words[2], words[3], null, words[4], null);
 						break;
 					//MIDI 2.0 end
@@ -859,6 +817,17 @@ public M2File loadM2FromText(string src) {
 						insertCmpInstr(CmpCode.sle, words[1..$]);
 						break;
 					case "ctrl":
+						M2Command ctrlCMD = M2Command([OpCode.ctrl, 0, 0, 0]);
+						switch (words[1]) {
+							case "setReg":
+								ctrlCMD.bytes[1] = CtrlCmdCode.setRegister;
+								ctrlCMD.bytes[2] = cast(ubyte)parseRegister(words[2]);
+								uint val = cast(uint)parsenum(words[3]);
+								insertCmd([ctrlCMD.word, val]);
+								break;
+							default:
+								break;
+						}
 						break;
 					case "display":
 						M2Command displCMD = M2Command([OpCode.display, 0, 0, 0]);

@@ -565,7 +565,7 @@ Referenced pattern will be played instead of the current one, with no returning.
 
 Bytecode layout:
 ```
-[42]{Register data source: 8 bits}{Device: 16 bits}{Register note or identifier source: 8 bits}{Channel register identifier: 8 bits}{aux register: 8 bits}{4 bits padding}{D}{N}{C}{A}
+[42]{Register data source: 8 bits}{Device: 16 bits}{Register note or identifier source: 8 bits}{Channel register identifier: 8 bits}{aux register: 8 bits}{4 bits padding}{D}{N}{C}{A}{8 bytes of MIDI 2.0 data}
 ```
 Human readable form:
 ```

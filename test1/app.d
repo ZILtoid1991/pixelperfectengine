@@ -423,7 +423,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		import pixelperfectengine.concrete.dialogs.filedialog;
 		wh.addWindow(new FileDialog("Load MIDI file.", "loadMidiDialog", &onMIDIFileLoad, 
 			[FileDialog.FileAssociationDescriptor("MIDI file", ["*.mid"]), 
-			FileDialog.FileAssociationDescriptor("M2 file", ["*.m2"])], "./"));
+			FileDialog.FileAssociationDescriptor("Intelligent MIDI Bytecode file", ["*.imbc", "*.imb"])], "./"));
 	}
 	public void onMIDIFileLoad(Event ev) {
 		import mididi;
@@ -439,7 +439,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 					wh.message("Error!", "No routing table has been initialized in current audio configuration!");
 				}
 				break;
-			case ".m2":
+			case ".imbc", ".imb":
 				m2Seq.loadSong(loadM2File(fe.getFullPath), mcfg);
 				state.m2Toggle = true;
 				mm.midiSeq = m2Seq;

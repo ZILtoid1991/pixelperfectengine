@@ -128,41 +128,67 @@ public class SequencerM2 : Sequencer {
 						emitMIDIData(patternData[ptrn.position..ptrn.position + dataAm], device);
 						ptrn.position += dataAm;
 						break;
+					case OpCode.emit_r:			//MIDI data emit with register data
+						const regDataSrc = data.bytes[1] & 0x80 ? songdata.globalReg[data.bytes[1]&0x7F] : ptrn.localReg[data.bytes[1]];
+						const device = data.hwords[1];		
+						M2Command data1 = M2Command(patternData[ptrn.position]);//Read second word
+						ptrn.position++;
+						const regNoteSrc = data1.bytes[0] & 0x80 ? songdata.globalReg[data1.bytes[0]&0x7F] : ptrn.localReg[data1.bytes[0]];
+						const regChSrc = data1.bytes[1] & 0x80 ? songdata.globalReg[data1.bytes[1]&0x7F] : ptrn.localReg[data1.bytes[1]];
+						const regAuxSrc = data1.bytes[2] & 0x80 ? songdata.globalReg[data1.bytes[2]&0x7F] : ptrn.localReg[data1.bytes[2]];
+						UMP data2 = UMP(patternData[ptrn.position]);//Read MIDI command chunk
+						ptrn.position++;
+						uint data3 = patternData[ptrn.position];//Read MIDI command chunk
+						ptrn.position++;
+						if (data1.bytes[3] & 0x08) {
+							if (data2.status == MIDI2_0Cmd.NoteOn || data2.status == MIDI2_0Cmd.NoteOff) {
+								data3 = regDataSrc & 0xFFFF_0000;
+								if (data1.bytes[3] & 0x01) {
+									data3 |= regAuxSrc>>16;
+								}
+							}
+						}
+						if (data1.bytes[3] & 0x04) {
+							if (data2.status == MIDI2_0Cmd.CtrlCh || data2.status == MIDI2_0Cmd.CtrlChOld 
+									|| data2.status == MIDI2_0Cmd.CtrlChR || data2.status == MIDI2_0Cmd.RelCtrlCh 
+									|| data2.status == MIDI2_0Cmd.RelCtrlChR) {
+								data2.note = cast(ubyte)(regNoteSrc>>7);
+								data2.value = cast(ubyte)(regNoteSrc);
+							} else {
+								data2.note = cast(ubyte)(regNoteSrc);
+							}
+						}
+						if (data1.bytes[3] & 0x02) {
+							data2.channel = cast(ubyte)regChSrc;
+							data2.group = cast(ubyte)(regChSrc>>4);
+						}
+						uint[2] dataToBeEmited;
+						dataToBeEmited[0] = data2.base;
+						dataToBeEmited[1] = data3;
+						emitMIDIData(dataToBeEmited, device);
+						break;
 					case OpCode.jmp:			//Conditional jump
+						const uint conditionMask = patternData[ptrn.position];
+						ptrn.position++;
+						const int jumpAm = patternData[ptrn.position];
+						ptrn.position++;
 						switch (data.bytes[1]) {
 							case JmpCode.nc:	//Always jump
-								ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
+								ptrn.position += jumpAm - 2;
 								break;
 							case JmpCode.eq:	//Jump if condition code and condition register are equal
-								if (ptrn.localReg[CR] == patternData[ptrn.position]) {
-									ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
-								} else {
-									ptrn.position += 2;
-								}
+								if (ptrn.localReg[CR] == conditionMask) ptrn.position += jumpAm - 2;
 								break;
 							case JmpCode.ne:	//Jump if condition code and condition register are not equal
-								if (ptrn.localReg[CR] != patternData[ptrn.position]) {
-									ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
-								} else {
-									ptrn.position += 2;
-								}
+								if (ptrn.localReg[CR] != conditionMask) ptrn.position += jumpAm - 2;
 								break;
 							case JmpCode.sh:	//Jump if at least some bits of the condition code is also high in the condition register
-								if (ptrn.localReg[CR] & patternData[ptrn.position]) {
-									ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
-								} else {
-									ptrn.position += 2;
-								}
+								if (ptrn.localReg[CR] & conditionMask) ptrn.position += jumpAm - 2;
 								break;
 							case JmpCode.op:	//Jump if condition code bits are opposite of CR
-								if (ptrn.localReg[CR] == ~patternData[ptrn.position]) {
-									ptrn.position += cast(int)patternData[ptrn.position + 1] - 1;
-								} else {
-									ptrn.position += 2;
-								}
+								if (ptrn.localReg[CR] == ~conditionMask) ptrn.position += jumpAm - 2;
 								break;
 							default:
-								ptrn.position += 2;
 								errors.unrecognizedCode = true;
 								if (status.cfg_StopOnError) {
 									status.play = false;
@@ -439,8 +465,9 @@ public class SequencerM2 : Sequencer {
 					case OpCode.ctrl:				//Control commands
 						switch (data.bytes[1]) {
 							case CtrlCmdCode.setRegister:
-								if (data.bytes[3] & 0x80) songdata.globalReg[data.bytes[3] & 0x7F] = patternData[ptrn.position];
-								else ptrn.localReg[data.bytes[3]] = patternData[ptrn.position];
+								const newVal = patternData[ptrn.position];
+								if (data.bytes[2] & 0x80) songdata.globalReg[data.bytes[2] & 0x7F] = newVal;
+								else ptrn.localReg[data.bytes[2]] = newVal;
 								ptrn.position += 1;
 								break;
 							case CtrlCmdCode.setEnvVal:
@@ -614,9 +641,5 @@ public class SequencerM2 : Sequencer {
 		} else {
 			emitMIDIData_intrnl!(false)(data, dd, am);
 		}
-	}
-	///TODO: Implement
-	private void emitMIDIwRegData(uint[] data, uint targetID, uint channel, uint value, uint note, uint aux) @nogc nothrow {
-
 	}
 }
