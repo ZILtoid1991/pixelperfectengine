@@ -1,3 +1,18 @@
+# 0.11.0-beta
+
+## IMBC
+
+Due to a preexisting and similar format by the same name, M2 got renamed to IMBC, or Intelligent MIDI Bytecode.
+
+### Bugfixes and changes
+
+* Fixed various issues with incorrect instruction code generation.
+* Fixed instruction processing issues in the sequencer.
+
+## Concrete
+
+* Added resizable window support.
+
 # 0.11.0-alpha.5
 
 Fixed a bug related to submenus in popup menus, also a bug related to missing `onDraw` calls.
