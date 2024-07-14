@@ -364,10 +364,15 @@ public M2File loadM2FromText(string src) {
 			uint emitWithRegVal;
 			int rCh, rNote, rValue, rAux = -1;
 			uint value, upper, lower, channel;
+			UMP midiCMD;
 			static if (note) {
 				rValue = parseRegister(valueField);
-				if (rValue != -1) emitWithRegVal |= 0x08;
-				else value = (cast(uint)parsenum(valueField))<<16;
+				if (rValue == -1) { 
+					rValue = 0;
+					value = (cast(uint)parsenum(valueField))<<16;
+				} else {
+					emitWithRegVal |= 0x08;
+				}
 				if (aux.length) {
 					if (aux.length >= 4) {
 						switch (aux[0..2]) {
@@ -377,39 +382,53 @@ public M2File loadM2FromText(string src) {
 							default: break;
 						}
 						rAux = parseRegister(aux[3..$]);
-						if (rAux != -1) emitWithRegVal |= 0x01;
-						else value |= cast(uint)parsenum(aux[3..$]);
+						if (rAux == -1) {
+							rAux = 0;
+							value |= cast(uint)parsenum(aux[3..$]);
+						} else {
+							emitWithRegVal |= 0x01;
+						}
 					}
 				}
 			} else {
 				rValue = parseRegister(valueField);
-				if (rValue != -1) emitWithRegVal |= 0x08;
-				else value = cast(uint)parsenum(valueField);
+				if (rValue == -1) {
+					rValue = 0;
+					value = cast(uint)parsenum(valueField);
+				} else {
+					emitWithRegVal |= 0x08;
+				}
 			}
 			static if (longfield) {
 				rNote = parseRegister(upperField);
-				if (rNote != -1) {
-					emitWithRegVal |= 0x04;
-				} else {
+				if (rNote == -1) {
+					rNote = 0;
 					const uint lf = cast(uint)parsenum(upperField);
 					lower = lf & 0x7F;
 					upper = lf>>7;
+				} else {
+					emitWithRegVal |= 0x04;
 				}
 			} else {
 				if (upperField.length) {
 					rNote = parseRegister(upperField);
-					if (rNote != -1) {
-						emitWithRegVal |= 0x04;
-					} else {
+					if (rNote == -1) {
+						rNote = 0;
 						static if (note) {
 							upper = cast(uint)parseNote(upperField);
 						} 
+					} else {
+						emitWithRegVal |= 0x04;
 					}
 				}
 				if (lowerField.length) {
 					rAux = parseRegister(lowerField);
-					if (rAux != -1) emitWithRegVal |= 0x01;
-					else lower = cast(uint)parsenum(lowerField);
+					if (rAux == -1) {
+						rAux = 0;
+						lower = cast(uint)parsenum(lowerField);
+					} else {
+						emitWithRegVal |= 0x01;
+					}
 				}
 			}
 			rCh = parseRegister(chField);
@@ -417,7 +436,7 @@ public M2File loadM2FromText(string src) {
 			else channel = cast(uint)parsenum(chField);
 			if (emitWithRegVal) {
 				flushEmitStr();
-				UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), cmdCode, cast(ubyte)(channel&0x0F), 
+				midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), cmdCode, cast(ubyte)(channel&0x0F), 
 						cast(ubyte)upper, cast(ubyte)lower);
 				M2Command cmdUprHl = M2Command([OpCode.emit_r, cast(ubyte)rValue, 0, 0]);
 				cmdUprHl.hwords[1] = cast(ushort)currDevNum;
@@ -425,7 +444,7 @@ public M2File loadM2FromText(string src) {
 				insertCmd([cmdUprHl.word, cmdLwrHl.word, midiCMD.base, value]);
 				//currEmitStr ~= [cmdUprHl.word, cmdLwrHl.word, midiCMD.base, value];
 			} else {
-				UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), cmdCode, cast(ubyte)(channel&0x0F), 
+				midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), cmdCode, cast(ubyte)(channel&0x0F), 
 						cast(ubyte)upper, cast(ubyte)lower);
 				currEmitStr ~= [midiCMD.base, value];
 			}
@@ -588,7 +607,7 @@ public M2File loadM2FromText(string src) {
 						break;
 					case "ccl":			//Legacy controller change
 						
-						insertMIDI2Cmd!(false, false)(MIDI2_0Cmd.CtrlChOld, words[2], words[3], null, words[4], null);
+						insertMIDI2Cmd!(true, false)(MIDI2_0Cmd.CtrlChOld, words[2], words[3], null, words[4], null);
 						break;
 					case "ccr":
 						insertMIDI2Cmd!(true, false)(MIDI2_0Cmd.CtrlChR, words[2], words[3], null, words[4], null);
