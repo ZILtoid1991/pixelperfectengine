@@ -54,6 +54,7 @@ import test1.midiseq;
 int main(string[] args) {
 	initialzeSDL();
 	AudioDevKit app = new AudioDevKit(args);
+	writeln("Status feedback console initialized.");
 	app.whereTheMagicHappens();
 	return 0;
 }
@@ -61,6 +62,7 @@ int main(string[] args) {
 public class TopLevelWindow : Window {
 	MenuBar mb;
 	AudioDevKit app;
+	//Label label_compileStatus, label_audioStatus;
 	public this(int width, int height, AudioDevKit app) {
 		super(Box(0, 0, width, height), ""d, [], null);
 		this.app = app;
@@ -340,11 +342,14 @@ public class AudioDevKit : InputListener, SystemEventListener {
 				if (errorCode) {
 					wh.message("Audio thread error!", "An error occured during audio thread runtime!\nError code:" ~ 
 							errorCode.to!dstring);
+				} else {
+					writeln("Audio thread has been shut down.");
 				}
 			} else {
 				const int errorCode = mm.runAudioThread();
 				if (!errorCode) {
 					state.audioThreadRunning = true;
+					writeln("Audio thread has been successfully started.");
 				} else {
 					wh.message("Audio thread error!", "Failed to initialize audio thread!\nError code:" ~ errorCode.to!dstring);
 				}
@@ -389,6 +394,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			router.refreshRoutingTable();
 			router.refreshModuleList();
 		}
+		writeln("File ", path, " has been loaded as a configuration file.");
 	}
 	public void onSave() {
 		if (!path.length) {
