@@ -167,7 +167,7 @@ public struct M2PatternSlot {
 	public BitFlags!StatusFlags status;	///Status flags
 	public uint lastCue;				///ID of the last reached cue
 	public uint id = PATTERN_SLOT_INACTIVE_ID;///ID of the currently played pattern
-	public uint position;				///Position within the pattern
+	public int position;				///Position within the pattern
 	public uint timeMult = 0x1_00_00;	///Time multiplier (16bit precision)
 	public uint backLink = uint.max;	///Backlinking for pattern nesting
 	public Duration timeToWait;			///Time until next command chunk

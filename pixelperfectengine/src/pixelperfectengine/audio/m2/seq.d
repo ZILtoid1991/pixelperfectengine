@@ -107,7 +107,7 @@ public class SequencerM2 : Sequencer {
 				ptrn.position++;//Move data position forward by one (always needed for each reads)
 				switch (data.bytes[0]) {		//Process commands
 					case OpCode.nullcmd:		//Null command (do nothing)
-						debug assert(!data.word);
+						debug assert(!data.word);//This means a malformed command, bail out if debugging is enabled.
 						break;
 					case OpCode.lnwait:			//Long wait
 						const ulong tics = data.read24BitField | patternData[ptrn.position];	//Get amount of tics for this wait command
@@ -196,7 +196,7 @@ public class SequencerM2 : Sequencer {
 								}
 								break;
 						}
-						if (ptrn.position > patternData.length) {
+						if (ptrn.position > patternData.length || ptrn.position < 0) {
 							errors.illegalJump = true;
 							ptrn.status.isRunning = false;
 							ptrn.status.hasEnded = true;
@@ -523,7 +523,8 @@ public class SequencerM2 : Sequencer {
 				}
 			}
 			exitLoop:
-			if (patternData.length <= ptrn.position && !hasUsefulDataLeft(patternData[ptrn.position..$])) {	//Free up pattern slot if ended or has no useful data left.
+			if (patternData.length < ptrn.position || ptrn.position < 0) {	//Free up pattern slot if ended or has no useful data left.
+				/* && !hasUsefulDataLeft(patternData[ptrn.position..$]) */
 				ptrn.status.isRunning = false;
 				ptrn.status.hasEnded = true;
 				if (ptrn.backLink != PATTERN_SLOT_INACTIVE_ID) {
