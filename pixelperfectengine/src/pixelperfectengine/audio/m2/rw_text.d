@@ -132,6 +132,22 @@ package ulong parseRhythm(string n, float bpm, long timebase) {
 	enforce (!isNaN(duration), "Rhythm syntax error");
 	return cast(ulong)(duration * whNoteLen);
 }
+///Implements the IMBC assembler.
+public struct IMBCAssembler {
+	///Defines context states for parsing
+	enum Context {
+		init,			///Initial parsing state
+		headerParse,	///Assembler is parsing header
+		arrayParse,		///Parsing of array data
+		metadataParse,	///Parsing of metadata 
+		deviceParse,	///Device data and descriptors
+		patternParse,	///Pattern data
+		stringParse,	///String (only used with metadata).
+	}
+	void compile() {
+		
+	}
+}
 ///Reads textual M2 files and compiles them into binary.
 ///Bugs: 
 /// * comment stripping is somehow inconsistent, sometimes just stops working altogether, thus certain checks are disabled for now.
