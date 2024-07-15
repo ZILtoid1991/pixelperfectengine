@@ -13,7 +13,8 @@ import collections.sortedlist;
 import collections.hashmap;
 import midi2.types.enums;
 import midi2.types.structs;
-
+///Converts the input to all caps.
+///TODO: Write a vectorized version.
 package string toAllCaps(string s) @safe nothrow {
 	string result;
 	result.reserve = s.length;
@@ -22,18 +23,21 @@ package string toAllCaps(string s) @safe nothrow {
 	}
 	return result;
 }
+///Parses the supplied number, either as decimal of hexadecimal (if starts with `0x`)
 package long parsenum(string s) {
-	if (s.startsWith("0x")) {
+	if (s.startsWith("0x") || s.startsWith("0X")) {
 		return s[2..$].to!long(16);
 	} else {
 		return s.to!long;
 	}
 }
+///Removes the comments from the line (after character `;`)
 package string removeComment(string s) {
 	const ptrdiff_t commentPos = countUntil(s, ";");
 	if (commentPos == -1) return s;
 	return s[0..commentPos];
 }
+///Tries to parse a note data.
 package int parseNote(string n) {
 	//return cast(int)countUntil(NOTE_LOOKUP_TABLE, n);
 	n = toAllCaps(n);
@@ -42,6 +46,8 @@ package int parseNote(string n) {
 	}
 	return cast(int)parsenum(n);
 }
+///Parses register number.
+///Returns register index if successful, returns -1 if not properly formatted register number.
 package int parseRegister(const string s) {
 	if (s[0] == 'R') {
 		try
@@ -50,6 +56,7 @@ package int parseRegister(const string s) {
 	}
 	return -1;
 }
+///Returns rhythm duration as floating point number, or returns NaN if rhythm notation is incorrect.
 package double getRhythmDur(const char c) @nogc @safe pure nothrow {
 	switch (c) {
 		case 'W': return 1.0;
@@ -66,6 +73,7 @@ package double getRhythmDur(const char c) @nogc @safe pure nothrow {
 		default: return double.nan;
 	}
 }
+///Returns the tuplet division for the current rhythm of `base` identified by `c`.
 package double getTupletDiv(const string c, const double base) @nogc @safe pure nothrow {
 	switch (c) {
 		default: return base;
@@ -85,6 +93,13 @@ package double getTupletDiv(const string c, const double base) @nogc @safe pure 
 		case "15": return base * 8 / 15;
 	}
 }
+/**
+ * Parses a textual rhythm notation.
+ * Params:
+ *   n = The string to be parsed.
+ *   bpm = The current BPM of the pattern.
+ *   timebase = Ticks per miliseconds for the song.
+ */
 package ulong parseRhythm(string n, float bpm, long timebase) {
 	const long whNoteLen = cast(long)(timebase * (1.0 / (bpm / 60.0)));
 	double duration = 0.0;
@@ -120,6 +135,8 @@ package ulong parseRhythm(string n, float bpm, long timebase) {
 ///Reads textual M2 files and compiles them into binary.
 ///Bugs: 
 /// * comment stripping is somehow inconsistent, sometimes just stops working altogether, thus certain checks are disabled for now.
+/// * some commands are just parsed incorrectly.
+///TODO: Refactor this function's internals into a struct.
 public M2File loadM2FromText(string src) {
 	
 	enum Context {
