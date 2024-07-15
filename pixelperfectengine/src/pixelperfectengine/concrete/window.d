@@ -350,8 +350,16 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void resize(const int width, const int height) {
 		position.right = position.left + width;
 		position.bottom = position.top + height;
+		onResize();
 		draw();
 		handler.refreshWindow(this);
+	}
+	/** 
+	 * Called when a resize event is happening.
+	 * This is the function that is recommended to override for layout management after each resize.
+	 */
+	public void onResize() {
+
 	}
 	/**
 	 * Returns the outputted bitmap.
