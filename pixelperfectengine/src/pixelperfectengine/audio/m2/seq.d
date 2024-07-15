@@ -174,19 +174,19 @@ public class SequencerM2 : Sequencer {
 						ptrn.position++;
 						switch (data.bytes[1]) {
 							case JmpCode.nc:	//Always jump
-								ptrn.position += jumpAm - 2;
+								ptrn.position += jumpAm - 3;
 								break;
 							case JmpCode.eq:	//Jump if condition code and condition register are equal
-								if (ptrn.localReg[CR] == conditionMask) ptrn.position += jumpAm - 2;
+								if (ptrn.localReg[CR] == conditionMask) ptrn.position += jumpAm - 3;
 								break;
 							case JmpCode.ne:	//Jump if condition code and condition register are not equal
-								if (ptrn.localReg[CR] != conditionMask) ptrn.position += jumpAm - 2;
+								if (ptrn.localReg[CR] != conditionMask) ptrn.position += jumpAm - 3;
 								break;
 							case JmpCode.sh:	//Jump if at least some bits of the condition code is also high in the condition register
-								if (ptrn.localReg[CR] & conditionMask) ptrn.position += jumpAm - 2;
+								if (ptrn.localReg[CR] & conditionMask) ptrn.position += jumpAm - 3;
 								break;
 							case JmpCode.op:	//Jump if condition code bits are opposite of CR
-								if (ptrn.localReg[CR] == ~conditionMask) ptrn.position += jumpAm - 2;
+								if (ptrn.localReg[CR] == ~conditionMask) ptrn.position += jumpAm - 3;
 								break;
 							default:
 								errors.unrecognizedCode = true;
