@@ -38,30 +38,63 @@ public class FileDialog : Window {
 			return result;
 		}
 	}
-
+	public enum Type {
+		Load,
+		Save,
+		New,
+		LoadWPath,
+		SaveWPath,
+		NewWPath,
+	}
 	private string source;
 	private string[] pathList, driveList;
 	private string directory, filename;
-	private ListView lw;
-	private TextBox tb;
+	private ListView filelist;
+	private TextBox filenameInput;
+	private Button filetypeSelector;
 
 	private bool save;
 	private FileAssociationDescriptor[] filetypes;
 	private int selectedType;
 	public void delegate(Event ev) onFileselect;
-	private Button button_up;
-	private Button button_drv;
-	private Button button_ok;
-	private Button button_close;
-	private Button button_type;
-	public static dstring[] 	buttonTexts = ["Up", "Drive", "Save", "Load", "Close", "Type"];	///Can be changed for localization
+	//private Button button_up;
+	//private Button button_drv;
+	//private Button button_ok;
+	//private Button button_close;
+	//private Button button_type;
+	//public static dstring[] 	buttonTexts = ["Up", "Drive", "Save", "Load", "Close", "Type"];	///Can be changed for localization
 	/**
 	 * Creates a file dialog with the given parameters.
 	 * File types are given in the format '*.format'.
 	 */
 	public this(Text title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
-			string startDir, bool save = false, string filename = "", StyleSheet customStyle = null) {
-		super(Coordinate(20,20,240,198), title, null, customStyle);
+			string startDir, Type type = Type.Load, string filename = "", StyleSheet customStyle = null) {
+		ISmallButton[] smallButtons;
+		const int windowHeaderHeight = customStyle.drawParameters["WindowHeaderHeight"];
+		if (customStyle is null) customStyle = getStyleSheet();
+		{
+			SmallButton closeButton = closeButton(customStyle);
+			closeButton.onMouseLClick = &close;
+			smallButtons ~= closeButton;
+		}
+		{
+			SmallButton pathBtn = new SmallButton("dirUpButtonB", "dirUpButtonA", "path", 
+					Box.bySize(0,0,windowHeaderHeight,windowHeaderHeight));
+			pathBtn.onMouseLClick = &up;
+			smallButtons ~= pathBtn;
+		}
+		{
+			SmallButton actionBtn;
+			void addPathBtn() {
+				SmallButton pathBtn = new SmallButton("pathButtonB", "pathButtonA", "path", 
+						Box.bySize(0,0,windowHeaderHeight,windowHeaderHeight));
+				pathBtn.onMouseLClick = &openPathSys;
+				smallButtons ~= pathBtn;
+			}
+			actionBtn.onMouseLClick = &fileEvent;
+			smallButtons ~= actionBtn;
+		}
+		super(Coordinate(20,20,240,198), title, smallButtons, customStyle);
 		this.source = source;
 		this.filetypes = filetypes;
 		this.save = save;
@@ -69,35 +102,35 @@ public class FileDialog : Window {
 		//al = a;
 		directory = buildNormalizedPath(absolutePath(startDir));
 		auto btnFrmt = getStyleSheet().getChrFormatting("button");
-		button_up = new Button(new Text(buttonTexts[0], btnFrmt),"up",Coordinate(4, 154, 54, 174));
-		button_up.onMouseLClick = &up;
-		addElement(button_up);
-		button_drv = new Button(new Text(buttonTexts[1], btnFrmt),"drv",Coordinate(58, 154, 108, 174));
-		button_drv.onMouseLClick = &changeDrive;
-		addElement(button_drv);
-		button_ok = new Button(new Text((save ? buttonTexts[2] : buttonTexts[3]), btnFrmt),"ok",
-				Coordinate(112, 154, 162, 174));
-		button_ok.onMouseLClick = &fileEvent;
-		addElement(button_ok);
-		button_close = new Button(new Text(buttonTexts[4], btnFrmt),"close",Coordinate(166, 154, 216, 174));
-		button_close.onMouseLClick = &button_close_onMouseLClickRel;
-		addElement(button_close);
-		button_type = new Button(new Text(buttonTexts[5], btnFrmt),"type",Coordinate(166, 130, 216, 150));
-		button_type.onMouseLClick = &button_type_onMouseLClickRel;
-		addElement(button_type);
+		//button_up = new Button(new Text(buttonTexts[0], btnFrmt),"up",Coordinate(4, 154, 54, 174));
+		//button_up.onMouseLClick = &up;
+		//addElement(button_up);
+		//button_drv = new Button(new Text(buttonTexts[1], btnFrmt),"drv",Coordinate(58, 154, 108, 174));
+		//button_drv.onMouseLClick = &changeDrive;
+		//addElement(button_drv);
+		//button_ok = new Button(new Text((save ? buttonTexts[2] : buttonTexts[3]), btnFrmt),"ok",
+		//		Coordinate(112, 154, 162, 174));
+		//button_ok.onMouseLClick = &fileEvent;
+		//addElement(button_ok);
+		//button_close = new Button(new Text(buttonTexts[4], btnFrmt),"close",Coordinate(166, 154, 216, 174));
+		//button_close.onMouseLClick = &button_close_onMouseLClickRel;
+		//addElement(button_close);
+		//button_type = new Button(new Text(buttonTexts[5], btnFrmt),"type",Coordinate(166, 130, 216, 150));
+		//button_type.onMouseLClick = &button_type_onMouseLClickRel;
+		//addElement(button_type);
 		//generate textbox
-		tb = new TextBox(new Text(to!dstring(filename), getStyleSheet().getChrFormatting("textBox")), "filename", 
+		filenameInput = new TextBox(new Text(to!dstring(filename), getStyleSheet().getChrFormatting("textBox")), "filename", 
 				Coordinate(4, 130, 162, 150));
-		addElement(tb);
+		addElement(filenameInput);
 
 		//generate listview
 		auto hdrFrmt = getStyleSheet().getChrFormatting("ListViewHeader");
 		const int headerHeight = hdrFrmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
 		ListViewHeader lvh = new ListViewHeader(headerHeight, [160, 40, 176], [new Text("Name", hdrFrmt), 
 				new Text("Type", hdrFrmt), new Text("Date", hdrFrmt)]);
-		lw = new ListView(lvh, null, "lw", Box(4, 20, 216, 126));
-		addElement(lw);
-		lw.onItemSelect = &listView_onItemSelect;
+		filelist = new ListView(lvh, null, "lw", Box(4, 20, 216, 126));
+		addElement(filelist);
+		filelist.onItemSelect = &listView_onItemSelect;
 
 		version(Windows){
 			for(char c = 'A'; c <='Z'; c++){
@@ -113,18 +146,18 @@ public class FileDialog : Window {
 		spanDir();
 	}
 	///Ditto
-	public this(dstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
+	/* public this(dstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
 			string startDir, bool save = false, string filename = "", StyleSheet customStyle = null) {
 		this.customStyle = customStyle;
 		this(new Text(title, getStyleSheet().getChrFormatting("windowHeader")), source, onFileselect, filetypes, startDir, 
 				save, filename, customStyle);
-	}
+	} */
 	/**
 	 * Iterates throught a directory for listing.
 	 */
 	private void spanDir(){
 		pathList.length = 0;
-		lw.clear();
+		filelist.clear();
 		try {
 			foreach(DirEntry de; dirEntries(directory, SpanMode.shallow)){
 				if(de.isDir){
@@ -148,7 +181,7 @@ public class FileDialog : Window {
 			}
 			handler.message("Directory error!", to!dstring(e.msg));
 		}
-		lw.refresh();
+		filelist.refresh();
 	}
 	/**
 	 * Creates a single ListViewItem with the supplied data, then adds it to the ListView.
@@ -157,7 +190,7 @@ public class FileDialog : Window {
 		import std.utf : toUTF32;
 		auto frmt = getStyleSheet().getChrFormatting("ListViewItem");
 		const int height = frmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
-		lw ~= new ListViewItem(height, [new Text(toUTF32(baseName(filename)), frmt), new Text(toUTF32(filetype), frmt), 
+		filelist ~= new ListViewItem(height, [new Text(toUTF32(baseName(filename)), frmt), new Text(toUTF32(filetype), frmt), 
 				new Text(formatDate(time), frmt)]);
 	}
 	/**
@@ -167,7 +200,7 @@ public class FileDialog : Window {
 		//import std.utf : toUTF32;
 		auto frmt = getStyleSheet().getChrFormatting("ListViewItem");
 		const int height = frmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
-		lw ~= new ListViewItem(height, [new Text(driveName, frmt), new Text("<DRIVE>", frmt), 
+		filelist ~= new ListViewItem(height, [new Text(driveName, frmt), new Text("<DRIVE>", frmt), 
 				new Text("n/a", frmt)]);
 	}
 	/**
@@ -189,23 +222,9 @@ public class FileDialog : Window {
 		s ~= to!dstring(time.second());
 		return s.idup;
 	}
-	/+
-	/**
-	 * Detects the available drives, currently only used under windows.
-	 */
-	private void detectDrive(){
-		version(Windows){
-			driveList.length = 0;
-			for(char c = 'A'; c <='Z'; c++){
-				string s;
-				s ~= c;
-				s ~= ":\x5c";
-				if(exists(s)){
-					driveList ~= (s);
-				}
-			}
-		}
-	}+/
+	public override void onResize() {
+
+	}
 	
 	/**
 	 * Called when the up button is pressed. Goes up in the folder hiearchy.
@@ -232,14 +251,14 @@ public class FileDialog : Window {
 	private void changeDrive(Event ev){
 		version(Windows){
 			pathList.length = 0;
-			lw.clear();
+			filelist.clear();
 			//ListBoxItem[] items;
 			foreach(string drive; driveList){
 				pathList ~= drive;
 				//items ~= new ListBoxItem([to!dstring(drive),"<DRIVE>"d,""d]);
 				createDriveEntry(to!dstring(drive));
 			}
-			lw.refresh();
+			filelist.refresh();
 			//lb.updateColumns(items);
 			//lb.draw();
 		}else version(Posix){
@@ -253,7 +272,7 @@ public class FileDialog : Window {
 	private void fileEvent(Event ev) {
 		import std.utf : toUTF8;
 		//wstring s = to!wstring(directory);
-		filename = toUTF8(tb.getText.text);
+		filename = toUTF8(filenameInput.getText.text);
 		
 		if(onFileselect !is null)
 			onFileselect(new FileEvent(this, SourceType.DialogWindow, directory, filename, filetypes[selectedType].types[0][1..$]));
@@ -268,6 +287,9 @@ public class FileDialog : Window {
 			selectedType = cast(int)mev.itemNum;
 			spanDir();
 		}
+	}
+	private void openPathSys(Event ev) {
+
 	}
 	private void button_type_onMouseLClickRel(Event ev) {
 		PopUpMenuElement[] e;
@@ -286,12 +308,12 @@ public class FileDialog : Window {
 	private void listView_onItemSelect(Event ev) {
 		try {
 			if(pathList.length == 0) return;
-			if(isDir(pathList[lw.value])){
-				directory = pathList[lw.value];
+			if(isDir(pathList[filelist.value])){
+				directory = pathList[filelist.value];
 				spanDir();
 			}else{
-				filename = baseName(stripExtension(pathList[lw.value]));
-				tb.setText(new Text(to!dstring(filename), tb.getText().formatting));
+				filename = baseName(stripExtension(pathList[filelist.value]));
+				filenameInput.setText(new Text(to!dstring(filename), filenameInput.getText().formatting));
 			}
 		} catch(Exception e) {
 			handler.message("Error!",to!dstring(e.msg));
