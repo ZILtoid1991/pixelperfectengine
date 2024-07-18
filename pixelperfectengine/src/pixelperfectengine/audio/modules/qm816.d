@@ -98,42 +98,6 @@ public class QM816 : AudioModule {
 						}
 						break;
 				}
-				/+const int offset = 256 * j;
-				int hMir = q[j] & 0x8 ? -1 : 1;
-				int hBegin = q[j] & 0x8 ? 255 : 0;
-				const int vOffset = q[j] & 0x10 ? -1 : 0;
-				const int vMir = q[j] & 0x10 ? -1 : 1;
-				const short[256] fragment = SINEWAVE_FRAGMENT;
-				switch (q[j]>>1 & 3) {
-					case 1:
-						hMir *= 2;
-						for (int i ; i < 256 ; i++) {
-							result[offset + i] = cast(short)(fragment[(hBegin + hMir * i) & 255] * vMir + vOffset);
-						}
-						break;
-					case 2:
-						hMir *= 2;
-						for (int i ; i < 128 ; i++) {
-							result[offset + i] = cast(short)(fragment[(hBegin + hMir * i) & 255] * vMir + vOffset);
-						}
-						hMir *= -1;
-						hBegin = q[j] & 0x8 ? 0 : 255;
-						for (int i ; i < 128 ; i++) {
-							result[offset + i + 128] = cast(short)(fragment[(hBegin + hMir * i) & 255] * vMir + vOffset);
-						}
-						break;
-					case 3:
-						hMir *= 2;
-						for (int i ; i < 128 ; i++) {
-							result[offset + i] = cast(short)(fragment[(hBegin + hMir * i) & 255] * vMir + vOffset);
-						}
-						break;
-					default:
-						for (int i ; i < 256 ; i++) {
-							result[offset + i] = cast(short)(fragment[hBegin + hMir * i] * vMir + vOffset);
-						}
-						break;
-				}+/
 			}
 		}
 		return result;
@@ -178,11 +142,48 @@ public class QM816 : AudioModule {
 		}
 		return result;
 	}
+	/**
+	Runs the formula `y[i] = x[i] * abs(x[i])` on the select waveform.
+	*/
 	public static short[1024] integrateTriangularWave(short[1024] input) @nogc @safe pure nothrow {
 		import pixelperfectengine.system.etc : clamp;
 		short[1024] result;
 		for (int i ; i < input.length ; i++) {
 			result[i] = cast(short)((input[i] * input[i] * (input[i] < 0 ? -1 : 1))>>15);
+		}
+		return result;
+	}
+	/**
+	Creates a waveform using harmonic series. `harmonics` decide the ratio of each individual harmonics.
+	*/
+	public static short[1024] generateCompositeWave(ubyte[16] harmonics) @nogc pure nothrow {
+		float[1024] buffer = void;
+		float currmax = 0.0, currmin = 0.0;
+		for (int i ; i < 1024 ; i++) {
+			buffer[i] = 0.0;
+			for (int j ; j < 16 ; j++) {
+				buffer[i] += sin(PI_2 * (i * (1.0 / 256.0)) * (j + 1)) * (harmonics[j] * (1.0 / 127.0));
+			}
+			if (buffer[i] > 0) {
+				if (buffer[i] > currmax) {
+					currmax = buffer[i];
+				}
+			} else if (buffer[i] < 0) {
+				if (buffer[i] < currmin) {
+					currmin = buffer[i];
+				}
+			}
+		}
+		currmin *= -1;
+		short[1024] result = void;
+		if (currmax >= currmin){
+			for (int i ; i < 1024 ; i++) {
+				result[i] = cast(short)((buffer[i] / currmax) * (1.0 / short.max))
+			}
+		} else {
+			for (int i ; i < 1024 ; i++) {
+				result[i] = cast(short)((buffer[i] / currmin) * (1.0 / short.max))
+			}
 		}
 		return result;
 	}
