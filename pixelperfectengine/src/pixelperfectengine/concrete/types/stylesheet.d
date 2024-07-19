@@ -124,6 +124,9 @@ public class StyleSheet{
 		drawParameters["VertScrollBarSize"] = 16;
 		drawParameters["horizTextPadding"] = 1;
 
+		drawParameters["WindowElementSize"] = 20;
+		drawParameters["WindowElementSpacing"] = 5;
+
 		drawParameters["PopUpLabelHorizPadding"] = 2;
 		drawParameters["PopUpLabelVertPadding"] = 2;
 
