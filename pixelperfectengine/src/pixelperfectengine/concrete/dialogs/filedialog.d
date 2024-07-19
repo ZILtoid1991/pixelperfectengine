@@ -57,20 +57,27 @@ public class FileDialog : Window {
 	private FileAssociationDescriptor[] filetypes;
 	private int selectedType;
 	public void delegate(Event ev) onFileselect;
-	//private Button button_up;
-	//private Button button_drv;
-	//private Button button_ok;
-	//private Button button_close;
-	//private Button button_type;
-	//public static dstring[] 	buttonTexts = ["Up", "Drive", "Save", "Load", "Close", "Type"];	///Can be changed for localization
+	
 	/**
 	 * Creates a file dialog with the given parameters.
 	 * File types are given in the format '*.format'.
+	 * Params: 
+	 *   title = The title of the window.
+	 *   source = Event source identifier.
+	 *   onFileselect = The event delegate called when the file is selected. No event is generated if a file wasn't 
+	 * selected.
+	 *   filetypes = The list of possible selectable filetypes. First one is being selected as the default one.
+	 *   startDir = Starting directory for the file dialog.
+	 *   type = The type of the file dialog.
+	 *   filename = The current file name.
+	 *   customStyle = Can specify a custom stylesheet for this instance of a file dialog.
 	 */
 	public this(Text title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
 			string startDir, Type type = Type.Load, string filename = "", StyleSheet customStyle = null) {
 		ISmallButton[] smallButtons;
 		const int windowHeaderHeight = customStyle.drawParameters["WindowHeaderHeight"];
+		const int windowElementSize = customStyle.drawParameters["WindowElementSize"];
+		const int windowElementSpacing = customStyle.drawParameters["WindowElementSpacing"];
 		if (customStyle is null) customStyle = getStyleSheet();
 		{
 			SmallButton closeButton = closeButton(customStyle);
@@ -84,16 +91,44 @@ public class FileDialog : Window {
 			smallButtons ~= pathBtn;
 		}
 		{
-			SmallButton actionBtn;
+
 			void addPathBtn() {
 				SmallButton pathBtn = new SmallButton("pathButtonB", "pathButtonA", "path", 
 						Box.bySize(0,0,windowHeaderHeight,windowHeaderHeight));
 				pathBtn.onMouseLClick = &openPathSys;
 				smallButtons ~= pathBtn;
 			}
-			actionBtn.onMouseLClick = &fileEvent;
-			smallButtons ~= actionBtn;
+			void ctorfckeryworkaround() {
+				SmallButton actionBtn;
+				final switch (type) with (Type) {
+					case Load:
+						actionBtn = new SmallButton("loadButtonB", "loadButtonA", "action", 
+								Box.bySize(0,0,windowHeaderHeight,windowHeaderHeight));
+						break;
+					case Save:
+						actionBtn = new SmallButton("saveButtonB", "saveButtonA", "action", 
+								Box.bySize(0,0,windowHeaderHeight,windowHeaderHeight));
+						break;
+					case New:
+						actionBtn = new SmallButton("newButtonB", "newButtonA", "action", 
+								Box.bySize(0,0,windowHeaderHeight,windowHeaderHeight));
+						break;
+					case LoadWPath:
+						addPathBtn();
+						goto case Load;
+					case SaveWPath:
+						addPathBtn();
+						goto case Save;
+					case NewWPath:
+						addPathBtn();
+						goto case New;
+				}
+				actionBtn.onMouseLClick = &fileEvent;
+				smallButtons ~= actionBtn;
+			}
+			ctorfckeryworkaround();
 		}
+		
 		super(Coordinate(20,20,240,198), title, smallButtons, customStyle);
 		this.source = source;
 		this.filetypes = filetypes;
@@ -101,24 +136,8 @@ public class FileDialog : Window {
 		this.onFileselect = onFileselect;
 		//al = a;
 		directory = buildNormalizedPath(absolutePath(startDir));
-		auto btnFrmt = getStyleSheet().getChrFormatting("button");
-		//button_up = new Button(new Text(buttonTexts[0], btnFrmt),"up",Coordinate(4, 154, 54, 174));
-		//button_up.onMouseLClick = &up;
-		//addElement(button_up);
-		//button_drv = new Button(new Text(buttonTexts[1], btnFrmt),"drv",Coordinate(58, 154, 108, 174));
-		//button_drv.onMouseLClick = &changeDrive;
-		//addElement(button_drv);
-		//button_ok = new Button(new Text((save ? buttonTexts[2] : buttonTexts[3]), btnFrmt),"ok",
-		//		Coordinate(112, 154, 162, 174));
-		//button_ok.onMouseLClick = &fileEvent;
-		//addElement(button_ok);
-		//button_close = new Button(new Text(buttonTexts[4], btnFrmt),"close",Coordinate(166, 154, 216, 174));
-		//button_close.onMouseLClick = &button_close_onMouseLClickRel;
-		//addElement(button_close);
-		//button_type = new Button(new Text(buttonTexts[5], btnFrmt),"type",Coordinate(166, 130, 216, 150));
-		//button_type.onMouseLClick = &button_type_onMouseLClickRel;
-		//addElement(button_type);
-		//generate textbox
+		
+		
 		filenameInput = new TextBox(new Text(to!dstring(filename), getStyleSheet().getChrFormatting("textBox")), "filename", 
 				Coordinate(4, 130, 162, 150));
 		addElement(filenameInput);
@@ -131,7 +150,7 @@ public class FileDialog : Window {
 		filelist = new ListView(lvh, null, "lw", Box(4, 20, 216, 126));
 		addElement(filelist);
 		filelist.onItemSelect = &listView_onItemSelect;
-
+		//filetypeSelector = new Button();
 		version(Windows){
 			for(char c = 'A'; c <='Z'; c++){
 				string s;
