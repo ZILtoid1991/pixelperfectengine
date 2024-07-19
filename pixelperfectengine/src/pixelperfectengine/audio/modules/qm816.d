@@ -178,11 +178,11 @@ public class QM816 : AudioModule {
 		short[1024] result = void;
 		if (currmax >= currmin){
 			for (int i ; i < 1024 ; i++) {
-				result[i] = cast(short)((buffer[i] / currmax) * (1.0 / short.max))
+				result[i] = cast(short)((buffer[i] / currmax) * (1.0 / short.max));
 			}
 		} else {
 			for (int i ; i < 1024 ; i++) {
-				result[i] = cast(short)((buffer[i] / currmin) * (1.0 / short.max))
+				result[i] = cast(short)((buffer[i] / currmin) * (1.0 / short.max));
 			}
 		}
 		return result;
