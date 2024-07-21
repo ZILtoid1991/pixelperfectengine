@@ -53,7 +53,7 @@ public class FileDialog : Window {
 	private TextBox filenameInput;
 	private Button filetypeSelector;
 
-	private bool save;
+	//private bool save;
 	private FileAssociationDescriptor[] filetypes;
 	private int selectedType;
 	public void delegate(Event ev) onFileselect;
@@ -75,10 +75,18 @@ public class FileDialog : Window {
 	public this(Text title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
 			string startDir, Type type = Type.Load, string filename = "", StyleSheet customStyle = null) {
 		ISmallButton[] smallButtons;
+		resizableH = true;
+        resizableV = true;
+		minW = 128;
+		minH = 192;
+		if (customStyle is null) customStyle = getStyleSheet();
 		const int windowHeaderHeight = customStyle.drawParameters["WindowHeaderHeight"];
 		const int windowElementSize = customStyle.drawParameters["WindowElementSize"];
 		const int windowElementSpacing = customStyle.drawParameters["WindowElementSpacing"];
-		if (customStyle is null) customStyle = getStyleSheet();
+		const int windowHeaderPadding = customStyle.drawParameters["WindowTopPadding"];
+		const int windowLeftPadding = customStyle.drawParameters["WindowLeftPadding"];
+		const int windowRightPadding = customStyle.drawParameters["WindowRightPadding"];
+		const int windowBottomPadding = customStyle.drawParameters["WindowBottomPadding"];
 		{
 			SmallButton closeButton = closeButton(customStyle);
 			closeButton.onMouseLClick = &close;
@@ -129,17 +137,20 @@ public class FileDialog : Window {
 			ctorfckeryworkaround();
 		}
 		
-		super(Coordinate(20,20,240,198), title, smallButtons, customStyle);
+		super(Box.bySize(20,20,220,200), title, smallButtons, customStyle);
 		this.source = source;
 		this.filetypes = filetypes;
-		this.save = save;
+		//this.save = save;
 		this.onFileselect = onFileselect;
 		//al = a;
 		directory = buildNormalizedPath(absolutePath(startDir));
 		
 		
 		filenameInput = new TextBox(new Text(to!dstring(filename), getStyleSheet().getChrFormatting("textBox")), "filename", 
-				Coordinate(4, 130, 162, 150));
+				Box(windowLeftPadding, 
+				200 - windowBottomPadding - (windowElementSize * 2) - windowElementSpacing, 
+				220 - windowRightPadding, 
+				200 - windowBottomPadding - windowElementSize - windowElementSpacing));
 		addElement(filenameInput);
 
 		//generate listview
@@ -147,10 +158,18 @@ public class FileDialog : Window {
 		const int headerHeight = hdrFrmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
 		ListViewHeader lvh = new ListViewHeader(headerHeight, [160, 40, 176], [new Text("Name", hdrFrmt), 
 				new Text("Type", hdrFrmt), new Text("Date", hdrFrmt)]);
-		filelist = new ListView(lvh, null, "lw", Box(4, 20, 216, 126));
+		filelist = new ListView(lvh, null, "lw", 
+				Box(windowLeftPadding, windowHeaderPadding, 220 - windowRightPadding, 
+				200 - windowBottomPadding - ((windowElementSize - windowElementSpacing) * 2)));
 		addElement(filelist);
 		filelist.onItemSelect = &listView_onItemSelect;
-		//filetypeSelector = new Button();
+		filetypeSelector = new Button(filetypes[0].description, "type", 
+				Box(windowLeftPadding,
+				200 - windowBottomPadding - windowElementSize, 
+				220 - windowRightPadding, 
+				200 - windowBottomPadding));
+		addElement(filetypeSelector);
+		filetypeSelector.onMouseLClick = &button_type_onMouseLClickRel;
 		version(Windows){
 			for(char c = 'A'; c <='Z'; c++){
 				string s;
@@ -165,12 +184,12 @@ public class FileDialog : Window {
 		spanDir();
 	}
 	///Ditto
-	/* public this(dstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
-			string startDir, bool save = false, string filename = "", StyleSheet customStyle = null) {
+	public this(dstring title, string source, void delegate(Event ev) onFileselect, FileAssociationDescriptor[] filetypes,
+			string startDir, Type type = Type.Load, string filename = "", StyleSheet customStyle = null) {
 		this.customStyle = customStyle;
 		this(new Text(title, getStyleSheet().getChrFormatting("windowHeader")), source, onFileselect, filetypes, startDir, 
-				save, filename, customStyle);
-	} */
+				type, filename, customStyle);
+	}
 	/**
 	 * Iterates throught a directory for listing.
 	 */
@@ -212,6 +231,13 @@ public class FileDialog : Window {
 		filelist ~= new ListViewItem(height, [new Text(toUTF32(baseName(filename)), frmt), new Text(toUTF32(filetype), frmt), 
 				new Text(formatDate(time), frmt)]);
 	}
+	private void createPathEntry(string path) {
+		import std.utf : toUTF32;
+		auto frmt = getStyleSheet().getChrFormatting("ListViewItem");
+		const int height = frmt.font.size + getStyleSheet().drawParameters["ListViewRowPadding"];
+		filelist ~= new ListViewItem(height, [new Text(toUTF32("$" ~ path ~ "$"), frmt), new Text("<PATH>", frmt), 
+				new Text("", frmt)]);
+	}
 	/**
 	 * Creates drive entry for the ListView.
 	 */
@@ -242,7 +268,24 @@ public class FileDialog : Window {
 		return s.idup;
 	}
 	public override void onResize() {
-
+		StyleSheet ss = getStyleSheet();
+		const int windowElementSize = ss.drawParameters["WindowElementSize"];
+		const int windowElementSpacing = ss.drawParameters["WindowElementSpacing"];
+		const int windowHeaderPadding = ss.drawParameters["WindowTopPadding"];
+		const int windowLeftPadding = ss.drawParameters["WindowLeftPadding"];
+		const int windowRightPadding = ss.drawParameters["WindowRightPadding"];
+		const int windowBottomPadding = ss.drawParameters["WindowBottomPadding"];
+		filelist.setPosition(Box(
+				windowLeftPadding, windowHeaderPadding, position.width - windowRightPadding, 
+				position.height - windowBottomPadding - ((windowElementSize - windowElementSpacing) * 2)));
+		filenameInput.setPosition(Box(windowLeftPadding, 
+				position.height - windowBottomPadding - (windowElementSize * 2) - windowElementSpacing, 
+				position.width - windowRightPadding, 
+				position.height - windowBottomPadding - windowElementSize - windowElementSpacing));
+		filetypeSelector.setPosition(Box(windowLeftPadding,
+				position.height - windowBottomPadding - windowElementSize, 
+				position.width - windowRightPadding, 
+				position.height - windowBottomPadding));
 	}
 	
 	/**
@@ -255,14 +298,8 @@ public class FileDialog : Window {
 				n = i;
 			}
 		}
-		/+string newdir;
-		for(int i ; i < n ; i++){
-			newdir ~= directory[i];
-		}+/
-		//directory = newdir;
 		directory = directory[0..n];
 		spanDir();
-
 	}
 	/**
 	 * Displays the drives. Under Linux, it goes into the /dev/ folder.
@@ -308,7 +345,13 @@ public class FileDialog : Window {
 		}
 	}
 	private void openPathSys(Event ev) {
-
+		import pixelperfectengine.system.file : pathSymbols;
+		pathList.length = 0;
+		foreach (string key, string elem; pathSymbols) {
+			createPathEntry(key);
+			pathList ~= elem;
+		}
+		filelist.refresh();
 	}
 	private void button_type_onMouseLClickRel(Event ev) {
 		PopUpMenuElement[] e;
@@ -326,11 +369,11 @@ public class FileDialog : Window {
 	}
 	private void listView_onItemSelect(Event ev) {
 		try {
-			if(pathList.length == 0) return;
-			if(isDir(pathList[filelist.value])){
+			if (pathList.length == 0) return;
+			if (isDir(pathList[filelist.value])) {
 				directory = pathList[filelist.value];
 				spanDir();
-			}else{
+			} else {
 				filename = baseName(stripExtension(pathList[filelist.value]));
 				filenameInput.setText(new Text(to!dstring(filename), filenameInput.getText().formatting));
 			}
