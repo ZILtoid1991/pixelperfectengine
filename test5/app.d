@@ -51,7 +51,7 @@ public class Test5 : SystemEventListener, InputListener {
 	public this(string[] args) {
 		//Basic setup
 		isRunning = true;
-		output = new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
+		output = new OutputScreen("Text processing and rendering test", 424 * 4, 240 * 4);
 		r = new Raster(424,240,output,0);
 		output.setMainRaster(r);
 		s = new SpriteLayer(RenderingMode.AlphaBlend);
