@@ -45,6 +45,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	protected BitmapDrawer 			output;			///Graphics output of the window
 	//public int header;//, sizeX, sizeY;
 	protected int 					moveX, moveY;	///Relative x and y coordinates for drag events
+	protected int					minW = 64, minH = 64;
 	protected uint					flags;			///Stores various flags
 	protected static enum IS_ACTIVE = 1 << 0;		///Set if window is active
 	protected static enum NEEDS_FULL_UPDATE = 1 << 1;///Set if window needs full redraw (Deprecated)
@@ -617,7 +618,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 				isMoved = false;
 		} else if (isResized) {
 			const Box safePosition = position;
-			const int windowMinSize = getStyleSheet().drawParameters["windowMinimumSizes"];
+			//const int windowMinSize = getStyleSheet().drawParameters["windowMinimumSizes"];
 			if (mme.buttonState) {
 				switch (flags & IS_RESIZED) {
 					case IS_RESIZED_L:
@@ -650,7 +651,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 						break;
 					default: break;
 				}
-				if (position.width < windowMinSize || position.height < windowMinSize) position = safePosition;
+				if (position.width < minW || position.height < minH) position = safePosition;
 				else draw();
 			} else flags &= ~IS_RESIZED;
 		} else if (lastMouseEventTarget) {
