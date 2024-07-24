@@ -263,4 +263,7 @@ public class TextBox : WindowElement, TextInputListener {
 				break;
 		}
 	}
+	public bool isAcceptingTextInput() const {
+		return (flags & ENABLE_TEXT_EDIT) != 0;
+	}
 }
