@@ -48,7 +48,7 @@ public class FileDialog : Window {
 	}
 	private string source;
 	private string[] pathList, driveList;
-	private string directory, filename;
+	private string directory, filename, filetype;
 	private ListView filelist;
 	private TextBox filenameInput;
 	private Button filetypeSelector;
@@ -57,7 +57,7 @@ public class FileDialog : Window {
 	private FileAssociationDescriptor[] filetypes;
 	private int selectedType;
 	public void delegate(Event ev) onFileselect;
-	
+	protected static enum IS_LOAD = 1 << 24;
 	/**
 	 * Creates a file dialog with the given parameters.
 	 * File types are given in the format '*.format'.
@@ -118,6 +118,7 @@ public class FileDialog : Window {
 					case Load:
 						actionBtn = new SmallButton("loadButtonB", "loadButtonA", "action", 
 								Box.bySize(0,0,windowHeaderHeight,windowHeaderHeight));
+								flags |= IS_LOAD;
 						break;
 					case Save:
 						actionBtn = new SmallButton("saveButtonB", "saveButtonA", "action", 
@@ -214,7 +215,7 @@ public class FileDialog : Window {
 				foreach(DirEntry de; dirEntries(directory, ft, SpanMode.shallow)){
 					if(de.isFile){
 						pathList ~= de.name;
-						createEntry(de.name, ft, de.timeLastModified);
+						createEntry(stripExtension(de.name), extension(de.name), de.timeLastModified);
 					}
 				}
 			}
@@ -339,16 +340,25 @@ public class FileDialog : Window {
 	private void fileEvent(Event ev) {
 		import std.utf : toUTF8;
 		//wstring s = to!wstring(directory);
+		if (filename.length == 0 || filenameInput.isAcceptingTextInput()) return;
 		filename = toUTF8(filenameInput.getText.text);
 		
-		if(onFileselect !is null)
-			onFileselect(new FileEvent(this, SourceType.DialogWindow, directory, filename, filetypes[selectedType].types[0][1..$]));
+		if(onFileselect !is null) {
+			if (filetype.length == 0) {
+				filetype = extension(filename);
+				if (filetype.length == 0) {
+					filetype = filetypes[selectedType].types[0][1..$];
+				}
+			}
+			onFileselect(
+					new FileEvent(this, SourceType.DialogWindow, directory, filename, filetype));
+		}
 			//onFileselect(new Event(source, "", directory, filename, null, selectedType, EventType.FILEDIALOGEVENT));
 		handler.closeWindow(this);
 	}
-	private void event_fileSelector(Event ev) {
+	private void fileTypeSelect(Event ev) {
 		//selectedType = lw.value;
-		import std.algorithm.searching : canFind;
+		//filetype.length = 0;
 		if (ev.type == EventType.Menu) {
 			MenuEvent mev = cast(MenuEvent)ev;
 			selectedType = cast(int)mev.itemNum;
@@ -372,12 +382,12 @@ public class FileDialog : Window {
 			e ~= new PopUpMenuElement(filetypes[i].types[0],new Text(filetypes[i].description, frmt1), 
 					new Text(filetypes[i].getTypesForSelector(), frmt2));
 		}
-		PopUpMenu p = new PopUpMenu(e,"fileSelector", &event_fileSelector);
+		PopUpMenu p = new PopUpMenu(e,"fileSelector", &fileTypeSelect);
 		handler.addPopUpElement(p);
 	}
-	private void button_close_onMouseLClickRel(Event ev) {
+	/* private void button_close_onMouseLClickRel(Event ev) {
 		handler.closeWindow(this);
-	}
+	} */
 	private void listView_onItemSelect(Event ev) {
 		try {
 			if (pathList.length == 0) return;
@@ -386,6 +396,7 @@ public class FileDialog : Window {
 				spanDir();
 			} else {
 				filename = baseName(stripExtension(pathList[filelist.value]));
+				filetype = extension(pathList[filelist.value]);
 				filenameInput.setText(new Text(to!dstring(filename), filenameInput.getText().formatting));
 			}
 		} catch(Exception e) {
