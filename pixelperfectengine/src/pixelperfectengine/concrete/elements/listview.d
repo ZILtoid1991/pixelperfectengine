@@ -1130,4 +1130,10 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	public int[2] getRasterSizes() {
 		return parent.getRasterSizes();
 	}
+	override Box setPosition(Box position) {
+		this.position = position;
+		recalculateTotalSizes();
+		draw();
+		return position;
+	}
 }
