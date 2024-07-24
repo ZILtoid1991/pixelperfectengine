@@ -99,6 +99,12 @@ public class FileDialog : Window {
 			smallButtons ~= pathBtn;
 		}
 		{
+			SmallButton drvSelBtn = new SmallButton("driveSelButtonB", "driveSelButtonA", "drive", 
+					Box.bySize(0,0,windowHeaderHeight,windowHeaderHeight));
+			drvSelBtn.onMouseLClick = &changeDrive;
+			smallButtons ~= drvSelBtn;
+		}
+		{
 
 			void addPathBtn() {
 				SmallButton pathBtn = new SmallButton("pathButtonB", "pathButtonA", "path", 
@@ -160,7 +166,7 @@ public class FileDialog : Window {
 				new Text("Type", hdrFrmt), new Text("Date", hdrFrmt)]);
 		filelist = new ListView(lvh, null, "lw", 
 				Box(windowLeftPadding, windowHeaderPadding, 220 - windowRightPadding, 
-				200 - windowBottomPadding - ((windowElementSize - windowElementSpacing) * 2)));
+				200 - windowBottomPadding - windowElementSize - ((windowElementSize - windowElementSpacing) * 2)));
 		addElement(filelist);
 		filelist.onItemSelect = &listView_onItemSelect;
 		filetypeSelector = new Button(filetypes[0].description, "type", 
@@ -268,6 +274,7 @@ public class FileDialog : Window {
 		return s.idup;
 	}
 	public override void onResize() {
+		outputSurfaceRecalc();
 		StyleSheet ss = getStyleSheet();
 		const int windowElementSize = ss.drawParameters["WindowElementSize"];
 		const int windowElementSpacing = ss.drawParameters["WindowElementSpacing"];
@@ -277,15 +284,19 @@ public class FileDialog : Window {
 		const int windowBottomPadding = ss.drawParameters["WindowBottomPadding"];
 		filelist.setPosition(Box(
 				windowLeftPadding, windowHeaderPadding, position.width - windowRightPadding, 
-				position.height - windowBottomPadding - ((windowElementSize - windowElementSpacing) * 2)));
+				position.height - windowBottomPadding - windowElementSize - ((windowElementSize - windowElementSpacing) * 2)));
+		//filelist.draw();
 		filenameInput.setPosition(Box(windowLeftPadding, 
 				position.height - windowBottomPadding - (windowElementSize * 2) - windowElementSpacing, 
 				position.width - windowRightPadding, 
 				position.height - windowBottomPadding - windowElementSize - windowElementSpacing));
+		//filenameInput.draw();
 		filetypeSelector.setPosition(Box(windowLeftPadding,
 				position.height - windowBottomPadding - windowElementSize, 
 				position.width - windowRightPadding, 
 				position.height - windowBottomPadding));
+		//filetypeSelector.draw();
+		draw();
 	}
 	
 	/**
