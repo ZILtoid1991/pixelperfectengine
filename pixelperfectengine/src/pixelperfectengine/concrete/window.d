@@ -168,10 +168,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 			else right -= headerHeight;
 		}
 		Box b;
-		if (sb.isLeftSide) 
-			b = Box(left, 0, left + headerHeight, headerHeight);
-		else
-			b = Box(right - headerHeight, 0, right, headerHeight);
+		if (sb.isLeftSide) b = Box(left, 0, left + headerHeight, headerHeight);
+		else b = Box(right - headerHeight, 0, right, headerHeight);
 		WindowElement we = cast(WindowElement)sb;
 		we.setParent(this);
 		we.setPosition(b);
@@ -186,14 +184,30 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		elements.removeByElem(cast(WindowElement)sb);
 		drawHeader();
 	}
+	protected void outputSurfaceRecalc() {
+		if(output.output.width != position.width || output.output.height != position.height) {
+			output = new BitmapDrawer(position.width(), position.height());
+			handler.refreshWindow(this);
+			const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
+			int left, right = position.width;
+			Box b;
+			foreach (ISmallButton key; smallButtons) {
+				if (key.isLeftSide) {
+					b = Box.bySize(left, 0, headerHeight, headerHeight);
+					left += headerHeight;
+				} else {
+					b = Box.bySize(right - headerHeight, 0, headerHeight, headerHeight);
+					right -= headerHeight;
+				}
+				(cast(WindowElement)key).setPosition(b);
+			}
+		}
+	}
 	/**
 	 * Draws the window. Intended to be used by the WindowHandler.
 	 */
 	public void draw(bool drawHeaderOnly = false) {
-		if(output.output.width != position.width || output.output.height != position.height) {
-			output = new BitmapDrawer(position.width(), position.height());
-			handler.refreshWindow(this);
-		}
+		outputSurfaceRecalc();
 		
 		//drawing the header
 		drawHeader();
@@ -360,7 +374,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 * This is the function that is recommended to override for layout management after each resize.
 	 */
 	public void onResize() {
-
+		draw();
 	}
 	/**
 	 * Returns the outputted bitmap.
@@ -651,8 +665,13 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 						break;
 					default: break;
 				}
-				if (position.width < minW || position.height < minH) position = safePosition;
-				else draw();
+				if (position.width < minW || position.height < minH) {
+					position = safePosition;
+				}
+				else {
+					//draw();
+					onResize();
+				}
 			} else flags &= ~IS_RESIZED;
 		} else if (lastMouseEventTarget) {
 			mme.x = lastMousePos.x;
