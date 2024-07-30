@@ -5,7 +5,7 @@ import std.typecons : BitFlags;
 import collections.treemap;
 
 /** 
- * Contains opcodes for M2 operations.
+ * Contains opcodes for IMBC operations.
  */
 public enum OpCode : ubyte {
 	nullcmd		=   0x00,		///Null command
@@ -155,7 +155,7 @@ public enum CR = 127;
 public enum PATTERN_SLOT_INACTIVE_ID = uint.max;
 
 /** 
- * Defines an M2 pattern slot status data.
+ * Defines an IMBC pattern slot status data.
  */
 public struct M2PatternSlot {
 	public enum StatusFlags : uint {
@@ -186,7 +186,7 @@ public struct M2PatternSlot {
 	}
 }
 /** 
- * Defines M2 song data.
+ * Defines IMBC song data.
  */
 public struct M2Song {
 	public uint[128] globalReg;			///Global (shared) register bank
@@ -307,3 +307,9 @@ package immutable string[128] NOTE_LOOKUP_TABLE =
 		"E-8", "F-8", "F#8", "G-8", "G#8", "A-8", "A#8", "B-8", 		//14
 		"C-9", "C#9", "D-9", "D#9", "E-9", "F-9", "F#9", "G-9", 		//15
 	];
+package immutable string[10] VELOCITY_MACRO_LOOKUP_TABLE_STR = 
+	["PPPP","PPP" ,"PP"  ,"P"   ,"MP"  ,"MF"  ,"F"   ,"FF"  ,"FFF" ,"FFFF"];
+package immutable ubyte[10] VELOCITY_MACRO_LOOKUP_TABLE_M1 = 
+	[0x00  ,0x0f  ,0x1f  ,0x2f  ,0x3f  ,0x4f  ,0x5f  ,0x6f  ,0x75  ,0x7f  ];
+package immutable ushort[10] VELOCITY_MACRO_LOOKUP_TABLE_M2 =
+	[0x0000,0x00ff,0x22ff,0x44ff,0x66ff,0x88ff,0xaaff,0xccff,0xeeff,0xffff];

@@ -46,6 +46,22 @@ package int parseNote(string n) {
 	}
 	return cast(int)parsenum(n);
 }
+///Tries to parse a velocity macro (MIDI 1.0)
+package ubyte parseVelocityM1(string s) {
+	s = toAllCaps(s);
+	for (int i ; i < 10 ; i++) {
+		if (VELOCITY_MACRO_LOOKUP_TABLE_STR[i] == s) return VELOCITY_MACRO_LOOKUP_TABLE_M1[i];
+	}
+	return cast(ubyte)parsenum(s);
+}
+///Tries to parse a velocity macro (MIDI 2.0)
+package ushort parseVelocityM2(string s) {
+	s = toAllCaps(s);
+	for (int i ; i < 10 ; i++) {
+		if (VELOCITY_MACRO_LOOKUP_TABLE_STR[i] == s) return VELOCITY_MACRO_LOOKUP_TABLE_M2[i];
+	}
+	return cast(ushort)parsenum(s);
+}
 ///Parses register number.
 ///Returns register index if successful, returns -1 if not properly formatted register number.
 package int parseRegister(const string s) {
@@ -132,7 +148,9 @@ package ulong parseRhythm(string n, float bpm, long timebase) {
 	enforce (!isNaN(duration), "Rhythm syntax error");
 	return cast(ulong)(duration * whNoteLen);
 }
-///Implements the IMBC assembler.
+/** 
+ * Implements the IMBC assembler.
+ */
 public struct IMBCAssembler {
 	///Defines context states for parsing
 	enum Context {
@@ -144,8 +162,382 @@ public struct IMBCAssembler {
 		patternParse,	///Pattern data
 		stringParse,	///String (only used with metadata).
 	}
-	void compile() {
+	///Defines a yet to be resolved position, array, and pattern label
+	struct UnresolvedPositionLabel {
+		string name;
+		uint[2][] positions;		///0: Pattern ID if applicable, 1: Position of place where label must be resolved
+	}
+	enum ScopeType {
+		init,
+		IfStatement,
+		ElseifStatement,
+		ElseStatement,
+		WhileStatement,
+		DoUntilStatement,
+	}
+	/// Defines a scope for macro statements
+	struct Scope {
+		ScopeType type;
+		size_t begin;
+	}
+	struct PatternData {
+		string name;
+		size_t lineNum;
+		uint id;
+		float currBPM = 120;
+		//size_t[string] positionLabels;
+		HashMap!(string, size_t) positionLabels;
+		UnresolvedPositionLabel[] unresolvedLabels;
+		Scope[] scopeStack;
+		this(string name, size_t lineNum, uint id) {
+			this.name = name;
+			this.lineNum = lineNum;
+			this.id = id;
+		}
+		sizediff_t searchUnresolvedPositionLabelByName(string name) @nogc @safe pure nothrow const {
+			for (sizediff_t i ; i < unresolvedLabels.length ; i++) {
+				if (unresolvedLabels[i].name) return i;
+			}
+			return -1;
+		}
+	}
+	struct NoteData {
+		uint device;
+		ubyte ch;
+		ubyte note;
+		ushort velocity;
+		long durFrom;
+		long durTo;
+		bool opEquals(const NoteData other) @nogc @safe pure nothrow const {
+			return this.device == other.device && this.ch == other.ch && this.note == other.note && 
+					this.velocity == other.velocity && this.durFrom == other.durFrom && this.durTo == other.durTo;
+		}
+		int opCmp(const NoteData other) @nogc @safe pure nothrow const {
+			if (this.durTo > other.durTo) return 1;
+			if (this.durTo < other.durTo) return -1;
+			return 0;
+		}
+		size_t toHash() const @nogc @safe pure nothrow {
+			return durFrom ^ durTo;
+		}
+	}
+	string input;
+	M2File result;
+	Context context, prevContext;
+	uint currPatternID, patternCntr = 1;
+	ulong timePos;
+	ushort currDevNum;
+	string parsedString;
+	PatternData[] ptrnData;
+	string[] arrayNames;
+	uint[] currEmitStr;
+	SortedList!(NoteData, "a > b") noteMacroHandler;
+	this(string input) {
+		this.input = input;
+	}
+	sizediff_t searchPatternByName(const string name) @nogc @safe pure nothrow const {
+		for (sizediff_t i ; i < ptrnData.length ; i++) {
+			if (ptrnData[i].name == name) return i;
+		}
+		return -1;
+	}
+	void overwriteCmdAt(uint ptrnID, uint data, uint pos) {
+		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
+		assert (ptrn !is null);
+		(*ptrn)[pos] = data;
+	}
+	void writeCmdStr(uint ptrnID, uint[] data) {
+		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
+		assert (ptrn !is null);
+		*ptrn ~= data;
+	}
+	void flushEmitStr(uint ptrnID, ushort devNum) {
+		if (currEmitStr.length) {
+			auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
+			assert (ptrn !is null);
+			//*ptrn ~= [(0x03<<24) | (cast(uint)(currEmitStr.length<<16)) | currDevNum] ~ currEmitStr;
+			*ptrn ~= [M2Command.emit(currEmitStr.length, devNum).word] ~ currEmitStr;
+			currEmitStr.length = 0;
+		}
+	}
+	void parsePattern(string wholeLine, string[] words, uint ptrnID) {
+		if (words.length == 0) return;		//There are no useful words on this line after comment removal, skip
+		if (words[0] == "END") {			//Pattern end hit, set context to init, flush emit string, then return
+			context = Context.init;
+			flushEmitStr(ptrnID, currDevNum);
+			return;
+		}
+		if (words[0][0] == '@') {			//Position marker hit, parse it!
+			const sizediff_t endOfJumpLabel = countUntil(words[0], ':');
+			enforce(endOfJumpLabel != -1, "Malformated jump label!");
+			string positionLabel = words[0][1..endOfJumpLabel];
+			enforce(!ptrnData[$-1].positionLabels.has(positionLabel), "Position label duplicate found!");//Check if position marker exists already, error out if yes
+			ptrnData[$-1].positionLabels[positionLabel] = result.songdata.ptrnData[ptrnID].length;//Store the new position marker
+			const sizediff_t unresolvedPosMrk = ptrnData[$-1].searchUnresolvedPositionLabelByName(positionLabel);//Check if anything else before have referenced it
+			if (unresolvedPosMrk != -1) {	//Resolve any position markers found.
+				auto ptrn = result.songdata.ptrnData[ptrnID];
+				uint position;
+				foreach (uint[2] key ; ptrnData[$-1].unresolvedLabels[unresolvedPosMrk].positions) {
+					position = key[1];
+					sizediff_t jumpAmount = ptrnData[$-1].positionLabels[positionLabel] - position - 2;
+					debug assert(jumpAmount > 0);
+					ptrn[position] = cast(int)jumpAmount;
+				}
+			}
+		} else if (words[0][0] == '$') {	//Emit command
+			parseEmitCmd(wholeLine, words, ptrnID);
+		} else {							//Misc command (control, math, etc.)
+			flushEmitStr(ptrnID, currDevNum);
+			parseMiscCmd(wholeLine, words, ptrnID);
+		}
+	}
+	void parseEmitCmd(string wholeLine, string[] words, uint ptrnID) {
+		const sizediff_t f = countUntil(words[0], '['), t = countUntil(words[0], ']');
+		enforce(f >= 0 && t >= 0 && t > f, "Malformed emit string!");
+		const uint deviceNum = cast(uint)parsenum(words[0][f + 1..t]);
+		enforce(deviceNum <= 65_535, "Device number too large");
+		if (currEmitStr.length > 251 || currDevNum != deviceNum) flushEmitStr(ptrnID, currDevNum);//flush emit string if it's not guaranteed that a 4 word long data won't fit, or device isn't equal
+		currDevNum = cast(ushort)deviceNum;
+		switch (words[1]) {
+			case "note":		//note macro, inserts a note on, then a note off command after a set time
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint vel = cast(uint)parseVelocityM2(words[3]);
+				enforce(channel <= 255, "Channel number too high");
+				enforce(vel <= 65_535, "Velocity number too high");
+				if (words[4][0] == '~') {	//use the same duration to all the notes
+					const ulong noteDur = parseRhythm(words[4][1..$], ptrnData[$-1].currBPM, result.songdata.ticsPerSecs);
+					for (int j = 5 ; j < words.length ; j++) {
+						const uint note = parseNote(words[j]);
+						UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.NoteOn, cast(ubyte)(channel&0x0F), 
+								cast(ubyte)note);
+						currEmitStr ~= [midiCMD.base, vel<<16];
+						noteMacroHandler.put(NoteData(deviceNum, cast(ubyte)channel, cast(ubyte)note, cast(ushort)vel, timePos, 
+								timePos + noteDur));
+					}
+				} else {	//each note should have their own duration
+					for (int j = 4 ; j < words.length ; j++) {
+						string[] notebase = words[j].split(":");
+						const ulong noteDur = parseRhythm(notebase[0], ptrnData[$-1].currBPM, result.songdata.ticsPerSecs);
+						const uint note = parseNote(notebase[1]);
+						UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.NoteOn, cast(ubyte)(channel&0x0F), 
+								cast(ubyte)note);
+						currEmitStr ~= [midiCMD.base, vel<<16];
+						noteMacroHandler.put(NoteData(deviceNum, cast(ubyte)channel, cast(ubyte)note, cast(ushort)vel, timePos, 
+								timePos + noteDur));
+					}
+				}
+				break;
+
+			//MIDI 1.0 begin
+			case "m1_nf":		//MIDI 1.0 note off
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint note = parseNote(words[3]);
+				const uint vel = cast(uint)parsenum(words[4]);
+				enforce(channel <= 255, "Channel number too high");
+				enforce(vel <= 127, "Velocity number too high");
+				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.NoteOff, cast(ubyte)(channel&0x0F), 
+						cast(ubyte)note, cast(ubyte)vel);
+				currEmitStr ~= [midiCMD.base];
+				break;
+			case "m1_nn":		//MIDI 1.0 note on
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint note = parseNote(words[3]);
+				const uint vel = cast(uint)parsenum(words[4]);
+				enforce(channel <= 255, "Channel number too high");
+				enforce(vel <= 127, "Velocity number too high");
+				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.NoteOn, cast(ubyte)(channel&0x0F), 
+						cast(ubyte)note, cast(ubyte)vel);
+				currEmitStr ~= [midiCMD.base];
+				break;
+			case "m1_ppres":		//MIDI 1.0 poly pressure
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint note = parseNote(words[3]);
+				const uint vel = cast(uint)parsenum(words[4]);
+				enforce(channel <= 255, "Channel number too high");
+				enforce(vel <= 127, "Velocity number too high");
+				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.PolyAftrTch, cast(ubyte)(channel&0x0F), 
+						cast(ubyte)note, cast(ubyte)vel);
+				currEmitStr ~= [midiCMD.base];
+				break;
+			case "m1_cc":			//MIDI 1.0 control change
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint num = cast(uint)parsenum(words[3]);
+				const uint vel = cast(uint)parsenum(words[4]);
+				enforce(channel <= 255, "Channel number too high");
+				enforce(vel <= 127, "Velocity number too high");
+				enforce(num <= 127, "Control number too high");
+				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.CtrlCh, cast(ubyte)(channel&0x0F), 
+						cast(ubyte)num, cast(ubyte)vel);
+				currEmitStr ~= [midiCMD.base];
+				break;
+			case "m1_pc":			//MIDI 1.0 program change
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint num = cast(uint)parsenum(words[3]);
+				//const uint vel = cast(uint)parsenum(words[4]);
+				enforce(channel <= 255, "Channel number too high");
+				//enforce(vel <= 127, "Velocity number too high");
+				enforce(num <= 127, "Program number too high");
+				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.PrgCh, cast(ubyte)(channel&0x0F), 
+						cast(ubyte)num, cast(ubyte)0);
+				currEmitStr ~= [midiCMD.base];
+				break;
+			case "m1_cpres":			//MIDI 1.0 channel pressure
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint vel = cast(uint)parsenum(words[3]);
+				//const uint vel = cast(uint)parsenum(words[4]);
+				enforce(channel <= 255, "Channel number too high");
+				enforce(vel <= 127, "Velocity number too high");
+				//enforce(num <= 127, "Program number too high");
+				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.ChAftrTch, cast(ubyte)(channel&0x0F), 
+						cast(ubyte)vel, cast(ubyte)0);
+				currEmitStr ~= [midiCMD.base];
+				break;
+			case "m1_pb":		//MIDI 1.0 pitch bend
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint amount = cast(uint)parsenum(words[3]);
+				enforce(channel <= 255, "Channel number too high");
+				enforce(amount <= 16_383, "Velocity number too high");
+				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.NoteOff, cast(ubyte)(channel&0x0F), 
+						cast(ubyte)(amount>>7), cast(ubyte)(amount & 0x7F));
+				currEmitStr ~= [midiCMD.base];
+				break;
+			//MIDI 1.0 end
+			default:
+				break;
+		}
+	}
+	void insertMathCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
+		//enforce(instr.length == 3, "Incorrect number of registers");
+		const int ra = parseRegister(instr[0]);
+		const int rb = parseRegister(instr[1]);
+		const int rd = parseRegister(instr[2]);
+		//enforce((ra|rb|rd) <= -1, "Bad register number");
+		writeCmdStr(ptrnID, [M2Command([cmdCode, cast(ubyte)ra, cast(ubyte)rb, cast(ubyte)rd]).word]);
+	}
+	void insertShImmCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
+		//enforce(instr.length == 3, "Incorrect number of registers");
+		const int ra = parseRegister(instr[0]);
+		const int rb = cast(int)parsenum(instr[1]);
+		const int rd = parseRegister(instr[2]);
+		enforce(rb <= 31 && rb >= 0, "Bad immediate amount");
+		writeCmdStr(ptrnID, [M2Command([cast(ubyte)cmdCode, cast(ubyte)ra, cast(ubyte)rb, cast(ubyte)rd]).word]);
+	}
+	void insertTwoOpCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
+		//enforce(instr.length == 2, "Incorrect number of registers");
+		const int ra = parseRegister(instr[0]);
+		const int rd = parseRegister(instr[1]);
+		writeCmdStr(ptrnID, [M2Command([cmdCode, cast(ubyte)ra, cast(ubyte)0x00, cast(ubyte)rd]).word]);
+	}
+	void insertCmpInstr(uint ptrnID, const ubyte cmprCode, string[] instr) {
+		//enforce(instr.length == 2, "Incorrect number of registers");
+		const int ra = parseRegister(instr[0]);
+		const int rb = parseRegister(instr[1]);
+		writeCmdStr(ptrnID, [M2Command([OpCode.cmp, cmprCode, cast(ubyte)ra, cast(ubyte)rb]).word]);
+	}
+	void parseMiscCmd(string wholeLine, string[] words, uint ptrnID) {
 		
+	}
+	M2File compile() {
+		string[] lines = input.splitLines;
+		enforce(lines[0][0..12] == "MIDI2.0 VER " && lines[0][12] == '1', "Wrong version or file!");
+		for (size_t lineNum = 1 ; lineNum < lines.length ; lineNum++) {
+			string[] words = removeComment(lines[lineNum]).split!isWhite();
+			if (!words.length) continue;		//If line does not contain any data, skip it completely.
+			switch (context) {
+				case Context.headerParse:		//Header parse start
+					switch (words[0]) {
+						case "timeFormatID":
+							switch (words[1]) {
+								case "ms", "fmt0":
+									result.timeFormat = M2TimeFormat.ms;
+									break;
+								case "us", "fmt1":
+									result.timeFormat = M2TimeFormat.us;
+									break;
+								case "hns", "fmt2":
+									result.timeFormat = M2TimeFormat.hns;
+									break;
+								case "fmt3":
+									result.timeFormat = M2TimeFormat.fmt3;
+									break;
+								case "fmt4":
+									result.timeFormat = M2TimeFormat.fmt4;
+									break;
+								case "fmt5":
+									result.timeFormat = M2TimeFormat.fmt5;
+									break;
+								default:
+									throw new Exception("Unrecognized format!");
+							}
+							break;
+						case "timeFormatPeriod":
+							result.timeFrmtPer = cast(uint)parsenum(words[1]);
+							break;
+						case "timeFormatRes":
+							result.timeFrmtRes = cast(uint)parsenum(words[1]);
+							break;
+						case "maxPattern":
+							result.patternNum = cast(ushort)parsenum(words[1]);
+							break;
+						case "END":
+							context = Context.init;
+							break;
+						default:
+							break;
+					}
+					break;						//Header parse end
+				case Context.arrayParse:
+					if (words[0] == "END") context = Context.init;
+					else result.songdata.arrays[$-1] ~= cast(uint)parsenum(words[0]);
+					break;
+				case Context.metadataParse:
+					if (words[0] == "END") context = Context.init;	//TODO: Implement proper metadata handling
+					break;
+				case Context.deviceParse:
+					if (words[0] == "END") {
+						context = Context.init;
+					} else {
+						const ushort devID = cast(ushort)parsenum(words[$ - 1]);
+						result.devicelist[devID] = words[0][0..$ - 1];
+					}
+					break;
+				case Context.patternParse:
+					parsePattern(lines[lineNum], words, currPatternID);//Put pattern parsing into its own function since it's the most complicated part of the parsing
+					break;
+				default:						//Check for new context.
+					switch (words[0]) {	
+					case "HEADER":
+						context = Context.headerParse;
+						break;
+					case "METADATA":
+						context = Context.metadataParse;
+						break;
+					case "DEVLIST":
+						context = Context.deviceParse;
+						break;
+					case "ARRAY":
+						context = Context.arrayParse;
+						arrayNames ~= words[1];
+						result.songdata.arrays ~= [];
+						break;
+					case "PATTERN":
+						context = Context.patternParse;
+						if (words[1] == "main") {
+							currPatternID = 0;
+						} else {
+							currPatternID = patternCntr;
+							patternCntr++;
+						}
+						ptrnData ~= PatternData(words[1], lineNum, currPatternID);
+						result.songdata.ptrnData[currPatternID] = [];
+						break;
+					default:
+						break;
+				}
+					break;
+			}
+		}
+		return result;
 	}
 }
 ///Reads textual M2 files and compiles them into binary.
