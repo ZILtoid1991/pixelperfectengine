@@ -235,22 +235,42 @@ public struct IMBCAssembler {
 	this(string input) {
 		this.input = input;
 	}
+	///Searches pattern by `name` returns its index or -1 if not found
 	sizediff_t searchPatternByName(const string name) @nogc @safe pure nothrow const {
 		for (sizediff_t i ; i < ptrnData.length ; i++) {
 			if (ptrnData[i].name == name) return i;
 		}
 		return -1;
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   ptrnID = 
+	 *   data = 
+	 *   pos = 
+	 */
 	void overwriteCmdAt(uint ptrnID, uint data, uint pos) {
 		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
 		assert (ptrn !is null);
 		(*ptrn)[pos] = data;
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   ptrnID = 
+	 *   data = 
+	 */
 	void writeCmdStr(uint ptrnID, uint[] data) {
 		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
 		assert (ptrn !is null);
 		*ptrn ~= data;
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   ptrnID = 
+	 *   devNum = 
+	 */
 	void flushEmitStr(uint ptrnID, ushort devNum) {
 		if (currEmitStr.length) {
 			auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
@@ -291,6 +311,117 @@ public struct IMBCAssembler {
 			parseMiscCmd(wholeLine, words, ptrnID);
 		}
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   longfield = 
+	 *   note = 
+	 *   cmdCode = 
+	 *   chField = 
+	 *   upperField = 
+	 *   lowerField = 
+	 *   valueField = 
+	 *   aux = 
+	 *   ptrnID = 
+	 *   devNum = 
+	 */
+	void insertMIDI2Cmd(const bool longfield, const bool note, const ubyte cmdCode, string chField, string upperField, 
+			string lowerField, string valueField, string aux, uint ptrnID, ushort devNum) {
+		uint emitWithRegVal;
+		int rCh, rNote, rValue, rAux = -1;
+		uint value, upper, lower, channel;
+		UMP midiCMD;
+		if (note) {
+			rValue = parseRegister(valueField);
+			if (rValue == -1) { 
+				rValue = 0;
+				value = (cast(uint)parsenum(valueField))<<16;
+			} else {
+				emitWithRegVal |= 0x08;
+			}
+			if (aux.length) {
+				if (aux.length >= 4) {
+					switch (aux[0..2]) {
+						case "ms": lower = 0x01; break;
+						case "ps": lower = 0x02; break;
+						case "pt": lower = 0x03; break;
+						default: break;
+					}
+					rAux = parseRegister(aux[3..$]);
+					if (rAux == -1) {
+						rAux = 0;
+						value |= cast(uint)parsenum(aux[3..$]);
+					} else {
+						emitWithRegVal |= 0x01;
+					}
+				}
+			}
+		} else {
+			rValue = parseRegister(valueField);
+			if (rValue == -1) {
+				rValue = 0;
+				value = cast(uint)parsenum(valueField);
+			} else {
+				emitWithRegVal |= 0x08;
+			}
+		}
+		if (longfield) {
+			rNote = parseRegister(upperField);
+			if (rNote == -1) {
+				rNote = 0;
+				const uint lf = cast(uint)parsenum(upperField);
+				lower = lf & 0x7F;
+				upper = lf>>7;
+			} else {
+				emitWithRegVal |= 0x04;
+			}
+		} else {
+			if (upperField.length) {
+				rNote = parseRegister(upperField);
+				if (rNote == -1) {
+					rNote = 0;
+					if (note) {
+						upper = cast(uint)parseNote(upperField);
+					} 
+				} else {
+					emitWithRegVal |= 0x04;
+				}
+			}
+			if (lowerField.length) {
+				rAux = parseRegister(lowerField);
+				if (rAux == -1) {
+					rAux = 0;
+					lower = cast(uint)parsenum(lowerField);
+				} else {
+					emitWithRegVal |= 0x01;
+				}
+			}
+		}
+		rCh = parseRegister(chField);
+		if (rCh != -1) emitWithRegVal |= 0x02;
+		else channel = cast(uint)parsenum(chField);
+		if (emitWithRegVal) {
+			flushEmitStr(ptrnID, devNum);
+			midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), cmdCode, cast(ubyte)(channel&0x0F), 
+					cast(ubyte)upper, cast(ubyte)lower);
+			M2Command cmdUprHl = M2Command([OpCode.emit_r, cast(ubyte)rValue, 0, 0]);
+			cmdUprHl.hwords[1] = cast(ushort)currDevNum;
+			M2Command cmdLwrHl = M2Command([cast(ubyte)rNote, cast(ubyte)rCh, cast(ubyte)rAux, cast(ubyte)emitWithRegVal]);
+			writeCmdStr(ptrnID, [cmdUprHl.word, cmdLwrHl.word, midiCMD.base, value]);
+			//currEmitStr ~= [cmdUprHl.word, cmdLwrHl.word, midiCMD.base, value];
+		} else {
+			midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), cmdCode, cast(ubyte)(channel&0x0F), 
+					cast(ubyte)upper, cast(ubyte)lower);
+			currEmitStr ~= [midiCMD.base, value];
+		}
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   wholeLine = 
+	 *   words = 
+	 *   ptrnID = 
+	 */
 	void parseEmitCmd(string wholeLine, string[] words, uint ptrnID) {
 		const sizediff_t f = countUntil(words[0], '['), t = countUntil(words[0], ']');
 		enforce(f >= 0 && t >= 0 && t > f, "Malformed emit string!");
@@ -406,6 +537,13 @@ public struct IMBCAssembler {
 				break;
 		}
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   ptrnID = 
+	 *   cmdCode = 
+	 *   instr = 
+	 */
 	void insertMathCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
 		//enforce(instr.length == 3, "Incorrect number of registers");
 		const int ra = parseRegister(instr[0]);
@@ -414,6 +552,13 @@ public struct IMBCAssembler {
 		//enforce((ra|rb|rd) <= -1, "Bad register number");
 		writeCmdStr(ptrnID, [M2Command([cmdCode, cast(ubyte)ra, cast(ubyte)rb, cast(ubyte)rd]).word]);
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   ptrnID = 
+	 *   cmdCode = 
+	 *   instr = 
+	 */
 	void insertShImmCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
 		//enforce(instr.length == 3, "Incorrect number of registers");
 		const int ra = parseRegister(instr[0]);
@@ -422,20 +567,258 @@ public struct IMBCAssembler {
 		enforce(rb <= 31 && rb >= 0, "Bad immediate amount");
 		writeCmdStr(ptrnID, [M2Command([cast(ubyte)cmdCode, cast(ubyte)ra, cast(ubyte)rb, cast(ubyte)rd]).word]);
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   ptrnID = 
+	 *   cmdCode = 
+	 *   instr = 
+	 */
 	void insertTwoOpCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
 		//enforce(instr.length == 2, "Incorrect number of registers");
 		const int ra = parseRegister(instr[0]);
 		const int rd = parseRegister(instr[1]);
 		writeCmdStr(ptrnID, [M2Command([cmdCode, cast(ubyte)ra, cast(ubyte)0x00, cast(ubyte)rd]).word]);
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   ptrnID = 
+	 *   cmprCode = 
+	 *   instr = 
+	 */
 	void insertCmpInstr(uint ptrnID, const ubyte cmprCode, string[] instr) {
 		//enforce(instr.length == 2, "Incorrect number of registers");
 		const int ra = parseRegister(instr[0]);
 		const int rb = parseRegister(instr[1]);
 		writeCmdStr(ptrnID, [M2Command([OpCode.cmp, cmprCode, cast(ubyte)ra, cast(ubyte)rb]).word]);
 	}
+	void insertWaitCmd(ulong amount, uint ptrnID) {
+		if (amount) {
+			auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
+			assert (ptrn !is null);
+			if (amount <= 0xFF_FF_FF) {	//Short wait
+				*ptrn ~= M2Command.cmd24bit(OpCode.shwait, cast(uint)amount).word;
+			} else {					//Long wait
+				*ptrn ~= [M2Command.cmd24bit(OpCode.lnwait, cast(uint)(amount)).word, cast(uint)(amount>>24L)];
+			}
+		}
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   wholeLine = 
+	 *   words = 
+	 *   ptrnID = 
+	 */
 	void parseMiscCmd(string wholeLine, string[] words, uint ptrnID) {
-		
+		switch (words[0]) {
+			case "wait":		//parse wait command
+				long amount;
+				try {	//Try to parse it as a number
+					amount = parsenum(words[1]);
+				} catch (Exception e) {	//It is not a number, try to parse it as a rhythm
+					amount = parseRhythm(words[1], ptrnData[$-1].currBPM, result.songdata.ticsPerSecs);
+				}
+				//go through all the note macros if any of them have expired, and insert one or more wait commands if needed
+				while (amount > 0) {
+					flushEmitStr(ptrnID, currDevNum);
+					size_t num;
+					long lowestAmount;
+					if (noteMacroHandler.length) {
+						//check if there's any expired note macros
+						if (noteMacroHandler[0].durTo <= timePos + amount) {
+							num = 1;
+							//get current lowest amount
+							lowestAmount = amount - (timePos + amount - noteMacroHandler[0].durTo);
+							assert (lowestAmount >= 0);
+							//check if there's more with the same amount
+							for (size_t searchPos = 1 ; searchPos < noteMacroHandler.length ; searchPos++) {
+								if (noteMacroHandler[0].durTo == noteMacroHandler[searchPos].durTo) {
+									num = searchPos + 1;
+								} else {
+									break;	//Break immediately on different wait times
+								}
+							}
+						}
+					}
+					for (size_t outputPos ; outputPos < num ; outputPos++) {	//emit all expired note macros
+						NoteData nd = noteMacroHandler.remove(0);
+						currEmitStr ~= [UMP(MessageType.MIDI2, nd.ch>>4, MIDI2_0Cmd.NoteOff, nd.ch & 0x0F, nd.note).base, nd.velocity];
+						if (currEmitStr.length >= 254) flushEmitStr(ptrnID, currDevNum);
+					}
+					if (!num) {			//if there's no (more) expired note macros, then just simply emit a wait command with the current amount
+						insertWaitCmd(amount, ptrnID);
+						timePos += amount;
+						amount = 0;
+					} else {				//if there's some, insert wait command, and subtract 
+						insertWaitCmd(lowestAmount, ptrnID);
+						timePos += lowestAmount;
+						amount -= lowestAmount;
+					}
+				}
+				break;
+			case "chain-par":
+				sizediff_t refPtrnID = searchPatternByName(words[1]);
+				enforce(refPtrnID != -1, "Pattern not found");
+				writeCmdStr(ptrnID, [0x05_00_00_00 | cast(uint)refPtrnID]);
+				break;
+			case "chain-ser":
+				sizediff_t refPtrnID = searchPatternByName(words[1]);
+				enforce(refPtrnID != -1, "Pattern not found");
+				writeCmdStr(ptrnID, [0x06_00_00_00 | cast(uint)refPtrnID]);
+				break;
+			case "chain":
+				sizediff_t refPtrnID = searchPatternByName(words[1]);
+				enforce(refPtrnID != -1, "Pattern not found");
+				writeCmdStr(ptrnID, [0x41_00_00_00 | cast(uint)refPtrnID]);
+				break;
+			case "jmpnc", "jmp":
+				//insertJmpCmd(lineNum, 0x04, words[1..$]);
+				break;
+			case "jmpeq":
+				//insertJmpCmd(lineNum, 0x0104, words[1..$]);
+				break;
+			case "jmpne":
+				//insertJmpCmd(lineNum, 0x0204, words[1..$]);
+				break;
+			case "jmpsh":
+				//insertJmpCmd(lineNum, 0x0304, words[1..$]);
+				break;
+			case "jmpop":
+				//insertJmpCmd(lineNum, 0x0404, words[1..$]);
+				break;
+			case "add": 
+				insertMathCmd(ptrnID, OpCode.add, words[1..$]);
+				break;
+			case "sub":
+				insertMathCmd(ptrnID, OpCode.sub, words[1..$]);
+				break;
+			case "mul":
+				insertMathCmd(ptrnID, OpCode.mul, words[1..$]);
+				break;
+			case "div":
+				insertMathCmd(ptrnID, OpCode.div, words[1..$]);
+				break;
+			case "mod":
+				insertMathCmd(ptrnID, OpCode.mod, words[1..$]);
+				break;
+			case "and":
+				insertMathCmd(ptrnID, OpCode.and, words[1..$]);
+				break;
+			case "or":
+				insertMathCmd(ptrnID, OpCode.or, words[1..$]);
+				break;
+			case "xor":
+				insertMathCmd(ptrnID, OpCode.xor, words[1..$]);
+				break;
+			case "not":
+				insertTwoOpCmd(ptrnID, OpCode.not, words[1..$]);
+				break;
+			case "lshi": 
+				insertShImmCmd(ptrnID, OpCode.lshi, words[1..$]);
+				break;
+			case "rshi": 
+				insertShImmCmd(ptrnID, OpCode.rshi, words[1..$]);
+				break;
+			case "rasi": 
+				insertShImmCmd(ptrnID, OpCode.rasi, words[1..$]);
+				break;
+			case "adds": 
+				insertMathCmd(ptrnID, OpCode.adds, words[1..$]);
+				break;
+			case "subs": 
+				insertMathCmd(ptrnID, OpCode.subs, words[1..$]);
+				break;
+			case "muls": 
+				insertMathCmd(ptrnID, OpCode.muls, words[1..$]);
+				break;
+			case "divs": 
+				insertMathCmd(ptrnID, OpCode.divs, words[1..$]);
+				break;
+			case "lsh": 
+				insertMathCmd(ptrnID, OpCode.lsh, words[1..$]);
+				break;
+			case "rsh": 
+				insertMathCmd(ptrnID, OpCode.rsh, words[1..$]);
+				break;
+			case "ras": 
+				insertMathCmd(ptrnID, OpCode.ras, words[1..$]);
+				break;
+			case "mov":
+				insertTwoOpCmd(ptrnID, OpCode.mov, words[1..$]);
+				break;
+			case "cmpeq":
+				insertCmpInstr(ptrnID, CmpCode.eq, words[1..$]);
+				break;
+			case "cmpne":
+				insertCmpInstr(ptrnID, CmpCode.ne, words[1..$]);
+				break;
+			case "cmpgt":
+				insertCmpInstr(ptrnID, CmpCode.gt, words[1..$]);
+				break;
+			case "cmpge":
+				insertCmpInstr(ptrnID, CmpCode.ge, words[1..$]);
+				break;
+			case "cmplt":
+				insertCmpInstr(ptrnID, CmpCode.lt, words[1..$]);
+				break;
+			case "cmple":
+				insertCmpInstr(ptrnID, CmpCode.le, words[1..$]);
+				break;
+			case "cmpze":
+				insertCmpInstr(ptrnID, CmpCode.ze, words[1..$]);
+				break;
+			case "cmpnz":
+				insertCmpInstr(ptrnID, CmpCode.nz, words[1..$]);
+				break;
+			case "cmpng":
+				insertCmpInstr(ptrnID, CmpCode.ng, words[1..$]);
+				break;
+			case "cmppo":
+				insertCmpInstr(ptrnID, CmpCode.po, words[1..$]);
+				break;
+			case "cmpsgt":
+				insertCmpInstr(ptrnID, CmpCode.sgt, words[1..$]);
+				break;
+			case "cmpsge":
+				insertCmpInstr(ptrnID, CmpCode.sge, words[1..$]);
+				break;
+			case "cmpslt":
+				insertCmpInstr(ptrnID, CmpCode.slt, words[1..$]);
+				break;
+			case "cmpsle":
+				insertCmpInstr(ptrnID, CmpCode.sle, words[1..$]);
+				break;
+			case "ctrl":
+				M2Command ctrlCMD = M2Command([OpCode.ctrl, 0, 0, 0]);
+				switch (words[1]) {
+					case "setReg":
+						ctrlCMD.bytes[1] = CtrlCmdCode.setRegister;
+						ctrlCMD.bytes[2] = cast(ubyte)parseRegister(words[2]);
+						uint val = cast(uint)parsenum(words[3]);
+						writeCmdStr(ptrnID, [ctrlCMD.word, val]);
+						break;
+					default:
+						break;
+				}
+				break;
+			case "display":
+				M2Command displCMD = M2Command([OpCode.display, 0, 0, 0]);
+				switch (words[1]) {
+					case "BPM":
+						displCMD.bytes[1] = DisplayCmdCode.setVal;
+						displCMD.hwords[1] = SetDispValCode.BPM;
+						ptrnData[$-1].currBPM = to!float(words[2]);
+						writeCmdStr(ptrnID, [displCMD.word, *cast(uint*)&ptrnData[$-1].currBPM]);
+						break;
+					default:
+						break;
+				}
+				break;
+			default:
+				break;
+		}
 	}
 	M2File compile() {
 		string[] lines = input.splitLines;
