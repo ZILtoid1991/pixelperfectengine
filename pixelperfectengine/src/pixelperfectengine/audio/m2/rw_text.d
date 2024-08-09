@@ -593,6 +593,19 @@ public struct IMBCAssembler {
 		const int rb = parseRegister(instr[1]);
 		writeCmdStr(ptrnID, [M2Command([OpCode.cmp, cmprCode, cast(ubyte)ra, cast(ubyte)rb]).word]);
 	}
+	void insertJmpCmd(uint ptrnID, uint cmdCode, string[] instr) {
+			//enforce(key.positionLabels.has(instr[1]), "Position label not found");
+			//flushEmitStr();
+			int targetAm;
+			const uint conditionMask = cast(uint)parsenum(instr[0]);
+			const uint currPos;
+			if (ptrnData[$-1].positionLabels.has(instr[1])) {
+				targetAm = cast(int)(ptrnData[$-1].positionLabels[instr[1]] - currPos);
+				writeCmdStr(ptrnID, [cmdCode, conditionMask, targetAm]);
+			} else {
+				sizediff_t unresPos = ptrnData[$-1].searchUnresolvedPositionLabelByName(instr[1]);
+			}
+		}
 	void insertWaitCmd(ulong amount, uint ptrnID) {
 		if (amount) {
 			auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
@@ -674,19 +687,19 @@ public struct IMBCAssembler {
 				writeCmdStr(ptrnID, [0x41_00_00_00 | cast(uint)refPtrnID]);
 				break;
 			case "jmpnc", "jmp":
-				//insertJmpCmd(lineNum, 0x04, words[1..$]);
+				insertJmpCmd(ptrnID, 0x04, words[1..$]);
 				break;
 			case "jmpeq":
-				//insertJmpCmd(lineNum, 0x0104, words[1..$]);
+				insertJmpCmd(ptrnID, 0x0104, words[1..$]);
 				break;
 			case "jmpne":
-				//insertJmpCmd(lineNum, 0x0204, words[1..$]);
+				insertJmpCmd(ptrnID, 0x0204, words[1..$]);
 				break;
 			case "jmpsh":
-				//insertJmpCmd(lineNum, 0x0304, words[1..$]);
+				insertJmpCmd(ptrnID, 0x0304, words[1..$]);
 				break;
 			case "jmpop":
-				//insertJmpCmd(lineNum, 0x0404, words[1..$]);
+				insertJmpCmd(ptrnID, 0x0404, words[1..$]);
 				break;
 			case "add": 
 				insertMathCmd(ptrnID, OpCode.add, words[1..$]);
