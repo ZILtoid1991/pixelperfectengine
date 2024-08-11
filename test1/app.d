@@ -410,7 +410,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void onSaveAs() {
 		import pixelperfectengine.concrete.dialogs.filedialog;
 		wh.addWindow(new FileDialog("Save audio configuration file.", "saveConfigDialog", &onSaveConfigurationFile, 
-			[FileDialog.FileAssociationDescriptor("SDLang file", ["*.sdl"])], "./", true));
+			[FileDialog.FileAssociationDescriptor("SDLang file", ["*.sdl"])], "./", FileDialog.Type.Save));
 	}
 	public void onSaveConfigurationFile(Event ev) {
 		FileEvent fe = cast(FileEvent)ev;
@@ -446,7 +446,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 				}
 				break;
 			case ".imbc", ".imb":
-				m2Seq.loadSong(loadM2File(fe.getFullPath), mcfg);
+				m2Seq.loadSong(loadIMBCFile(fe.getFullPath), mcfg);
 				state.m2Toggle = true;
 				mm.midiSeq = m2Seq;
 				break;

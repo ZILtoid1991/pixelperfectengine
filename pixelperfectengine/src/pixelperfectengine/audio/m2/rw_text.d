@@ -150,6 +150,7 @@ package ulong parseRhythm(string n, float bpm, long timebase) {
 }
 /** 
  * Implements the IMBC assembler.
+ * Compiles the IMBC assembly into IMBC binary. Implements some macro support (TODO: Implement `if` and loop macros).
  */
 public struct IMBCAssembler {
 	///Defines context states for parsing
@@ -232,13 +233,21 @@ public struct IMBCAssembler {
 	string[] arrayNames;
 	uint[] currEmitStr;
 	SortedList!(NoteData, "a > b") noteMacroHandler;
+	UnresolvedPositionLabel[] unresolvedPatterns;
 	this(string input) {
 		this.input = input;
 	}
-	///Searches pattern by `name` returns its index or -1 if not found
+	///Searches pattern by `name`, returns its index, or -1 if not found
 	sizediff_t searchPatternByName(const string name) @nogc @safe pure nothrow const {
 		for (sizediff_t i ; i < ptrnData.length ; i++) {
 			if (ptrnData[i].name == name) return i;
+		}
+		return -1;
+	}
+	///Searches unresolved pattern by `name`, returns its index, or -1 if not found
+	sizediff_t searchUnresolvedPatternByName(const string name) @nogc @safe pure nothrow const {
+		for (sizediff_t i ; i < unresolvedPatterns.length ; i++) {
+			if (unresolvedPatterns[i].name == name) return i;
 		}
 		return -1;
 	}
@@ -254,6 +263,11 @@ public struct IMBCAssembler {
 		assert (ptrn !is null);
 		(*ptrn)[pos] = data;
 	}
+	uint readCmd(uint ptrnID, uint pos) {
+		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
+		assert (ptrn !is null);
+		return (*ptrn)[pos];
+	}
 	/** 
 	 * 
 	 * Params:
@@ -264,6 +278,11 @@ public struct IMBCAssembler {
 		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
 		assert (ptrn !is null);
 		*ptrn ~= data;
+	}
+	uint getCurrentPos(uint ptrnID) {
+		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
+		assert (ptrn !is null);
+		return cast(uint)(ptrn.length);
 	}
 	/** 
 	 * 
@@ -285,6 +304,7 @@ public struct IMBCAssembler {
 		if (words[0] == "END") {			//Pattern end hit, set context to init, flush emit string, then return
 			context = Context.init;
 			flushEmitStr(ptrnID, currDevNum);
+			enforce(!ptrnData[$-1].unresolvedLabels.length, "Unresolved position markers found!");
 			return;
 		}
 		if (words[0][0] == '@') {			//Position marker hit, parse it!
@@ -463,7 +483,7 @@ public struct IMBCAssembler {
 			case "m1_nf":		//MIDI 1.0 note off
 				const uint channel = cast(uint)parsenum(words[2]);
 				const uint note = parseNote(words[3]);
-				const uint vel = cast(uint)parsenum(words[4]);
+				const uint vel = cast(uint)parseVelocityM1(words[4]);
 				enforce(channel <= 255, "Channel number too high");
 				enforce(vel <= 127, "Velocity number too high");
 				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.NoteOff, cast(ubyte)(channel&0x0F), 
@@ -473,7 +493,7 @@ public struct IMBCAssembler {
 			case "m1_nn":		//MIDI 1.0 note on
 				const uint channel = cast(uint)parsenum(words[2]);
 				const uint note = parseNote(words[3]);
-				const uint vel = cast(uint)parsenum(words[4]);
+				const uint vel = cast(uint)parseVelocityM1(words[4]);
 				enforce(channel <= 255, "Channel number too high");
 				enforce(vel <= 127, "Velocity number too high");
 				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.NoteOn, cast(ubyte)(channel&0x0F), 
@@ -483,7 +503,7 @@ public struct IMBCAssembler {
 			case "m1_ppres":		//MIDI 1.0 poly pressure
 				const uint channel = cast(uint)parsenum(words[2]);
 				const uint note = parseNote(words[3]);
-				const uint vel = cast(uint)parsenum(words[4]);
+				const uint vel = cast(uint)parseVelocityM1(words[4]);
 				enforce(channel <= 255, "Channel number too high");
 				enforce(vel <= 127, "Velocity number too high");
 				UMP midiCMD = UMP(MessageType.MIDI1, cast(ubyte)(channel>>4), MIDI1_0Cmd.PolyAftrTch, cast(ubyte)(channel&0x0F), 
@@ -493,7 +513,7 @@ public struct IMBCAssembler {
 			case "m1_cc":			//MIDI 1.0 control change
 				const uint channel = cast(uint)parsenum(words[2]);
 				const uint num = cast(uint)parsenum(words[3]);
-				const uint vel = cast(uint)parsenum(words[4]);
+				const uint vel = cast(uint)parseVelocityM1(words[4]);
 				enforce(channel <= 255, "Channel number too high");
 				enforce(vel <= 127, "Velocity number too high");
 				enforce(num <= 127, "Control number too high");
@@ -533,6 +553,94 @@ public struct IMBCAssembler {
 				currEmitStr ~= [midiCMD.base];
 				break;
 			//MIDI 1.0 end
+			//MIDI 2.0 start
+			case "nf":			//MIDI note off
+				
+				string auxField;
+				if (words.length == 6) auxField = words[5];
+				insertMIDI2Cmd(false, true, MIDI2_0Cmd.NoteOff, words[2], words[4], null, words[3], auxField, ptrnID, currDevNum);
+				break;
+			case "nn":			//MIDI note on
+				
+				string auxField;
+				if (words.length == 6) auxField = words[5];
+				insertMIDI2Cmd(false, true, MIDI2_0Cmd.NoteOn, words[2], words[4], null, words[3], auxField, ptrnID, currDevNum);
+				break;
+			case "ppres":		//Poly aftertouch
+				
+				insertMIDI2Cmd(false, false, MIDI2_0Cmd.PolyAftrTch, words[2], words[4], null, words[3], null, ptrnID, currDevNum);
+				break;
+			case "pccr":		//Poly registered per-note controller change
+				
+				insertMIDI2Cmd(false, false, MIDI2_0Cmd.PolyCtrlChR, words[2], words[3], words[4], words[5], null, ptrnID, 
+						currDevNum);
+				break;
+			case "pcca":		//Poly assignable per-note controller change
+				
+				insertMIDI2Cmd(false, false, MIDI2_0Cmd.PolyCtrlCh, words[2], words[3], words[4], words[5], null, ptrnID, 
+						currDevNum);
+				break;
+			case "pnoteman":	//Poly management message
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint note = parseNote(words[3]);
+				uint option;
+				if (words.length >= 5) {
+					option |= countUntil(words[4], "S", "s") != -1 ? 0x01 : 0;
+					option |= countUntil(words[4], "D", "d") != -1 ? 0x02 : 0;
+				}
+				enforce(channel <= 255, "Channel number too high");
+				//currEmitStr ~= [0x20_F0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | option, 0];
+				UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.NoteManaMsg, cast(ubyte)(channel & 0x0F), 
+						cast(ubyte)note, cast(ubyte)option);
+				currEmitStr ~= [];
+				break;
+			case "ccl":			//Legacy controller change
+				
+				insertMIDI2Cmd(true, false, MIDI2_0Cmd.CtrlChOld, words[2], words[3], null, words[4], null, ptrnID, currDevNum);
+				break;
+			case "ccr":
+				insertMIDI2Cmd(true, false, MIDI2_0Cmd.CtrlChR, words[2], words[3], null, words[4], null, ptrnID, currDevNum);
+				break;
+			case "cc":
+				insertMIDI2Cmd(true, false, MIDI2_0Cmd.CtrlCh, words[2], words[3], null, words[4], null, ptrnID, currDevNum);
+				break;
+			case "rccr":
+				insertMIDI2Cmd(true, false, MIDI2_0Cmd.RelCtrlChR, words[2], words[3], null, words[4], null, ptrnID, currDevNum);
+				break;
+			case "rcc":
+				insertMIDI2Cmd(true, false, MIDI2_0Cmd.RelCtrlCh, words[2], words[3], null, words[4], null, ptrnID, currDevNum);
+				break;
+			case "pc":			//Program change
+				const uint channel = cast(uint)parsenum(words[2]);
+				const uint prg = cast(uint)parsenum(words[3]);
+				uint option, bank;
+				if (words.length >= 5) {
+					option = 1;
+					const uint bank0 = cast(uint)parsenum(words[4]);
+					enforce(bank0 <= 16_383, "Bank number too high");
+					bank = ((bank0 & 0x3F_80)<<1) | (bank0 & 0x7F);
+				}
+				enforce(prg <= 127, "Program number too high");
+				/* currEmitStr ~= [0x20_C0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (prg<<8) | option, 
+						(prg<<24) | bank]; */
+				UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.PrgCh, cast(ubyte)(channel & 0x0F), 0, 
+						cast(ubyte)option);
+				/* currEmitStr ~= [midiCMD.base, (prg<<24) | bank]; */
+				writeCmdStr(ptrnID, [midiCMD.base, (prg<<24) | bank]);
+				break;
+			case "cpres":		//Channel aftertouch
+				
+				insertMIDI2Cmd(false, false, MIDI2_0Cmd.ChAftrTch, words[2], null, null, words[3], null, ptrnID, currDevNum);
+				break;
+			case "pb":			//Pitch bend
+				
+				insertMIDI2Cmd(false, false, MIDI2_0Cmd.PitchBend, words[2], null, null, words[3], null, ptrnID, currDevNum);
+				break;
+			case "ppb":			//Poly pitch bend
+				
+				insertMIDI2Cmd(false, false, MIDI2_0Cmd.PitchBend, words[2], words[3], null, words[4], null, ptrnID, currDevNum);
+				break;
+			//MIDI 2.0 end
 			default:
 				break;
 		}
@@ -593,19 +701,38 @@ public struct IMBCAssembler {
 		const int rb = parseRegister(instr[1]);
 		writeCmdStr(ptrnID, [M2Command([OpCode.cmp, cmprCode, cast(ubyte)ra, cast(ubyte)rb]).word]);
 	}
+	/** 
+	 * 
+	 * Params:
+	 *   ptrnID = 
+	 *   cmdCode = 
+	 *   instr = 
+	 */
 	void insertJmpCmd(uint ptrnID, uint cmdCode, string[] instr) {
-			//enforce(key.positionLabels.has(instr[1]), "Position label not found");
-			//flushEmitStr();
-			int targetAm;
-			const uint conditionMask = cast(uint)parsenum(instr[0]);
-			const uint currPos;
-			if (ptrnData[$-1].positionLabels.has(instr[1])) {
-				targetAm = cast(int)(ptrnData[$-1].positionLabels[instr[1]] - currPos);
-				writeCmdStr(ptrnID, [cmdCode, conditionMask, targetAm]);
+		//enforce(key.positionLabels.has(instr[1]), "Position label not found");
+		//flushEmitStr();
+		int targetAm;
+		const uint conditionMask = cast(uint)parsenum(instr[0]);
+		const uint currPos = getCurrentPos(ptrnID);
+		if (ptrnData[$-1].positionLabels.has(instr[1])) {	//Previous label have been processed.
+			targetAm = cast(int)(ptrnData[$-1].positionLabels[instr[1]] - currPos);
+		} else {											//Label is likely ahead.
+			sizediff_t unresPos = ptrnData[$-1].searchUnresolvedPositionLabelByName(instr[1]);
+			if (unresPos == -1) {							//Unresolved position haven't yet hit, add it
+				ptrnData[$-1].unresolvedLabels ~= UnresolvedPositionLabel(instr[1], [[0, currPos]]);
+				//unresPos = ptrnData[$-1].unresolvedLabels.length - 1;
 			} else {
-				sizediff_t unresPos = ptrnData[$-1].searchUnresolvedPositionLabelByName(instr[1]);
+				ptrnData[$-1].unresolvedLabels[unresPos].positions ~= [0, currPos];
 			}
 		}
+		writeCmdStr(ptrnID, [cmdCode, conditionMask, cast(uint)targetAm]);
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   amount = 
+	 *   ptrnID = 
+	 */
 	void insertWaitCmd(ulong amount, uint ptrnID) {
 		if (amount) {
 			auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
@@ -615,6 +742,28 @@ public struct IMBCAssembler {
 			} else {					//Long wait
 				*ptrn ~= [M2Command.cmd24bit(OpCode.lnwait, cast(uint)(amount)).word, cast(uint)(amount>>24L)];
 			}
+		}
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   type = 
+	 *   ptrnName = 
+	 *   ptrnID = 
+	 */
+	void insertChainCmd(ubyte type, string ptrnName, uint ptrnID) {
+		sizediff_t patternID = searchPatternByName(ptrnName);
+		if (patternID == -1) {	//Pattern not found, check if resolve notice have filled for it already
+			const uint currPos = getCurrentPos(ptrnID);
+			sizediff_t unresolvedPatternID = searchUnresolvedPatternByName(ptrnName);
+			if (unresolvedPatternID == -1) {
+				unresolvedPatterns ~= UnresolvedPositionLabel(ptrnName, [[ptrnID, currPos]]);
+			} else {
+				unresolvedPatterns[unresolvedPatternID].positions ~= [ptrnID, currPos];
+			}
+			writeCmdStr(ptrnID, [M2Command.cmd24bit(type, 0).word]);
+		} else {				//Pattern found
+			writeCmdStr(ptrnID, [M2Command.cmd24bit(type, cast(uint)patternID).word]);
 		}
 	}
 	/** 
@@ -672,19 +821,13 @@ public struct IMBCAssembler {
 				}
 				break;
 			case "chain-par":
-				sizediff_t refPtrnID = searchPatternByName(words[1]);
-				enforce(refPtrnID != -1, "Pattern not found");
-				writeCmdStr(ptrnID, [0x05_00_00_00 | cast(uint)refPtrnID]);
+				insertChainCmd(0x05, words[1], ptrnID);
 				break;
 			case "chain-ser":
-				sizediff_t refPtrnID = searchPatternByName(words[1]);
-				enforce(refPtrnID != -1, "Pattern not found");
-				writeCmdStr(ptrnID, [0x06_00_00_00 | cast(uint)refPtrnID]);
+				insertChainCmd(0x06, words[1], ptrnID);
 				break;
 			case "chain":
-				sizediff_t refPtrnID = searchPatternByName(words[1]);
-				enforce(refPtrnID != -1, "Pattern not found");
-				writeCmdStr(ptrnID, [0x41_00_00_00 | cast(uint)refPtrnID]);
+				insertChainCmd(0x41, words[1], ptrnID);
 				break;
 			case "jmpnc", "jmp":
 				insertJmpCmd(ptrnID, 0x04, words[1..$]);
@@ -926,6 +1069,15 @@ public struct IMBCAssembler {
 						}
 						ptrnData ~= PatternData(words[1], lineNum, currPatternID);
 						result.songdata.ptrnData[currPatternID] = [];
+						//Resolve any potential previously unrecognized pattern references
+						sizediff_t unresolvedPatternID = searchUnresolvedPatternByName(words[1]);
+						if (unresolvedPatternID != -1) {
+							const uint cmdOvrWrite = currPatternID<<8;
+							foreach (uint[2] position; unresolvedPatterns[unresolvedPatternID].positions) {
+								uint origCmd = readCmd(position[0], position[1]);
+								overwriteCmdAt(position[0], origCmd | cmdOvrWrite, position[1]);
+							}
+						}
 						break;
 					default:
 						break;
@@ -933,6 +1085,7 @@ public struct IMBCAssembler {
 					break;
 			}
 		}
+		enforce(context == Context.init, "Scope end have not reached");
 		return result;
 	}
 }
@@ -940,8 +1093,8 @@ public struct IMBCAssembler {
 ///Bugs: 
 /// * comment stripping is somehow inconsistent, sometimes just stops working altogether, thus certain checks are disabled for now.
 /// * some commands are just parsed incorrectly.
-///TODO: Refactor this function's internals into a struct.
-public M2File loadM2FromText(string src) {
+///Deprecated: It's just bad, use the IMBCAssembler instead!
+public deprecated M2File loadM2FromText(string src) {
 	
 	enum Context {
 		init,
@@ -1084,7 +1237,6 @@ public M2File loadM2FromText(string src) {
 						context = Context.patternParse;
 						ptrnData ~= PatternData(words[1], lineNum, 0);
 						break;
-
 					default:
 						break;
 				}
