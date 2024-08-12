@@ -604,7 +604,7 @@ public struct IMBCAssembler {
 				//currEmitStr ~= [0x20_F0_00_00 | ((channel & 0xF0)<<20) | ((channel & 0x0F)<<16) | (note<<8) | option, 0];
 				UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.NoteManaMsg, cast(ubyte)(channel & 0x0F), 
 						cast(ubyte)note, cast(ubyte)option);
-				currEmitStr ~= [];
+				currEmitStr ~= [midiCMD.base, 0];
 				break;
 			case "ccl":			//Legacy controller change
 				
@@ -637,8 +637,8 @@ public struct IMBCAssembler {
 						(prg<<24) | bank]; */
 				UMP midiCMD = UMP(MessageType.MIDI2, cast(ubyte)(channel>>4), MIDI2_0Cmd.PrgCh, cast(ubyte)(channel & 0x0F), 0, 
 						cast(ubyte)option);
-				/* currEmitStr ~= [midiCMD.base, (prg<<24) | bank]; */
-				writeCmdStr(ptrnID, [midiCMD.base, (prg<<24) | bank]);
+				currEmitStr ~= [midiCMD.base, (prg<<24) | bank];
+				//writeCmdStr(ptrnID, [midiCMD.base, (prg<<24) | bank]);
 				break;
 			case "cpres":		//Channel aftertouch
 				
@@ -740,7 +740,7 @@ public struct IMBCAssembler {
 		writeCmdStr(ptrnID, [cmdCode, conditionMask, cast(uint)targetAm]);
 	}
 	/** 
-	 * Inserts a wait command, also resolves any potential note macros (TODO).
+	 * Inserts a wait command, also resolves any potential note macros.
 	 * Params:
 	 *   amount = The amount of wait.
 	 *   ptrnID = Pattern identifier.
@@ -1032,6 +1032,7 @@ public struct IMBCAssembler {
 							result.patternNum = cast(ushort)parsenum(words[1]);
 							break;
 						case "END":
+							result.songdata = M2Song(result.patternNum, result.timeFormat, result.timeFrmtPer, result.timeFrmtRes);
 							context = Context.init;
 							break;
 						default:
