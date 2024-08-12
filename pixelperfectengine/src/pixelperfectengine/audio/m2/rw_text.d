@@ -168,6 +168,7 @@ public struct IMBCAssembler {
 		string name;
 		uint[2][] positions;		///0: Pattern ID if applicable, 1: Position of place where label must be resolved
 	}
+	/// Defines the type of the scope statement
 	enum ScopeType {
 		init,
 		IfStatement,
@@ -181,6 +182,7 @@ public struct IMBCAssembler {
 		ScopeType type;
 		size_t begin;
 	}
+	/// Defines locally stored pattern information
 	struct PatternData {
 		string name;
 		size_t lineNum;
@@ -202,6 +204,7 @@ public struct IMBCAssembler {
 			return -1;
 		}
 	}
+	///Defines note macro data
 	struct NoteData {
 		uint device;
 		ubyte ch;
@@ -252,43 +255,45 @@ public struct IMBCAssembler {
 		return -1;
 	}
 	/** 
-	 * 
+	 * Overwrites a command in pattern at the given position
 	 * Params:
-	 *   ptrnID = 
-	 *   data = 
-	 *   pos = 
+	 *   ptrnID = Identifies the pattern where the data to be overwritten is stored
+	 *   data = The data to be written
+	 *   pos = The position of the command
 	 */
 	void overwriteCmdAt(uint ptrnID, uint data, uint pos) {
 		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
 		assert (ptrn !is null);
 		(*ptrn)[pos] = data;
 	}
+	///Reads data from pattern identified by `ptrnID` at position of `pos`.
 	uint readCmd(uint ptrnID, uint pos) {
 		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
 		assert (ptrn !is null);
 		return (*ptrn)[pos];
 	}
 	/** 
-	 * 
+	 * Writes a command string at the end of a pattern.
 	 * Params:
-	 *   ptrnID = 
-	 *   data = 
+	 *   ptrnID = The pattern where the command must be written to.
+	 *   data = The command string data to be written.
 	 */
 	void writeCmdStr(uint ptrnID, uint[] data) {
 		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
 		assert (ptrn !is null);
 		*ptrn ~= data;
 	}
+	/// Returns the length of pattern identified by `ptrnID`.
 	uint getCurrentPos(uint ptrnID) {
 		auto ptrn = result.songdata.ptrnData.ptrOf(ptrnID);
 		assert (ptrn !is null);
 		return cast(uint)(ptrn.length);
 	}
 	/** 
-	 * 
+	 * Flushes the emit string as a command string.
 	 * Params:
-	 *   ptrnID = 
-	 *   devNum = 
+	 *   ptrnID = The pattern to which the emit string belongs to.
+	 *   devNum = The device targeted by the emit command.
 	 */
 	void flushEmitStr(uint ptrnID, ushort devNum) {
 		if (currEmitStr.length) {
@@ -299,6 +304,13 @@ public struct IMBCAssembler {
 			currEmitStr.length = 0;
 		}
 	}
+	/**
+	 * Parses pattern data.
+	 * Params:
+	 *   wholeLine = The unprocessed line as is.
+	 *   words = Each command words separated by whitespace.
+	 *   ptrnID = Pattern identifier.
+	 */
 	void parsePattern(string wholeLine, string[] words, uint ptrnID) {
 		if (words.length == 0) return;		//There are no useful words on this line after comment removal, skip
 		if (words[0] == "END") {			//Pattern end hit, set context to init, flush emit string, then return
@@ -332,18 +344,18 @@ public struct IMBCAssembler {
 		}
 	}
 	/** 
-	 * 
+	 * Inserts a MIDI 2.0 command with optional register emit commands
 	 * Params:
-	 *   longfield = 
-	 *   note = 
-	 *   cmdCode = 
-	 *   chField = 
-	 *   upperField = 
-	 *   lowerField = 
-	 *   valueField = 
-	 *   aux = 
-	 *   ptrnID = 
-	 *   devNum = 
+	 *   longfield = If true, then field 2 and 3 are parsed as two 7 bit field making a 14 bit one.
+	 *   note = If true, then the command is being treated as a note.
+	 *   cmdCode = Command identifier code.
+	 *   chField = Channel field of the command.
+	 *   upperField = Field 2 of the command.
+	 *   lowerField = Field 3 of the command.
+	 *   valueField = The value field of the command.
+	 *   aux = Auxilliary field of the command, primarily used for note commands
+	 *   ptrnID = Pattern ID.
+	 *   devNum = Device number.
 	 */
 	void insertMIDI2Cmd(const bool longfield, const bool note, const ubyte cmdCode, string chField, string upperField, 
 			string lowerField, string valueField, string aux, uint ptrnID, ushort devNum) {
@@ -436,11 +448,11 @@ public struct IMBCAssembler {
 		}
 	}
 	/** 
-	 * 
+	 * Parses MIDI emit commands.
 	 * Params:
-	 *   wholeLine = 
-	 *   words = 
-	 *   ptrnID = 
+	 *   wholeLine = The unprocessed line as is.
+	 *   words = Each command words separated by whitespace.
+	 *   ptrnID = Pattern identifier.
 	 */
 	void parseEmitCmd(string wholeLine, string[] words, uint ptrnID) {
 		const sizediff_t f = countUntil(words[0], '['), t = countUntil(words[0], ']');
@@ -646,11 +658,11 @@ public struct IMBCAssembler {
 		}
 	}
 	/** 
-	 * 
+	 * Inserts a math command done on the registers.
 	 * Params:
-	 *   ptrnID = 
-	 *   cmdCode = 
-	 *   instr = 
+	 *   ptrnID = Identifier of the currently parsed pattern.
+	 *   cmdCode = Command code to be written.
+	 *   instr = Instruction words, like register numbers, etc.
 	 */
 	void insertMathCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
 		//enforce(instr.length == 3, "Incorrect number of registers");
@@ -661,11 +673,11 @@ public struct IMBCAssembler {
 		writeCmdStr(ptrnID, [M2Command([cmdCode, cast(ubyte)ra, cast(ubyte)rb, cast(ubyte)rd]).word]);
 	}
 	/** 
-	 * 
+	 * Inserts a shift by immediate command.
 	 * Params:
-	 *   ptrnID = 
-	 *   cmdCode = 
-	 *   instr = 
+	 *   ptrnID = Identifier of the currently parsed pattern.
+	 *   cmdCode = Command code to be written.
+	 *   instr = Instruction words, like register numbers, etc.
 	 */
 	void insertShImmCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
 		//enforce(instr.length == 3, "Incorrect number of registers");
@@ -676,11 +688,11 @@ public struct IMBCAssembler {
 		writeCmdStr(ptrnID, [M2Command([cast(ubyte)cmdCode, cast(ubyte)ra, cast(ubyte)rb, cast(ubyte)rd]).word]);
 	}
 	/** 
-	 * 
+	 * Inserts a two operand command.
 	 * Params:
-	 *   ptrnID = 
-	 *   cmdCode = 
-	 *   instr = 
+	 *   ptrnID = Identifier of the currently parsed pattern.
+	 *   cmdCode = Command code to be written.
+	 *   instr = Instruction words, like register numbers, etc.
 	 */
 	void insertTwoOpCmd(uint ptrnID, const ubyte cmdCode, string[] instr) {
 		//enforce(instr.length == 2, "Incorrect number of registers");
@@ -689,11 +701,11 @@ public struct IMBCAssembler {
 		writeCmdStr(ptrnID, [M2Command([cmdCode, cast(ubyte)ra, cast(ubyte)0x00, cast(ubyte)rd]).word]);
 	}
 	/** 
-	 * 
+	 * Inserts a compare instruction.
 	 * Params:
-	 *   ptrnID = 
-	 *   cmprCode = 
-	 *   instr = 
+	 *   ptrnID = Identifier of the currently parsed pattern.
+	 *   cmprCode = Comparison code.
+	 *   instr = Registers to be parsed.
 	 */
 	void insertCmpInstr(uint ptrnID, const ubyte cmprCode, string[] instr) {
 		//enforce(instr.length == 2, "Incorrect number of registers");
@@ -702,11 +714,11 @@ public struct IMBCAssembler {
 		writeCmdStr(ptrnID, [M2Command([OpCode.cmp, cmprCode, cast(ubyte)ra, cast(ubyte)rb]).word]);
 	}
 	/** 
-	 * 
+	 * Inserts a jump command. Automatically calculates the delta for the jump instruction if jump label is encountered, or records an unresolved jump if not.
 	 * Params:
-	 *   ptrnID = 
-	 *   cmdCode = 
-	 *   instr = 
+	 *   ptrnID = Identifier of the currently parsed pattern.
+	 *   cmdCode = The command code of the jump instruction.
+	 *   instr = Position label and the condition mask for further parsing.
 	 */
 	void insertJmpCmd(uint ptrnID, uint cmdCode, string[] instr) {
 		//enforce(key.positionLabels.has(instr[1]), "Position label not found");
@@ -728,10 +740,10 @@ public struct IMBCAssembler {
 		writeCmdStr(ptrnID, [cmdCode, conditionMask, cast(uint)targetAm]);
 	}
 	/** 
-	 * 
+	 * Inserts a wait command, also resolves any potential note macros (TODO).
 	 * Params:
-	 *   amount = 
-	 *   ptrnID = 
+	 *   amount = The amount of wait.
+	 *   ptrnID = Pattern identifier.
 	 */
 	void insertWaitCmd(ulong amount, uint ptrnID) {
 		if (amount) {
@@ -745,11 +757,11 @@ public struct IMBCAssembler {
 		}
 	}
 	/** 
-	 * 
+	 * Inserts a chain command.
 	 * Params:
-	 *   type = 
-	 *   ptrnName = 
-	 *   ptrnID = 
+	 *   type = Chain command code.
+	 *   ptrnName = The name of the to be chained-in command. If not found, issues a resolve request.
+	 *   ptrnID = Identifier of the current pattern.
 	 */
 	void insertChainCmd(ubyte type, string ptrnName, uint ptrnID) {
 		sizediff_t patternID = searchPatternByName(ptrnName);
@@ -767,11 +779,11 @@ public struct IMBCAssembler {
 		}
 	}
 	/** 
-	 * 
+	 * Parses any pattern command that isn't note emit, end of pattern, or position label.
 	 * Params:
-	 *   wholeLine = 
-	 *   words = 
-	 *   ptrnID = 
+	 *   wholeLine = The unprocessed line as is.
+	 *   words = Each command words separated by whitespace.
+	 *   ptrnID = Pattern identifier.
 	 */
 	void parseMiscCmd(string wholeLine, string[] words, uint ptrnID) {
 		switch (words[0]) {
@@ -976,6 +988,7 @@ public struct IMBCAssembler {
 				break;
 		}
 	}
+	///Compiles the assembly into a binary which is returned. Throws an exception if errors were found.
 	M2File compile() {
 		string[] lines = input.splitLines;
 		enforce(lines[0][0..12] == "MIDI2.0 VER " && lines[0][12] == '1', "Wrong version or file!");
