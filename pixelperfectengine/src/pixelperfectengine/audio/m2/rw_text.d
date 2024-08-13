@@ -402,8 +402,8 @@ public struct IMBCAssembler {
 			if (rNote == -1) {
 				rNote = 0;
 				const uint lf = cast(uint)parsenum(upperField);
-				lower = lf & 0x7F;
-				upper = lf>>7;
+				lower = lf>>7;
+				upper = lf & 0x7F;
 			} else {
 				emitWithRegVal |= 0x04;
 			}
