@@ -27,9 +27,9 @@ $[0]: pc 5 16
 $[0]: pc 6 16
 $[0]: pc 7 16
 
-$[0]: ccl 0 7 0x3F_FF_FF_FF;Reset volume levels
-$[0]: ccl 1 7 0x3F_FF_FF_FF
-$[0]: ccl 2 7 0x3F_FF_FF_FF
+;$[0]: ccl 0 7 0x3F_FF_FF_FF;Reset volume levels
+;$[0]: ccl 1 7 0x3F_FF_FF_FF
+;$[0]: ccl 2 7 0x3F_FF_FF_FF
 
 $[0]: nn 0 0x7FFF C-4   ;Play a C major
 $[0]: nn 1 0x7FFF E-4
