@@ -1379,7 +1379,7 @@ public class QM816 : AudioModule {
 								setUnregisteredParam(data1, [0, 7], data0.channel);
 								break;
 							case 7:
-								setUnregisteredParam(data1, [4, ChannelParamNums.MasterVol], data0.channel);
+								setUnregisteredParam(data1, [ChannelParamNums.MasterVol, 4], data0.channel);
 								break;
 							case 8:
 								setUnregisteredParam(data1, [4, ChannelParamNums.Bal], data0.channel);
