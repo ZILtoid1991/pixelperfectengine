@@ -1109,46 +1109,46 @@ public class QM816 : AudioModule {
 								break;
 							case 18, (32+18):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][18], ccLow[ch][32+18]), [0, OperatorParamNums.Level], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][18], ccLow[ch][32+18]), [OperatorParamNums.Level, 0], ch);
 								break;
 							case 19, (32+19):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][19], ccLow[ch][32+19]), [1, OperatorParamNums.Level], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][19], ccLow[ch][32+19]), [OperatorParamNums.Level, 1], ch);
 								break;
 							case 16, (32+16):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][16], ccLow[ch][32+16]), [0, OperatorParamNums.SusLevel], 
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][16], ccLow[ch][32+16]), [OperatorParamNums.SusLevel, 0], 
 										ch);
 								break;
 							case 17, (32+17):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][17], ccLow[ch][32+17]), [1, OperatorParamNums.SusLevel], 
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][17], ccLow[ch][32+17]), [OperatorParamNums.SusLevel, 1], 
 										ch);
 								break;
 							case 20, (32+20):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][20], ccLow[ch][32+20]), [0, OperatorParamNums.ShpA], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][20], ccLow[ch][32+20]), [OperatorParamNums.ShpA, 0], ch);
 								break;
 							case 22, (32+22):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][22], ccLow[ch][32+22]), [1, OperatorParamNums.ShpA], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][22], ccLow[ch][32+22]), [OperatorParamNums.ShpA, 1], ch);
 								break;
 							case 21, (32+21):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][21], ccLow[ch][32+21]), [0, OperatorParamNums.ShpR], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][21], ccLow[ch][32+21]), [OperatorParamNums.ShpR, 0], ch);
 								break;
 							case 23, (32+23):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][23], ccLow[ch][32+23]), [1, OperatorParamNums.ShpR], ch);
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][23], ccLow[ch][32+23]), [OperatorParamNums.ShpR, 1], ch);
 								break;
 							case 30, (32+30):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][30], ccLow[ch][32+30]), [0, OperatorParamNums.TuneFine], 
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][30], ccLow[ch][32+30]), [OperatorParamNums.TuneFine, 0], 
 										ch);
 								break;
 							case 31, (32+31):
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][31], ccLow[ch][32+31]), [1, OperatorParamNums.TuneFine], 
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][31], ccLow[ch][32+31]), [OperatorParamNums.TuneFine, 1], 
 										ch);
 								break;
 //
@@ -1156,95 +1156,95 @@ public class QM816 : AudioModule {
 								setUnregisteredParam(data0.value<<25, [1, 1], data0.channel);
 								break;
 							case 78:
-								setUnregisteredParam(data0.value<<25, [0, 1], data0.channel);
+								setUnregisteredParam(data0.value<<25, [1, 0], data0.channel);
 								break;
 							case 74:
-								setUnregisteredParam(data0.value<<25, [1, 2], data0.channel);
+								setUnregisteredParam(data0.value<<25, [2, 1], data0.channel);
 								break;
 							case 79:
-								setUnregisteredParam(data0.value<<25, [0, 2], data0.channel);
+								setUnregisteredParam(data0.value<<25, [2, 0], data0.channel);
 								break;
 							case 85:
-								setUnregisteredParam(data0.value<<25, [0, 4], data0.channel);
+								setUnregisteredParam(data0.value<<25, [4, 0], data0.channel);
 								break;
 							case 86:
-								setUnregisteredParam(data0.value<<25, [1, 4], data0.channel);
+								setUnregisteredParam(data0.value<<25, [4, 1], data0.channel);
 								break;
 							case 87:
-								setUnregisteredParam(data0.value<<25, [0, 8], data0.channel);
+								setUnregisteredParam(data0.value<<25, [8, 0], data0.channel);
 								break;
 							case 88:
-								setUnregisteredParam(data0.value<<25, [1, 8], data0.channel);
+								setUnregisteredParam(data0.value<<25, [8, 1], data0.channel);
 								break;
 							case 72:
-								setUnregisteredParam(data0.value<<25, [1, 5], data0.channel);
+								setUnregisteredParam(data0.value<<25, [5, 1], data0.channel);
 								break;
 							case 77:
-								setUnregisteredParam(data0.value<<25, [0, 5], data0.channel);
+								setUnregisteredParam(data0.value<<25, [5, 0], data0.channel);
 								break;
 							case 70:
-								setUnregisteredParam(data0.value<<25, [1, 6], data0.channel);
+								setUnregisteredParam(data0.value<<25, [6, 1], data0.channel);
 								break;
 							case 75:
-								setUnregisteredParam(data0.value<<25, [0, 6], data0.channel);
+								setUnregisteredParam(data0.value<<25, [6, 0], data0.channel);
 								break;
 							case 71:
-								setUnregisteredParam(data0.value<<25, [1, 7], data0.channel);
+								setUnregisteredParam(data0.value<<25, [7, 1], data0.channel);
 								break;
 							case 76:
-								setUnregisteredParam(data0.value<<25, [0, 7], data0.channel);
+								setUnregisteredParam(data0.value<<25, [7, 0], data0.channel);
 								break;
 //Channel common 14 bit
 							case 7, 32+7:
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][7], ccLow[ch][32+7]), [4, ChannelParamNums.MasterVol], 
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][7], ccLow[ch][32+7]), [ChannelParamNums.MasterVol, 4], 
 										data0.channel);
 								break;
 							case 8, 32+8:
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][8], ccLow[ch][32+8]), [4, ChannelParamNums.Bal], 
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][8], ccLow[ch][32+8]), [ChannelParamNums.Bal, 4], 
 										data0.channel);
 								break;
 							case 24, 32+24:
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][24], ccLow[ch][32+24]), [4, ChannelParamNums.ShpA], 
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][24], ccLow[ch][32+24]), [ChannelParamNums.ShpA, 4], 
 										data0.channel);
 								break;
 							case 25, 32+25:
 								ccLow[ch][data0.note] = data0.value;
-								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][25], ccLow[ch][32+25]), [4, ChannelParamNums.ShpR], 
+								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][25], ccLow[ch][32+25]), [ChannelParamNums.ShpR, 4], 
 										data0.channel);
 								break;
 //
 							case 91:
-								setUnregisteredParam(data0.value<<25, [4, 2], data0.channel);
+								setUnregisteredParam(data0.value<<25, [2, 4], data0.channel);
 								break;
 							case 92:
-								setUnregisteredParam(data0.value<<25, [4, 3], data0.channel);
+								setUnregisteredParam(data0.value<<25, [3, 4], data0.channel);
 								break;
 							case 93:
 								setUnregisteredParam(data0.value<<25, [4, 4], data0.channel);
 								break;
 							case 94:
-								setUnregisteredParam(data0.value<<25, [4, 5], data0.channel);
+								setUnregisteredParam(data0.value<<25, [5, 4], data0.channel);
 								break;
 							case 102:
-								setUnregisteredParam(data0.value<<25, [4, 6], data0.channel);
+								setUnregisteredParam(data0.value<<25, [6, 4], data0.channel);
 								break;
 							case 103:
-								setUnregisteredParam(data0.value<<25, [4, 7], data0.channel);
+								setUnregisteredParam(data0.value<<25, [7, 4], data0.channel);
 								break;
 							case 104:
-								setUnregisteredParam(data0.value<<25, [4, 8], data0.channel);
+								setUnregisteredParam(data0.value<<25, [8, 4], data0.channel);
 								break;
 							case 105:
-								setUnregisteredParam(data0.value<<25, [4, 9], data0.channel);
+								setUnregisteredParam(data0.value<<25, [9, 4], data0.channel);
 								break;
 							case 106:
-								setUnregisteredParam(data0.value<<25, [4, 10], data0.channel);
+								setUnregisteredParam(data0.value<<25, [10, 4], data0.channel);
 								break;
 							case 107:
-								setUnregisteredParam(data0.value<<25, [4, 13], data0.channel);
+								setUnregisteredParam(data0.value<<25, [13, 4], data0.channel);
 								break;
 //
 							case 98:		//Non Registered Parameter Number MSB (handle through MIDI 2.0)
@@ -1306,108 +1306,108 @@ public class QM816 : AudioModule {
 								chCtrls[data0.channel].auxCtrl = cast(double)data1 / uint.max;
 								break;
 							case 18:
-								setUnregisteredParam(data1, [0, OperatorParamNums.Level], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.Level, 0], data0.channel);
 								break;
 							case 19:
-								setUnregisteredParam(data1, [1, OperatorParamNums.Level], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.Level, 1], data0.channel);
 								break;
 							case 16:
-								setUnregisteredParam(data1, [0, OperatorParamNums.SusLevel], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.SusLevel, 0], data0.channel);
 								break;
 							case 17:
-								setUnregisteredParam(data1, [1, OperatorParamNums.SusLevel], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.SusLevel, 1], data0.channel);
 								break;
 							case 20:
-								setUnregisteredParam(data1, [0, OperatorParamNums.ShpA], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.ShpA, 0], data0.channel);
 								break;
 							case 22:
-								setUnregisteredParam(data1, [1, OperatorParamNums.ShpA], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.ShpA, 1], data0.channel);
 								break;
 							case 21:
-								setUnregisteredParam(data1, [0, OperatorParamNums.ShpR], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.ShpR, 0], data0.channel);
 								break;
 							case 23:
-								setUnregisteredParam(data1, [1, OperatorParamNums.ShpR], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.ShpR, 1], data0.channel);
 								break;
 							case 30:
-								setUnregisteredParam(data1, [0, OperatorParamNums.TuneFine], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.TuneFine, 0], data0.channel);
 								break;
 							case 31:
-								setUnregisteredParam(data1, [1, OperatorParamNums.TuneFine], data0.channel);
+								setUnregisteredParam(data1, [OperatorParamNums.TuneFine, 1], data0.channel);
 								break;
 //
 							case 73:
 								setUnregisteredParam(data1, [1, 1], data0.channel);
 								break;
 							case 78:
-								setUnregisteredParam(data1, [0, 1], data0.channel);
+								setUnregisteredParam(data1, [1, 0], data0.channel);
 								break;
 							case 74:
-								setUnregisteredParam(data1, [1, 2], data0.channel);
+								setUnregisteredParam(data1, [2, 1], data0.channel);
 								break;
 							case 79:
-								setUnregisteredParam(data1, [0, 2], data0.channel);
+								setUnregisteredParam(data1, [2, 0], data0.channel);
 								break;
 							case 85:
-								setUnregisteredParam(data1, [0, 4], data0.channel);
+								setUnregisteredParam(data1, [4, 0], data0.channel);
 								break;
 							case 86:
-								setUnregisteredParam(data1, [1, 4], data0.channel);
+								setUnregisteredParam(data1, [4, 1], data0.channel);
 								break;
 							case 87:
-								setUnregisteredParam(data1, [0, 8], data0.channel);
+								setUnregisteredParam(data1, [8, 0], data0.channel);
 								break;
 							case 88:
-								setUnregisteredParam(data1, [1, 8], data0.channel);
+								setUnregisteredParam(data1, [8, 1], data0.channel);
 								break;
 							case 72:
-								setUnregisteredParam(data1, [1, 5], data0.channel);
+								setUnregisteredParam(data1, [5, 1], data0.channel);
 								break;
 							case 77:
-								setUnregisteredParam(data1, [0, 5], data0.channel);
+								setUnregisteredParam(data1, [5, 0], data0.channel);
 								break;
 							case 70:
-								setUnregisteredParam(data1, [1, 6], data0.channel);
+								setUnregisteredParam(data1, [6, 1], data0.channel);
 								break;
 							case 75:
-								setUnregisteredParam(data1, [0, 6], data0.channel);
+								setUnregisteredParam(data1, [6, 0], data0.channel);
 								break;
 							case 71:
-								setUnregisteredParam(data1, [1, 7], data0.channel);
+								setUnregisteredParam(data1, [7, 1], data0.channel);
 								break;
 							case 76:
-								setUnregisteredParam(data1, [0, 7], data0.channel);
+								setUnregisteredParam(data1, [7, 0], data0.channel);
 								break;
 							case 7:
 								setUnregisteredParam(data1, [ChannelParamNums.MasterVol, 4], data0.channel);
 								break;
 							case 8:
-								setUnregisteredParam(data1, [4, ChannelParamNums.Bal], data0.channel);
+								setUnregisteredParam(data1, [ChannelParamNums.Bal, 4], data0.channel);
 								break;
 							case 24:
-								setUnregisteredParam(data1, [4, ChannelParamNums.ShpA], data0.channel);
+								setUnregisteredParam(data1, [ChannelParamNums.ShpA, 4], data0.channel);
 								break;
 							case 25:
-								setUnregisteredParam(data1, [4, ChannelParamNums.ShpR], data0.channel);
+								setUnregisteredParam(data1, [ChannelParamNums.ShpR, 4], data0.channel);
 								break;
 //
 							case 91:
-								setUnregisteredParam(data1, [4, 2], data0.channel);
+								setUnregisteredParam(data1, [2, 4], data0.channel);
 								break;
 							case 92:
-								setUnregisteredParam(data1, [4, 3], data0.channel);
+								setUnregisteredParam(data1, [3, 4], data0.channel);
 								break;
 							case 93:
 								setUnregisteredParam(data1, [4, 4], data0.channel);
 								break;
 							case 94:
-								setUnregisteredParam(data1, [4, 5], data0.channel);
+								setUnregisteredParam(data1, [5, 4], data0.channel);
 								break;
 							case 102:
-								setUnregisteredParam(data1, [4, 6], data0.channel);
+								setUnregisteredParam(data1, [6, 4], data0.channel);
 								break;
 							case 103:
-								setUnregisteredParam(data1, [4, 7], data0.channel);
+								setUnregisteredParam(data1, [7, 4], data0.channel);
 								break;
 							case 104:
 								setUnregisteredParam(data1, [4, 8], data0.channel);
