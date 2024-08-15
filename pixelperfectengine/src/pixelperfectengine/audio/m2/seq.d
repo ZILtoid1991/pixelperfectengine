@@ -146,6 +146,8 @@ public class SequencerM2 : Sequencer {
 								if (data1.bytes[3] & 0x01) {
 									data3 |= regAuxSrc>>16;
 								}
+							} else {
+								data3 = regDataSrc;
 							}
 						}
 						if (data1.bytes[3] & 0x04) {
