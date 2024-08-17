@@ -369,6 +369,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 					midiSeq = null;
 				}
 				m2Seq = new SequencerM2();
+				writeln("Audio configuration has been compiled.");
 			} catch (Exception e) {
 				writeln(e);
 			}
@@ -394,7 +395,8 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			router.refreshRoutingTable();
 			router.refreshModuleList();
 		}
-		writeln("File ", path, " has been loaded as a configuration file.");
+		writeln("File ", path, " has been loaded as a configuration file. Please compile configuration before starting the ",
+				"audio thread!");
 	}
 	public void onSave() {
 		if (!path.length) {
@@ -438,6 +440,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		switch (fe.extension) {
 			case ".mid":
 				if (midiSeq !is null) {
+					midiSeq.stop();
 					midiSeq.openMIDI(readMIDIFile(fe.getFullPath));
 					state.m2Toggle = false;
 					mm.midiSeq = midiSeq;
@@ -446,6 +449,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 				}
 				break;
 			case ".imbc", ".imb":
+				m2Seq.stop();
 				m2Seq.loadSong(loadIMBCFile(fe.getFullPath), mcfg);
 				state.m2Toggle = true;
 				mm.midiSeq = m2Seq;
@@ -457,10 +461,12 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void seqStart() {
 		if (state.m2Toggle) m2Seq.start();
 		else if (midiSeq) midiSeq.start();
+		writeln("Sequencer has been started");
 	}
 	public void seqStop() {
 		if (state.m2Toggle) m2Seq.stop();
 		else if (midiSeq) midiSeq.stop();
+		writeln("Sequencer has been stopped and reset");
 	}
 	public void openRouter() {
 		if (router is null)
