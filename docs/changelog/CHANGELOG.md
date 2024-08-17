@@ -6,12 +6,16 @@ Due to a preexisting and similar format by the same name, M2 got renamed to IMBC
 
 ### Bugfixes and changes
 
-* Fixed various issues with incorrect instruction code generation.
-* Fixed instruction processing issues in the sequencer.
+* Complete refactoring of the textual IMBC reader (now called assembler), this also carries with itself a lot of bugfixes, especially those related to instructions previously not tested.
+
+### Known bugs
+
+* Either the sequencer doesn't like multiple patterns at once, or the assembler is emitting incorrect command codes.
 
 ## Concrete
 
 * Added resizable window support.
+* Updated file dialog for better UX.
 
 # 0.11.0-alpha.5
 
