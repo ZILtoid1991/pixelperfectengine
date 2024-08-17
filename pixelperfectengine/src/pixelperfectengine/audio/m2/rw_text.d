@@ -9,6 +9,7 @@ import std.math : isNaN;
 import std.format.read : formattedRead;
 import std.conv : to;
 import std.algorithm.searching : canFind, startsWith, countUntil;
+import std.algorithm.mutation : remove;
 import collections.sortedlist;
 import collections.hashmap;
 import midi2.types.enums;
@@ -331,10 +332,11 @@ public struct IMBCAssembler {
 				uint position;
 				foreach (uint[2] key ; ptrnData[$-1].unresolvedLabels[unresolvedPosMrk].positions) {
 					position = key[1];
-					sizediff_t jumpAmount = ptrnData[$-1].positionLabels[positionLabel] - position - 2;
+					sizediff_t jumpAmount = ptrnData[$-1].positionLabels[positionLabel] - position - 3;
 					debug assert(jumpAmount > 0);
 					ptrn[position] = cast(int)jumpAmount;
 				}
+				ptrnData[$-1].unresolvedLabels = remove(ptrnData[$-1].unresolvedLabels, unresolvedPosMrk);
 			}
 		} else if (words[0][0] == '$') {	//Emit command
 			parseEmitCmd(wholeLine, words, ptrnID);
@@ -1089,8 +1091,9 @@ public struct IMBCAssembler {
 							const uint cmdOvrWrite = currPatternID<<8;
 							foreach (uint[2] position; unresolvedPatterns[unresolvedPatternID].positions) {
 								uint origCmd = readCmd(position[0], position[1]);
-								overwriteCmdAt(position[0], origCmd | cmdOvrWrite, position[1]);
+								overwriteCmdAt(position[0], origCmd | cmdOvrWrite, position[1] - 1);
 							}
+							unresolvedPatterns = remove(unresolvedPatterns, unresolvedPatternID);
 						}
 						break;
 					default:
@@ -1100,6 +1103,7 @@ public struct IMBCAssembler {
 			}
 		}
 		enforce(context == Context.init, "Scope end have not reached");
+		enforce(unresolvedPatterns.length == 0, "One or more unresolved pattern references were found");
 		return result;
 	}
 }
