@@ -13,6 +13,14 @@ import core.time : MonoTime;
 import midi2.types.structs;
 import midi2.types.enums;
 
+/** 
+ * Implements an IMBC sequencer and VM with all of its capabilities.
+ * Bugs: 
+ * * Multi-pattern sequencing creates unwanted behavior.
+ *
+ * To do:
+ * * Implement a way to interact with the public registers.
+ */
 public class SequencerM2 : Sequencer {
 	struct DeviceData {
 		AudioModule		mod;
@@ -107,7 +115,7 @@ public class SequencerM2 : Sequencer {
 				ptrn.position++;//Move data position forward by one (always needed for each reads)
 				switch (data.bytes[0]) {		//Process commands
 					case OpCode.nullcmd:		//Null command (do nothing)
-						debug assert(!data.word);//This means a malformed command, bail out if debugging is enabled.
+						debug assert(!data.word, "Malformed IMBC instruction!");//This means a malformed command, bail out if debugging is enabled.
 						break;
 					case OpCode.lnwait:			//Long wait
 						const ulong tics = data.read24BitField | patternData[ptrn.position];	//Get amount of tics for this wait command
