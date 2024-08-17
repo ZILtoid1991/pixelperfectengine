@@ -362,6 +362,7 @@ public class FileDialog : Window {
 		if (ev.type == EventType.Menu) {
 			MenuEvent mev = cast(MenuEvent)ev;
 			selectedType = cast(int)mev.itemNum;
+			filetypeSelector.setText(mev.text.toDString);
 			spanDir();
 		}
 	}
