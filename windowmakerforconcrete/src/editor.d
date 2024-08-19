@@ -541,18 +541,18 @@ public class Editor : SystemEventListener, InputListener{
 		switch(source){
 			case "export":
 				ewh.addWindow(new FileDialog("Export Window"d, "export", &onExportWindow,
-						[FileDialog.FileAssociationDescriptor("D file"d, ["*.d"])], "./", true));
+						[FileDialog.FileAssociationDescriptor("D file"d, ["*.d"])], "./", FileDialog.Type.Save));
 				break;
 			case "saveAs":
 				ewh.addWindow(new FileDialog("Save Window as"d, "windowsaver", &onSaveFileAs,
-						[FileDialog.FileAssociationDescriptor("SDL file"d, ["*.sdl"])], "./", true));
+						[FileDialog.FileAssociationDescriptor("SDL file"d, ["*.sdl"])], "./", FileDialog.Type.Save));
 				break;
 			case "save":
 				if(wserializer.getFilename){
 					wserializer.store;
 				}else{
 					ewh.addWindow(new FileDialog("Save Window as"d, "windowsaver", &onSaveFileAs,
-							[FileDialog.FileAssociationDescriptor("SDL file"d, ["*.sdl"])], "./", true));
+							[FileDialog.FileAssociationDescriptor("SDL file"d, ["*.sdl"])], "./", FileDialog.Type.Save));
 				}
 				break;
 			case "load":
