@@ -30,6 +30,8 @@ import pixelperfectengine.audio.base.config;	//Audio configuration loader and pa
 import pixelperfectengine.audio.base.midiseq;	//MIDI sequencer
 //Imports the engine's own map format.
 import pixelperfectengine.map.mapformat;
+import inteli.emmintrin;
+import std.math;
 //Other imports that might be important. Uncomment any you feel you'll need.
 /* import pixelperfectengine.system.common; */
 
@@ -61,6 +63,7 @@ public class GameApp : SystemEventListener, InputListener {
 		down		=   1<<1,
 		left		=   1<<2,
 		right		=   1<<3,
+		fire		=	1<<4,
 	}
 	///Stores the currently loaded map file with all related data.
 	MapFormat		mapSource;
@@ -91,6 +94,8 @@ public class GameApp : SystemEventListener, InputListener {
 	ModuleManager	modMan;	///Handles the modules and their output.
 	ModuleConfig	modCfg;	///Loads and handles module configuration, including routing, patches, and samples.
 	SequencerM1		midiSeq;///MIDI sequencer for MIDI playback.
+	__m128d[8]		ballPosition;///Position for each ball (up to 8, set to [NaN, NaN] if doesn't exist).
+	__m128d[8]		ballSpeed;///Speed for each ball (up to 8, set to [NaN, NaN] if doesn't exist).
 	
 	/// Initializes our application.
 	/// Put other things here if you need them.
@@ -165,6 +170,19 @@ public class GameApp : SystemEventListener, InputListener {
 	///Collision events can be handled from here.
 	public void onCollision(ObjectCollisionEvent event) {
 
+	}
+	public void ballCollideFlatSurfaceTB(int ballNum = 0) @nogc nothrow @safe {
+		ballSpeed[ballNum] *= __m128d([1.0, -1.0]);
+	}
+	public void ballCollideFlatSurfaceLR(int ballNum = 0) @nogc nothrow @safe {
+		ballSpeed[ballNum] *= __m128d([-1.0, 1.0]);
+	}
+	public void ballCollideSphericalSurface(__m128d spherePos, int ballNum) @nogc nothrow @safe {
+		double ballSpeedProd = sqrt((ballSpeed[ballNum][0] * ballSpeed[ballNum][0]) + 
+				(ballSpeed[ballNum][1] * ballSpeed[ballNum][1]));
+		__m128d diff = ballPosition[ballNum] - spherePos;
+		double reflectionNormal = atan(diff[0] / diff[1]) + PI;
+		double ballAngle = atan(ballSpeed[ballNum][0] / ballSpeed[ballNum][1]) + PI;
 	}
 	///Called if the window is closed, etd.
 	public void onQuit() {
