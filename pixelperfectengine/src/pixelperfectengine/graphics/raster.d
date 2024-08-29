@@ -86,8 +86,8 @@ public class Raster : IRaster, PaletteContainer{
 	//private int[2] doubleBufferRegisters;
     private RefreshListener[] rL;				///Contains RefreshListeners associated with this raster.
 	private MonoTime frameTime, frameTime_1;	///Timestamps of frame occurences
-	private Duration delta_frameTime;			///Current time delta between two frames
-	private real framesPerSecond, avgFPS;		///Current and average fps counter
+	public Duration delta_frameTime;			///Current time delta between two frames
+	private double framesPerSecond, avgFPS;		///Current and average fps counter
 	//public Bitmap16Bit[2] frameBuffer;
 
 	///Creates a raster with the supplied parameters.
@@ -167,6 +167,7 @@ public class Raster : IRaster, PaletteContainer{
 		}
 		return backup;
 	}
+
 	/**
 	 * Returns the current FPS count.
 	 */
