@@ -48,7 +48,7 @@ int main() {
 	return 0;
 }
 ///I generally like to put most of the application logic into one class to keep track of globals, as well as targets to certain events.
-public class GameApp : SystemEventListener, InputListener {
+public class GameApp : SystemEventListener, InputListener, MouseListener {
 	///Defines various states of the game.
 	///I have added some quite useful and very often used ones
 	enum StateFlags {
@@ -79,6 +79,8 @@ public class GameApp : SystemEventListener, InputListener {
 	BitFlags!StateFlags	stateFlags;
 	///Contains various control state flags
 	BitFlags!ControlFlags controlFlags;
+	int batwidth;
+	const int batdistance = 44 * 8;
 	///Contains the pointer to the textlayer.
 	///Can be used for the menu, status bars, etc.
 	TileLayer		textLayer;
@@ -101,8 +103,8 @@ public class GameApp : SystemEventListener, InputListener {
 	/// Put other things here if you need them.
 	this () {
 		stateFlags.isRunning = true;	//Sets the state to running, so the main loop will stay running.
-		output = new OutputScreen("Your app name here", 424 * 4, 240 * 4);	//Creates an output window with the display size of 1696x960.
-		rstr = new Raster(424,240,output,0);//Creates a raster with the size of 424x240.
+		output = new OutputScreen("Icebreaker", 240 * 3, 424 * 3);	//Creates an output window with the display size of 1696x960.
+		rstr = new Raster(240,424,output,0);//Creates a raster with the size of 424x240.
 		output.setMainRaster(rstr);		//Sets the main raster of the output screen.
 
 		ih = new InputHandler();		//Creates an instance of an InputHandler (should be only one)
@@ -115,7 +117,18 @@ public class GameApp : SystemEventListener, InputListener {
 		textLayer.paletteOffset = 512;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
 		textLayer.masterVal = 127;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
 
-		cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
+		//cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
+		{
+			import pixelperfectengine.system.input.scancode;
+			//ih.addBinding(BindingCode(MouseButton.Left, 0, Devicetype.Mouse, 0), InputBinding("fire"));
+			ih.addBinding(BindingCode(1, 0, Devicetype.Joystick, 0), InputBinding("fire"));
+			ih.addBinding(BindingCode(1, JoyModifier.Axis, Devicetype.Joystick, 0), 
+					InputBinding("movement", deadzone: [0.1, 0.1]));
+			ih.addBinding(BindingCode(ScanCode.SPACE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("fire"));
+			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("left"));
+			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("right"));
+
+		}
 		//Comment the next part out, if you're having too much trouble with audio working, since you still can add sound later on.
 		//audio related part begin
 		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);	//Initializes the driver
@@ -149,6 +162,7 @@ public class GameApp : SystemEventListener, InputListener {
 			ocd.testAll();
 
 			//<Per-frame code comes here>
+			
 		}
 	}
 	///This function will load a map file to display levels, or portions of levels.
@@ -171,18 +185,23 @@ public class GameApp : SystemEventListener, InputListener {
 	public void onCollision(ObjectCollisionEvent event) {
 
 	}
+	///Calculates new direction if a ball hits top or bottom of a flat surface
 	public void ballCollideFlatSurfaceTB(int ballNum = 0) @nogc nothrow @safe {
 		ballSpeed[ballNum] *= __m128d([1.0, -1.0]);
 	}
+	///Calculates new direction if a ball hits a side of a flat surface
 	public void ballCollideFlatSurfaceLR(int ballNum = 0) @nogc nothrow @safe {
 		ballSpeed[ballNum] *= __m128d([-1.0, 1.0]);
 	}
-	public void ballCollideSphericalSurface(__m128d spherePos, int ballNum) @nogc nothrow @safe {
-		double ballSpeedProd = sqrt((ballSpeed[ballNum][0] * ballSpeed[ballNum][0]) + 
+	///Calculates new direction for 
+	public void ballCollideSphericalSurface(__m128d spherePos, int ballNum = 0) @nogc nothrow @safe {
+		const double ballSpeedProd = sqrt((ballSpeed[ballNum][0] * ballSpeed[ballNum][0]) + 
 				(ballSpeed[ballNum][1] * ballSpeed[ballNum][1]));
 		__m128d diff = ballPosition[ballNum] - spherePos;
-		double reflectionNormal = atan(diff[0] / diff[1]) + PI;
-		double ballAngle = atan(ballSpeed[ballNum][0] / ballSpeed[ballNum][1]) + PI;
+		const double reflectionNormal = atan(diff[0] / diff[1]) + PI;
+		const double ballAngle_curr = atan(ballSpeed[ballNum][0] / ballSpeed[ballNum][1]) + PI;
+		const double ballAngle_new = reflectionNormal + (reflectionNormal - ballAngle_curr);
+		ballSpeed[ballNum] = __m128d(sin(ballAngle_new), -1 * cos(ballAngle_new)) * __m128d(ballSpeedProd);
 	}
 	///Called if the window is closed, etd.
 	public void onQuit() {
@@ -209,4 +228,18 @@ public class GameApp : SystemEventListener, InputListener {
 	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
 		
 	}
+	
+	public void mouseClickEvent(MouseEventCommons mec, MouseClickEvent mce) {
+		
+	}
+	
+	public void mouseWheelEvent(MouseEventCommons mec, MouseWheelEvent mwe) {
+		
+	}
+	
+	public void mouseMotionEvent(MouseEventCommons mec, MouseMotionEvent mme) {
+		int x = mme.x / 3;
+		x = x > (240 + batwidth) ? 240 - batwidth : x;
+	}
+	
 }
