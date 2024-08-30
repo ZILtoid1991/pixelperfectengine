@@ -22,36 +22,45 @@ import midi2.types.enums;
  * * Implement a way to interact with the public registers.
  */
 public class SequencerM2 : Sequencer {
+	///Stores device related data
 	struct DeviceData {
-		AudioModule		mod;
+		AudioModule		mod;	///The audio module target for emit commands.
 		TransposingData	trnsp;
 	}
+	///Defines various error flags, many of which can be hit multiple times.
 	enum ErrorFlags : uint {
-		badOpcode		=		1<<0,
-		illegalJump		=		1<<1,
-		unrecognizedDevice=		1<<2,
-		unrecognizedCode=		1<<3,
-		outOfPatternSlots=		1<<4,
-		unrecognizedPattern=	1<<5,
-		illegalMIDICmd	=		1<<6,
+		badOpcode			=	1<<0,	///Set if bad or unrecognized opcode have been reached.
+		illegalJump			=	1<<1,	///Jump is outside of the bound of the pattern.
+		unrecognizedDevice	=	1<<2,	///Device ID not found in list.
+		unrecognizedCode	=	1<<3,	///Bad or unrecognized code.
+		outOfPatternSlots	=	1<<4,	///No more preallocated slots that are free.
+		unrecognizedPattern	=	1<<5,	///Pattern ID not found.
+		illegalMIDICmd		=	1<<6,	///Unrecognized or illegal MIDI command.
+		divisionByZero		=	1<<7,	///RB is zero in a division operand, instruction wasn't executed.
 	}
+	///Defines various status flags for the sequencer.
 	enum StatusFlags : uint {
-		play			=		1<<0,
-		pause			=		1<<1,
-		endReached		=		1<<8,
+		play				=	1<<0,	///Sequence is playing
+		pause				=	1<<1,	///Sequence is paused
+		endReached			=	1<<8,	///Sequence end has been reached
 
-		cfg_StopOnError	=		1<<16,
+		cfg_StopOnError		=	1<<16,	///Stop on any errors that are unrecoverable.
 	}
-	public BitFlags!ErrorFlags errors;
-	protected BitFlags!StatusFlags status;
-	protected Duration timePos;
-	public TreeMap!(uint, DeviceData) modTrgt;
-	public M2Song songdata;
+	public BitFlags!ErrorFlags errors;	///Stores error flags
+	protected BitFlags!StatusFlags status;///Stores status flags
+	protected Duration timePos;			///Stores the time position
+	public TreeMap!(uint, DeviceData) modTrgt;///Defines module targets
+	public M2Song songdata;				///Stores data related to the currently played song
 
 	public this() {
 		status.cfg_StopOnError = true;
 	}
-
+	/**
+	 * Loads a song into the sequencer.
+	 * Params:
+	 *   file = the preprocessed file (loaded from either text or binary).
+	 *   mcfg = module configuration.
+	 */
 	public void loadSong(M2File file, ModuleConfig mcfg) {
 		songdata = file.songdata;
 		if (mcfg !is null) {
@@ -61,16 +70,17 @@ public class SequencerM2 : Sequencer {
 		}
 		reset();
 	}
+	///Starts the sequencer.
 	public void start() @nogc @safe pure nothrow {
 		status.play = true;
 		status.pause = false;
 	}
-
+	///Stops the sequencer and resets its internal states.
 	public void stop() @nogc @safe pure nothrow {
 		status.play = false;
 		reset();
 	}
-
+	///Resets the sequencer to its initial state.
 	public void reset() @nogc @safe pure nothrow {
 		timePos = Duration.init;
 		songdata.globTimeMult = 0x1_00_00;
@@ -84,12 +94,14 @@ public class SequencerM2 : Sequencer {
 		//Enter main pattern
 		initNewPattern(0, PATTERN_SLOT_INACTIVE_ID);
 	}
-
+	///Pauses the sequencer.
 	public void pause() @nogc @safe pure nothrow {
 		status.play = false;
 		status.pause = true;
 	}
-
+	/**
+	 *
+	 */
 	public void lapseTime(Duration amount) @nogc nothrow {
 		if (!status.play) return;
 		timePos += amount;
@@ -101,6 +113,9 @@ public class SequencerM2 : Sequencer {
 	}
 	/** 
 	 * Advances the supplied pattern by the given `amount`, then processes commands if needed.
+	 * Params:
+	 *   ptrn = the current pattern.
+	 *   amount = the amount of which the pattern needs to be advanced.
 	 */
 	private void advancePattern(ref M2PatternSlot ptrn, Duration amount) @nogc nothrow {
 		///Returns the current timebase
@@ -244,10 +259,12 @@ public class SequencerM2 : Sequencer {
 								rd = ra * rb;
 								break;
 							case OpCode.div:
-								rd = ra / rb;
+								if (rb == 0) errors.divisionByZero = true;
+								else rd = ra / rb;
 								break;
 							case OpCode.mod:
-								rd = ra % rb;
+								if (rb == 0) errors.divisionByZero = true;
+								else rd = ra % rb;
 								break;
 							case OpCode.and:
 								rd = ra & rb;
@@ -280,7 +297,8 @@ public class SequencerM2 : Sequencer {
 								rd = cast(int)ra * cast(int)rb;
 								break;
 							case OpCode.divs:
-								rd = cast(int)ra / cast(int)rb;
+								if (rb == 0) errors.divisionByZero = true;
+								else rd = cast(int)ra / cast(int)rb;
 								break;
 							case OpCode.lsh:
 								rd = ra << rb;
