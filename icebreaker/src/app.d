@@ -23,6 +23,7 @@ import pixelperfectengine.system.config;		//Needed for configuration files
 
 import pixelperfectengine.system.rng;			//64 bit LFSR random number generator
 import pixelperfectengine.system.timer;			//Low-precision timer for keeping time-based events relatively precise
+import pixelperfectengine.system.etc;
 //Audio-related imports
 import pixelperfectengine.audio.base.handler;	//Most of the basic stuff we will need
 import pixelperfectengine.audio.base.modulebase;//Module interfaces to play back sound effects otherwise not tied to the sequence being played back
@@ -65,6 +66,7 @@ public class GameApp : SystemEventListener, InputListener, MouseListener {
 		right		=   1<<3,
 		fire		=	1<<4,
 	}
+	enum BatID		=	0xFF_FF;
 	///Stores the currently loaded map file with all related data.
 	MapFormat		mapSource;
 	///To display our game's graphics
@@ -80,6 +82,7 @@ public class GameApp : SystemEventListener, InputListener, MouseListener {
 	///Contains various control state flags
 	BitFlags!ControlFlags controlFlags;
 	int batwidth;
+	int batmovement;
 	const int batdistance = 44 * 8;
 	///Contains the pointer to the textlayer.
 	///Can be used for the menu, status bars, etc.
@@ -122,9 +125,11 @@ public class GameApp : SystemEventListener, InputListener, MouseListener {
 			import pixelperfectengine.system.input.scancode;
 			//ih.addBinding(BindingCode(MouseButton.Left, 0, Devicetype.Mouse, 0), InputBinding("fire"));
 			ih.addBinding(BindingCode(1, 0, Devicetype.Joystick, 0), InputBinding("fire"));
+			ih.addBinding(BindingCode(7, 0, Devicetype.Joystick, 0), InputBinding("pause"));
 			ih.addBinding(BindingCode(1, JoyModifier.Axis, Devicetype.Joystick, 0), 
 					InputBinding("movement", deadzone: [0.1, 0.1]));
 			ih.addBinding(BindingCode(ScanCode.SPACE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("fire"));
+			ih.addBinding(BindingCode(ScanCode.RETURN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("pause"));
 			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("left"));
 			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("right"));
 
@@ -221,14 +226,41 @@ public class GameApp : SystemEventListener, InputListener, MouseListener {
 	///Called if a key input event has occured.
 	///Note: This function will be changed once I move input handling and output screen handling to iota.
 	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
-		
+		switch (id) {
+			case hashCalc("fire"):
+				if (isPressed) {
+					if (!controlFlags.fire) {
+						onFire();
+						controlFlags.fire = true;
+					}
+				} else {
+					controlFlags.fire = false;
+				}
+				break;
+			default:
+				break;
+		}
 	}
 	///Called if an axis input event has occured.
 	///Note: This function will be changed once I move input handling and output screen handling to iota.
 	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
-		
+		switch (id) {
+			case hashCalc("movement"):
+
+				break;
+			default: break;
+		}
 	}
-	
+	public void moveBat(int amount) {
+		int x = gameField.getSpriteCoordinate(BatID).left;			//Get X position of bat
+		x += amount;												//Move bat by amount
+		x = clamp(x, 0, 240 - batwidth);							//Clamp values to not make the bat disappear on the sides
+		gameField.moveSprite(BatID, x, batdistance);				//Move sprite
+		ocd.objects[BatID].position.move(x, batdistance);			//Move collision model
+	}
+	public void onFire() {
+
+	}
 	public void mouseClickEvent(MouseEventCommons mec, MouseClickEvent mce) {
 		
 	}
@@ -240,6 +272,8 @@ public class GameApp : SystemEventListener, InputListener, MouseListener {
 	public void mouseMotionEvent(MouseEventCommons mec, MouseMotionEvent mme) {
 		int x = mme.x / 3;
 		x = x > (240 + batwidth) ? 240 - batwidth : x;
+		gameField.moveSprite(BatID, x, batdistance);				//Move sprite
+		ocd.objects[BatID].position.move(x, batdistance);			//Move collision model
 	}
 	
 }
