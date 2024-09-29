@@ -8,7 +8,9 @@ module pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.bitmap;
-import bindbc.sdl;
+//import bindbc.sdl;
+import bindbc.opengl.gl;
+import bindbc.opengl;
 public import pixelperfectengine.graphics.common;
 import std.conv;
 import std.algorithm.sorting;
@@ -18,14 +20,14 @@ import collections.treemap;
 
 ///The raster calls it every time it finishes the drawing to the framebuffers.
 ///Used to signal the output screen to switch out the framebuffers.
-public interface RefreshListener{
+public interface RefreshListener {
     public void refreshFinished();
 }
 
 ///Used to read the output from the raster and show it on the screen.
-public interface IRaster{
+/* public interface IRaster{
     public SDL_Texture* getOutput();
-}
+} */
 /**
  * Defines palette handling functions.
  * It provides various functions for safe palette handling.
@@ -64,12 +66,12 @@ public interface PaletteContainer {
 }
 
 ///Handles multiple layers onto one framebuffer.
-public class Raster : IRaster, PaletteContainer{
+public class Raster : PaletteContainer{
     private ushort rX, rY;		///Stores screen resolution. Set overscan resolutions at OutputWindow
-    //public SDL_Surface* workpad;
-	public SDL_Texture*[] frameBuffer;
-	public void* fbData;
-	public int fbPitch;
+    public Bitmap32Bit[] cpu_FrameBuffer;///Framebuffers for CPU rendering
+	public void* fbData;				///Data of the currently selected framebuffer
+	public int fbPitch;					///Pitch of the currently selected framebuffer
+	public GLuint[] gl_FrameBuffer;		///Framebuffers for OpenGL rendering
 	/**
 	 * Color format is ARGB, with each index having their own transparency.
 	 */
@@ -78,7 +80,6 @@ public class Raster : IRaster, PaletteContainer{
 	///Stores the layers by their priorities.
 	public LayerMap layerMap;
     //private Layer[int] layerList;	
-	private int[] threads;			///Thread IDs (currently unused).
     private bool r;					///Set to true if refresh is happening.
 	protected ubyte nOfBuffers;		///Number of framebuffers, 2 for double buffering.
 	protected ubyte updatedBuffer;	///Framebuffer currently being updated
@@ -103,14 +104,12 @@ public class Raster : IRaster, PaletteContainer{
 		//this.threads = threads;
 		assert(paletteLength <= 65_536);
 		_palette.length = paletteLength;
-		SDL_Renderer* renderer = oW.renderer;
+		//SDL_Renderer* renderer = oW.renderer;
         rX=x;
         rY=y;
 		nOfBuffers = buffers;
 		for (int i ; i < buffers ; i++)
-			frameBuffer ~= SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRX8888, SDL_TEXTUREACCESS_STREAMING, x, y);
-		/+doubleBufferRegisters[0] = 1;
-		doubleBufferRegisters[1] = 0;+/
+			cpu_FrameBuffer ~= new Bitmap32Bit(x, y);
 		oW.setMainRaster(this);
 		addRefreshListener(oW);
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
@@ -187,10 +186,7 @@ public class Raster : IRaster, PaletteContainer{
 		avgFPS = 0;
 	}
 	~this(){
-		foreach(SDL_Texture* t ; frameBuffer){
-			if(t)
-				SDL_DestroyTexture(t);
-		}
+		
 	}
     ///Adds a RefreshListener to its list.
     public void addRefreshListener(RefreshListener r){
@@ -256,14 +252,14 @@ public class Raster : IRaster, PaletteContainer{
 		
     }
 
-
+/* 
     ///Returns the workpad.
     public SDL_Texture* getOutput() @nogc @safe pure nothrow {
 		if (displayedBuffer == updatedBuffer) displayedBuffer++;
 		if (displayedBuffer >= nOfBuffers) displayedBuffer = 0;
 		return frameBuffer[displayedBuffer++];
 		//return frameBuffer[0];
-    }
+    } */
 
 
     ///Returns if the raster is refreshing.

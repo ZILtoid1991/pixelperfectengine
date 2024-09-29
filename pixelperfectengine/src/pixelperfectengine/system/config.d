@@ -20,7 +20,7 @@ import pixelperfectengine.system.etc;
 import pixelperfectengine.system.dictionary;
 import pixelperfectengine.graphics.outputscreen;
 
-import bindbc.sdl;
+//import bindbc.sdl;
 
 import sdlang;
 /**

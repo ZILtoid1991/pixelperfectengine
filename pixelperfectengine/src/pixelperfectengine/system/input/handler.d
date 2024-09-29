@@ -1,6 +1,6 @@
 module pixelperfectengine.system.input.handler;
 
-import bindbc.sdl;
+//import bindbc.sdl;
 
 import collections.treemap;
 import collections.linkedlist;
@@ -45,15 +45,15 @@ public class InputHandler {
 	alias CodeTreeSet = TreeMap!(InputBinding, void);
 	alias InputBindingLookupTree = TreeMap!(BindingCode, CodeTreeSet);//alias InputBindingLookupTree = TreeMap!(BindingCode, InputBinding[]);
 	alias JoyInfoMap = TreeMap!(int, JoyInfo);
-	alias JoyMap = TreeMap!(int, SDL_Joystick*);
+	//alias JoyMap = TreeMap!(int, SDL_Joystick*);
 	/**
 	 * The main input lookup tree.
 	 */
 	protected InputBindingLookupTree	inputLookup;
 	///Contains pointers related to joystick handling
-	protected JoyMap					joysticks;
+	//protected JoyMap					joysticks;
 	///Contains info related to each joystick
-	protected JoyInfoMap				joyInfo;
+	//protected JoyInfoMap				joyInfo;
 	///Contains info about the current status of the Input Handler.
 	///See the enum `StatusFlags` for more info.
 	protected uint						statusFlags;

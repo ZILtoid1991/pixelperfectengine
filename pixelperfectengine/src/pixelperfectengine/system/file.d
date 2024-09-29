@@ -31,7 +31,7 @@ import vfile;
 
 import mididi;
 
-import sdl_mixer;
+//import sdl_mixer;
 import std.utf;
 
 /** 

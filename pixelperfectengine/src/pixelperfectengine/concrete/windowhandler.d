@@ -12,8 +12,10 @@ public import pixelperfectengine.graphics.layers : ISpriteLayer;
 
 import collections.linkedlist;
 import pixelperfectengine.system.etc : cmpObjPtr;
+import iota.window.types;
+import iota.window.oswindow;
 
-import sdl.mouse;
+//import sdl.mouse;
 import std.math : nearbyint;
 
 /**
@@ -38,8 +40,8 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	protected Window baseWindow;
 	///The type of the current cursor
 	protected CursorType cursor;
-	///SDL cursor pointer to operate it
-	protected SDL_Cursor* sdlCursor;
+	///Reference to the operating system window for resizing, cursors, etc.
+	private OSWindow osWindow;
 	private ISpriteLayer spriteLayer;
 	//private Window windowToMove;
 	protected MouseEventReceptor dragEventSrc;

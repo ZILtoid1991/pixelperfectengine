@@ -6,7 +6,7 @@
 
 module pixelperfectengine.system.common;
 
-import bindbc.sdl;
+//import bindbc.sdl;
 
 public void initialzeSDL(){
 	SDLSupport sdls = loadSDL();

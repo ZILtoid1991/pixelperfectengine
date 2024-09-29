@@ -4,12 +4,9 @@
  * Pixel Perfect Engine, graphics.outputScreen module
  */
 module pixelperfectengine.graphics.outputscreen;
-version (PPE_NOSDL) {
-	import iota.window.oswindow;
-	import iota.window.types;
-} else {
-	import bindbc.sdl;
-}
+import iota.window.oswindow;
+import iota.window.types;
+
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.system.exc;
 import std.stdio;
