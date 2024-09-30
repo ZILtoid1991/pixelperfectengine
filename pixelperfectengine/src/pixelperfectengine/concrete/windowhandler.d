@@ -39,7 +39,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	///A window that is used for top-level stuff, like elements in the background, or an integrated window.
 	protected Window baseWindow;
 	///The type of the current cursor
-	protected CursorType cursor;
+	protected StandardCursors cursor;
 	///Reference to the operating system window for resizing, cursors, etc.
 	private OSWindow osWindow;
 	private ISpriteLayer spriteLayer;
@@ -68,11 +68,10 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	/**
 	 * Sets the cursor to the given type.
 	 */
-	public CursorType setCursor(CursorType type) {
+	public StandardCursors setCursor(StandardCursors type) {
 		if (cursor != type) {
+			osWindow.setCursor(type);
 			cursor = type;
-			sdlCursor = SDL_CreateSystemCursor(cast(SDL_SystemCursor)cursor);
-			SDL_SetCursor(sdlCursor);
 		}
 		return cursor;
 	}
@@ -80,12 +79,12 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * Resets cursor to the default type.
 	 */
 	public void resetCursor() {
-		setCursor(CursorType.Arrow);
+		setCursor(StandardCursors.Arrow);
 	}
 	/**
 	 * Returns the current cursor type.
 	 */
-	public CursorType getCursor() @nogc @safe pure nothrow {
+	public StandardCursors getCursor() @nogc @safe pure nothrow {
 		return cursor;
 	}
 	/**

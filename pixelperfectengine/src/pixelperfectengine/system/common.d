@@ -5,10 +5,10 @@
  */
 
 module pixelperfectengine.system.common;
-
+//TODO: Possibly marked for deletion
 //import bindbc.sdl;
 
-public void initialzeSDL(){
+/* public void initialzeSDL(){
 	SDLSupport sdls = loadSDL();
 	if(sdls == SDLSupport.noLibrary){
 		version(Windows){
@@ -24,4 +24,4 @@ public void initialzeSDL(){
 		debug
 			SDL_SetHint("SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING","1");
 	}
-}
+} */

@@ -17,6 +17,8 @@ import std.algorithm.sorting;
 import std.algorithm.mutation;
 import core.time;
 import collections.treemap;
+import iota.window.oswindow;
+import iota.window.types;
 
 ///The raster calls it every time it finishes the drawing to the framebuffers.
 ///Used to signal the output screen to switch out the framebuffers.
@@ -67,18 +69,19 @@ public interface PaletteContainer {
 
 ///Handles multiple layers onto one framebuffer.
 public class Raster : PaletteContainer{
-    private ushort rX, rY;		///Stores screen resolution. Set overscan resolutions at OutputWindow
+    private ushort rasterWidth, rasterHeight;///Stores virtual screen resolution.
     public Bitmap32Bit[] cpu_FrameBuffer;///Framebuffers for CPU rendering
-	public void* fbData;				///Data of the currently selected framebuffer
-	public int fbPitch;					///Pitch of the currently selected framebuffer
-	public GLuint[] gl_FrameBuffer;		///Framebuffers for OpenGL rendering
+	public void* 		fbData;			///Data of the currently selected framebuffer
+	public int			fbPitch;		///Pitch of the currently selected framebuffer
+	public GLuint[] 	gl_FrameBuffer;	///Framebuffers for OpenGL rendering
 	/**
 	 * Color format is ARGB, with each index having their own transparency.
 	 */
     protected Color[] _palette;
 	alias LayerMap = TreeMap!(int, Layer);
-	///Stores the layers by their priorities.
-	public LayerMap layerMap;
+	public LayerMap layerMap;		///Stores the layers by their priorities.
+	public LayerMap hiresOverlays;	///High resolution overlays for those who need it.
+
     //private Layer[int] layerList;	
     private bool r;					///Set to true if refresh is happening.
 	protected ubyte nOfBuffers;		///Number of framebuffers, 2 for double buffering.
@@ -91,27 +94,23 @@ public class Raster : PaletteContainer{
 	private double framesPerSecond, avgFPS;		///Current and average fps counter
 	//public Bitmap16Bit[2] frameBuffer;
 
-	///Creates a raster with the supplied parameters.
-	///Params:
-	///   x = Width of the raster.
-	///   y = Height of the raster.
-	///   paletteLength = The initial size of the palette.
-	///   buffers = The number of buffers to be used. Default is two for double buffering. Single buffering can
-	///eliminate occassional flickering and latency at the possibility of screen tearing and having to wait for
-	///the buffer to be finished.
-    public this(ushort x, ushort y, OutputScreen oW, size_t paletteLength, ubyte buffers = 2){
-        //workpad = SDL_CreateRGBSurface(SDL_SWSURFACE, x, y, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-		//this.threads = threads;
+	/** 
+	 * Creates a raster output with the supplied parameters.
+	 * Params:
+	 *   w = Raster width.
+	 *   h = Raster height.
+	 *   oW = The OS window for the target.
+	 *   paletteLength = Palette size, should be 65_536.
+	 *   buffers = Number of buffers, 2 recommended for double buffering, 1 recommended for GUI apps 
+	 * especially if they're not constantly updating.
+	 */
+    public this (ushort w, ushort h, OSWindow oW, size_t paletteLength = 65_536, ubyte buffers = 2) {
 		assert(paletteLength <= 65_536);
 		_palette.length = paletteLength;
-		//SDL_Renderer* renderer = oW.renderer;
-        rX=x;
-        rY=y;
+        rasterWidth=w;
+        rasterHeight=h;
 		nOfBuffers = buffers;
-		for (int i ; i < buffers ; i++)
-			cpu_FrameBuffer ~= new Bitmap32Bit(x, y);
-		oW.setMainRaster(this);
-		addRefreshListener(oW);
+		for (int i ; i < buffers ; i++) cpu_FrameBuffer ~= new Bitmap32Bit(w, h);
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
 		framesPerSecond = 0.0;
 		avgFPS = 0.0;
@@ -170,13 +169,13 @@ public class Raster : PaletteContainer{
 	/**
 	 * Returns the current FPS count.
 	 */
-	public @property real fps() @safe @nogc pure nothrow const {
+	public @property double fps() @safe @nogc pure nothrow const {
 		return framesPerSecond;
 	}
 	/**
 	 * Returns the current average FPS count.
 	 */
-	public @property real avgfps() @safe @nogc pure nothrow const {
+	public @property double avgfps() @safe @nogc pure nothrow const {
 		return avgFPS;
 	}
 	/**
@@ -198,7 +197,7 @@ public class Raster : PaletteContainer{
 	}
     ///Adds a layer at the given priority.
     public void addLayer(Layer l, int i) @safe pure nothrow {
-		l.setRasterizer(rX, rY);
+		l.setRasterizer(rasterWidth, rasterHeight);
 		layerMap[i] = l;
     }
 	public void loadLayers(R)(R layerRange) @safe pure nothrow {
@@ -226,24 +225,17 @@ public class Raster : PaletteContainer{
 		delta_frameTime = frameTime - frameTime_1;
 		const real delta_frameTime0 = cast(real)(delta_frameTime.total!"usecs"());
 		framesPerSecond = 1 / (delta_frameTime0 / 1_000_000);
-		if(avgFPS)
-			avgFPS = (avgFPS + framesPerSecond) / 2;
-		else
-			avgFPS = framesPerSecond;
+		if(avgFPS) avgFPS = (avgFPS + framesPerSecond) / 2;
+		else avgFPS = framesPerSecond;
 
 		updatedBuffer++;
 		if(updatedBuffer >= nOfBuffers) updatedBuffer = 0;
 
-		SDL_LockTexture(frameBuffer[updatedBuffer], null, &fbData, &fbPitch);
-
-		/+for(int i ; i < layerPriorityHandler.length ; i++){
-			layerList[i].updateRaster(fbData, fbPitch, palette.ptr);
-		}+/
 		foreach (Layer layer ; layerMap) {
 			layer.updateRaster(fbData, fbPitch, palette.ptr);
 		}
+		oW.gl_swapBuffers();
 
-		SDL_UnlockTexture(frameBuffer[updatedBuffer]);
         r = false;
 
         foreach(r; rL){
