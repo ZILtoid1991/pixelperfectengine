@@ -83,7 +83,7 @@ public class ConfigurationProfile {
 	///Stores ancillary tags to be serialized into the config file
 	public Tag[] ancillaryTags;
 	private static string vaultPath;
-	private SDL_DisplayMode[] videoModes;
+	//private SDL_DisplayMode[] videoModes;
 	//public AuxillaryElements auxillaryElements[];
 	public string appName;					///Name of the application. Can be used to check e.g. version safety.
 	public string appVers;					///Version of the application. Can be used to check e.g. version safety.
@@ -388,7 +388,7 @@ public class ConfigurationProfile {
 			}
 		}
 	}
-	public void useVideoMode(int mode, OutputScreen window){
+	/* public void useVideoMode(int mode, OutputScreen window){
 
 	}
 	public void autodetectVideoModes(int display = 0){
@@ -403,7 +403,7 @@ public class ConfigurationProfile {
 
 			}
 		}
-	}
+	} */
 	public size_t getNumOfVideoModes(){
 		return videoModes.length;
 	}
@@ -414,6 +414,7 @@ public class ConfigurationProfile {
 	/**
 	 * Sets the the path where configuration files and etc. will be stored.
 	 * If ../_debug/ folder exists, it'll be used instead for emulation purposes.
+	 * DEPRECATED, USE PATH SYSTEM INSTEAD!
 	 */
 	public static void setVaultPath(const char* developer, const char* application){
 		if (exists(getPathToAsset("%PATH%/_debug/"))) {
