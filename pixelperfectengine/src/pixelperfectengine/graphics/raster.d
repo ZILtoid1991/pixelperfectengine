@@ -68,12 +68,21 @@ public interface PaletteContainer {
 }
 
 ///Handles multiple layers onto one framebuffer.
-public class Raster : PaletteContainer{
+public class Raster : PaletteContainer {
+	float[] verticles = [
+		// positions		// texture coords
+		1.0f, 1.0f, 0.0f,	1.0f, 1.0f,	// top right
+		1.0f, -1.0f, 0.0f,	1.0f, 0.0f,	// bottom right
+		-1.0f, -1.0f, 0.0f,	0.0f, 0.0f,	// bottom left
+		-1.0f, 1.0f, 0.0f,	0.0f, 1.0f,	// top left
+	];
+	
     private ushort rasterWidth, rasterHeight;///Stores virtual screen resolution.
     public Bitmap32Bit[] cpu_FrameBuffer;///Framebuffers for CPU rendering
-	public void* 		fbData;			///Data of the currently selected framebuffer
-	public int			fbPitch;		///Pitch of the currently selected framebuffer
+	//public void* 		fbData;			///Data of the currently selected framebuffer
+	//public int			fbPitch;		///Pitch of the currently selected framebuffer
 	public GLuint[] 	gl_FrameBuffer;	///Framebuffers for OpenGL rendering
+	public GLuint		gl_VertexArray;	///
 	/**
 	 * Color format is ARGB, with each index having their own transparency.
 	 */
@@ -93,7 +102,6 @@ public class Raster : PaletteContainer{
 	public Duration delta_frameTime;			///Current time delta between two frames
 	private double framesPerSecond, avgFPS;		///Current and average fps counter
 	//public Bitmap16Bit[2] frameBuffer;
-
 	/** 
 	 * Creates a raster output with the supplied parameters.
 	 * Params:
@@ -110,7 +118,18 @@ public class Raster : PaletteContainer{
         rasterWidth=w;
         rasterHeight=h;
 		nOfBuffers = buffers;
-		for (int i ; i < buffers ; i++) cpu_FrameBuffer ~= new Bitmap32Bit(w, h);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		for (int i ; i < buffers ; i++) {
+			cpu_FrameBuffer ~= new Bitmap32Bit(w, h);
+			GLuint texture;
+			glGenTextures(1, &texture);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, 
+					cpu_FrameBuffer[i].getPtr);
+			gl_FrameBuffer ~= texture;
+		}
+		glGenVertexArrays(1, &gl_VertexArray);
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
 		framesPerSecond = 0.0;
 		avgFPS = 0.0;
@@ -215,7 +234,7 @@ public class Raster : PaletteContainer{
 	/**
 	 * Refreshes the whole framebuffer.
 	 */
-    public void refresh() {
+    public void refresh() @system {
 		import std.stdio : writeln;
         r = true;
 		
@@ -232,8 +251,16 @@ public class Raster : PaletteContainer{
 		if(updatedBuffer >= nOfBuffers) updatedBuffer = 0;
 
 		foreach (Layer layer ; layerMap) {
-			layer.updateRaster(fbData, fbPitch, palette.ptr);
+			layer.updateRaster(fbData, cast(int)cpu_FrameBuffer[updatedBuffer].pitch, cpu_FrameBuffer[updatedBuffer].getPtr);
 		}
+		glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[updatedBuffer]);
+		glActiveTexture(GL_TEXTURE0);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, 
+				cpu_FrameBuffer[updatedBuffer].getPtr);
+		glBindVertexArray(gl_VertexArray);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 5 * float.sizeof, verticles.ptr);
+		glEnableVertexAttribArray(0);
+		glDrawArrays(GL_QUADS, 0, 4);
 		oW.gl_swapBuffers();
 
         r = false;
