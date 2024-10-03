@@ -11,6 +11,9 @@ public import pixelperfectengine.system.input.interfaces;
 public import pixelperfectengine.graphics.common : Box;
 import pixelperfectengine.system.input.scancode;
 
+import iota.controls;
+import iota.controls.polling;
+
 /**
  * Converts and redirects inputs as events.
  * TODO: Refactor to use iota instead.
@@ -80,13 +83,12 @@ public class InputHandler {
 	 * IMPORTANT: Only a single instance of this class should exist!
 	 */
 	public this() {
-		SDL_InitSubSystem(SDL_INIT_JOYSTICK);
-		detectJoys();
+		initInput(ConfigFlags.gc_Enable, OSConfigFlags.win_RawInput | OSConfigFlags.win_XInput);
 	}
 	~this() {
-		foreach(joy; joysticks) {
+		/* foreach(joy; joysticks) {
 			SDL_JoystickClose(joy);
-		}
+		} */
 	}
 	/**
 	 * Adds a single inputbinding to the inputhandler.

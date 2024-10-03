@@ -404,37 +404,37 @@ public class ConfigurationProfile {
 			}
 		}
 	} */
-	public size_t getNumOfVideoModes(){
+	/* public size_t getNumOfVideoModes(){
 		return videoModes.length;
 	}
 	public string videoModeToString(size_t n){
 		return to!string(videoModes[n].w) ~ "x" ~ to!string(videoModes[n].h) ~ "@" ~ to!string(videoModes[n].refresh_rate) ~ 
 				"Hz";
-	}
+	} */
 	/**
 	 * Sets the the path where configuration files and etc. will be stored.
 	 * If ../_debug/ folder exists, it'll be used instead for emulation purposes.
 	 * DEPRECATED, USE PATH SYSTEM INSTEAD!
 	 */
-	public static void setVaultPath(const char* developer, const char* application){
-		if (exists(getPathToAsset("%PATH%/_debug/"))) {
+	public static deprecated void setVaultPath(const char* developer, const char* application) {
+		/* if (exists(getPathToAsset("%PATH%/_debug/"))) {
 			vaultPath = getPathToAsset("%PATH%/_debug/") ~ "/" ~ fromStringz(developer).idup ~ "_" ~ 
 					fromStringz(application).idup ~ "/";
 			if (!std.file.exists(vaultPath))
 				std.file.mkdir(vaultPath);
 		} else {
 			vaultPath = to!string(SDL_GetPrefPath(developer, application));
-		}
+		} */
 	}
-	public static string getVaultPath() {
-		return vaultPath;
+	public static deprecated string getVaultPath() {
+		return pathSymbols["STORE"];
 	}
 	/**
 	 * Restores the default configuration.
 	 * Filename can be set if not the default name was used for the file.
 	 */
 	public static void restoreDefaults(string filename = "config.sdl") {
-		std.file.remove(vaultPath ~ filename);
+		std.file.remove(pathSymbols["STORE"] ~ filename);
 	}
 }
 /**

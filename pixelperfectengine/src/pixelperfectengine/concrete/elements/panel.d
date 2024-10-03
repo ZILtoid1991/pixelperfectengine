@@ -176,7 +176,7 @@ public class Panel : WindowElement, ElementContainer {
 	/**
 	 * Sets the cursor to the given type on request.
 	 */
-	public void requestCursor(CursorType type) {
+	public void requestCursor(StandardCursors type) {
 		parent.requestCursor(type);
 	}
 	/**

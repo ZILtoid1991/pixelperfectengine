@@ -1,6 +1,7 @@
 module pixelperfectengine.system.input.interfaces;
 
 public import pixelperfectengine.system.input.types;
+public import iota.controls.types : TextCommandEvent, Timestamp;
 
 /**
  * Listener for keyboard, joystick, etc. events.
@@ -13,7 +14,7 @@ public interface InputListener {
 	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on getting centered.
 	 */
-	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed);
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed);
 	/**
 	 * Called when an axis is being operated.
 	 * The `id` should be generated from a string, usually the name of the binding.
@@ -22,7 +23,7 @@ public interface InputListener {
 	 * `value` is the current position of the axis normalized between -1.0 and +1.0 for joysticks, and 0.0 and +1.0 for analog
 	 * triggers.
 	 */
-	public void axisEvent(uint id, BindingCode code, uint timestamp, float value);
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value);
 }
 /**
  * Listener for system events. Controller adding and removal, quiting the application, etc.
@@ -50,15 +51,15 @@ public interface TextInputListener {
 	/**
 	 * Passes the inputted text to the target, alongside with a window ID and a timestamp.
 	 */
-	public void textInputEvent(uint timestamp, uint windowID, dstring text);
+	public void textInputEvent(Timestamp timestamp, OSWindow windowID, dstring text);
 	/**
 	 * Passes text editing events to the target, alongside with a window ID and a timestamp.
 	 */
-	public void textEditingEvent(uint timestamp, uint windowID, dstring text, int start, int length);
+	public void textEditingEvent(Timestamp timestamp, OSWindow windowID, dstring text, int start, int length);
 	/**
 	 * Passes text input key events to the target, e.g. cursor keys.
 	 */
-	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier);
+	public void textInputKeyEvent(Timestamp timestamp, OSWindow windowID, TextCommandEvent command);
 	/**
 	 * When called, the listener should drop all text input.
 	 */

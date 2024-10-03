@@ -694,8 +694,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	/**
 	 * Sets the cursor to the given type on request.
 	 */
-	public void requestCursor(CursorType type) {
-
+	public void requestCursor(StandardCursors type) {
+		parent.requestCursor(type);
 	}
 	///Draws a line.
 	public void drawLine(Point from, Point to, ubyte color) @trusted {
@@ -888,7 +888,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	/**
 	 * Passes the inputted text to the target, alongside with a window ID and a timestamp.
 	 */
-	public void textInputEvent(uint timestamp, uint windowID, dstring text) {
+	public void textInputEvent(Timestamp timestamp, OSWindow windowID, dstring text) {
 		import pixelperfectengine.system.etc : removeUnallowedSymbols;
 		/+if (allowedChars.length) {
 			text = removeUnallowedSymbols(text, allowedChars);
@@ -933,7 +933,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	/**
 	 * Passes text editing events to the target, alongside with a window ID and a timestamp.
 	 */
-	public void textEditingEvent(uint timestamp, uint windowID, dstring text, int start, int length) {
+	public void textEditingEvent(Timestamp timestamp, OSWindow windowID, dstring text, int start, int length) {
 		for (int i ; i < length ; i++) {
 			this.text.overwriteChar(start + i, text[i]);
 		}
@@ -942,9 +942,9 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	/**
 	 * Passes text input key events to the target, e.g. cursor keys.
 	 */
-	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier) {
-		switch(key) {
-			case TextInputKey.Enter:
+	public void textInputKeyEvent(Timestamp timestamp, OSWindow windowID, TextCommandEvent command) {
+		switch(command.type) {
+			case TextCommandType.NewLine, TextCommandType.NewPara:
 				entries[selection][hSelection].text = text;
 				if (flags & NEW_ITEM_ADD_EDIT) {	//Item add and edit mode
 					hSelection++;
@@ -963,7 +963,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				}
 					//onTextInput(new Event(source, null, null, null, text, 0, EventType.T, null, this));
 				break;
-			case TextInputKey.Escape:
+			case TextCommandType.Cancel:
 				//text = oldText;
 				if (flags & NEW_ITEM_ADD_EDIT) {
 					removeEntry(selection);
@@ -971,57 +971,57 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				} 
 				inputHandler.stopTextInput();
 				break;
-			case TextInputKey.Backspace:
-				if(cursorPos > 0){
-					deleteCharacter(cursorPos - 1);
-					cursorPos--;
-					draw();
-				}
-				break;
-			case TextInputKey.Delete:
-				if (tselect) {
-					for (int i ; i < tselect ; i++) {
+			case TextCommandType.Delete:
+				if (command.amount < 0){
+					if(cursorPos > 0){
+						deleteCharacter(cursorPos - 1);
+						cursorPos--;
+					}
+				} else {
+					if (tselect) {
+						for (int i ; i < tselect ; i++) {
+							deleteCharacter(cursorPos);
+						}
+						tselect = 0;
+					} else {
 						deleteCharacter(cursorPos);
 					}
-					tselect = 0;
-				} else {
-					deleteCharacter(cursorPos);
 				}
 				draw();
 				break;
-			case TextInputKey.CursorLeft:
-				if (modifier != KeyModifier.Shift) {
-					tselect = 0;
-					if(cursorPos > 0){
-						--cursorPos;
-						draw();
+			case TextCommandType.Cursor:
+				if (command.amount < 0){
+					if (command.flags & TextCommandFlags.PerWord) {
+						tselect = 0;
+						if(cursorPos > 0){
+							--cursorPos;		
+						}
+					}
+				} else {
+					if (command.flags & TextCommandFlags.PerWord) {
+						tselect = 0;
+						if(cursorPos < text.charLength){
+							++cursorPos;
+						}
 					}
 				}
+				draw();
 				break;
-			case TextInputKey.CursorRight:
-				if (modifier != KeyModifier.Shift) {
-					tselect = 0;
-					if(cursorPos < text.charLength){
-						++cursorPos;
-						draw();
-					}
-				}
-				break;
-			case TextInputKey.Home:
-				if (modifier != KeyModifier.Shift) {
+			case TextCommandType.Home:
+				if (command.flags & TextCommandFlags.PerWord) {
 					tselect = 0;
 					cursorPos = 0;
 					draw();
 				}
 				break;
-			case TextInputKey.End:
-				if (modifier != KeyModifier.Shift) {
+			case TextCommandType.End:
+				if (command.flags & TextCommandFlags.PerWord) {
 					tselect = 0;
 					cursorPos = cast(int)text.charLength;
 					draw();
 				}
 				break;
-			case TextInputKey.Insert:
+			case TextCommandType.Insert:
 				flags ^= INSERT;
 				draw();
 				break;

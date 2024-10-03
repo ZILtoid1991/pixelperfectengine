@@ -15,6 +15,7 @@ public import pixelperfectengine.concrete.elements.base;
 public import pixelperfectengine.concrete.popup.base;
 
 public import pixelperfectengine.system.input.types;
+public import iota.window.types : StandardCursors;
 
 /+/**
  * Checkbox interface.
@@ -137,7 +138,7 @@ public interface ElementContainer : PopUpHandler, Canvas {
 	/**
 	 * Sets the cursor to the given type on request.
 	 */
-	public void requestCursor(CursorType type);
+	public void requestCursor(StandardCursors type);
 }
 /**
  * Implemented by any object that can store stylesheets.

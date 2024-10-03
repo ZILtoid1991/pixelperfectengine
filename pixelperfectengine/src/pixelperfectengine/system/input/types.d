@@ -1,19 +1,11 @@
 module pixelperfectengine.system.input.types;
 
-/// Key modifiers used by the engine.
-public enum KeyModifier : ubyte {
-	None		= 0x00,
-	Shift		= 0x01,
-	Ctrl		= 0x02,
-	Alt			= 0x04,
-	GUI			= 0x08,
-	NumLock		= 0x10,
-	CapsLock	= 0x20,
-	ScrollLock	= 0x40,
-	LockKeys	= NumLock | CapsLock | ScrollLock,
-	Mode		= 0x80,
-	All			= 0xFF,
-}
+public import iota.controls.types;
+public import iota.controls.keyboard : KeyboardModifiers;
+public import iota.controls.mouse : MouseButtons, MouseButtonFlags;
+public import iota.controls.gamectrl : GameControllerButtons, GameControllerAxes;
+
+
 /// Modifier flags for joystick stuff, e.g. axes.
 public enum JoyModifier : ubyte {
 	Button		= 0x00,
@@ -23,19 +15,20 @@ public enum JoyModifier : ubyte {
 }
 /**
  * Determines input device types.
- * Currently 0-3 are used, 4-7 is reserved for future use.
+ * Currently 0-4 are used, 5-7 is reserved for future use.
  */
 public enum Devicetype : ubyte {
 	Keyboard	= 0,
 	Joystick	= 1,	///Also used for gamepads, wheels, etc., that can be interpreted as such
 	Mouse		= 2,
-	Touchscreen	= 3
+	Touchscreen	= 3,
+	Pen			= 4,
 }
 /**
  * Keys used during text input.
  * Multiple enter and backspace keys are not threated as different entities in this case.
  */
-public enum TextInputKey {
+/* public enum TextInputKey {
 	init,
 	Enter		= 1,
 	Escape		= 2,
@@ -50,49 +43,34 @@ public enum TextInputKey {
 	End			= 11,
 	PageUp		= 12,
 	PageDown	= 13
-}
+} */
 /**
  * Mouse Buttons that are numbered by the engine.
  */
-public enum MouseButton : ubyte {
+/* public enum MouseButton : ubyte {
 	Left		= 1,
 	Mid			= 2,
 	Right		= 3,
 	Next		= 4,
 	Previous	= 5
-}
+} */
 /**
  * Mouse Button flags.
  */
-public enum MouseButtonFlags : uint {
+/* public enum MouseButtonFlags : uint {
 	Left		= 1 << 0,
 	Mid			= 1 << 1,
 	Right		= 1 << 2,
 	Next		= 1 << 3,
 	Previous	= 1 << 4
-}
+} */
 /**
  * Button states.
  */
-public enum ButtonState : ubyte {
+/* public enum ButtonState : ubyte {
 	Released	= 0,
 	Pressed		= 1
-}
-/**
- * Converts key modifier codes from SDL to the engine's own
- */
-public ubyte keyModConv(ushort input) @nogc pure nothrow @safe {
-	import sdl.keycode;
-	ubyte result;
-	if (input & KMOD_SHIFT) result |= KeyModifier.Shift;
-	if (input & KMOD_CTRL) result |= KeyModifier.Ctrl;
-	if (input & KMOD_ALT) result |= KeyModifier.Alt;
-	if (input & KMOD_GUI) result |= KeyModifier.GUI;
-	if (input & KMOD_NUM) result |= KeyModifier.NumLock;
-	if (input & KMOD_CAPS) result |= KeyModifier.CapsLock;
-	if (input & KMOD_MODE) result |= KeyModifier.Mode;
-	return result;
-}
+} */
 
 /**
  * Stores an easy to lookup code for input bindings in integer format.
@@ -206,6 +184,9 @@ public struct BindingCode {
 		const uint baseRH = other.base | flags | other.flags;
 		return baseLH == baseRH;
 	}
+	size_t toHash() const @nogc @safe pure nothrow {
+		
+	}
 }
 /**
  * Defines a single Input Binding.
@@ -244,7 +225,7 @@ public struct InputBinding {
  * Common values for mouse events.
  */
 public struct MouseEventCommons {
-	uint			timestamp;		///Timestamp of the event
+	Timestamp		timestamp;		///Timestamp of the event
 	uint			windowID;		///Identifies the window where the event originated
 	uint			mouseID;		///Identifies the mouse that generated the event
 }

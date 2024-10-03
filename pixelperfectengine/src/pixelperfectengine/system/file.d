@@ -262,11 +262,11 @@ shared static this () {
 	import std.file : exists;
 	pathExec = thisExePath();	//Note: once we go to consoles/phones, we might need to make more 
 	string pathToExec = pathExec[0..$-baseName(pathExec).length];
-	if (exists(buildNormalizedPath(pathToExec, "../system/")))	//Inside of a bin-[arch]-[os] folder
+	if (exists(buildNormalizedPath(pathToExec, "../system/"))) {	//Inside of a bin-[arch]-[os] folder
 		pathRoot = buildNormalizedPath(pathToExec, "../");
-	else if (exists(buildNormalizedPath(pathToExec, "./system/")))	//Outside of a bin-[arch]-[os] folder
+	} else if (exists(buildNormalizedPath(pathToExec, "./system/"))) {//Outside of a bin-[arch]-[os] folder
 		pathRoot = buildNormalizedPath(pathToExec);
-	else {
+	} else {
 		debug assert(0, "Folder /system/ does not exist! Check your development environment and the documentation for info.");
 		else assert(0, "Folder /system/ does not exist! Please reinstall the software or contact the developer if that does 
 				not solve the issue.");
@@ -274,6 +274,20 @@ shared static this () {
 	pathSymbols["PATH"] = pathRoot;
 	pathSymbols["EXEC"] = pathToExec;
 	pathSymbols["SYSTEM"] = pathRoot ~ "/system/";
+	if (exists(buildNormalizedPath(pathRoot, "./debug/"))) {
+		pathSymbols["DEBUG"] = pathRoot ~ "/debug/";
+		pathSymbols["STORE"] = pathRoot ~ "/debug/";
+	}
+}
+public string initStoragePath(string appName, string etc) {
+	if (pathSymbols.get("STORE", null) == null) {
+		version (Windows) {
+			pathSymbols["STORE"] = buildNormalizedPath("%APPDATA%/", etc, appName, "/");
+		} else {
+			pathSymbols["STORE"] = buildNormalizedPath("~/", etc, appName, "/");
+		}
+	}
+	return pathSymbols["STORE"];
 }
 /** 
  * Builds a path to the language file.

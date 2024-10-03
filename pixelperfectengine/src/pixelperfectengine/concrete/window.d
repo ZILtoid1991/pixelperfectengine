@@ -403,7 +403,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	/**
 	 * Sets the cursor to the given type on request.
 	 */
-	public void requestCursor(CursorType type) {
+	public void requestCursor(StandardCursors type) {
 		handler.setCursor(type);
 	}
 	/**
@@ -691,44 +691,43 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 				}
 			}
 			if (!position.isBetween(mme.x, mme.y)) {
-				if (handler.getCursor != CursorType.Arrow) handler.resetCursor();
+				if (handler.getCursor != StandardCursors.Arrow) handler.resetCursor();
 			} else {
 				if (resizableH) {
 					if (mme.x - 2 <= position.left) { ///Left edge
 						if (resizableV) {
 							if (mme.y - 2 <= position.top) {///Top-left corner
-								handler.setCursor(CursorType.ResizeNWSE);
+								handler.setCursor(StandardCursors.ResizeTopLeft);
 								return;
 							} else if (mme.y >= position.bottom - 2) {///Bottom-left corner
-								handler.setCursor(CursorType.ResizeNESW);
+								handler.setCursor(StandardCursors.ResizeBottomLeft);
 								return;
 							}
 						}
-						handler.setCursor(CursorType.ResizeWE);///Left edge in general
+						handler.setCursor(StandardCursors.ResizeLeft);///Left edge in general
 						return;
 					} else if (mme.x >= position.right - 2) {///Right edge
 						if (resizableV) {
 							if (mme.y - 2 <= position.top) {///Top-right corner
-								handler.setCursor(CursorType.ResizeNESW);
+								handler.setCursor(StandardCursors.ResizeTopRight);
 								return;
 							} else if (mme.y >= position.bottom - 2) {///Bottom-right corner
-								handler.setCursor(CursorType.ResizeNWSE);
+								handler.setCursor(StandardCursors.ResizeBottomRight);
 								return;
 							}
 						}
-						handler.setCursor(CursorType.ResizeWE);///Right edge in general
+						handler.setCursor(StandardCursors.ResizeRight);///Right edge in general
 						return;
-					} else if ((mme.y - 2 <= position.top || mme.y >= position.bottom - 2) && resizableV) {///Top or bottom edge
-						handler.setCursor(CursorType.ResizeNS);
+					} else if (resizableV) {///Top or bottom edge
+						if (mme.y - 2 <= position.top) handler.setCursor(StandardCursors.ResizeTop);
+						else if (mme.y >= position.bottom - 2) handler.setCursor(StandardCursors.ResizeBottom);
 						return;
 					}
 				} else if (resizableV) {///The previous one already took care of the corner cases, so we won't have to deal with them here
-					if (mme.y - 2 <= position.top || mme.y >= position.bottom - 2) {///Top or bottom edge
-						handler.setCursor(CursorType.ResizeNS);
-						return;
-					}
+					if (mme.y - 2 <= position.top) handler.setCursor(StandardCursors.ResizeTop);
+					else if (mme.y >= position.bottom - 2) handler.setCursor(StandardCursors.ResizeBottom);
 				}
-				if (handler.getCursor != CursorType.Arrow) handler.resetCursor();
+				if (handler.getCursor != StandardCursors.Arrow) handler.resetCursor();
 			}
 		}
 	}
