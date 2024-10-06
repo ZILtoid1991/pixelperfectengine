@@ -779,7 +779,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		}
 		mce.x -= position.left;
 		mce.y -= position.top;
-		if (entries.length && mce.y > _header.height && mce.button == MouseButton.Left && mce.state) {
+		if (entries.length && mce.y > _header.height && mce.button == MouseButtons.Left && mce.state) {
 			
 			mce.y -= _header.height;
 			int pixelsTotal = mce.y, pos;
@@ -933,7 +933,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	/**
 	 * Passes text editing events to the target, alongside with a window ID and a timestamp.
 	 */
-	public void textEditingEvent(Timestamp timestamp, OSWindow windowID, dstring text, int start, int length) {
+	public void textEditingEvent(Timestamp timestamp, OSWindow window, dstring text, int start, int length) {
 		for (int i ; i < length ; i++) {
 			this.text.overwriteChar(start + i, text[i]);
 		}
@@ -942,7 +942,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	/**
 	 * Passes text input key events to the target, e.g. cursor keys.
 	 */
-	public void textInputKeyEvent(Timestamp timestamp, OSWindow windowID, TextCommandEvent command) {
+	public void textInputKeyEvent(Timestamp timestamp, OSWindow window, TextCommandEvent command) {
 		switch(command.type) {
 			case TextCommandType.NewLine, TextCommandType.NewPara:
 				entries[selection][hSelection].text = text;
@@ -972,54 +972,70 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				inputHandler.stopTextInput();
 				break;
 			case TextCommandType.Delete:
-				if (command.amount < 0){
+				if (tselect) {
+					for (int i ; i < tselect ; i++) {
+						deleteCharacter(cursorPos);
+					}
+					tselect = 0;
+				} else if (command.amount < 0){
 					if(cursorPos > 0){
 						deleteCharacter(cursorPos - 1);
 						cursorPos--;
 					}
 				} else {
-					if (tselect) {
-						for (int i ; i < tselect ; i++) {
-							deleteCharacter(cursorPos);
-						}
-						tselect = 0;
-					} else {
-						deleteCharacter(cursorPos);
-					}
+					deleteCharacter(cursorPos);
 				}
 				draw();
 				break;
 			case TextCommandType.Cursor:
 				if (command.amount < 0){
+					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
 					if (command.flags & TextCommandFlags.PerWord) {
-						tselect = 0;
-						if(cursorPos > 0){
-							--cursorPos;		
-						}
+						do {
+							if(cursorPos > 0) cursorPos--;
+						} while (cursorPos > 0 && text.getChar(cursorPos) != ' ');
+					} else if(cursorPos > 0) {
+						cursorPos--;
 					}
 				} else {
-					if (command.flags & TextCommandFlags.PerWord) {
+					if (command.flags & TextCommandFlags.Select) {
+						if (command.flags & TextCommandFlags.PerWord) {
+							do {
+								if (cursorPos + tselect < text.charLength) tselect++;
+							} while (cursorPos + tselect < text.charLength && text.getChar(cursorPos) != ' ');
+						} else if (cursorPos + tselect < text.charLength) {
+							tselect++;
+						}
+					} else {
 						tselect = 0;
-						if(cursorPos < text.charLength){
-							++cursorPos;
+						if (command.flags & TextCommandFlags.PerWord) {
+							do {
+								if (cursorPos < text.charLength) cursorPos++;
+							} while (cursorPos < text.charLength && text.getChar(cursorPos) != ' ');
+						} else if(cursorPos < text.charLength) {
+							cursorPos++;
 						}
 					}
 				}
 				draw();
 				break;
 			case TextCommandType.Home:
-				if (command.flags & TextCommandFlags.PerWord) {
+				if (!(command.flags & TextCommandFlags.Select)) {
+					tselect = cursorPos;
+				} else {
 					tselect = 0;
-					cursorPos = 0;
-					draw();
 				}
+				cursorPos = 0;
+				draw();
 				break;
 			case TextCommandType.End:
-				if (command.flags & TextCommandFlags.PerWord) {
+				if (command.flags & TextCommandFlags.Select) {
+					tselect = cast(int)text.charLength - cursorPos;
+				} else {
 					tselect = 0;
 					cursorPos = cast(int)text.charLength;
-					draw();
 				}
+				draw();
 				break;
 			case TextCommandType.Insert:
 				flags ^= INSERT;

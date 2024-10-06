@@ -90,7 +90,7 @@ public class Raster : PaletteContainer {
 	alias LayerMap = TreeMap!(int, Layer);
 	public LayerMap layerMap;		///Stores the layers by their priorities.
 	public LayerMap hiresOverlays;	///High resolution overlays for those who need it.
-
+	protected OSWindow oW;
     //private Layer[int] layerList;	
     private bool r;					///Set to true if refresh is happening.
 	protected ubyte nOfBuffers;		///Number of framebuffers, 2 for double buffering.
@@ -133,6 +133,7 @@ public class Raster : PaletteContainer {
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
 		framesPerSecond = 0.0;
 		avgFPS = 0.0;
+		this.oW = oW;
 	}
 	/**
 	 * Returns a copy of the palette of the object.
@@ -251,7 +252,8 @@ public class Raster : PaletteContainer {
 		if(updatedBuffer >= nOfBuffers) updatedBuffer = 0;
 
 		foreach (Layer layer ; layerMap) {
-			layer.updateRaster(fbData, cast(int)cpu_FrameBuffer[updatedBuffer].pitch, cpu_FrameBuffer[updatedBuffer].getPtr);
+			layer.updateRaster
+					(cpu_FrameBuffer[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width, _palette.ptr);
 		}
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[updatedBuffer]);
 		glActiveTexture(GL_TEXTURE0);

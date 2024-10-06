@@ -83,7 +83,7 @@ public class CheckBox : WindowElement, ISmallButton {
 		mce.x -= position.left;
 		mce.y -= position.top;
 		const int width = getStyleSheet().getImage(iconChecked).width;
-		if (mce.button == MouseButton.Left && mce.state == ButtonState.Pressed && mce.x < width) {
+		if (mce.button == MouseButtons.Left && mce.state == true && mce.x < width) {
 			if (isChecked) {
 				unCheck;
 			} else {

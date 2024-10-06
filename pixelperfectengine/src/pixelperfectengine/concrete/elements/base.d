@@ -192,13 +192,13 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 
 		parent.requestFocus(this);
 
-		if (mce.state == ButtonState.Pressed) {
-			if (mce.button == MouseButton.Left) flags |= IS_PRESSED;
+		if (mce.state == true) {
+			if (mce.button == MouseButtons.Left) flags |= IS_PRESSED;
 			if (!(mousePressEvent )) {
 				draw;
 				return;
 			}
-		} else if (mce.button == MouseButton.Left) {
+		} else if (mce.button == MouseButtons.Left) {
 			flags &= ~IS_PRESSED;
 		}
 
@@ -207,15 +207,15 @@ abstract class WindowElement : Focusable, MouseEventReceptor {
 		me.mce = mce;
 		
 		switch (mce.button) {
-			case MouseButton.Left:
+			case MouseButtons.Left:
 				if (onMouseLClick !is null && (!mce.state || mousePressEvent))
 					onMouseLClick(me);
 				break;
-			case MouseButton.Right:
+			case MouseButtons.Right:
 				if (onMouseRClick !is null && (!mce.state || mousePressEvent))
 					onMouseRClick(me);
 				break;
-			case MouseButton.Mid:
+			case MouseButtons.Middle:
 				if (onMouseMClick !is null && (!mce.state || mousePressEvent))
 					onMouseMClick(me);
 				break;

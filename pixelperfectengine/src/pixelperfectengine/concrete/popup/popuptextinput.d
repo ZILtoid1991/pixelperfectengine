@@ -8,7 +8,7 @@ public import pixelperfectengine.concrete.popup.base;
 public class PopUpTextInput : PopUpElement, TextInputListener {
 	protected bool enableEdit, insert;
 	protected size_t cursorPos;
-	protected int horizTextOffset, select;
+	protected int horizTextOffset, tselect;
 	public void delegate(Event ev) onTextInput;
 
 	public this(string source, Text text, Coordinate position){
@@ -54,7 +54,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 	private void deleteCharacter(size_t n){
 		text.removeChar(n);
 	}
-	public void textInputEvent(uint timestamp, uint windowID, dstring text){
+	public void textInputEvent(Timestamp timestamp, OSWindow window, dstring text){
 		for(int j ; j < text.length ; j++){
 			this.text.insertChar(cursorPos++, text[j]);
 		}
@@ -76,7 +76,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 	/**
      * Passes text editing events to the target, alongside with a window ID and a timestamp.
      */
-	public void textEditingEvent(uint timestamp, uint windowID, dstring text, int start, int length) {
+	public void textEditingEvent(Timestamp timestamp, OSWindow window, dstring text, int start, int length) {
 		for (int i ; i < length ; i++) {
 			this.text.overwriteChar(start + i, text[i]);
 		}
@@ -85,51 +85,85 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 	/**
      * Passes text input key events to the target, e.g. cursor keys.
      */
-	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
-		switch(key){
-			case TextInputKey.Escape:
+	public void textInputKeyEvent(Timestamp timestamp, OSWindow window, TextCommandEvent command) {
+		switch(command.type) {
+			case TextCommandType.Cancel:
 				inputhandler.stopTextInput();
 				break;
-			case TextInputKey.Enter:
+			case TextCommandType.NewLine, TextCommandType.NewPara:
 				inputhandler.stopTextInput();
 				//invokeActionEvent(new Event(source, null, null, null, text, text.length, EventType.TEXTINPUT));
-				if(onTextInput !is null)
-					onTextInput(new Event(this, text, EventType.TextInput, SourceType.PopUpElement));
+				if(onTextInput !is null) onTextInput(new Event(this, text, EventType.TextInput, SourceType.PopUpElement));
 				break;
-			case TextInputKey.Backspace:
-				if(cursorPos > 0){
-					deleteCharacter(cursorPos - 1);
-					cursorPos--;
-					draw();
+			case TextCommandType.Delete:
+				if (tselect) {
+					for (int i ; i < tselect ; i++) {
+						deleteCharacter(cursorPos);
+					}
+					tselect = 0;
+				} else if (command.amount < 0){
+					if(cursorPos > 0){
+						deleteCharacter(cursorPos - 1);
+						cursorPos--;
+					}
+				} else {
+					deleteCharacter(cursorPos);
 				}
-				break;
-			case TextInputKey.Delete:
-				deleteCharacter(cursorPos);
 				draw();
 				break;
-			case TextInputKey.CursorLeft:
-				if(cursorPos > 0){
-					--cursorPos;
-					draw();
+			case TextCommandType.Cursor:
+				if (command.amount < 0){
+					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
+					if (command.flags & TextCommandFlags.PerWord) {
+						do {
+							if(cursorPos > 0) cursorPos--;
+						} while (cursorPos > 0 && text.getChar(cursorPos) != ' ');
+					} else if(cursorPos > 0) {
+						cursorPos--;
+					}
+				} else {
+					if (command.flags & TextCommandFlags.Select) {
+						if (command.flags & TextCommandFlags.PerWord) {
+							do {
+								if (cursorPos + tselect < text.charLength) tselect++;
+							} while (cursorPos + tselect < text.charLength && text.getChar(cursorPos) != ' ');
+						} else if (cursorPos + tselect < text.charLength) {
+							tselect++;
+						}
+					} else {
+						tselect = 0;
+						if (command.flags & TextCommandFlags.PerWord) {
+							do {
+								if (cursorPos < text.charLength) cursorPos++;
+							} while (cursorPos < text.charLength && text.getChar(cursorPos) != ' ');
+						} else if(cursorPos < text.charLength) {
+							cursorPos++;
+						}
+					}
 				}
-				break;
-			case TextInputKey.CursorRight:
-				if(cursorPos < text.charLength){
-					++cursorPos;
-					draw();
-				}
-				break;
-			case TextInputKey.Insert:
-				insert = !insert;
 				draw();
 				break;
-			case TextInputKey.Home:
+			case TextCommandType.Home:
+				if (!(command.flags & TextCommandFlags.Select)) {
+					tselect = cast(int)cursorPos;
+				} else {
+					tselect = 0;
+				}
 				cursorPos = 0;
 				draw();
 				break;
-			case TextInputKey.End:
-				cursorPos = text.charLength;
+			case TextCommandType.End:
+				if (command.flags & TextCommandFlags.Select) {
+					tselect = cast(int)(text.charLength - cursorPos);
+				} else {
+					tselect = 0;
+					cursorPos = cast(int)text.charLength;
+				}
 				draw();
+				break;
+			case TextCommandType.Insert:
+				//flags ^= INSERT;
+				//draw();
 				break;
 			default:
 				break;

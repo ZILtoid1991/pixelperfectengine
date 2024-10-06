@@ -394,7 +394,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
 	 */
-	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		import pixelperfectengine.system.etc : hashCalc;
 		if (isPressed) {
 			switch (id) {
@@ -431,7 +431,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * `value` is the current position of the axis normalized between -1.0 and +1.0 for joysticks, and 0.0 and +1.0 for analog
 	 * triggers.
 	 */
-	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 
 	}
 	public int[2] getRasterSizes() {

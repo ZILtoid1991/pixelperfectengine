@@ -20,6 +20,7 @@ import pixelperfectengine.system.etc;
 import pixelperfectengine.system.dictionary;
 import pixelperfectengine.graphics.outputscreen;
 
+import iota.controls.keyboard : KeyboardModifiers;
 //import bindbc.sdl;
 
 import sdlang;
@@ -104,9 +105,9 @@ public class ConfigurationProfile {
 	}
 	shared static this() {
 		keymodifierStrings =
-				["none"	: KeyModifier.None, "Shift": KeyModifier.Shift, "Ctrl": KeyModifier.Ctrl, "Alt": KeyModifier.Alt, 
-						"GUI": KeyModifier.GUI, "NumLock": KeyModifier.NumLock, "CapsLock": KeyModifier.CapsLock, "Mode": KeyModifier.Mode,
-						"ScrollLock": KeyModifier.ScrollLock, "All": KeyModifier.All];
+				["none"	: 0, "Shift": KeyboardModifiers.Shift, "Ctrl": KeyboardModifiers.Ctrl, "Alt": KeyboardModifiers.Alt, 
+						"GUI": KeyboardModifiers.Meta, "NumLock": KeyboardModifiers.NumLock, "CapsLock": KeyboardModifiers.CapsLock, 
+						"Aux": KeyboardModifiers.Aux, "ScrollLock": KeyboardModifiers.ScrollLock, "All": ubyte.max];
 		joymodifierStrings = [0x00: "button",0x04: "dpad",0x08: "axis"];
 		devicetypeStrings = [Devicetype.Joystick: "joystick", Devicetype.Keyboard: "keyboard", Devicetype.Mouse: "mouse",
 				Devicetype.Touchscreen: "touchscreen" ];
@@ -264,10 +265,12 @@ public class ConfigurationProfile {
 					case Keyboard:
 						foreach (binding ; idd.keyBindingList) {
 							Attribute[] attrList = [new Attribute(null, "name", Value(keyNameDict.encode(binding.bc.buttonNum)))];
-							if (binding.bc.modifierFlags != KeyModifier.None)
+							if (binding.bc.modifierFlags != 0) {
 								attrList ~= new Attribute(null, "keyMod", Value(keymodToString(binding.bc.modifierFlags)));
-							if (binding.bc.keymodIgnore != KeyModifier.All) 
+							}
+							if (binding.bc.keymodIgnore != 0xFF) {
 								attrList ~= new Attribute(null, "keyModIgnore", Value(keymodToString(binding.bc.keymodIgnore)));
+							}
 							new Tag(t2_0, null, null, [Value(binding.name)], attrList);
 						}
 						break;
@@ -303,6 +306,8 @@ public class ConfigurationProfile {
 						break;
 					case Touchscreen:
 						break;
+					case Pen:
+						break;
 				}
 			}
 			if (!localCountry.length) localCountry = "NULL";
@@ -324,8 +329,8 @@ public class ConfigurationProfile {
 	 */
 	public ubyte stringToKeymod(string s) @safe const {
 		import std.algorithm.iteration : splitter;
-		if(s == "None")	return KeyModifier.None;
-		if(s == "All")		return KeyModifier.All;
+		if(s == "None")	return 0x00;
+		if(s == "All") return 0xFF;
 		auto values = s.splitter(';');
 		ubyte result;
 		foreach(t ; values){
@@ -337,35 +342,17 @@ public class ConfigurationProfile {
 	 * Converts a key modifier value to human-readable string.
 	 */
 	public string keymodToString(const ubyte keymod) @safe pure nothrow const {
-		if(keymod == KeyModifier.None)
-			return "None";
-		if(keymod == KeyModifier.All)
-			return "All";
+		if(keymod == 0x00) return "None";
+		if(keymod == 0xFF) return "All";
 		string result;
-		if(keymod & KeyModifier.Shift){
-			result ~= "Shift;";
-		}
-		if(keymod & KeyModifier.Ctrl){
-			result ~= "Ctrl;";
-		}
-		if(keymod & KeyModifier.Alt){
-			result ~= "Alt;";
-		}
-		if(keymod & KeyModifier.GUI){
-			result ~= "GUI;";
-		}
-		if(keymod & KeyModifier.NumLock){
-			result ~= "NumLock;";
-		}
-		if(keymod & KeyModifier.CapsLock){
-			result ~= "CapsLock;";
-		}
-		if(keymod & KeyModifier.Mode){
-			result ~= "Mode;";
-		}
-		if(keymod & KeyModifier.ScrollLock){
-			result ~= "ScrollLock;";
-		}
+		if(keymod & KeyboardModifiers.Shift) result ~= "Shift;";
+		if(keymod & KeyboardModifiers.Ctrl) result ~= "Ctrl;";
+		if(keymod & KeyboardModifiers.Alt) result ~= "Alt;";
+		if(keymod & KeyboardModifiers.Meta) result ~= "GUI;";
+		if(keymod & KeyboardModifiers.NumLock) result ~= "NumLock";
+		if(keymod & KeyboardModifiers.CapsLock) result ~= "CapsLock;";
+		if(keymod & KeyboardModifiers.Aux) result ~= "Aux;";
+		if(keymod & KeyboardModifiers.ScrollLock) result ~= "ScrollLock;";
 		return result[0..$-1];
 	}
 	/**

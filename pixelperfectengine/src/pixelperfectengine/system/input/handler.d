@@ -11,22 +11,15 @@ public import pixelperfectengine.system.input.interfaces;
 public import pixelperfectengine.graphics.common : Box;
 import pixelperfectengine.system.input.scancode;
 
-import iota.controls;
-import iota.controls.polling;
+import IOTA = iota.controls;
 
 /**
  * Converts and redirects inputs as events.
  * TODO: Refactor to use iota instead.
  */
 public class InputHandler {
-	/**
-	 * Contains data related to joysticks.
-	 */
-	public struct JoyInfo {
-		string			name;			///The name of the joystick
-		int				buttons;		///The amount of buttons on this joystick
-		int				axis;			///The amount of axes of this joystick
-		int				hats;			///The amount of hats (d-pads) of this joystick
+	shared static this(){
+		IOTA.initInput(ConfigFlags.gc_Enable, OSConfigFlags.win_RawInput | OSConfigFlags.win_XInput);
 	}
 	protected enum StatusFlags {
 		none				=	0,
@@ -47,12 +40,13 @@ public class InputHandler {
 	
 	alias CodeTreeSet = TreeMap!(InputBinding, void);
 	alias InputBindingLookupTree = TreeMap!(BindingCode, CodeTreeSet);//alias InputBindingLookupTree = TreeMap!(BindingCode, InputBinding[]);
-	alias JoyInfoMap = TreeMap!(int, JoyInfo);
+	
 	//alias JoyMap = TreeMap!(int, SDL_Joystick*);
 	/**
 	 * The main input lookup tree.
 	 */
 	protected InputBindingLookupTree	inputLookup;
+	protected IOTA.GameController[]		gameControllers;
 	///Contains pointers related to joystick handling
 	//protected JoyMap					joysticks;
 	///Contains info related to each joystick
@@ -83,12 +77,8 @@ public class InputHandler {
 	 * IMPORTANT: Only a single instance of this class should exist!
 	 */
 	public this() {
-		initInput(ConfigFlags.gc_Enable, OSConfigFlags.win_RawInput | OSConfigFlags.win_XInput);
-	}
-	~this() {
-		/* foreach(joy; joysticks) {
-			SDL_JoystickClose(joy);
-		} */
+		//NOTE: As of iota 0.3.0, x11 does not use any of the extra flags
+		detectControllers();
 	}
 	/**
 	 * Adds a single inputbinding to the inputhandler.
@@ -121,36 +111,19 @@ public class InputHandler {
 		inputLookup = newTree;
 		return backup;
 	}
-	///Static CTOR to init joystick handling
-	///Only one input handler should be made per application to avoid issues from SDL_Poll indiscriminately polling all events
-	/+static this() {
-		SDL_InitSubSystem(SDL_INIT_JOYSTICK);
-	}+/
 	/**
-	 * Detects all connected joysticks.
+	 * Detects all connected game controllers.
 	 */
-	public void detectJoys() {
-		import std.string : fromStringz;
-		import std.conv : to;
-		const int numOfJoysticks = SDL_NumJoysticks();
-		for(int i ; i < numOfJoysticks ; i++){
-			if(!joysticks.ptrOf(i)){
-				SDL_Joystick* joy = SDL_JoystickOpen(i);
-				if(joy) {
-					joysticks[i] = joy;
-					joyInfo[i] = JoyInfo(fromStringz(SDL_JoystickName(joy)).dup, SDL_JoystickNumButtons(joy), SDL_JoystickNumAxes(joy),
-							SDL_JoystickNumHats(joy));
-				}
+	private void detectControllers() {
+		gameControllers.length = 0;
+		foreach (InputDevice dev ; IOTA.devList) {
+			IOTA.GameController gc = cast(IOTA.GameController)dev;
+			if (gc !is null) {
+				gameControllers ~= gc;
 			}
 		}
 	}
-	/**
-	 * Removes info related to disconnected joysticks.
-	 */
-	public void removeJoy(int i) {
-		SDL_JoystickClose(joysticks[i]);
-		joysticks.remove(i);
-	}
+	
 	/**
 	 * Starts text input handling.
 	 */
@@ -160,7 +133,8 @@ public class InputHandler {
 		textInputListener = listener;
 		statusFlags |= StatusFlags.TextInputEnable;
 		if (reportTextEditingEvents) statusFlags |= StatusFlags.TI_ReportTextEditingEvents;
-		SDL_StartTextInput();
+		//SDL_StartTextInput();
+		IOTA.keyb.setTextInput = true;
 		listener.initTextInput();
 	}
 	/**
@@ -168,7 +142,8 @@ public class InputHandler {
 	 */
 	public void stopTextInput() {
 		textInputListener.dropTextInput();
-		SDL_StopTextInput();
+		//SDL_StopTextInput();
+		IOTA.keyb.setTextInput = false;
 		textInputListener = null;
 		statusFlags = 0;
 	}
@@ -194,81 +169,79 @@ public class InputHandler {
 	 * Tests for input.
 	 */
 	public void test() {
-		SDL_Event event;
-		while(SDL_PollEvent(&event)) {
+		IOTA.InputEvent event;
+		while(IOTA.poll(event)) {
 			BindingCode bc;
 			bool release;
 			float axisOffset;
-			uint timestamp;
+			IOTA.Timestamp timestamp;
 			switch(event.type) {
-				case SDL_KEYUP:
-					release = true;
-					goto case SDL_KEYDOWN;
-				case SDL_KEYDOWN:
-					bc.buttonNum = cast(ushort)event.key.keysym.scancode;
+				case IOTA.InputEventType.Keyboard:
+					release = event.button.dir == 0;
+					bc.buttonNum = cast(ushort)event.button.id;
 					bc.deviceTypeID = Devicetype.Keyboard;
-					bc.modifierFlags = keyModConv(event.key.keysym.mod);
-					timestamp = event.key.timestamp;
+					bc.modifierFlags = cast(ubyte)event.button.aux;
+					timestamp = event.timestamp;
 					break;
-				case SDL_JOYBUTTONUP:
-					release = true;
-					goto case SDL_JOYBUTTONDOWN;
-				case SDL_JOYBUTTONDOWN:
-					bc.deviceNum = cast(ubyte)event.jbutton.which;
+				case IOTA.InputEventType.GCButton:
+					release = event.button.dir == 0;
+					bc.buttonNum = cast(ubyte)event.button.id;
 					bc.deviceTypeID = Devicetype.Joystick;
-					bc.buttonNum = event.jbutton.button;
+					bc.deviceNum = event.source.devNum;
+					timestamp = event.timestamp;
 					break;
-				case SDL_JOYHATMOTION:
+				/* case IOTA.InputEventType.GCHat:
 					bc.deviceNum = cast(ubyte)event.jhat.which;
 					bc.deviceTypeID = Devicetype.Joystick;
 					bc.buttonNum = event.jhat.value;
 					bc.modifierFlags = JoyModifier.DPad;
 					bc.extArea = event.jhat.hat;
-					break;
-				case SDL_JOYAXISMOTION:
-					bc.deviceNum = cast(ubyte)event.jaxis.which;
+					break; */
+				case IOTA.InputEventType.GCAxis:
+					bc.deviceNum = cast(ubyte)event.source.devNum;
 					bc.deviceTypeID = Devicetype.Joystick;
-					bc.buttonNum = event.jaxis.axis;
+					bc.buttonNum = cast(ushort)event.axis.id;
 					bc.modifierFlags = JoyModifier.Axis;
-					axisOffset = cast(real)event.jaxis.value / short.max;
+					axisOffset = event.axis.val;
 					break;
-				case SDL_MOUSEBUTTONUP:
-					release = true;
-					goto case SDL_MOUSEBUTTONDOWN;
-				case SDL_MOUSEBUTTONDOWN:
-					bc.deviceNum = cast(ubyte)event.button.which;
+				case IOTA.InputEventType.MouseClick:
 					bc.deviceTypeID = Devicetype.Mouse;
-					bc.buttonNum = event.button.button;
+					bc.buttonNum = event.mouseCE.button;
 					if (mouseListener) {
 						mouseListener.mouseClickEvent(
-								MouseEventCommons(event.button.timestamp, event.button.windowID, event.button.which),
-								MouseClickEvent(event.button.x, event.button.y, event.button.button, event.button.clicks, 
-								event.button.state == 1));
+								MouseEventCommons(event.timestamp, IOTA.OSWindow.byRef(event.handle), cast(Mouse)event.source),
+								MouseClickEvent(event.mouseCE.x, event.mouseCE.y, cast(ubyte)event.mouseCE.button, event.mouseCE.repeat, 
+								event.mouseCE.dir == 1));
 					}
 					break;
-				case SDL_MOUSEMOTION:
+				case IOTA.InputEventType.MouseMove:
 					if (mouseListener) {
 						mouseListener.mouseMotionEvent(
-								MouseEventCommons(event.motion.timestamp, event.motion.windowID, event.motion.which), 
-								MouseMotionEvent(event.motion.state, event.motion.x, event.motion.y, event.motion.xrel, 
-								event.motion.yrel));
+								MouseEventCommons(event.timestamp, IOTA.OSWindow.byRef(event.handle), cast(Mouse)event.source),
+								MouseMotionEvent(event.mouseME.buttons, event.mouseME.x, event.mouseME.y, event.mouseME.xD, 
+								event.mouseME.yD));
 					}
 					break;
-				case SDL_MOUSEWHEEL:
+				case IOTA.InputEventType.MouseScroll:
 					if (mouseListener) {
-						mouseListener.mouseWheelEvent(MouseEventCommons(event.wheel.timestamp, event.wheel.windowID, event.wheel.which),
-								MouseWheelEvent(event.wheel.x, event.wheel.y));
+						mouseListener.mouseWheelEvent(
+								MouseEventCommons(event.timestamp, IOTA.OSWindow.byRef(event.handle), cast(Mouse)event.source),
+								MouseWheelEvent(event.mouseSE.xS, event.mouseSE.yS));
 					}
 					break;
-				case SDL_TEXTINPUT:
+				case IOTA.InputEventType.TextInput:
 					import std.utf : toUTF32;
 					import std.string : fromStringz;
-					if (statusFlags & StatusFlags.TextInputEnable) {
-						dstring eventText = toUTF32(fromStringz(event.text.text.ptr));
-						textInputListener.textInputEvent(event.text.timestamp, event.text.windowID, eventText);
+					if (statusFlags & StatusFlags.TextInputEnable && !event.textIn.isDeadChar) {
+						textInputListener.textInputEvent(event.timestamp, IOTA.OSWindow.byRef(event.handle), toUTF32(event.textIn.text));
 					}
 					break;
-				case SDL_TEXTEDITING:
+				case IOTA.InputEventType.TextCommand:
+					if (statusFlags & StatusFlags.TextInputEnable) {
+						textInputListener.textInputKeyEvent(event.timestamp, IOTA.OSWindow.byRef(event.handle), event.textCmd);
+					}
+					break;
+				/* case SDL_TEXTEDITING:
 					import std.utf : toUTF32;
 					import std.string : fromStringz;
 					if (statusFlags & StatusFlags.TI_ReportTextEditingEvents) {
@@ -276,17 +249,17 @@ public class InputHandler {
 						textInputListener.textEditingEvent(event.edit.timestamp, event.edit.windowID, eventText, event.edit.start, 
 								event.edit.length);
 					}
-					break;
-				case SDL_QUIT:
+					break; */
+				case IOTA.InputEventType.ApplExit:
 					if (systemEventListener) systemEventListener.onQuit();
 					break;
-				case SDL_JOYDEVICEADDED:
-					detectJoys;
-					if (systemEventListener) systemEventListener.controllerAdded(event.jdevice.which);
+				case IOTA.InputEventType.DeviceAdded:
+					detectControllers();
+					if (systemEventListener) systemEventListener.inputDeviceAdded(event.source);
 					break;
-				case SDL_JOYDEVICEREMOVED:
-					removeJoy(event.jdevice.which);
-					if (systemEventListener) systemEventListener.controllerRemoved(event.jdevice.which); 
+				case IOTA.InputEventType.DeviceRemoved:
+					IOTA.removeInvalidatedDevices();
+					if (systemEventListener) systemEventListener.inputDeviceRemoved(event.source); 
 					break;
 				default: break;
 			}
@@ -312,7 +285,7 @@ public class InputHandler {
 							}
 						}
 					}
-				} else if (statusFlags & StatusFlags.TextInputEnable && bc.deviceTypeID == Devicetype.Keyboard && !release) {		//Generate text editing input
+				} /* else if (statusFlags & StatusFlags.TextInputEnable && bc.deviceTypeID == Devicetype.Keyboard && !release) {		//Generate text editing input
 					switch(bc.buttonNum){
 						case ScanCode.ENTER, ScanCode.ENTER2, ScanCode.NP_ENTER:
 							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.Enter, 
@@ -368,7 +341,7 @@ public class InputHandler {
 							break;
 						default: break;
 					}
-				} else if (statusFlags & StatusFlags.CaptureEvent) {			//Record event as keybinding
+				} */ else if (statusFlags & StatusFlags.CaptureEvent) {			//Record event as keybinding
 					CodeTreeSet* hashcodeSet = inputLookup.ptrOf(bc);
 					if (hashcodeSet && !(hashcodeSet.has(sysescCode) && statusFlags & StatusFlags.CE_CancelOnSysEsc)) {
 						if (StatusFlags.CE_DelConflCodes) {

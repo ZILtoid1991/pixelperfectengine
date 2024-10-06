@@ -2,7 +2,7 @@ module pixelperfectengine.system.input.types;
 
 public import iota.controls.types;
 public import iota.controls.keyboard : KeyboardModifiers;
-public import iota.controls.mouse : MouseButtons, MouseButtonFlags;
+public import iota.controls.mouse;
 public import iota.controls.gamectrl : GameControllerButtons, GameControllerAxes;
 
 
@@ -185,7 +185,7 @@ public struct BindingCode {
 		return baseLH == baseRH;
 	}
 	size_t toHash() const @nogc @safe pure nothrow {
-		
+		return base;
 	}
 }
 /**
@@ -226,8 +226,8 @@ public struct InputBinding {
  */
 public struct MouseEventCommons {
 	Timestamp		timestamp;		///Timestamp of the event
-	uint			windowID;		///Identifies the window where the event originated
-	uint			mouseID;		///Identifies the mouse that generated the event
+	OSWindow		windowID;		///Identifies the window where the event originated
+	Mouse			mouse;			///Identifies the mouse that generated the event
 }
 /**
  * Packs mouseclick event information into a single struct.

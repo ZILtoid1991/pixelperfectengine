@@ -128,21 +128,21 @@ public class VertScrollBar : ScrollBar {
 		if (state != ElementState.Enabled) return;
 		mce.x -= position.left;
 		mce.y -= position.top;
-		if (mce.button == MouseButton.Left) {
+		if (mce.button == MouseButtons.Left) {
 			if (mce.y < position.width) {
-				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
+				if (!(flags & MINUS_PRESSED) && mce.state == true) {
 					value = _value - 1;
 					flags |= MINUS_PRESSED;
 					registerTimer();
-				} else if (flags & MINUS_PRESSED && mce.state == ButtonState.Released) {
+				} else if (flags & MINUS_PRESSED && mce.state == false) {
 					flags &= ~(MINUS_PRESSED | SCROLLMATIC);
 				}
 			} else if (mce.y >= position.height - position.width) {
-				if (!(flags & PLUS_PRESSED) && mce.state == ButtonState.Pressed) {
+				if (!(flags & PLUS_PRESSED) && mce.state == true) {
 					value = _value + 1;
 					flags |= PLUS_PRESSED;
 					registerTimer();
-				} else if (flags & PLUS_PRESSED && mce.state == ButtonState.Released) {
+				} else if (flags & PLUS_PRESSED && mce.state == false) {
 					flags &= ~(PLUS_PRESSED | SCROLLMATIC);
 				}
 			} else {
@@ -214,21 +214,21 @@ public class HorizScrollBar : ScrollBar {
 		if (state != ElementState.Enabled) return;
 		mce.x -= position.left;
 		mce.y -= position.top;
-		if (mce.button == MouseButton.Left) {
+		if (mce.button == MouseButtons.Left) {
 			if (mce.x < position.height) {
-				if (!(flags & MINUS_PRESSED) && mce.state == ButtonState.Pressed) {
+				if (!(flags & MINUS_PRESSED) && mce.state == true) {
 					value = _value - 1;
 					flags |= MINUS_PRESSED;
 					registerTimer();
-				} else if (flags & MINUS_PRESSED && mce.state == ButtonState.Released) {
+				} else if (flags & MINUS_PRESSED && mce.state == false) {
 					flags &= ~MINUS_PRESSED;
 				}
 			} else if (mce.x >= position.width - position.height) {
-				if (!(flags & PLUS_PRESSED) && mce.state == ButtonState.Pressed) {
+				if (!(flags & PLUS_PRESSED) && mce.state == true) {
 					value = _value + 1;
 					flags |= PLUS_PRESSED;
 					registerTimer();
-				} else if (flags & PLUS_PRESSED && mce.state == ButtonState.Released) {
+				} else if (flags & PLUS_PRESSED && mce.state == false) {
 					flags &= ~PLUS_PRESSED;
 				}
 			} else {

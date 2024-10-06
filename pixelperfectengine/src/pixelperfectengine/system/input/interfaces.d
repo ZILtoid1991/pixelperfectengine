@@ -37,12 +37,12 @@ public interface SystemEventListener {
 	 * Called if a controller was added.
 	 * The `id` is the ID of the attached controller.
 	 */
-	public void controllerAdded(uint id);
+	public void inputDeviceAdded(InputDevice id);
 	/**
 	 * Called if a controller was removed.
 	 * The `id` is the ID of the removed controller.
 	 */
-	public void controllerRemoved(uint id);
+	public void inputDeviceRemoved(InputDevice id);
 }
 /**
  * Called on text input events.

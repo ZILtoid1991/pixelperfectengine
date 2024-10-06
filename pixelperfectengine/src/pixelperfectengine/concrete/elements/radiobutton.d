@@ -61,7 +61,7 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (state != ElementState.Enabled) return;
-		if (mce.button == MouseButton.Left && mce.state == ButtonState.Pressed) group.latch(this);
+		if (mce.button == MouseButtons.Left && mce.state == true) group.latch(this);
 		super.passMCE(mec, mce);
 	}
 	/**

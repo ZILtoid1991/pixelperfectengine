@@ -75,7 +75,7 @@ public class SlidingEncoder : WindowElement {
 		}
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
-		if (mce.button == MouseButton.Left && track.isBetween(mce.x - position.left, mce.y - position.top)) {
+		if (mce.button == MouseButtons.Left && track.isBetween(mce.x - position.left, mce.y - position.top)) {
 			const int position = mce.x - position.left - (slider.height / 2);
 			parent.requestFocus(this);
 			if (position <= 0) value = 0;

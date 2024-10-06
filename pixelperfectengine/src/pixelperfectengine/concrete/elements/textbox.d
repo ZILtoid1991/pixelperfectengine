@@ -10,7 +10,7 @@ public class TextBox : WindowElement, TextInputListener {
 	protected static enum	INSERT = 1<<9;
 	protected static enum	ENABLE_TEXT_EDIT = 1<<10;
 	protected size_t cursorPos;
-	protected int horizTextOffset, select;
+	protected int horizTextOffset, tselect;
 	protected Text oldText;
 	///Contains an input filter. or null if no filter is used.
 	protected InputFilter filter;
@@ -91,8 +91,8 @@ public class TextBox : WindowElement, TextInputListener {
 			cursor.left += text.getWidth(0, cursorPos) - horizTextOffset;
 			//cursor must be at least single pixel wide
 			cursor.right = cursor.left;
-			if (select) {
-				cursor.right += text.getWidth(cursorPos, cursorPos + select);
+			if (tselect) {
+				cursor.right += text.getWidth(cursorPos, cursorPos + tselect);
 			} else if (flags & INSERT) {
 				if (cursorPos < text.charLength) cursor.right += text.getWidth(cursorPos, cursorPos+1);
 				else cursor.right += text.font.chars(' ').xadvance;
@@ -122,7 +122,7 @@ public class TextBox : WindowElement, TextInputListener {
 	/**
      * Passes text editing events to the target, alongside with a window ID and a timestamp.
      */
-	public void textEditingEvent(uint timestamp, uint windowID, dstring text, int start, int length) {
+	public void textEditingEvent(Timestamp timestamp, OSWindow windowID, dstring text, int start, int length) {
 		for (int i ; i < length ; i++) {
 			this.text.overwriteChar(start + i, text[i]);
 		}
@@ -131,15 +131,15 @@ public class TextBox : WindowElement, TextInputListener {
 	private void deleteCharacter(size_t n){
 		text.removeChar(n);
 	}
-	public void textInputEvent(uint timestamp, uint windowID, dstring text) {
+	public void textInputEvent(Timestamp timestamp, OSWindow windowID, dstring text) {
 		import pixelperfectengine.system.etc : removeUnallowedSymbols;
 		if (filter) {
 			filter.use(text);
 			if (!text.length) return;
 		}
-		if (select) {
-			this.text.removeChar(cursorPos, select);
-			select = 0;
+		if (tselect) {
+			this.text.removeChar(cursorPos, tselect);
+			tselect = 0;
 			for(int j ; j < text.length ; j++){
 				this.text.insertChar(cursorPos++, text[j]);
 			}
@@ -180,82 +180,88 @@ public class TextBox : WindowElement, TextInputListener {
 	}
 	public void initTextInput() {
 		flags |= ENABLE_TEXT_EDIT;
-		select = cast(int)text.charLength;
+		tselect = cast(int)text.charLength;
 		oldText = new Text(text);
 		draw();
 	}
 
-	public void textInputKeyEvent(uint timestamp, uint windowID, TextInputKey key, ushort modifier = 0){
-		switch(key) {
-			case TextInputKey.Enter:
+	public void textInputKeyEvent(Timestamp timestamp, OSWindow window, TextCommandEvent command){
+		switch(command.type) {
+			case TextCommandType.Cancel:
 				inputHandler.stopTextInput();
-				if(onTextInput !is null)
-					onTextInput(new Event(this, text, EventType.TextInput, SourceType.WindowElement));
-					//onTextInput(new Event(source, null, null, null, text, 0, EventType.T, null, this));
 				break;
-			case TextInputKey.Escape:
-				text = oldText;
+			case TextCommandType.NewLine, TextCommandType.NewPara:
 				inputHandler.stopTextInput();
-				
-
+				//invokeActionEvent(new Event(source, null, null, null, text, text.length, EventType.TEXTINPUT));
+				if(onTextInput !is null) onTextInput(new Event(this, text, EventType.TextInput, SourceType.PopUpElement));
 				break;
-			case TextInputKey.Backspace:
-				if (select) {
-					for (int i ; i < select ; i++) {
+			case TextCommandType.Delete:
+				if (tselect) {
+					for (int i ; i < tselect ; i++) {
+						deleteCharacter(cursorPos);
+					}
+					tselect = 0;
+				} else if (command.amount < 0){
+					if(cursorPos > 0){
 						deleteCharacter(cursorPos - 1);
 						cursorPos--;
 					}
-					select = 0;
-				} else if (cursorPos > 0) {
-					deleteCharacter(cursorPos - 1);
-					cursorPos--;
-					draw();
-				}
-				break;
-			case TextInputKey.Delete:
-				if (select) {
-					for (int i ; i < select ; i++) {
-						deleteCharacter(cursorPos);
-					}
-					select = 0;
 				} else {
 					deleteCharacter(cursorPos);
 				}
 				draw();
 				break;
-			case TextInputKey.CursorLeft:
-				if (modifier != KeyModifier.Shift) {
-					select = 0;
-					if(cursorPos > 0){
-						--cursorPos;
-						draw();
+			case TextCommandType.Cursor:
+				if (command.amount < 0){
+					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
+					if (command.flags & TextCommandFlags.PerWord) {
+						do {
+							if(cursorPos > 0) cursorPos--;
+						} while (cursorPos > 0 && text.getChar(cursorPos) != ' ');
+					} else if(cursorPos > 0) {
+						cursorPos--;
+					}
+				} else {
+					if (command.flags & TextCommandFlags.Select) {
+						if (command.flags & TextCommandFlags.PerWord) {
+							do {
+								if (cursorPos + tselect < text.charLength) tselect++;
+							} while (cursorPos + tselect < text.charLength && text.getChar(cursorPos) != ' ');
+						} else if (cursorPos + tselect < text.charLength) {
+							tselect++;
+						}
+					} else {
+						tselect = 0;
+						if (command.flags & TextCommandFlags.PerWord) {
+							do {
+								if (cursorPos < text.charLength) cursorPos++;
+							} while (cursorPos < text.charLength && text.getChar(cursorPos) != ' ');
+						} else if(cursorPos < text.charLength) {
+							cursorPos++;
+						}
 					}
 				}
+				draw();
 				break;
-			case TextInputKey.CursorRight:
-				if (modifier != KeyModifier.Shift) {
-					select = 0;
-					if(cursorPos < text.charLength){
-						++cursorPos;
-						draw();
-					}
+			case TextCommandType.Home:
+				if (!(command.flags & TextCommandFlags.Select)) {
+					tselect = cast(int)cursorPos;
+				} else {
+					tselect = 0;
 				}
+				cursorPos = 0;
+				draw();
 				break;
-			case TextInputKey.Home:
-				if (modifier != KeyModifier.Shift) {
-					select = 0;
-					cursorPos = 0;
-					draw();
+			case TextCommandType.End:
+				if (command.flags & TextCommandFlags.Select) {
+					tselect = cast(int)(text.charLength - cursorPos);
+				} else {
+					tselect = 0;
+					cursorPos = cast(int)text.charLength;
 				}
+				draw();
 				break;
-			case TextInputKey.End:
-				if (modifier != KeyModifier.Shift) {
-					select = 0;
-					cursorPos = text.charLength;
-					draw();
-				}
-				break;
-			case TextInputKey.Insert:
+			case TextCommandType.Insert:
 				flags ^= INSERT;
 				draw();
 				break;
