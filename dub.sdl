@@ -24,6 +24,7 @@ versions "GL_30"
 //versions 
 importPaths "./pixelperfectengine/src/"
 libs "z" platform="linux"
+libs "opengl32" platform="windows"
 versions "newxml_force_utf32"
 
 /*subPackage {

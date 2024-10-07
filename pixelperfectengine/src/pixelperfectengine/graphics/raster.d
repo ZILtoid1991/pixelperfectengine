@@ -71,8 +71,8 @@ public interface PaletteContainer {
 public class Raster : PaletteContainer {
 	float[] verticles = [
 		// positions		// texture coords
-		1.0f, 1.0f, 0.0f,	1.0f, 1.0f,	// top right
 		1.0f, -1.0f, 0.0f,	1.0f, 0.0f,	// bottom right
+		1.0f, 1.0f, 0.0f,	1.0f, 1.0f,	// top right
 		-1.0f, -1.0f, 0.0f,	0.0f, 0.0f,	// bottom left
 		-1.0f, 1.0f, 0.0f,	0.0f, 1.0f,	// top left
 	];
@@ -255,6 +255,7 @@ public class Raster : PaletteContainer {
 			layer.updateRaster
 					(cpu_FrameBuffer[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width, _palette.ptr);
 		}
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[updatedBuffer]);
 		glActiveTexture(GL_TEXTURE0);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, 
@@ -262,7 +263,9 @@ public class Raster : PaletteContainer {
 		glBindVertexArray(gl_VertexArray);
 		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 5 * float.sizeof, verticles.ptr);
 		glEnableVertexAttribArray(0);
-		glDrawArrays(GL_QUADS, 0, 4);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawArrays(GL_TRIANGLES, 1, 3);
+		glDisableVertexAttribArray(0);
 		oW.gl_swapBuffers();
 
         r = false;

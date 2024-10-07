@@ -6,9 +6,6 @@ import std.conv;
 import std.format;
 import std.random;
 
-import bindbc.sdl;
-
-
 import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
@@ -24,10 +21,13 @@ import pixelperfectengine.system.file;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.config;
 
+import bindbc.opengl;
+
 import pixelperfectengine.system.common;
 
 int main() {
-	initialzeSDL();
+	//initialzeSDL();
+	
     TileLayerTest tlt = new TileLayerTest(8, 8);
     tlt.whereTheMagicHappens();
     return 0;
@@ -38,7 +38,7 @@ int main() {
  */
 class TileLayerTest : SystemEventListener, InputListener {
 	bool isRunning, up, down, left, right, scrup, scrdown, scrleft, scrright;
-	OutputScreen output;
+	OSWindow output;
 	Raster r;
 	TileLayer t;
 	TileLayer textLayer;
@@ -53,15 +53,20 @@ class TileLayerTest : SystemEventListener, InputListener {
 	float theta;
 	int framecounter;
 	this (int mapWidth, int mapHeight) {
+		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);//new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
+		output.getOpenGLHandle();
+		const glStatus = loadOpenGL();
+		if (glStatus < GLSupport.gl11) {
+			writeln("OpenGL not found!");
+		}
 		theta = 0;
 		isRunning = true;
 		Image tileSource = loadImage(File(getPathToAsset("/assets/sci-fi-tileset.png")));
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
 		Image spriteSource = loadImage(File(getPathToAsset("/assets/d-man.tga")));
 		Image fontSource = loadImage(File(getPathToAsset("/system/codepage_8_8.png")));
-		output = new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
 		r = new Raster(424,240,output,0);
-		output.setMainRaster(r);
+		//output.setMainRaster(r);
 		t = new TileLayer(16,16, RenderingMode.Copy);
 		textLayer = new TileLayer(8,8, RenderingMode.AlphaBlend);
 		textLayer.paletteOffset = 512;
@@ -147,38 +152,38 @@ class TileLayerTest : SystemEventListener, InputListener {
 		
 		{
 			import pixelperfectengine.system.input.scancode;
-			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("up"));
-			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("down"));
-			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("left"));
-			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("right"));
-			ih.addBinding(BindingCode(ScanCode.np8, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("scrup"));
-			ih.addBinding(BindingCode(ScanCode.np2, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("scrdown"));
-			ih.addBinding(BindingCode(ScanCode.np4, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("scrleft"));
-			ih.addBinding(BindingCode(ScanCode.np6, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("scrright"));
-			ih.addBinding(BindingCode(ScanCode.Q, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("A+"));
-			ih.addBinding(BindingCode(ScanCode.A, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("A-"));
-			ih.addBinding(BindingCode(ScanCode.W, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("B+"));
-			ih.addBinding(BindingCode(ScanCode.S, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("B-"));
-			ih.addBinding(BindingCode(ScanCode.E, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("C+"));
-			ih.addBinding(BindingCode(ScanCode.D, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("C-"));
-			ih.addBinding(BindingCode(ScanCode.R, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("D+"));
-			ih.addBinding(BindingCode(ScanCode.F, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("D-"));
-			ih.addBinding(BindingCode(ScanCode.T, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("x0+"));
-			ih.addBinding(BindingCode(ScanCode.G, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("x0-"));
-			ih.addBinding(BindingCode(ScanCode.Y, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("y0+"));
-			ih.addBinding(BindingCode(ScanCode.H, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("y0-"));
-			ih.addBinding(BindingCode(ScanCode.PAGEUP, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("alpha+"));
-			ih.addBinding(BindingCode(ScanCode.PAGEDOWN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("alpha-"));
-			ih.addBinding(BindingCode(ScanCode.HOME, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("hidettl"));
-			ih.addBinding(BindingCode(ScanCode.END, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("unhidettl"));
-			ih.addBinding(BindingCode(ScanCode.n1, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtH-"));
-			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtH+"));
-			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtV-"));
-			ih.addBinding(BindingCode(ScanCode.n4, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("sprtV+"));
-			ih.addBinding(BindingCode(ScanCode.n5, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("2up"));
-			ih.addBinding(BindingCode(ScanCode.n6, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("2down"));
-			ih.addBinding(BindingCode(ScanCode.n7, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("2left"));
-			ih.addBinding(BindingCode(ScanCode.n8, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("2right"));
+			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("up"));
+			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("down"));
+			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("left"));
+			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("right"));
+			ih.addBinding(BindingCode(ScanCode.np8, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("scrup"));
+			ih.addBinding(BindingCode(ScanCode.np2, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("scrdown"));
+			ih.addBinding(BindingCode(ScanCode.np4, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("scrleft"));
+			ih.addBinding(BindingCode(ScanCode.np6, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("scrright"));
+			ih.addBinding(BindingCode(ScanCode.Q, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("A+"));
+			ih.addBinding(BindingCode(ScanCode.A, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("A-"));
+			ih.addBinding(BindingCode(ScanCode.W, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("B+"));
+			ih.addBinding(BindingCode(ScanCode.S, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("B-"));
+			ih.addBinding(BindingCode(ScanCode.E, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("C+"));
+			ih.addBinding(BindingCode(ScanCode.D, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("C-"));
+			ih.addBinding(BindingCode(ScanCode.R, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("D+"));
+			ih.addBinding(BindingCode(ScanCode.F, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("D-"));
+			ih.addBinding(BindingCode(ScanCode.T, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("x0+"));
+			ih.addBinding(BindingCode(ScanCode.G, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("x0-"));
+			ih.addBinding(BindingCode(ScanCode.Y, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("y0+"));
+			ih.addBinding(BindingCode(ScanCode.H, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("y0-"));
+			ih.addBinding(BindingCode(ScanCode.PAGEUP, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("alpha+"));
+			ih.addBinding(BindingCode(ScanCode.PAGEDOWN, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("alpha-"));
+			ih.addBinding(BindingCode(ScanCode.HOME, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("hidettl"));
+			ih.addBinding(BindingCode(ScanCode.END, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("unhidettl"));
+			ih.addBinding(BindingCode(ScanCode.n1, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("sprtH-"));
+			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("sprtH+"));
+			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("sprtV-"));
+			ih.addBinding(BindingCode(ScanCode.n4, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("sprtV+"));
+			ih.addBinding(BindingCode(ScanCode.n5, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("2up"));
+			ih.addBinding(BindingCode(ScanCode.n6, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("2down"));
+			ih.addBinding(BindingCode(ScanCode.n7, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("2left"));
+			ih.addBinding(BindingCode(ScanCode.n8, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("2right"));
 		}
 		
 		tt.loadMapping(mapWidth, mapHeight, mapping);
@@ -297,10 +302,10 @@ class TileLayerTest : SystemEventListener, InputListener {
 	override public void onQuit() {
 		isRunning = false;
 	}
-	public void controllerAdded(uint id) {
+	public void inputDeviceAdded(InputDevice id) {
 
 	}
-	public void controllerRemoved(uint id) {
+	public void inputDeviceRemoved(InputDevice id) {
 
 	}
 	/**
@@ -310,7 +315,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
 	 */
-	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		//writeln(id, ";", code, ";",timestamp, ";",isPressed, ";");
 		switch (id) {
 			case hashCalc("up"):	//up
@@ -427,7 +432,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	 * `value` is the current position of the axis normalized between -1.0 and +1.0 for joysticks, and 0.0 and +1.0 for analog
 	 * triggers.
 	 */
-	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 
 	}
 }
