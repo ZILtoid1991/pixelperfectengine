@@ -116,13 +116,13 @@ public class Raster : PaletteContainer {
     public this (ushort w, ushort h, OSWindow oW, size_t paletteLength = 65_536, ubyte buffers = 2) {
 		assert(paletteLength <= 65_536);
 		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
-		const(char)[] shaderProgram = loadShader("%SHADERS%/final.vert");	
+		const(char)[] shaderProgram = loadShader("%SHADERS%/final_330.vert");	
 		char* shaderProgramPtr = cast(char*)shaderProgram.ptr;
 		glShaderSource(gl_VertexShader, 1, &shaderProgramPtr, null);
 		glCompileShader(gl_VertexShader);
 		gl_CheckShader(gl_VertexShader);
 		GLuint gl_FragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		shaderProgram = loadShader("%SHADERS%/final.frag");
+		shaderProgram = loadShader("%SHADERS%/final_330.frag");
 		shaderProgramPtr = cast(char*)shaderProgram.ptr;
 		glShaderSource(gl_FragmentShader, 1, &shaderProgramPtr, null);
 		glCompileShader(gl_FragmentShader);
@@ -283,7 +283,6 @@ public class Raster : PaletteContainer {
 					(cpu_FrameBuffer[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width, _palette.ptr);
 		}
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-//		glGenTextures(1, &gl_FrameBuffer[displayedBuffer]);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[displayedBuffer]);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, cpu_FrameBuffer[displayedBuffer].width, 
