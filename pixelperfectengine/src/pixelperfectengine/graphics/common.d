@@ -7,8 +7,10 @@
 module pixelperfectengine.graphics.common;
 
 //public import CPUblit.colorspaces;
+public import pixelperfectengine.system.exc;
 
 import dimage.types : ARGB8888BE;
+import bindbc.opengl;
 
 /**
  * Graphics primitive. Represents a single point on a 2D field.
@@ -152,6 +154,36 @@ public struct Box {
 	}
 	public static Box bySize(int x, int y, int w, int h) @nogc @safe pure nothrow {
 		return Box(x, y, x + w - 1, y + h - 1);
+	}
+}
+public struct Quad {
+
+}
+public class GLShaderException : PPEException {
+	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {
+		super(msg, file, line, nextInChain);
+	}
+}
+
+public void gl_CheckShader(GLuint shaderID) @trusted {
+	int infoLogLength;
+	glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
+	if (infoLogLength > 0) {
+		char[] msg;
+		msg.length = infoLogLength + 1;
+		glGetShaderInfoLog(shaderID, infoLogLength, null, msg.ptr);
+		throw new GLShaderException(cast(string)msg);
+	}
+}
+
+public void gl_CheckProgram(GLuint programID) @trusted {
+	int infoLogLength;
+	glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &infoLogLength);
+	if (infoLogLength > 0) {
+		char[] msg;
+		msg.length = infoLogLength + 1;
+		glGetProgramInfoLog(programID, infoLogLength, null, msg.ptr);
+		throw new GLShaderException(cast(string)msg);
 	}
 }
 alias Coordinate = Box;

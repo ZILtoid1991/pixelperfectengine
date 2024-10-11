@@ -18,7 +18,6 @@ import pixelperfectengine.system.file;
 import pixelperfectengine.system.exc;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.dictionary;
-import pixelperfectengine.graphics.outputscreen;
 
 import iota.controls.keyboard : KeyboardModifiers;
 //import bindbc.sdl;

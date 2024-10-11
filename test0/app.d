@@ -6,7 +6,6 @@ import std.conv;
 import std.format;
 import std.random;
 
-import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
 

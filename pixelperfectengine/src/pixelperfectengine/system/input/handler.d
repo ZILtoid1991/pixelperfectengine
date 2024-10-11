@@ -250,7 +250,7 @@ public class InputHandler {
 								event.edit.length);
 					}
 					break; */
-				case IOTA.InputEventType.ApplExit:
+				case IOTA.InputEventType.ApplExit, IOTA.InputEventType.WindowClose:
 					if (systemEventListener) systemEventListener.onQuit();
 					break;
 				case IOTA.InputEventType.DeviceAdded:

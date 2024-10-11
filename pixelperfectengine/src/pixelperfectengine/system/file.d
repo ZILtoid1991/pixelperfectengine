@@ -252,6 +252,14 @@ public dstring loadTextFile(F = File)(F file) {
 	}
 	return result;
 }
+public const(char)[] loadShader(string path) @trusted {
+	path = resolvePath(path);
+	char[] buffer;
+	File file = File(path, "rb");
+	buffer.length = cast(size_t)file.size;
+	file.rawRead(buffer);
+	return reinterpretCast!(const(char))(buffer ~ '\00');
+}
 ///Path to the root folder, where assets etc. are stored.
 public immutable string pathRoot;
 ///Path to the executable folder, null if not eveilable for security reasons.
@@ -274,6 +282,7 @@ shared static this () {
 	pathSymbols["PATH"] = pathRoot;
 	pathSymbols["EXEC"] = pathToExec;
 	pathSymbols["SYSTEM"] = pathRoot ~ "/system/";
+	pathSymbols["SHADERS"] = pathRoot ~ "/shaders/";
 	if (exists(buildNormalizedPath(pathRoot, "./debug/"))) {
 		pathSymbols["DEBUG"] = pathRoot ~ "/debug/";
 		pathSymbols["STORE"] = pathRoot ~ "/debug/";
