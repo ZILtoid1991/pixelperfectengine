@@ -2,10 +2,11 @@
 
 out vec4 fragColor;
 
-in vec4 texMapping;
+in vec2 texMapping;
 
-uniform sampler2D tex;
+uniform sampler2D texture1;
 
 void main() {
-    fragColor = vec4((texMapping.x + 1.0) * 0.5, (texMapping.y + 1.0) * 0.5, 1.0, 1.0);
+    vec4 texSlmp = texture(texture1, texMapping);
+    fragColor = vec4(texSlmp.r, texSlmp.g, texSlmp.b, 1.0);
 }

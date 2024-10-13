@@ -36,7 +36,7 @@ int main() {
  * Tests graphics output, input events, collision, etc.
  */
 class TileLayerTest : SystemEventListener, InputListener {
-	bool isRunning, up, down, left, right, scrup, scrdown, scrleft, scrright;
+	bool isRunning, up, down, left, right, scrup, scrdown, scrleft, scrright, fullScreen;
 	OSWindow output;
 	Raster r;
 	TileLayer t;
@@ -112,7 +112,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		//tcd.objects[65_536] = ocd.objects[65_536];
 		s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
 
-		for(int i = 1 ; i < 1500 ; i++){
+		for(int i = 1 ; i < 500 ; i++){
 			const int x = uniform(0,320), y = uniform(0,240);
 			s.addSprite(dlangMan, i, x, y, 1);
 			ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
@@ -151,14 +151,23 @@ class TileLayerTest : SystemEventListener, InputListener {
 		
 		{
 			import pixelperfectengine.system.input.scancode;
+			import iota.controls.gamectrl : GameControllerButtons;
 			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("up"));
 			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("down"));
 			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("left"));
 			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("right"));
+			ih.addBinding(BindingCode(GameControllerButtons.DPadUp, 0, Devicetype.Joystick, 0, 0xff), InputBinding("up"));
+			ih.addBinding(BindingCode(GameControllerButtons.DPadDown, 0, Devicetype.Joystick, 0, 0xff), InputBinding("down"));
+			ih.addBinding(BindingCode(GameControllerButtons.DPadLeft, 0, Devicetype.Joystick, 0, 0xff), InputBinding("left"));
+			ih.addBinding(BindingCode(GameControllerButtons.DPadRight, 0, Devicetype.Joystick, 0, 0xff), InputBinding("right"));
 			ih.addBinding(BindingCode(ScanCode.np8, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("scrup"));
 			ih.addBinding(BindingCode(ScanCode.np2, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("scrdown"));
 			ih.addBinding(BindingCode(ScanCode.np4, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("scrleft"));
 			ih.addBinding(BindingCode(ScanCode.np6, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("scrright"));
+			ih.addBinding(BindingCode(GameControllerButtons.North, 0, Devicetype.Joystick, 0, 0xff), InputBinding("scrup"));
+			ih.addBinding(BindingCode(GameControllerButtons.South, 0, Devicetype.Joystick, 0, 0xff), InputBinding("scrdown"));
+			ih.addBinding(BindingCode(GameControllerButtons.West, 0, Devicetype.Joystick, 0, 0xff), InputBinding("scrleft"));
+			ih.addBinding(BindingCode(GameControllerButtons.East, 0, Devicetype.Joystick, 0, 0xff), InputBinding("scrright"));
 			ih.addBinding(BindingCode(ScanCode.Q, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("A+"));
 			ih.addBinding(BindingCode(ScanCode.A, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("A-"));
 			ih.addBinding(BindingCode(ScanCode.W, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("B+"));
@@ -183,6 +192,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.addBinding(BindingCode(ScanCode.n6, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("2down"));
 			ih.addBinding(BindingCode(ScanCode.n7, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("2left"));
 			ih.addBinding(BindingCode(ScanCode.n8, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("2right"));
+			ih.addBinding(BindingCode(ScanCode.F11, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("fullscreen"));
 		}
 		
 		tt.loadMapping(mapWidth, mapHeight, mapping);
@@ -419,8 +429,32 @@ class TileLayerTest : SystemEventListener, InputListener {
 			case hashCalc("2right"):
 				s.relMoveSprite(0,1,0);
 				break;
+			case hashCalc("fullscreen"):
+				if (isPressed) {
+					fullScreen = !fullScreen;
+					output.setScreenMode(-1, fullScreen ? DisplayMode.FullscreenDesktop : DisplayMode.Windowed);
+				}
+				break;
 			default:
 				break;
+		}
+	}
+	/** 
+	 * Called if a window was resized.
+	 * Params:
+	 *   window = Handle to the OSWindow class.
+	 */
+	public void windowResize(OSWindow window, int width, int height) {
+		immutable double origAspectRatio = 424.0 / 240.0;//Calculate original aspect ratio
+		double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio
+		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
+			const double visibleWidth = height * origAspectRatio;
+			const double sideOffset = (width - visibleWidth) / 2.0;
+			glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+		} else {	//Display area is now taller, padding needs to be added on the top and bottom
+			const double visibleHeight = width / origAspectRatio;
+			const double topOffset = (height - visibleHeight) / 2.0;
+			glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
 		}
 	}
 	/**

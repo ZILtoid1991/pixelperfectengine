@@ -157,7 +157,20 @@ public struct Box {
 	}
 }
 public struct Quad {
-
+	Point topLeft;
+	Point topRight;
+	Point bottomLeft;
+	Point bottomRight;
+}
+public struct Verticle {
+	float x;
+	float y;
+	float z;
+	float r;
+	float g;
+	float b;
+	float s;
+	float t;
 }
 public class GLShaderException : PPEException {
 	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {

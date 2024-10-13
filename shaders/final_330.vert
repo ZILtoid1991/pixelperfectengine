@@ -1,15 +1,12 @@
 #version 330
 
 layout(location = 0)in vec3 vert;
-layout(location = 1)in vec2 texPos;
-uniform mat4 projection;
-uniform mat4 view;
-uniform mat4 model;
+layout(location = 1)in vec3 color;
+layout(location = 2)in vec2 texPos;
 
-out vec4 texMapping;
+out vec2 texMapping;
 
 void main() {
-    gl_Position = projection * view * model * vec4(vert, 1.0);
-    //texMapping = gl_Position;
-    texMapping = vec4(-1.0, -1.0, -1.0, -1.0);
+    gl_Position = vec4(vert, 1.0);
+    texMapping = texPos;
 }

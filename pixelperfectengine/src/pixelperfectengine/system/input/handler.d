@@ -241,6 +241,11 @@ public class InputHandler {
 						textInputListener.textInputKeyEvent(event.timestamp, IOTA.OSWindow.byRef(event.handle), event.textCmd);
 					}
 					break;
+				case IOTA.InputEventType.WindowResize:
+					if (systemEventListener) {
+						systemEventListener.windowResize(IOTA.OSWindow.byRef(event.handle), event.window.width, event.window.height);
+					}
+					break;
 				/* case SDL_TEXTEDITING:
 					import std.utf : toUTF32;
 					import std.string : fromStringz;

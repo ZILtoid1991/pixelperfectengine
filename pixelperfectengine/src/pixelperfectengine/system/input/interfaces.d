@@ -33,6 +33,14 @@ public interface SystemEventListener {
 	 * Called if the window is being closed.
 	 */
 	public void onQuit();
+	/** 
+	 * Called if a window was resized.
+	 * Params:
+	 *   window = Handle to the OSWindow class.
+	 *   width = active area width.
+	 *   height = active area height.
+	 */
+	public void windowResize(OSWindow window, int width, int height);
 	/**
 	 * Called if a controller was added.
 	 * The `id` is the ID of the attached controller.

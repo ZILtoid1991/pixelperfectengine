@@ -71,10 +71,14 @@ public interface PaletteContainer {
 public class Raster : PaletteContainer {
 	float[] verticles = [
 		// positions        colors            texture coords
-		1.0f, -1.0f, 0.0f,	/* 1.0f, 1.0f, 1.0f,  */1.0f, 0.0f,	// bottom right
-		1.0f, 1.0f, 0.0f,	/* 1.0f, 1.0f, 1.0f,  */1.0f, 1.0f,	// top right
-		-1.0f, -1.0f, 0.0f,	/* 1.0f, 1.0f, 1.0f,  */0.0f, 0.0f,	// bottom left
-		-1.0f, 1.0f, 0.0f,	/* 1.0f, 1.0f, 1.0f,  */0.0f, 1.0f,	// top left
+		1.0f, -1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 1.0f, 1.0f,	// bottom right
+		1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 1.0f, 0.0f,	// top right
+		-1.0f, -1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 0.0f, 1.0f,	// bottom left
+		-1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 0.0f, 0.0f,	// top left
+	];
+	uint[] indices = [
+		0, 1, 2,
+		1, 2, 3,
 	];
 	
     private ushort rasterWidth, rasterHeight;///Stores virtual screen resolution.
@@ -82,7 +86,9 @@ public class Raster : PaletteContainer {
 	//public void* 		fbData;			///Data of the currently selected framebuffer
 	//public int			fbPitch;		///Pitch of the currently selected framebuffer
 	public GLuint[] 	gl_FrameBuffer;	///Framebuffers for OpenGL rendering
+	public GLuint		gl_VertexBuffer;///Vertex buffer ID
 	public GLuint		gl_VertexArray;	///Vertex array ID
+	public GLuint		gl_VertexIndices;///Vertex index buffer ID
 	public GLuint		gl_Program;		///OpenGL shader program
 	/**
 	 * Color format is ARGB, with each index having their own transparency.
@@ -115,6 +121,7 @@ public class Raster : PaletteContainer {
 	 */
     public this (ushort w, ushort h, OSWindow oW, size_t paletteLength = 65_536, ubyte buffers = 2) {
 		assert(paletteLength <= 65_536);
+		//Shader initialization block
 		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
 		const(char)[] shaderProgram = loadShader("%SHADERS%/final_330.vert");	
 		char* shaderProgramPtr = cast(char*)shaderProgram.ptr;
@@ -128,37 +135,67 @@ public class Raster : PaletteContainer {
 		glCompileShader(gl_FragmentShader);
 		gl_CheckShader(gl_FragmentShader);
 		gl_Program = glCreateProgram();
-		glAttachShader(gl_Program, gl_VertexArray);
+		glAttachShader(gl_Program, gl_VertexShader);
 		glAttachShader(gl_Program, gl_FragmentShader);
 		glLinkProgram(gl_Program);
 		gl_CheckProgram(gl_Program);
+		glDeleteShader(gl_FragmentShader);
+		glDeleteShader(gl_VertexShader);
+
 		_palette.length = paletteLength;
         rasterWidth=w;
         rasterHeight=h;
 		nOfBuffers = buffers;
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 		for (int i ; i < buffers ; i++) {
 			cpu_FrameBuffer ~= new Bitmap32Bit(w, h);
 			GLuint texture;
 			glGenTextures(1, &texture);
-			/* glBindTexture(GL_TEXTURE_2D, texture);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, 
-					cpu_FrameBuffer[i].getPtr); */
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			
 			gl_FrameBuffer ~= texture;
 		}
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glUseProgram(gl_Program);
+		glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
+		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 		glGenVertexArrays(1, &gl_VertexArray);
+		glGenBuffers(1, &gl_VertexBuffer);
+		glGenBuffers(1, &gl_VertexIndices);
+
+		glBindVertexArray(gl_VertexArray);
+
+		glBindBuffer(GL_ARRAY_BUFFER, gl_VertexBuffer);
+		glBufferData(GL_ARRAY_BUFFER, verticles.length * float.sizeof, verticles.ptr, GL_STATIC_DRAW);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_VertexIndices);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.length * int.sizeof, indices.ptr, GL_STATIC_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(3 * float.sizeof));
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(6 * float.sizeof));
+
+		glBindVertexArray(0);
+
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
 		framesPerSecond = 0.0;
 		avgFPS = 0.0;
 		this.oW = oW;
-		glDetachShader(gl_Program, gl_FragmentShader);
-		glDetachShader(gl_Program, gl_VertexShader);
-		glDeleteShader(gl_FragmentShader);
-		glDeleteShader(gl_VertexShader);
+		//glDetachShader(gl_Program, gl_FragmentShader);
+		//glDetachShader(gl_Program, gl_VertexShader);
+		
+	}
+	~this() {
+		glDeleteVertexArrays(1, &gl_VertexArray);
+		glDeleteBuffers(1, &gl_VertexArray);
+		glDeleteBuffers(1, &gl_VertexIndices);
+		glDeleteProgram(gl_Program);
 	}
 	/**
 	 * Returns a copy of the palette of the object.
@@ -229,9 +266,6 @@ public class Raster : PaletteContainer {
 	public void resetAvgfps() @safe @nogc pure nothrow {
 		avgFPS = 0;
 	}
-	~this(){
-		
-	}
     ///Adds a RefreshListener to its list.
     public void addRefreshListener(RefreshListener r){
         rL ~= r;
@@ -239,6 +273,23 @@ public class Raster : PaletteContainer {
 	///Sets the number of colors.
 	public void setupPalette(int i) {
 		_palette.length = i;
+	}
+	public void resizeRaster(ushort width, ushort height) {
+		rasterWidth = width;
+		rasterHeight = height;
+		for (int i ; i < nOfBuffers ; i++) {
+			cpu_FrameBuffer[i] = new Bitmap32Bit(rasterWidth, rasterHeight);
+			glDeleteTextures(1, &gl_FrameBuffer[i]);
+			glGenTextures(1, &gl_FrameBuffer[i]);
+			glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[i]);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		}
+		foreach (Layer key; layerMap) {
+			key.setRasterizer(rasterWidth, rasterHeight);
+		}
 	}
     ///Adds a layer at the given priority.
     public void addLayer(Layer l, int i) @safe pure nothrow {
@@ -280,22 +331,21 @@ public class Raster : PaletteContainer {
 
 		foreach (Layer layer ; layerMap) {
 			layer.updateRaster
-					(cpu_FrameBuffer[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width, _palette.ptr);
+					(cpu_FrameBuffer[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width * 4, _palette.ptr);
 		}
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+		glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[displayedBuffer]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, 
+				cpu_FrameBuffer[displayedBuffer].getPtr);
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[displayedBuffer]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, cpu_FrameBuffer[displayedBuffer].width, 
-				cpu_FrameBuffer[displayedBuffer].height, 0, GL_RGBA, GL_UNSIGNED_BYTE, cpu_FrameBuffer[displayedBuffer].getPtr);
 		glUseProgram(gl_Program);
-		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 5 * float.sizeof, verticles.ptr);
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, gl_VertexArray);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-		glDrawArrays(GL_TRIANGLES, 1, 3);
-		glDisableVertexAttribArray(0);
-		oW.gl_swapBuffers();
+		glBindVertexArray(gl_VertexArray);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 
+		oW.gl_swapBuffers();
         r = false;
     }
 
