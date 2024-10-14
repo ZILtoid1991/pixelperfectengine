@@ -28,8 +28,16 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	protected PopUpSet popUpElements;
 	private int numOfPopUpElements;
 	//private int[] priorities;
-	protected int screenWidth, screenHeight, rasterWidth, rasterHeight, moveX, moveY, mouseX, mouseY;
-	protected double mouseConvX, mouseConvY;
+	protected int screenWidth;
+	protected int screenHeight;
+	protected int rasterWidth;
+	protected int rasterHeight;
+	protected int moveX;
+	protected int moveY;
+	protected int mouseX;
+	protected int mouseY;
+	protected double mouseConvX;
+	protected double mouseConvY;
 	//public Bitmap16Bit[wchar] basicFont, altFont, alarmFont;
 	///Sets the default style for the windowhandler.
 	///If null, the global default will be used instead.
@@ -56,12 +64,13 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 *   rH = Raster height
 	 *   sl = The spritelayer, that will display the windows as sprites.
 	 */
-	public this(int sW, int sH, int rW, int rH, ISpriteLayer sl) {
+	public this(int sW, int sH, int rW, int rH, ISpriteLayer sl, OSWindow osWindow) {
 		screenWidth = sW;
 		screenHeight = sH;
 		rasterWidth = rW;
 		rasterHeight = rH;
 		spriteLayer = sl;
+		this.osWindow = osWindow;
 		mouseConvX = cast(double)screenWidth / rasterWidth;
 		mouseConvY = cast(double)screenHeight / rasterHeight;
 	}
@@ -434,8 +443,28 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 
 	}
+	/** 
+	 * 
+	 * Returns: 
+	 */
 	public int[2] getRasterSizes() {
 		return [rasterWidth, rasterHeight];
+	}
+	/** 
+	 * 
+	 * Params:
+	 *   sW = 
+	 *   sH = 
+	 *   rW = 
+	 *   rH = 
+	 */
+	public void resizeRaster(int sW, int sH, int rW, int rH) {
+		screenWidth = sW;
+		screenHeight = sH;
+		rasterWidth = rW;
+		rasterHeight = rH;
+		mouseConvX = cast(double)screenWidth / rasterWidth;
+		mouseConvY = cast(double)screenHeight / rasterHeight;
 	}
 }
 

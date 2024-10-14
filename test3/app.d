@@ -1,6 +1,5 @@
 module test3.app;
 
-import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.concrete.window;
@@ -15,204 +14,244 @@ import pixelperfectengine.system.lang.textparser;
 import core.thread;
 import std.conv;
 import std.stdio;
+import std.algorithm.searching : startsWith;
+
+import bindbc.opengl;
+
+int scaling = 2;
 
 /** 
  * Tests GUI elements by displaying them.
  */
-int main() {
-    initialzeSDL();
-    INIT_CONCRETE();
-    TestElements te = new TestElements();
-    te.whereTheMagicHappens();
-    return 0;
+int main(string[] args) {
+	foreach (string arg ; args) {
+		if (arg.startsWith("--ui-scaling=")) {
+			try {
+				scaling = arg[13..$].to!int;
+			} catch (Exception e) {
+
+			}
+		}
+	}
+	INIT_CONCRETE();
+	TestElements te = new TestElements();
+	te.whereTheMagicHappens();
+	return 0;
 }
 
 public class TestElements : InputListener, SystemEventListener {
-    Raster				mainRaster;
-	OutputScreen		outScrn;
-    SpriteLayer			sprtL;
-    WindowHandler		wh;
-    InputHandler        ih;
-    bool                isRunning, flipScreen;
-    TextParser          txtParser;
+	Raster				mainRaster;
+	OSWindow    		outScrn;
+	SpriteLayer			sprtL;
+	WindowHandler		wh;
+	InputHandler        ih;
+	bool                isRunning, flipScreen, fullScreen;
+	TextParser          txtParser;
 
-    public this() {
-        
-        sprtL = new SpriteLayer(RenderingMode.Copy);
-		outScrn = new OutputScreen("Test nr. 3",1696,960);
+	public this() {
+		outScrn = new OSWindow("Test nr. 3", "ppe_test3", -1, -1, 848 * scaling, 480 * scaling, WindowCfgFlags.IgnoreMenuKey);
+		outScrn.getOpenGLHandle();
+		const glStatus = loadOpenGL();
+		if (glStatus < GLSupport.gl11) {
+			writeln("OpenGL not found!");
+		}
+		sprtL = new SpriteLayer(RenderingMode.Copy);
 		mainRaster = new Raster(848,480,outScrn,0,1);
 		mainRaster.addLayer(sprtL,0);
-        mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")));
-        wh = new WindowHandler(1696,960,848,480,sprtL);
-        ih = new InputHandler();
-        ih.inputListener = this;
-        ih.systemEventListener = this;
-        ih.mouseListener = wh;
-        PopUpElement.onDraw = &rasterRefresh;
-        WindowElement.onDraw = &rasterRefresh;
-        WindowElement.inputHandler = ih;
-        Window.onDrawUpdate = &rasterRefresh;
-        isRunning = true;
-        txtParser = new TextParser(loadTextFile(File(getPathToLocalizationFile("US","en","xml"))), 
-                globalDefaultStyle.getChrFormatting("default"));
-        txtParser.parse();
-        wh.addWindow(new TestWindow(txtParser.output));
-    }
-    protected void rasterRefresh() {
-        flipScreen = true;
-    }
-    public void whereTheMagicHappens() {
-        mainRaster.refresh();
-        while(isRunning) {
-            if (flipScreen) {
-                flipScreen = false;
-                mainRaster.refresh();
-            }
-            //mainRaster.refresh();
-            ih.test();
-            Thread.sleep(dur!"msecs"(10));
-            timer.test();
-        }
-    }
+		mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")));
+		wh = new WindowHandler(848 * scaling, 480 * scaling, 848, 480, sprtL, outScrn);
+		ih = new InputHandler();
+		ih.inputListener = this;
+		ih.systemEventListener = this;
+		{
+			import pixelperfectengine.system.input.scancode;
+			import iota.controls.gamectrl : GameControllerButtons;
+			ih.addBinding(BindingCode(ScanCode.F11, 0, Devicetype.Keyboard, 0, 0xff), InputBinding("fullscreen"));
+		}
+		ih.mouseListener = wh;
+		PopUpElement.onDraw = &rasterRefresh;
+		WindowElement.onDraw = &rasterRefresh;
+		WindowElement.inputHandler = ih;
+		Window.onDrawUpdate = &rasterRefresh;
+		isRunning = true;
+		txtParser = new TextParser(loadTextFile(File(getPathToLocalizationFile("US","en","xml"))), 
+				globalDefaultStyle.getChrFormatting("default"));
+		txtParser.parse();
+		wh.addWindow(new TestWindow(txtParser.output));
+	}
+	protected void rasterRefresh() {
+		flipScreen = true;
+	}
+	public void whereTheMagicHappens() {
+		mainRaster.refresh();
+		while(isRunning) {
+			if (flipScreen) {
+				flipScreen = false;
+				mainRaster.refresh();
+			}
+			//mainRaster.refresh();
+			ih.test();
+			Thread.sleep(dur!"msecs"(10));
+			timer.test();
+		}
+	}
+	/** 
+	 * Called if a window was resized.
+	 * Params:
+	 *   window = Handle to the OSWindow class.
+	 */
+	public void windowResize(OSWindow window, int width, int height) {
+		mainRaster.resizeRaster(cast(ushort)(width / scaling), cast(ushort)(height / scaling));
+		wh.resizeRaster(width, height, width / scaling, height / scaling);
+		glViewport(0, 0, width, height);
+		rasterRefresh();
+	}
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
+		switch (id) {
+		case hashCalc("fullscreen"):
+			if (isPressed) {
+				fullScreen = !fullScreen;
+				outScrn.setScreenMode(-1, fullScreen ? DisplayMode.FullscreenDesktop : DisplayMode.Windowed);
+			}
+			break;
+		default:
+			break;
+		}
+	}
 
-    public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 
-    }
+	}
 
-    public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+	public void onQuit() {
+		isRunning = false;
+	}
 
-    }
+	public void inputDeviceAdded(InputDevice id) {
 
-    public void onQuit() {
-        isRunning = false;
-    }
+	}
+	public void inputDeviceRemoved(InputDevice id) {
 
-    public void controllerAdded(uint id) {
-
-    }
-
-    public void controllerRemoved(uint id) {
-
-    }
+	}
 }
 
 public class TestWindow : Window {
-    CheckBox            modeToggle;
-    Panel               panelTest;
-    RadioButton[]       radioButtonTest;
-    RadioButtonGroup    radioButtonTestGr;
-    ListView            listViewTest;
-    Button              buttonTest0, buttonTest1;
-    Button              btn_fileDialog;
-    Button              btn_messageDialog;
-    Button              btn_addElem;
-    Button              btn_subMenu;
-    Button              btn_resizeTest;
-    VertScrollBar       vScrollBarTest;
-    Label               singleLineLabel;
-    Label               multiLineLabel;
-    Text                multiLineDialog;
-    public this(Text[string] lang) {
-        super(Box.bySize(0, 0, 848, 480), "Test");
-        panelTest = new Panel("Selections", "", Box(5, 20, 200, 200));
-        addElement(panelTest);
-        for (int i ; i < 7 ; i++) {
-            RadioButton rb = new RadioButton
-                    ("Option "d ~ i.to!dstring(), "", Box(10, 40 + i * 20, 195, 40 + i * 20 + 16));
-            panelTest.addElement(rb);
-            radioButtonTest ~= rb;
-        }
-        radioButtonTestGr = new RadioButtonGroup(radioButtonTest);
+	CheckBox            modeToggle;
+	Panel               panelTest;
+	RadioButton[]       radioButtonTest;
+	RadioButtonGroup    radioButtonTestGr;
+	ListView            listViewTest;
+	Button              buttonTest0, buttonTest1;
+	Button              btn_fileDialog;
+	Button              btn_messageDialog;
+	Button              btn_addElem;
+	Button              btn_subMenu;
+	Button              btn_resizeTest;
+	VertScrollBar       vScrollBarTest;
+	Label               singleLineLabel;
+	Label               multiLineLabel;
+	Text                multiLineDialog;
+	public this(Text[string] lang) {
+		super(Box.bySize(0, 0, 848, 480), "Test");
+		panelTest = new Panel("Selections", "", Box(5, 20, 200, 200));
+		addElement(panelTest);
+		for (int i ; i < 7 ; i++) {
+			RadioButton rb = new RadioButton
+					("Option "d ~ i.to!dstring(), "", Box(10, 40 + i * 20, 195, 40 + i * 20 + 16));
+			panelTest.addElement(rb);
+			radioButtonTest ~= rb;
+		}
+		radioButtonTestGr = new RadioButtonGroup(radioButtonTest);
 
-        listViewTest = new ListView(new ListViewHeader(16, [50, 50], ["Column 1", "Column 2"]), [
-            new ListViewItem(16, ["First", "000000000000000000000"], [TextInputFieldType.Text,  
-                    TextInputFieldType.Text]),
-            new ListViewItem(16, ["Second", "000000000000000000000"]),
-            new ListViewItem(16, ["Third", "000000000000000000000"], [TextInputFieldType.Text,  
-                    TextInputFieldType.Text]),
-            new ListViewItem(16, ["Fourth", "000000000000000000000"]),
-            new ListViewItem(16, ["Last", "000000000000000000000"]),
-        ], "", Box(5, 220, 105, 313));
-        listViewTest.editEnable = true;
-        listViewTest.multicellEditEnable = true;
-        addElement(listViewTest);
-        listViewTest.onItemAdd = &listView_onItemAdd;
+		listViewTest = new ListView(new ListViewHeader(16, [50, 50], ["Column 1", "Column 2"]), [
+			new ListViewItem(16, ["First", "000000000000000000000"], [TextInputFieldType.Text,  
+					TextInputFieldType.Text]),
+			new ListViewItem(16, ["Second", "000000000000000000000"]),
+			new ListViewItem(16, ["Third", "000000000000000000000"], [TextInputFieldType.Text,  
+					TextInputFieldType.Text]),
+			new ListViewItem(16, ["Fourth", "000000000000000000000"]),
+			new ListViewItem(16, ["Last", "000000000000000000000"]),
+		], "", Box(5, 220, 105, 313));
+		listViewTest.editEnable = true;
+		listViewTest.multicellEditEnable = true;
+		addElement(listViewTest);
+		listViewTest.onItemAdd = &listView_onItemAdd;
 
-        singleLineLabel = new Label(lang["singlelinelabel"], "", Box(5, 340, 160, 360));
-        addElement(singleLineLabel);
+		singleLineLabel = new Label(lang["singlelinelabel"], "", Box(5, 340, 160, 360));
+		addElement(singleLineLabel);
 
-        multiLineLabel = new Label(lang["multilinelabel"], "", Box(5, 360, 160, 400));
-        addElement(multiLineLabel);
+		multiLineLabel = new Label(lang["multilinelabel"], "", Box(5, 360, 160, 400));
+		addElement(multiLineLabel);
 
-        vScrollBarTest = new VertScrollBar(1000, "", Box.bySize(110, 220, 16, 120));
-        addElement(vScrollBarTest);
+		vScrollBarTest = new VertScrollBar(1000, "", Box.bySize(110, 220, 16, 120));
+		addElement(vScrollBarTest);
 
-        buttonTest0 = new Button("A", "", Box(205, 20, 205 + 39, 20 + 39));
-        addElement(buttonTest0);
-        buttonTest0.state = ElementState.Disabled;
-        btn_fileDialog = new Button("Filedialog", "", Box.bySize(300, 20, 70, 20));
-        btn_fileDialog.onMouseLClick = &btn_fileDialog_onClick;
-        addElement(btn_fileDialog);
-        btn_messageDialog = new Button("Message", "", Box.bySize(300, 45, 70, 20));
-        btn_messageDialog.onMouseLClick = &btn_messageDialog_onClick;
-        addElement(btn_messageDialog);
-        btn_addElem = new Button("Add Elem", "", Box.bySize(300, 70, 70, 20));
-        btn_addElem.onMouseLClick = &btn_addElem_onClick;
-        addElement(btn_addElem);
-        btn_subMenu = new Button("Submenu test", "", Box.bySize(300, 95, 70, 20));
-        btn_subMenu.onMouseLClick = &btn_subMenu_onClick;
-        addElement(btn_subMenu);
-        btn_resizeTest = new Button("Window resize", "", Box.bySize(300, 120, 70, 20));
-        btn_resizeTest.onMouseLClick = &btn_resizeTest_onClick;
-        addElement(btn_resizeTest);
+		buttonTest0 = new Button("A", "", Box(205, 20, 205 + 39, 20 + 39));
+		addElement(buttonTest0);
+		buttonTest0.state = ElementState.Disabled;
+		btn_fileDialog = new Button("Filedialog", "", Box.bySize(300, 20, 70, 20));
+		btn_fileDialog.onMouseLClick = &btn_fileDialog_onClick;
+		addElement(btn_fileDialog);
+		btn_messageDialog = new Button("Message", "", Box.bySize(300, 45, 70, 20));
+		btn_messageDialog.onMouseLClick = &btn_messageDialog_onClick;
+		addElement(btn_messageDialog);
+		btn_addElem = new Button("Add Elem", "", Box.bySize(300, 70, 70, 20));
+		btn_addElem.onMouseLClick = &btn_addElem_onClick;
+		addElement(btn_addElem);
+		btn_subMenu = new Button("Submenu test", "", Box.bySize(300, 95, 70, 20));
+		btn_subMenu.onMouseLClick = &btn_subMenu_onClick;
+		addElement(btn_subMenu);
+		btn_resizeTest = new Button("Window resize", "", Box.bySize(300, 120, 70, 20));
+		btn_resizeTest.onMouseLClick = &btn_resizeTest_onClick;
+		addElement(btn_resizeTest);
 
-        multiLineDialog = lang["multilinedialog"];
-    }
-    private void btn_messageDialog_onClick(Event ev) {
-        handler.message("Message", multiLineDialog);
-    }
-    private void btn_fileDialog_onClick(Event ev) {
-        handler.addWindow(new FileDialog("Test filedialog", "", &fileDialogEvent, 
-                [FileDialog.FileAssociationDescriptor("All files", ["*.*"])], "./"));
-    }
-    private void btn_addElem_onClick(Event ev) {
-        listViewTest.insertAndEdit(2, new ListViewItem(16, ["Fifth", "000000000000000000000"], [TextInputFieldType.Text,  
-                    TextInputFieldType.Text]));
-    }
-    private void btn_subMenu_onClick(Event ev) {
-        PopUpMenuElement[] menutree;
-        menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 1");
-        menutree[0] ~= new PopUpMenuElement("", "Submenu 1/1");
-        menutree[0] ~= new PopUpMenuElement("", "Submenu 1/2");
-        menutree[0] ~= new PopUpMenuElement("", "Submenu 1/3");
-        menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 2");
-        menutree[1] ~= new PopUpMenuElement("", "Submenu 2/1");
-        menutree[1] ~= new PopUpMenuElement("", "Submenu 2/2");
-        menutree[1] ~= new PopUpMenuElement("", "Submenu 2/3");
-        menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 3");
-        menutree[2] ~= new PopUpMenuElement("", "Submenu 3/1");
-        menutree[2] ~= new PopUpMenuElement("", "Submenu 3/2");
-        menutree[2] ~= new PopUpMenuElement("", "Submenu 3/3");
-        handler.addPopUpElement(new PopUpMenu(menutree, "", null));
-    }
-    private void btn_resizeTest_onClick(Event ev) {
-        handler.addWindow(new ResizableWindow());
-    }
-    private void fileDialogEvent(Event ev) {
-        FileEvent fe = cast(FileEvent)ev;
-        writeln(fe.path);
-        writeln(fe.filename);
-        writeln(fe.extension);
-    }
-    private void listView_onItemAdd(Event ev) {
-        writeln(ev);
-    }
+		multiLineDialog = lang["multilinedialog"];
+	}
+	private void btn_messageDialog_onClick(Event ev) {
+		handler.message("Message", multiLineDialog);
+	}
+	private void btn_fileDialog_onClick(Event ev) {
+		handler.addWindow(new FileDialog("Test filedialog", "", &fileDialogEvent, 
+				[FileDialog.FileAssociationDescriptor("All files", ["*.*"])], "./"));
+	}
+	private void btn_addElem_onClick(Event ev) {
+		listViewTest.insertAndEdit(2, new ListViewItem(16, ["Fifth", "000000000000000000000"], [TextInputFieldType.Text,  
+					TextInputFieldType.Text]));
+	}
+	private void btn_subMenu_onClick(Event ev) {
+		PopUpMenuElement[] menutree;
+		menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 1");
+		menutree[0] ~= new PopUpMenuElement("", "Submenu 1/1");
+		menutree[0] ~= new PopUpMenuElement("", "Submenu 1/2");
+		menutree[0] ~= new PopUpMenuElement("", "Submenu 1/3");
+		menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 2");
+		menutree[1] ~= new PopUpMenuElement("", "Submenu 2/1");
+		menutree[1] ~= new PopUpMenuElement("", "Submenu 2/2");
+		menutree[1] ~= new PopUpMenuElement("", "Submenu 2/3");
+		menutree ~= new PopUpMenuElement("\\submenu\\", "Rootmenu 3");
+		menutree[2] ~= new PopUpMenuElement("", "Submenu 3/1");
+		menutree[2] ~= new PopUpMenuElement("", "Submenu 3/2");
+		menutree[2] ~= new PopUpMenuElement("", "Submenu 3/3");
+		handler.addPopUpElement(new PopUpMenu(menutree, "", null));
+	}
+	private void btn_resizeTest_onClick(Event ev) {
+		handler.addWindow(new ResizableWindow());
+	}
+	private void fileDialogEvent(Event ev) {
+		FileEvent fe = cast(FileEvent)ev;
+		writeln(fe.path);
+		writeln(fe.filename);
+		writeln(fe.extension);
+	}
+	private void listView_onItemAdd(Event ev) {
+		writeln(ev);
+	}
 }
 
 public class ResizableWindow : Window {
-    public this() {
-        resizableH = true;
-        resizableV = true;
-        super(Box.bySize(0, 0, 200, 200), "Resizing test");
-    }
+	public this() {
+		resizableH = true;
+		resizableV = true;
+		super(Box.bySize(0, 0, 200, 200), "Resizing test");
+	}
 }

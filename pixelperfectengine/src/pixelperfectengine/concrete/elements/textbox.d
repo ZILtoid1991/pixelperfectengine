@@ -213,14 +213,18 @@ public class TextBox : WindowElement, TextInputListener {
 				break;
 			case TextCommandType.Cursor:
 				if (command.amount < 0){
-					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
 					if (command.flags & TextCommandFlags.PerWord) {
 						do {
-							if(cursorPos > 0) cursorPos--;
+							if(cursorPos > 0) {
+								cursorPos--;
+								tselect++;
+							}
 						} while (cursorPos > 0 && text.getChar(cursorPos) != ' ');
 					} else if(cursorPos > 0) {
 						cursorPos--;
+						tselect++;
 					}
+					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
 				} else {
 					if (command.flags & TextCommandFlags.Select) {
 						if (command.flags & TextCommandFlags.PerWord) {
@@ -231,7 +235,8 @@ public class TextBox : WindowElement, TextInputListener {
 							tselect++;
 						}
 					} else {
-						tselect = 0;
+						cursorPos += tselect;
+						if (cursorPos > text.charLength) cursorPos = text.charLength;
 						if (command.flags & TextCommandFlags.PerWord) {
 							do {
 								if (cursorPos < text.charLength) cursorPos++;
@@ -239,12 +244,13 @@ public class TextBox : WindowElement, TextInputListener {
 						} else if(cursorPos < text.charLength) {
 							cursorPos++;
 						}
+						tselect = 0;
 					}
 				}
 				draw();
 				break;
 			case TextCommandType.Home:
-				if (!(command.flags & TextCommandFlags.Select)) {
+				if (command.flags & TextCommandFlags.Select) {
 					tselect = cast(int)cursorPos;
 				} else {
 					tselect = 0;

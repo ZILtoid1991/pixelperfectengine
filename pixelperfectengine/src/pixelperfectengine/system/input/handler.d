@@ -223,6 +223,7 @@ public class InputHandler {
 					}
 					break;
 				case IOTA.InputEventType.MouseScroll:
+					//if (event.mouseSE.xS > 200 || event.mouseSE.xS < 200) event.mouseSE.xS = 0; //HADK: Get around iota (LDC2?) bug
 					if (mouseListener) {
 						mouseListener.mouseWheelEvent(
 								MouseEventCommons(event.timestamp, IOTA.OSWindow.byRef(event.handle), cast(Mouse)event.source),
@@ -268,6 +269,7 @@ public class InputHandler {
 					break;
 				default: break;
 			}
+			
 			if (bc.base){
 				if (!statusFlags) {	//Generate input event
 					CodeTreeSet hashcodeSet = inputLookup[bc];
@@ -290,63 +292,7 @@ public class InputHandler {
 							}
 						}
 					}
-				} /* else if (statusFlags & StatusFlags.TextInputEnable && bc.deviceTypeID == Devicetype.Keyboard && !release) {		//Generate text editing input
-					switch(bc.buttonNum){
-						case ScanCode.ENTER, ScanCode.ENTER2, ScanCode.NP_ENTER:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.Enter, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.ESCAPE:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.Escape, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.BACKSPACE, ScanCode.NP_BACKSPACE, ScanCode.ALTERASE:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.Backspace, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.UP:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CursorUp, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.DOWN:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CursorDown, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.LEFT:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CursorLeft, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.RIGHT:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.CursorRight, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.INSERT:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.Insert, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.DELETE:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.Delete, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.HOME:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.Home, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.END:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.End, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.PAGEUP:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PageUp, 
-									bc.modifierFlags);
-							break;
-						case ScanCode.PAGEDOWN:
-							textInputListener.textInputKeyEvent(event.key.timestamp, event.key.windowID, TextInputKey.PageDown, 
-									bc.modifierFlags);
-							break;
-						default: break;
-					}
-				} */ else if (statusFlags & StatusFlags.CaptureEvent) {			//Record event as keybinding
+				} else if (statusFlags & StatusFlags.CaptureEvent) {			//Record event as keybinding
 					CodeTreeSet* hashcodeSet = inputLookup.ptrOf(bc);
 					if (hashcodeSet && !(hashcodeSet.has(sysescCode) && statusFlags & StatusFlags.CE_CancelOnSysEsc)) {
 						if (StatusFlags.CE_DelConflCodes) {

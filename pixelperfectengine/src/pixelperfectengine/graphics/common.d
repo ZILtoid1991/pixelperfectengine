@@ -162,7 +162,7 @@ public struct Quad {
 	Point bottomLeft;
 	Point bottomRight;
 }
-public struct Verticle {
+public struct Vertex {
 	float x;
 	float y;
 	float z;
