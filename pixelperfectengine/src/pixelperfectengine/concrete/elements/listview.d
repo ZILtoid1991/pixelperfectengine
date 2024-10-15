@@ -989,14 +989,18 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				break;
 			case TextCommandType.Cursor:
 				if (command.amount < 0){
-					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
 					if (command.flags & TextCommandFlags.PerWord) {
 						do {
-							if(cursorPos > 0) cursorPos--;
+							if(cursorPos > 0) {
+								cursorPos--;
+								tselect++;
+							}
 						} while (cursorPos > 0 && text.getChar(cursorPos) != ' ');
 					} else if(cursorPos > 0) {
 						cursorPos--;
+						tselect++;
 					}
+					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
 				} else {
 					if (command.flags & TextCommandFlags.Select) {
 						if (command.flags & TextCommandFlags.PerWord) {
@@ -1007,7 +1011,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 							tselect++;
 						}
 					} else {
-						tselect = 0;
+						cursorPos += tselect;
+						if (cursorPos > text.charLength) cursorPos = cast(int)text.charLength;
 						if (command.flags & TextCommandFlags.PerWord) {
 							do {
 								if (cursorPos < text.charLength) cursorPos++;
@@ -1015,12 +1020,13 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 						} else if(cursorPos < text.charLength) {
 							cursorPos++;
 						}
+						tselect = 0;
 					}
 				}
 				draw();
 				break;
 			case TextCommandType.Home:
-				if (!(command.flags & TextCommandFlags.Select)) {
+				if (command.flags & TextCommandFlags.Select) {
 					tselect = cursorPos;
 				} else {
 					tselect = 0;
