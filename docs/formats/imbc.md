@@ -2,7 +2,7 @@
 
 Intelligent MIDI Bytecode.
 
-## Background and rationale behind creating the M2 formats
+## Background and rationale behind creating the IMBC formats
 
 * There's no known MIDI 2.0 file formats.
 * Most other music command file formats also lack extensions for creating adaptive soundtracks.
@@ -419,7 +419,7 @@ Bytecode layout:
 Human-readable format:
 
 ```
-$[[DeviceID]]: [MIDI command in one line]
+[[DeviceID]]: [MIDI command in one line]
 ```
 
 Emits a given amount of words of MIDI data to the targeted device. If more needed, then more must be chained together. One command ideally should target a single device. Device 65535 is the sequencer, and can be used for things like settings. In human-readable form, each MIDI command is translated to a human-readable format (see chapter on human-readable format).
@@ -723,7 +723,7 @@ Compile into numerous compare and jump statements.
 ## Position labels
 
 ```
-@[name]
+@[name]:
 ```
 
 Labels a position for the `jmpXX` instruction.
