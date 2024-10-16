@@ -134,7 +134,7 @@ abstract class Layer {
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
 	version (ppe_expglen) {
 		/**
-		 * TODO: Start to implement to texture rendering once Iota's OpenGL implementation is stable enough.
+		 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
 		 * Renders the layer's content to the texture target.
 		 * Params:
 		 *   workpad = The target texture.
@@ -144,6 +144,7 @@ abstract class Layer {
 		 */
 		public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, int[4] sizes, int[2] offsets) @nogc nothrow;
 		public abstract void setClearZBuffer(bool val) @nogc nothrow;
+		public abstract void setOverscanAmount(float valH, float valV);
 	}
 	///Returns the type of the layer.
 	///Useful with certain scripting languages.

@@ -241,7 +241,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	protected ListViewItem[]	entries;
 	protected int				selection;		///Selected item's number, or -1 if none selected.
 	protected int				hSelection;		///Horizontal selection for text editing.
-	protected int				tselect;		///Lenght of selected characters.
+	protected int				cursorSel;		///Selection part of the cursor.
 	protected int				cursorPos;		///Position of cursor.
 	protected int				horizTextOffset;///Horizontal text offset if text cannot fit the cell.
 	public int					hScrollSpeed = 1;///Horizontal scrolling speed.
@@ -333,18 +333,17 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			const int textPadding = ss.drawParameters["TextSpacingSides"];
 			
 			clearArea(textArea);
-			//drawBox(position, ss.getColor("windowascent"));
 			
-			//draw cursor
-			//if (flags & ENABLE_TEXT_EDIT) {
 			//calculate cursor first
+			const leftmostCursorPos = cursorPos > cursorSel && cursorSel != -1 ? cursorSel : cursorPos;
 			Box cursor = Box(textArea.left + textPadding, textArea.top + textPadding, textArea.left + textPadding, 
 					textArea.bottom - textPadding);
-			cursor.left += text.getWidth(0, cursorPos) - horizTextOffset;
+			cursor.left += text.getWidth(0, leftmostCursorPos) - horizTextOffset;
 			//cursor must be at least single pixel wide
 			cursor.right = cursor.left;
-			if (tselect) {
-				cursor.right += text.getWidth(cursorPos, cursorPos + tselect);
+			if (cursorSel != -1) {
+				if (cursorSel > cursorPos) cursor.right += text.getWidth(cursorPos, cursorSel);
+				else cursor.right += text.getWidth(cursorSel, cursorPos);
 			} else if (flags & INSERT) {
 				if (cursorPos < text.charLength) cursor.right += text.getWidth(cursorPos, cursorPos+1);
 				else cursor.right += text.font.chars(' ').xadvance;
@@ -894,9 +893,10 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			text = removeUnallowedSymbols(text, allowedChars);
 			if (!text.length) return;
 		}+/
-		if (tselect) {
-			this.text.removeChar(cursorPos, tselect);
-			tselect = 0;
+		if (cursorSel != -1) {
+			if (cursorSel > cursorPos) this.text.removeChar(cursorPos, cursorSel);
+			else this.text.removeChar(cursorSel, cursorPos);
+			cursorSel = -1;
 			for(int j ; j < text.length ; j++){
 				this.text.insertChar(cursorPos++, text[j]);
 			}
@@ -972,11 +972,10 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				inputHandler.stopTextInput();
 				break;
 			case TextCommandType.Delete:
-				if (tselect) {
-					for (int i ; i < tselect ; i++) {
-						deleteCharacter(cursorPos);
-					}
-					tselect = 0;
+				if (cursorSel != -1) {
+					if (cursorSel > cursorPos) text.removeChar(cursorPos, cursorSel);
+					else text.removeChar(cursorSel, cursorPos);
+					cursorSel = -1;
 				} else if (command.amount < 0){
 					if(cursorPos > 0){
 						deleteCharacter(cursorPos - 1);
@@ -988,57 +987,47 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 				draw();
 				break;
 			case TextCommandType.Cursor:
-				if (command.amount < 0){
+				if (command.flags & TextCommandFlags.Select) {
+					if (cursorSel == -1) cursorSel = cast(int)cursorPos;
 					if (command.flags & TextCommandFlags.PerWord) {
-						do {
-							if(cursorPos > 0) {
-								cursorPos--;
-								tselect++;
-							}
-						} while (cursorPos > 0 && text.getChar(cursorPos) != ' ');
-					} else if(cursorPos > 0) {
-						cursorPos--;
-						tselect++;
+						while (cursorSel + command.amount >= 0 && cursorSel + command.amount <= text.charLength) {
+							cursorSel += command.amount;
+							if (text.getChar(cursorSel) == ' ') break;
+						} 
+					} else if (cursorSel + command.amount >= 0 && cursorSel + command.amount <= text.charLength) {
+						cursorSel += command.amount;
 					}
-					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
 				} else {
-					if (command.flags & TextCommandFlags.Select) {
-						if (command.flags & TextCommandFlags.PerWord) {
-							do {
-								if (cursorPos + tselect < text.charLength) tselect++;
-							} while (cursorPos + tselect < text.charLength && text.getChar(cursorPos) != ' ');
-						} else if (cursorPos + tselect < text.charLength) {
-							tselect++;
-						}
-					} else {
-						cursorPos += tselect;
-						if (cursorPos > text.charLength) cursorPos = cast(int)text.charLength;
-						if (command.flags & TextCommandFlags.PerWord) {
-							do {
-								if (cursorPos < text.charLength) cursorPos++;
-							} while (cursorPos < text.charLength && text.getChar(cursorPos) != ' ');
-						} else if(cursorPos < text.charLength) {
-							cursorPos++;
-						}
-						tselect = 0;
+					if (cursorSel != -1) {
+						if (command.amount > 0 && cursorSel > cursorPos)  cursorPos = cursorSel;
+						else if (command.amount < 0 && cursorSel < cursorPos) cursorPos = cursorSel;
+					}
+					cursorSel = -1;
+					if (command.flags & TextCommandFlags.PerWord) {
+						while (cursorPos + command.amount >= 0 && cursorPos + command.amount <= text.charLength) {
+							cursorPos += command.amount;
+							if (text.getChar(cursorPos) == ' ') break;
+						} 
+					} else if(cursorPos + command.amount >= 0 && cursorPos + command.amount <= text.charLength) {
+						cursorPos += command.amount;
 					}
 				}
 				draw();
 				break;
 			case TextCommandType.Home:
 				if (command.flags & TextCommandFlags.Select) {
-					tselect = cursorPos;
+					cursorSel = 0;
 				} else {
-					tselect = 0;
+					cursorSel = -1;
+					cursorPos = 0;
 				}
-				cursorPos = 0;
 				draw();
 				break;
 			case TextCommandType.End:
 				if (command.flags & TextCommandFlags.Select) {
-					tselect = cast(int)text.charLength - cursorPos;
+					cursorSel = cast(int)(text.charLength);
 				} else {
-					tselect = 0;
+					cursorSel = -1;
 					cursorPos = cast(int)text.charLength;
 				}
 				draw();
@@ -1141,7 +1130,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		}
 		text = new Text(entries[selection][hSelection].text);
 		cursorPos = 0;
-		tselect = cast(int)text.charLength;
+		cursorSel = cast(int)text.charLength;
 		flags |= TEXTINPUT_EN;
 		draw();
 	}

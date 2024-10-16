@@ -706,12 +706,12 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 						}
 						handler.setCursor(StandardCursors.ResizeLeft);///Left edge in general
 						return;
-					} else if (mme.x >= position.right - 2) {///Right edge
+					} else if (mme.x + 2 >= position.right) {///Right edge
 						if (resizableV) {
 							if (mme.y - 2 <= position.top) {///Top-right corner
 								handler.setCursor(StandardCursors.ResizeTopRight);
 								return;
-							} else if (mme.y >= position.bottom - 2) {///Bottom-right corner
+							} else if (mme.y + 2 >= position.bottom) {///Bottom-right corner
 								handler.setCursor(StandardCursors.ResizeBottomRight);
 								return;
 							}
@@ -720,12 +720,12 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 						return;
 					} else if (resizableV) {///Top or bottom edge
 						if (mme.y - 2 <= position.top) handler.setCursor(StandardCursors.ResizeTop);
-						else if (mme.y >= position.bottom - 2) handler.setCursor(StandardCursors.ResizeBottom);
+						else if (mme.y + 2 >= position.bottom) handler.setCursor(StandardCursors.ResizeBottom);
 						return;
 					}
 				} else if (resizableV) {///The previous one already took care of the corner cases, so we won't have to deal with them here
 					if (mme.y - 2 <= position.top) handler.setCursor(StandardCursors.ResizeTop);
-					else if (mme.y >= position.bottom - 2) handler.setCursor(StandardCursors.ResizeBottom);
+					else if (mme.y + 2 >= position.bottom) handler.setCursor(StandardCursors.ResizeBottom);
 				}
 				if (handler.getCursor != StandardCursors.Arrow) handler.resetCursor();
 			}

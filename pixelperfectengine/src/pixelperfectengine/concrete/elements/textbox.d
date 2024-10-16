@@ -76,6 +76,10 @@ public class TextBox : WindowElement, TextInputListener {
 		if (!(flags & ENABLE_TEXT_EDIT)) inputHandler.startTextInput(this, false, position);
 		super.passMCE(mec, mce);
 	}
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+		if (position.isBetween(mme.x, mme.y)) parent.requestCursor(StandardCursors.TextSelect);
+		super.passMME(mec, mme);
+	}
 	public override void draw(){
 		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
@@ -87,8 +91,10 @@ public class TextBox : WindowElement, TextInputListener {
 		//draw cursor
 		if (flags & ENABLE_TEXT_EDIT) {
 			//calculate cursor first
-			Box cursor = Box(position.left + textPadding, position.top + textPadding, position.left + textPadding, position.bottom - textPadding);
-			cursor.left += text.getWidth(0, cursorPos) - horizTextOffset;
+			const leftmostCursorPos = cursorPos > cursorSel && cursorSel != -1 ? cursorSel : cursorPos;
+			Box cursor = Box(position.left + textPadding, position.top + textPadding, position.left + textPadding, 
+					position.bottom - textPadding);
+			cursor.left += text.getWidth(0, leftmostCursorPos) - horizTextOffset;
 			//cursor must be at least single pixel wide
 			cursor.right = cursor.left;
 			if (cursorSel != -1) {
@@ -218,7 +224,7 @@ public class TextBox : WindowElement, TextInputListener {
 					if (command.flags & TextCommandFlags.PerWord) {
 						while (cursorSel + command.amount >= 0 && cursorSel + command.amount <= text.charLength) {
 							cursorSel += command.amount;
-							if (text.getChar(cursorSel) != ' ') break;
+							if (text.getChar(cursorSel) == ' ') break;
 						} 
 					} else if (cursorSel + command.amount >= 0 && cursorSel + command.amount <= text.charLength) {
 						cursorSel += command.amount;
@@ -232,14 +238,12 @@ public class TextBox : WindowElement, TextInputListener {
 					if (command.flags & TextCommandFlags.PerWord) {
 						while (cursorPos + command.amount >= 0 && cursorPos + command.amount <= text.charLength) {
 							cursorPos += command.amount;
-							if (text.getChar(cursorPos) != ' ') break;
+							if (text.getChar(cursorPos) == ' ') break;
 						} 
 					} else if(cursorPos + command.amount >= 0 && cursorPos + command.amount <= text.charLength) {
 						cursorPos += command.amount;
 					}
 				}
-				
-				
 				draw();
 				break;
 			case TextCommandType.Home:

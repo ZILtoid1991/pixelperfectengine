@@ -8,7 +8,7 @@ public import pixelperfectengine.concrete.popup.base;
 public class PopUpTextInput : PopUpElement, TextInputListener {
 	protected bool enableEdit, insert;
 	protected size_t cursorPos;
-	protected int horizTextOffset, tselect;
+	protected int horizTextOffset, cursorSel;
 	public void delegate(Event ev) onTextInput;
 
 	public this(string source, Text text, Coordinate position){
@@ -25,13 +25,14 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 		output.drawFilledBox(mainPos, ss.getColor("window"));
 		output.drawBox(mainPos, ss.getColor("windowascent"));
 		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
-		Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (text.font.size / 2) ,
-				position.width,position.height - textPadding);
+		Box textPos = Coordinate(textPadding, (position.height / 2) - (text.font.size / 2), position.width,
+				position.height - textPadding);
 		
 		const int y = text.font.size;
 		//if(x > textPos.width ) xOffset = horizTextOffset;
 		//draw cursor
 		if(enableEdit) {
+			const leftmostCursorPos = cursorPos > cursorSel && cursorSel != -1 ? cursorSel : cursorPos;
 			const int x0 = text.getWidth(0,cursorPos) + textPadding - horizTextOffset;
 			if(!insert){
 				//output.drawLine(x0, x0, 2, 2 + y, getStyleSheet().getColor("selection"));
@@ -96,11 +97,10 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 				if(onTextInput !is null) onTextInput(new Event(this, text, EventType.TextInput, SourceType.PopUpElement));
 				break;
 			case TextCommandType.Delete:
-				if (tselect) {
-					for (int i ; i < tselect ; i++) {
-						deleteCharacter(cursorPos);
-					}
-					tselect = 0;
+				if (cursorSel != -1) {
+					if (cursorSel > cursorPos) text.removeChar(cursorPos, cursorSel);
+					else text.removeChar(cursorSel, cursorPos);
+					cursorSel = -1;
 				} else if (command.amount < 0){
 					if(cursorPos > 0){
 						deleteCharacter(cursorPos - 1);
@@ -112,51 +112,47 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 				draw();
 				break;
 			case TextCommandType.Cursor:
-				if (command.amount < 0){
-					if (!(command.flags & TextCommandFlags.Select)) tselect = 0;
+				if (command.flags & TextCommandFlags.Select) {
+					if (cursorSel == -1) cursorSel = cast(int)cursorPos;
 					if (command.flags & TextCommandFlags.PerWord) {
-						do {
-							if(cursorPos > 0) cursorPos--;
-						} while (cursorPos > 0 && text.getChar(cursorPos) != ' ');
-					} else if(cursorPos > 0) {
-						cursorPos--;
+						while (cursorSel + command.amount >= 0 && cursorSel + command.amount <= text.charLength) {
+							cursorSel += command.amount;
+							if (text.getChar(cursorSel) == ' ') break;
+						} 
+					} else if (cursorSel + command.amount >= 0 && cursorSel + command.amount <= text.charLength) {
+						cursorSel += command.amount;
 					}
 				} else {
-					if (command.flags & TextCommandFlags.Select) {
-						if (command.flags & TextCommandFlags.PerWord) {
-							do {
-								if (cursorPos + tselect < text.charLength) tselect++;
-							} while (cursorPos + tselect < text.charLength && text.getChar(cursorPos) != ' ');
-						} else if (cursorPos + tselect < text.charLength) {
-							tselect++;
-						}
-					} else {
-						tselect = 0;
-						if (command.flags & TextCommandFlags.PerWord) {
-							do {
-								if (cursorPos < text.charLength) cursorPos++;
-							} while (cursorPos < text.charLength && text.getChar(cursorPos) != ' ');
-						} else if(cursorPos < text.charLength) {
-							cursorPos++;
-						}
+					if (cursorSel != -1) {
+						if (command.amount > 0 && cursorSel > cursorPos)  cursorPos = cursorSel;
+						else if (command.amount < 0 && cursorSel < cursorPos) cursorPos = cursorSel;
+					}
+					cursorSel = -1;
+					if (command.flags & TextCommandFlags.PerWord) {
+						while (cursorPos + command.amount >= 0 && cursorPos + command.amount <= text.charLength) {
+							cursorPos += command.amount;
+							if (text.getChar(cursorPos) == ' ') break;
+						} 
+					} else if(cursorPos + command.amount >= 0 && cursorPos + command.amount <= text.charLength) {
+						cursorPos += command.amount;
 					}
 				}
 				draw();
 				break;
 			case TextCommandType.Home:
-				if (!(command.flags & TextCommandFlags.Select)) {
-					tselect = cast(int)cursorPos;
+				if (command.flags & TextCommandFlags.Select) {
+					cursorSel = 0;
 				} else {
-					tselect = 0;
+					cursorSel = -1;
+					cursorPos = 0;
 				}
-				cursorPos = 0;
 				draw();
 				break;
 			case TextCommandType.End:
 				if (command.flags & TextCommandFlags.Select) {
-					tselect = cast(int)(text.charLength - cursorPos);
+					cursorSel = cast(int)(text.charLength);
 				} else {
-					tselect = 0;
+					cursorSel = -1;
 					cursorPos = cast(int)text.charLength;
 				}
 				draw();

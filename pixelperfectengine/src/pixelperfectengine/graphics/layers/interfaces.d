@@ -12,6 +12,14 @@ import pixelperfectengine.graphics.layers.base;
  * Tile interface, defines common functions shared between tile layers.
  */
 public interface ITileLayer {
+	version (ppe_expglen) {
+		public void rotate(ushort theta);
+		public void scaleHoriz(short amount);
+		public void scaleVert(short amount);
+		public void setTransformMidpoint(short x, short y, bool toScreen);
+		public void writeTransformLookupTable(ushort index, ushort theta, short sX, short sY, 
+				short x0, short y0, short sH, short sV);
+	}
 	/// Retrieves the mapping from the tile layer.
 	/// Can be used to retrieve data, e.g. for editors, saving game states
 	public MappingElement[] getMapping() @nogc @safe pure nothrow;
