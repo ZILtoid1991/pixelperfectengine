@@ -156,28 +156,46 @@ public struct Box {
 		return Box(x, y, x + w - 1, y + h - 1);
 	}
 }
+/**
+ * Defines a free-shape quad by its points.
+ */
 public struct Quad {
 	Point topLeft;
 	Point topRight;
 	Point bottomLeft;
 	Point bottomRight;
 }
+/**
+ * Defines Vertex data.
+ * Color channels can be repurposed to pass arbitrary data to the shaders.
+ */
 public struct Vertex {
-	float x;
-	float y;
-	float z;
-	float r;
-	float g;
-	float b;
-	float s;
-	float t;
+	float x;		/// X coordinate of the vertex.
+	float y;		/// Y coordinate of the vertex.
+	float z;		/// Z coordinate of the vertex.
+	float r;		/// Red color channel of the vertex.
+	float g;		/// Green color channel of the vertex.
+	float b;		/// Blue color channel of the vertex.
+	float s;		///	X coordinate for texture mapping.
+	float t;		/// Y coordinate for texture mapping.
 }
+/**
+ * Defines indices for a single polygon (triangle).
+ */
+public struct PolygonIndices {
+	int a;
+	int b;
+	int c;
+}
+///Thrown on issues with OpenGL shaders.
 public class GLShaderException : PPEException {
 	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {
 		super(msg, file, line, nextInChain);
 	}
 }
-
+/**
+ * Checks OpenGL shader identified by `shaderID`, throws `GLShaderException` on error.
+ */
 public void gl_CheckShader(GLuint shaderID) @trusted {
 	int infoLogLength;
 	glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
@@ -188,7 +206,9 @@ public void gl_CheckShader(GLuint shaderID) @trusted {
 		throw new GLShaderException(cast(string)msg);
 	}
 }
-
+/**
+ * Checks OpenGL program identified by `programID`, throws `GLShaderException` on error.
+ */
 public void gl_CheckProgram(GLuint programID) @trusted {
 	int infoLogLength;
 	glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &infoLogLength);
