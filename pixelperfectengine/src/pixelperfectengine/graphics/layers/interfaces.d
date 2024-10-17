@@ -176,6 +176,22 @@ public interface ITTL {
  *General SpriteLayer interface.
  */
 public interface ISpriteLayer {
+	version (ppe_expglen) {
+		/**
+		 * Adds a sprite to the given location.
+		 * Params:
+		 *   sprt = Bitmap to be added as a sprite.
+		 *   n = Priority ID of the sprite.
+		 *   position = Determines where the sprite should be drawn on the layer.
+		 *   paletteSel = Palette selector for indexed bitmaps.
+		 *   paletteSh = Palette shift amount in bits.
+		 *   alpha = Alpha channel for the whole of the sprite.
+		 *   shaderID = Shader program identifier
+		 */
+		public Box addSprite(ABitmap sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0, 
+			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
+			@trusted nothrow;
+	}
 	///Clears all sprite from the layer.
 	public void clear() @trusted nothrow;
 	///Removes the sprite with the given ID.
