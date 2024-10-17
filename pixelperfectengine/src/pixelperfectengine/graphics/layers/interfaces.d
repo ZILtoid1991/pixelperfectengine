@@ -13,12 +13,55 @@ import pixelperfectengine.graphics.layers.base;
  */
 public interface ITileLayer {
 	version (ppe_expglen) {
+		/**
+		 * Sets the rotation amount for the layer.
+		 * Params:
+		 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
+		 * Note: This visual effect rely on overscan amount set correctly.
+		 */
 		public void rotate(ushort theta);
+		/**
+		 * Sets the horizontal scaling amount.
+		 * Params:
+		 *   amount = The amount of horizontal scaling, 0x10_00 is normal, anything 
+		 * greater will minimize, lesser will magnify the layer. Negative values mirror 
+		 * the layer.
+		 */
 		public void scaleHoriz(short amount);
+		/**
+		 * Sets the vertical scaling amount.
+		 * Params:
+		 *   amount = The amount of vertical scaling, 0x10_00 is normal, anything 
+		 * greater will minimize, lesser will magnify the layer. Negative values mirror 
+		 * the layer.
+		 */
 		public void scaleVert(short amount);
-		public void setTransformMidpoint(short x, short y, bool toScreen);
-		public void writeTransformLookupTable(ushort index, ushort theta, short sX, short sY, 
-				short x0, short y0, short sH, short sV);
+		/**
+		 * Sets the transformation midpoint relative to the middle of the screen.
+		 * Params:
+		 *   x0 = x coordinate of the midpoint.
+		 *   y0 = y coordinate of the midpoint.
+		 */
+		public void setTransformMidpoint(short x0, short y0);
+		/**
+		 * Writes to the transform lookup table.
+		 * Params:
+		 *   index = The index of the table, which correlates to the given line of the screen.
+		 *   theta = Rotation amount. 0x10_00 means a whole rotation.
+		 *   sX = Scrolling on the X axis.
+		 *   sY = Scrolling on the Y axis.
+		 *   x0 = x coordinate of the transformation midpoint.
+		 *   y0 = y coordinate of the transformation midpoint.
+		 *   sH = The amount of horizontal scaling, 0x10_00 is normal, anything 
+		 * greater will minimize, lesser will magnify the layer. Negative values mirror 
+		 * the layer.
+		 *   sV = The amount of vertical scaling, 0x10_00 is normal, anything 
+		 * greater will minimize, lesser will magnify the layer. Negative values mirror 
+		 * the layer.
+		 */
+		public void writeTransformLookupTable(ushort index, ushort theta = 0, short sX = 0x00, short sY = 0x00, 
+				short x0 = 0x00, short y0 = 0x00, short sH = 0x10_00, short sV = 0x10_00);
+		public void clearTransformLookupTable();
 	}
 	/// Retrieves the mapping from the tile layer.
 	/// Can be used to retrieve data, e.g. for editors, saving game states
@@ -26,16 +69,16 @@ public interface ITileLayer {
 	/** 
 	 * Reads the mapping element from the given area, while accounting for warp mode.
 	 * Params:
-	 *  x: x offset of the tile.
-	 *  y: y offset of the tile.
+	 *   x = x offset of the tile.
+	 *   y = y offset of the tile.
 	 * Returns: The tile at the given point.
 	 */
 	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const;
 	/**
 	 * Writes the given element into the mapping at the given location.
 	 * Params:
-	 *  x: x offset of the tile.
-	 *  y: y offset of the tile.
+	 *   x = x offset of the tile.
+	 *   y = y offset of the tile.
 	 */
 	public void writeMapping(int x, int y, MappingElement w) @nogc @safe pure nothrow;
 	/** 
@@ -53,8 +96,8 @@ public interface ITileLayer {
 	/** 
 	 * Reads the mapping element from the given area, while accounting for warp mode.
 	 * Params:
-	 *  x: x offset of the tile.
-	 *  y: y offset of the tile.
+	 *   x = x offset of the tile.
+	 *   y = y offset of the tile.
 	 * Returns: The tile at the given point.
 	 */
 	public MappingElement tileByPixel(int x, int y) @nogc @safe pure nothrow const;
