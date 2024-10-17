@@ -85,8 +85,8 @@ public struct Box {
 	 * Moves the box to the given position.
 	 */
 	public void move(int x, int y) @nogc @safe nothrow pure {
-		right = x + width();
-		bottom = y + height();
+		right = x + width() - 1;
+		bottom = y + height() - 1;
 		left = x;
 		top = y;
 	}

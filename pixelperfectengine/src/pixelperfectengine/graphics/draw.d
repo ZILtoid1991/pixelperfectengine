@@ -71,7 +71,7 @@ public class BitmapDrawer{
 	 *  target = Containst the coordinates of the box to be drawn.
 	 *  color = The color index which the box will be drawn.
 	 */
-	public void drawBox(Coordinate target, ubyte[] pattern) pure {
+	public void drawBox(Box target, ubyte[] pattern) pure {
 		draw.drawLinePattern(target.left, target.top, target.right, target.top, pattern, output.pixels, output.width);
 		draw.drawLinePattern(target.left, target.top, target.left, target.bottom, pattern, output.pixels, output.width);
 		draw.drawLinePattern(target.left, target.bottom, target.right, target.bottom, pattern, output.pixels, output.width);
@@ -83,7 +83,7 @@ public class BitmapDrawer{
 	 *  target = The position of the box.
 	 *  color = The color of the box (both the line and fill color).
 	 */
-	public void drawFilledBox(Coordinate target, ubyte color) pure {
+	public void drawFilledBox(Box target, ubyte color) pure {
 		draw.drawFilledRectangle(target.left, target.top, target.right, target.bottom, color, output.pixels, 
 				output.width);
 	}
@@ -171,7 +171,7 @@ public class BitmapDrawer{
 	 *  target = The area to be XOR blitted.
 	 *  color = The color index to be used.
 	 */
-	public void xorBitBLT(Coordinate target, ubyte color) pure {
+	public void xorBitBLT(Box target, ubyte color) pure {
 		import CPUblit.composing.specblt;
 		ubyte* dest = output.getPtr + target.left + (target.top * output.width);
 		for (int y ; y < target.height ; y++) {
@@ -434,38 +434,7 @@ public class BitmapDrawer{
 			bitBLT(renderTarget, workPad, textSlice);
 		return status;
 	}
-	/* ///Draws text to the given point. DEPRECATED!
-	deprecated public void drawText(int x, int y, dstring text, Fontset!(Bitmap8Bit) fontset, uint style = 0) pure {
-		const int length = fontset.getTextLength(text);
-		//writeln(text);
-		/+if(style == 0){
-			x = x - (length / 2);
-			y -= fontset.getSize() / 2;
-		}else if(style == 2){
-			y -= fontset.getSize();
-		}+/
-		if(style & FontFormat.HorizCentered)
-			x = x - (length / 2);
-		if(style & FontFormat.VertCentered)
-			y -= fontset.size / 2;
-		foreach(dchar c ; text){
-			const Font.Char chinfo = fontset.chars(c);
-			const Coordinate letterSlice = Coordinate(chinfo.x, chinfo.y, chinfo.x + chinfo.width, chinfo.y + chinfo.height);
-			insertBitmapSlice(x + chinfo.xoffset, y + chinfo.yoffset, fontset.pages[chinfo.page], letterSlice);
-			x += chinfo.xadvance;
-		}
-	} */
-	/* ///Inserts a bitmap using blitter. DEPRECATED
-	deprecated public void insertBitmap(int x, int y, Bitmap8Bit bitmap) pure {
-		ubyte* psrc = bitmap.getPtr, pdest = output.getPtr;
-		pdest += x + output.width * y;
-		int length = bitmap.width;
-		for(int iy ; iy < bitmap.height ; iy++){
-			compose.blitter(psrc,pdest,length);
-			psrc += length;
-			pdest += output.width;
-		}
-	} */
+	
 }
 /**
  * Font formatting flags. DEPRECATED!

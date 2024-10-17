@@ -72,6 +72,7 @@ public class TestElements : InputListener, SystemEventListener {
 		PopUpElement.onDraw = &rasterRefresh;
 		WindowElement.onDraw = &rasterRefresh;
 		WindowElement.inputHandler = ih;
+		PopUpElement.inputhandler = ih;
 		Window.onDrawUpdate = &rasterRefresh;
 		isRunning = true;
 		txtParser = new TextParser(loadTextFile(File(getPathToLocalizationFile("US","en","xml"))), 
@@ -147,6 +148,7 @@ public class TestWindow : Window {
 	Button              btn_addElem;
 	Button              btn_subMenu;
 	Button              btn_resizeTest;
+	Button				btn_popupTextinput;
 	VertScrollBar       vScrollBarTest;
 	Label               singleLineLabel;
 	Label               multiLineLabel;
@@ -204,6 +206,9 @@ public class TestWindow : Window {
 		btn_resizeTest = new Button("Window resize", "", Box.bySize(300, 120, 70, 20));
 		btn_resizeTest.onMouseLClick = &btn_resizeTest_onClick;
 		addElement(btn_resizeTest);
+		btn_popupTextinput = new Button("PopUpTextInput", "", Box.bySize(300, 145, 70, 20));
+		btn_popupTextinput.onMouseLClick = &btn_popupTextinput_onClick;
+		addElement(btn_popupTextinput);
 
 		multiLineDialog = lang["multilinedialog"];
 	}
@@ -236,6 +241,10 @@ public class TestWindow : Window {
 	}
 	private void btn_resizeTest_onClick(Event ev) {
 		handler.addWindow(new ResizableWindow());
+	}
+	private void btn_popupTextinput_onClick(Event ev) {
+		handler.addPopUpElement(new PopUpTextInput("", new Text("1234567890", globalDefaultStyle.getChrFormatting("default")), 
+				Box.bySize(1,1, 256, 24)));
 	}
 	private void fileDialogEvent(Event ev) {
 		FileEvent fe = cast(FileEvent)ev;

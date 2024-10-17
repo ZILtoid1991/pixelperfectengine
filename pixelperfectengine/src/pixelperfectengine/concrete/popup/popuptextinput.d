@@ -11,38 +11,50 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 	protected int horizTextOffset, cursorSel;
 	public void delegate(Event ev) onTextInput;
 
-	public this(string source, Text text, Coordinate position){
+	public this(string source, Text text, Box position, EventDeleg onTextInput = null){
 		this.source = source;
 		this.text = text;
 		this.position = position;
+		this.onTextInput = onTextInput;
 		enableEdit = true;
 		output = new BitmapDrawer(position.width, position.height);
 		inputhandler.startTextInput(this, false, position);
 	}
-	public override void draw(){
+	public override void draw() {
 		StyleSheet ss = getStyleSheet();
-		const Box mainPos = Box(0,0,position.width - 1, position.height - 1);
-		output.drawFilledBox(mainPos, ss.getColor("window"));
-		output.drawBox(mainPos, ss.getColor("windowascent"));
+		const Box mainPos = Box.bySize(0, 0, position.width, position.height);
+		synchronized {
+			output.drawFilledBox(Box.bySize(1, 1, position.width - 1, position.height - 1), ss.getColor("window"));
+			output.drawBox(mainPos, ss.getColor("windowascent"));
+		}
 		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
-		Box textPos = Coordinate(textPadding, (position.height / 2) - (text.font.size / 2), position.width,
+		Box textPos = Box(textPadding, (position.height / 2) - (text.font.size / 2), position.width - textPadding,
 				position.height - textPadding);
 		
 		const int y = text.font.size;
 		//if(x > textPos.width ) xOffset = horizTextOffset;
 		//draw cursor
 		if(enableEdit) {
+			//calculate cursor first
 			const leftmostCursorPos = cursorPos > cursorSel && cursorSel != -1 ? cursorSel : cursorPos;
-			const int x0 = text.getWidth(0,cursorPos) + textPadding - horizTextOffset;
-			if(!insert){
-				//output.drawLine(x0, x0, 2, 2 + y, getStyleSheet().getColor("selection"));
-				output.drawLine(Point(x0, 2), Point(x0, 2 + y), ss.getColor("selection"));
-			}else{
-				const int x1 = cursorPos == text.charLength ? text.font.chars(' ').xadvance :
-						text.getWidth(cursorPos,cursorPos + 1);
-				//output.drawFilledRectangle(x0, x1 + x0, 2, 2 + y, getStyleSheet().getColor("selection"));
-				output.drawFilledBox(Box(x0, 2, x1, 2 + y), ss.getColor("selection"));
+			Box cursor = Box(textPadding, textPadding, textPadding, position.height - textPadding);
+			cursor.left += text.getWidth(0, leftmostCursorPos) - horizTextOffset;
+			//cursor must be at least single pixel wide
+			cursor.right = cursor.left;
+			if (cursorSel != -1) {
+				if (cursorSel > cursorPos) cursor.right += text.getWidth(cursorPos, cursorSel);
+				else cursor.right += text.getWidth(cursorSel, cursorPos);
+			} else if (insert) {
+				if (cursorPos < text.charLength) cursor.right += text.getWidth(cursorPos, cursorPos+1);
+				else cursor.right += text.font.chars(' ').xadvance;
+			} else {
+				cursor.right++;
 			}
+			//Clamp down if cursor is wider than the text editing area
+			cursor.right = cursor.right <= position.width - textPadding ? cursor.right : position.width - textPadding;
+			cursor.left = cursor.left > cursor.right ? cursor.right : cursor.left;
+			//Draw cursor
+			output.drawFilledBox(cursor, ss.getColor("selection"));
 		}
 
 		
