@@ -149,6 +149,7 @@ public class TestWindow : Window {
 	Button              btn_subMenu;
 	Button              btn_resizeTest;
 	Button				btn_popupTextinput;
+	TextBox				textBox_test;
 	VertScrollBar       vScrollBarTest;
 	Label               singleLineLabel;
 	Label               multiLineLabel;
@@ -209,6 +210,8 @@ public class TestWindow : Window {
 		btn_popupTextinput = new Button("PopUpTextInput", "", Box.bySize(300, 145, 70, 20));
 		btn_popupTextinput.onMouseLClick = &btn_popupTextinput_onClick;
 		addElement(btn_popupTextinput);
+		textBox_test = new TextBox("0123456789", "", Box.bySize(300, 170, 70, 20));
+		addElement(textBox_test);
 
 		multiLineDialog = lang["multilinedialog"];
 	}

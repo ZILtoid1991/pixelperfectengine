@@ -52,7 +52,9 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 			}
 			//Clamp down if cursor is wider than the text editing area
 			cursor.right = cursor.right <= position.width - textPadding ? cursor.right : position.width - textPadding;
+			cursor.right = cursor.right < 0 ? textPadding : cursor.right;
 			cursor.left = cursor.left > cursor.right ? cursor.right : cursor.left;
+			cursor.left = cursor.left < 0 ? textPadding : cursor.left;
 			//Draw cursor
 			output.drawFilledBox(cursor, ss.getColor("selection"));
 		}
@@ -71,19 +73,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 		for(int j ; j < text.length ; j++){
 			this.text.insertChar(cursorPos++, text[j]);
 		}
-		const int textPadding = getStyleSheet().drawParameters["TextSpacingSides"];
-		const Coordinate textPos = Coordinate(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
-				position.width,position.height - textPadding);
-		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, cursorPos);
-		if(x > textPos.width) {
-			 if(cursorPos == this.text.text.length) {
-				horizTextOffset = x - textPos.width;
-			 } else if(cursorPixelPos < horizTextOffset) { //Test for whether the cursor would fall out from the current text area
-				horizTextOffset = cursorPixelPos;
-			 } else if(cursorPixelPos > horizTextOffset + textPos.width) {
-				horizTextOffset = horizTextOffset + textPos.width;
-			 }
-		}
+		checkCursorPos();
 		draw();
 	}
 	/**
@@ -121,6 +111,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 				} else {
 					deleteCharacter(cursorPos);
 				}
+				checkCursorPos();
 				draw();
 				break;
 			case TextCommandType.Cursor:
@@ -149,6 +140,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 						cursorPos += command.amount;
 					}
 				}
+				checkCursorPos();
 				draw();
 				break;
 			case TextCommandType.Home:
@@ -158,6 +150,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 					cursorSel = -1;
 					cursorPos = 0;
 				}
+				checkCursorPos();
 				draw();
 				break;
 			case TextCommandType.End:
@@ -167,6 +160,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 					cursorSel = -1;
 					cursorPos = cast(int)text.charLength;
 				}
+				checkCursorPos();
 				draw();
 				break;
 			case TextCommandType.Insert:
@@ -176,6 +170,23 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 			default:
 				break;
 
+		}
+	}
+	private void checkCursorPos() {
+		const int textPadding = getStyleSheet.drawParameters["TextSpacingSides"];
+		const Box textPos = Box(textPadding,(position.height / 2) - (this.text.font.size / 2) ,
+				position.width - textPadding,position.height - textPadding);
+		const int x = this.text.getWidth(), cursorPixelPos = this.text.getWidth(0, cursorPos);
+		if (x > textPos.width) {
+			if (cursorPos == this.text.charLength) {		// cursor is at last character
+				horizTextOffset = x - textPos.width + textPadding;
+			} else if (cursorPixelPos - horizTextOffset < 0) { // cursor would fall out at left hand side
+				horizTextOffset = cursorPixelPos;
+			} else if (cursorPixelPos - horizTextOffset > textPos.width) {	//cursor would fall out at right hand side
+				horizTextOffset = cursorPixelPos - textPos.width - textPadding;
+			}
+		} else {
+			horizTextOffset = 0;
 		}
 	}
 	public void dropTextInput(){
