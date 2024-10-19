@@ -227,7 +227,7 @@ public class InputHandler {
 					if (mouseListener) {
 						mouseListener.mouseWheelEvent(
 								MouseEventCommons(event.timestamp, IOTA.OSWindow.byRef(event.handle), cast(Mouse)event.source),
-								MouseWheelEvent(event.mouseSE.xS, event.mouseSE.yS));
+								MouseWheelEvent(mouseScrollNormalizer(event.mouseSE.xS) * 4, mouseScrollNormalizer(event.mouseSE.yS) * 16));
 					}
 					break;
 				case IOTA.InputEventType.TextInput:
@@ -326,4 +326,10 @@ public class InputHandler {
 		const BindingCode bc = BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0);
 		return bc;
 	}
+}
+pragma(inline, true)
+package int mouseScrollNormalizer(int i) @nogc @safe pure nothrow {
+	if (i > 0) return 1;
+	if (i < 0) return -1;
+	return 0;
 }
