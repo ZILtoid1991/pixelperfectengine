@@ -4,6 +4,10 @@
 
 * Status: Works, however initial architecture isn't well suited for modulation/type effects. Develop separate effector for that purpose.
 
+### Modulation (Chorus/Flanger) effects
+
+Not yet materialized
+
 ## Audio support
 
 * Status: mostly works.
@@ -16,6 +20,7 @@
   * Custom MIDI 2.0 format drafted.
   * Assembler and VM works so far, needs more testing.
   * Implement binary format by 0.11.0!
+  * Format renamed to IMBC due to M2 already existing.
 
 ### Audio development toolkit
 
@@ -25,7 +30,7 @@
 
 #### Music editor
 
-Due to the capabilities of the new format the engine uses (M2), a special editor will be needed, that can do some scripting, etc.
+Due to the capabilities of the new format the engine uses (~~M2~~ IMBC), a special editor will be needed, that can do some scripting, etc.
 
 # Features planned for later
 
@@ -52,6 +57,10 @@ There's now some preliminary path management, more features will be added later 
 
 Potential users are being scared away by the engine's path system, and some stuff just outright tries to run the executable from random places where the `../system/` folder is not reachable.
 
+### Current status
+
+Implemented for the most part.
+
 ## GPU rendering (1.0.0)
 
 It's likely possible to do pixel perfect graphics without resorting to compute. It needs the followings:
@@ -68,12 +77,12 @@ Mostly finishing iota to a state it can replace the current SDL functionality. (
 
 ### Things probably need to be changed before, through, or after the GPU transition
 
-* Tile rendering needs to be figured out yet again. Either needs to stay on the CPU, completely offloaded to the GPU, or some hybrid approach. ~~The GPU approach would limit the scanline effects.~~ Scanline effects can be done with a special texture and rendering a larger size of the screen.
-* In order to better take advantage of the GPU, the Tile Format has to be rewritten, probably to 64 bit words. This would give the user extra bitflags, per-tile alpha channel, per-tile compositing function, flags for rotation, etc.
+* Tile rendering needs to be figured out yet again. Either needs to stay on the CPU, completely offloaded to the GPU, or some hybrid approach. ~~The GPU approach would limit the scanline effects.~~ Scanline effects can be done with special shaders.
+* ~~In order to better take advantage of the GPU, the Tile Format has to be rewritten, probably to 64 bit words. This would give the user extra bitflags, per-tile alpha channel, per-tile compositing function, flags for rotation, etc.~~ Basic tile format will be mostly kept as is, tile rotation will be added though to a flag, the rest of the bitfield will be used as priority. However, extra data can be assigned for per-vertex color data, which can be used for color calculation, either shared or per-tile.
 
 ### Complications
 
-The Transformable Tile Layer likely cannot be done without either heavy compromises, or heavy restructuring, especially not without compute shaders (not available on all GPUs). Likely it will be still be done by the CPU, then streamed to the GPU as textures, which at "retro" resolutions, shouldn't be too taxing on lower-end hardware.
+The Transformable Tile Layer likely cannot be done without either heavy compromises, or heavy restructuring, especially not without compute shaders (not available on all GPUs). Likely it will be still be done by the CPU, then streamed to the GPU as textures, which at "retro" resolutions, shouldn't be too taxing on lower-end hardware. (Likely will be dropped with regular tile layer getting some of its capabilities instead)
 
 ## Logging
 
