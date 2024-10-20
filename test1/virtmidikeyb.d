@@ -102,7 +102,7 @@ public class VirtualMidiKeyboard : Window {
 		textBox_PrgChange.onTextInput = &textBox_PrgChange_onTextInput;
 		onClose = &app.onVirtMIDIKeybClose;
 	}
-	public int keyEventReceive(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public int keyEventReceive(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		if (!active)
 			return 0;
 		if (isPressed) {

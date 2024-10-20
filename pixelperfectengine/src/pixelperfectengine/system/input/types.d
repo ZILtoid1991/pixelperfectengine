@@ -11,7 +11,6 @@ public enum JoyModifier : ubyte {
 	Button		= 0x00,
 	DPad		= 0x04,
 	Axis		= 0x08,
-	
 }
 /**
  * Determines input device types.
@@ -24,54 +23,8 @@ public enum Devicetype : ubyte {
 	Touchscreen	= 3,
 	Pen			= 4,
 }
-/**
- * Keys used during text input.
- * Multiple enter and backspace keys are not threated as different entities in this case.
- */
-/* public enum TextInputKey {
-	init,
-	Enter		= 1,
-	Escape		= 2,
-	Backspace	= 3,
-	CursorUp	= 4,
-	CursorDown	= 5,
-	CursorLeft	= 6,
-	CursorRight	= 7,
-	Insert		= 8,
-	Delete		= 9,
-	Home		= 10,
-	End			= 11,
-	PageUp		= 12,
-	PageDown	= 13
-} */
-/**
- * Mouse Buttons that are numbered by the engine.
- */
-/* public enum MouseButton : ubyte {
-	Left		= 1,
-	Mid			= 2,
-	Right		= 3,
-	Next		= 4,
-	Previous	= 5
-} */
-/**
- * Mouse Button flags.
- */
-/* public enum MouseButtonFlags : uint {
-	Left		= 1 << 0,
-	Mid			= 1 << 1,
-	Right		= 1 << 2,
-	Next		= 1 << 3,
-	Previous	= 1 << 4
-} */
-/**
- * Button states.
- */
-/* public enum ButtonState : ubyte {
-	Released	= 0,
-	Pressed		= 1
-} */
-
+public enum IGNORE_LOCKLIGHTS = KeyboardModifiers.NumLock | KeyboardModifiers.CapsLock | KeyboardModifiers.ScrollLock;
+public enum IGNORE_ALL = 0xFF;
 /**
  * Stores an easy to lookup code for input bindings in integer format.
  * Keybindings should be stored in the configuration file as a human-readable format, as this struct

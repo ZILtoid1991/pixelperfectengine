@@ -7,7 +7,7 @@ import std.format;
 import std.random;
 import std.typecons : BitFlags;
 
-import bindbc.sdl;
+import bindbc.opengl;
 
 import midi2.types.structs;
 import midi2.types.enums;
@@ -16,7 +16,6 @@ import pixelperfectengine.concrete.window;
 import pixelperfectengine.concrete.windowhandler;
 import pixelperfectengine.concrete.eventchainsystem;
 
-import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
 
@@ -48,11 +47,21 @@ import test1.modulerouter;
 import test1.virtmidikeyb;
 import test1.midiseq;
 
+int guiScaling = 2;
+
 /** 
  * Audio subsystem test.
  */
 int main(string[] args) {
-	initialzeSDL();
+	foreach (string arg ; args) {
+		if (arg.startsWith("--ui-scaling=")) {
+			try {
+				guiScaling = arg[13..$].to!int;
+			} catch (Exception e) {
+
+			}
+		}
+	}
 	AudioDevKit app = new AudioDevKit(args);
 	writeln("Status feedback console initialized.");
 	app.whereTheMagicHappens();
@@ -117,6 +126,9 @@ public class TopLevelWindow : Window {
 		}
 		
 	}
+	public override void onResize() {
+		mb.setPosition(Box(0, 0, position.width-1, 15));
+	}
 }
 /** 
  * Testcase for the audio system.
@@ -126,7 +138,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	AudioDeviceHandler adh;
 	ModuleManager	mm;
 	AudioModule		selectedModule;
-	OutputScreen	output;
+	OSWindow		outScrn;
 	InputHandler	ih;
 	Raster			mainRaster;
 	AudioSpecs		aS;
@@ -152,22 +164,29 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		audioThreadRunning=	1<<1,
 		configurationCompiled=1<<2,
 		m2Toggle		=	1<<3,
+		fullScreen		=	1<<4,
+		flipScreen		=	1<<5,
 	}
 	
 	public this(string[] args) {
 		state.isRunning = true;
-		//Image fontSource = loadImage(File("../system/cp437_8x16.png"));
-		output = new OutputScreen("PixelPerfectEngine Audio Development Kit", 848 * 2, 480 * 2);
-		mainRaster = new Raster(848,480,output,0);
+		outScrn = new OSWindow("PixelPerfectEngine Audio Development Kit", "ppe_adk", -1, -1,
+				848 * guiScaling, 480 * guiScaling, WindowCfgFlags.IgnoreMenuKey);
+		outScrn.getOpenGLHandle();
+		const glStatus = loadOpenGL();
+		if (glStatus < GLSupport.gl11) {
+			writeln("OpenGL not found!");
+		}
+		mainRaster = new Raster(848,480,outScrn,0, 1);
 		windowing = new SpriteLayer(RenderingMode.Copy);
 		//windowing.addSprite(new Bitmap8Bit(848, 480), -65_536, 0, 0);
-		wh = new WindowHandler(1696,960,848,480,windowing);
-		mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")));
+		wh = new WindowHandler(1696,960,848,480,windowing,outScrn);
+		mainRaster.loadPalette(loadPaletteFromFile(resolvePath("%SYSTEM%/concreteGUIE1.tga")));
 		mainRaster.addLayer(windowing, 0);
 		INIT_CONCRETE();
 		{
 			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit(
-					getPathToAsset("/system/concreteGUI_ADK.tga"), 16, 16);
+					resolvePath("%SYSTEM%/concreteGUI_ADK.tga"), 16, 16);
 			globalDefaultStyle.setImage(customGUIElems[6], "newA");
 			globalDefaultStyle.setImage(customGUIElems[7], "newB");
 			globalDefaultStyle.setImage(customGUIElems[8], "saveA");
@@ -195,7 +214,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		}
 		{
 			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit(
-					getPathToAsset("/system/concreteGUIE2.tga"), 16, 16);
+					resolvePath("%SYSTEM%/concreteGUIE2.tga"), 16, 16);
 			globalDefaultStyle.setImage(customGUIElems[0], "playA");
 			globalDefaultStyle.setImage(customGUIElems[1], "playB");
 			globalDefaultStyle.setImage(customGUIElems[2], "stopA");
@@ -207,70 +226,83 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		ih.inputListener = this;
 		ih.mouseListener = wh;
 		WindowElement.inputHandler = ih;
+		PopUpElement.inputhandler = ih;
 		{
 			import pixelperfectengine.system.input.scancode;
-			ih.addBinding(BindingCode(ScanCode.Q, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.Q, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-C-0"));
-			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.n2, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-C#0"));
-			ih.addBinding(BindingCode(ScanCode.W, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.W, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-D-0"));
-			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.n3, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-D#0"));
-			ih.addBinding(BindingCode(ScanCode.E, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.E, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-E-0"));
-			ih.addBinding(BindingCode(ScanCode.R, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.R, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-F-0"));
-			ih.addBinding(BindingCode(ScanCode.n5, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.n5, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-F#0"));
-			ih.addBinding(BindingCode(ScanCode.T, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.T, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-G-0"));
-			ih.addBinding(BindingCode(ScanCode.n6, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.n6, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-G#0"));
-			ih.addBinding(BindingCode(ScanCode.Y, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.Y, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-A-0"));
-			ih.addBinding(BindingCode(ScanCode.n7, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.n7, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-A#0"));
-			ih.addBinding(BindingCode(ScanCode.U, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.U, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-B-0"));
-			ih.addBinding(BindingCode(ScanCode.I, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.I, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-C-1"));
-			ih.addBinding(BindingCode(ScanCode.n9, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.n9, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-C#1"));
-			ih.addBinding(BindingCode(ScanCode.O, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.O, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-D-1"));
-			ih.addBinding(BindingCode(ScanCode.n0, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.n0, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-D#1"));
-			ih.addBinding(BindingCode(ScanCode.P, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.P, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-E-1"));
-			ih.addBinding(BindingCode(ScanCode.LEFTBRACKET, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.LEFTBRACKET, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-F-1"));
-			ih.addBinding(BindingCode(ScanCode.EQUALS, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.EQUALS, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-F#1"));
-			ih.addBinding(BindingCode(ScanCode.RIGHTBRACKET, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.RIGHTBRACKET, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-G-1"));
-			ih.addBinding(BindingCode(ScanCode.HOME, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.HOME, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-oct+"));
-			ih.addBinding(BindingCode(ScanCode.END, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.END, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-oct-"));
-			ih.addBinding(BindingCode(ScanCode.PAGEUP, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.PAGEUP, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-note+"));
-			ih.addBinding(BindingCode(ScanCode.PAGEDOWN, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), 
+			ih.addBinding(BindingCode(ScanCode.PAGEDOWN, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
 					InputBinding("VirtMIDIKB-note-"));
+			ih.addBinding(BindingCode(ScanCode.F11, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), InputBinding("fullscreen"));
 		}
 
 		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);
-	
+		PopUpElement.onDraw = &rasterRefresh;
+		WindowElement.onDraw = &rasterRefresh;
+		Window.onDrawUpdate = &rasterRefresh;
 		initMIDI();
 		Bitmap4Bit background = new Bitmap4Bit(848, 480);
 		wh.addBackground(background);
 		wh.addWindow(new AudioConfig(this));
 		eventStack = new UndoableStack(10);
+		//timer.register((Duration jitter){rasterRefresh();}, msecs(100));
+		state.flipScreen = true;
+	}
+	protected void rasterRefresh() {
+		state.flipScreen = true;
 	}
 	void whereTheMagicHappens() {
 		while (state.isRunning) {
-			mainRaster.refresh();
+			if (state.flipScreen) {
+				state.flipScreen = false;
+				mainRaster.refresh();
+			}
 			ih.test();
+			Thread.sleep(dur!"msecs"(10));
 			timer.test();
 		}
 		version (linux) if (midiIn !is null) midiIn.stop();
@@ -479,10 +511,20 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		if (selectedModule !is null)
 			wh.addWindow(new PresetEditor(this));
 	}
-	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		if (virtMIDIkeyb !is null) {
 			if (virtMIDIkeyb.keyEventReceive(id, code, timestamp, isPressed))
 				return;
+		}
+		switch (id) {
+		case hashCalc("fullscreen"):
+			if (isPressed) {
+				state.fullScreen = !state.fullScreen;
+				outScrn.setScreenMode(-1, state.fullScreen ? DisplayMode.FullscreenDesktop : DisplayMode.Windowed);
+			}
+			break;
+		default:
+			break;
 		}
 	}
 	public void midiInCallback(ubyte[] data, size_t timestamp) @nogc nothrow {
@@ -494,20 +536,29 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			selectedModule.midiReceive(msb);
 		}
 	}
-	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 		
 	}
 	
 	public void onQuit() {
 		state.isRunning = false;
 	}
-	
-	public void controllerAdded(uint id) {
-		
+	/** 
+	 * Called if a window was resized.
+	 * Params:
+	 *   window = Handle to the OSWindow class.
+	 */
+	public void windowResize(OSWindow window, int width, int height) {
+		mainRaster.resizeRaster(cast(ushort)(width / guiScaling), cast(ushort)(height / guiScaling));
+		wh.resizeRaster(width, height, width / guiScaling, height / guiScaling);
+		glViewport(0, 0, width, height);
+		rasterRefresh();
 	}
-	
-	public void controllerRemoved(uint id) {
-		
+	public void inputDeviceAdded(InputDevice id) {
+
+	}
+	public void inputDeviceRemoved(InputDevice id) {
+
 	}
 	
 }
