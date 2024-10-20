@@ -1,12 +1,9 @@
 module test2.app;
 
-import bindbc.sdl;
-
 import std.stdio;
 import std.typecons : BitFlags;
 import std.format;
 
-import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
 
@@ -22,11 +19,12 @@ import pixelperfectengine.system.config;
 
 import pixelperfectengine.system.common;
 
+import bindbc.opengl;
+
 import pixelperfectengine.map.mapformat;
 
 int main(string[] args) {
-	initialzeSDL();
-	string path = "../assets/test2.xmf";
+	string path = resolvePath("%PATH%/assets/test2.xmf");
 	if (args.length > 1)
 		path = args[1];
 	try {
@@ -41,6 +39,7 @@ int main(string[] args) {
 public class MapFormatTester : SystemEventListener, InputListener {
 	enum StateFlags {
 		isRunning	=	1<<0,
+		fullScreen	=	1<<1,
 	}
 	enum ControlFlags {
 		up			=   1<<0,
@@ -49,7 +48,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		right		=   1<<3,
 	}
 	MapFormat		mapSource;
-	OutputScreen	output;
+	OSWindow		output;
 	Raster			r;
 	InputHandler	ih;
 	ObjectCollisionDetector	ocd;
@@ -58,20 +57,25 @@ public class MapFormatTester : SystemEventListener, InputListener {
 	TileLayer		textLayer;
 	SpriteLayer		gameField;
 	this(string path) {
+		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);//new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
+		output.getOpenGLHandle();
+		const glStatus = loadOpenGL();
+		if (glStatus < GLSupport.gl11) {
+			writeln("OpenGL not found!");
+		}
 		stateFlags.isRunning = true;
-		output = new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
 		r = new Raster(424,240,output,0);
-		output.setMainRaster(r);
-		Image fontSource = loadImage(File(getPathToAsset("/system/codepage_8_8.png")));
+		Image fontSource = loadImage(File(resolvePath("%SYSTEM%/codepage_8_8.png")));
 		ih = new InputHandler();
 		ih.systemEventListener = this;
 		ih.inputListener = this;
 		{
 			import pixelperfectengine.system.input.scancode;
-			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("up"));
-			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("down"));
-			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("left"));
-			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("right"));
+			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("up"));
+			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("down"));
+			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("left"));
+			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("right"));
+			ih.addBinding(BindingCode(ScanCode.F11, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), InputBinding("fullscreen"));
 		}
 
 
@@ -149,19 +153,17 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		}
 	}
 
-	public void onQuit() {
+	override public void onQuit() {
 		stateFlags.isRunning = false;
 	}
-	
-	public void controllerAdded(uint id) {
-		
+	public void inputDeviceAdded(InputDevice id) {
+
+	}
+	public void inputDeviceRemoved(InputDevice id) {
+
 	}
 	
-	public void controllerRemoved(uint id) {
-		
-	}
-	
-	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		switch (id) {
 			case hashCalc("up"):	//up
 				controlFlags.up = isPressed;
@@ -175,13 +177,39 @@ public class MapFormatTester : SystemEventListener, InputListener {
 			case hashCalc("right"):	//right
 				controlFlags.right = isPressed;
 				break;
+			case hashCalc("fullscreen"):
+				if (isPressed) {
+					stateFlags.fullScreen = !stateFlags.fullScreen;
+					output.setScreenMode(-1, stateFlags.fullScreen ? DisplayMode.FullscreenDesktop : DisplayMode.Windowed);
+				}
+				break;
 			default:
 				break;
 		}
 	}
 	
-	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 		
+	}
+
+	/** 
+	 * Called if a window was resized.
+	 * Params:
+	 *   window = Handle to the OSWindow class.
+	 */
+	public void windowResize(OSWindow window, int width, int height) {
+		//Code template for window resizing that keeps the content relatively in ratio.
+		immutable double origAspectRatio = 424.0 / 240.0;//Calculate original aspect ratio
+		double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio
+		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
+			const double visibleWidth = height * origAspectRatio;
+			const double sideOffset = (width - visibleWidth) / 2.0;
+			glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+		} else {	//Display area is now taller, padding needs to be added on the top and bottom
+			const double visibleHeight = width / origAspectRatio;
+			const double topOffset = (height - visibleHeight) / 2.0;
+			glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+		}
 	}
 	
 }
