@@ -121,7 +121,7 @@ public class MapFormat {
 			Tag[] tileSource = getAllTileSources(key);
 			foreach (t0; tileSource) {
 				string path = t0.getValue!string();
-				Image i = loadImage(File(getPathToAsset(path), "rb"));
+				Image i = loadImage(File(resolvePath(path), "rb"));
 				void helperFunc(T)(T[] bitmaps, Tag source) {
 					TileLayer tl = cast(TileLayer)layeroutput[key];
 					Tag tileInfo = source.getTag("Embed:TileInfo", null);
@@ -187,7 +187,7 @@ public class MapFormat {
 				case "File:SpriteSource":
 					string filename = t0.expectValue!string();
 					if (imageBuffer.get(filename, null) is null) {
-						imageBuffer[filename] = loadImage(File(getPathToAsset(filename)));
+						imageBuffer[filename] = loadImage(File(resolvePath(filename)));
 					}
 					const int id = t0.expectValue!int();
 					/+if ("horizOffset" in t0.attributes && "vertOffset" in t0.attributes && "width" in t0.attributes && 
@@ -356,7 +356,7 @@ public class MapFormat {
 			if (t0 !is null) {
 				TileLayer tl = cast(TileLayer)layeroutput[key];
 				MapDataHeader mdf;
-				File mapfile = File(getPathToAsset(t0.expectValue!string()));
+				File mapfile = File(resolvePath(t0.expectValue!string()));
 				tl.loadMapping(value.values[4].get!int(), value.values[5].get!int(), loadMapFile(mapfile, mdf));
 			}
 		}

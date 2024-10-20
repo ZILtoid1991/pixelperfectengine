@@ -252,6 +252,12 @@ public dstring loadTextFile(F = File)(F file) {
 	}
 	return result;
 }
+/** 
+ * 
+ * Params:
+ *   path = 
+ * Returns: 
+ */
 public const(char)[] loadShader(string path) @trusted {
 	path = resolvePath(path);
 	char[] buffer;
@@ -283,17 +289,26 @@ shared static this () {
 	pathSymbols["EXEC"] = pathToExec;
 	pathSymbols["SYSTEM"] = pathRoot ~ "/system/";
 	pathSymbols["SHADERS"] = pathRoot ~ "/shaders/";
-	if (exists(buildNormalizedPath(pathRoot, "./debug/"))) {
-		pathSymbols["DEBUG"] = pathRoot ~ "/debug/";
-		pathSymbols["STORE"] = pathRoot ~ "/debug/";
+	pathSymbols["SHDRVER"] = "330";
+	if (exists(buildNormalizedPath(pathRoot, "./_debug/"))) {
+		pathSymbols["DEBUG"] = pathRoot ~ "/_debug/";
+		pathSymbols["STORE"] = pathRoot ~ "/_debug/";
 	}
 }
+/** 
+ * Initializes the storage path if folder `_debug` does not exist.
+ * Params:
+ *   appName = Application name.
+ *   etc = Organization or other name if needed.
+ * Returns: The created storage path.
+ */
 public string initStoragePath(string appName, string etc) {
+	if (etc.length) etc ~= "/";
 	if (pathSymbols.get("STORE", null) == null) {
 		version (Windows) {
-			pathSymbols["STORE"] = buildNormalizedPath("%APPDATA%/", etc, appName, "/");
+			pathSymbols["STORE"] = buildNormalizedPath("%APPDATA%/", etc, "./" ~ appName);
 		} else {
-			pathSymbols["STORE"] = buildNormalizedPath("~/", etc, appName, "/");
+			pathSymbols["STORE"] = buildNormalizedPath("~/", etc, "./" ~ appName);
 		}
 	}
 	return pathSymbols["STORE"];
@@ -319,8 +334,9 @@ public string getPathToAsset (string path) @safe pure {
 	//else if (startsWith(path, ["./", ".\\"])) path = path[2..$];
 	return buildNormalizedPath(pathRoot ~ dirSeparator ~ path);
 }
-///Subtitutes symbols found in `path`, then returns the resolved path.
-///This function will be favored more moving forward.
+/// Subtitutes symbols found in `path`, then returns the resolved path.
+/// Can substitute symbols other than path related, e.g. can be used for version selection.
+/// This function will be favored more moving forward.
 public string resolvePath(string path) @safe {
 	import pixelperfectengine.system.etc : interpolateStr;
 	return interpolateStr(path, pathSymbols);
