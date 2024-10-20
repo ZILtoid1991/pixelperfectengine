@@ -18,7 +18,7 @@ import std.algorithm.searching : startsWith;
 
 import bindbc.opengl;
 
-int scaling = 2;
+int GUIScaling = 2;
 
 /** 
  * Tests GUI elements by displaying them.
@@ -27,7 +27,7 @@ int main(string[] args) {
 	foreach (string arg ; args) {
 		if (arg.startsWith("--ui-scaling=")) {
 			try {
-				scaling = arg[13..$].to!int;
+				GUIScaling = arg[13..$].to!int;
 			} catch (Exception e) {
 
 			}
@@ -49,7 +49,7 @@ public class TestElements : InputListener, SystemEventListener {
 	TextParser          txtParser;
 
 	public this() {
-		outScrn = new OSWindow("Test nr. 3", "ppe_test3", -1, -1, 848 * scaling, 480 * scaling, WindowCfgFlags.IgnoreMenuKey);
+		outScrn = new OSWindow("Test nr. 3", "ppe_test3", -1, -1, 848 * GUIScaling, 480 * GUIScaling, WindowCfgFlags.IgnoreMenuKey);
 		outScrn.getOpenGLHandle();
 		const glStatus = loadOpenGL();
 		if (glStatus < GLSupport.gl11) {
@@ -59,7 +59,7 @@ public class TestElements : InputListener, SystemEventListener {
 		mainRaster = new Raster(848,480,outScrn,0,1);
 		mainRaster.addLayer(sprtL,0);
 		mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")));
-		wh = new WindowHandler(848 * scaling, 480 * scaling, 848, 480, sprtL, outScrn);
+		wh = new WindowHandler(848 * GUIScaling, 480 * GUIScaling, 848, 480, sprtL, outScrn);
 		ih = new InputHandler();
 		ih.inputListener = this;
 		ih.systemEventListener = this;
@@ -102,8 +102,8 @@ public class TestElements : InputListener, SystemEventListener {
 	 *   window = Handle to the OSWindow class.
 	 */
 	public void windowResize(OSWindow window, int width, int height) {
-		mainRaster.resizeRaster(cast(ushort)(width / scaling), cast(ushort)(height / scaling));
-		wh.resizeRaster(width, height, width / scaling, height / scaling);
+		mainRaster.resizeRaster(cast(ushort)(width / GUIScaling), cast(ushort)(height / GUIScaling));
+		wh.resizeRaster(width, height, width / GUIScaling, height / GUIScaling);
 		glViewport(0, 0, width, height);
 		rasterRefresh();
 	}
