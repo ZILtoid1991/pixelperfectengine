@@ -338,7 +338,7 @@ public struct IMBCAssembler {
 				}
 				ptrnData[$-1].unresolvedLabels = remove(ptrnData[$-1].unresolvedLabels, unresolvedPosMrk);
 			}
-		} else if (words[0][0] == '$') {	//Emit command
+		} else if (words[0][0] == '[') {	//Emit command
 			parseEmitCmd(wholeLine, words, ptrnID);
 		} else {							//Misc command (control, math, etc.)
 			flushEmitStr(ptrnID, currDevNum);
