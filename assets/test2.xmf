@@ -5,8 +5,8 @@ Metadata {
 }
 Layer:Tile "64" 0 16 16 45 45 {
 	RenderingMode "Copy"
-	File:MapData "../assets/test2_layer0.map"
-	File:TileSource "../assets/sci-fi-tileset.png" {
+	File:MapData "%PATH%/assets/test2_layer0.map"
+	File:TileSource "%PATH%/assets/sci-fi-tileset.png" {
 		Embed:TileInfo {
 			0 0 "tile0000"
 			1 1 "tile0001"
@@ -76,9 +76,9 @@ Layer:Tile "64" 0 16 16 45 45 {
 	}
 }
 Layer:Sprite "sprites" 16 {
-	File:SpriteSource 0 "../assets/d-man.tga" name="dlangman"
-	File:SpriteSource 1 "../assets/d-man.tga" name="nothing" horizOffset=0 vertOffset=0 width=12 height=12
-	File:Palette "../assets/d-man.tga" offset=256
+	File:SpriteSource 0 "%PATH%/assets/d-man.tga" name="dlangman"
+	File:SpriteSource 1 "%PATH%/assets/d-man.tga" name="nothing" horizOffset=0 vertOffset=0 width=12 height=12
+	File:Palette "%PATH%/assets/d-man.tga" offset=256
 	Object:Sprite "player" 65536 0 16 16 palSel=1 {
 		ToCollision
 	}
@@ -96,4 +96,4 @@ Layer:Sprite "sprites" 16 {
 	}
 	RenderingMode "AlphaBlend"
 }
-File:Palette "../assets/sci-fi-tileset.png" palShift=5
+File:Palette "%PATH%/assets/sci-fi-tileset.png" palShift=5

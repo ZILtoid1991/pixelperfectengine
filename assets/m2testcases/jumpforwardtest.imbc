@@ -18,27 +18,27 @@ END
 
 PATTERN sub1
 display BPM 120
-$[0]: nn 2 0x7FFF G-4
+[0]: nn 2 0x7FFF G-4
 add R80 R80 R80
 add R80 R80 R80
 add R80 R80 R80
 add R80 R80 R80
 wait q
-$[0]: nf 2 0x7FFF G-4
+[0]: nf 2 0x7FFF G-4
 END
 
 PATTERN main
 display BPM 120
-$[0]: pc 0 16           ;Initialize organ preset for all 8 available channels (only 3 will be used)
-$[0]: pc 1 16
-$[0]: pc 2 16
-$[0]: pc 3 16
-$[0]: pc 4 16
-$[0]: pc 5 16
-$[0]: pc 6 16
-$[0]: pc 7 16
+[0]: pc 0 16           ;Initialize organ preset for all 8 available channels (only 3 will be used)
+[0]: pc 1 16
+[0]: pc 2 16
+[0]: pc 3 16
+[0]: pc 4 16
+[0]: pc 5 16
+[0]: pc 6 16
+[0]: pc 7 16
 
-$[0]: nn 0 0x7FFF C-4
+[0]: nn 0 0x7FFF C-4
 
 cmpeq R80 R81
 jmpsh 1 skipahead
@@ -47,9 +47,9 @@ add R80 R80 R80
 add R80 R80 R80
 add R80 R80 R80
 wait q
-$[0]: nf 0 0x7FFF C-4
+[0]: nf 0 0x7FFF C-4
 wait q
-$[0]: nn 0 0x7FFF C-4
+[0]: nn 0 0x7FFF C-4
 @skipahead:
 wait q
 chain-par sub0
@@ -58,17 +58,17 @@ add R80 R80 R80
 add R80 R80 R80
 add R80 R80 R80
 wait q
-$[0]: nf 0 0x7FFF C-4
+[0]: nf 0 0x7FFF C-4
 END
 
 PATTERN sub0
 display BPM 120
-$[0]: nn 1 0x7FFF E-4
+[0]: nn 1 0x7FFF E-4
 add R80 R80 R80
 add R80 R80 R80
 add R80 R80 R80
 add R80 R80 R80
 ;chain-ser sub1
 wait q
-$[0]: nf 1 0x7FFF E-4
+[0]: nf 1 0x7FFF E-4
 END
