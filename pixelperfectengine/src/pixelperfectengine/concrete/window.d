@@ -365,8 +365,9 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	public void resize(const int width, const int height) {
 		position.right = position.left + width;
 		position.bottom = position.top + height;
+		//draw();
+		outputSurfaceRecalc();
 		onResize();
-		draw();
 		handler.refreshWindow(this);
 	}
 	/** 

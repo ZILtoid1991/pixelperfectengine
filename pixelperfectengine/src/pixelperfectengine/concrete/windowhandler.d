@@ -316,8 +316,12 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * be displayed without any updates.
 	 */
 	public void refreshWindow(Window sender) @safe nothrow {
-		const int n = whichWindow(sender);
-		spriteLayer.replaceSprite(windows[n].getOutput, n, windows[n].getPosition);
+		if (sender is baseWindow) {
+			spriteLayer.replaceSprite(baseWindow.getOutput, 65_535);
+		} else {
+			const int n = whichWindow(sender);
+			spriteLayer.replaceSprite(windows[n].getOutput, n, windows[n].getPosition);
+		}
 	}
 	/**
 	 * Adds a popup element into the environment and moves it to the current cursor position.
@@ -465,6 +469,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		rasterHeight = rH;
 		mouseConvX = cast(double)screenWidth / rasterWidth;
 		mouseConvY = cast(double)screenHeight / rasterHeight;
+		if (baseWindow) baseWindow.resize(rW, rH);
 	}
 }
 
