@@ -67,13 +67,37 @@ public interface ITileLayer {
 		public void clearTransformLookupTable();
 		/**
 		 * Sets a color attribute table for the layer.
-		 * Color attribute table can be per-tile, per-vertex, or unique to each vertex of the tile.
+		 * Color attribute table can be per-tile, per-vertex, or unique to each vertex of 
+		 * the tile, depending on the size of the table.
 		 * Params:
 		 *   table = the array containing the initial information. Length must be width * height
 		 *   width = the width of the color attribute table.
 		 *   height = the height of the color attribute table.
 		 */
 		public void setColorAttributeTable(Color[] table, int width, int height);
+		/**
+		 * Writes the color attribute table at the given location.
+		 * Params:
+		 *   x = X coordinate of the color attribute table.
+		 *   y = Y coordinate of the color attribute table.
+		 *   c = The color to be written at the selected loaction.
+		 * Returns: the newly written color, or Color.init if color attribute table is not
+		 * set.
+		 */
+		public Color writeColorAttributeTable(int x, int y, Color c);
+		/**
+		 * Reads the color attribute table at the given location.
+		 * Params:
+		 *   x = X coordinate of the color attribute table.
+		 *   y = Y coordinate of the color attribute table.
+		 * Returns: the color at the given location, or Color.init if color attribute 
+		 * table is not set.
+		 */
+		public Color readColorAttributeTable(int x, int y);
+		/**
+		 * Clears the color attribute table and returns the table as a backup.
+		 */
+		public Color[] clearColorAttributeTable();
 	}
 	/// Retrieves the mapping from the tile layer.
 	/// Can be used to retrieve data, e.g. for editors, saving game states
