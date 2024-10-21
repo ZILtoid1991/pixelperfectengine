@@ -5,11 +5,10 @@ import std.utf;
 import std.path;
 import std.conv : to;
 
-import bindbc.sdl;
+import bindbc.opengl;
 
 import pixelperfectengine.system.common;
 
-import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
 
@@ -25,9 +24,9 @@ import pixelperfectengine.system.file;
 
 ///Test suite for text parsing and drawing.
 int main(string[] args) {
-	initialzeSDL();
+	//initialzeSDL();
 	if (args.length == 1) {
-		args ~= ["../assets/test5.xml", "../system/unifont-15.0.01.fnt"];
+		args ~= ["%PATH%/assets/test5.xml", "%PATH%/system/unifont-15.0.01.fnt"];
 	}
 	try {
 		Test5 app = new Test5(args);
@@ -42,7 +41,7 @@ public class Test5 : SystemEventListener, InputListener {
 	bool isRunning;
 	int textPos;
 	TextParser txprs;
-	OutputScreen output;
+	OSWindow output;
 	SpriteLayer s;
 	Raster r;
 	InputHandler ih;
@@ -51,9 +50,14 @@ public class Test5 : SystemEventListener, InputListener {
 	public this(string[] args) {
 		//Basic setup
 		isRunning = true;
-		output = new OutputScreen("Text processing and rendering test", 424 * 4, 240 * 4);
+		output = new OSWindow("Text processing and rendering test", "ppe_texttest", -1, -1, 424 * 4, 240 * 4, 
+				WindowCfgFlags.IgnoreMenuKey);
+		output.getOpenGLHandle();
+		const glStatus = loadOpenGL();
+		if (glStatus < GLSupport.gl11) {
+			writeln("OpenGL not found!");
+		}
 		r = new Raster(424,240,output,0);
-		output.setMainRaster(r);
 		s = new SpriteLayer(RenderingMode.AlphaBlend);
 		r.addLayer(s, 0);
 		r.addPaletteChunk([Color(0x22,0x22,0x22,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x80,0x80,0x80,0xFF),
@@ -64,14 +68,14 @@ public class Test5 : SystemEventListener, InputListener {
 		ih.systemEventListener = this;
 		{
 			import pixelperfectengine.system.input.scancode;
-			ih.addBinding(BindingCode(ScanCode.SPACE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("up"));
+			ih.addBinding(BindingCode(ScanCode.SPACE, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("up"));
 		}
 		//Setup textparsing and parse texts from included ETML file
-		Fontset!Bitmap8Bit fnt = new Fontset!Bitmap8Bit(File(args[2]), dirName(args[2]) ~ "/");
+		Fontset!Bitmap8Bit fnt = new Fontset!Bitmap8Bit(File(resolvePath(args[2])), dirName(resolvePath(args[2])) ~ "/");
 		CharacterFormattingInfo!Bitmap8Bit defFrmt = new CharacterFormattingInfo!Bitmap8Bit(fnt, 0x01, 0, 0x01, 
 				cast(short)(fnt.size + 1), 0x00);
 		dstring input;
-		File xml = File(args[1]);
+		File xml = File(resolvePath(args[1]));
 		char[] buffer;
 		/* buffer.length = 4;
 		buffer = xml.rawRead(buffer);
@@ -121,11 +125,29 @@ public class Test5 : SystemEventListener, InputListener {
 	public void onQuit() {
 		isRunning = false;
 	}
-	public void controllerAdded(uint id) {
+	public void inputDeviceAdded(InputDevice id) {
 
 	}
-	public void controllerRemoved(uint id) {
+	public void inputDeviceRemoved(InputDevice id) {
 
+	}
+	/** 
+	 * Called if a window was resized.
+	 * Params:
+	 *   window = Handle to the OSWindow class.
+	 */
+	public void windowResize(OSWindow window, int width, int height) {
+		immutable double origAspectRatio = 424.0 / 240.0;//Calculate original aspect ratio
+		double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio
+		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
+			const double visibleWidth = height * origAspectRatio;
+			const double sideOffset = (width - visibleWidth) / 2.0;
+			glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+		} else {	//Display area is now taller, padding needs to be added on the top and bottom
+			const double visibleHeight = width / origAspectRatio;
+			const double topOffset = (height - visibleHeight) / 2.0;
+			glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+		}
 	}
 	/**
 	 * Called when a keybinding event is generated.
@@ -134,7 +156,7 @@ public class Test5 : SystemEventListener, InputListener {
 	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
 	 */
-	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		if (!isPressed)
 			drawNextText();
 	}
@@ -146,7 +168,7 @@ public class Test5 : SystemEventListener, InputListener {
 	 * `value` is the current position of the axis normalized between -1.0 and +1.0 for joysticks, and 0.0 and +1.0 for analog
 	 * triggers.
 	 */
-	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 
 	}
 }
