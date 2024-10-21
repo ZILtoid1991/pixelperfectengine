@@ -1,6 +1,7 @@
 module snake.app;
 
-import pixelperfectengine.graphics.outputscreen;
+import bindbc.opengl;
+
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
 
@@ -19,9 +20,6 @@ import pixelperfectengine.system.common;
  * The main entry point. Contains essential calls to initializing and running the program.
  */
 int main() {
-	//SDL initialization call. Once the library `iota` is mature enough for input/output,
-	//it'll be removed.
-	initialzeSDL();
 	//Initialize our game.
 	SnakeGame game = new SnakeGame();
 	//Run the game.
@@ -90,8 +88,9 @@ public class SnakeGame : InputListener, SystemEventListener {
 	ubyte dir;
 	///Contains the previous direction.
 	ubyte prevDir;
+	bool fullScreen;
 	///The output screen, where the output is being displayed.
-	OutputScreen	output;
+	OSWindow		output;
 	///Handles all the inputs. On every keypress/buttonpress, a new event is created, which changes the internal state
 	///of the program.
 	InputHandler	ih;
@@ -111,8 +110,16 @@ public class SnakeGame : InputListener, SystemEventListener {
 	public this() {
 		//Create all the tiles needed for the game.
 
-		//The easiest is the empty tile, all we need is to create an empty bitmap (all indexes are 0).
+		//Let's make empty tiles a grid!.
 		empty = new Bitmap8Bit(8,8);
+		for (int y ; y < 8 ; y+=2) {
+			empty.writePixel(0, y, 0x1);
+			empty.writePixel(7, y + 1, 0x1);
+		}
+		for (int x ; x < 8 ; x+=2) {
+			empty.writePixel(x, 0, 0x1);
+			empty.writePixel(x + 1, 7, 0x1);
+		}
 		//The apple uses all red color. Initialize an empty bitmap, then set all the pixels to index 2.
 		apple = new Bitmap8Bit(8,8);
 		for (int y ; y < 8 ; y++) {	//Use some iterations to easily set all indexes. Top-left is the origin point, and indexing starts at 0.
@@ -186,7 +193,13 @@ public class SnakeGame : InputListener, SystemEventListener {
 
 		//We now have all the necessary graphics elements, let's create the rest!
 		//First, we need an output screen. It's 4:3, which isn't very modern, but will be useful for demo purposes.
-		output = new OutputScreen("Snek game", 320 * 4, 240 * 4);
+		output = new OSWindow("Snek game", "ppe_snekgaem", -1, -1, 320 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);
+		//Initialize OpenGL.
+		output.getOpenGLHandle();
+		//Load OpenGL.
+		const glStatus = loadOpenGL();
+		assert(glStatus >= GLSupport.gl11, "OpenGL not found!");
+		
 		//Next, we have to create the raster, with 320x240 resolution, and 256 colors. Technically we will only use 3 
 		//colors, however one should overprovision the palette length to the multiple of the maximum color of the used
 		//indexed bitmap. (16 bit is mainly there to directly access all colors of the palette)
@@ -222,12 +235,18 @@ public class SnakeGame : InputListener, SystemEventListener {
 		ih.systemEventListener = this;
 		ih.inputListener = this;
 		//Register key bindings.
-		ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("up"));
-		ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("down"));
-		ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("left"));
-		ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("right"));
-		ih.addBinding(BindingCode(ScanCode.ENTER, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("start"));
-		ih.addBinding(BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0, KeyModifier.All), InputBinding("quit"));
+		ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("up"));
+		ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("down"));
+		ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("left"));
+		ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("right"));
+		ih.addBinding(BindingCode(ScanCode.ENTER, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("start"));
+		ih.addBinding(BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("quit"));
+		ih.addBinding(BindingCode(ScanCode.F11, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("fullscreen"));
+		ih.addBinding(BindingCode(GameControllerButtons.DPadUp, 0, Devicetype.Joystick, 0, 0), InputBinding("up"));
+		ih.addBinding(BindingCode(GameControllerButtons.DPadDown, 0, Devicetype.Joystick, 0, 0), InputBinding("down"));
+		ih.addBinding(BindingCode(GameControllerButtons.DPadLeft, 0, Devicetype.Joystick, 0, 0), InputBinding("left"));
+		ih.addBinding(BindingCode(GameControllerButtons.DPadRight, 0, Devicetype.Joystick, 0, 0), InputBinding("right"));
+		ih.addBinding(BindingCode(GameControllerButtons.RightNav, 0, Devicetype.Joystick, 0, 0), InputBinding("start"));
 		//Register an initial timer event
 		timer.register(&timerEvent, msecs(200));
 	}
@@ -428,53 +447,59 @@ public class SnakeGame : InputListener, SystemEventListener {
 		}
 	}
 	/// Key event data is received here.
-	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		switch (id) {
-			case hashCalc("up"):
-				if (prevDir != Direction.South) {
-					dir = Direction.North;
-				}
-				if (!prevDir) {
-					playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeV));
-				}
-				break;
-			case hashCalc("down"):
-				if (prevDir != Direction.North) {
-					dir = Direction.South;
-				}
-				if (!prevDir) {
-					playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeV));
-				}
-				break;
-			case hashCalc("left"):
-				if (prevDir != Direction.East) {
-					dir = Direction.West;
-				}
-				break;
-			case hashCalc("right"):
-				if (prevDir != Direction.West) {
-					dir = Direction.East;
-				}
-				break;
-			case hashCalc("start"):
-				raster.setPaletteIndex(0, Color(0,0,0,255));
-				clearTilemap();
-				state = 5;
-				snakeHead = Point(20, 15);
-				score = 0;
-				dir = 0;
-				prevDir = 0;
-				placeNextApple();
-				playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeH));
-				break;
-			case hashCalc("quit"):
-				state = 4;
-				break;
-			default: break;
+		case hashCalc("up"):
+			if (prevDir != Direction.South) {
+				dir = Direction.North;
+			}
+			if (!prevDir) {
+				playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeV));
+			}
+			break;
+		case hashCalc("down"):
+			if (prevDir != Direction.North) {
+				dir = Direction.South;
+			}
+			if (!prevDir) {
+				playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeV));
+			}
+			break;
+		case hashCalc("left"):
+			if (prevDir != Direction.East) {
+				dir = Direction.West;
+			}
+			break;
+		case hashCalc("right"):
+			if (prevDir != Direction.West) {
+				dir = Direction.East;
+			}
+			break;
+		case hashCalc("start"):
+			raster.setPaletteIndex(0, Color(0,0,0,255));
+			clearTilemap();
+			state = 5;
+			snakeHead = Point(20, 15);
+			score = 0;
+			dir = 0;
+			prevDir = 0;
+			placeNextApple();
+			playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement(TileTypes.SnakeH));
+			break;
+		case hashCalc("quit"):
+			state = 4;
+			break;
+		case hashCalc("fullscreen"):
+			if (isPressed) {
+				fullScreen = !fullScreen;
+				output.setScreenMode(-1, fullScreen ? DisplayMode.FullscreenDesktop : DisplayMode.Windowed);
+			}
+			break;
+		default: break;
 		}
 	}
 
-	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 		
 	}
 	/// Makes it possible to close the game the `proper` way.
@@ -482,11 +507,28 @@ public class SnakeGame : InputListener, SystemEventListener {
 		state = 4;
 	}
 
-	public void controllerAdded(uint id) {
-		
-	}
+	public void inputDeviceAdded(InputDevice id) {
 
-	public void controllerRemoved(uint id) {
-		
+	}
+	public void inputDeviceRemoved(InputDevice id) {
+
+	}
+	/** 
+	 * Called if a window was resized.
+	 * Params:
+	 *   window = Handle to the OSWindow class.
+	 */
+	public void windowResize(OSWindow window, int width, int height) {
+		immutable double origAspectRatio = 320.0 / 240.0;//Calculate original aspect ratio
+		double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio
+		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
+			const double visibleWidth = height * origAspectRatio;
+			const double sideOffset = (width - visibleWidth) / 2.0;
+			glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+		} else {	//Display area is now taller, padding needs to be added on the top and bottom
+			const double visibleHeight = width / origAspectRatio;
+			const double topOffset = (height - visibleHeight) / 2.0;
+			glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+		}
 	}
 }
