@@ -4,19 +4,22 @@ import types;
 import serializer;
 import editorEvents;
 import listviewedit;
+import bindbc.opengl;
 
 import pixelperfectengine.concrete.window;
 import pixelperfectengine.system.input;
 import pixelperfectengine.system.etc : csvParser;
+import pixelperfectengine.system.timer;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster;
-import pixelperfectengine.graphics.outputscreen;
 import pixelperfectengine.system.config;
 import std.bitmanip : bitfields;
 public import collections.linkedhashmap;
 
 import conv = std.conv;
 import stdio = std.stdio;
+import test1.app;
+import core.thread;
 
 public class TopLevelWindow : Window {
 	public ListView objectList, propList;
@@ -109,13 +112,12 @@ public class DummyWindow : Window {
 		//super.passMouseEvent(x,y,state,button);
 		mce.x -= position.left;
 		mce.y -= position.top;
-		if(mce.button == MouseButton.Left){
+		if (mce.button == MouseButtons.Left) {
 			ed.clickEvent(mce.x, mce.y, mce.state);
-		}else if(mce.button == MouseButton.Right){
-			foreach(we; elements){
+		} else if (mce.button == MouseButtons.Right) {
+			foreach (we; elements) {
 				const Box c = we.getPosition;
-				if(c.isBetween(mce.x, mce.y))
-					ed.selectEvent(we);
+				if (c.isBetween(mce.x, mce.y)) ed.selectEvent(we);
 			}
 		}
 	}
@@ -174,7 +176,7 @@ public class Editor : SystemEventListener, InputListener{
 	DummyWindow 		dw;
 	SpriteLayer			sprtL;
 	Raster				mainRaster;
-	OutputScreen		outScrn;
+	OSWindow			outScrn;
 	InputHandler		inputH;
 	EditMode			mode;
 	mixin(bitfields!(
@@ -184,7 +186,8 @@ public class Editor : SystemEventListener, InputListener{
 		bool, "delPressed", 1,
 		bool, "moveElemMode", 1,
 		bool, "resizeMode", 1,
-		ubyte, "", 2,
+		bool, "fullScreen", 1,
+		bool, "flipScreen", 1,
 	));
 	Box					moveElemOrig;
 	int					x0, y0;
@@ -197,19 +200,21 @@ public class Editor : SystemEventListener, InputListener{
 	string				selection;
 	ConfigurationProfile	config;
 	TopLevelWindow		tlw;
+	int guiScaling = 2;
 
 	static string[ElementType] nameBases;
-	public this(){
+	public this(int guiScaling){
 		import pixelperfectengine.system.systemutility;
 		import pixelperfectengine.system.file;
-		
+		this.guiScaling = guiScaling;
 		sprtL = new SpriteLayer(RenderingMode.Copy);
-		outScrn = new OutputScreen("WindowMaker for PPE/Concrete",1696,960);
-		mainRaster = new Raster(848,480,outScrn,0);
+		outScrn = new OSWindow("WindowMaker for PPE/Concrete", "windowmaker", -1, -1, 848 * guiScaling, 480 * guiScaling, 
+				WindowCfgFlags.IgnoreMenuKey);
+		mainRaster = new Raster(848,480,outScrn,0, 1);
 		mainRaster.addLayer(sprtL,0);
 		typeSel = ElementType.NULL;
 
-		ewh = new WindowHandler(1696,960,848,480,sprtL);
+		ewh = new WindowHandler(848 * guiScaling, 480 * guiScaling , 848, 480, sprtL, outScrn);
 		mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("../system/concreteGUIE1.tga")));
 		INIT_CONCRETE();
 		inputH = new InputHandler();
@@ -221,13 +226,18 @@ public class Editor : SystemEventListener, InputListener{
 		config = new ConfigurationProfile("config_wmfc.sdl", getPathToAsset("../system/config_wmfc.sdl"));
 		{
 			import pixelperfectengine.system.input.scancode;
-			inputH.addBinding(BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0, KeyModifier.LockKeys), InputBinding("sysesc"));
+			inputH.addBinding(BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
+					InputBinding("sysesc"));
+			inputH.addBinding(BindingCode(ScanCode.F11, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
+					InputBinding("fullscreen"));
 		}
 		config.loadBindings(inputH);
 
 		PopUpElement.inputhandler = inputH;
 		WindowElement.inputHandler = inputH;
-		
+		PopUpElement.onDraw = &rasterRefresh;
+		WindowElement.onDraw = &rasterRefresh;
+		Window.onDrawUpdate = &rasterRefresh;
 		dw = new DummyWindow(Coordinate(0,16,640,480), "New Window"d, this);
 		ewh.addWindow(dw);
 		tlw = new TopLevelWindow(848, 480, this);
@@ -239,6 +249,9 @@ public class Editor : SystemEventListener, InputListener{
 		//ewh.objectList.onItemSelect = &onObjectListSelect;
 		//ewh.propList.onTextInput = &onAttributeEdit;
 		updateElementList;
+	}
+	protected void rasterRefresh() {
+		flipScreen = true;
 	}
 	static this(){
 		nameBases[ElementType.Label] = "label";
@@ -428,12 +441,13 @@ public class Editor : SystemEventListener, InputListener{
 				//updateElementList;
 			}
 		} else {
-			if (state == ButtonState.Pressed) {
+			if (state) {
 				if(!moveElemMode && elements.getPtr(selection)) {
 					if (elements[selection].element.getPosition.isBetween(x,y)) {
 						initElemMove;
 						
-					} else if (elements[selection].element.getPosition.right <= x + 1 && elements[selection].element.getPosition.bottom <= y + 1) {
+					} else if (elements[selection].element.getPosition.right <= x + 1 && 
+							elements[selection].element.getPosition.bottom <= y + 1) {
 						initElemResize;
 						
 					}
@@ -457,7 +471,8 @@ public class Editor : SystemEventListener, InputListener{
 		} else if (resizeMode) {
 			x0 = x;
 			y0 = y;
-			dw.drawSelection(Box(elements[selection].element.getPosition.left, elements[selection].element.getPosition.top, x0, y0));
+			dw.drawSelection(Box(elements[selection].element.getPosition.left, elements[selection].element.getPosition.top, 
+					x0, y0));
 		} else if (typeSel != ElementType.NULL) {
 			dw.drawSelection(Box(x0, y0, x, y), true);
 		}
@@ -647,7 +662,8 @@ public class Editor : SystemEventListener, InputListener{
 				if (x0 <= elements[selection].element.getPosition.left || y0 <= elements[selection].element.getPosition.top) {
 					ewh.message("Resize error!", "Out of bound resizing!");
 				} else {
-					const Box newPos = Box(elements[selection].element.getPosition.left, elements[selection].element.getPosition.top, x0, y0);
+					const Box newPos = Box(elements[selection].element.getPosition.left, elements[selection].element.getPosition.top, 
+							x0, y0);
 					eventStack.addToTop(new MoveElemEvent(newPos, selection));
 				}
 			}
@@ -655,67 +671,91 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void whereTheMagicHappens(){
 		while(!onExit){
-			mainRaster.refresh();
+			if (flipScreen) {
+				flipScreen = false;
+				mainRaster.refresh();
+			}
 			inputH.test();
+			Thread.sleep(dur!"msecs"(10));
+			timer.test();
 		}
 	}
 	public void onQuit(){
 		onExit = true;
 	}
-	public void controllerRemoved(uint ID){}
-	public void controllerAdded(uint ID){}
-	//public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype) {
-	public void axisEvent(uint id, BindingCode code, uint timestamp, float value) {
+	/** 
+	 * Called if a window was resized.
+	 * Params:
+	 *   window = Handle to the OSWindow class.
+	 */
+	public void windowResize(OSWindow window, int width, int height) {
+		mainRaster.resizeRaster(cast(ushort)(width / guiScaling), cast(ushort)(height / guiScaling));
+		ewh.resizeRaster(width, height, width / guiScaling, height / guiScaling);
+		glViewport(0, 0, width, height);
+		rasterRefresh();
+	}
+	public void inputDeviceAdded(InputDevice id) {
 
 	}
-	public void keyEvent(uint id, BindingCode code, uint timestamp, bool isPressed) {
+	public void inputDeviceRemoved(InputDevice id) {
+
+	}
+	//public void keyPressed(string ID, uint timestamp, uint devicenumber, uint devicetype) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
+
+	}
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		import pixelperfectengine.system.etc : hashCalc;
 		if (isPressed) {
 			switch(id){
-				case hashCalc("undo"):
-					eventStack.undo;
-					break;
-				case hashCalc("redo"):
-					eventStack.redo;
-					break;
-				case hashCalc("delete"):
-					delElement();
+			case hashCalc("undo"):
+				eventStack.undo;
+				break;
+			case hashCalc("redo"):
+				eventStack.redo;
+				break;
+			case hashCalc("delete"):
+				delElement();
+				break;
+			case hashCalc("sysesc"):
+				deinitElemMove;
+				deinitElemResize;
+				typeSel = ElementType.NULL;
+				break;
+			case hashCalc("Label"):
+				typeSel = ElementType.Label;
+				break;
+			case hashCalc("Button"):
+				typeSel = ElementType.Button;
+				break;
+			case hashCalc("TextBox"):
+				typeSel = ElementType.TextBox;
+				break;
+			case hashCalc("ListView"):
+				typeSel = ElementType.ListView;
+				break;
+			case hashCalc("CheckBox"):
+				typeSel = ElementType.CheckBox;
+				break;
+			case hashCalc("RadioButton"):
+				typeSel = ElementType.RadioButton;
+				break;
+			case hashCalc("MenuBar"):
+				typeSel = ElementType.MenuBar;
+				break;
+			case hashCalc("HSlider"):
+				typeSel = ElementType.HSlider;
+				break;
+			case hashCalc("VSlider"):
+				typeSel = ElementType.VSlider;
+				break;
+			case hashCalc("fullscreen"):
+				fullScreen = !fullScreen;
+				outScrn.setScreenMode(-1, fullScreen ? DisplayMode.FullscreenDesktop : DisplayMode.Windowed);
+				break;
+			default:
+				break;
 
-					break;
-				case hashCalc("sysesc"):
-					deinitElemMove;
-					deinitElemResize;
-					typeSel = ElementType.NULL;
-					break;
-				case hashCalc("Label"):
-					typeSel = ElementType.Label;
-					break;
-				case hashCalc("Button"):
-					typeSel = ElementType.Button;
-					break;
-				case hashCalc("TextBox"):
-					typeSel = ElementType.TextBox;
-					break;
-				case hashCalc("ListView"):
-					typeSel = ElementType.ListView;
-					break;
-				case hashCalc("CheckBox"):
-					typeSel = ElementType.CheckBox;
-					break;
-				case hashCalc("RadioButton"):
-					typeSel = ElementType.RadioButton;
-					break;
-				case hashCalc("MenuBar"):
-					typeSel = ElementType.MenuBar;
-					break;
-				case hashCalc("HSlider"):
-					typeSel = ElementType.HSlider;
-					break;
-				case hashCalc("VSlider"):
-					typeSel = ElementType.VSlider;
-					break;
-				default:
-					break;
 			}
 		}
 	}

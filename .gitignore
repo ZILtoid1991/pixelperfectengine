@@ -19,3 +19,4 @@ bin-x86_64-linux/
 bin-aarch64-linux/
 dub.selections.json
 _debug/
+private_assets/
