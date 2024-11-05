@@ -18,7 +18,6 @@ public import collections.linkedhashmap;
 
 import conv = std.conv;
 import stdio = std.stdio;
-import test1.app;
 import core.thread;
 
 public class TopLevelWindow : Window {
@@ -210,6 +209,9 @@ public class Editor : SystemEventListener, InputListener{
 		sprtL = new SpriteLayer(RenderingMode.Copy);
 		outScrn = new OSWindow("WindowMaker for PPE/Concrete", "windowmaker", -1, -1, 848 * guiScaling, 480 * guiScaling, 
 				WindowCfgFlags.IgnoreMenuKey);
+		outScrn.getOpenGLHandle();
+		const glStatus = loadOpenGL();	//Load the OpenGL symbols
+		assert (glStatus >= GLSupport.gl11, "OpenGL not found!");	//Error out if openGL does not work
 		mainRaster = new Raster(848,480,outScrn,0, 1);
 		mainRaster.addLayer(sprtL,0);
 		typeSel = ElementType.NULL;
@@ -679,6 +681,7 @@ public class Editor : SystemEventListener, InputListener{
 			Thread.sleep(dur!"msecs"(10));
 			timer.test();
 		}
+		destroy(outScrn);
 	}
 	public void onQuit(){
 		onExit = true;

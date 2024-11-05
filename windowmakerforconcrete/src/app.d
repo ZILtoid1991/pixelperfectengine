@@ -1,3 +1,4 @@
+module app;
 
 import pixelperfectengine.system.common;
 import editor;
