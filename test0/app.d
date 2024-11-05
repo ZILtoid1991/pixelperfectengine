@@ -52,7 +52,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	float theta;
 	int framecounter;
 	this (int mapWidth, int mapHeight) {
-		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);//new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
+		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);
 		output.getOpenGLHandle();
 		const glStatus = loadOpenGL();
 		if (glStatus < GLSupport.gl11) {
@@ -282,6 +282,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 			}
 			//t.relScroll(1,0);
 		}
+		destroy(output);
 	}
 	public void onCollision(ObjectCollisionEvent event) {
 		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));
@@ -443,6 +444,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 	 * Called if a window was resized.
 	 * Params:
 	 *   window = Handle to the OSWindow class.
+	 *   width = active area width.
+	 *   height = active area height.
 	 */
 	public void windowResize(OSWindow window, int width, int height) {
 		immutable double origAspectRatio = 424.0 / 240.0;//Calculate original aspect ratio

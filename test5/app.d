@@ -108,6 +108,7 @@ public class Test5 : SystemEventListener, InputListener {
 			r.refresh();
 			ih.test();
 		}
+		destroy(output);
 	}
 	void drawNextText() {
 		if (textPos >= availTexts.length) {

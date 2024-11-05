@@ -134,6 +134,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 			}
 			ocd.testSingle(65_536);
 		}
+		destroy(output);
 	}
 	public void onCollision(ObjectCollisionEvent event) {
 		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));

@@ -95,6 +95,7 @@ public class TestElements : InputListener, SystemEventListener {
 			Thread.sleep(dur!"msecs"(10));
 			timer.test();
 		}
+		destroy(outScrn);
 	}
 	/** 
 	 * Called if a window was resized.

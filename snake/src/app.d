@@ -259,6 +259,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 			raster.refresh();
 			rng.seed();
 		}
+		destroy(output);
 	}
 	/// Places the next apple to a random empty location.
 	/// If it can no longer put any new apples anywhere, then the game have been won.

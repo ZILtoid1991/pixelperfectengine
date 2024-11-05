@@ -305,6 +305,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			Thread.sleep(dur!"msecs"(10));
 			timer.test();
 		}
+		destroy(outScrn);
 		version (linux) if (midiIn !is null) midiIn.stop();
 		if (mm !is null) {
 			synchronized
