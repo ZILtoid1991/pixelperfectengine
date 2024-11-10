@@ -31,6 +31,7 @@ import pixelperfectengine.audio.base.handler;	//Most of the basic stuff we will 
 import pixelperfectengine.audio.base.modulebase;//Module interfaces to play back sound effects otherwise not tied to the sequence being played back
 import pixelperfectengine.audio.base.config;	//Audio configuration loader and parser
 import pixelperfectengine.audio.base.midiseq;	//MIDI sequencer
+import pixelperfectengine.audio.m2.seq;
 //Imports the engine's own map format.
 import pixelperfectengine.map.mapformat;
 //Other imports that might be important. Uncomment any you feel you'll need.
@@ -90,12 +91,13 @@ public class GameApp : SystemEventListener, InputListener {
 	RandomNumberGenerator	rng;
 	ConfigurationProfile	cfg;
 	//Audio related stuff goes here.
-	//Note: some of the audio stuff is preliminary. It works, but cannot handle certain cases, such as sample rate mismatches, or device disconnection.
-	//Sequencer is untested as of now due to a lack of time and manpower.
+	//Note: some of the audio stuff is preliminary. It works, but cannot handle certain cases, such as device disconnection.
+	//IMBC sequencer has untested features and might lock up on certain functions.
 	AudioDeviceHandler adh;	///Handles audio devices and outputs.
 	ModuleManager	modMan;	///Handles the modules and their output.
 	ModuleConfig	modCfg;	///Loads and handles module configuration, including routing, patches, and samples.
-	SequencerM1		midiSeq;///MIDI sequencer for MIDI playback.
+	SequencerM1		midiSeq;///MIDI sequencer for MIDI playback, comment it out if not needed in favor of IMBC.
+	SequencerM2		imbcSeq;///IMBC sequencer for playing back IMBC files, comment it out if not needed in favor of MIDI.
 	
 	/// Initializes our application.
 	/// Put other things here if you need them.
@@ -103,7 +105,7 @@ public class GameApp : SystemEventListener, InputListener {
 		stateFlags.isRunning = true;	//Sets the state to running, so the main loop will stay running.
 		outputScreen = new OSWindow("Your app name here", SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE,
 				WindowCfgFlags.IgnoreMenuKey);	//Creates an output window with the display size calculated from various enums.
-		output.getOpenGLHandle();		//Initialize OpenGL
+		outputScreen.getOpenGLHandle();		//Initialize OpenGL
 		const glStatus = loadOpenGL();	//Load the OpenGL symbols
 		assert (glStatus >= GLSupport.gl11, "OpenGL not found!");	//Error out if openGL does not work
 		rstr = new Raster(SCREEN_WIDTH,SCREEN_HEIGHT,outputScreen,0);//Creates a raster with the size determined by the enums.
@@ -130,8 +132,10 @@ public class GameApp : SystemEventListener, InputListener {
 		modCfg = new ModuleConfig(modMan);					//Initializes the module configurator
 		modCfg.loadConfigFromFile(resolvePath("yourAudioConfiguration.sdl"));//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
 		modCfg.compile(false);								//Compiles the current module configuration.
-		//MIDI 1.0 sequencer, can be replaced with the IMBC sequencer if needed
+		//MIDI sequencer, comment it out if not needed in favor of IMBC
 		midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
+		//IMBC sequencer, comment it out if not needed in favor of MIDI
+		imbcSeq = new SequencerM2();
 		modMan.runAudioThread();							//Runs the audio thread.
 		//audio related part end
 
