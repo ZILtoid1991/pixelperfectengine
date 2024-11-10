@@ -43,12 +43,12 @@ public interface SystemEventListener {
 	public void windowResize(OSWindow window, int width, int height);
 	/**
 	 * Called if a controller was added.
-	 * The `id` is the ID of the attached controller.
+	 * The `id` input device defined by external package `iota`.
 	 */
 	public void inputDeviceAdded(InputDevice id);
 	/**
 	 * Called if a controller was removed.
-	 * The `id` is the ID of the removed controller.
+	 * The `id` input device defined by external package `iota`.
 	 */
 	public void inputDeviceRemoved(InputDevice id);
 }
