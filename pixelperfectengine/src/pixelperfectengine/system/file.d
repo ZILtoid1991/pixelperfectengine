@@ -253,10 +253,10 @@ public dstring loadTextFile(F = File)(F file) {
 	return result;
 }
 /** 
- * 
+ * Loads the shader file into memory.
  * Params:
- *   path = 
- * Returns: 
+ *   path = Path to the shader. Symbols are automatically resolved.
+ * Returns: The content of the shader, with an added null terminator.
  */
 public const(char)[] loadShader(string path) @trusted {
 	path = resolvePath(path);
@@ -289,7 +289,9 @@ shared static this () {
 	pathSymbols["EXEC"] = pathToExec;
 	pathSymbols["SYSTEM"] = pathRoot ~ "/system/";
 	pathSymbols["SHADERS"] = pathRoot ~ "/shaders/";
-	pathSymbols["SHDRVER"] = "330";
+	version (ARM) pathSymbols["SHDRVER"] = "300es";
+	else version (AArch64) pathSymbols["SHDRVER"] = "300es";
+	else pathSymbols["SHDRVER"] = "330";
 	if (exists(buildNormalizedPath(pathRoot, "./_debug/"))) {
 		pathSymbols["DEBUG"] = pathRoot ~ "/_debug/";
 		pathSymbols["STORE"] = pathRoot ~ "/_debug/";

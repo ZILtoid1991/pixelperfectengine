@@ -24,12 +24,15 @@ import bindbc.opengl;
 
 import pixelperfectengine.system.common;
 
-int main() {
-	//initialzeSDL();
-	
-    TileLayerTest tlt = new TileLayerTest(8, 8);
-    tlt.whereTheMagicHappens();
-    return 0;
+int main(string[] args) {
+	foreach (string arg ; args) {
+		if (arg.startsWith("--shadervers=")) {
+			pathSymbols["SHDRVER"] = arg[13..$];
+		}
+	}
+	TileLayerTest tlt = new TileLayerTest(8, 8);
+	tlt.whereTheMagicHappens();
+	return 0;
 }
 
 /**

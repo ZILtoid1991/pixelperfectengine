@@ -60,6 +60,8 @@ int main(string[] args) {
 			} catch (Exception e) {
 
 			}
+		} else if (arg.startsWith("--shadervers=")) {
+			pathSymbols["SHDRVER"] = arg[13..$];
 		}
 	}
 	AudioDevKit app = new AudioDevKit(args);

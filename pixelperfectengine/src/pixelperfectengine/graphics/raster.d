@@ -123,13 +123,13 @@ public class Raster : PaletteContainer {
 		assert(paletteLength <= 65_536);
 		//Shader initialization block
 		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
-		const(char)[] shaderProgram = loadShader("%SHADERS%/final_330.vert");	
+		const(char)[] shaderProgram = loadShader("%SHADERS%/final_%SHDRVER%.vert");
 		char* shaderProgramPtr = cast(char*)shaderProgram.ptr;
 		glShaderSource(gl_VertexShader, 1, &shaderProgramPtr, null);
 		glCompileShader(gl_VertexShader);
 		gl_CheckShader(gl_VertexShader);
 		GLuint gl_FragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		shaderProgram = loadShader("%SHADERS%/final_330.frag");
+		shaderProgram = loadShader("%SHADERS%/final_%SHDRVER%.frag");
 		shaderProgramPtr = cast(char*)shaderProgram.ptr;
 		glShaderSource(gl_FragmentShader, 1, &shaderProgramPtr, null);
 		glCompileShader(gl_FragmentShader);
