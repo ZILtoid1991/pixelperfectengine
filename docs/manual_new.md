@@ -32,7 +32,7 @@ You can also donate your testing time, knowledge, and coding directly to the eng
 The engine does not require a lot of computational power, however it requires:
 
 * A 128 bit vector unit.
-* OpenGL 2.0 or OpenGL ES 2.0 graphics.
+* OpenGL 2.1 or OpenGL ES 2.0 graphics.
 * At least 100MB free system memory.
 * An audio device (low latency devices recommended).
 * Some form of input device.
@@ -52,3 +52,23 @@ It works on Windows, Linux, X86-64, AArch64, which are the platforms currently c
 As a development environment I recommend using VSCode or one of its community versions. There's a D extension by WebFreak, you'll need to install that. Optionally, you might want to install a C++ plugin with a debugger. Under Windows, you'll unfortuantely be needing Visual Studio itself for its linker and libraries.
 
 Speaking of debuggers, under Linux, I have a lot of good luck with GDB. LLDB probably works too. Windows, on the other hand, is way more complicated. Since the engine now primarily targets 64 bit CPUs, our choice of debuggers are limited. VS and WinDBG works for sure, but really doesn't like D structs and pointers when the target is 64 bits. RemedyBG on the other hand, is a paid solution, however for most things, works better than any of Microsoft's own debuggers. Except break on exceptions, but it can be worked around by putting breakpoints into the constructors of the exceptions.
+
+### Setting up Kate
+
+As an alternative to VSCode, Kate is recommended. You'll need to install serve-d (just clone the repository, compile it with dub, then move the execuable into a folder added to your path), then it's ready to go.
+
+## Paths
+
+By default, the engine stores all executables in a `./bin-[CPUarch]-[OS]` subfolder, such as `./bin-x86_64-windows`. The engine will work without modification if the executables from that folder are moved to the root as long as it can detect the presence of the `./system` folder. It is recommended to use the function `resolvePath()` alongside with path symbols to avoid issues related to portability.
+
+Path symbols are treated similar to the operating system's, and both starts and ends with a `%` symbol, e.g. `%SHADERS%`. The `%` symbol can be escaped by placing two of them side-by-side. Custom path symbols can be created with the line `pathSymbols["SYMBOLNAME"] = pathRoot ~ "/yourpath/";`. Path symbols also can used for other purposes, like localization settings.
+
+### More important path symbols and folders.
+
+ * `%PATH%`: points to the root where the current instance of the game engine resides. Might not be present of smartphones, consoles, etc.
+ * `%EXEC%`: points to the folder of the current binary, could be either equal to `%PATH%`, or `%PATH%/bin-[CPUarch]-[OS]`.
+ * `%SYSTEM%`: contains system assets in `%PATH%/system/`, like default configuration, default bindings, etc.
+ * `%SHADERS%`: contains shaders in `%PATH%/shaders/`.
+ * `%SHDRVER%`: contains the currently set shader version, intended to be used like `%SHADER%/final_%SHDRVER%.frag`.
+ * `%LOCAL%`: contains localization files.
+ * `%CURRLOCAL%`: contains the current localizaton setting, intended to be used like `%LOCAL%/texts_%CURRLOCAL%.xml`.
