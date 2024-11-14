@@ -1,0 +1,316 @@
+module "qm816" "fmsynth" {
+	presetRecall 0 {
+		"op0_Level" 0.3030000030994415283203125D
+		"op0_Attack" 15
+		"op0_Decay" 30
+		"op0_Release" 17
+		"op0_SusLevel" 0.64999997615814208984375D
+		"op1_Attack" 15
+		"op1_Release" 12
+		"op0_Feedback" 0.004999999888241295382951268067D
+		"ch_AuxSLA" 0.5D
+		"ch_Bal" 0.5D
+	}
+	presetRecall 1 {
+		"chf_Algorithm" 1
+		"chf_ResMode" 1
+		"op1_TuneCor" 73
+		"op1_Waveform" 0
+		"op0_Waveform" 25
+		"op0_Level" 0.100000001490116105506977817186D
+		"op1_Attack" 2
+		"op1_Release" 2
+	}
+	presetRecall 2 {
+		"chf_ComboMode" 1
+		"op0_Level" 0.0500000007450580596923828125D
+		"op0_Decay" 50
+		"op0_SusLevel" 0.100000001490116105506977817186D
+		"op1_Decay" 50
+		"op1_SusLevel" 0.00999999977648258209228515625D
+		"op0_SusCtrl" 64
+		"op0_Release" 3
+		"op1_SusCtrl" 0
+		"op1_Release" 0
+		"ch_GlobalFB" 0.100000001490116105506977817186D
+		"op0_Feedback" 0.0500000007450580596923828125D
+	}
+	presetRecall 130 {
+		"op0_Level" 0.004999999888241295382951268067D
+		"op1_Level" 0.100000001490116105506977817186D
+		"op0_SusLevel" 0.100000001490116105506977817186D
+		"op0_Decay" 50
+		"op1_SusLevel" 0.100000001490116105506977817186D
+		"op1_Decay" 50
+		"op1_Feedback" 0D
+		"chf_ComboMode" 1
+	}
+	presetRecall 3 {
+		"chf_ComboMode" 1
+		"chf_Algorithm" 1
+		"chf_ResMode" 1
+		"op1_TuneCor" 72
+		"op0_SusLevel" 0.00999999977648258209228515625D
+		"op0_Decay" 50
+		"op1_Attack" 50
+		"op0_Level" 0.5D
+		"op1_Level" 0.5D
+	}
+	presetRecall 131 {
+		"chf_ComboMode" 1
+		"op0_Level" 0.02999999932944774627685546875D
+		"op1_Level" 0.02999999932944774627685546875D
+		"op0_Attack" 20
+		"op1_Attack" 30
+	}
+	presetRecall 4 {
+		"chf_ComboMode" 2
+		"chf_Algorithm" 1
+		"chf_ResMode" 1
+		"op1_TuneCor" 90
+		"op0_SusCtrl" 64
+		"op0_Decay" 50
+		"op0_SusLevel" 0.5D
+		"op0_Release" 20
+		"op1_SusLevel" 0.200000002980232266525106865629D
+		"op1_Decay" 100
+		"op1_Release" 1
+		"op1_Level" 0.25D
+		"op1_Attack" 100
+	}
+	presetRecall 132 {
+		"chf_ComboMode" 2
+		"op0_Attack" 50
+		"op1_Attack" 75
+		"op0_Level" 0.100000001490116105506977817186D
+		"op1_Level" 0.100000001490116105506977817186D
+		"op1_TuneCor" 72
+		"chf_Algorithm" 1
+		"op0_TuneCor" 42
+	}
+}
+module "pcm8" "sampler" {
+	loadSample "../assets/AnalogString.wav" 0
+	loadSample "../assets/MetalPipe.wav" 1
+	presetRecall 0 {
+		0 0
+		4 0.5D
+		5 0.5D
+		6 0.5D
+		7 0.5D
+		8 0.5D
+		9 0.5D
+		10 0.5D
+		11 0D
+		12 0D
+		13 0D
+		14 0D
+		15 0D
+		4352 8000D
+		4353 8000D
+		4354 8000D
+		4355 8000D
+		4356 8000D
+		4357 8000D
+		4358 8000D
+		4359 8000D
+		4360 8000D
+		4361 8000D
+		4362 8000D
+		4363 8000D
+		4364 8000D
+		4365 8000D
+		4366 8000D
+		4367 8000D
+		4368 8000D
+		4369 8000D
+		4370 9000D
+		4371 9000D
+		4372 9000D
+		4373 9000D
+		4374 9000D
+		4375 9000D
+		4376 9500D
+		4377 9500D
+		4378 9500D
+		4379 9500D
+		4380 9500D
+		4381 10000D
+		4382 10000D
+		4383 10000D
+		4384 10000D
+		4385 10000D
+		4386 15000D
+		4387 15000D
+		4388 15000D
+		4389 15000D
+		4360 15000D
+		4391 20000D
+		4392 20000D
+		4393 20000D
+		4394 20000D
+		4395 20000D
+		4396 25000D
+		4397 25000D
+		4398 25000D
+		4399 25000D
+		4400 25000D
+		4401 30000D
+		4402 30000D
+		4403 30000D
+		4404 30000D
+		4405 30000D
+		4406 35000D
+		4407 35000D
+		4408 35000D
+		4409 35000D
+		4400 35000D
+		4411 40000D
+		4412 40000D
+		4413 40000D
+		4414 40000D
+		4415 40000D
+		4416 45000D
+		4417 45000D
+		4418 45000D
+		4419 45000D
+		4420 45000D
+		4421 50000D
+		4422 50000D
+		4423 50000D
+		4424 50000D
+		4425 50000D
+		4426 55000D
+		4427 55000D
+		4428 55000D
+		4429 55000D
+	}
+	presetRecall 129 name="MetalPipes201x9" {
+		4096 1
+		4352 48000D
+		4353 47000D
+		4609 0
+		4097 1
+		4098 1
+		4354 46000D
+		4099 1
+		4355 45000D
+		4100 1
+		4356 44000D
+		4101 1
+		4357 43000D
+		4102 1
+		4358 42000D
+		4103 1
+		4359 41000D
+		4104 1
+		4360 40000D
+		4105 1
+		4361 39000D
+		4106 1
+		4362 38000D
+		4107 1
+		4363 37000D
+		4108 1
+		4364 36000D
+		4109 1
+		4365 35000D
+		4110 1
+		4366 34000D
+		4111 1
+		4367 33000D
+		4112 1
+		4368 32000D
+		4113 1
+		4369 31000D
+		4114 1
+		4370 30000D
+		4115 1
+		4371 29000D
+		4116 1
+		4372 28000D
+		4117 1
+		4373 27000D
+		4118 1
+		4374 26000D
+		4119 1
+		4375 25000D
+		4120 1
+		4376 24000D
+		4121 1
+		4377 23000D
+		4122 1
+		4378 22000D
+		4123 1
+		4379 21000D
+		4124 1
+		4380 20000D
+		4125 1
+		4381 19000D
+		4126 1
+		4382 18000D
+		4127 1
+		4383 17000D
+		4128 1
+		4384 16000D
+		4129 1
+		4385 15000D
+		4130 1
+		4386 14000D
+		4131 1
+		4387 13000D
+		4132 1
+		4388 12000D
+		4133 1
+		4389 11000D
+		4134 1
+		4390 10000D
+		4135 1
+		4391 9000D
+		4136 1
+		4392 8000D
+	}
+}
+route "fmsynth:mainL" "outputL"
+route "fmsynth:mainR" "outputR"
+route "sampler:mainL" "outputL"
+route "sampler:mainR" "outputR"
+module "delaylines" "audiofx" 4096 4096 {
+	presetRecall 0 {
+		16 0.300000011920928955078125D
+		17 0.200000002980232266525106865629D
+		18 0.001000000047497451305389404297D
+		19 0.001000000047497451305389404297D
+		20 2000
+		0 1D
+		1 0D
+		2 0D
+		3 0.200000002980232266525106865629D
+		4 0.5D
+		5 0.300000011920928955078125D
+		6 0.100000001490116105506977817186D
+		7 0.004999999888241291913504316113D
+		8 0D
+		9 0D
+		10 0D
+		11 0D
+		12 0D
+		13 0D
+		14 -0.00999999977648258209228515625D
+		15 -0.0500000007450580596923828125D
+		21 1
+		1280 1D
+		1284 1D
+		1285 1D
+		1024 18
+		1028 12
+		1025 1500
+		22 1
+	}
+}
+route "audiofx:mainL" "outputL"
+route "audiofx:mainR" "outputR"
+route "fmsynth:auxA" "audiofx:inputA"
+route "fmsynth:auxB" "audiofx:inputB"
+route "sampler:auxA" "audiofx:inputA"
+route "sampler:auxB" "audiofx:inputB"

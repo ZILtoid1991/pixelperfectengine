@@ -1,0 +1,115 @@
+module "qm816" "fmsynth" {
+	presetRecall 0 {
+		"op0_Level" 0.3030000030994415283203125D
+		"op0_Attack" 15
+		"op0_Decay" 30
+		"op0_Release" 17
+		"op0_SusLevel" 0.64999997615814208984375D
+		"op1_Attack" 15
+		"op1_Release" 12
+		"op0_Feedback" 0.004999999888241294515589530079D
+	}
+	presetRecall 1 {
+		"chf_Algorithm" 1
+		"chf_ResMode" 1
+		"op1_TuneCor" 73
+		"op1_Waveform" 0
+		"op0_Waveform" 25
+		"op0_Level" 0.100000001490116105506977817186D
+		"op1_Attack" 2
+		"op1_Release" 2
+	}
+	presetRecall 2 {
+		"chf_ComboMode" 1
+		"op0_Level" 0.0500000007450580596923828125D
+		"op0_Decay" 50
+		"op0_SusLevel" 0.100000001490116105506977817186D
+		"op1_Decay" 50
+		"op1_SusLevel" 0.00999999977648258209228515625D
+		"op0_SusCtrl" 64
+		"op0_Release" 3
+		"op1_SusCtrl" 0
+		"op1_Release" 0
+		"ch_GlobalFB" 0.100000001490116105506977817186D
+		"op0_Feedback" 0.0500000007450580596923828125D
+	}
+	presetRecall 130 {
+		"op0_Level" 0.004999999888241294515589530079D
+		"op1_Level" 0.100000001490116105506977817186D
+		"op0_SusLevel" 0.100000001490116105506977817186D
+		"op0_Decay" 50
+		"op1_SusLevel" 0.100000001490116105506977817186D
+		"op1_Decay" 50
+		"op1_Feedback" 0D
+		"chf_ComboMode" 1
+	}
+	presetRecall 3 {
+		"chf_ComboMode" 1
+		"chf_Algorithm" 1
+		"chf_ResMode" 1
+		"op1_TuneCor" 72
+		"op0_SusLevel" 0.00999999977648258209228515625D
+		"op0_Decay" 50
+		"op1_Attack" 50
+		"op0_Level" 0.5D
+		"op1_Level" 0.5D
+	}
+	presetRecall 131 {
+		"chf_ComboMode" 1
+		"op0_Level" 0.02999999932944774627685546875D
+		"op1_Level" 0.02999999932944774627685546875D
+		"op0_Attack" 20
+		"op1_Attack" 30
+	}
+	presetRecall 4 {
+		"chf_ComboMode" 2
+		"chf_Algorithm" 1
+		"chf_ResMode" 1
+		"op1_TuneCor" 90
+		"op0_SusCtrl" 64
+		"op0_Decay" 50
+		"op0_SusLevel" 0.5D
+		"op0_Release" 20
+		"op1_SusLevel" 0.200000002980232266525106865629D
+		"op1_Decay" 100
+		"op1_Release" 1
+		"op1_Level" 0.25D
+		"op1_Attack" 100
+	}
+	presetRecall 132 {
+		"chf_ComboMode" 2
+		"op0_Attack" 50
+		"op1_Attack" 75
+		"op0_Level" 0.100000001490116105506977817186D
+		"op1_Level" 0.100000001490116105506977817186D
+		"op1_TuneCor" 72
+		"chf_Algorithm" 1
+		"op0_TuneCor" 42
+	}
+	presetRecall 144 name="Organ 4 OP H" {
+		"chf_ComboMode" 3
+		"chf_Algorithm" 1
+		"op1_TuneCor" 50
+		"op1_Waveform" 1
+		"op0_TuneCor" 50
+		"op0_Level" 0.200000002980232266525106865629D
+		"op0_Feedback" 0.00999999977648258209228515625D
+		"op1_Feedback" 0.00999999977648258209228515625D
+		"op1_Level" 0.2199999988079071044921875D
+		"ch_AuxSLA" 0.100000001490116119384765625D
+		"ch_Bal" 0D
+	}
+	presetRecall 16 name="Organ 4 OP L" {
+		"chf_ComboMode" 3
+		"chf_Algorithm" 1
+		"op1_Level" 0.25D
+		"op1_TuneCor" 72
+		"op1_Waveform" 1
+		"op0_Level" 0.4000000059604644775390625D
+		"ch_Bal" 0.5D
+		"ch_AuxSLA" 0.100000001490116119384765625D
+		"ch_MasterVol" 0.25
+	}
+}
+route "fmsynth:mainL" "outputL"
+route "fmsynth:mainR" "outputR"

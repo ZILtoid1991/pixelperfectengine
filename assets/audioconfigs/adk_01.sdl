@@ -1,0 +1,3 @@
+module "qm816" "fmsynth"
+route "fmsynth:mainL" "outputL"
+route "fmsynth:mainR" "outputR"
