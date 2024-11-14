@@ -1,21 +1,23 @@
-# Table of contents
-
-* Introduction
-  * Current engine features
-  * Planned engine features
-  * Donation
-* Getting started
-  * Requirements
-  * Setting up the developer environment and recommended toolchain
-  * Working with templates
-
 # Introduction
 
 PixelPerfectEngine is a game engine/framework primarily designed for retro pixelart style games.
 
 ## Current engine features
 
+* CPU rendered graphics.
+* Live color lookup.
+* Multiple tile and sprite layers.
+* Era-accurate shimmering when scaling.
+* Software synths for audio.
+* Music/audio scripting system.
+* Various collision detection systems.
+
 ## Planned engine features
+
+* Moving most of the rendering to the GPU.
+* Shadow/highlight effects.
+* Physics subsystem.
+* General purpose scripting.
 
 ## Donation
 
@@ -32,7 +34,7 @@ You can also donate your testing time, knowledge, and coding directly to the eng
 The engine does not require a lot of computational power, however it requires:
 
 * A 128 bit vector unit.
-* OpenGL 2.1 or OpenGL ES 2.0 graphics.
+* OpenGL 2.1 or OpenGL ES 2.0 graphics. (OpenGL 3.3 / 3.0 ES recommended).
 * At least 100MB free system memory.
 * An audio device (low latency devices recommended).
 * Some form of input device.
@@ -72,3 +74,7 @@ Path symbols are treated similar to the operating system's, and both starts and 
  * `%SHDRVER%`: contains the currently set shader version, intended to be used like `%SHADER%/final_%SHDRVER%.frag`.
  * `%LOCAL%`: contains localization files.
  * `%CURRLOCAL%`: contains the current localizaton setting, intended to be used like `%LOCAL%/texts_%CURRLOCAL%.xml`.
+ 
+## Working with templates
+
+In the engine's root folder, there's a folder for application templates. It is recommended to copy the code out from them and into your initial source file, especially if you're unfamiliar with the many subsystems of the engine. You can modify them to fit your needs later on.
