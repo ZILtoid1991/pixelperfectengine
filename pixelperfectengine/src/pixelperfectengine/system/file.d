@@ -298,7 +298,7 @@ shared static this () {
 		pathSymbols["STORE"] = pathRoot ~ "/_debug/";
 	}
 }
-///Sets the symbol `CURRLOCAL` to `newLocal`. Returns the newly set symbol.
+///Sets the symbol `CURRLOCAL` to value specified by `newLocal`. Returns the newly set symbol.
 public string setCurrentLocal(string newLocal) {
 	return pathSymbols["CURRLOCAL"] = newLocal;
 }
