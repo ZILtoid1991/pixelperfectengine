@@ -289,6 +289,7 @@ shared static this () {
 	pathSymbols["EXEC"] = pathToExec;
 	pathSymbols["SYSTEM"] = pathRoot ~ "/system/";
 	pathSymbols["SHADERS"] = pathRoot ~ "/shaders/";
+	pathSymbols["LOCAL"] = pathRoot ~ "/local/";
 	version (ARM) pathSymbols["SHDRVER"] = "300es";
 	else version (AArch64) pathSymbols["SHDRVER"] = "300es";
 	else pathSymbols["SHDRVER"] = "330";
@@ -296,6 +297,10 @@ shared static this () {
 		pathSymbols["DEBUG"] = pathRoot ~ "/_debug/";
 		pathSymbols["STORE"] = pathRoot ~ "/_debug/";
 	}
+}
+///Sets the symbol `CURRLOCAL` to `newLocal`. Returns the newly set symbol.
+public string setCurrentLocal(string newLocal) {
+	return pathSymbols["CURRLOCAL"] = newLocal;
 }
 /** 
  * Initializes the storage path if folder `_debug` does not exist.
@@ -322,6 +327,7 @@ public string initStoragePath(string appName, string etc) {
  *   language = Language code.
  *   fileext = Extension/rest of the language file
  * Returns: The path to the localization file.
+ * This function will be favored less moving forward.
  */
 public string getPathToLocalizationFile (string country, string language, string fileext) @safe pure nothrow {
 	if (fileext[0] == '.') fileext = fileext[1..$];
