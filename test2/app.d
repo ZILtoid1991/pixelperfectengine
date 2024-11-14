@@ -3,6 +3,7 @@ module test2.app;
 import std.stdio;
 import std.typecons : BitFlags;
 import std.format;
+import std.algorithm;
 
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
@@ -25,8 +26,13 @@ import pixelperfectengine.map.mapformat;
 
 int main(string[] args) {
 	string path = resolvePath("%PATH%/assets/test2.xmf");
-	if (args.length > 1)
-		path = args[1];
+	foreach(arg ; args[1..$]) {
+		if (arg.startsWith("--shadervers=")) {
+			pathSymbols["SHDRVER"] = arg[13..$];
+		} else if (arg.startsWith("--path=")) {
+			path = arg[7..$];
+		}
+	}
 	try {
 		MapFormatTester app = new MapFormatTester(path);
 		app.whereTheMagicHappens();

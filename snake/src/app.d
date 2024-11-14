@@ -1,5 +1,7 @@
 module snake.app;
 
+import std.algorithm;
+
 import bindbc.opengl;
 
 import pixelperfectengine.graphics.raster;
@@ -19,7 +21,12 @@ import pixelperfectengine.system.common;
 /**
  * The main entry point. Contains essential calls to initializing and running the program.
  */
-int main() {
+int main(string[] args) {
+	foreach (string arg ; args) {
+		if (arg.startsWith("--shadervers=")) {
+			pathSymbols["SHDRVER"] = arg[13..$];
+		}
+	}
 	//Initialize our game.
 	SnakeGame game = new SnakeGame();
 	//Run the game.
