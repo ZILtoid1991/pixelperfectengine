@@ -23,6 +23,10 @@ public class PianoRoll : WindowElement {
 	protected static enum ZOOMOUT = 1<<16;	///Zoomout mode flag: view is vertically zoomed out to allow a better overview.
 	Bitmap8Bit pianoRollLarge;
 	Bitmap8Bit pianoRollSmall;
+	public this(string source, Box position) {
+		this.position = position;
+		this.source = source;
+	}
 	public override void draw() {
 		if (flags & ZOOMOUT) {
 			parent.bitBLT(Point(position.left, position.top), pianoRollSmall, Box.bySize(0, 0, 16,
@@ -40,6 +44,27 @@ public class NoteEditor : WindowElement {
 	long hScrollAmount;
 	int vScrollAmount;
 	protected static enum ZOOMOUT = 1<<16;	///Zoomout mode flag: view is vertically zoomed out to allow a better overview.
+	public this(string source, Box position) {
+		this.position = position;
+		this.source = source;
+	}
+	private void drawNote(Box notePos, ubyte[] color) {
+		//bail out if note out of boundary
+		if (notePos.left > position.right) return;
+		if (notePos.right < position.left) return;
+		if (notePos.top > position.bottom) return;
+		if (notePos.bottom < position.top) return;
+		//limit note within the borders of the note editor
+		with (notePos) {
+			left = notePos.left < position.left + 1 ? position.left + 1 : notePos.left;
+			right = notePos.right > position.right - 1 ? position.right - 1 : notePos.right;
+			top = notePos.top < position.top + 1 ? position.top + 1 : notePos.top;
+			bottom = notePos.bottom > position.bottom - 1 ? position.bottom - 1 : notePos.bottom;
+		}
+		for (int i = notePos.top ; i <= notePos.bottom ; i++) {
+			parent.drawLine(Point(notePos.left, i), Point(notePos.right, i), color[i % color.length]);
+		}
+	}
 	public override void draw() {
 		if (onDraw !is null) {
 			onDraw();
@@ -57,6 +82,10 @@ public class EnvelopEditor : WindowElement {
 	}
 	long hScrollAmount;
 	protected static enum CMDMODE = 1<<16;	///Command mode flag: lists command events instead of displaying the selected envelop slot
+	public this(string source, Box position) {
+		this.position = position;
+		this.source = source;
+	}
 	public override void draw() {
 // 		if (flags & CMDMODE) {
 //
@@ -70,7 +99,19 @@ public class EnvelopEditor : WindowElement {
 }
 
 public class RhythmNotation : WindowElement {
+	struct Marker {
+		long from;
+		long to;
+		float bpm;
+		ushort meterUpper;
+		ushort meterLower;
+	}
+
 	long hScrollAmount;
+	public this(string source, Box position) {
+		this.position = position;
+		this.source = source;
+	}
 	public override void draw() {
 	}
 }
