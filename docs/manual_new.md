@@ -63,7 +63,7 @@ As an alternative to VSCode, Kate is recommended. You'll need to install serve-d
 
 By default, the engine stores all executables in a `./bin-[CPUarch]-[OS]` subfolder, such as `./bin-x86_64-windows`. The engine will work without modification if the executables from that folder are moved to the root as long as it can detect the presence of the `./system` folder. It is recommended to use the function `resolvePath()` alongside with path symbols to avoid issues related to portability.
 
-Path symbols are treated similar to the operating system's, and both starts and ends with a `%` symbol, e.g. `%SHADERS%`. The `%` symbol can be escaped by placing two of them side-by-side. Custom path symbols can be created with the line `pathSymbols["SYMBOLNAME"] = pathRoot ~ "/yourpath/";`. Path symbols also can used for other purposes, like localization settings.
+Path symbols are treated similar to the operating system's, and both starts and ends with a `%` symbol, e.g. `%SHADERS%`. The `%` symbol can be escaped by placing two of them side-by-side. Custom path symbols can be created with the line `pathSymbols["SYMBOLNAME"] = pathRoot ~ "/yourpath/";`. Path symbols also can used for other purposes, like localization settings. Can be escaped, e.g. `%%APPDATA%%` to access system paths.
 
 ### More important path symbols and folders.
 
@@ -74,7 +74,19 @@ Path symbols are treated similar to the operating system's, and both starts and 
  * `%SHDRVER%`: contains the currently set shader version, intended to be used like `%SHADER%/final_%SHDRVER%.frag`.
  * `%LOCAL%`: contains localization files.
  * `%CURRLOCAL%`: contains the current localizaton setting, intended to be used like `%LOCAL%/texts_%CURRLOCAL%.xml`.
- 
+
+## Garbage collection
+
+In most circumstances, the tracing garbage collector shouldn't interfere too much with performance, as in most usecases, it only takes a few miliseconds to run, and the audio is running on a separate thread. However refresh rates higher than 60-75 Hz will pose a challenge, and more memory use will mean longer tracing times.
+
+By version 1.0, even more things will avoid the GC, so it can be optionally disabled, and reference counting will be added to the engine as an option. Even later versions might even move to an alternative runtime.
+
 ## Working with templates
 
 In the engine's root folder, there's a folder for application templates. It is recommended to copy the code out from them and into your initial source file, especially if you're unfamiliar with the many subsystems of the engine. You can modify them to fit your needs later on.
+
+# Tile maps and tile layers
+
+# Sprites
+
+# Audio
