@@ -683,6 +683,10 @@ Currently recognized 32 bit command codes:
 * `0x00_03`/`clef`: Sets the clef for the supplied channel and device. It's a 16 bit unsigned integer (device ID), and two 8 bit unsigned integers (channel number and clef ID)
 * `0x00_04`/`keySignature`: Sets the key for the supplied channel and device. It's a 16 bit unsigned integer (device ID), and two 8 bit unsigned integers (channel number and key ID)
 
+#### Loop unroll
+
+`0x03`/`0x04`/`loopUnroll` tells the display to unroll the following loop a given amount of times. `0x03` uses only the 16 bit field. `0x04` stores the 16 least significant bits in the 16 bit field, and stores the most significant 32 bit in a new word.
+
 #### Text displays
 
 Command type codes 0xF0 through 0xFE are reserved for string displays, and 0xFF is used for continuation of the previous block if more than 64kB of text is needed, and multiple ones can be chained together. Data must be aligned to 32 bit, with padding with zeros.
