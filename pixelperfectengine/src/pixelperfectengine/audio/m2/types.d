@@ -98,6 +98,9 @@ public enum DisplayCmdCode : ubyte {
 	setVal					=	0x01,
 	setVal64				=	0x02,
 
+	unrollLoop				=	0x03,
+	unrollLoop48			=	0x04,
+
 	strCue					=	0xF0,
 	strNotation				=	0xF1,
 	strLyrics				=	0xF2,
@@ -252,7 +255,7 @@ public struct M2File {
 	public uint timeFrmtRes;
 }
 ///Used by the sequencer for reading command data, and by compilers to create new commands.
-package struct M2Command {
+public struct M2Command {
 	union {
 		uint word;
 		ushort[2] hwords;
@@ -288,7 +291,7 @@ package struct M2Command {
 	}
 }
 ///Used for note lookup when reading and writing textual M2 files.
-package immutable string[128] NOTE_LOOKUP_TABLE =
+public immutable string[128] NOTE_LOOKUP_TABLE =
 	[
 		"C-00","C#00","D-00","D#00","E-00","F-00","F#00","G-00",		//0
 		"G#00","A-00","A#00","B-00","C-0", "C#0", "D-0", "D#0",			//1
@@ -307,9 +310,9 @@ package immutable string[128] NOTE_LOOKUP_TABLE =
 		"E-8", "F-8", "F#8", "G-8", "G#8", "A-8", "A#8", "B-8", 		//14
 		"C-9", "C#9", "D-9", "D#9", "E-9", "F-9", "F#9", "G-9", 		//15
 	];
-package immutable string[10] VELOCITY_MACRO_LOOKUP_TABLE_STR = 
+public immutable string[10] VELOCITY_MACRO_LOOKUP_TABLE_STR =
 	["PPPP","PPP" ,"PP"  ,"P"   ,"MP"  ,"MF"  ,"F"   ,"FF"  ,"FFF" ,"FFFF"];
-package immutable ubyte[10] VELOCITY_MACRO_LOOKUP_TABLE_M1 = 
+public immutable ubyte[10] VELOCITY_MACRO_LOOKUP_TABLE_M1 =
 	[0x00  ,0x0f  ,0x1f  ,0x2f  ,0x3f  ,0x4f  ,0x5f  ,0x6f  ,0x75  ,0x7f  ];
-package immutable ushort[10] VELOCITY_MACRO_LOOKUP_TABLE_M2 =
+public immutable ushort[10] VELOCITY_MACRO_LOOKUP_TABLE_M2 =
 	[0x0000,0x00ff,0x22ff,0x44ff,0x66ff,0x88ff,0xaaff,0xccff,0xeeff,0xffff];
