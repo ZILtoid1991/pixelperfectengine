@@ -159,6 +159,14 @@ public class EnvelopEditor : WindowElement {
 		ushort target;
 		uint value;
 	}
+	struct PatternCtrlCmd {
+		long pos;
+		M2Command cmd;
+	}
+	union DrawableCommand {
+		EnvelopCmd ec;
+		PatternCtrlCmd pcc;
+	}
 	long hScrollAmount;
 	protected static enum CMDMODE = 1<<16;	///Command mode flag: lists command events instead of displaying the selected envelop slot
 	public this(string source, Box position) {
@@ -192,6 +200,14 @@ public class RhythmNotation : WindowElement {
 		this.source = source;
 	}
 	public override void draw() {
+	}
+}
+
+public class DisplayProcessor {
+	void processCommands() {
+		// seek to the time position
+		// clear display systems
+		// process commands, then add them to the appropriate display systems
 	}
 }
 
