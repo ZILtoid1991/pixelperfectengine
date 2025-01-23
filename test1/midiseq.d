@@ -69,7 +69,9 @@ public class NoteEditor : WindowElement {
 			return 0;
 		}
 	}
-	SortedList!NoteCmd notes;
+	alias NoteCmdList = SortedList!NoteCmd;
+	NoteCmdList notes;	///Currently displayed notes
+	NoteCmdList backUp;
 	int hScrollAmount;
 	int vScrollAmount;
 	int hDiv;
@@ -95,6 +97,24 @@ public class NoteEditor : WindowElement {
 		for (int i = notePos.top ; i <= notePos.bottom ; i++) {
 			parent.drawLine(Point(notePos.left, i), Point(notePos.right, i), color[i % color.length]);
 		}
+	}
+	public void clearForHScroll(int scrollAmount) {
+		// const int hScrollDelta = hScrollAmount - scrollAmount;
+		const long newPosLeft = cast(long)scrollAmount * cast(long)hDiv;
+		const long newPosRight = newPosLeft + (cast(long)(position.width - 2) * cast(long)hDiv);
+		backup = NoteCmdList.init;
+		// if (hScrollDelta > 0) {	// Scrolling to the right
+		foreach (NoteCmd note ; notes) {
+			if ((note.pos < newPosLeft && note.pos + note.dur > newPosLeft) ||
+					(note.pos < newPosRight && note.pos + note.dur > newPosRight)) {
+				backUp ~= note;
+			}
+		}
+		notes = NoteCmdList.init;
+		// } else {
+
+		// }
+		hScrollAmount = scrollAmount;
 	}
 	public override void draw() {
 		const screenWidth = position.width - 2;
@@ -216,8 +236,11 @@ public class SequencerCtrl : Window {
 	SmallButton button_new;
 	SmallButton button_load;
 	SmallButton button_save;
+	SmallButton button_record;
 	SmallButton button_play;
 	SmallButton button_stop;
+	SmallButton button_zoomOut;
+	SmallButton button_chnlList;
 	HorizScrollBar seeker;
 	VertScrollBar vsb_notes;
 	AudioDevKit adk;
