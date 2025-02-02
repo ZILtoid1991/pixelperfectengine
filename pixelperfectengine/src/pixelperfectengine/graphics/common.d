@@ -167,7 +167,9 @@ public struct Quad {
 }
 /**
  * Defines Vertex data.
- * Color channels can be repurposed to pass arbitrary data to the shaders.
+ * Color channels can be repurposed to pass arbitrary data to the shaders if lighting etc. is not needed.
+ * Normal mapping modifiers can be repurposed to pass arbitrary data to the shaders if normal mapping is
+ * not needed
  */
 public struct Vertex {
 	float x;		/// X coordinate of the vertex.
@@ -178,6 +180,8 @@ public struct Vertex {
 	float b;		/// Blue color channel of the vertex.
 	float s;		///	X coordinate for texture mapping.
 	float t;		/// Y coordinate for texture mapping.
+	float lX;		/// X modifier for normal mapping.
+	float lY;		/// Y modifier for normal mapping.
 }
 /**
  * Defines indices for a single polygon (triangle).
@@ -189,7 +193,8 @@ public struct PolygonIndices {
 }
 ///Thrown on issues with OpenGL shaders.
 public class GLShaderException : PPEException {
-	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow @nogc @safe {
+	this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure nothrow
+			@nogc @safe {
 		super(msg, file, line, nextInChain);
 	}
 }
@@ -219,5 +224,6 @@ public void gl_CheckProgram(GLuint programID) @trusted {
 		throw new GLShaderException(cast(string)msg);
 	}
 }
+///Deprecated: Just use Box instead!
 alias Coordinate = Box;
 alias Color = ARGB8888BE;
