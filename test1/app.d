@@ -186,15 +186,21 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		mainRaster.loadPalette(loadPaletteFromFile(resolvePath("%SYSTEM%/concreteGUIE1.tga")));
 		mainRaster.addLayer(windowing, 0);
 		INIT_CONCRETE();
+		// {
+		// 	Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit(
+		// 			resolvePath("%SYSTEM%/concreteGUIE1.tga"), 16, 16);
+		// 	globalDefaultStyle.setImage(customGUIElems[6], "newA");
+		// 	globalDefaultStyle.setImage(customGUIElems[7], "newB");
+		// 	globalDefaultStyle.setImage(customGUIElems[8], "saveA");
+		// 	globalDefaultStyle.setImage(customGUIElems[9], "saveB");
+		// 	globalDefaultStyle.setImage(customGUIElems[10], "loadA");
+		// 	globalDefaultStyle.setImage(customGUIElems[11], "loadB");
+		// }
 		{
 			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit(
 					resolvePath("%SYSTEM%/concreteGUI_ADK.tga"), 16, 16);
-			globalDefaultStyle.setImage(customGUIElems[6], "newA");
-			globalDefaultStyle.setImage(customGUIElems[7], "newB");
-			globalDefaultStyle.setImage(customGUIElems[8], "saveA");
-			globalDefaultStyle.setImage(customGUIElems[9], "saveB");
-			globalDefaultStyle.setImage(customGUIElems[10], "loadA");
-			globalDefaultStyle.setImage(customGUIElems[11], "loadB");
+			globalDefaultStyle.setImage(customGUIElems[0], "chSelA");
+			globalDefaultStyle.setImage(customGUIElems[1], "chSelB");
 			globalDefaultStyle.setImage(customGUIElems[12], "settingsA");
 			globalDefaultStyle.setImage(customGUIElems[13], "settingsB");
 			globalDefaultStyle.setImage(customGUIElems[14], "globalsA");
@@ -213,14 +219,18 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[27], "exportB");
 			globalDefaultStyle.setImage(customGUIElems[28], "macroA");
 			globalDefaultStyle.setImage(customGUIElems[29], "macroB");
+			globalDefaultStyle.setImage(customGUIElems[30], "vzoomA");
+			globalDefaultStyle.setImage(customGUIElems[31], "vzoomB");
 		}
 		{
 			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit(
 					resolvePath("%SYSTEM%/concreteGUIE2.tga"), 16, 16);
 			globalDefaultStyle.setImage(customGUIElems[0], "playA");
 			globalDefaultStyle.setImage(customGUIElems[1], "playB");
-			globalDefaultStyle.setImage(customGUIElems[2], "stopA");
 			globalDefaultStyle.setImage(customGUIElems[3], "stopB");
+			globalDefaultStyle.setImage(customGUIElems[2], "stopA");
+			globalDefaultStyle.setImage(customGUIElems[14], "recordB");
+			globalDefaultStyle.setImage(customGUIElems[15], "recordA");
 		}
 
 		ih = new InputHandler();

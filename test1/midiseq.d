@@ -16,7 +16,7 @@ const ushort[128] pianoRollPositionsZI = [
 	452,444,437,430,423,416,409,402,394,387,380,373,366,358,351,344, //4
 	337,330,323,316,308,301,294,287,280,272,265,258,251,244,237,230, //5
 	222,215,208,201,194,186,179,172,165,158,151,144,136,129,122,115, //6
-	108,100,093,086,079,072,065,058,050,043,036,029,022,014,007,000, //7
+	108,100, 93, 86, 79, 72, 65, 58, 50, 43, 36, 29, 22, 14,  7,  0, //7
 ];
 const ushort[128] pianoRollPositionsZO = [
 //    0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
@@ -25,9 +25,9 @@ const ushort[128] pianoRollPositionsZO = [
 	275,272,269,266,263,260,257,254,251,248,245,242,239,236,233,230, //2
 	227,224,221,218,215,212,219,216,213,210,207,204,201,198,195,192, //3
 	189,186,183,180,177,174,171,168,165,162,159,156,153,150,147,144, //4
-	141,138,135,132,129,126,123,120,117,114,111,108,105,102,099,096, //5
-	093,090,087,084,081,078,075,072,069,066,063,060,057,054,051,048, //6
-	045,042,039,036,033,030,027,024,021,018,015,012,009,006,003,000, //7
+	141,138,135,132,129,126,123,120,117,114,111,108,105,102, 99, 96, //5
+	 93, 90, 87, 84, 81, 78, 75, 72, 69, 66, 63, 60, 57, 54, 51, 48, //6
+	 45, 42, 39, 36, 33, 30, 27, 24, 21, 18, 15, 12,  9,  6,  3,  0, //7
 ];
 
 public class PianoRoll : WindowElement {
@@ -102,12 +102,12 @@ public class NoteEditor : WindowElement {
 		// const int hScrollDelta = hScrollAmount - scrollAmount;
 		const long newPosLeft = cast(long)scrollAmount * cast(long)hDiv;
 		const long newPosRight = newPosLeft + (cast(long)(position.width - 2) * cast(long)hDiv);
-		backup = NoteCmdList.init;
+		backUp = NoteCmdList.init;
 		// if (hScrollDelta > 0) {	// Scrolling to the right
 		foreach (NoteCmd note ; notes) {
 			if ((note.pos < newPosLeft && note.pos + note.dur > newPosLeft) ||
 					(note.pos < newPosRight && note.pos + note.dur > newPosRight)) {
-				backUp ~= note;
+				backUp.put(note);
 			}
 		}
 		notes = NoteCmdList.init;
@@ -123,15 +123,16 @@ public class NoteEditor : WindowElement {
 		const vScrollBottom = vScrollAmount + screenHeight;
 		const noteHeight = (flags & ZOOMOUT) != 0 ? 2 : 5;
 		foreach (NoteCmd note; notes) {
-			const posInPixels = pos / hDiv;
-			const durInPixels = dur / hDiv;
+			const posInPixels = note.pos / hDiv;
+			const durInPixels = note.dur / hDiv;
 			const endInPixels = posInPixels + durInPixels;
 			const noteTop = (flags & ZOOMOUT) != 0 ? pianoRollPositionsZO[note.note] + 1 : pianoRollPositionsZI[note.note] + 1;
 			const noteBottom = noteTop + noteHeight;
 			if ((posInPixels < hScrollRight || endInPixels > hScrollAmount) && (noteBottom > vScrollAmount ||
 					noteTop < vScrollBottom)) {
-				drawNote(Box(posInPixels - hScrollAmount, noteTop - vScrollAmount, endInPixels - hScrollAmount,
-						noteBottom - vScrollAmount), [cast(ubyte)(note.channel + 16), cast(ubyte)(note.devID + 16)]);
+				drawNote(Box(cast(int)(posInPixels - hScrollAmount), noteTop - vScrollAmount,
+						cast(int)(endInPixels - hScrollAmount), noteBottom - vScrollAmount),
+						[cast(ubyte)(note.channel + 192), cast(ubyte)(note.devID + 192), cast(ubyte)((note.vel>>9) + 128)]);
 			} else if (posInPixels > hScrollRight) {
 				break;
 			}
@@ -253,16 +254,26 @@ public class SequencerCtrl : Window {
 		minH = 240;
 		super(Box.bySize(0, 0, 640, 448), "Sequencer");
 
-		button_load = new SmallButton("loadB", "loadA", "load", Box.bySize(0, 16, 16, 16));
-		button_play = new SmallButton("playB", "playA", "play", Box.bySize(16, 16, 16, 16));
-		button_stop = new SmallButton("stopB", "stopA", "stop", Box.bySize(32, 16, 16, 16));
+		button_new = new SmallButton("newButtonB", "newButtonA", "new", Box.bySize(0, 0, 16, 16));
+		button_load = new SmallButton("loadButtonB", "loadButtonA", "load", Box.bySize(0, 0, 16, 16));
+		button_save = new SmallButton("saveButtonB", "saveButtonA", "load", Box.bySize(0, 0, 16, 16));
+		button_record = new SmallButton("recordB", "recordA", "record", Box.bySize(0, 0, 16, 16));
+		button_play = new SmallButton("playB", "playA", "play", Box.bySize(0, 0, 16, 16));
+		button_stop = new SmallButton("stopB", "stopA", "stop", Box.bySize(0, 0, 16, 16));
+		button_zoomOut = new SmallButton("vzoomB", "vzoomA", "play", Box.bySize(0, 0, 16, 16));
+		button_chnlList = new SmallButton("chSelB", "chSelA", "stop", Box.bySize(0, 0, 16, 16));
 
-		addElement(button_load);
+		addHeaderButton(button_new);
+		addHeaderButton(button_load);
 		button_load.onMouseLClick = &button_load_onClick;
-		addElement(button_play);
+		addHeaderButton(button_save);
+		addHeaderButton(button_record);
+		addHeaderButton(button_play);
 		button_play.onMouseLClick = &button_play_onClick;
-		addElement(button_stop);
+		addHeaderButton(button_stop);
 		button_stop.onMouseLClick = &button_stop_onClick;
+		addHeaderButton(button_zoomOut);
+		addHeaderButton(button_chnlList);
 	}
 	protected void button_load_onClick(Event ev) {
 		adk.onMIDILoad();

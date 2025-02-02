@@ -110,9 +110,9 @@ public class SampleMan : Window {
 		super(Box(0, 0, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
 		listView_sampleList = new ListView(new ListViewHeader(16, [40, 120, 250], ["ID" ,"name" ,"file source"]), null, 
 				"listView0", Box(5, 20, 335, 185));
-		button_load = new Button("Load"d, "button0", Box(340, 20, 440, 40));
-		button_slice = new Button("Slice"d, "button1", Box(340, 45, 440, 65));
-		button_remove = new Button("Remove"d, "button0", Box(340, 70, 440, 90));
+		button_load = new Button("Load"d, "button_load", Box(340, 20, 440, 40));
+		button_slice = new Button("Slice"d, "button_slice", Box(340, 45, 440, 65));
+		button_remove = new Button("Remove"d, "button_remove", Box(340, 70, 440, 90));
 		label_info = new Label("Info:"d, "label0", Box(340, 95, 500, 115));
 		label_format = new Label("Format:"d, "label1", Box(340, 118, 512, 138));
 		label_slmpR = new Label("Orig. samplerate:"d, "label2", Box(340, 140, 512, 160));

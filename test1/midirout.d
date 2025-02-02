@@ -24,7 +24,7 @@ public class MIDIRouting : Window {
 		button_remove = new SmallButton("removeB", "removeA", "button_remove", Box.bySize(5 + 16, 215, 16, 16));
 		button_moveUp = new SmallButton("upArrowB", "upArrowA", "button_moveUp", Box.bySize(5 + 32, 215, 16, 16));
 		button_moveDown = new SmallButton("downArrowB", "downArrowA", "button_moveDown", Box.bySize(5 + 48, 215, 16, 16));
-		button_save = new SmallButton("saveB", "saveA", "button_save", Box.bySize(5 + 80, 215, 16, 16));
+		button_save = new SmallButton("saveButtonB", "saveButtonA", "button_save", Box.bySize(5 + 80, 215, 16, 16));
 
 		this.addElement(listView0);
 		this.addElement(button_add);
