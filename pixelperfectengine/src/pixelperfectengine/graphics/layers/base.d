@@ -257,7 +257,8 @@ public struct MappingElement {
 	BitmapAttrib attributes;	///General attributes, such as vertical and horizontal mirroring. The extra 6 bits can be used for various purposes
 	ubyte paletteSel;			///Selects the palette for the bitmap if supported
 	///Default constructor
-	this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false), ubyte paletteSel = 0) @nogc @safe pure nothrow {
+	this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false), ubyte paletteSel = 0)
+			@nogc @safe pure nothrow {
 		this.tileID = tileID;
 		this.attributes = attributes;
 		this.paletteSel = paletteSel;
@@ -267,4 +268,18 @@ public struct MappingElement {
 		return "[tileID:" ~ to!string(cast(int)tileID) ~ "; attributes:" ~ attributes.toString ~ "; paletteSel:" ~
 				to!string(paletteSel) ~ "]";
 	}
+}
+/**
+ * Extension for the main mapping, primarily for storing lighting data in file.
+ * Minus values in the `rgb` fields will apply a multiply effect, plus values will apply a screen effect.
+ * `a` just controls the alpha channel for the given point.
+ * `lX` and `lY` control the normal mapping effect.
+ */
+public struct MappingElementExt {
+	byte r;						///Red channel modifier
+	byte g;						///Green channel modifier
+	byte b;						///Blue channel modifier
+	ubyte a;					///Alpha channel modifier
+	short lX;					///X normal modifier
+	short lY;					///Y normal modifier
 }
