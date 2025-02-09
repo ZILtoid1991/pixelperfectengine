@@ -1,6 +1,7 @@
 module pixelperfectengine.audio.m2.rw;
 
 public import pixelperfectengine.audio.m2.rw_text;
+public import pixelperfectengine.audio.m2.rw_bin;
 public import std.stdio : File;
 
 public M2File loadIMBCFile(string path) {
@@ -15,10 +16,17 @@ public M2File loadIMBCFile(F = File)(F src) {
         src.seek(0);
         readbuf.length = cast(size_t)src.size();
         src.rawRead(readbuf);
-        //IMBCAssembler imbcAsm = IMBCAssembler(cast(string)readbuf);
-        //return imbcAsm.compile();
         return IMBCAssembler(cast(string)readbuf).compile();
-        //return loadM2FromText(cast(string)readbuf);
+    } else if (readbuf == "MIDI2.0B\0\0\0\0") {
+		src.seek(0);
+        readbuf.length = cast(size_t)src.size();
+        src.rawRead(readbuf);
+        return readIMBCBin(cast(ubyte[])readbuf);
     }
     throw new Exception("Binary file reading not yet implemented");
+}
+
+public void saveIMBCFile(F = File)(M2File src, F dest, bool binary = true) {
+	ubyte[] writeBuf = writeIMBCBin(src);
+	dest.rawWrite(writeBuf);
 }

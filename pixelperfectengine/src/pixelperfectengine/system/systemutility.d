@@ -92,8 +92,8 @@ public void INIT_CONCRETE() {
 	ss.setImage(ssOrigin[9],"saveButtonB");
 	ss.setImage(ssOrigin[10],"loadButtonA");
 	ss.setImage(ssOrigin[11],"loadButtonB");
-	//ss.setImage(ssOrigin[12],"minusA");
-	//ss.setImage(ssOrigin[13],"minusB");
+	ss.setImage(ssOrigin[12],"settingsA");
+	ss.setImage(ssOrigin[13],"settingsB");
 	//ss.setImage(ssOrigin[14],"leftArrowA");
 	//ss.setImage(ssOrigin[15],"leftArrowB");
 	ss.setImage(loadBitmapFromFile!Bitmap8Bit(sysPath ~ dirSeparator ~ "concreteGUIDisable.tga"), "ElementDisabledPtrn");

@@ -24,7 +24,7 @@ import pixelperfectengine.graphics.text : Text, isWhiteSpaceMB;
 /**
  * Draws into a 8bit bitmap.
  */
-public class BitmapDrawer{
+public class BitmapDrawer {
 	public Bitmap8Bit output;
 	protected immutable ubyte[2] dottedLine = [0x00, 0xFF];
 	protected immutable ubyte[8] stripesLine = [0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
@@ -84,6 +84,10 @@ public class BitmapDrawer{
 	 *  color = The color of the box (both the line and fill color).
 	 */
 	public void drawFilledBox(Box target, ubyte color) pure {
+		if (target.left >= output.width) target.left = output.width - 1;
+		if (target.right >= output.width) target.right = output.width - 1;
+		if (target.top >= output.height) target.top = output.height - 1;
+		if (target.bottom >= output.height) target.bottom = output.height - 1;
 		draw.drawFilledRectangle(target.left, target.top, target.right, target.bottom, color, output.pixels, 
 				output.width);
 	}

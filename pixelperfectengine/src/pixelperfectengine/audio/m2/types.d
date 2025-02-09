@@ -3,6 +3,7 @@ module pixelperfectengine.audio.m2.types;
 public import core.time : Duration, hnsecs, nsecs;
 import std.typecons : BitFlags;
 import collections.treemap;
+public import pixelperfectengine.system.exc;
 
 /** 
  * Contains opcodes for IMBC operations.
@@ -199,7 +200,7 @@ public struct M2Song {
 	public ulong timebase;				///nsecs of a single tic
 	public ulong ticsPerSecs;			///Tics per second
 	public TreeMap!(uint, uint[]) ptrnData;
-	public uint[][] arrays;				///List of registered arrays
+	public TreeMap!(uint, uint[]) arrays;				///List of registered arrays
 	this (uint parPtrnNum, M2TimeFormat timefrmt, uint timeper, uint timeres) @safe nothrow {
 		ptrnSl.length = parPtrnNum;
 		final switch (timefrmt) with(M2TimeFormat) {
@@ -249,7 +250,7 @@ public struct M2File {
 	public M2Song songdata;
 	public string[string] metadata;
 	public string[uint] devicelist;
-	public ushort patternNum;
+	public ushort deviceNum;
 	public M2TimeFormat timeFormat;
 	public uint timeFrmtPer;
 	public uint timeFrmtRes;
@@ -316,3 +317,16 @@ public immutable ubyte[10] VELOCITY_MACRO_LOOKUP_TABLE_M1 =
 	[0x00  ,0x0f  ,0x1f  ,0x2f  ,0x3f  ,0x4f  ,0x5f  ,0x6f  ,0x75  ,0x7f  ];
 public immutable ushort[10] VELOCITY_MACRO_LOOKUP_TABLE_M2 =
 	[0x0000,0x00ff,0x22ff,0x44ff,0x66ff,0x88ff,0xaaff,0xccff,0xeeff,0xffff];
+
+public class IMBCException : PPEException {
+	///
+	@nogc @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
+    {
+        super(msg, file, line, nextInChain);
+    }
+	///
+    @nogc @safe pure nothrow this(string msg, Throwable nextInChain, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, nextInChain);
+    }
+}

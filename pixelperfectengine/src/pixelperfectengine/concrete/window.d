@@ -680,6 +680,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 			lastMouseEventTarget.passMME(mec, mme);
 			if (!lastMouseEventTarget.getPosition.isBetween(mme.x, mme.y)) {
 				lastMouseEventTarget = null;
+				handler.resetCursor();
 			}
 		} else {
 			foreach (WindowElement we; elements) {

@@ -84,6 +84,11 @@ abstract class ScrollBar : WindowElement{
 	protected void registerTimer() nothrow {
 		timer.register(&timerEvent, msecs(flags & SCROLLMATIC ? 50 : 1000));
 	}
+	override public Box setPosition(Box position) {
+		this.position = position;
+		maxValue(_maxValue);
+		return super.setPosition(position);
+	}
 }
 /**
  * Vertical scroll bar.
@@ -172,7 +177,6 @@ public class VertScrollBar : ScrollBar {
 		value = _value - mwe.y * scrollSpeed;
 		super.passMWE(mec, mwe);
 	}
-	
 }
 /**
  * Horizontal scrollbar.

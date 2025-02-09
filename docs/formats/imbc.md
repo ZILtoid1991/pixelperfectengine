@@ -310,7 +310,7 @@ END
 
 Identifier: `DEVLIST`
 
-*Binary Layout:* Each device entry consists of a 16 bit device ID, a byte for string length, and a UTF8 string.
+*Binary Layout:* Each device entry consists of a 16 bit device ID, a byte for string length, and a UTF8 string. Should be padded to be on the boundary of four bytes.
 
 *Human-readable Layout:*
 
