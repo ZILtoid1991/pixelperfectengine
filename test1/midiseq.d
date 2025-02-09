@@ -32,6 +32,8 @@ const ushort[128] pianoRollPositionsZO = [
 
 public class PianoRoll : WindowElement {
 	int vScrollAmount;
+	HorizScrollBar hScrollRedirect;
+	VertScrollBar vScrollRedirect;
 	protected static enum ZOOMOUT = 1<<16;	///Zoomout mode flag: view is vertically zoomed out to allow a better overview.
 	static Bitmap8Bit pianoRollLarge;
 	static Bitmap8Bit pianoRollSmall;
@@ -40,18 +42,42 @@ public class PianoRoll : WindowElement {
 		this.source = source;
 	}
 	public override void draw() {
+		parent.clearArea(position);
 		if (flags & ZOOMOUT) {
-			parent.bitBLT(Point(position.left, position.top), pianoRollSmall, Box.bySize(0, 0, 16,
-					position.height >= 256 ? 256 : position.height));
+			parent.bitBLT(Point(position.left, position.top), pianoRollSmall, Box.bySize(0, vScrollAmount, 32,
+					position.height >= 384 ? 384 : position.height));
 		} else {
-			parent.bitBLT(Point(position.left, position.top), pianoRollLarge, Box.bySize(0, vScrollAmount, 16, position.height));
+			parent.bitBLT(Point(position.left, position.top), pianoRollLarge, Box.bySize(0, vScrollAmount, 32, position.height));
 		}
 		if (onDraw !is null) {
 			onDraw();
 		}
 	}
+	public bool zoomOut(bool val) {
+		if (val) flags |= ZOOMOUT;
+		else flags &= ~ZOOMOUT;
+		return val;
+	}
+	public bool zoomOut() @safe @nogc pure nothrow {
+		return (flags & ZOOMOUT) != 0;
+	}
+	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		hScrollRedirect.passMWE(mec, mwe);
+		vScrollRedirect.passMWE(mec, mwe);
+	}
 }
 
+public struct RhythmNotationCmd {
+	long pos;
+	ushort upper = 4;
+	ushort lower = 4;
+	float bpm = 120.0;
+	int opCmp(RhythmNotationCmd rhs) @nogc @safe nothrow pure const {
+		if (this.pos > rhs.pos) return 1;
+		else if (this.pos < rhs.pos) return -1;
+		return 0;
+	}
+}
 
 public class NoteEditor : WindowElement {
 	struct NoteCmd {
@@ -72,14 +98,18 @@ public class NoteEditor : WindowElement {
 	alias NoteCmdList = SortedList!NoteCmd;
 	NoteCmdList notes;	///Currently displayed notes
 	NoteCmdList backUp;
+	ulong ticsPerSecs = 48_000;
 	int hScrollAmount;
 	int vScrollAmount;
-	int hDiv;
+	int hDiv = 4000;	///Amount of ticks per horizontal pixel
+	SortedList!RhythmNotationCmd rhtmNot;
 	MouseClickEvent prevMouseClickEvent;
+	HorizScrollBar hScrollRedirect;
+	VertScrollBar vScrollRedirect;
 	protected static enum ZOOMOUT = 1<<16;	///Zoomout mode flag: view is vertically zoomed out to allow a better overview.
-	public this(string source, Box position) {
+	public this(Box position) {
 		this.position = position;
-		this.source = source;
+		rhtmNot.put(RhythmNotationCmd.init);
 	}
 	private void drawNote(Box notePos, ubyte[] color) {
 		//bail out if note out of boundary
@@ -117,11 +147,43 @@ public class NoteEditor : WindowElement {
 		hScrollAmount = scrollAmount;
 	}
 	public override void draw() {
+		static ubyte[] ptrn0 = [0, 0, 0, 1, 1];
+		static ubyte[] ptrn1 = [0, 1, 1];
+
+		parent.clearArea(position);
+
 		const screenWidth = position.width - 2;
 		const hScrollRight = hScrollAmount + screenWidth;
 		const screenHeight = position.height - 2;
 		const vScrollBottom = vScrollAmount + screenHeight;
-		const noteHeight = (flags & ZOOMOUT) != 0 ? 2 : 5;
+		const noteHeight = (flags & ZOOMOUT) != 0 ? 3 : 5;
+		const notesBegin = cast(long)hScrollAmount * cast(long)hDiv;
+		const notesEnd = cast(long)(hScrollAmount + screenWidth) * cast(long)hDiv;
+		// const pixelTimebase = ticsPerSecs / hDiv;
+
+		size_t rnBegin, rnEnd;
+
+		for (size_t i ; i < rhtmNot.length ; i++) {
+			RhythmNotationCmd r = rhtmNot[i];
+			if (r.pos <= notesBegin) rnBegin = i;
+			rnEnd = i;
+			if (r.pos >= notesEnd) break;
+		}
+		ulong currPos;
+		for (size_t i = rnBegin ; i <= rnEnd ; i++) {
+			RhythmNotationCmd r = rhtmNot[i];
+			//const rnBegin = r.pos / hDiv;
+			const rnEndP = i != rnEnd ? rhtmNot[i + 1].pos : notesEnd;
+			currPos = r.pos;
+			const beatDur = (r.bpm * (4.0 / r.lower)) / 60.0;
+			const ulong beatLength = cast(ulong)(ticsPerSecs * beatDur);
+			for (int lineCntr ; currPos <= rnEndP ; currPos += beatLength, lineCntr++) {
+				if (currPos < notesBegin) continue;
+				const int xPos = cast(int)(currPos / hDiv) + position.left;
+				parent.drawLinePattern(Point(xPos, position.top), Point(xPos, position.bottom), lineCntr % r.upper ? ptrn0 : ptrn1);
+			}
+		}
+
 		foreach (NoteCmd note; notes) {
 			const posInPixels = note.pos / hDiv;
 			const durInPixels = note.dur / hDiv;
@@ -169,6 +231,10 @@ public class NoteEditor : WindowElement {
 
 		draw;
 	}
+	public override void passMWE(MouseEventCommons mec, MouseWheelEvent mwe) {
+		hScrollRedirect.passMWE(mec, mwe);
+		vScrollRedirect.passMWE(mec, mwe);
+	}
 }
 
 public class EnvelopEditor : WindowElement {
@@ -189,6 +255,7 @@ public class EnvelopEditor : WindowElement {
 		PatternCtrlCmd pcc;
 	}
 	long hScrollAmount;
+	ulong timebase;
 	protected static enum CMDMODE = 1<<16;	///Command mode flag: lists command events instead of displaying the selected envelop slot
 	public this(string source, Box position) {
 		this.position = position;
@@ -206,24 +273,6 @@ public class EnvelopEditor : WindowElement {
 	}
 }
 
-public class RhythmNotation : WindowElement {
-	struct Marker {
-		long from;
-		long to;
-		float bpm;
-		ushort meterUpper;
-		ushort meterLower;
-	}
-
-	long hScrollAmount;
-	public this(string source, Box position) {
-		this.position = position;
-		this.source = source;
-	}
-	public override void draw() {
-	}
-}
-
 public class DisplayProcessor {
 	void processCommands() {
 		// seek to the time position
@@ -233,21 +282,35 @@ public class DisplayProcessor {
 }
 
 public class SequencerCtrl : Window {
-	MenuBar menuBar;
+	// MenuBar menuBar;
 	SmallButton button_new;
 	SmallButton button_load;
 	SmallButton button_save;
 	SmallButton button_record;
 	SmallButton button_play;
 	SmallButton button_stop;
-	SmallButton button_zoomOut;
+	CheckBox button_zoomOut;
 	SmallButton button_chnlList;
+
+	SmallButton envEdit_chSel;
+	SmallButton envEdit_cc;
+	SmallButton envEdit_pc;
+	SmallButton envEdit_sysex;
+	SmallButton envEdit_etc;
+	SmallButton envEdit_imbc;
+	SmallButton envEdit_arit;
+
 	HorizScrollBar seeker;
 	VertScrollBar vsb_notes;
+	PianoRoll pianoRoll;
+	NoteEditor noteEdit;
 	AudioDevKit adk;
 
-	public this(AudioDevKit adk) {
+	SequencerM2 seq;
+
+	public this(AudioDevKit adk, SequencerM2 seq) {
 		this.adk = adk;
+		this.seq = seq;
 		resizableV = true;
 		resizableH = true;
 		minW = 320;
@@ -260,7 +323,7 @@ public class SequencerCtrl : Window {
 		button_record = new SmallButton("recordB", "recordA", "record", Box.bySize(0, 0, 16, 16));
 		button_play = new SmallButton("playB", "playA", "play", Box.bySize(0, 0, 16, 16));
 		button_stop = new SmallButton("stopB", "stopA", "stop", Box.bySize(0, 0, 16, 16));
-		button_zoomOut = new SmallButton("vzoomB", "vzoomA", "play", Box.bySize(0, 0, 16, 16));
+		button_zoomOut = new CheckBox("vzoomB", "vzoomA", "play", Box.bySize(0, 0, 16, 16));
 		button_chnlList = new SmallButton("chSelB", "chSelA", "stop", Box.bySize(0, 0, 16, 16));
 
 		addHeaderButton(button_new);
@@ -273,15 +336,120 @@ public class SequencerCtrl : Window {
 		addHeaderButton(button_stop);
 		button_stop.onMouseLClick = &button_stop_onClick;
 		addHeaderButton(button_zoomOut);
+		button_zoomOut.onToggle = &button_zoomOut_onToggle;
 		addHeaderButton(button_chnlList);
+
+		const envEditBegin = position.height - 65;
+		envEdit_chSel = new SmallButton("chSelB", "chSelA", "envEdit_chSel", Box.bySize(2, envEditBegin, 16, 16));
+		envEdit_cc = new SmallButton("ccB", "ccA", "envEdit_cc", Box.bySize(2, envEditBegin + 16, 16, 16));
+		envEdit_pc = new SmallButton("pcB", "pcA", "envEdit_pc", Box.bySize(2, envEditBegin + 32, 16, 16));
+		envEdit_sysex = new SmallButton("sysExB", "sysExA", "envEdit_sysex", Box.bySize(2, envEditBegin + 48, 16, 16));
+		envEdit_etc = new SmallButton("etcB", "etcA", "envEdit_etc", Box.bySize(18, envEditBegin + 48, 16, 16));
+		envEdit_imbc = new SmallButton("imbcCmdB", "imbcCmdA", "envEdit_imbc", Box.bySize(18, envEditBegin, 16, 16));
+		envEdit_arit = new SmallButton("aritCmdB", "aritCmdA", "envEdit_arit", Box.bySize(18, envEditBegin + 16, 16, 16));
+
+		addElement(envEdit_chSel);
+		addElement(envEdit_cc);
+		addElement(envEdit_pc);
+		addElement(envEdit_sysex);
+		addElement(envEdit_etc);
+		addElement(envEdit_imbc);
+		addElement(envEdit_arit);
+
+		seeker = new HorizScrollBar(1, "seeker", Box.bySize(34, 16, position.width - 52, 16));
+		vsb_notes = new VertScrollBar(910 - (position.height - 98), "notes",
+				Box.bySize(position.width - 18, 32, 16, position.height - 98));
+
+		addElement(seeker);
+		addElement(vsb_notes);
+		vsb_notes.onScrolling = &vsb_notes_onScroll;
+
+		pianoRoll = new PianoRoll("pr", Box.bySize(2, 32, 32, position.height - 98));
+		pianoRoll.hScrollRedirect = seeker;
+		pianoRoll.vScrollRedirect = vsb_notes;
+		addElement(pianoRoll);
+
+		noteEdit = new NoteEditor(Box(34, 32, position.width - 18, position.height - 66));
+		noteEdit.hScrollRedirect = seeker;
+		noteEdit.vScrollRedirect = vsb_notes;
+		addElement(noteEdit);
+	}
+	override public void onResize() {
+		seeker.setPosition(Box.bySize(34, 16, position.width - 52, 16));
+		const vsb_length = (button_zoomOut.isChecked ? 384 : 910) - (position.height - 98);
+		vsb_notes.maxValue(vsb_length > 0 ? vsb_length : 0);
+		vsb_notes.setPosition(Box.bySize(position.width - 18, 32, 16, position.height - 98));
+		pianoRoll.setPosition(Box.bySize(2, 32, 32, position.height - 98));
+		noteEdit.setPosition(Box(34, 32, position.width - 18, position.height - 66));
+
+		const envEditBegin = position.height - 65;
+		envEdit_chSel.setPosition(Box.bySize(2, envEditBegin, 16, 16));
+		envEdit_cc.setPosition(Box.bySize(2, envEditBegin + 16, 16, 16));
+		envEdit_pc.setPosition(Box.bySize(2, envEditBegin + 32, 16, 16));
+		envEdit_sysex.setPosition(Box.bySize(2, envEditBegin + 48, 16, 16));
+		envEdit_etc.setPosition(Box.bySize(18, envEditBegin + 48, 16, 16));
+		envEdit_imbc.setPosition(Box.bySize(18, envEditBegin, 16, 16));
+		envEdit_arit.setPosition(Box.bySize(18, envEditBegin + 16, 16, 16));
+
+		super.onResize();
+	}
+	public void onMIDILoad() {
+		import pixelperfectengine.concrete.dialogs.filedialog;
+		handler.addWindow(new FileDialog("Load MIDI file.", "loadMidiDialog", &onMIDIFileLoad,
+			[FileDialog.FileAssociationDescriptor("MIDI file", ["*.mid"]),
+			FileDialog.FileAssociationDescriptor("Intelligent MIDI Bytecode file", ["*.imbc", "*.imb"])], "./"));
+	}
+	protected void onMIDIFileLoad(Event ev) {
+		import mididi;
+		import pixelperfectengine.audio.m2.rw;
+		FileEvent fe = cast(FileEvent)ev;
+		switch (fe.extension) {
+			// case ".mid":
+			// 	if (midiSeq !is null) {
+			// 		midiSeq.stop();
+			// 		midiSeq.openMIDI(readMIDIFile(fe.getFullPath));
+			// 		state.m2Toggle = false;
+			// 		mm.midiSeq = midiSeq;
+			// 	} else {
+			// 		wh.message("Error!", "No routing table has been initialized in current audio configuration!");
+			// 	}
+			// 	break;
+			case ".imbc", ".imb":
+				seq.stop();
+				seq.loadSong(loadIMBCFile(fe.getFullPath), mcfg);
+				state.m2Toggle = true;
+				mm.midiSeq = m2Seq;
+				break;
+			default:
+				break;
+		}
+	}
+	public void seqStart() {
+		seq.start();
+	}
+	public void seqStop() {
+		seq.stop();
 	}
 	protected void button_load_onClick(Event ev) {
-		adk.onMIDILoad();
+		onMIDILoad();
 	}
 	protected void button_play_onClick(Event ev) {
-		adk.seqStart();
+		seqStart();
 	}
 	protected void button_stop_onClick(Event ev) {
-		adk.seqStop();
+		seqStop();
+	}
+	protected void button_zoomOut_onToggle(Event ev) {
+		const vsb_length = (button_zoomOut.isChecked ? 384 : 910) - (position.height - 82);
+		vsb_notes.maxValue(vsb_length > 0 ? vsb_length : 0);
+		vsb_notes.draw();
+		pianoRoll.zoomOut = button_zoomOut.isChecked();
+		pianoRoll.draw();
+	}
+	protected void vsb_notes_onScroll(Event ev) {
+		pianoRoll.vScrollAmount = vsb_notes.value;
+		noteEdit.vScrollAmount = vsb_notes.value;
+		pianoRoll.draw();
+		noteEdit.draw();
 	}
 }

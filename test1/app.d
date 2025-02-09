@@ -201,8 +201,18 @@ public class AudioDevKit : InputListener, SystemEventListener {
 					resolvePath("%SYSTEM%/concreteGUI_ADK.tga"), 16, 16);
 			globalDefaultStyle.setImage(customGUIElems[0], "chSelA");
 			globalDefaultStyle.setImage(customGUIElems[1], "chSelB");
-			globalDefaultStyle.setImage(customGUIElems[12], "settingsA");
-			globalDefaultStyle.setImage(customGUIElems[13], "settingsB");
+			globalDefaultStyle.setImage(customGUIElems[2], "ccA");
+			globalDefaultStyle.setImage(customGUIElems[3], "ccB");
+			globalDefaultStyle.setImage(customGUIElems[4], "pcA");
+			globalDefaultStyle.setImage(customGUIElems[5], "pcB");
+			globalDefaultStyle.setImage(customGUIElems[6], "sysExA");
+			globalDefaultStyle.setImage(customGUIElems[7], "sysExB");
+			globalDefaultStyle.setImage(customGUIElems[8], "etcA");
+			globalDefaultStyle.setImage(customGUIElems[9], "etcB");
+			globalDefaultStyle.setImage(customGUIElems[10], "imbcCmdA");
+			globalDefaultStyle.setImage(customGUIElems[11], "imbcCmdB");
+			globalDefaultStyle.setImage(customGUIElems[12], "aritCmdA");
+			globalDefaultStyle.setImage(customGUIElems[13], "aritCmdB");
 			globalDefaultStyle.setImage(customGUIElems[14], "globalsA");
 			globalDefaultStyle.setImage(customGUIElems[15], "globalsB");
 			globalDefaultStyle.setImage(customGUIElems[16], "addA");
@@ -221,6 +231,24 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[29], "macroB");
 			globalDefaultStyle.setImage(customGUIElems[30], "vzoomA");
 			globalDefaultStyle.setImage(customGUIElems[31], "vzoomB");
+			globalDefaultStyle.setImage(customGUIElems[32], "waveformviewB");
+			globalDefaultStyle.setImage(customGUIElems[33], "waveformviewA");
+			globalDefaultStyle.setImage(customGUIElems[34], "ptrnselA");
+			globalDefaultStyle.setImage(customGUIElems[35], "ptrnselB");
+			globalDefaultStyle.setImage(customGUIElems[36], "ptrnaddA");
+			globalDefaultStyle.setImage(customGUIElems[37], "ptrnaddB");
+			globalDefaultStyle.setImage(customGUIElems[38], "ptrndelA");
+			globalDefaultStyle.setImage(customGUIElems[39], "ptrndelB");
+			globalDefaultStyle.setImage(customGUIElems[40], "hzoomA");
+			globalDefaultStyle.setImage(customGUIElems[41], "hzoomB");
+			globalDefaultStyle.setImage(customGUIElems[42], "notelenA");
+			globalDefaultStyle.setImage(customGUIElems[43], "notelenB");
+			globalDefaultStyle.setImage(customGUIElems[44], "notemodA");
+			globalDefaultStyle.setImage(customGUIElems[45], "notemodB");
+			globalDefaultStyle.setImage(customGUIElems[46], "pbendA");
+			globalDefaultStyle.setImage(customGUIElems[47], "pbendB");
+			globalDefaultStyle.setImage(customGUIElems[48], "velocityA");
+			globalDefaultStyle.setImage(customGUIElems[49], "velocityB");
 		}
 		{
 			Bitmap8Bit[] customGUIElems = loadBitmapSheetFromFile!Bitmap8Bit(
@@ -229,10 +257,13 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[1], "playB");
 			globalDefaultStyle.setImage(customGUIElems[3], "stopB");
 			globalDefaultStyle.setImage(customGUIElems[2], "stopA");
-			globalDefaultStyle.setImage(customGUIElems[14], "recordB");
-			globalDefaultStyle.setImage(customGUIElems[15], "recordA");
+			globalDefaultStyle.setImage(customGUIElems[14], "recordA");
+			globalDefaultStyle.setImage(customGUIElems[15], "recordB");
 		}
-
+		{
+			PianoRoll.pianoRollLarge = loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/PianoRollZI.tga"));
+			PianoRoll.pianoRollSmall = loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/PianoRollZO.tga"));
+		}
 		ih = new InputHandler();
 		ih.systemEventListener = this;
 		ih.inputListener = this;
@@ -470,7 +501,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	}
 	public void openSequencer() {
 		if (m2Seq is null && midiSeq is null) wh.message("Error!", "Audio has not been initialized!");
-		else wh.addWindow(new SequencerCtrl(this));
+		else wh.addWindow(new SequencerCtrl(this, m2Seq));
 	}
 	public void onMIDILoad() {
 		import pixelperfectengine.concrete.dialogs.filedialog;
