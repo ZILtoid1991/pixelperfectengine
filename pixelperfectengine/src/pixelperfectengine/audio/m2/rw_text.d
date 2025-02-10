@@ -1043,7 +1043,7 @@ public struct IMBCAssembler {
 					break;						//Header parse end
 				case Context.arrayParse:
 					if (words[0] == "END") context = Context.init;
-					else result.songdata.arrays[$-1] ~= cast(uint)parsenum(words[0]);
+					else *result.songdata.arrays.ptrOf(cast(uint)(result.songdata.arrays.length-1)) ~= cast(uint)parsenum(words[0]);
 					break;
 				case Context.metadataParse:
 					if (words[0] == "END") context = Context.init;	//TODO: Implement proper metadata handling
@@ -1073,7 +1073,7 @@ public struct IMBCAssembler {
 					case "ARRAY":
 						context = Context.arrayParse;
 						arrayNames ~= words[1];
-						result.songdata.arrays ~= [];
+						result.songdata.arrays[cast(uint)(arrayNames.length - 1)] = [];
 						break;
 					case "PATTERN":
 						context = Context.patternParse;

@@ -254,6 +254,7 @@ public struct M2File {
 	public M2TimeFormat timeFormat;
 	public uint timeFrmtPer;
 	public uint timeFrmtRes;
+	public uint patternNum;
 }
 ///Used by the sequencer for reading command data, and by compilers to create new commands.
 public struct M2Command {

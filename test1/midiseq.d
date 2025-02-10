@@ -4,6 +4,7 @@ import pixelperfectengine.concrete.window;
 
 import pixelperfectengine.audio.base.midiseq : SequencerM1;
 import pixelperfectengine.audio.m2.seq;
+import pixelperfectengine.audio.base.config;
 import test1.app;
 import collections.sortedlist;
 
@@ -308,9 +309,12 @@ public class SequencerCtrl : Window {
 
 	SequencerM2 seq;
 
-	public this(AudioDevKit adk, SequencerM2 seq) {
+	ModuleConfig mcfg;
+
+	public this(AudioDevKit adk, SequencerM2 seq, ModuleConfig mcfg) {
 		this.adk = adk;
 		this.seq = seq;
+		this.mcfg = mcfg;
 		resizableV = true;
 		resizableH = true;
 		minW = 320;
@@ -396,7 +400,7 @@ public class SequencerCtrl : Window {
 	public void onMIDILoad() {
 		import pixelperfectengine.concrete.dialogs.filedialog;
 		handler.addWindow(new FileDialog("Load MIDI file.", "loadMidiDialog", &onMIDIFileLoad,
-			[FileDialog.FileAssociationDescriptor("MIDI file", ["*.mid"]),
+			[/+FileDialog.FileAssociationDescriptor("MIDI file", ["*.mid"]),+/
 			FileDialog.FileAssociationDescriptor("Intelligent MIDI Bytecode file", ["*.imbc", "*.imb"])], "./"));
 	}
 	protected void onMIDIFileLoad(Event ev) {
@@ -417,8 +421,7 @@ public class SequencerCtrl : Window {
 			case ".imbc", ".imb":
 				seq.stop();
 				seq.loadSong(loadIMBCFile(fe.getFullPath), mcfg);
-				state.m2Toggle = true;
-				mm.midiSeq = m2Seq;
+				mcfg.manager.midiSeq = seq;
 				break;
 			default:
 				break;

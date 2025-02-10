@@ -501,7 +501,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	}
 	public void openSequencer() {
 		if (m2Seq is null && midiSeq is null) wh.message("Error!", "Audio has not been initialized!");
-		else wh.addWindow(new SequencerCtrl(this, m2Seq));
+		else wh.addWindow(new SequencerCtrl(this, m2Seq, mcfg));
 	}
 	public void onMIDILoad() {
 		import pixelperfectengine.concrete.dialogs.filedialog;

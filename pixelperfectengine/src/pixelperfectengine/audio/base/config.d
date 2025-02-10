@@ -44,7 +44,7 @@ public class ModuleConfig {
 	///Stores most of the document data here when uncompiled.
 	protected Tag					root;
 	///The target for audio handling.
-	protected ModuleManager			manager;
+	public ModuleManager			manager;
 	///Routing nodes that have been parsed so far.
 	protected RoutingNode[]			rns;
 	///The audio modules stored by this configuration.
