@@ -10,8 +10,7 @@ dependency "newxml" version="==0.2.1"
 dependency "dimage" version="==0.3.0-beta.4"
 dependency "bitleveld" version="*"
 dependency "cpublit" version="==0.6.1"
-//dependency "bindbc-sdl" version="*"
-//dependency "bindbc-lua" version="*"
+dependency "wasmtime-d" version="*"
 dependency "iota" version="==0.4.0-beta.2"
 dependency "bmfont" version="==0.1.0"
 dependency "intel-intrinsics" version="*"
@@ -89,6 +88,14 @@ subPackage {
 	lflags "/PDB:.\\bin-$ARCH-$PLATFORM\\pixelperfectengine_test5.pdb" platform="windows"
 	sourcePaths "./test5/"
 	importPaths "./test5/"
+}
+subPackage {
+	name "hello0"
+	dependency "pixelperfectengine" version="*"
+	targetType "executable"
+	targetPath "./bin-$ARCH-$PLATFORM/"
+	sourcePaths "./hello0/"
+	importPaths "./hello0/"
 }
 subPackage {
 	name "wmfc"
