@@ -14,8 +14,15 @@ public struct RandomNumberGenerator {
 	 */
 	public this (ulong reg) @nogc @safe pure nothrow {
 		this.reg = reg;
-		for (int i ; i < 64 ; i++)
-			seed();
+		for (int i ; i < 64 ; i++) seed();
+	}
+	public RandomNumberGenerator defaultSeed() @nogc @safe nothrow {
+		import core.time;
+		RandomNumberGenerator result;
+		result.reg = MonoTime.currTime.ticks;
+		result.reg *= 0xDE4DB3A7;
+		for (int i ; i < 64 ; i++) result.seed();
+		return result;
 	}
 	/** 
 	 * Shuffles the register's content, then returns it.
