@@ -46,7 +46,7 @@ int main() {
 				pathSymbols["SHDRVER"] = arg[13..$];
 			}
 		}
-		GameApp app = new GameApp();
+		HelloWorld app = new HelloWorld();
 		app.whereTheMagicHappens();
 	} catch (Throwable e) {
 		debug writeln(e);
@@ -54,7 +54,7 @@ int main() {
 	return 0;
 }
 ///I generally like to put most of the application logic into one class to keep track of globals, as well as targets to certain events.
-public class GameApp : SystemEventListener, InputListener {
+public class HelloWorld : SystemEventListener, InputListener {
 	///Defines various states of the game.
 	///I have added some quite useful and very often used ones
 	enum StateFlags {
@@ -73,8 +73,6 @@ public class GameApp : SystemEventListener, InputListener {
 	enum SCREEN_WIDTH = 424;	///Width of the game screen, in pixels
 	enum SCREEN_HEIGHT = 240;	///Height of the game screen, in pixels
 	enum SCREEN_SCALE = 4;		///Initial screen scaling
-	///Stores the currently loaded map file with all related data.
-	MapFormat		mapSource;
 	///To display our game's graphics, we need to initialize an output window, which will also allow us to get input from the real world
 	OSWindow		outputScreen;
 	///To manage our layers and palette.
@@ -90,20 +88,7 @@ public class GameApp : SystemEventListener, InputListener {
 	///Contains the pointer to the textlayer.
 	///Can be used for the menu, status bars, etc.
 	TileLayer		textLayer;
-	///Contains pointer to the game field, so we can easily interact with it.
-	SpriteLayer		gameField;
-	///Contains the random number generator and its state.
-	RandomNumberGenerator	rng;
-	ConfigurationProfile	cfg;
-	//Audio related stuff goes here.
-	//Note: some of the audio stuff is preliminary. It works, but cannot handle certain cases, such as device disconnection.
-	//IMBC sequencer has untested features and might lock up on certain functions.
-	AudioDeviceHandler adh;	///Handles audio devices and outputs.
-	ModuleManager	modMan;	///Handles the modules and their output.
-	ModuleConfig	modCfg;	///Loads and handles module configuration, including routing, patches, and samples.
-	SequencerM1		midiSeq;///MIDI sequencer for MIDI playback, comment it out if not needed in favor of IMBC.
-	SequencerM2		imbcSeq;///IMBC sequencer for playing back IMBC files, comment it out if not needed in favor of MIDI.
-	
+
 	/// Initializes our application.
 	/// Put other things here if you need them.
 	this () {
@@ -119,32 +104,28 @@ public class GameApp : SystemEventListener, InputListener {
 		ih.systemEventListener = this;	//Sets the system event target to this instance
 		ih.inputListener = this;		//Sets the input event target to this instance
 		
-		ocd = new ObjectCollisionDetector(&onCollision, 0);	//Creates an object collision detector
-		//Let's create our layer for statuses, etc
+		//Let's create a tile layer for dislaying some text
 		textLayer = new TileLayer(8,8, RenderingMode.AlphaBlend);	//Creates a TileLayer with 8x8 tiles and alpha blending
-		textLayer.paletteOffset = 512;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
-		textLayer.masterVal = 127;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
 
-		cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
-		//Comment the next part out, if you're having too much trouble with audio working, since you still can add sound later on.
-		//audio related part begin
-		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);	//Initializes the driver
-		AudioSpecs as = AudioSpecs(predefinedFormats[PredefinedFormats.FP32], cfg.audioFrequency, 0, 2, cfg.audioBufferLen, 
-				Duration.init);								//Sets up a default audio specification
-		adh = new AudioDeviceHandler(as, cfg.audioBufferLen, cfg.audioBufferLen / cfg.audioFrameLen);	//Creates a new AudioDeviceHandler and sets up the basics
-		adh.initAudioDevice(-1);							//Initializes the default device
-		modMan = new ModuleManager(adh);					//Initializes the module manager
-		modCfg = new ModuleConfig(modMan);					//Initializes the module configurator
-		modCfg.loadConfigFromFile(resolvePath("yourAudioConfiguration.sdl"));//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
-		modCfg.compile(false);								//Compiles the current module configuration.
-		//MIDI sequencer, comment it out if not needed in favor of IMBC
-		midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
-		//IMBC sequencer, comment it out if not needed in favor of MIDI
-		imbcSeq = new SequencerM2();
-		modMan.runAudioThread();							//Runs the audio thread.
-		//audio related part end
 
 		//<Put other initialization code here>
+		//create a basic palette
+		rstr.addPaletteChunk(
+				[Color(0x00,0x00,0x00,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x00,0x00,0x00,0xFF),Color(0xff,0x00,0x00,0xFF),
+				Color(0x00,0x00,0x00,0xFF),Color(0x00,0xff,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),Color(0x00,0x00,0xff,0xFF),
+				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
+				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF)]
+				);
+		//load a basic font
+		{
+			Image fontSource = loadImage(File(resolvePath("%SYSTEM%/codepage_8_8.png")));
+			Bitmap8Bit[] fontSet = loadBitmapSheetFromImage!Bitmap8Bit(fontSource, 8, 8);
+			for (ushort i; i < fontSet.length; i++) {
+				textLayer.addTile(fontSet[i], i, 1);
+			}
+		}
+		//write text to our textlayer
+		textLayer.writeTextToMap(0,0,0x01, "Hello World!", BitmapAttrib(true, false));
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
@@ -152,14 +133,6 @@ public class GameApp : SystemEventListener, InputListener {
 			rstr.refresh();
 			//Tests the input devices for events.
 			ih.test();
-			//Tests the timer for any registered events that are to happen.
-			//Note: You can put this call into a separate thread for more precision.
-			timer.test();
-			//Calling the RNG for every frame will make it less deterministic. Speed runners might hate you for this.
-			rng();
-			//This calls the collision detector on all registered objects.
-			//You'll want to only call it on moving objects, especially when you have a lot of objects on screen.
-			ocd.testAll();
 
 			//<Per-frame code comes here>
 		}
@@ -221,12 +194,10 @@ public class GameApp : SystemEventListener, InputListener {
 
 	}
 	///Called if a key input event has occured.
-	///Note: This function will be changed once I move input handling and output screen handling to iota.
 	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		
 	}
 	///Called if an axis input event has occured.
-	///Note: This function will be changed once I move input handling and output screen handling to iota.
 	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
 		
 	}
