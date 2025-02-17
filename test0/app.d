@@ -63,10 +63,10 @@ class TileLayerTest : SystemEventListener, InputListener {
 		}
 		theta = 0;
 		isRunning = true;
-		Image tileSource = loadImage(File(getPathToAsset("/assets/sci-fi-tileset.png")));
+		Image tileSource = loadImage(File(resolvePath("%PATH%/assets/sci-fi-tileset.png")));
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
-		Image spriteSource = loadImage(File(getPathToAsset("/assets/d-man.tga")));
-		Image fontSource = loadImage(File(getPathToAsset("/system/codepage_8_8.png")));
+		Image spriteSource = loadImage(File(resolvePath("%PATH%/assets/d-man.tga")));
+		Image fontSource = loadImage(File(resolvePath("%SYSTEM%/codepage_8_8.png")));
 		r = new Raster(424,240,output,0);
 		//output.setMainRaster(r);
 		t = new TileLayer(16,16, RenderingMode.Copy);
