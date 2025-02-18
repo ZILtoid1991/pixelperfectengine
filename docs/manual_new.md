@@ -87,6 +87,32 @@ In the engine's root folder, there's a folder for application templates. It is r
 
 # Tile maps and tile layers
 
+Since Galaga, a lot of game systems were built upon tilemapping engines, where each element acted like a highly modifiable graphics character. This enabled a building block system, that is easy to use and understand.
+
+## PPE tile format
+
+### Extensions
+
 # Sprites
 
 # Audio
+
+# Scripting
+
+The game engine is using WASM (WebAssembly - please note that despite its name, applications built with the game engine are not "Electron applications running in a browser", nor are necessarily ready for web export) for scripting, by using the wasmtime library, for multi-language compatibility and a lightweight scripting engine. There will be a C/C++ and a D binding soon.
+
+**Differences from regular WASM:**
+
+* No HTML functionality. However engine functionality for drawing and text formatting (ETML) are exposed instead.
+* No WebGL or similar graphics API. Any low-level meddling with the graphics API should be done in low-level code.
+* Same with any other web API.
+* No built-in browser in the game engine.
+* No Javascript is used on the engine side, `__externref_t` and `JSObj` are now refer to D classes on the backend instead.
+* WASI is not used, instead it uses the engine's own logging system for the same purpose.
+* The engine's API is being exposed instead.
+* Custom functionality API can be exposed using appropriate wasmtime-d functions.
+
+**Best practices:**
+
+* WASM can still hurt performance, thus time-critical elements (physics, graphics, audio, etc.) should be handled low-level.
+* Generally, scripts should be scripts and not general game logic, but target application might override this rule (e.g. modding).
