@@ -91,7 +91,32 @@ Since Galaga, a lot of game systems were built upon tilemapping engines, where e
 
 ## PPE tile format
 
-### Extensions
+### Tilemap 
+
+The tilemap is a 2D array, that consists of 32 bit data chunks with the following format:
+
+```
+| Byte 3 | Byte 2 | Byte 1 | Byte 0 |
+|76543210|76543210|76543210|76543210|
+|PPPPPPPP|ZZZZZRVH|SSSSSSSS|SSSSSSSS|
+```
+
+Or:
+
+* 16 bits of tile selector, 0xFF_FF equals with empty tile. (S)
+* 1 bit for horizontal mirroring. (H)
+* 1 bit for vertical mirroring. (V)
+* 1 bit for X-Y axis rotate enable, using alongside of the mirroring flags, it enables 90 and 270º rotation among others (only for OpenGL). (R)
+* 5 bits of priority ID, used for Z-Buffer effects (only for OpenGL). (Z)
+* 8 bits of palette selector. (P)
+ 
+Examples:
+
+* `0x0000_FFFF` is a transparent tile. The other half of the tile data will be ignored.
+* `0x0400_0101` is a tile of ID `0101` using palette `04`, with priority value set to 0, and no mirroring or rotation.
+* `0x0035_002c` is a tile of ID `002c` using palette `00`, with priority value set to 6, with horizontal mirroring and rotation.
+
+#### Extensions
 
 # Sprites
 
