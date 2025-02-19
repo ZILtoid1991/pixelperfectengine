@@ -150,7 +150,9 @@ abstract class Layer {
 		 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
 		 */
 		public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, int[4] sizes, int[2] offsets) @nogc nothrow;
+		///Sets the tendency to whether clear the Z buffer when this layer is drawn or not.
 		public abstract void setClearZBuffer(bool val) @nogc nothrow;
+		///Sets the overscan amount, on which some effects are dependent on.
 		public abstract void setOverscanAmount(float valH, float valV);
 	}
 	///Returns the type of the layer.
