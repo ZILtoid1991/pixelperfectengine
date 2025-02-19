@@ -134,6 +134,13 @@ abstract class Layer {
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
 	version (ppe_expglen) {
 		/**
+		 * Adds a bitmap source to the layer.
+		 * Params:
+		 *   bitmap = the bitmap to be uploaded as a texture.
+		 * Returns: zero or other non-negative number indicating the index of the texture for access. All negative values are error codes.
+		 */
+		public abstract int addBitmapSource(ABitmap bitmap);
+		/**
 		 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
 		 * Renders the layer's content to the texture target.
 		 * Params:
@@ -159,6 +166,12 @@ abstract class Layer {
 			//j--;
 		}
 	}
+}
+public enum TextureUploadError {
+	init,
+	TextureFormatNotSupported	=	-1,
+	TextureTooBig				=	-2,
+	OutOfMemory					=	-3,
 }
 /**
  * Mostly used for internal communication and scripting.
