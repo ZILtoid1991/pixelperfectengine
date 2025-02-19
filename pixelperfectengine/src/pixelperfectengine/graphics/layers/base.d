@@ -137,9 +137,10 @@ abstract class Layer {
 		 * Adds a bitmap source to the layer.
 		 * Params:
 		 *   bitmap = the bitmap to be uploaded as a texture.
-		 * Returns: zero or other non-negative number indicating the index of the texture for access. All negative values are error codes.
+		 *   page = page identifier.
+		 * Returns: Zero on success, or a specific error code.
 		 */
-		public abstract int addBitmapSource(ABitmap bitmap);
+		public abstract int addBitmapSource(ABitmap bitmap, int page);
 		/**
 		 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
 		 * Renders the layer's content to the texture target.
