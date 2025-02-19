@@ -14,6 +14,17 @@ import pixelperfectengine.graphics.layers.base;
 public interface ITileLayer {
 	version (ppe_expglen) {
 		/**
+		 * Adds a new tile to the layer from the internal texture sources.
+		 * Params: 
+		 *  id = the character ID of the tile represented on the map.
+		 *  page = selects which tilesheet page is the source of the tile (tilesheets begin at 0).
+		 *  x = x offset of the tile on the sheet.
+		 *  y = y offset of the tile on the sheet.
+		 *  paletteSh = palette shift amount, or how many bits are actually used of the bitmap. This enables less than 16 
+		 * or 256 color chunks on the palette to be selected.
+		 */
+		public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0);
+		/**
 		 * Sets the rotation amount for the layer.
 		 * Params:
 		 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
@@ -214,6 +225,18 @@ public interface ITTL {
 public interface ISpriteLayer {
 	version (ppe_expglen) {
 		/**
+		 * Creates a sprite material for this layer.
+		 * Params:
+		 *   id = desired ID of the sprite material. Note that when updating a previously used one, sizes won't be updated for any displayed sprites.
+		 *   page = identifier number of the sprite sheet being used.
+		 *   area = the area on the sprite sheet that should be used as the source of the sprite material.
+		 */
+		public void createSpriteMaterial(int id, int page, Box area);
+		/**
+		 * Removes sprite material designated by `id`.
+		 */
+		public void removeSpriteMaterial(int id);
+		/**
 		 * Adds a sprite to the given location.
 		 * Params:
 		 *   sprt = Bitmap to be added as a sprite.
@@ -222,9 +245,37 @@ public interface ISpriteLayer {
 		 *   paletteSel = Palette selector for indexed bitmaps.
 		 *   paletteSh = Palette shift amount in bits.
 		 *   alpha = Alpha channel for the whole of the sprite.
-		 *   shaderID = Shader program identifier
+		 *   shaderID = Shader program identifier, zero for default.
 		 */
-		public Box addSprite(ABitmap sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0, 
+		public Box addSprite(int sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0, 
+			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
+			@trusted nothrow;
+		/**
+		 * Adds a sprite to the given location.
+		 * Params:
+		 *   sprt = Bitmap to be added as a sprite.
+		 *   n = Priority ID of the sprite.
+		 *   position = Determines where the sprite should be drawn on the layer.
+		 *   paletteSel = Palette selector for indexed bitmaps.
+		 *   paletteSh = Palette shift amount in bits.
+		 *   alpha = Alpha channel for the whole of the sprite.
+		 *   shaderID = Shader program identifier, zero for default.
+		 */
+		public Box addSprite(int sprt, int n, Box position, ushort paletteSel = 0, ubyte paletteSh = 0, 
+			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
+			@trusted nothrow;
+		/**
+		 * Adds a sprite to the given location.
+		 * Params:
+		 *   sprt = Bitmap to be added as a sprite.
+		 *   n = Priority ID of the sprite.
+		 *   position = Determines where the sprite should be drawn on the layer.
+		 *   paletteSel = Palette selector for indexed bitmaps.
+		 *   paletteSh = Palette shift amount in bits.
+		 *   alpha = Alpha channel for the whole of the sprite.
+		 *   shaderID = Shader program identifier, zero for default.
+		 */
+		public Box addSprite(int sprt, int n, Point position, ushort paletteSel = 0, ubyte paletteSh = 0, 
 			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
 			@trusted nothrow;
 	}
