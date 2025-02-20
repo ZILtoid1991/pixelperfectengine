@@ -166,10 +166,58 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Default ctor
 	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
 		setRenderingMode(renderMode);
-		//Bug workaround: Sometimes when attempting to append an element to a zero-length array, it causes an exception
-		//to be thrown, due to access errors. This bug is unstable, and as such hard to debug for (memory leakage issue?)
-		//displayedSprites.reserve(128);
-		//src[0].length = 1024;
+
+	}
+	version (ppe_expglen) {
+		protected struct Material {
+			int materialID;
+			int pageID;
+			int width;
+			int height;
+			float left;
+			float top;
+			float bottom;
+			float right;
+		}
+		protected struct DisplayListItem_GL {
+			Vertex		ul;
+			Vertex		ur;
+			Vertex		ll;
+			Vertex		lr;
+		}
+		protected struct DisplayListItem_Sprt {
+			int spriteID;
+			int materialID;
+			Quad position;
+			Box slice;
+			ushort palSel;
+			ushort palSh;
+		}
+		/**
+		 * Adds a bitmap source to the layer.
+		 * Params:
+		 *   bitmap = the bitmap to be uploaded as a texture.
+		 *   page = page identifier.
+		 * Returns: Zero on success, or a specific error code.
+		 */
+		public abstract int addBitmapSource(ABitmap bitmap, int page);
+		/**
+		 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
+		 * Renders the layer's content to the texture target.
+		 * Params:
+		 *   workpad = The target texture.
+		 *   palette = The texture containing the palette for color lookup.
+		 *   palNM = Palette containing normal values for each index.
+		 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
+		 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
+		 */
+		public void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
+				@nogc nothrow {
+			import bindbc.opengl;
+			if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
+		}
+		///Sets the overscan amount, on which some effects are dependent on.
+		public abstract void setOverscanAmount(float valH, float valV);
 	}
 	/**
 	 * Checks all sprites for whether they're on screen or not.

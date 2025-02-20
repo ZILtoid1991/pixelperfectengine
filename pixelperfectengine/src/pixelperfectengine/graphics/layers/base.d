@@ -53,11 +53,12 @@ abstract class Layer {
 	alias main8BitColorLookupFunction = colorLookup!(ubyte,uint);
 	alias main4BitColorLookupFunction = colorLookup4Bit!uint;
 	protected RenderingMode renderMode;
-
-	// scrolling position
-	//protected int sX, sY, rasterX, rasterY;
+	///TODO: move bitflags and other options here.
+	///Stores various states of this layer
+	protected uint		flags;
+	protected static enum	CLEAR_Z_BUFFER = 1<<0;
 	protected int		sX;		///Horizontal scroll position
-	protected int       sY;		///Vertical scroll position
+	protected int		sY;		///Vertical scroll position
 	protected int		rasterX;///Raster width (visible)
 	protected int		rasterY;///Haster height
 
@@ -133,6 +134,8 @@ abstract class Layer {
 	 */
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
 	version (ppe_expglen) {
+		///Amount of virtual overscan, certain effects might rely on this.
+		protected float overscanAm;
 		/**
 		 * Adds a bitmap source to the layer.
 		 * Params:
@@ -147,12 +150,16 @@ abstract class Layer {
 		 * Params:
 		 *   workpad = The target texture.
 		 *   palette = The texture containing the palette for color lookup.
+		 *   palNM = Palette containing normal values for each index.
 		 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
 		 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
 		 */
-		public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, int[4] sizes, int[2] offsets) @nogc nothrow;
+		public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets) @nogc nothrow;
 		///Sets the tendency to whether clear the Z buffer when this layer is drawn or not.
-		public abstract void setClearZBuffer(bool val) @nogc nothrow;
+		public void setClearZBuffer(bool val) @nogc nothrow {
+			if (val) flags |= CLEAR_Z_BUFFER;
+			else flags &= ~CLEAR_Z_BUFFER;
+		}
 		///Sets the overscan amount, on which some effects are dependent on.
 		public abstract void setOverscanAmount(float valH, float valV);
 	}
@@ -160,6 +167,7 @@ abstract class Layer {
 	///Useful with certain scripting languages.
 	public abstract LayerType getLayerType() @nogc @safe pure nothrow const;
 	///Standard algorithm for horizontal mirroring, used for tile mirroring
+	///To be deprecated after move to OpenGL completed
 	protected void flipHorizontal(T)(T[] target) @nogc pure nothrow {
 		//sizediff_t j = target.length - 1;
 		for (sizediff_t i, j = target.length - 1 ; i < j ; i++, j--) {

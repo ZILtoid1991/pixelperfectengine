@@ -178,10 +178,34 @@ public struct Vertex {
 	float r;		/// Red color channel of the vertex.
 	float g;		/// Green color channel of the vertex.
 	float b;		/// Blue color channel of the vertex.
+	float a;		/// Alpha channel of the vertex.
 	float s;		///	X coordinate for texture mapping.
 	float t;		/// Y coordinate for texture mapping.
 	float lX;		/// X modifier for normal mapping.
 	float lY;		/// Y modifier for normal mapping.
+}
+/**
+ * Defines Vertex data for tiles.
+ * Color channels can be repurposed to pass arbitrary data to the shaders if lighting etc. is not needed.
+ * Normal mapping modifiers can be repurposed to pass arbitrary data to the shaders if normal mapping is
+ * not needed
+ * To Do: Try to somehow optimize some of the per-tile stuff, so they won't be repeated multiple times
+ */
+public struct TileVertex {
+	float x;		/// X coordinate of the vertex.
+	float y;		/// Y coordinate of the vertex.
+	float z;		/// Z coordinate of the vertex.
+	float r;		/// Red color channel of the vertex.
+	float g;		/// Green color channel of the vertex.
+	float b;		/// Blue color channel of the vertex.
+	float a;		/// Alpha channel of the vertex.
+	float p;		/// Page identifier of the tile sheet.
+	float s;		///	X coordinate for texture mapping.
+	float t;		/// Y coordinate for texture mapping.
+	float lX;		/// X modifier for normal mapping.
+	float lY;		/// Y modifier for normal mapping.
+	float selX;		/// X selector for palette.
+	float selY;		/// Y selector for palette.
 }
 /**
  * Defines indices for a single polygon (triangle).
