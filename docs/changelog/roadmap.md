@@ -84,6 +84,14 @@ Mostly finishing iota to a state it can replace the current SDL functionality. (
 
 The Transformable Tile Layer likely cannot be done without either heavy compromises, or heavy restructuring, especially not without compute shaders (not available on all GPUs). Likely it will be still be done by the CPU, then streamed to the GPU as textures, which at "retro" resolutions, shouldn't be too taxing on lower-end hardware. (Likely will be dropped with regular tile layer getting some of its capabilities instead)
 
+### Current status
+
+* Heavy consideration of also implementing a vulkan rendering pipeline (nuvk?).
+
 ## Logging
 
-Add a logger to record events and errors (Do it by 0.11.0!).
+Add a logger to record events and errors.
+
+## Move away from the GC
+
+With the use of `numem`, every new or rewritten system will be moved to a nogc system, to avoid potential pauses from garbage collection traces. At least numem allows operation alongside of Phobos and D's own GC (with some caveats).
