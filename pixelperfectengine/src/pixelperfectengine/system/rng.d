@@ -16,7 +16,7 @@ public struct RandomNumberGenerator {
 		this.reg = reg;
 		for (int i ; i < 64 ; i++) seed();
 	}
-	public RandomNumberGenerator defaultSeed() @nogc @safe nothrow {
+	public static RandomNumberGenerator defaultSeed() @nogc @safe nothrow {
 		import core.time;
 		RandomNumberGenerator result;
 		result.reg = MonoTime.currTime.ticks;
