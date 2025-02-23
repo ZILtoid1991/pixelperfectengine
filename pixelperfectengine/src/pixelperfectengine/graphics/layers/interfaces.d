@@ -12,104 +12,103 @@ import pixelperfectengine.graphics.layers.base;
  * Tile interface, defines common functions shared between tile layers.
  */
 public interface ITileLayer {
-	version (ppe_expglen) {
-		/**
-		 * Adds a new tile to the layer from the internal texture sources.
-		 * Params: 
-		 *  id = the character ID of the tile represented on the map.
-		 *  page = selects which tilesheet page is the source of the tile (tilesheets begin at 0).
-		 *  x = x offset of the tile on the sheet.
-		 *  y = y offset of the tile on the sheet.
-		 *  paletteSh = palette shift amount, or how many bits are actually used of the bitmap. This enables less than 16 
-		 * or 256 color chunks on the palette to be selected.
-		 */
-		public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0);
-		/**
-		 * Sets the rotation amount for the layer.
-		 * Params:
-		 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
-		 * Note: This visual effect rely on overscan amount set correctly.
-		 */
-		public void rotate(ushort theta);
-		/**
-		 * Sets the horizontal scaling amount.
-		 * Params:
-		 *   amount = The amount of horizontal scaling, 0x10_00 is normal, anything 
-		 * greater will minimize, lesser will magnify the layer. Negative values mirror 
-		 * the layer.
-		 */
-		public void scaleHoriz(short amount);
-		/**
-		 * Sets the vertical scaling amount.
-		 * Params:
-		 *   amount = The amount of vertical scaling, 0x10_00 is normal, anything 
-		 * greater will minimize, lesser will magnify the layer. Negative values mirror 
-		 * the layer.
-		 */
-		public void scaleVert(short amount);
-		/**
-		 * Sets the transformation midpoint relative to the middle of the screen.
-		 * Params:
-		 *   x0 = x coordinate of the midpoint.
-		 *   y0 = y coordinate of the midpoint.
-		 */
-		public void setTransformMidpoint(short x0, short y0);
-		/**
-		 * Writes to the transform lookup table.
-		 * Params:
-		 *   index = The index of the table, which correlates to the given line of the screen.
-		 *   theta = Rotation amount. 0x10_00 means a whole rotation.
-		 *   sX = Scrolling on the X axis.
-		 *   sY = Scrolling on the Y axis.
-		 *   x0 = x coordinate of the transformation midpoint.
-		 *   y0 = y coordinate of the transformation midpoint.
-		 *   sH = The amount of horizontal scaling, 0x10_00 is normal, anything 
-		 * greater will minimize, lesser will magnify the layer. Negative values mirror 
-		 * the layer.
-		 *   sV = The amount of vertical scaling, 0x10_00 is normal, anything 
-		 * greater will minimize, lesser will magnify the layer. Negative values mirror 
-		 * the layer.
-		 */
-		public void writeTransformLookupTable(ushort index, ushort theta = 0, short sX = 0x00, short sY = 0x00, 
-				short x0 = 0x00, short y0 = 0x00, short sH = 0x10_00, short sV = 0x10_00);
-		/**
-		 * Clears the transform lookup table.
-		 */
-		public void clearTransformLookupTable();
-		/**
-		 * Sets a color attribute table for the layer.
-		 * Color attribute table can be per-tile, per-vertex, or unique to each vertex of 
-		 * the tile, depending on the size of the table.
-		 * Params:
-		 *   table = the array containing the initial information. Length must be width * height
-		 *   width = the width of the color attribute table.
-		 *   height = the height of the color attribute table.
-		 */
-		public void setColorAttributeTable(Color[] table, int width, int height);
-		/**
-		 * Writes the color attribute table at the given location.
-		 * Params:
-		 *   x = X coordinate of the color attribute table.
-		 *   y = Y coordinate of the color attribute table.
-		 *   c = The color to be written at the selected loaction.
-		 * Returns: the newly written color, or Color.init if color attribute table is not
-		 * set.
-		 */
-		public Color writeColorAttributeTable(int x, int y, Color c);
-		/**
-		 * Reads the color attribute table at the given location.
-		 * Params:
-		 *   x = X coordinate of the color attribute table.
-		 *   y = Y coordinate of the color attribute table.
-		 * Returns: the color at the given location, or Color.init if color attribute 
-		 * table is not set.
-		 */
-		public Color readColorAttributeTable(int x, int y);
-		/**
-		 * Clears the color attribute table and returns the table as a backup.
-		 */
-		public Color[] clearColorAttributeTable();
-	}
+	/**
+	 * Adds a new tile to the layer from the internal texture sources.
+	 * Params:
+	 *  id = the character ID of the tile represented on the map.
+	 *  page = selects which tilesheet page is the source of the tile (tilesheets begin at 0).
+	 *  x = x offset of the tile on the sheet.
+	 *  y = y offset of the tile on the sheet.
+	 *  paletteSh = palette shift amount, or how many bits are actually used of the bitmap. This enables less than 16
+	 * or 256 color chunks on the palette to be selected.
+	 */
+	public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0);
+	/**
+	 * Sets the rotation amount for the layer.
+	 * Params:
+	 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
+	 * Note: This visual effect rely on overscan amount set correctly.
+	 */
+	public void rotate(ushort theta);
+	/**
+	 * Sets the horizontal scaling amount.
+	 * Params:
+	 *   amount = The amount of horizontal scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	public void scaleHoriz(short amount);
+	/**
+	 * Sets the vertical scaling amount.
+	 * Params:
+	 *   amount = The amount of vertical scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	public void scaleVert(short amount);
+	/**
+	 * Sets the transformation midpoint relative to the middle of the screen.
+	 * Params:
+	 *   x0 = x coordinate of the midpoint.
+	 *   y0 = y coordinate of the midpoint.
+	 */
+	public void setTransformMidpoint(short x0, short y0);
+	/**
+	 * Writes to the transform lookup table.
+	 * Params:
+	 *   index = The index of the table, which correlates to the given line of the screen.
+	 *   theta = Rotation amount. 0x10_00 means a whole rotation.
+	 *   sX = Scrolling on the X axis.
+	 *   sY = Scrolling on the Y axis.
+	 *   x0 = x coordinate of the transformation midpoint.
+	 *   y0 = y coordinate of the transformation midpoint.
+	 *   sH = The amount of horizontal scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 *   sV = The amount of vertical scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	// public void writeTransformLookupTable(ushort index, ushort theta = 0, short sX = 0x00, short sY = 0x00,
+	// 		short x0 = 0x00, short y0 = 0x00, short sH = 0x10_00, short sV = 0x10_00);
+	/**
+	 * Clears the transform lookup table.
+	 */
+	// public void clearTransformLookupTable();
+	/**
+	 * Sets a color attribute table for the layer.
+	 * Color attribute table can be per-tile, per-vertex, or unique to each vertex of
+	 * the tile, depending on the size of the table.
+	 * Params:
+	 *   table = the array containing the initial information. Length must be width * height * 4
+	 *   width = the width of the color attribute table.
+	 *   height = the height of the color attribute table.
+	 */
+	public void setAttributeTable(GraphicsAttrExt[] table, int width, int height);
+	/**
+	 * Writes the color attribute table at the given location.
+	 * Params:
+	 *   x = X coordinate of the color attribute table.
+	 *   y = Y coordinate of the color attribute table.
+	 *   c = The color to be written at the selected loaction.
+	 * Returns: the newly written color, or Color.init if color attribute table is not
+	 * set.
+	 */
+	public GraphicsAttrExt[4] writeColorAttributeTable(int x, int y, GraphicsAttrExt[4] c);
+	/**
+	 * Reads the color attribute table at the given location.
+	 * Params:
+	 *   x = X coordinate of the color attribute table.
+	 *   y = Y coordinate of the color attribute table.
+	 * Returns: the color at the given location, or Color.init if color attribute
+	 * table is not set.
+	 */
+	public GraphicsAttrExt[4] readColorAttributeTable(int x, int y);
+	/**
+	 * Clears the color attribute table and returns the table as a backup.
+	 */
+	public GraphicsAttrExt[] clearColorAttributeTable();
+
 	/// Retrieves the mapping from the tile layer.
 	/// Can be used to retrieve data, e.g. for editors, saving game states
 	public MappingElement[] getMapping() @nogc @safe pure nothrow;
@@ -161,7 +160,7 @@ public interface ITileLayer {
 	/// Returns the total height of the tile layer.
 	public size_t getTY() @nogc @safe pure nothrow const;
 	/**
-	 * Adds a new tile to the layer.
+	 * Adds a new tile to the layer. DEPRECATED
 	 * Params: 
 	 *  tile: the bitmap representing the tile. Must be the same size as all the others. Some tilelayers might require
 	 * an exact format of tiles.
@@ -184,6 +183,7 @@ public interface ITileLayer {
 /**
  * Defines functions specific to transformable tile layers.
  * All transform parameters (A, B, C, D) are 256-based "fractional integers".
+ * Kind of deprecated after move to OpenGL, many affine transform functions are available through the OpenGL renderer of the tile layer
  */
 public interface ITTL {
     ///Returns the horizontal scaling amount.
@@ -223,62 +223,63 @@ public interface ITTL {
  *General SpriteLayer interface.
  */
 public interface ISpriteLayer {
-	version (ppe_expglen) {
-		/**
-		 * Creates a sprite material for this layer.
-		 * Params:
-		 *   id = desired ID of the sprite material. Note that when updating a previously used one, sizes won't be updated for any displayed sprites.
-		 *   page = identifier number of the sprite sheet being used.
-		 *   area = the area on the sprite sheet that should be used as the source of the sprite material.
-		 */
-		public void createSpriteMaterial(int id, int page, Box area);
-		/**
-		 * Removes sprite material designated by `id`.
-		 */
-		public void removeSpriteMaterial(int id);
-		/**
-		 * Adds a sprite to the given location.
-		 * Params:
-		 *   sprt = Bitmap to be added as a sprite.
-		 *   n = Priority ID of the sprite.
-		 *   position = Determines where the sprite should be drawn on the layer.
-		 *   paletteSel = Palette selector for indexed bitmaps.
-		 *   paletteSh = Palette shift amount in bits.
-		 *   alpha = Alpha channel for the whole of the sprite.
-		 *   shaderID = Shader program identifier, zero for default.
-		 */
-		public Box addSprite(int sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0, 
+
+	/**
+	 * Creates a sprite material for this layer.
+	 * Params:
+	 *   id = desired ID of the sprite material. Note that when updating a previously used one, sizes won't be updated for any displayed prites.
+	 *   page = identifier number of the sprite sheet being used.
+	 *   area = the area on the sprite sheet that should be used as the source of the sprite material.
+	 * Returns: Zero on success, or a specific error code
+	 */
+	public int createSpriteMaterial(int id, int page, Box area) @safe @nogc nothrow;
+	/**
+	 * Removes sprite material designated by `id`.
+	 */
+	public void removeSpriteMaterial(int id) @safe @nogc nothrow;
+	/**
+	 * Adds a sprite to the given location.
+	 * Params:
+	 *   sprt = Bitmap to be added as a sprite.
+	 *   n = Priority ID of the sprite.
+	 *   position = Determines where the sprite should be drawn on the layer.
+	 *   paletteSel = Palette selector for indexed bitmaps.
+	 *   paletteSh = Palette shift amount in bits.
+	 *   alpha = Alpha channel for the whole of the sprite.
+	 *   shaderID = Shader program identifier, zero for default.
+	 */
+	public Quad addSprite(int sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0,
 			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
 			@trusted nothrow;
-		/**
-		 * Adds a sprite to the given location.
-		 * Params:
-		 *   sprt = Bitmap to be added as a sprite.
-		 *   n = Priority ID of the sprite.
-		 *   position = Determines where the sprite should be drawn on the layer.
-		 *   paletteSel = Palette selector for indexed bitmaps.
-		 *   paletteSh = Palette shift amount in bits.
-		 *   alpha = Alpha channel for the whole of the sprite.
-		 *   shaderID = Shader program identifier, zero for default.
-		 */
-		public Box addSprite(int sprt, int n, Box position, ushort paletteSel = 0, ubyte paletteSh = 0, 
+	/**
+	 * Adds a sprite to the given location.
+	 * Params:
+	 *   sprt = Bitmap to be added as a sprite.
+	 *   n = Priority ID of the sprite.
+	 *   position = Determines where the sprite should be drawn on the layer.
+	 *   paletteSel = Palette selector for indexed bitmaps.
+	 *   paletteSh = Palette shift amount in bits.
+	 *   alpha = Alpha channel for the whole of the sprite.
+	 *   shaderID = Shader program identifier, zero for default.
+	 */
+	public Quad addSprite(int sprt, int n, Box position, ushort paletteSel = 0, ubyte paletteSh = 0,
 			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
 			@trusted nothrow;
-		/**
-		 * Adds a sprite to the given location.
-		 * Params:
-		 *   sprt = Bitmap to be added as a sprite.
-		 *   n = Priority ID of the sprite.
-		 *   position = Determines where the sprite should be drawn on the layer.
-		 *   paletteSel = Palette selector for indexed bitmaps.
-		 *   paletteSh = Palette shift amount in bits.
-		 *   alpha = Alpha channel for the whole of the sprite.
-		 *   shaderID = Shader program identifier, zero for default.
-		 */
-		public Box addSprite(int sprt, int n, Point position, ushort paletteSel = 0, ubyte paletteSh = 0, 
+	/**
+	 * Adds a sprite to the given location.
+	 * Params:
+	 *   sprt = Bitmap to be added as a sprite.
+	 *   n = Priority ID of the sprite.
+	 *   position = Determines where the sprite should be drawn on the layer.
+	 *   paletteSel = Palette selector for indexed bitmaps.
+	 *   paletteSh = Palette shift amount in bits.
+	 *   alpha = Alpha channel for the whole of the sprite.
+	 *   shaderID = Shader program identifier, zero for default.
+	 */
+	public Quad addSprite(int sprt, int n, Point position, ushort paletteSel = 0, ubyte paletteSh = 0,
 			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
 			@trusted nothrow;
-	}
+
 	///Clears all sprite from the layer.
 	public void clear() @trusted nothrow;
 	///Removes the sprite with the given ID.

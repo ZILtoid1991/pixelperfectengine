@@ -1,11 +1,28 @@
+/*
+ * PixelPerfectEngine - Sprite layer module
+ *
+ * Copyright 2015 - 2025
+ * Licensed under the Boost Software License
+ * Authors:
+ *   László Szerémi
+ */
+
 module pixelperfectengine.graphics.layers.spritelayer;
 
 public import pixelperfectengine.graphics.layers.base;
+import pixelperfectengine.system.memory;
 
 import collections.treemap;
 import collections.sortedlist;
 import std.bitmanip : bitfields;
 import bitleveld.datatypes;
+import inteli;
+
+pragma(inline, true)
+void _store2s (float* memAddr, __m128 a) @nogc @system pure nothrow {
+	memAddr[0] = a[0];
+	memAddr[1] = a[1];
+}
 
 /**
  * General-purpose sprite controller and renderer.
@@ -163,62 +180,298 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	//protected OnScreenList		displayedSprites;	///Sprites that are being displayed
 	protected Color[2048]		src;				///Local buffer for scaling
 	//size_t[8] prevSize;
-	///Default ctor
+	///Default ctor DEPRECATED since OpenGL move
 	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
 		setRenderingMode(renderMode);
 
 	}
-	version (ppe_expglen) {
-		protected struct Material {
-			int materialID;
-			int pageID;
-			int width;
-			int height;
-			float left;
-			float top;
-			float bottom;
-			float right;
+
+
+
+	protected struct Material {
+		int materialID;
+		uint pageID;
+		ushort width;
+		ushort height;
+		float left;
+		float top;
+		float right;
+		float bottom;
+		int opCmp(int rhs) @nogc @safe pure nothrow const {
+			if (materialID < rhs) return -1;
+			else if (materialID == rhs) return 0;
+			else return 1;
 		}
-		protected struct DisplayListItem_GL {
-			Vertex		ul;
-			Vertex		ur;
-			Vertex		ll;
-			Vertex		lr;
+		int opCmp(Material rhs) @nogc @safe pure nothrow const {
+			if (materialID < rhs.materialID) return -1;
+			else if (materialID == rhs.materialID) return 0;
+			else return 1;
 		}
-		protected struct DisplayListItem_Sprt {
-			int spriteID;
-			int materialID;
-			Quad position;
-			Box slice;
-			ushort palSel;
-			ushort palSh;
-		}
-		/**
-		 * Adds a bitmap source to the layer.
-		 * Params:
-		 *   bitmap = the bitmap to be uploaded as a texture.
-		 *   page = page identifier.
-		 * Returns: Zero on success, or a specific error code.
-		 */
-		public abstract int addBitmapSource(ABitmap bitmap, int page);
-		/**
-		 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
-		 * Renders the layer's content to the texture target.
-		 * Params:
-		 *   workpad = The target texture.
-		 *   palette = The texture containing the palette for color lookup.
-		 *   palNM = Palette containing normal values for each index.
-		 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
-		 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
-		 */
-		public void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
-				@nogc nothrow {
-			import bindbc.opengl;
-			if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
-		}
-		///Sets the overscan amount, on which some effects are dependent on.
-		public abstract void setOverscanAmount(float valH, float valV);
 	}
+	protected struct TextureEntry {
+		int id;
+		uint glTextureID;
+		ushort width;
+		ushort height;
+		int opCmp(int rhs) @nogc @safe pure nothrow const {
+			if (id < rhs) return -1;
+			else if (id == rhs) return 0;
+			else return 1;
+		}
+		int opCmp(TextureEntry rhs) @nogc @safe pure nothrow const {
+			if (id < rhs.id) return -1;
+			else if (id == rhs.id) return 0;
+			else return 1;
+		}
+	}
+	protected struct DisplayListItem_GL {
+		Vertex		ul;
+		Vertex		ur;
+		Vertex		ll;
+		Vertex		lr;
+	}
+	protected struct DisplayListItem_Sprt {
+		int spriteID;
+		int materialID;
+		Quad position;
+		float[4] slice;
+		ushort palSel;
+		ubyte palSh;
+		ubyte pri;
+		uint programID;
+		///Contains attributes associated with each corner of the sprite
+		//Order: upper-left ; upper-right ; lower-left ; lower-right
+		GraphicsAttrExt[4] attr;
+	}
+	protected uint[] gl_shaders;
+	protected TextureEntry[] gl_materials;
+	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
+	protected Material[] materialList;
+	protected DisplayListItem_Sprt[] displayList_sprt;
+	protected DisplayListItem_GL gl_RenderOut;
+	protected PolygonIndices[2] gl_PlIndices = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
+	/**
+	 * Creates a sprite material for this layer.
+	 * Params:
+	 *   id = desired ID of the sprite material. Note that when updating a previously used one, sizes won't be updated for any displayed sprites.
+	 *   page = identifier number of the sprite sheet being used.
+	 *   area = the area on the sprite sheet that should be used as the source of the sprite material.
+	 * Returns: Zero on success, or a specific error code
+	 */
+	public int createSpriteMaterial(int id, int page, Box area) @safe @nogc nothrow {
+		TextureEntry te = gl_materials.searchBy(page);
+		const double xStep = 1.0 / te.width, yStep = 1.0 / te.height;
+		materialList.orderedInsert(Material(id, te.glTextureID, cast(ushort)area.width, cast(ushort)area.height,
+				area.left * xStep, 1.0 - (area.top * yStep), area.right * xStep, 1.0 - (area.bottom * yStep)));
+		return 0;
+	}
+	/**
+	 * Removes sprite material designated by `id`.
+	 */
+	public void removeSpriteMaterial(int id) @safe @nogc nothrow {
+		sizediff_t index = materialList.searchByI(id);
+		if (index != -1) materialList.nogc_remove(id);
+	}
+	/**
+	 * Adds a sprite to the given location.
+	 * Params:
+	 *   sprt = Bitmap to be added as a sprite.
+	 *   n = Priority ID of the sprite.
+	 *   position = Determines where the sprite should be drawn on the layer.
+	 *   paletteSel = Palette selector for indexed bitmaps.
+	 *   paletteSh = Palette shift amount in bits.
+	 *   alpha = Alpha channel for the whole of the sprite.
+	 *   shaderID = Shader program identifier, zero for default.
+	 */
+	public Quad addSprite(int sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0,
+			ubyte alpha = ubyte.max, GLuint shaderID = 0)
+			@trusted nothrow {
+		GraphicsAttrExt gae = GraphicsAttrExt(0,0,0,alpha,0,0);
+		displayList_sprt.orderedInsert(DisplayListItem_Sprt(n, sprt, position, [0.0, 0.0, 0.0, 0.0], paletteSel, paletteSh,
+				0, shaderID, [gae, gae, gae, gae]));
+		return position;
+	}
+	/**
+	 * Adds a sprite to the given location.
+	 * Params:
+	 *   sprt = Bitmap to be added as a sprite.
+	 *   n = Priority ID of the sprite.
+	 *   position = Determines where the sprite should be drawn on the layer.
+	 *   paletteSel = Palette selector for indexed bitmaps.
+	 *   paletteSh = Palette shift amount in bits.
+	 *   alpha = Alpha channel for the whole of the sprite.
+	 *   shaderID = Shader program identifier, zero for default.
+	 */
+	public Quad addSprite(int sprt, int n, Box position, ushort paletteSel = 0, ubyte paletteSh = 0,
+			ubyte alpha = ubyte.max, GLuint shaderID = 0)
+			@trusted nothrow {
+		return addSprite(sprt, n, Quad(position.cornerUL, position.cornerUR, position.cornerLL, position.cornerLR),
+				paletteSel, paletteSh, alpha, shaderID);
+	}
+	/**
+	 * Adds a sprite to the given location.
+	 * Params:
+	 *   sprt = Material source to be added as a sprite..
+	 *   n = Priority ID of the sprite.
+	 *   position = Determines where the sprite should be drawn on the layer.
+	 *   paletteSel = Palette selector for indexed bitmaps.
+	 *   paletteSh = Palette shift amount in bits.
+	 *   alpha = Alpha channel for the whole of the sprite.
+	 *   shaderID = Shader program identifier, zero for default.
+	 */
+	public Quad addSprite(int sprt, int n, Point position, ushort paletteSel = 0, ubyte paletteSh = 0,
+			ubyte alpha = ubyte.max, GLuint shaderID = 0)
+			@trusted nothrow {
+		Material spriteMat = materialList.searchBy(sprt);
+		return addSprite(sprt, n, Box.bySize(position.x, position.y, spriteMat.width, spriteMat.height), paletteSel,
+				paletteSh, alpha, shaderID);
+	}
+	/**
+	 * Adds a bitmap source to the layer.
+	 * Params:
+	 *   bitmap = the bitmap to be uploaded as a texture.
+	 *   page = page identifier.
+	 * Returns: Zero on success, or a specific error code.
+	 */
+	public override int addBitmapSource(ABitmap bitmap, int page) @nogc nothrow {
+		import bindbc.opengl;
+		void* pixelData;
+		GLuint textureID;
+		glGenTextures(1, &textureID);
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		if (typeid(bitmap) is typeid(Bitmap8Bit)) {
+			pixelData = (cast(Bitmap8Bit)(bitmap)).getPtr;
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap.width, bitmap.height, 0, GL_RED, GL_R8, pixelData);
+		} else if (typeid(bitmap) is typeid(Bitmap32Bit)) {
+			pixelData = (cast(Bitmap32Bit)(bitmap)).getPtr;
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.width, bitmap.height, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
+					pixelData);
+		}
+		if (!pixelData) return -1;
+		gl_materials.orderedInsert(TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height));
+		return 0;
+	}
+	/**
+	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
+	 * Renders the layer's content to the texture target.
+	 * Params:
+	 *   workpad = The target texture.
+	 *   palette = The texture containing the palette for color lookup.
+	 *   palNM = Palette containing normal values for each index.
+	 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
+	 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
+	 */
+	public override void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
+			@nogc nothrow {
+		import bindbc.opengl;
+		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
+		//Just stream display data to gl_RenderOut for now, we can always optimize it later if there's any options
+		//Constants begin
+		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
+		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
+		__m128d screenSizeRec = __m128d([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
+		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * __m128d([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
+		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
+		immutable __m128 COLOR_REC = __m128([1.0 / 127, 1.0 / 127, 1.0 / 127, 1.0 / 255]);
+		//Constants end
+		//Stack prealloc block begin
+		double[8] spriteLoc = void;
+		float[16] spriteCl = void;
+		//Stack prealloc block end
+		//Select palettes
+		glBindTexture(GL_TEXTURE_2D, palette);
+		glActiveTexture(GL_TEXTURE1);
+		if (palNM) {
+			glBindTexture(GL_TEXTURE_2D, palNM);
+			glActiveTexture(GL_TEXTURE2);
+		}
+		foreach (DisplayListItem_Sprt sprt ; displayList_sprt) {	//Iterate over all sprites within the displaylist
+			if (displayAreaWS.isBetween(sprt.position.topLeft) || displayAreaWS.isBetween(sprt.position.topRight) ||
+					displayAreaWS.isBetween(sprt.position.bottomLeft) || displayAreaWS.isBetween(sprt.position.bottomRight)) {//Check whether the sprite is on the display area
+					//get sprite material
+				Material cm = materialList.searchBy!"materialID"(sprt.materialID);
+				glBindTexture(GL_TEXTURE_2D, cm.pageID);
+				glActiveTexture(GL_TEXTURE0);
+				//Calculate and store sprite location on the display area
+				spriteLoc = [sprt.position.topLeft.x - (sX - offsets[0]),
+						sprt.position.topLeft.y - (sY - offsets[1]),
+						sprt.position.topRight.x - (sX - offsets[0]),
+						sprt.position.topRight.y - (sY - offsets[1]),
+						sprt.position.bottomLeft.x - (sX - offsets[0]),
+						sprt.position.bottomLeft.y - (sY - offsets[1]),
+						sprt.position.bottomRight.x - (sX - offsets[0]),
+						sprt.position.bottomRight.y - (sY - offsets[1])];
+				_store2s(&gl_RenderOut.ul.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[0]) * screenSizeRec + OGL_OFFSET));
+				_store2s(&gl_RenderOut.ur.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[2]) * screenSizeRec + OGL_OFFSET));
+				_store2s(&gl_RenderOut.ll.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[4]) * screenSizeRec + OGL_OFFSET));
+				_store2s(&gl_RenderOut.lr.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[6]) * screenSizeRec + OGL_OFFSET));
+				//calculate and store Z values
+				float zF = sprt.pri * (1.0 / 31);
+				gl_RenderOut.ul.z = zF;
+				gl_RenderOut.ur.z = zF;
+				gl_RenderOut.ll.z = zF;
+				gl_RenderOut.lr.z = zF;
+				//calculate and store color values
+				spriteCl = [sprt.attr[0].r, sprt.attr[0].g, sprt.attr[0].b, sprt.attr[0].a,
+						sprt.attr[1].r, sprt.attr[1].g, sprt.attr[1].b, sprt.attr[1].a,
+						sprt.attr[2].r, sprt.attr[2].g, sprt.attr[2].b, sprt.attr[2].a,
+						sprt.attr[3].r, sprt.attr[3].g, sprt.attr[3].b, sprt.attr[3].a];
+				_mm_store_ps(&gl_RenderOut.ul.r, _mm_load_ps(&spriteCl[0]) * COLOR_REC);
+				_mm_store_ps(&gl_RenderOut.ur.r, _mm_load_ps(&spriteCl[4]) * COLOR_REC);
+				_mm_store_ps(&gl_RenderOut.ll.r, _mm_load_ps(&spriteCl[8]) * COLOR_REC);
+				_mm_store_ps(&gl_RenderOut.lr.r, _mm_load_ps(&spriteCl[12]) * COLOR_REC);
+				//store texture mapping data
+				gl_RenderOut.ul.s = cm.left + sprt.slice[0];
+				gl_RenderOut.ul.t = cm.top + sprt.slice[1];
+				gl_RenderOut.ur.s = cm.right + sprt.slice[2];
+				gl_RenderOut.ur.t = cm.top + sprt.slice[1];
+				gl_RenderOut.ll.s = cm.left + sprt.slice[0];
+				gl_RenderOut.ll.t = cm.bottom + sprt.slice[3];
+				gl_RenderOut.lr.s = cm.right+ sprt.slice[2];
+				gl_RenderOut.lr.t = cm.bottom + sprt.slice[3];
+				//calcolate and store lighting direction data
+				spriteLoc = [sprt.attr[0].lX, sprt.attr[0].lY, sprt.attr[1].lX, sprt.attr[1].lY,
+						sprt.attr[2].lX, sprt.attr[2].lY, sprt.attr[3].lX, sprt.attr[3].lY];
+				_store2s(&gl_RenderOut.ul.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[0]) * LDIR_REC));
+				_store2s(&gl_RenderOut.ur.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[2]) * LDIR_REC));
+				_store2s(&gl_RenderOut.ll.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[4]) * LDIR_REC));
+				_store2s(&gl_RenderOut.lr.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[6]) * LDIR_REC));
+				glUseProgram(sprt.programID);
+				glUniform1i(glGetUniformLocation(gl_Program, "mainTexture"), 0);
+				glUniform1i(glGetUniformLocation(gl_Program, "palette"), 1);
+				glUniform1i(glGetUniformLocation(gl_Program, "paletteMipMap"), 2);
+				const colorSelY = sprt.palSel>>(8-sprt.palSh), colorSelX = sprt.palSel&((1<<(8-sprt.palSh))-1);
+				glUniform2f(glGetUniformLocation(gl_Program, "paletteOffset"), colorSelX * (1.0 / 256), colorSelY * (1.0 / 256));
+				// glUniform1f(glGetUniformLocation(gl_Program, "palLengthMult"), 1.0 / (9 - sprt.palSh));
+
+				glBindVertexArray(gl_vertexArray);
+
+				glBindBuffer(GL_ARRAY_BUFFER, gl_vertexBuffer);
+				glBufferData(GL_ARRAY_BUFFER, DisplayListItem_GL.sizeof, &gl_RenderOut, GL_STATIC_DRAW);
+
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertexIndices);
+				glBufferData(GL_ARRAY_BUFFER, PolygonIndices.sizeof * 2, gl_PlIndices.ptr, GL_STATIC_DRAW);
+
+				glEnableVertexAttribArray(0);
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)0);
+				glEnableVertexAttribArray(1);
+				glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(3 * float.sizeof));
+				glEnableVertexAttribArray(2);
+				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(7 * float.sizeof));
+				glEnableVertexAttribArray(3);
+				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(9 * float.sizeof));
+				glBindVertexArray(gl_VertexArray);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
+			}
+		}
+	}
+	///Sets the overscan amount, on which some effects are dependent on.
+	public abstract void setOverscanAmount(float valH, float valV);
+
 	/**
 	 * Checks all sprites for whether they're on screen or not.
 	 * Called every time the layer is being scrolled.

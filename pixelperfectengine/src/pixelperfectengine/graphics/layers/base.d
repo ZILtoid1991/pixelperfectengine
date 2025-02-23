@@ -133,36 +133,36 @@ abstract class Layer {
 	 * in other places, so that's why pointers are used instead.
 	 */
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
-	version (ppe_expglen) {
-		///Amount of virtual overscan, certain effects might rely on this.
-		protected float overscanAm;
-		/**
-		 * Adds a bitmap source to the layer.
-		 * Params:
-		 *   bitmap = the bitmap to be uploaded as a texture.
-		 *   page = page identifier.
-		 * Returns: Zero on success, or a specific error code.
-		 */
-		public abstract int addBitmapSource(ABitmap bitmap, int page);
-		/**
-		 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
-		 * Renders the layer's content to the texture target.
-		 * Params:
-		 *   workpad = The target texture.
-		 *   palette = The texture containing the palette for color lookup.
-		 *   palNM = Palette containing normal values for each index.
-		 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
-		 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
-		 */
-		public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets) @nogc nothrow;
-		///Sets the tendency to whether clear the Z buffer when this layer is drawn or not.
-		public void setClearZBuffer(bool val) @nogc nothrow {
-			if (val) flags |= CLEAR_Z_BUFFER;
-			else flags &= ~CLEAR_Z_BUFFER;
-		}
-		///Sets the overscan amount, on which some effects are dependent on.
-		public abstract void setOverscanAmount(float valH, float valV);
+
+	///Amount of virtual overscan, certain effects might rely on this.
+	protected float overscanAm;
+	/**
+	 * Adds a bitmap source to the layer.
+	 * Params:
+	 *   bitmap = the bitmap to be uploaded as a texture.
+	 *   page = page identifier.
+	 * Returns: Zero on success, or a specific error code.
+	 */
+	public abstract int addBitmapSource(ABitmap bitmap, int page);
+	/**
+	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
+	 * Renders the layer's content to the texture target.
+	 * Params:
+	 *   workpad = The target texture.
+	 *   palette = The texture containing the palette for color lookup.
+	 *   palNM = Palette containing normal values for each index.
+	 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
+	 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
+	 */
+	public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets) @nogc nothrow;
+	///Sets the tendency to whether clear the Z buffer when this layer is drawn or not.
+	public void setClearZBuffer(bool val) @nogc nothrow {
+		if (val) flags |= CLEAR_Z_BUFFER;
+		else flags &= ~CLEAR_Z_BUFFER;
 	}
+	///Sets the overscan amount, on which some effects are dependent on.
+	// public abstract void setOverscanAmount(float valH, float valV);
+
 	///Returns the type of the layer.
 	///Useful with certain scripting languages.
 	public abstract LayerType getLayerType() @nogc @safe pure nothrow const;
@@ -294,12 +294,12 @@ public struct MappingElement {
 	}
 }
 /**
- * Extension for the main mapping, primarily for storing lighting data in file.
+ * Graphics attribute extensions for sprites, tiles, etc.
  * Minus values in the `rgb` fields will apply a multiply effect, plus values will apply a screen effect.
  * `a` just controls the alpha channel for the given point.
  * `lX` and `lY` control the normal mapping effect.
  */
-public struct MappingElementExt {
+public struct GraphicsAttrExt {
 	byte r;						///Red channel modifier
 	byte g;						///Green channel modifier
 	byte b;						///Blue channel modifier

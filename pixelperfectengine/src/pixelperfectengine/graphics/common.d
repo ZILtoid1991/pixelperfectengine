@@ -31,8 +31,12 @@ public struct Point {
 	bool opEquals(const Point other) @safe @nogc pure nothrow const {
 		return this.x == other.x && this.y == other.y;
 	}
-	public Point opBinary(string op, R)(const R rhs) const {
+	public Point opBinary(string op, R)(const R rhs) @safe @nogc pure nothrow const {
 		mixin("return Point(x " ~  op ~ " rhs.x , y " ~ op ~ "rhs.y);");
+	}
+	public Point opOpAssign(string op, R)(const R rhs) @safe @nogc pure nothrow {
+		mixin("x " ~  op ~ "= rhs.x; y " ~ op ~ "= rhs.y;");
+		return this;
 	}
 }
 /**
@@ -164,6 +168,21 @@ public struct Quad {
 	Point topRight;
 	Point bottomLeft;
 	Point bottomRight;
+	public void move(int x, int y) @nogc @safe pure nothrow {
+		move(Point(x, y));
+	}
+	public void move(Point vec) @nogc @safe pure nothrow {
+		relMove(vec - topLeft);
+	}
+	public void relMove(int x, int y) @nogc @safe pure nothrow {
+		relMove(Point(x, y));
+	}
+	public void relMove(Point vec) @nogc @safe pure nothrow {
+		topLeft += vec;
+		topRight += vec;
+		bottomLeft += vec;
+		bottomRight += vec;
+	}
 }
 /**
  * Defines Vertex data.

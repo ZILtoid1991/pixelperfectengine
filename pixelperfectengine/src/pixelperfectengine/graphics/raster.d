@@ -12,6 +12,7 @@ import pixelperfectengine.system.file : loadShader;
 import bindbc.opengl.gl;
 import bindbc.opengl;
 public import pixelperfectengine.graphics.common;
+import pixelperfectengine.system.memory;
 import std.conv;
 import std.algorithm.sorting;
 import std.algorithm.mutation;
@@ -81,11 +82,16 @@ public class Raster : PaletteContainer {
 		1, 2, 3,
 	];
 	
-    private ushort rasterWidth, rasterHeight;///Stores virtual screen resolution.
-    public Bitmap32Bit[] cpu_FrameBuffer;///Framebuffers for CPU rendering
+	private ushort rasterWidth, rasterHeight;///Stores virtual screen resolution.
+	public Bitmap32Bit[] cpu_FrameBuffer;///Framebuffers for CPU rendering
 	//public void* 		fbData;			///Data of the currently selected framebuffer
 	//public int			fbPitch;		///Pitch of the currently selected framebuffer
-	public GLuint[] 	gl_FrameBuffer;	///Framebuffers for OpenGL rendering
+	public GLuint[] 	gl_FrameBufferTexture;	///Framebuffers for OpenGL rendering
+	public GLuint[]		gl_DepthBuffer;
+	public GLuint[]		gl_FrameBuffer;
+	public GLuint[]		gl_Overlays;	///Used for hi-res overlay support
+	public GLuint		gl_Palette;		///Palette stored as a 2D texture
+	public GLuint		gl_PaletteNM;	///Palette for normal mapping
 	public GLuint		gl_VertexBuffer;///Vertex buffer ID
 	public GLuint		gl_VertexArray;	///Vertex array ID
 	public GLuint		gl_VertexIndices;///Vertex index buffer ID
@@ -93,18 +99,20 @@ public class Raster : PaletteContainer {
 	/**
 	 * Color format is ARGB, with each index having their own transparency.
 	 */
-    protected Color[] _palette;
+	protected Color[] _palette;
+	///Normal map format: x ; y
+	protected short[] _paletteNM;
 	alias LayerMap = TreeMap!(int, Layer);
 	public LayerMap layerMap;		///Stores the layers by their priorities.
 	public LayerMap hiresOverlays;	///High resolution overlays for those who need it.
 	protected OSWindow oW;
-    //private Layer[int] layerList;	
-    private bool r;					///Set to true if refresh is happening.
+	//private Layer[int] layerList;
+	private bool r;					///Set to true if refresh is happening.
 	protected int nOfBuffers;		///Number of framebuffers, 2 for double buffering.
 	protected int updatedBuffer;	///Framebuffer currently being updated
 	protected int displayedBuffer;///Framebuffer currently being displayed
 	//private int[2] doubleBufferRegisters;
-    private RefreshListener[] rL;				///Contains RefreshListeners associated with this raster.
+	private RefreshListener[] rL;				///Contains RefreshListeners associated with this raster.
 	private MonoTime frameTime, frameTime_1;	///Timestamps of frame occurences
 	public Duration delta_frameTime;			///Current time delta between two frames
 	private double framesPerSecond, avgFPS;		///Current and average fps counter
@@ -119,7 +127,7 @@ public class Raster : PaletteContainer {
 	 *   buffers = Number of buffers, 2 recommended for double buffering, 1 recommended for GUI apps 
 	 * especially if they're not constantly updating.
 	 */
-    public this (ushort w, ushort h, OSWindow oW, size_t paletteLength = 65_536, ubyte buffers = 2) {
+	public this (ushort w, ushort h, OSWindow oW, size_t paletteLength = 65_536, ubyte buffers = 2) {
 		assert(paletteLength <= 65_536);
 		//Shader initialization block
 		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -142,21 +150,34 @@ public class Raster : PaletteContainer {
 		glDeleteShader(gl_FragmentShader);
 		glDeleteShader(gl_VertexShader);
 
-		_palette.length = paletteLength;
-        rasterWidth=w;
-        rasterHeight=h;
+		_palette = nogc_initNewArray!Color(paletteLength);
+		_paletteNM = nogc_initNewArray!short(paletteLength<<1);
+
+		rasterWidth=w;
+		rasterHeight=h;
 		nOfBuffers = buffers;
 		for (int i ; i < buffers ; i++) {
-			cpu_FrameBuffer ~= new Bitmap32Bit(w, h);
-			GLuint texture;
+			//cpu_FrameBuffer ~= new Bitmap32Bit(w, h);
+			GLuint texture, depthBuffer, frameBuffer;
+			glGenFramebuffers(1, &frameBuffer);
+			glBindFramebuffer(frameBuffer);
+
 			glGenTextures(1, &texture);
 			glBindTexture(GL_TEXTURE_2D, texture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, 0);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+			glGenRenderbuffers(1, &depthBuffer);
+			glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
 			
-			gl_FrameBuffer ~= texture;
+			gl_FrameBufferTexture.nogc_append(texture);
+			gl_DepthBuffer.nogc_append(depthBuffer);
+			gl_FrameBuffer.nogc_append(frameBuffer);
 		}
 		glUseProgram(gl_Program);
 		glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
@@ -196,6 +217,11 @@ public class Raster : PaletteContainer {
 		glDeleteBuffers(1, &gl_VertexArray);
 		glDeleteBuffers(1, &gl_VertexIndices);
 		glDeleteProgram(gl_Program);
+		nogc_free(_palette);
+		nogc_free(_paletteNM);
+		nogc_free(gl_FrameBuffer);
+		nogc_free(gl_FrameBufferTexture);
+		nogc_free(gl_DepthBuffer);
 	}
 	/**
 	 * Returns a copy of the palette of the object.
@@ -266,10 +292,10 @@ public class Raster : PaletteContainer {
 	public void resetAvgfps() @safe @nogc pure nothrow {
 		avgFPS = 0;
 	}
-    ///Adds a RefreshListener to its list.
-    public void addRefreshListener(RefreshListener r){
-        rL ~= r;
-    }
+	///Adds a RefreshListener to its list.
+	public void addRefreshListener(RefreshListener r){
+		rL ~= r;
+	}
 	///Sets the number of colors.
 	public void setupPalette(int i) {
 		_palette.length = i;
@@ -279,9 +305,9 @@ public class Raster : PaletteContainer {
 		rasterHeight = height;
 		for (int i ; i < nOfBuffers ; i++) {
 			cpu_FrameBuffer[i] = new Bitmap32Bit(rasterWidth, rasterHeight);
-			glDeleteTextures(1, &gl_FrameBuffer[i]);
-			glGenTextures(1, &gl_FrameBuffer[i]);
-			glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[i]);
+			glDeleteTextures(1, &gl_FrameBufferTexture[i]);
+			glGenTextures(1, &gl_FrameBufferTexture[i]);
+			glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[i]);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -291,11 +317,11 @@ public class Raster : PaletteContainer {
 			key.setRasterizer(rasterWidth, rasterHeight);
 		}
 	}
-    ///Adds a layer at the given priority.
-    public void addLayer(Layer l, int i) @safe pure nothrow {
+	///Adds a layer at the given priority.
+	public void addLayer(Layer l, int i) @safe pure nothrow {
 		l.setRasterizer(rasterWidth, rasterHeight);
 		layerMap[i] = l;
-    }
+	}
 	public void loadLayers(R)(R layerRange) @safe pure nothrow {
 		foreach (int key, Layer value; layerRange) {
 			addLayer(value, key);
@@ -311,9 +337,9 @@ public class Raster : PaletteContainer {
 	/**
 	 * Refreshes the whole framebuffer.
 	 */
-    public void refresh() @system {
-		import std.stdio : writeln;
-        r = true;
+	public void refresh() @system {
+
+		r = true;
 		
 		//get frame duration
 		frameTime_1 = frameTime;
@@ -335,28 +361,58 @@ public class Raster : PaletteContainer {
 		}
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-		glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[displayedBuffer]);
+		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, 
 				cpu_FrameBuffer[displayedBuffer].getPtr);
 
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, gl_FrameBuffer[displayedBuffer]);
+		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
 		glUseProgram(gl_Program);
 		glBindVertexArray(gl_VertexArray);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 
 		oW.gl_swapBuffers();
-        r = false;
-    }
+		r = false;
+	}
 
-/* 
-    ///Returns the workpad.
-    public SDL_Texture* getOutput() @nogc @safe pure nothrow {
-		if (displayedBuffer == updatedBuffer) displayedBuffer++;
-		if (displayedBuffer >= nOfBuffers) displayedBuffer = 0;
-		return frameBuffer[displayedBuffer++];
-		//return frameBuffer[0];
-    } */
+	public void refresh_GL() @system {
+		r = true;
+
+		/get frame duration
+		frameTime_1 = frameTime;
+		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
+		delta_frameTime = frameTime - frameTime_1;
+		const real delta_frameTime0 = cast(real)(delta_frameTime.total!"usecs"());
+		framesPerSecond = 1 / (delta_frameTime0 / 1_000_000);
+		if(avgFPS) avgFPS = (avgFPS + framesPerSecond) / 2;
+		else avgFPS = framesPerSecond;
+
+		updatedBuffer++;
+		if(updatedBuffer >= nOfBuffers) updatedBuffer = 0;
+		displayedBuffer = updatedBuffer + 1;
+		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
+
+		foreach (Layer layer ; layerMap) {
+			layer.renderToTexture_gl
+					(gl_FrameBufferTexture[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width * 4, _palette.ptr);
+		}
+		ow.gl_makeCurrent();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
+				cpu_FrameBuffer[displayedBuffer].getPtr);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
+		glUseProgram(gl_Program);
+		glBindVertexArray(gl_VertexArray);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
+
+		oW.gl_swapBuffers();
+		r = false;
+	}
+
 
 
     ///Returns if the raster is refreshing.
