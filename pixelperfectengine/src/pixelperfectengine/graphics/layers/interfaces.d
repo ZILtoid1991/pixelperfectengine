@@ -7,6 +7,7 @@
 module pixelperfectengine.graphics.layers.interfaces;
 
 import pixelperfectengine.graphics.layers.base;
+import bindbc.opengl : GLuint;
 
 /**
  * Tile interface, defines common functions shared between tile layers.

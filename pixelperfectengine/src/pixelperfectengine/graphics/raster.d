@@ -123,12 +123,12 @@ public class Raster : PaletteContainer {
 	 *   w = Raster width.
 	 *   h = Raster height.
 	 *   oW = The OS window for the target.
-	 *   paletteLength = Palette size, should be 65_536.
+	 *   paletteLength = Palette size, should be 65_536. (DEPRECATED PARAMETER)
 	 *   buffers = Number of buffers, 2 recommended for double buffering, 1 recommended for GUI apps 
 	 * especially if they're not constantly updating.
 	 */
 	public this (ushort w, ushort h, OSWindow oW, size_t paletteLength = 65_536, ubyte buffers = 2) {
-		assert(paletteLength <= 65_536);
+		// assert(paletteLength <= 65_536);
 		//Shader initialization block
 		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
 		const(char)[] shaderProgram = loadShader("%SHADERS%/final_%SHDRVER%.vert");
@@ -150,8 +150,16 @@ public class Raster : PaletteContainer {
 		glDeleteShader(gl_FragmentShader);
 		glDeleteShader(gl_VertexShader);
 
-		_palette = nogc_initNewArray!Color(paletteLength);
-		_paletteNM = nogc_initNewArray!short(paletteLength<<1);
+		_palette = nogc_initNewArray!Color(65_536);
+		_paletteNM = nogc_initNewArray!short(65_536 * 2);
+
+		glGenTextures(1, &gl_palette);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, palette.ptr);
+
+		glGenTextures(1, &gl_paletteNM);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, 256, 256, 0, GL_RG, GL_SHORT, palette.ptr);
 
 		rasterWidth=w;
 		rasterHeight=h;
@@ -217,6 +225,9 @@ public class Raster : PaletteContainer {
 		glDeleteBuffers(1, &gl_VertexArray);
 		glDeleteBuffers(1, &gl_VertexIndices);
 		glDeleteProgram(gl_Program);
+		glDeleteFramebuffers(gl_FrameBuffer.length, gl_FrameBuffer.ptr);
+		glDeleteTextures(gl_FrameBufferTexture.length, gl_FrameBufferTexture.ptr);
+		glDeleteRenderbuffers(gl_DepthBuffer.length, gl_DepthBuffer.ptr);
 		nogc_free(_palette);
 		nogc_free(_paletteNM);
 		nogc_free(gl_FrameBuffer);
@@ -338,7 +349,6 @@ public class Raster : PaletteContainer {
 	 * Refreshes the whole framebuffer.
 	 */
 	public void refresh() @system {
-
 		r = true;
 		
 		//get frame duration
@@ -378,7 +388,7 @@ public class Raster : PaletteContainer {
 	public void refresh_GL() @system {
 		r = true;
 
-		/get frame duration
+		//get frame duration
 		frameTime_1 = frameTime;
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
 		delta_frameTime = frameTime - frameTime_1;
@@ -393,8 +403,8 @@ public class Raster : PaletteContainer {
 		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
 
 		foreach (Layer layer ; layerMap) {
-			layer.renderToTexture_gl
-					(gl_FrameBufferTexture[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width * 4, _palette.ptr);
+			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
+					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);
 		}
 		ow.gl_makeCurrent();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

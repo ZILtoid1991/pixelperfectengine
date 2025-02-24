@@ -8,6 +8,7 @@ module pixelperfectengine.graphics.common;
 
 //public import CPUblit.colorspaces;
 public import pixelperfectengine.system.exc;
+import pixelperfectengine.system.memory;
 
 import dimage.types : ARGB8888BE;
 import bindbc.opengl;
@@ -254,6 +255,16 @@ public void gl_CheckShader(GLuint shaderID) @trusted {
 		throw new GLShaderException(cast(string)msg);
 	}
 }
+public char[] gl_CheckShaderNOGC(GLuint shaderID) @trusted @nogc nothrow {
+	int infoLogLength;
+	glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
+	if (infoLogLength > 0) {
+		char[] msg = nogc_newArray!char(infoLogLength);
+		glGetShaderInfoLog(shaderID, infoLogLength, null, msg.ptr);
+		return msg;
+	}
+	return null;
+}
 /**
  * Checks OpenGL program identified by `programID`, throws `GLShaderException` on error.
  */
@@ -266,6 +277,16 @@ public void gl_CheckProgram(GLuint programID) @trusted {
 		glGetProgramInfoLog(programID, infoLogLength, null, msg.ptr);
 		throw new GLShaderException(cast(string)msg);
 	}
+}
+public char[] gl_CheckProgramNOGC(GLuint programID) @trusted @nogc nothrow {
+	int infoLogLength;
+	glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &infoLogLength);
+	if (infoLogLength > 0) {
+		char[] msg = nogc_newArray!char(infoLogLength);
+		glGetProgramInfoLog(programID, infoLogLength, null, msg.ptr);
+		return msg;
+	}
+	return null;
 }
 ///Deprecated: Just use Box instead!
 alias Coordinate = Box;

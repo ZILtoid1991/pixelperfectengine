@@ -17,6 +17,7 @@ import collections.sortedlist;
 import std.bitmanip : bitfields;
 import bitleveld.datatypes;
 import inteli;
+import bindbc.opengl : GLuint;
 
 pragma(inline, true)
 void _store2s (float* memAddr, __m128 a) @nogc @system pure nothrow {
@@ -29,7 +30,7 @@ void _store2s (float* memAddr, __m128 a) @nogc @system pure nothrow {
  */
 public class SpriteLayer : Layer, ISpriteLayer {
 	/**
-	 * Helps to determine the displaying properties and order of sprites.
+	 * Helps to determine the displaying properties and order of sprites. DEPRECATED
 	 */
 	public struct DisplayListItem {
 		Box		position;			/// Stores the position relative to the origin point. Actual display position is determined by the scroll positions.
@@ -179,13 +180,28 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected DisplayList		allSprites;			///All sprites of this layer
 	//protected OnScreenList		displayedSprites;	///Sprites that are being displayed
 	protected Color[2048]		src;				///Local buffer for scaling
+	protected uint[] gl_shaders;
+	protected TextureEntry[] gl_materials;
+	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
+	protected Material[] materialList;
+	protected DisplayListItem_Sprt[] displayList_sprt;
+	protected DisplayListItem_GL gl_RenderOut;
+	protected PolygonIndices[2] gl_PlIndices = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
 	//size_t[8] prevSize;
 	///Default ctor DEPRECATED since OpenGL move
 	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
 		setRenderingMode(renderMode);
 
 	}
-
+	~this() {
+		import bindbc.opengl;
+		for (size_t i ; i < gl_materials.length ; i++) {
+			glDeleteTextures(1, gl_materials[i].glTextureID);
+		}
+		gl_materials.nogc_free();
+		materialList.nogc_free();
+		displayList_sprt.nogc_free();
+	}
 
 
 	protected struct Material {
@@ -243,13 +259,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		//Order: upper-left ; upper-right ; lower-left ; lower-right
 		GraphicsAttrExt[4] attr;
 	}
-	protected uint[] gl_shaders;
-	protected TextureEntry[] gl_materials;
-	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
-	protected Material[] materialList;
-	protected DisplayListItem_Sprt[] displayList_sprt;
-	protected DisplayListItem_GL gl_RenderOut;
-	protected PolygonIndices[2] gl_PlIndices = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
+
 	/**
 	 * Creates a sprite material for this layer.
 	 * Params:
@@ -365,7 +375,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
 	 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
 	 */
-	public override void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
+	public void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
 			@nogc nothrow {
 		import bindbc.opengl;
 		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
@@ -470,7 +480,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		}
 	}
 	///Sets the overscan amount, on which some effects are dependent on.
-	public abstract void setOverscanAmount(float valH, float valV);
+	// public abstract void setOverscanAmount(float valH, float valV);
 
 	/**
 	 * Checks all sprites for whether they're on screen or not.
