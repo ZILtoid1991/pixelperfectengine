@@ -51,13 +51,6 @@ abstract class ABitmap{
 		return _height;
 	}
 	/**
-	 * Sets the palette pointer. Make sure that you set it to a valid memory location.
-	 * DEPRECATED!
-	 */
-	public deprecated void setPalettePtr(Color* p) pure @safe @property @nogc nothrow {
-		palettePtr = p;
-	}
-	/**
 	 * Returns the wordlength of the type
 	 */
 	abstract string wordLengthByString() pure @safe @property @nogc nothrow const;
