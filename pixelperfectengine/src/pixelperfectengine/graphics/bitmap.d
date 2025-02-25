@@ -20,7 +20,8 @@ public struct BitmapAttrib{
 	mixin(bitfields!(
 		bool, "horizMirror", 1,
 		bool, "vertMirror", 1,
-		ubyte, "priority", 6));
+		bool, "xyRotate", 1,
+		ubyte, "priority", 5));
 	public this(bool horizMirror, bool vertMirror, ubyte priority = 0) @nogc nothrow @safe pure{
 		this.horizMirror = horizMirror;
 		this.vertMirror = vertMirror;
@@ -35,9 +36,8 @@ public struct BitmapAttrib{
  * Base bitmap functions, for enable the use of the same .
  */
 abstract class ABitmap{
-	private Color* palettePtr;		///Set this to either a portion of the master palette or to a self-defined place. Not used in 32 bit bitmaps. DEPRECATED!
-    private int _width;
-    private int _height;
+	private int _width;
+	private int _height;
 	/**
 	 * Returns the width of the bitmap.
 	 */
@@ -49,13 +49,6 @@ abstract class ABitmap{
 	 */
 	public int height() pure @safe @property @nogc nothrow const {
 		return _height;
-	}
-	/**
-	 * Returns the palette pointer.
-	 * DEPRECATED!
-	 */
-	public deprecated Color* getPalettePtr() pure @trusted @property @nogc nothrow {
-		return palettePtr;
 	}
 	/**
 	 * Sets the palette pointer. Make sure that you set it to a valid memory location.
