@@ -15,7 +15,7 @@ package import pixelperfectengine.system.etc;
 
 package import std.bitmanip : bitfields;
 public import pixelperfectengine.system.exc;
-//package import bindbc.sdl;
+package import bindbc.opengl;
 package import core.stdc.stdlib;
 package import CPUblit.composing;
 package import CPUblit.composing.specblt : xorBlitter;
@@ -83,10 +83,7 @@ abstract class Layer {
 	public void setRenderingMode(RenderingMode mode) @nogc @safe pure nothrow {
 		renderMode = mode;
 		mainRenderingFunction = getRenderingFunc(mode);
-		//mainColorLookupFunction = &colorLookup!(ushort,uint);
-		//mainHorizontalMirroringFunction = &flipHorizontal;
-		//main8BitColorLookupFunction = &colorLookup!(ubyte,uint);
-		//main4BitColorLookupFunction = &colorLookup4Bit!uint;
+
 	}
 	/**
 	 * Scrolls the layer to the given position.

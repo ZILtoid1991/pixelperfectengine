@@ -15,6 +15,7 @@ import numem.core.memory;
 import numem.core.hooks;
 import numem.core.traits;
 import numem.core.atomic;
+public import numem : nogc_new, nogc_delete;
 /**
  * Inserts a new value in an ordered array. If two values equal, it'll be overwritten by the new one.
  * Params:
@@ -22,17 +23,17 @@ import numem.core.atomic;
  *   val = The value to be inserted.
  * Returns:
  */
-T[] orderedInsert(T, alias less = "a < b", alias equal = "a == b")(ref T[] arr, T val) @nogc @safe {
-	for (size_t i ; i < arr.length ; i++) {
-		if (binaryFun!equal(val, arr[i])) {
+T[] orderedInsert(T, alias less = "a > b", alias equal = "a == b")(ref T[] arr, T val) @nogc @safe {
+	for (sizediff_t i = arr.length - 1 ; i >= 0 ; i--) {
+		if (binaryFun!equal(arr[i], val)) {
 			arr[i] = val;
 			return arr;
-		} else if (!binaryFun!less(val, arr[i])) {
+		} else if (binaryFun!less(arr[i], val)) {
 			arr.nogc_insertAt(val, i);
 			return arr;
 		}
 	}
-	arr.nogc_insertAt(val, arr.length);
+	arr.nogc_insertAt(val, 0);
 	return arr;
 }
 /**
@@ -43,12 +44,12 @@ T[] orderedInsert(T, alias less = "a < b", alias equal = "a == b")(ref T[] arr, 
  *  specified functions
  * Returns: The value, or T.init if not found.
  */
-T searchBy(T, Q, alias less = "a < b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe {
+T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe {
 	size_t l, r = haysack.length, m;
 	while (l < r) {
 		m = (l+r)>>>1;
-		if (binaryFun!equal(needle, haysack[m])) return haysack[m];
-		else if (binaryFun!less(needle, haysack[m])) r = m;
+		if (binaryFun!equal(haysack[m], needle)) return haysack[m];
+		else if (binaryFun!less(haysack[m], needle)) r = m;
 		else l = m;
 	}
 	return T.init;
@@ -61,12 +62,12 @@ T searchBy(T, Q, alias less = "a < b", alias equal = "a == b")(T[] haysack, Q ne
  *  specified functions
  * Returns: The position of the value, or -1 if not found.
  */
-sizediff_t searchByI(T, Q, alias less = "a < b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe {
+sizediff_t searchByI(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe {
 	size_t l, r = haysack.length, m;
 	while (l < r) {
 		m = (l+r)>>>1;
-		if (binaryFun!equal(needle, haysack[m])) return m;
-		else if (binaryFun!less(needle, haysack[m])) r = m;
+		if (binaryFun!equal(haysack[m], needle)) return m;
+		else if (binaryFun!less(haysack[m], needle)) r = m;
 		else l = m;
 	}
 	return -1;
@@ -98,9 +99,7 @@ T[] nogc_insertAt(T)(ref T[] arr, T val, size_t pos) @nogc @trusted {
  */
 T[] nogc_remove(T)(ref T[] arr, size_t pos) @nogc @trusted {
 	assert(pos < arr.length, "Out of index operation");
-	if (pos + 1 == arr.length) {
-
-	} else {
+	if (pos + 1 != arr.length) {
 		arr[pos..$-1] = arr[pos+1..$];
 	}
 	arr.nogc_resize(arr.length-1);
@@ -128,14 +127,14 @@ T[] nogc_resize(T)(ref T[] arr, size_t length) @nogc @trusted {
 			return arr;
 		}
 	}
-	return arr = cast(T*)nu_aligned_realloc(arr.ptr, T.sizeof * length, T.alignof);
+	return arr = (cast(T*)nu_aligned_realloc(arr.ptr, T.sizeof * length, T.alignof))[0..length];
 }
 /// Creates a new array with the given length
 T[] nogc_newArray(T)(size_t length) @nogc @trusted {
-	return cast(T*)nu_aligned_alloc(T.sizeof * length, T.alignof)[0..length];
+	return (cast(T*)nu_aligned_alloc(T.sizeof * length, T.alignof))[0..length];
 }
 T[] nogc_initNewArray(T)(size_t length, T initData = T.init) @nogc @trusted {
-	T[] result = nogc_newArray(length);
+	T[] result = nogc_newArray!T(length);
 	for (size_t i ; i < length ; i++) {
 		result[i] = initData;
 	}

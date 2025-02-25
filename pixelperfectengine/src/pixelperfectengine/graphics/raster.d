@@ -153,12 +153,12 @@ public class Raster : PaletteContainer {
 		_palette = nogc_initNewArray!Color(65_536);
 		_paletteNM = nogc_initNewArray!short(65_536 * 2);
 
-		glGenTextures(1, &gl_palette);
-		glBindTexture(GL_TEXTURE_2D, texture);
+		glGenTextures(1, &gl_Palette);
+		glBindTexture(GL_TEXTURE_2D, gl_Palette);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, palette.ptr);
 
-		glGenTextures(1, &gl_paletteNM);
-		glBindTexture(GL_TEXTURE_2D, texture);
+		glGenTextures(1, &gl_PaletteNM);
+		glBindTexture(GL_TEXTURE_2D, gl_PaletteNM);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, 256, 256, 0, GL_RG, GL_SHORT, palette.ptr);
 
 		rasterWidth=w;
@@ -168,11 +168,11 @@ public class Raster : PaletteContainer {
 			//cpu_FrameBuffer ~= new Bitmap32Bit(w, h);
 			GLuint texture, depthBuffer, frameBuffer;
 			glGenFramebuffers(1, &frameBuffer);
-			glBindFramebuffer(frameBuffer);
+			glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
 
 			glGenTextures(1, &texture);
 			glBindTexture(GL_TEXTURE_2D, texture);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, 0);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, null);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -225,9 +225,9 @@ public class Raster : PaletteContainer {
 		glDeleteBuffers(1, &gl_VertexArray);
 		glDeleteBuffers(1, &gl_VertexIndices);
 		glDeleteProgram(gl_Program);
-		glDeleteFramebuffers(gl_FrameBuffer.length, gl_FrameBuffer.ptr);
-		glDeleteTextures(gl_FrameBufferTexture.length, gl_FrameBufferTexture.ptr);
-		glDeleteRenderbuffers(gl_DepthBuffer.length, gl_DepthBuffer.ptr);
+		glDeleteFramebuffers(cast(int)gl_FrameBuffer.length, gl_FrameBuffer.ptr);
+		glDeleteTextures(cast(int)gl_FrameBufferTexture.length, gl_FrameBufferTexture.ptr);
+		glDeleteRenderbuffers(cast(int)gl_DepthBuffer.length, gl_DepthBuffer.ptr);
 		nogc_free(_palette);
 		nogc_free(_paletteNM);
 		nogc_free(gl_FrameBuffer);
@@ -406,7 +406,7 @@ public class Raster : PaletteContainer {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
 					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);
 		}
-		ow.gl_makeCurrent();
+		oW.gl_makeCurrent();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);

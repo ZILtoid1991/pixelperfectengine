@@ -11,6 +11,7 @@ module pixelperfectengine.graphics.layers.spritelayer;
 
 public import pixelperfectengine.graphics.layers.base;
 import pixelperfectengine.system.memory;
+import pixelperfectengine.graphics.shaders;
 
 import collections.treemap;
 import collections.sortedlist;
@@ -23,6 +24,10 @@ pragma(inline, true)
 void _store2s (float* memAddr, __m128 a) @nogc @system pure nothrow {
 	memAddr[0] = a[0];
 	memAddr[1] = a[1];
+}
+pragma(inline, true)
+__m128d _vect(double[2] arg) @nogc @trusted pure nothrow {
+	return _mm_load_pd(arg.ptr);
 }
 
 /**
@@ -180,7 +185,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected DisplayList		allSprites;			///All sprites of this layer
 	//protected OnScreenList		displayedSprites;	///Sprites that are being displayed
 	protected Color[2048]		src;				///Local buffer for scaling
-	protected uint[] gl_shaders;
+
+
+	//protected uint[] gl_shaders;
 	protected TextureEntry[] gl_materials;
 	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
 	protected Material[] materialList;
@@ -196,7 +203,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	~this() {
 		import bindbc.opengl;
 		for (size_t i ; i < gl_materials.length ; i++) {
-			glDeleteTextures(1, gl_materials[i].glTextureID);
+			glDeleteTextures(1, &gl_materials[i].glTextureID);
 		}
 		gl_materials.nogc_free();
 		materialList.nogc_free();
@@ -218,10 +225,19 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			else if (materialID == rhs) return 0;
 			else return 1;
 		}
+		bool opEquals(int rhs) @nogc @safe pure nothrow const {
+			return materialID == rhs;
+		}
 		int opCmp(Material rhs) @nogc @safe pure nothrow const {
 			if (materialID < rhs.materialID) return -1;
 			else if (materialID == rhs.materialID) return 0;
 			else return 1;
+		}
+		bool opEquals(Material rhs) @nogc @safe pure nothrow const {
+			return materialID == rhs.materialID;
+		}
+		size_t toHash() @nogc @safe pure nothrow const {
+			return materialID;
 		}
 	}
 	protected struct TextureEntry {
@@ -234,10 +250,19 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			else if (id == rhs) return 0;
 			else return 1;
 		}
+		bool opEquals(int rhs) @nogc @safe pure nothrow const {
+			return id == rhs;
+		}
 		int opCmp(TextureEntry rhs) @nogc @safe pure nothrow const {
 			if (id < rhs.id) return -1;
 			else if (id == rhs.id) return 0;
 			else return 1;
+		}
+		bool opEquals(TextureEntry rhs) @nogc @safe pure nothrow const {
+			return id == rhs.id;
+		}
+		size_t toHash() @nogc @safe pure nothrow const {
+			return id;
 		}
 	}
 	protected struct DisplayListItem_GL {
@@ -254,10 +279,29 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		ushort palSel;
 		ubyte palSh;
 		ubyte pri;
-		uint programID;
+		GLuint programID;
 		///Contains attributes associated with each corner of the sprite
-		//Order: upper-left ; upper-right ; lower-left ; lower-right
+		///Order: upper-left ; upper-right ; lower-left ; lower-right
 		GraphicsAttrExt[4] attr;
+		int opCmp(int rhs) @nogc @safe pure nothrow const {
+			if (spriteID < rhs) return -1;
+			else if (spriteID == rhs) return 0;
+			else return 1;
+		}
+		bool opEquals(int rhs) @nogc @safe pure nothrow const {
+			return spriteID == rhs;
+		}
+		int opCmp(ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
+			if (spriteID < rhs.spriteID) return -1;
+			else if (spriteID == rhs.spriteID) return 0;
+			else return 1;
+		}
+		bool opEquals(ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
+			return spriteID == rhs.spriteID;
+		}
+		size_t toHash() @nogc @safe pure nothrow const {
+			return spriteID;
+		}
 	}
 
 	/**
@@ -375,7 +419,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
 	 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
 	 */
-	public void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
+	public override void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
 			@nogc nothrow {
 		import bindbc.opengl;
 		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
@@ -383,8 +427,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		//Constants begin
 		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
 		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
-		__m128d screenSizeRec = __m128d([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
-		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * __m128d([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
+		__m128d screenSizeRec = _vect([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
+		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
 		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
 		immutable __m128 COLOR_REC = __m128([1.0 / 127, 1.0 / 127, 1.0 / 127, 1.0 / 255]);
 		//Constants end
@@ -403,7 +447,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			if (displayAreaWS.isBetween(sprt.position.topLeft) || displayAreaWS.isBetween(sprt.position.topRight) ||
 					displayAreaWS.isBetween(sprt.position.bottomLeft) || displayAreaWS.isBetween(sprt.position.bottomRight)) {//Check whether the sprite is on the display area
 					//get sprite material
-				Material cm = materialList.searchBy!"materialID"(sprt.materialID);
+				Material cm = materialList.searchBy(sprt.materialID);
 				glBindTexture(GL_TEXTURE_2D, cm.pageID);
 				glActiveTexture(GL_TEXTURE0);
 				//Calculate and store sprite location on the display area
@@ -451,11 +495,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				_store2s(&gl_RenderOut.ll.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[4]) * LDIR_REC));
 				_store2s(&gl_RenderOut.lr.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[6]) * LDIR_REC));
 				glUseProgram(sprt.programID);
-				glUniform1i(glGetUniformLocation(gl_Program, "mainTexture"), 0);
-				glUniform1i(glGetUniformLocation(gl_Program, "palette"), 1);
-				glUniform1i(glGetUniformLocation(gl_Program, "paletteMipMap"), 2);
+				glUniform1i(glGetUniformLocation(sprt.programID, "mainTexture"), 0);
+				glUniform1i(glGetUniformLocation(sprt.programID, "palette"), 1);
+				glUniform1i(glGetUniformLocation(sprt.programID, "paletteMipMap"), 2);
 				const colorSelY = sprt.palSel>>(8-sprt.palSh), colorSelX = sprt.palSel&((1<<(8-sprt.palSh))-1);
-				glUniform2f(glGetUniformLocation(gl_Program, "paletteOffset"), colorSelX * (1.0 / 256), colorSelY * (1.0 / 256));
+				glUniform2f(glGetUniformLocation(sprt.programID, "paletteOffset"), colorSelX * (1.0 / 256), colorSelY * (1.0 / 256));
 				// glUniform1f(glGetUniformLocation(gl_Program, "palLengthMult"), 1.0 / (9 - sprt.palSh));
 
 				glBindVertexArray(gl_vertexArray);
@@ -474,7 +518,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(7 * float.sizeof));
 				glEnableVertexAttribArray(3);
 				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(9 * float.sizeof));
-				glBindVertexArray(gl_VertexArray);
+				glBindVertexArray(gl_vertexArray);
 				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 			}
 		}
