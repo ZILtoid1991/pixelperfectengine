@@ -259,7 +259,7 @@ public char[] gl_CheckShaderNOGC(GLuint shaderID) @trusted @nogc nothrow {
 	int infoLogLength;
 	glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
 	if (infoLogLength > 0) {
-		char[] msg = nogc_newArray!char(infoLogLength);
+		char[] msg = nogc_newArray!char(infoLogLength + 1);
 		glGetShaderInfoLog(shaderID, infoLogLength, null, msg.ptr);
 		return msg;
 	}
@@ -282,7 +282,7 @@ public char[] gl_CheckProgramNOGC(GLuint programID) @trusted @nogc nothrow {
 	int infoLogLength;
 	glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &infoLogLength);
 	if (infoLogLength > 0) {
-		char[] msg = nogc_newArray!char(infoLogLength);
+		char[] msg = nogc_newArray!char(infoLogLength + 1);
 		glGetProgramInfoLog(programID, infoLogLength, null, msg.ptr);
 		return msg;
 	}

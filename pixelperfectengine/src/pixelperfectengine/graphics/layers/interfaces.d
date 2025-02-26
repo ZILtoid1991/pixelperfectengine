@@ -8,6 +8,7 @@ module pixelperfectengine.graphics.layers.interfaces;
 
 import pixelperfectengine.graphics.layers.base;
 import bindbc.opengl : GLuint;
+import pixelperfectengine.graphics.shaders;
 
 /**
  * Tile interface, defines common functions shared between tile layers.
@@ -250,7 +251,7 @@ public interface ISpriteLayer {
 	 *   shaderID = Shader program identifier, zero for default.
 	 */
 	public Quad addSprite(int sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0,
-			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
+			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow;
 	/**
 	 * Adds a sprite to the given location.
@@ -264,7 +265,7 @@ public interface ISpriteLayer {
 	 *   shaderID = Shader program identifier, zero for default.
 	 */
 	public Quad addSprite(int sprt, int n, Box position, ushort paletteSel = 0, ubyte paletteSh = 0,
-			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
+			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow;
 	/**
 	 * Adds a sprite to the given location.
@@ -278,7 +279,7 @@ public interface ISpriteLayer {
 	 *   shaderID = Shader program identifier, zero for default.
 	 */
 	public Quad addSprite(int sprt, int n, Point position, ushort paletteSel = 0, ubyte paletteSh = 0,
-			ubyte alpha = ubyte.max, GLuint shaderID = 0) 
+			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow;
 
 	///Clears all sprite from the layer.

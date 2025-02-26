@@ -27,17 +27,11 @@ public class PPEException : Exception {
 	}
 }
 /**
- * Exception for live allocated messages.
+ * Exception for nogc allocated messages.
  */
-public class PPEException_nogc : Exception {
-	@nogc @safe pure nothrow this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
-		super(msg, file, line, next);
-	}
-	~this() {
-		msg.nogc_free();
-	}
-	void free() @nogc @safe nothrow {
-		nogc_delete(this);
+public class PPEException_nogc : NuException {
+	@nogc @trusted this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+		super(msg, next, file, line);
 	}
 }
 

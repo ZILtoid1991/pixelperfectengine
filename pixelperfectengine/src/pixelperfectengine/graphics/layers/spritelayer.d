@@ -11,6 +11,7 @@ module pixelperfectengine.graphics.layers.spritelayer;
 
 public import pixelperfectengine.graphics.layers.base;
 import pixelperfectengine.system.memory;
+import pixelperfectengine.system.intrinsics;
 import pixelperfectengine.graphics.shaders;
 
 import collections.treemap;
@@ -20,17 +21,6 @@ import bitleveld.datatypes;
 import inteli;
 import bindbc.opengl : GLuint;
 
-///Move to its own module ASAP
-pragma(inline, true)
-void _store2s (float* memAddr, __m128 a) @nogc @system pure nothrow {
-	memAddr[0] = a[0];
-	memAddr[1] = a[1];
-}
-///Move to its own module ASAP
-pragma(inline, true)
-__m128d _vect(double[2] arg) @nogc @trusted pure nothrow {
-	return _mm_load_pd(arg.ptr);
-}
 
 /**
  * General-purpose sprite controller and renderer.
@@ -189,7 +179,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected Color[2048]		src;				///Local buffer for scaling
 
 
-	//protected uint[] gl_shaders;
+	protected GLShader defaultShader;
 	protected TextureEntry[] gl_materials;
 	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
 	protected Material[] materialList;
@@ -200,8 +190,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Default ctor DEPRECATED since OpenGL move
 	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
 		setRenderingMode(renderMode);
-
 	}
+	public this(GLShader defaultShader) @safe @nogc nothrow {
+		this.defaultShader = defaultShader;
+	}
+
 	~this() {
 		import bindbc.opengl;
 		for (size_t i ; i < gl_materials.length ; i++) {
@@ -285,6 +278,29 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		///Contains attributes associated with each corner of the sprite
 		///Order: upper-left ; upper-right ; lower-left ; lower-right
 		GraphicsAttrExt[4] attr;
+		this (int spriteID, int materialID, Quad position, float[4] slice, ushort palSel, ubyte palSh, ubyte pri,
+				GLShader programID, GraphicsAttrExt[4] attr) @nogc @safe nothrow {
+			this.spriteID = spriteID;
+			this.materialID = materialID;
+			this.position = position;
+			this.slice = slice;
+			this.palSel = palSel;
+			this.palSh = palSh;
+			this.pri = pri;
+			this.programID = programID;
+			this.attr = attr;
+		}
+		this (return ref scope DisplayListItem_Sprt rhs) @nogc @safe nothrow {
+			this.spriteID = rhs.spriteID;
+			this.materialID = rhs.materialID;
+			this.position = rhs.position;
+			this.slice = rhs.slice;
+			this.palSel = rhs.palSel;
+			this.palSh = rhs.palSh;
+			this.pri = rhs.pri;
+			this.programID = rhs.programID;
+			this.attr = rhs.attr;
+		}
 		int opCmp(int rhs) @nogc @safe pure nothrow const {
 			if (spriteID < rhs) return -1;
 			else if (spriteID == rhs) return 0;
@@ -340,8 +356,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 *   shaderID = Shader program identifier, zero for default.
 	 */
 	public Quad addSprite(int sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0,
-			ubyte alpha = ubyte.max, GLuint shaderID = 0)
+			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow {
+		if (shaderID == 0) shaderID = defaultShader;
 		GraphicsAttrExt gae = GraphicsAttrExt(0,0,0,alpha,0,0);
 		displayList_sprt.orderedInsert(DisplayListItem_Sprt(n, sprt, position, [0.0, 0.0, 0.0, 0.0], paletteSel, paletteSh,
 				0, shaderID, [gae, gae, gae, gae]));
@@ -359,7 +376,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 *   shaderID = Shader program identifier, zero for default.
 	 */
 	public Quad addSprite(int sprt, int n, Box position, ushort paletteSel = 0, ubyte paletteSh = 0,
-			ubyte alpha = ubyte.max, GLuint shaderID = 0)
+			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow {
 		return addSprite(sprt, n, Quad(position.cornerUL, position.cornerUR, position.cornerLL, position.cornerLR),
 				paletteSel, paletteSh, alpha, shaderID);
@@ -376,7 +393,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 *   shaderID = Shader program identifier, zero for default.
 	 */
 	public Quad addSprite(int sprt, int n, Point position, ushort paletteSel = 0, ubyte paletteSh = 0,
-			ubyte alpha = ubyte.max, GLuint shaderID = 0)
+			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow {
 		Material spriteMat = materialList.searchBy(sprt);
 		return addSprite(sprt, n, Box.bySize(position.x, position.y, spriteMat.width, spriteMat.height), paletteSel,

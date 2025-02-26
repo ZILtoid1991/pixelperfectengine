@@ -1,3 +1,12 @@
+/*
+ * PixelPerfectEngine - Shader management module
+ *
+ * Copyright 2015 - 2025
+ * Licensed under the Boost Software License
+ * Authors:
+ *   László Szerémi
+ */
+
 module pixelperfectengine.graphics.shaders;
 
 import pixelperfectengine.system.memory;
@@ -6,7 +15,7 @@ import pixelperfectengine.system.exc;
 import bindbc.opengl;
 
 public class ShaderException : PPEException_nogc {
-	@nogc @safe pure nothrow public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
+	@nogc @safe public this(string msg, string file = __FILE__, size_t line =  __LINE__, Throwable next = null) {
 		super(msg, file, line, next);
 	}
 }
@@ -42,6 +51,8 @@ public struct GLShader {
 			return shaderID;
 		}
 	}
+	///Stores reference count entries.
+	///Todo: Add some further optimization for the counter (preallocations, etc.)
 	private static RefCountEntry[] refCount;
 	private static void refCountIncr(GLuint shaderID) @safe @nogc nothrow {
 		sizediff_t index = refCount.searchByI(shaderID);
@@ -61,7 +72,7 @@ public struct GLShader {
 	GLuint shaderID;
 	this(GLuint shaderID) @trusted @nogc nothrow {
 		this.shaderID = shaderID;
-		refCountIncr(shaderID);
+		if (shaderID) refCountIncr(shaderID);
 	}
 	this(const(char)[] vertex, const(char)[] fragment) @trusted @nogc {
 		import numem;
@@ -89,10 +100,10 @@ public struct GLShader {
 	}
 	this(ref return scope GLShader rhs) @safe @nogc nothrow {
 		shaderID = rhs.shaderID;
-		refCountIncr(shaderID);
+		if (shaderID) refCountIncr(shaderID);
 	}
-	~this() @nogc nothrow {
-		refCountDecr(shaderID);
+	~this() @safe @nogc nothrow {
+		if (shaderID) refCountDecr(shaderID);
 	}
 	alias this = shaderID;
 }

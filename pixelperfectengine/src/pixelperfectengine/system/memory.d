@@ -86,9 +86,18 @@ T[] nogc_append(T)(ref T[] arr, T val) @nogc @trusted {
 T[] nogc_insertAt(T)(ref T[] arr, T val, size_t pos) @nogc @trusted {
 	assert(pos <= arr.length, "Out of index operation");
 	arr.nogc_resize(arr.length + 1);
-	if(pos + 1 != arr.length) arr[pos+1..$] = arr[pos..$-1];
+	// if(pos + 1 != arr.length) arr[pos+1..$] = arr[pos..$-1];
+	if(pos + 1 != arr.length) shiftElements(arr, 1, pos);
 	arr[pos] = val;
 	return arr;
+}
+void shiftElements(T)(ref T[] arr, sizediff_t amount, size_t position) @nogc @system nothrow {
+	amount *= T.sizeof;
+	position *= T.sizeof;
+	if (amount > 0) nu_memcpy(arr.ptr + position + amount, arr.ptr + position,
+			(arr.length * T.sizeof) - position - amount);
+	else if (amount < 0) nu_memcpy(arr.ptr + position, arr.ptr + position - amount,
+			(arr.length * T.sizeof) - position + amount);
 }
 /**
  * Removes an element at the given position while preserving the rest of the array's order.
@@ -99,9 +108,10 @@ T[] nogc_insertAt(T)(ref T[] arr, T val, size_t pos) @nogc @trusted {
  */
 T[] nogc_remove(T)(ref T[] arr, size_t pos) @nogc @trusted {
 	assert(pos < arr.length, "Out of index operation");
-	if (pos + 1 != arr.length) {
-		arr[pos..$-1] = arr[pos+1..$];
-	}
+	// if (pos + 1 != arr.length) {
+	// 	arr[pos..$-1] = arr[pos+1..$];
+	// }
+	if (pos + 1 != arr.length) shiftElements(arr, -1, pos);
 	arr.nogc_resize(arr.length-1);
 	return arr;
 }
@@ -112,7 +122,7 @@ T[] nogc_resize(T)(ref T[] arr, size_t length) @nogc @trusted {
 		import numem.lifetime : nogc_delete;
 		if (length < arr.length) {
 			// Handle destructor invocation.
-			nogc_delete!(T, false)(buffer[length..arr.length]);
+			nogc_delete!(T, false)(arr[length..arr.length]);
 			// Handle buffer deletion.
 			if (length == 0) {
 				if (arr.length > 0) nu_aligned_free(cast(void*)arr.ptr, T.alignof);
@@ -145,7 +155,7 @@ T[] nogc_free(T)(ref T[] arr) @nogc @trusted {
 	if (arr.length) {
 		static if (!isObjectiveC!T && hasElaborateDestructor!T && !isHeapAllocated!T) {
 			import numem.lifetime : nogc_delete;
-			nogc_delete!(T, false)(buffer[length..arr.length]);
+			nogc_delete!(T, false)(arr[0..arr.length]);
 		}
 		nu_aligned_free(arr.ptr, T.alignof);
 	}
