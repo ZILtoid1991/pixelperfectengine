@@ -20,11 +20,13 @@ import bitleveld.datatypes;
 import inteli;
 import bindbc.opengl : GLuint;
 
+///Move to its own module ASAP
 pragma(inline, true)
 void _store2s (float* memAddr, __m128 a) @nogc @system pure nothrow {
 	memAddr[0] = a[0];
 	memAddr[1] = a[1];
 }
+///Move to its own module ASAP
 pragma(inline, true)
 __m128d _vect(double[2] arg) @nogc @trusted pure nothrow {
 	return _mm_load_pd(arg.ptr);
@@ -220,20 +222,20 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		float top;
 		float right;
 		float bottom;
-		int opCmp(int rhs) @nogc @safe pure nothrow const {
+		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			if (materialID < rhs) return -1;
 			else if (materialID == rhs) return 0;
 			else return 1;
 		}
-		bool opEquals(int rhs) @nogc @safe pure nothrow const {
+		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
 			return materialID == rhs;
 		}
-		int opCmp(Material rhs) @nogc @safe pure nothrow const {
+		int opCmp(const ref Material rhs) @nogc @safe pure nothrow const {
 			if (materialID < rhs.materialID) return -1;
 			else if (materialID == rhs.materialID) return 0;
 			else return 1;
 		}
-		bool opEquals(Material rhs) @nogc @safe pure nothrow const {
+		bool opEquals(const ref Material rhs) @nogc @safe pure nothrow const {
 			return materialID == rhs.materialID;
 		}
 		size_t toHash() @nogc @safe pure nothrow const {
@@ -245,20 +247,20 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		uint glTextureID;
 		ushort width;
 		ushort height;
-		int opCmp(int rhs) @nogc @safe pure nothrow const {
+		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			if (id < rhs) return -1;
 			else if (id == rhs) return 0;
 			else return 1;
 		}
-		bool opEquals(int rhs) @nogc @safe pure nothrow const {
+		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
 			return id == rhs;
 		}
-		int opCmp(TextureEntry rhs) @nogc @safe pure nothrow const {
+		int opCmp(const ref TextureEntry rhs) @nogc @safe pure nothrow const {
 			if (id < rhs.id) return -1;
 			else if (id == rhs.id) return 0;
 			else return 1;
 		}
-		bool opEquals(TextureEntry rhs) @nogc @safe pure nothrow const {
+		bool opEquals(const ref TextureEntry rhs) @nogc @safe pure nothrow const {
 			return id == rhs.id;
 		}
 		size_t toHash() @nogc @safe pure nothrow const {
@@ -279,7 +281,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		ushort palSel;
 		ubyte palSh;
 		ubyte pri;
-		GLuint programID;
+		GLShader programID;
 		///Contains attributes associated with each corner of the sprite
 		///Order: upper-left ; upper-right ; lower-left ; lower-right
 		GraphicsAttrExt[4] attr;
@@ -291,12 +293,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		bool opEquals(int rhs) @nogc @safe pure nothrow const {
 			return spriteID == rhs;
 		}
-		int opCmp(ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
+		int opCmp(const ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
 			if (spriteID < rhs.spriteID) return -1;
 			else if (spriteID == rhs.spriteID) return 0;
 			else return 1;
 		}
-		bool opEquals(ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
+		bool opEquals(const ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
 			return spriteID == rhs.spriteID;
 		}
 		size_t toHash() @nogc @safe pure nothrow const {
