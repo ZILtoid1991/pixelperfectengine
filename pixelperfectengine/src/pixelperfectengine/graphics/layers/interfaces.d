@@ -96,7 +96,7 @@ public interface ITileLayer {
 	 * Returns: the newly written color, or Color.init if color attribute table is not
 	 * set.
 	 */
-	public GraphicsAttrExt[4] writeColorAttributeTable(int x, int y, GraphicsAttrExt[4] c);
+	public GraphicsAttrExt[4] writeAttributeTable(int x, int y, GraphicsAttrExt[4] c);
 	/**
 	 * Reads the color attribute table at the given location.
 	 * Params:
@@ -105,11 +105,11 @@ public interface ITileLayer {
 	 * Returns: the color at the given location, or Color.init if color attribute
 	 * table is not set.
 	 */
-	public GraphicsAttrExt[4] readColorAttributeTable(int x, int y);
+	public GraphicsAttrExt[4] readAttributeTable(int x, int y);
 	/**
 	 * Clears the color attribute table and returns the table as a backup.
 	 */
-	public GraphicsAttrExt[] clearColorAttributeTable();
+	public GraphicsAttrExt[] clearAttributeTable();
 
 	/// Retrieves the mapping from the tile layer.
 	/// Can be used to retrieve data, e.g. for editors, saving game states

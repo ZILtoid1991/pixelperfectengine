@@ -7,6 +7,7 @@
 module pixelperfectengine.graphics.layers.tilelayer;
 
 public import pixelperfectengine.graphics.layers.base;
+public import pixelperfectengine.graphics.shaders;
 import collections.treemap;
 
 public class TileLayer : Layer, ITileLayer {
@@ -76,6 +77,7 @@ public class TileLayer : Layer, ITileLayer {
 	protected size_t		totalX;	///Total width of the tilelayer in pixels
 	protected size_t		totalY;	///Total height of the tilelayer in pixels
 	protected MappingElement[] mapping;///Contains the mapping data
+	protected GLShader		shader;	///The main shader program used on the layer
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
 	protected Color[] 		src;		///Local buffer
@@ -96,12 +98,134 @@ public class TileLayer : Layer, ITileLayer {
 	///Emulates horizontal blanking interrupt effects, like per-line scrolling.
 	///line no -1 indicates that no lines have been drawn yet.
 	public @nogc void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;
-	///Constructor. tX , tY : Set the size of the tiles on the layer.
+	///Constructor. tX , tY : Set the size of the tiles on the layer. DEPRECATED
 	this(int tX, int tY, RenderingMode renderMode = RenderingMode.AlphaBlend){
 		tileX=tX;
 		tileY=tY;
 		setRenderingMode(renderMode);
 		src.length = tileX;
+	}
+	this (int tX, int tY, GLShader shader = GLShader(0)) @nogc nothrow {
+		tileX=tX;
+		tileY=tY;
+		this.shader = shader;
+	}
+	/**
+	 * Adds a bitmap source to the layer.
+	 * Params:
+	 *   bitmap = the bitmap to be uploaded as a texture.
+	 *   page = page identifier.
+	 * Returns: Zero on success, or a specific error code.
+	 */
+	public override int addBitmapSource(ABitmap bitmap, int page) {
+		//TODO: Implement
+		return -9;
+	}
+	/**
+	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
+	 * Renders the layer's content to the texture target.
+	 * Params:
+	 *   workpad = The target texture.
+	 *   palette = The texture containing the palette for color lookup.
+	 *   palNM = Palette containing normal values for each index.
+	 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
+	 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
+	 */
+	public override void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
+			@nogc nothrow {
+		//TODO: Implement
+	}
+	/**
+	 * Adds a new tile to the layer from the internal texture sources.
+	 * Params:
+	 *  id = the character ID of the tile represented on the map.
+	 *  page = selects which tilesheet page is the source of the tile (tilesheets begin at 0).
+	 *  x = x offset of the tile on the sheet.
+	 *  y = y offset of the tile on the sheet.
+	 *  paletteSh = palette shift amount, or how many bits are actually used of the bitmap. This enables less than 16
+	 * or 256 color chunks on the palette to be selected.
+	 */
+	public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0) {
+		//TODO: Implement
+	}
+	/**
+	 * Sets the rotation amount for the layer.
+	 * Params:
+	 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
+	 * Note: This visual effect rely on overscan amount set correctly.
+	 */
+	public void rotate(ushort theta) {
+		//TODO: Implement
+	}
+	/**
+	 * Sets the horizontal scaling amount.
+	 * Params:
+	 *   amount = The amount of horizontal scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	public void scaleHoriz(short amount) {
+		//TODO: Implement
+	}
+	/**
+	 * Sets the vertical scaling amount.
+	 * Params:
+	 *   amount = The amount of vertical scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	public void scaleVert(short amount) {
+		//TODO: Implement
+	}
+	/**
+	 * Sets the transformation midpoint relative to the middle of the screen.
+	 * Params:
+	 *   x0 = x coordinate of the midpoint.
+	 *   y0 = y coordinate of the midpoint.
+	 */
+	public void setTransformMidpoint(short x0, short y0) {
+		//TODO: Implement
+	}
+	/**
+	 * Sets a color attribute table for the layer.
+	 * Color attribute table can be per-tile, per-vertex, or unique to each vertex of
+	 * the tile, depending on the size of the table.
+	 * Params:
+	 *   table = the array containing the initial information. Length must be width * height * 4
+	 *   width = the width of the color attribute table.
+	 *   height = the height of the color attribute table.
+	 */
+	public void setAttributeTable(GraphicsAttrExt[] table, int width, int height){
+
+	}
+	/**
+	 * Writes the color attribute table at the given location.
+	 * Params:
+	 *   x = X coordinate of the color attribute table.
+	 *   y = Y coordinate of the color attribute table.
+	 *   c = The color to be written at the selected loaction.
+	 * Returns: the newly written color, or Color.init if color attribute table is not
+	 * set.
+	 */
+	public GraphicsAttrExt[4] writeAttributeTable(int x, int y, GraphicsAttrExt[4] c){
+		return [GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init];
+	}
+	/**
+	 * Reads the color attribute table at the given location.
+	 * Params:
+	 *   x = X coordinate of the color attribute table.
+	 *   y = Y coordinate of the color attribute table.
+	 * Returns: the color at the given location, or Color.init if color attribute
+	 * table is not set.
+	 */
+	public GraphicsAttrExt[4] readAttributeTable(int x, int y) {
+		return [GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init];
+	}
+	/**
+	 * Clears the color attribute table and returns the table as a backup.
+	 */
+	public GraphicsAttrExt[] clearAttributeTable() {
+		return null;
 	}
 	///Gets the the ID of the given element from the mapping. x , y : Position.
 	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const {

@@ -13,6 +13,7 @@ public import pixelperfectengine.graphics.layers.base;
 import pixelperfectengine.system.memory;
 import pixelperfectengine.system.intrinsics;
 import pixelperfectengine.graphics.shaders;
+import pixelperfectengine.system.exc;
 
 import collections.treemap;
 import collections.sortedlist;
@@ -266,7 +267,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		Vertex		ll;
 		Vertex		lr;
 	}
-	protected struct DisplayListItem_Sprt {
+	protected @PPECFG_Memfix struct DisplayListItem_Sprt {
 		int spriteID;
 		int materialID;
 		Quad position;
@@ -358,10 +359,22 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public Quad addSprite(int sprt, int n, Quad position, ushort paletteSel = 0, ubyte paletteSh = 0,
 			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow {
+		import numem : nu_fatal;
 		if (shaderID == 0) shaderID = defaultShader;
 		GraphicsAttrExt gae = GraphicsAttrExt(0,0,0,alpha,0,0);
-		displayList_sprt.orderedInsert(DisplayListItem_Sprt(n, sprt, position, [0.0, 0.0, 0.0, 0.0], paletteSel, paletteSh,
-				0, shaderID, [gae, gae, gae, gae]));
+		try {
+			displayList_sprt.orderedInsert(DisplayListItem_Sprt(n, sprt, position, [0.0, 0.0, 0.0, 0.0], paletteSel, paletteSh,
+					0, shaderID, [gae, gae, gae, gae]));
+		} catch (NuException e) {
+			try {
+				e.free;
+				return Quad.init;
+			} catch (Exception e) {
+				nu_fatal("Failing while failing!");
+			}
+		} catch (Exception e) {
+			nu_fatal("Unknown error!");
+		}
 		return position;
 	}
 	/**

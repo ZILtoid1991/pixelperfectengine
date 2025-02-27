@@ -5,7 +5,7 @@
  * Pixel Perfect Engine, exceptions
  */
 
-import numem : NuException, nogc_delete;
+public import numem : NuException;
 import pixelperfectengine.system.memory;
 
 /*

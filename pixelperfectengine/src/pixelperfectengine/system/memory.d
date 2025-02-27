@@ -15,7 +15,10 @@ import numem.core.memory;
 import numem.core.hooks;
 import numem.core.traits;
 import numem.core.atomic;
-public import numem : nogc_new, nogc_delete;
+public import numem : nogc_new, nogc_delete, nogc_move, nogc_copy;
+
+/// UDA to get around certain issues regarding of structs with refcounting dtors.
+struct PPECFG_Memfix {}
 /**
  * Inserts a new value in an ordered array. If two values equal, it'll be overwritten by the new one.
  * Params:
@@ -44,7 +47,7 @@ T[] orderedInsert(T, alias less = "a > b", alias equal = "a == b")(ref T[] arr, 
  *  specified functions
  * Returns: The value, or T.init if not found.
  */
-T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe {
+T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
 	size_t l, r = haysack.length, m;
 	while (l < r) {
 		m = (l+r)>>>1;
@@ -62,7 +65,7 @@ T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q ne
  *  specified functions
  * Returns: The position of the value, or -1 if not found.
  */
-sizediff_t searchByI(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe {
+sizediff_t searchByI(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
 	size_t l, r = haysack.length, m;
 	while (l < r) {
 		m = (l+r)>>>1;
@@ -122,7 +125,7 @@ T[] nogc_resize(T)(ref T[] arr, size_t length) @nogc @trusted {
 		import numem.lifetime : nogc_delete;
 		if (length < arr.length) {
 			// Handle destructor invocation.
-			nogc_delete!(T, false)(arr[length..arr.length]);
+			nogc_delete!(T, hasUDA!(T, PPECFG_Memfix))(arr[length..arr.length]);
 			// Handle buffer deletion.
 			if (length == 0) {
 				if (arr.length > 0) nu_aligned_free(cast(void*)arr.ptr, T.alignof);
@@ -155,7 +158,7 @@ T[] nogc_free(T)(ref T[] arr) @nogc @trusted {
 	if (arr.length) {
 		static if (!isObjectiveC!T && hasElaborateDestructor!T && !isHeapAllocated!T) {
 			import numem.lifetime : nogc_delete;
-			nogc_delete!(T, false)(arr[0..arr.length]);
+			nogc_delete!(T, hasUDA!(T, PPECFG_Memfix))(arr[0..arr.length]);
 		}
 		nu_aligned_free(arr.ptr, T.alignof);
 	}
