@@ -10,6 +10,7 @@ import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
 
 import pixelperfectengine.graphics.bitmap;
+import pixelperfectengine.graphics.shaders;
 
 import pixelperfectengine.collision.common;
 import pixelperfectengine.collision.objectcollision;
@@ -25,12 +26,19 @@ import bindbc.opengl;
 import pixelperfectengine.system.common;
 
 int main(string[] args) {
+	int w = 8, h = 8, s = 0;
 	foreach (string arg ; args) {
 		if (arg.startsWith("--shadervers=")) {
 			pathSymbols["SHDRVER"] = arg[13..$];
+		} else if (arg.startsWith("--mapwidth=")) {
+			w = to!int(arg[11..$]);
+		} else if (arg.startsWith("--mapheight=")) {
+			h = to!int(arg[12..$]);
+		} else if (arg.startsWith("--spritenum=")) {
+			s = to!int(arg[12..$]);
 		}
 	}
-	TileLayerTest tlt = new TileLayerTest(8, 8);
+	TileLayerTest tlt = new TileLayerTest(w, h, s);
 	tlt.whereTheMagicHappens();
 	return 0;
 }
@@ -54,7 +62,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	TileCollisionDetector tcd;
 	float theta;
 	int framecounter;
-	this (int mapWidth, int mapHeight) {
+	this (int mapWidth, int mapHeight, int spriteNum) {
 		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);
 		output.getOpenGLHandle();
 		const glStatus = loadOpenGL();
@@ -67,7 +75,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
 		Image spriteSource = loadImage(File(resolvePath("%PATH%/assets/d-man.tga")));
 		Image fontSource = loadImage(File(resolvePath("%SYSTEM%/codepage_8_8.png")));
-		r = new Raster(424,240,output,0);
+		r = new Raster(424,240,output);
+		r.readjustViewport(424 * 4, 240 * 4, 0, 0);
 		//output.setMainRaster(r);
 		t = new TileLayer(16,16, RenderingMode.Copy);
 		textLayer = new TileLayer(8,8, RenderingMode.AlphaBlend);
@@ -75,23 +84,24 @@ class TileLayerTest : SystemEventListener, InputListener {
 		textLayer.masterVal = 127;
 		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
 		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(RenderingMode.AlphaBlend);
-		s = new SpriteLayer(RenderingMode.AlphaBlend);
-		r.addLayer(tt, 1);
-		r.addLayer(t, 0);
+		s = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)));
+		// r.addLayer(tt, 1);
+		// r.addLayer(t, 0);
 		r.addLayer(s, 2);
-		r.addLayer(textLayer, 65_536);
+		// r.addLayer(textLayer, 65_536);
 
-		Color[] localPal = loadPaletteFromImage(tileSource);
-		localPal.length = 256;
-		r.addPaletteChunk(localPal);
-		localPal = loadPaletteFromImage(spriteSource);
-		localPal.length = 256;
-		r.addPaletteChunk(localPal);
-		r.addPaletteChunk([Color(0x00,0x00,0x00,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x00,0x00,0x00,0xFF),
+		// Color[] localPal = loadPaletteFromImage(tileSource);
+		// localPal.length = 256;
+		r.loadPaletteChunk(loadPaletteFromImage(tileSource), 0);
+		// localPal = loadPaletteFromImage(spriteSource);
+		// localPal.length = 256;
+		r.loadPaletteChunk(loadPaletteFromImage(spriteSource), 256);
+		r.loadPaletteChunk([Color(0x00,0x00,0x00,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x00,0x00,0x00,0xFF),
 				Color(0xff,0x00,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),Color(0x00,0xff,0x00,0xFF),Color(0x00,0x00,0x00,0xFF),
 				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
 				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
-				Color(0x00,0x00,0xff,0xFF)]);
+				Color(0x00,0x00,0xff,0xFF)], 512);
 
 		//writeln(r.layerMap);
 		//c = new CollisionDetector();
@@ -99,23 +109,25 @@ class TileLayerTest : SystemEventListener, InputListener {
 		dlangManCS = dlangMan.generateStandardCollisionModel();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 		//tcd = new TileCollisionDetector(&onTileCollision, 1, t);
-		{
-			Image i = loadImage(File(getPathToAsset("/assets/basn3p04.png")));
-			r.addPaletteChunk(loadPaletteFromImage(i));
-			s.addSprite(loadBitmapFromImage!Bitmap4Bit(i), 65_537, 320, 200, 0x21);//34
-		}
-		{
-			Image i = loadImage(File(getPathToAsset("/assets/basn3p02.png")));
-			r.addPaletteChunk(loadPaletteFromImage(i));
-			s.addSprite(loadBitmapFromImage!Bitmap2Bit(i), 65_538, 352, 200, 0x88);//0x88
-		}
+		// {
+		// 	Image i = loadImage(File(getPathToAsset("/assets/basn3p04.png")));
+		// 	r.addPaletteChunk(loadPaletteFromImage(i));
+		// 	s.addSprite(loadBitmapFromImage!Bitmap4Bit(i), 65_537, 320, 200, 0x21);//34
+		// }
+		// {
+		// 	Image i = loadImage(File(getPathToAsset("/assets/basn3p02.png")));
+		// 	r.addPaletteChunk(loadPaletteFromImage(i));
+		// 	s.addSprite(loadBitmapFromImage!Bitmap2Bit(i), 65_538, 352, 200, 0x88);//0x88
+		// }
 		//s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
-		s.addSprite(dlangMan, 65_536, 0, 0, 1);
+		s.addBitmapSource(dlangMan, 0);
+		s.createSpriteMaterial(0, 0, Box(0, 0, 423, 239));
+		s.addSprite(0, 65_536, Point(0, 0), 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
 		//tcd.objects[65_536] = ocd.objects[65_536];
-		s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
+		// s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
 
-		for(int i = 1 ; i < 500 ; i++){
+		for(int i = 1 ; i < spriteNum ; i++){
 			const int x = uniform(0,320), y = uniform(0,240);
 			s.addSprite(dlangMan, i, x, y, 1);
 			ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
@@ -232,7 +244,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	}
 	public void whereTheMagicHappens(){
 		while(isRunning){
-			r.refresh();
+			r.refresh_GL();
 			ih.test();
 			if(up) {
 				s.relMoveSprite(65_536,0,-1);
@@ -250,8 +262,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 				s.relMoveSprite(65_536,1,0);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
 			}
-			ocd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
-			onTileCollision(getAllOverlappingTiles(s.getSpriteCoordinate(65_536), t));
+			ocd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536).boxOf();
+			onTileCollision(getAllOverlappingTiles(s.getSpriteCoordinate(65_536).boxOf(), t));
 			//tcd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
 			ocd.testSingle(65_536);
 			//tcd.testAll();
@@ -456,11 +468,13 @@ class TileLayerTest : SystemEventListener, InputListener {
 		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
 			const double visibleWidth = height * origAspectRatio;
 			const double sideOffset = (width - visibleWidth) / 2.0;
-			glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
+			// glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
 		} else {	//Display area is now taller, padding needs to be added on the top and bottom
 			const double visibleHeight = width / origAspectRatio;
 			const double topOffset = (height - visibleHeight) / 2.0;
-			glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
+			// glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
 		}
 	}
 	/**

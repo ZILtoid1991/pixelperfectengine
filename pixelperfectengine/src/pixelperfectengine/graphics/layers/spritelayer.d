@@ -192,8 +192,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
 		setRenderingMode(renderMode);
 	}
-	public this(GLShader defaultShader) @safe @nogc nothrow {
+	public this(GLShader defaultShader) @trusted @nogc nothrow {
 		this.defaultShader = defaultShader;
+		glGenVertexArrays(1, &gl_vertexArray);
+		glGenBuffers(1, &gl_vertexBuffer);
+		glGenBuffers(1, &gl_vertexIndices);
 	}
 
 	~this() {
@@ -241,6 +244,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		uint glTextureID;
 		ushort width;
 		ushort height;
+		ubyte paletteSh;
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			if (id < rhs) return -1;
 			else if (id == rhs) return 0;
@@ -333,7 +337,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public int createSpriteMaterial(int id, int page, Box area) @safe @nogc nothrow {
 		TextureEntry te = gl_materials.searchBy(page);
-		const double xStep = 1.0 / te.width, yStep = 1.0 / te.height;
+		const double xStep = 1.0 / (te.width - 1), yStep = 1.0 / (te.height - 1);
 		materialList.orderedInsert(Material(id, te.glTextureID, cast(ushort)area.width, cast(ushort)area.height,
 				area.left * xStep, 1.0 - (area.top * yStep), area.right * xStep, 1.0 - (area.bottom * yStep)));
 		return 0;
@@ -362,6 +366,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		import numem : nu_fatal;
 		if (shaderID == 0) shaderID = defaultShader;
 		GraphicsAttrExt gae = GraphicsAttrExt(0,0,0,alpha,0,0);
+		if (!paletteSh) {
+			paletteSh = 8;
+			//paletteSh = gl_materials.searchBy(materialList.searchBy(sprt).pageID).paletteSh;
+		}
 		try {
 			displayList_sprt.orderedInsert(DisplayListItem_Sprt(n, sprt, position, [0.0, 0.0, 0.0, 0.0], paletteSel, paletteSh,
 					0, shaderID, [gae, gae, gae, gae]));
@@ -429,16 +437,18 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		ubyte palSh;
 		if (typeid(bitmap) is typeid(Bitmap8Bit)) {
 			pixelData = (cast(Bitmap8Bit)(bitmap)).getPtr;
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap.width, bitmap.height, 0, GL_RED, GL_R8, pixelData);
+			palSh = 8;
 		} else if (typeid(bitmap) is typeid(Bitmap32Bit)) {
 			pixelData = (cast(Bitmap32Bit)(bitmap)).getPtr;
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.width, bitmap.height, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
 					pixelData);
 		}
 		if (!pixelData) return -1;
-		gl_materials.orderedInsert(TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height));
+		gl_materials.orderedInsert(TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height, palSh));
 		return 0;
 	}
 	/**
@@ -469,13 +479,14 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		float[16] spriteCl = void;
 		//Stack prealloc block end
 		//Select palettes
+		glBindFramebuffer(GL_FRAMEBUFFER, workpad);
 		glBindTexture(GL_TEXTURE_2D, palette);
 		glActiveTexture(GL_TEXTURE1);
 		if (palNM) {
 			glBindTexture(GL_TEXTURE_2D, palNM);
 			glActiveTexture(GL_TEXTURE2);
 		}
-		foreach (DisplayListItem_Sprt sprt ; displayList_sprt) {	//Iterate over all sprites within the displaylist
+		foreach (ref DisplayListItem_Sprt sprt ; displayList_sprt) {	//Iterate over all sprites within the displaylist
 			if (displayAreaWS.isBetween(sprt.position.topLeft) || displayAreaWS.isBetween(sprt.position.topRight) ||
 					displayAreaWS.isBetween(sprt.position.bottomLeft) || displayAreaWS.isBetween(sprt.position.bottomRight)) {//Check whether the sprite is on the display area
 					//get sprite material
@@ -506,10 +517,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 						sprt.attr[1].r, sprt.attr[1].g, sprt.attr[1].b, sprt.attr[1].a,
 						sprt.attr[2].r, sprt.attr[2].g, sprt.attr[2].b, sprt.attr[2].a,
 						sprt.attr[3].r, sprt.attr[3].g, sprt.attr[3].b, sprt.attr[3].a];
-				_mm_store_ps(&gl_RenderOut.ul.r, _mm_load_ps(&spriteCl[0]) * COLOR_REC);
-				_mm_store_ps(&gl_RenderOut.ur.r, _mm_load_ps(&spriteCl[4]) * COLOR_REC);
-				_mm_store_ps(&gl_RenderOut.ll.r, _mm_load_ps(&spriteCl[8]) * COLOR_REC);
-				_mm_store_ps(&gl_RenderOut.lr.r, _mm_load_ps(&spriteCl[12]) * COLOR_REC);
+				_mm_storeu_ps(&gl_RenderOut.ul.r, _mm_load_ps(&spriteCl[0]) * COLOR_REC);
+				_mm_storeu_ps(&gl_RenderOut.ur.r, _mm_load_ps(&spriteCl[4]) * COLOR_REC);
+				_mm_storeu_ps(&gl_RenderOut.ll.r, _mm_load_ps(&spriteCl[8]) * COLOR_REC);
+				_mm_storeu_ps(&gl_RenderOut.lr.r, _mm_load_ps(&spriteCl[12]) * COLOR_REC);
 				//store texture mapping data
 				gl_RenderOut.ul.s = cm.left + sprt.slice[0];
 				gl_RenderOut.ul.t = cm.top + sprt.slice[1];
@@ -751,18 +762,20 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	/**
 	 * Moves a sprite to the given position.
 	 */
-	public void moveSprite(int n, int x, int y) @trusted nothrow {
-		DisplayListItem* item = allSprites.searchByPtr(n);
-		if (item is null) return;
-		item.position.move(x, y);
+	public Quad moveSprite(int n, int x, int y) @nogc @trusted nothrow {
+		const sizediff_t pos = displayList_sprt.searchByI(n);
+		if (pos == -1) return Quad.init;
+		displayList_sprt[pos].position.move(x, y);
+		return displayList_sprt[pos].position;
 	}
 	/**
 	 * Moves a sprite by the given amount.
 	 */
-	public void relMoveSprite(int n, int x, int y) @trusted nothrow {
-		DisplayListItem* item = allSprites.searchByPtr(n);
-		if (item is null) return;
-		item.position.relMove(x, y);
+	public Quad relMoveSprite(int n, int x, int y) @nogc @trusted nothrow {
+		const sizediff_t pos = displayList_sprt.searchByI(n);
+		if (pos == -1) return Quad.init;
+		displayList_sprt[pos].position.relMove(x, y);
+		return displayList_sprt[pos].position;
 		//checkSprite(*sprt);
 	}
 	/* ///Sets the rendering function for the sprite (defaults to the layer's rendering function)
@@ -771,10 +784,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		if (item is null) return 0;
 		item.renderFunc = getRenderingFunc(mode);
 	} */
-	public @nogc Box getSpriteCoordinate(int n) @trusted nothrow {
-		DisplayListItem* sprt = allSprites.searchByPtr(n);
-		if(!sprt) return Box.init;
-		return sprt.position;
+	public Quad getSpriteCoordinate(int n) @nogc @trusted nothrow {
+		const sizediff_t pos = displayList_sprt.searchByI(n);
+		if (pos == -1) return Quad.init;
+		return displayList_sprt[pos].position;
 	}
 	///Scales sprite horizontally. Returns the new size, or -1 if the scaling value is invalid, or -2 if spriteID not found.
 	public int scaleSpriteHoriz(int n, int hScl) @trusted nothrow { 

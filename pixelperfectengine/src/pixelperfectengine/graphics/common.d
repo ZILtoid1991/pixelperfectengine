@@ -10,7 +10,7 @@ module pixelperfectengine.graphics.common;
 public import pixelperfectengine.system.exc;
 import pixelperfectengine.system.memory;
 
-import dimage.types : ARGB8888BE;
+import dimage.types : RGBA8888BE;
 import bindbc.opengl;
 
 /**
@@ -184,6 +184,14 @@ public struct Quad {
 		bottomLeft += vec;
 		bottomRight += vec;
 	}
+	public Box boxOf() @nogc @safe pure nothrow {
+		Box result;
+		result.left = topLeft.x < bottomLeft.x ? topLeft.x : bottomLeft.x;
+		result.top = topLeft.y < topRight.y ? topLeft.y : topRight.y;
+		result.right = topRight.x < bottomRight.x ? topRight.x : bottomRight.x;
+		result.bottom = bottomLeft.y < bottomRight.y ? bottomLeft.y : bottomRight.y;
+		return result;
+	}
 }
 /**
  * Defines Vertex data.
@@ -290,4 +298,4 @@ public char[] gl_CheckProgramNOGC(GLuint programID) @trusted @nogc nothrow {
 }
 ///Deprecated: Just use Box instead!
 alias Coordinate = Box;
-alias Color = ARGB8888BE;
+alias Color = RGBA8888BE;

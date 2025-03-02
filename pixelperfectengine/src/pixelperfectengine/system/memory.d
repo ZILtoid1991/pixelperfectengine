@@ -50,10 +50,10 @@ T[] orderedInsert(T, alias less = "a > b", alias equal = "a == b")(ref T[] arr, 
 T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
 	size_t l, r = haysack.length, m;
 	while (l < r) {
-		m = (l+r)>>>1;
+		m = (l+r)>>1;
 		if (binaryFun!equal(haysack[m], needle)) return haysack[m];
-		else if (binaryFun!less(haysack[m], needle)) r = m;
-		else l = m;
+		else if (binaryFun!less(haysack[m], needle)) l = m;
+		else r = m;
 	}
 	return T.init;
 }
@@ -68,10 +68,10 @@ T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q ne
 sizediff_t searchByI(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
 	size_t l, r = haysack.length, m;
 	while (l < r) {
-		m = (l+r)>>>1;
+		m = (l+r)>>1;
 		if (binaryFun!equal(haysack[m], needle)) return m;
-		else if (binaryFun!less(haysack[m], needle)) r = m;
-		else l = m;
+		else if (binaryFun!less(haysack[m], needle)) l = m;
+		else r = m;
 	}
 	return -1;
 }

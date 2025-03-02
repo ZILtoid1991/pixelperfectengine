@@ -41,18 +41,18 @@ public interface PaletteContainer {
 	 */
 	public @property Color[] palette() @safe pure nothrow @nogc;
 	///Returns the given palette index.
-	public Color getPaletteIndex(ushort index) @safe pure nothrow @nogc const;
+	public Color getPaletteIndex(ushort index) @trusted pure nothrow @nogc const;
 	///Sets the given palette index to the given value.
-	public Color setPaletteIndex(ushort index, Color value) @safe pure nothrow @nogc;
+	public Color setPaletteIndex(ushort index, Color value) @trusted pure nothrow @nogc;
 	/**
 	 * Adds a palette chunk to the end of the main palette.
 	 */
-	public Color[] addPaletteChunk(Color[] paletteChunk) @safe;
+	public Color[] addPaletteChunk(Color[] paletteChunk) @trusted;
 	/**
 	 * Loads a palette into the object.
 	 * Returns the new palette of the object.
 	 */
-	public Color[] loadPalette(Color[] palette) @safe;
+	public Color[] loadPalette(Color[] palette) @trusted;
 	/**
 	 * Loads a palette chunk into the object.
 	 * The `offset` determines where the palette should be loaded.
@@ -60,12 +60,12 @@ public interface PaletteContainer {
 	 * If it points to the end or after it, then the palette will be made longer, and will pad with values #00000000 if needed.
 	 * Returns the new palette of the object.
 	 */
-	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @safe;
+	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @trusted;
 	/**
 	 * Clears an area of the palette with zeroes.
 	 * Returns the original area.
 	 */
-	public Color[] clearPaletteChunk(ushort lenght, ushort offset) @safe;
+	public Color[] clearPaletteChunk(ushort lenght, ushort offset) @trusted;
 }
 
 ///Handles multiple layers onto one framebuffer.
@@ -84,8 +84,6 @@ public class Raster : PaletteContainer {
 	
 	private ushort rasterWidth, rasterHeight;///Stores virtual screen resolution.
 	public Bitmap32Bit[] cpu_FrameBuffer;///Framebuffers for CPU rendering
-	//public void* 		fbData;			///Data of the currently selected framebuffer
-	//public int			fbPitch;		///Pitch of the currently selected framebuffer
 	public GLuint[] 	gl_FrameBufferTexture;	///Framebuffers for OpenGL rendering
 	public GLuint[]		gl_DepthBuffer;
 	public GLuint[]		gl_FrameBuffer;
@@ -96,6 +94,10 @@ public class Raster : PaletteContainer {
 	public GLuint		gl_VertexArray;	///Vertex array ID
 	public GLuint		gl_VertexIndices;///Vertex index buffer ID
 	public GLuint		gl_Program;		///OpenGL shader program
+	public int			outputWidth;	///Width of the output area
+	public int			outputHeight;	///Height of the output area
+	public int			outputHOffset;	///Horizontal offset of the output area
+	public int			outputVOffset;	///Vertical offset of the output area
 	/**
 	 * Color format is ARGB, with each index having their own transparency.
 	 */
@@ -123,11 +125,10 @@ public class Raster : PaletteContainer {
 	 *   w = Raster width.
 	 *   h = Raster height.
 	 *   oW = The OS window for the target.
-	 *   paletteLength = Palette size, should be 65_536. (DEPRECATED PARAMETER)
 	 *   buffers = Number of buffers, 2 recommended for double buffering, 1 recommended for GUI apps 
 	 * especially if they're not constantly updating.
 	 */
-	public this (ushort w, ushort h, OSWindow oW, size_t paletteLength = 65_536, ubyte buffers = 2) {
+	public this (ushort w, ushort h, OSWindow oW, ubyte buffers = 2) {
 		// assert(paletteLength <= 65_536);
 		//Shader initialization block
 		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -177,6 +178,7 @@ public class Raster : PaletteContainer {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
 
 			glGenRenderbuffers(1, &depthBuffer);
 			glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
@@ -187,6 +189,11 @@ public class Raster : PaletteContainer {
 			gl_DepthBuffer.nogc_append(depthBuffer);
 			gl_FrameBuffer.nogc_append(frameBuffer);
 		}
+
+		assert(gl_FrameBufferTexture.length);
+		assert(gl_DepthBuffer.length);
+		assert(gl_FrameBuffer.length);
+
 		glUseProgram(gl_Program);
 		glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
 		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -266,25 +273,32 @@ public class Raster : PaletteContainer {
 	 * If it points to the end or after it, then the palette will be made longer, and will pad with values 0x00_00_00_00 if needed.
 	 * Returns the new palette of the object.
 	 */
-	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @safe {
-		if (paletteChunk.length + offset > _palette.length) 
-			_palette.length = offset + paletteChunk.length;
-		for (int i = offset, j ; j < paletteChunk.length ; i++, j++) 
-			_palette[i] = paletteChunk[j];
+	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @trusted {
+		if (paletteChunk.length + offset > _palette.length) _palette.length = offset + paletteChunk.length;
+		for (int i = offset, j ; j < paletteChunk.length ; i++, j++) _palette[i] = paletteChunk[j];
+		glBindTexture(GL_TEXTURE_2D, gl_Palette);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, _palette.ptr);
 		return _palette;
 	}
 	/**
 	 * Clears an area of the palette with zeroes.
 	 * Returns the original area.
 	 */
-	public Color[] clearPaletteChunk(ushort lenght, ushort offset) @safe {
+	public Color[] clearPaletteChunk(ushort lenght, ushort offset) @trusted {
 		Color[] backup = _palette[offset..offset + lenght].dup;
 		for (int i = offset ; i < offset + lenght ; i++) {
 			_palette[i] = Color(0);
 		}
+		glBindTexture(GL_TEXTURE_2D, gl_Palette);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, _palette.ptr);
 		return backup;
 	}
-
+	public void readjustViewport(int width, int height, int hOffset, int vOffset) {
+		outputWidth = width;
+		outputHeight = height;
+		outputHOffset = hOffset;
+		outputVOffset = vOffset;
+	}
 	/**
 	 * Returns the current FPS count.
 	 */
@@ -402,16 +416,20 @@ public class Raster : PaletteContainer {
 		displayedBuffer = updatedBuffer + 1;
 		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
 
+		glEnable(GL_DEPTH_TEST);
 		foreach (Layer layer ; layerMap) {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
 					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);
 		}
-		oW.gl_makeCurrent();
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
+		// oW.gl_makeCurrent();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glDisable(GL_DEPTH_TEST);
 
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
-				cpu_FrameBuffer[displayedBuffer].getPtr);
+		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
+		// 		cpu_FrameBuffer[displayedBuffer].getPtr);
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);

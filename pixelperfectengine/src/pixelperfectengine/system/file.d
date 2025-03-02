@@ -214,7 +214,7 @@ public Color[] loadPaletteFromFile(string filename) {
  */
 public Color[] loadPaletteFromImage (Image img) {
 	Color[] palette;
-	IPalette sourcePalette = img.palette.convTo(PixelFormat.ARGB8888 | PixelFormat.BigEndian);
+	IPalette sourcePalette = img.palette.convTo(PixelFormat.RGBA8888 | PixelFormat.BigEndian);
 	palette = reinterpretCast!Color(sourcePalette.raw);
 
 	assert(palette.length == sourcePalette.length, "Palette lenght import mismatch!");

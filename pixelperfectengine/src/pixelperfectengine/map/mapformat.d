@@ -320,7 +320,9 @@ public class MapFormat {
 						sl.addSprite(spr[so.ssID], so.pID, so.x, so.y, so.palSel, so.palShift, so.masterAlpha, so.scaleHoriz, 
 								so.scaleVert, so.rendMode);
 						if (ocd !is null && so.flags.toCollision) {
-							ocd.objects[so.pID] = CollisionShape(sl.getSpriteCoordinate(so.pID), null);
+							Quad spriteCoord = sl.getSpriteCoordinate(so.pID);
+							ocd.objects[so.pID] = CollisionShape(
+									Box(spriteCoord.topLeft.x, spriteCoord.topLeft.y, spriteCoord.bottomRight.x, spriteCoord.bottomRight.y), null);
 						}
 					} else if (ocd !is null && key0.type == MapObject.MapObjectType.box && key0.flags.toCollision) {
 						BoxObject bo = cast(BoxObject)key0;

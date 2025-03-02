@@ -293,7 +293,7 @@ public interface ISpriteLayer {
 	 *   x = New x position of the sprite.
 	 *   y = New y position of the sprite.
 	 */
-	public void moveSprite(int n, int x, int y) @trusted nothrow;
+	public Quad moveSprite(int n, int x, int y) @nogc @trusted nothrow;
 	/** 
 	 * Relatively moves the sprite by the given values.
 	 * Params:
@@ -301,9 +301,9 @@ public interface ISpriteLayer {
 	 *   x = New x position of the sprite.
 	 *   y = New y position of the sprite.
 	 */
-	public void relMoveSprite(int n, int x, int y) @trusted nothrow;
+	public Quad relMoveSprite(int n, int x, int y) @nogc @trusted nothrow;
 	///Gets the coordinate of the sprite.
-	public Box getSpriteCoordinate(int n) @nogc @trusted nothrow;
+	public Quad getSpriteCoordinate(int n) @nogc @trusted nothrow;
 	/** 
 	 * Creates a sprite from a bitmap with the given data, then places it to the display list. (New architecture)
 	 * Params:
