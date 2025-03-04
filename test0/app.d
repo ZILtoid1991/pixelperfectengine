@@ -75,7 +75,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
 		Image spriteSource = loadImage(File(resolvePath("%PATH%/assets/d-man.tga")));
 		Image fontSource = loadImage(File(resolvePath("%SYSTEM%/codepage_8_8.png")));
-		r = new Raster(424,240,output);
+		r = new Raster(424,240,output, 1);
 		r.readjustViewport(424 * 4, 240 * 4, 0, 0);
 		//output.setMainRaster(r);
 		t = new TileLayer(16,16, RenderingMode.Copy);
@@ -463,19 +463,20 @@ class TileLayerTest : SystemEventListener, InputListener {
 	 *   height = active area height.
 	 */
 	public void windowResize(OSWindow window, int width, int height) {
-		immutable double origAspectRatio = 424.0 / 240.0;//Calculate original aspect ratio
-		double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio
-		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
-			const double visibleWidth = height * origAspectRatio;
-			const double sideOffset = (width - visibleWidth) / 2.0;
-			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
-			// glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
-		} else {	//Display area is now taller, padding needs to be added on the top and bottom
-			const double visibleHeight = width / origAspectRatio;
-			const double topOffset = (height - visibleHeight) / 2.0;
-			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
-			// glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
-		}
+		// immutable double origAspectRatio = 424.0 / 240.0;//Calculate original aspect ratio
+		// double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio
+		// if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
+		// 	const double visibleWidth = height * origAspectRatio;
+		// 	const double sideOffset = (width - visibleWidth) / 2.0;
+		// 	r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
+		// 	// glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+		// } else {	//Display area is now taller, padding needs to be added on the top and bottom
+		// 	const double visibleHeight = width / origAspectRatio;
+		// 	const double topOffset = (height - visibleHeight) / 2.0;
+		// 	r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
+		// 	// glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+		// }
+		r.readjustViewport(width, height, 0, 0);
 	}
 	/**
 	 * Called when an axis is being operated.

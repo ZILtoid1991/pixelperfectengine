@@ -110,6 +110,7 @@ public class Raster : PaletteContainer {
 	protected OSWindow oW;
 	//private Layer[int] layerList;
 	private bool r;					///Set to true if refresh is happening.
+	private bool screenSizeChanged;	///Set to true if screen size is changed.
 	protected int nOfBuffers;		///Number of framebuffers, 2 for double buffering.
 	protected int updatedBuffer;	///Framebuffer currently being updated
 	protected int displayedBuffer;///Framebuffer currently being displayed
@@ -173,11 +174,11 @@ public class Raster : PaletteContainer {
 
 			glGenTextures(1, &texture);
 			glBindTexture(GL_TEXTURE_2D, texture);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, null);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, null);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
 
 			glGenRenderbuffers(1, &depthBuffer);
@@ -298,6 +299,8 @@ public class Raster : PaletteContainer {
 		outputHeight = height;
 		outputHOffset = hOffset;
 		outputVOffset = vOffset;
+		screenSizeChanged = true;
+		// glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
 	}
 	/**
 	 * Returns the current FPS count.
@@ -415,18 +418,23 @@ public class Raster : PaletteContainer {
 		if(updatedBuffer >= nOfBuffers) updatedBuffer = 0;
 		displayedBuffer = updatedBuffer + 1;
 		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
-
+		glBindFramebuffer(GL_FRAMEBUFFER, gl_FrameBuffer[updatedBuffer]);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		if (screenSizeChanged) glViewport(0, 0, rasterWidth, rasterHeight);
 		glEnable(GL_DEPTH_TEST);
 		foreach (Layer layer ; layerMap) {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
 					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);
 		}
-		glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
 		// oW.gl_makeCurrent();
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		// glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		if (screenSizeChanged) {
+			glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
+			screenSizeChanged = false;
+		}
 		glDisable(GL_DEPTH_TEST);
-
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
 		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
 		// 		cpu_FrameBuffer[displayedBuffer].getPtr);

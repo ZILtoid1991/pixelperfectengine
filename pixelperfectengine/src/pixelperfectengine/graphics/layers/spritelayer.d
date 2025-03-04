@@ -469,7 +469,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		//Constants begin
 		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
 		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
-		__m128d screenSizeRec = _vect([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
+		__m128d screenSizeRec = _vect([2.0 / (sizes[0] - 1), -2.0 / (sizes[1] - 1)]);	//Screen size reciprocal with vertical invert
 		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
 		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
 		immutable __m128 COLOR_REC = __m128([1.0 / 127, 1.0 / 127, 1.0 / 127, 1.0 / 255]);
@@ -507,7 +507,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				_store2s(&gl_RenderOut.ll.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[4]) * screenSizeRec + OGL_OFFSET));
 				_store2s(&gl_RenderOut.lr.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[6]) * screenSizeRec + OGL_OFFSET));
 				//calculate and store Z values
-				float zF = sprt.pri * (1.0 / 31);
+				float zF = 0.0; /+= sprt.pri * (1.0 / 31);+/
 				gl_RenderOut.ul.z = zF;
 				gl_RenderOut.ur.z = zF;
 				gl_RenderOut.ll.z = zF;
