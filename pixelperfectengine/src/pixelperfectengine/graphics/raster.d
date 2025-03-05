@@ -20,6 +20,7 @@ import core.time;
 import collections.treemap;
 import iota.window.oswindow;
 import iota.window.types;
+import numem;
 
 ///The raster calls it every time it finishes the drawing to the framebuffers.
 ///Used to signal the output screen to switch out the framebuffers.
@@ -185,6 +186,8 @@ public class Raster : PaletteContainer {
 			glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
 			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, w, h);
 			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			
 			gl_FrameBufferTexture.nogc_append(texture);
 			gl_DepthBuffer.nogc_append(depthBuffer);
@@ -224,6 +227,7 @@ public class Raster : PaletteContainer {
 		framesPerSecond = 0.0;
 		avgFPS = 0.0;
 		this.oW = oW;
+
 		//glDetachShader(gl_Program, gl_FragmentShader);
 		//glDetachShader(gl_Program, gl_VertexShader);
 		
@@ -419,8 +423,8 @@ public class Raster : PaletteContainer {
 		displayedBuffer = updatedBuffer + 1;
 		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
 		glBindFramebuffer(GL_FRAMEBUFFER, gl_FrameBuffer[updatedBuffer]);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		if (screenSizeChanged) glViewport(0, 0, rasterWidth, rasterHeight);
+		glViewport(0, 0, rasterWidth, rasterHeight);
+		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 		foreach (Layer layer ; layerMap) {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
@@ -429,12 +433,13 @@ public class Raster : PaletteContainer {
 		// oW.gl_makeCurrent();
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		// glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		if (screenSizeChanged) {
-			glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
-			screenSizeChanged = false;
-		}
+		// if (screenSizeChanged) {
+		// 	glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
+		// 	screenSizeChanged = false;
+		// }
 		glDisable(GL_DEPTH_TEST);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
+		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
 		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
 		// 		cpu_FrameBuffer[displayedBuffer].getPtr);

@@ -105,5 +105,8 @@ public struct GLShader {
 	~this() @safe @nogc nothrow {
 		if (shaderID) refCountDecr(shaderID);
 	}
+	void use() @trusted @nogc nothrow {
+		glUseProgram(shaderID);
+	}
 	alias this = shaderID;
 }

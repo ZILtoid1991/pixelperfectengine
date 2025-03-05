@@ -21,6 +21,7 @@ import std.bitmanip : bitfields;
 import bitleveld.datatypes;
 import inteli;
 import bindbc.opengl : GLuint;
+import numem;
 
 
 /**
@@ -440,19 +441,22 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		ubyte palSh;
 		if (typeid(bitmap) is typeid(Bitmap8Bit)) {
 			pixelData = (cast(Bitmap8Bit)(bitmap)).getPtr;
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap.width, bitmap.height, 0, GL_RED, GL_R8, pixelData);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap.width, bitmap.height, 0, GL_RED, GL_UNSIGNED_BYTE, pixelData);
 			palSh = 8;
 		} else if (typeid(bitmap) is typeid(Bitmap32Bit)) {
 			pixelData = (cast(Bitmap32Bit)(bitmap)).getPtr;
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.width, bitmap.height, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.width, bitmap.height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,
 					pixelData);
+		}
+		{
+			const ulong errCode = glGetError();
+			if (errCode != GL_NO_ERROR) nu_fatal((cast(char*)&errCode)[0..8]);
 		}
 		if (!pixelData) return -1;
 		gl_materials.orderedInsert(TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height, palSh));
 		return 0;
 	}
 	/**
-	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
 	 * Renders the layer's content to the texture target.
 	 * Params:
 	 *   workpad = The target texture.
@@ -464,7 +468,6 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public override void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
 			@nogc nothrow {
 		import bindbc.opengl;
-		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
 		//Just stream display data to gl_RenderOut for now, we can always optimize it later if there's any options
 		//Constants begin
 		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
@@ -479,12 +482,20 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		float[16] spriteCl = void;
 		//Stack prealloc block end
 		//Select palettes
-		glBindFramebuffer(GL_FRAMEBUFFER, workpad);
-		glBindTexture(GL_TEXTURE_2D, palette);
+		// glBindTexture(GL_TEXTURE_2D, 0);
+		// glBindFramebuffer(GL_FRAMEBUFFER, workpad);
+		{
+			const ulong errCode = glGetError();
+			if (errCode != GL_NO_ERROR) nu_fatal((cast(char*)&errCode)[0..8]);
+		}
+		glViewport(0, 0, sizes[0], sizes[1]);
+
+		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
 		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, palette);
 		if (palNM) {
-			glBindTexture(GL_TEXTURE_2D, palNM);
 			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, palNM);
 		}
 		foreach (ref DisplayListItem_Sprt sprt ; displayList_sprt) {	//Iterate over all sprites within the displaylist
 			if (displayAreaWS.isBetween(sprt.position.topLeft) || displayAreaWS.isBetween(sprt.position.topRight) ||
@@ -542,7 +553,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				glUniform1i(glGetUniformLocation(sprt.programID, "palette"), 1);
 				glUniform1i(glGetUniformLocation(sprt.programID, "paletteMipMap"), 2);
 				const colorSelY = sprt.palSel>>(8-sprt.palSh), colorSelX = sprt.palSel&((1<<(8-sprt.palSh))-1);
-				glUniform2f(glGetUniformLocation(sprt.programID, "paletteOffset"), colorSelX * (1.0 / 256), colorSelY * (1.0 / 256));
+				glUniform2f(glGetUniformLocation(sprt.programID, "paletteOffset"),colorSelX * (1.0 / 256),colorSelY * (1.0 / 256));
 				// glUniform1f(glGetUniformLocation(gl_Program, "palLengthMult"), 1.0 / (9 - sprt.palSh));
 
 				glBindVertexArray(gl_vertexArray);
@@ -562,9 +573,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				glEnableVertexAttribArray(3);
 				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(9 * float.sizeof));
 				glBindVertexArray(gl_vertexArray);
-				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, gl_PlIndices.ptr);
 			}
 		}
+		glClearColor(0.1f, 0.5f, 0.1f, 1.0f);
 	}
 	///Sets the overscan amount, on which some effects are dependent on.
 	// public abstract void setOverscanAmount(float valH, float valV);
