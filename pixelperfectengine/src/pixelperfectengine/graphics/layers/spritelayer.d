@@ -187,7 +187,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected Material[] materialList;
 	protected DisplayListItem_Sprt[] displayList_sprt;
 	protected DisplayListItem_GL gl_RenderOut;
-	protected PolygonIndices[2] gl_PlIndices = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
+	protected PolygonIndices[2] gl_PlIndices;// = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
 	//size_t[8] prevSize;
 	///Default ctor DEPRECATED since OpenGL move
 	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
@@ -198,6 +198,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		glGenVertexArrays(1, &gl_vertexArray);
 		glGenBuffers(1, &gl_vertexBuffer);
 		glGenBuffers(1, &gl_vertexIndices);
+		gl_PlIndices = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
 	}
 
 	~this() {
@@ -221,17 +222,19 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		float right;
 		float bottom;
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
-			if (materialID < rhs) return -1;
-			else if (materialID == rhs) return 0;
-			else return 1;
+			return (materialID > rhs) - (materialID < rhs);
+			// if (materialID > rhs) return -1;
+			// else if (materialID == rhs) return 0;
+			// else return 1;
 		}
 		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
 			return materialID == rhs;
 		}
 		int opCmp(const ref Material rhs) @nogc @safe pure nothrow const {
-			if (materialID < rhs.materialID) return -1;
-			else if (materialID == rhs.materialID) return 0;
-			else return 1;
+			return (materialID > rhs.materialID) - (materialID < rhs.materialID);
+			// if (materialID > rhs.materialID) return -1;
+			// else if (materialID == rhs.materialID) return 0;
+			// else return 1;
 		}
 		bool opEquals(const ref Material rhs) @nogc @safe pure nothrow const {
 			return materialID == rhs.materialID;
@@ -247,17 +250,19 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		ushort height;
 		ubyte paletteSh;
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
-			if (id < rhs) return -1;
-			else if (id == rhs) return 0;
-			else return 1;
+			return (id > rhs) - (id < rhs);
+			// if (id > rhs) return -1;
+			// else if (id == rhs) return 0;
+			// else return 1;
 		}
 		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
 			return id == rhs;
 		}
 		int opCmp(const ref TextureEntry rhs) @nogc @safe pure nothrow const {
-			if (id < rhs.id) return -1;
-			else if (id == rhs.id) return 0;
-			else return 1;
+			return (id > rhs.id) - (id < rhs.id);
+			// if (id > rhs.id) return -1;
+			// else if (id == rhs.id) return 0;
+			// else return 1;
 		}
 		bool opEquals(const ref TextureEntry rhs) @nogc @safe pure nothrow const {
 			return id == rhs.id;
@@ -308,17 +313,19 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			this.attr = rhs.attr;
 		}
 		int opCmp(int rhs) @nogc @safe pure nothrow const {
-			if (spriteID < rhs) return -1;
-			else if (spriteID == rhs) return 0;
-			else return 1;
+			return (spriteID > rhs) - (spriteID < rhs);
+			// if (spriteID < rhs) return -1;
+			// else if (spriteID == rhs) return 0;
+			// else return 1;
 		}
 		bool opEquals(int rhs) @nogc @safe pure nothrow const {
 			return spriteID == rhs;
 		}
 		int opCmp(const ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
-			if (spriteID < rhs.spriteID) return -1;
-			else if (spriteID == rhs.spriteID) return 0;
-			else return 1;
+			return (spriteID > rhs.spriteID) - (spriteID < rhs.spriteID);
+			// if (spriteID < rhs.spriteID) return -1;
+			// else if (spriteID == rhs.spriteID) return 0;
+			// else return 1;
 		}
 		bool opEquals(const ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
 			return spriteID == rhs.spriteID;
@@ -340,7 +347,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		TextureEntry te = gl_materials.searchBy(page);
 		const double xStep = 1.0 / (te.width - 1), yStep = 1.0 / (te.height - 1);
 		materialList.orderedInsert(Material(id, te.glTextureID, cast(ushort)area.width, cast(ushort)area.height,
-				area.left * xStep, 1.0 - (area.top * yStep), area.right * xStep, 1.0 - (area.bottom * yStep)));
+				area.left * xStep, area.top * yStep, area.right * xStep, area.bottom * yStep));
 		return 0;
 	}
 	/**
@@ -469,26 +476,24 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			@nogc nothrow {
 		import bindbc.opengl;
 		//Just stream display data to gl_RenderOut for now, we can always optimize it later if there's any options
+		//BUG 1: Some wobbliness in graphics output, likely some calculation errors adding up.
 		//Constants begin
 		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
 		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
 		__m128d screenSizeRec = _vect([2.0 / (sizes[0] - 1), -2.0 / (sizes[1] - 1)]);	//Screen size reciprocal with vertical invert
 		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
 		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
-		immutable __m128 COLOR_REC = __m128([1.0 / 127, 1.0 / 127, 1.0 / 127, 1.0 / 255]);
+		immutable __m128 COLOR_REC = __m128([1.0 / 255, 1.0 / 255, 1.0 / 255, 1.0 / 255]);
+		const __m128i scrollVec = _vect([sX, sY, 0, 0]), offsetsVec = _mm_loadu_si64(offsets.ptr);
 		//Constants end
 		//Stack prealloc block begin
-		double[8] spriteLoc = void;
-		float[16] spriteCl = void;
+
 		//Stack prealloc block end
 		//Select palettes
 		// glBindTexture(GL_TEXTURE_2D, 0);
 		// glBindFramebuffer(GL_FRAMEBUFFER, workpad);
-		{
-			const ulong errCode = glGetError();
-			if (errCode != GL_NO_ERROR) nu_fatal((cast(char*)&errCode)[0..8]);
-		}
-		glViewport(0, 0, sizes[0], sizes[1]);
+
+		// glViewport(0, 0, sizes[0], sizes[1]);
 
 		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
 		glActiveTexture(GL_TEXTURE1);
@@ -502,21 +507,25 @@ public class SpriteLayer : Layer, ISpriteLayer {
 					displayAreaWS.isBetween(sprt.position.bottomLeft) || displayAreaWS.isBetween(sprt.position.bottomRight)) {//Check whether the sprite is on the display area
 					//get sprite material
 				Material cm = materialList.searchBy(sprt.materialID);
-				glBindTexture(GL_TEXTURE_2D, cm.pageID);
 				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, cm.pageID);
 				//Calculate and store sprite location on the display area
-				spriteLoc = [sprt.position.topLeft.x - (sX - offsets[0]),
-						sprt.position.topLeft.y - (sY - offsets[1]),
-						sprt.position.topRight.x - (sX - offsets[0]),
-						sprt.position.topRight.y - (sY - offsets[1]),
-						sprt.position.bottomLeft.x - (sX - offsets[0]),
-						sprt.position.bottomLeft.y - (sY - offsets[1]),
-						sprt.position.bottomRight.x - (sX - offsets[0]),
-						sprt.position.bottomRight.y - (sY - offsets[1])];
-				_store2s(&gl_RenderOut.ul.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[0]) * screenSizeRec + OGL_OFFSET));
-				_store2s(&gl_RenderOut.ur.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[2]) * screenSizeRec + OGL_OFFSET));
-				_store2s(&gl_RenderOut.ll.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[4]) * screenSizeRec + OGL_OFFSET));
-				_store2s(&gl_RenderOut.lr.x, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[6]) * screenSizeRec + OGL_OFFSET));
+				// spriteLoc = [sprt.position.topLeft.x - (sX - offsets[0]),
+						// sprt.position.topLeft.y - (sY - offsets[1]),
+						// sprt.position.topRight.x - (sX - offsets[0]),
+						// sprt.position.topRight.y - (sY - offsets[1]),
+						// sprt.position.bottomLeft.x - (sX - offsets[0]),
+						// sprt.position.bottomLeft.y - (sY - offsets[1]),
+						// sprt.position.bottomRight.x - (sX - offsets[0]),
+						// sprt.position.bottomRight.y - (sY - offsets[1])];
+				_store2s(&gl_RenderOut.ul.x, _mm_cvtpd_ps(_mm_cvtepi32_pd(_mm_loadu_si64(&sprt.position.topLeft) -
+						(scrollVec - offsetsVec)) * screenSizeRec + OGL_OFFSET));
+				_store2s(&gl_RenderOut.ur.x, _mm_cvtpd_ps(_mm_cvtepi32_pd(_mm_loadu_si64(&sprt.position.topRight) -
+						(scrollVec - offsetsVec)) * screenSizeRec + OGL_OFFSET));
+				_store2s(&gl_RenderOut.ll.x, _mm_cvtpd_ps(_mm_cvtepi32_pd(_mm_loadu_si64(&sprt.position.bottomLeft) -
+						(scrollVec - offsetsVec)) * screenSizeRec + OGL_OFFSET));
+				_store2s(&gl_RenderOut.lr.x, _mm_cvtpd_ps(_mm_cvtepi32_pd(_mm_loadu_si64(&sprt.position.bottomRight) -
+						(scrollVec - offsetsVec)) * screenSizeRec + OGL_OFFSET));
 				//calculate and store Z values
 				float zF = 0.0; /+= sprt.pri * (1.0 / 31);+/
 				gl_RenderOut.ul.z = zF;
@@ -524,30 +533,32 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				gl_RenderOut.ll.z = zF;
 				gl_RenderOut.lr.z = zF;
 				//calculate and store color values
-				spriteCl = [sprt.attr[0].r, sprt.attr[0].g, sprt.attr[0].b, sprt.attr[0].a,
-						sprt.attr[1].r, sprt.attr[1].g, sprt.attr[1].b, sprt.attr[1].a,
-						sprt.attr[2].r, sprt.attr[2].g, sprt.attr[2].b, sprt.attr[2].a,
-						sprt.attr[3].r, sprt.attr[3].g, sprt.attr[3].b, sprt.attr[3].a];
-				_mm_storeu_ps(&gl_RenderOut.ul.r, _mm_load_ps(&spriteCl[0]) * COLOR_REC);
-				_mm_storeu_ps(&gl_RenderOut.ur.r, _mm_load_ps(&spriteCl[4]) * COLOR_REC);
-				_mm_storeu_ps(&gl_RenderOut.ll.r, _mm_load_ps(&spriteCl[8]) * COLOR_REC);
-				_mm_storeu_ps(&gl_RenderOut.lr.r, _mm_load_ps(&spriteCl[12]) * COLOR_REC);
+				// spriteCl = [sprt.attr[0].r, sprt.attr[0].g, sprt.attr[0].b, sprt.attr[0].a,
+						// sprt.attr[1].r, sprt.attr[1].g, sprt.attr[1].b, sprt.attr[1].a,
+						// sprt.attr[2].r, sprt.attr[2].g, sprt.attr[2].b, sprt.attr[2].a,
+						// sprt.attr[3].r, sprt.attr[3].g, sprt.attr[3].b, sprt.attr[3].a];
+				_mm_storeu_ps(&gl_RenderOut.ul.r, _conv4ubytes(&sprt.attr[0].r) * COLOR_REC);
+				_mm_storeu_ps(&gl_RenderOut.ur.r, _conv4ubytes(&sprt.attr[1].r) * COLOR_REC);
+				_mm_storeu_ps(&gl_RenderOut.ll.r, _conv4ubytes(&sprt.attr[2].r) * COLOR_REC);
+				_mm_storeu_ps(&gl_RenderOut.lr.r, _conv4ubytes(&sprt.attr[3].r) * COLOR_REC);
 				//store texture mapping data
-				gl_RenderOut.ul.s = cm.left + sprt.slice[0];
-				gl_RenderOut.ul.t = cm.top + sprt.slice[1];
-				gl_RenderOut.ur.s = cm.right + sprt.slice[2];
-				gl_RenderOut.ur.t = cm.top + sprt.slice[1];
-				gl_RenderOut.ll.s = cm.left + sprt.slice[0];
-				gl_RenderOut.ll.t = cm.bottom + sprt.slice[3];
-				gl_RenderOut.lr.s = cm.right+ sprt.slice[2];
-				gl_RenderOut.lr.t = cm.bottom + sprt.slice[3];
+				__m128 sprtSliceCalc = _mm_loadu_ps(&cm.left) + _mm_loadu_ps(&sprt.slice[0]);
+				gl_RenderOut.ul.s = sprtSliceCalc[0];
+				gl_RenderOut.ul.t = sprtSliceCalc[1];
+				gl_RenderOut.ur.s = sprtSliceCalc[2];
+				gl_RenderOut.ur.t = sprtSliceCalc[1];
+				gl_RenderOut.ll.s = sprtSliceCalc[0];
+				gl_RenderOut.ll.t = sprtSliceCalc[3];
+				gl_RenderOut.lr.s = sprtSliceCalc[2];
+				gl_RenderOut.lr.t = sprtSliceCalc[3];
 				//calcolate and store lighting direction data
-				spriteLoc = [sprt.attr[0].lX, sprt.attr[0].lY, sprt.attr[1].lX, sprt.attr[1].lY,
-						sprt.attr[2].lX, sprt.attr[2].lY, sprt.attr[3].lX, sprt.attr[3].lY];
-				_store2s(&gl_RenderOut.ul.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[0]) * LDIR_REC));
-				_store2s(&gl_RenderOut.ur.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[2]) * LDIR_REC));
-				_store2s(&gl_RenderOut.ll.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[4]) * LDIR_REC));
-				_store2s(&gl_RenderOut.lr.lX, _mm_cvtpd_ps(_mm_load_pd(&spriteLoc[6]) * LDIR_REC));
+				// spriteLoc = [sprt.attr[0].lX, sprt.attr[0].lY, sprt.attr[1].lX, sprt.attr[1].lY,
+				// 		sprt.attr[2].lX, sprt.attr[2].lY, sprt.attr[3].lX, sprt.attr[3].lY];
+
+				_store2s(&gl_RenderOut.ul.lX, _mm_cvtpd_ps(_conv2shorts(&sprt.attr[0].lX) * LDIR_REC));
+				_store2s(&gl_RenderOut.ur.lX, _mm_cvtpd_ps(_conv2shorts(&sprt.attr[1].lX) * LDIR_REC));
+				_store2s(&gl_RenderOut.ll.lX, _mm_cvtpd_ps(_conv2shorts(&sprt.attr[2].lX) * LDIR_REC));
+				_store2s(&gl_RenderOut.lr.lX, _mm_cvtpd_ps(_conv2shorts(&sprt.attr[3].lX) * LDIR_REC));
 				glUseProgram(sprt.programID);
 				glUniform1i(glGetUniformLocation(sprt.programID, "mainTexture"), 0);
 				glUniform1i(glGetUniformLocation(sprt.programID, "palette"), 1);
@@ -559,24 +570,24 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				glBindVertexArray(gl_vertexArray);
 
 				glBindBuffer(GL_ARRAY_BUFFER, gl_vertexBuffer);
-				glBufferData(GL_ARRAY_BUFFER, DisplayListItem_GL.sizeof, &gl_RenderOut, GL_STATIC_DRAW);
+				glBufferData(GL_ARRAY_BUFFER, DisplayListItem_GL.sizeof, &gl_RenderOut, GL_STREAM_DRAW);
 
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertexIndices);
-				glBufferData(GL_ARRAY_BUFFER, PolygonIndices.sizeof * 2, gl_PlIndices.ptr, GL_STATIC_DRAW);
+				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * 6, gl_PlIndices.ptr, GL_STREAM_DRAW);
 
 				glEnableVertexAttribArray(0);
 				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)0);
 				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(3 * float.sizeof));
+				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(3 * float.sizeof));
 				glEnableVertexAttribArray(2);
-				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(7 * float.sizeof));
+				glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(7 * float.sizeof));
 				glEnableVertexAttribArray(3);
-				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(9 * float.sizeof));
+				glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(9 * float.sizeof));
 				glBindVertexArray(gl_vertexArray);
-				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, gl_PlIndices.ptr);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 			}
 		}
-		glClearColor(0.1f, 0.5f, 0.1f, 1.0f);
+		// glClearColor(0.1f, 0.5f, 0.1f, 1.0f);
 	}
 	///Sets the overscan amount, on which some effects are dependent on.
 	// public abstract void setOverscanAmount(float valH, float valV);
@@ -844,7 +855,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public override LayerType getLayerType() @nogc @safe pure nothrow const {
 		return LayerType.Sprite;
 	}
-	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {
+	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {	//DEPRECATED
 		/*
 		 * BUG 1: If sprite is wider than 2048 pixels, it'll cause issues (mostly memory leaks) due to a hack. (Fixed!)
 		 * BUG 2: Obscuring the top part of a sprite when scaleVert is not 1024 will cause glitches. (Fixed!!!)

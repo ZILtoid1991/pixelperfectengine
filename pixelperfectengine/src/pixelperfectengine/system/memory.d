@@ -52,8 +52,8 @@ T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q ne
 	while (l < r) {
 		m = (l+r)>>1;
 		if (binaryFun!equal(haysack[m], needle)) return haysack[m];
-		else if (binaryFun!less(haysack[m], needle)) l = m;
-		else r = m;
+		else if (binaryFun!less(haysack[m], needle)) r = m;
+		else l = m;
 	}
 	return T.init;
 }
@@ -70,8 +70,8 @@ sizediff_t searchByI(T, Q, alias less = "a > b", alias equal = "a == b")(T[] hay
 	while (l < r) {
 		m = (l+r)>>1;
 		if (binaryFun!equal(haysack[m], needle)) return m;
-		else if (binaryFun!less(haysack[m], needle)) l = m;
-		else r = m;
+		else if (binaryFun!less(haysack[m], needle)) r = m;
+		else l = m;
 	}
 	return -1;
 }
@@ -90,17 +90,21 @@ T[] nogc_insertAt(T)(ref T[] arr, T val, size_t pos) @nogc @trusted {
 	assert(pos <= arr.length, "Out of index operation");
 	arr.nogc_resize(arr.length + 1);
 	// if(pos + 1 != arr.length) arr[pos+1..$] = arr[pos..$-1];
-	if(pos + 1 != arr.length) shiftElements(arr, 1, pos);
+	if (pos + 1 != arr.length) shiftElements(arr, 1, pos);
+	static if (hasUDA!(T, PPECFG_Memfix)) setToNull(arr[pos..pos+1]);
 	arr[pos] = val;
 	return arr;
 }
-void shiftElements(T)(ref T[] arr, sizediff_t amount, size_t position) @nogc @system nothrow {
-	amount *= T.sizeof;
-	position *= T.sizeof;
-	if (amount > 0) nu_memcpy(arr.ptr + position + amount, arr.ptr + position,
-			(arr.length * T.sizeof) - position - amount);
-	else if (amount < 0) nu_memcpy(arr.ptr + position, arr.ptr + position - amount,
-			(arr.length * T.sizeof) - position + amount);
+package void setToNull(T)(T[] dest) @nogc @system nothrow {
+	nu_memset(dest.ptr, 0, dest.length * T.sizeof);
+}
+package void dirtyCopy(T)(T[] src, T[] dest) @nogc @system nothrow {
+	assert(src.length == dest.length);
+	nu_memcpy(dest.ptr, src.ptr, src.length * T.sizeof);
+}
+package void shiftElements(T)(ref T[] arr, sizediff_t amount, size_t position) @nogc @system nothrow {
+	if (amount > 0) dirtyCopy(arr[position..$-amount], arr[position+amount..$]);
+	else if (amount < 0) dirtyCopy(arr[position-amount..$], arr[position..$+amount]);
 }
 /**
  * Removes an element at the given position while preserving the rest of the array's order.
@@ -114,7 +118,7 @@ T[] nogc_remove(T)(ref T[] arr, size_t pos) @nogc @trusted {
 	// if (pos + 1 != arr.length) {
 	// 	arr[pos..$-1] = arr[pos+1..$];
 	// }
-	if (pos + 1 != arr.length) shiftElements(arr, -1, pos);
+	if (pos + 1 != arr.length) arr[pos..$-1] = arr[pos+1..$];
 	arr.nogc_resize(arr.length-1);
 	return arr;
 }

@@ -17,12 +17,13 @@ uniform vec2 paletteOffset;     // Palette offset in case palette selection is u
 // uniform float palLengthMult;    // Palette lenght multiplier
 
 vec4 clut(vec2 position) {
-    return texture(palette, vec2(texture(mainTexture, position).r /** palLengthMult*/ + paletteOffset.x, paletteOffset.y));
+    return texture(palette, vec2(texture(mainTexture, position).r + paletteOffset.x, paletteOffset.y));
 }
 
 void main() {
+//     fragColor = clut(texMapping);
     vec4 color = clut(texMapping);
-    if (color.a > 0.0) {
-        fragColor = color;
-    }
+    if (color.a <= 0.01) discard;
+    fragColor = color;
+//     fragColor = vec4(fragColor.r, 1.0, fragColor.b, 1.0);
 }

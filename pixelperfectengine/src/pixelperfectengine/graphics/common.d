@@ -10,7 +10,7 @@ module pixelperfectengine.graphics.common;
 public import pixelperfectengine.system.exc;
 import pixelperfectengine.system.memory;
 
-import dimage.types : RGBA8888BE;
+import dimage.types : RGBA8888;
 import bindbc.opengl;
 
 /**
@@ -227,13 +227,28 @@ public struct TileVertex {
 	float g;		/// Green color channel of the vertex.
 	float b;		/// Blue color channel of the vertex.
 	float a;		/// Alpha channel of the vertex.
-	float p;		/// Page identifier of the tile sheet.
 	float s;		///	X coordinate for texture mapping.
 	float t;		/// Y coordinate for texture mapping.
+	float u;		/// Page identifier of the tile sheet.
 	float lX;		/// X modifier for normal mapping.
 	float lY;		/// Y modifier for normal mapping.
 	float selX;		/// X selector for palette.
 	float selY;		/// Y selector for palette.
+}
+/**
+ * Graphics attribute extensions for sprites, tiles, etc.
+ * At 128, r, g and b will normally do nothing, below it apply multiply (shadow), above it apply screen (highlight) effects.
+ * (May depend on shader implementation)
+ * `a` just controls the alpha channel for the given point.
+ * `lX` and `lY` control the normal mapping effect.
+ */
+public struct GraphicsAttrExt {
+	ubyte r = 128;				///Red channel modifier
+	ubyte g = 128;				///Green channel modifier
+	ubyte b = 128;				///Blue channel modifier
+	ubyte a;					///Alpha channel modifier
+	short lX;					///X normal modifier
+	short lY;					///Y normal modifier
 }
 /**
  * Defines indices for a single polygon (triangle).
@@ -298,4 +313,4 @@ public char[] gl_CheckProgramNOGC(GLuint programID) @trusted @nogc nothrow {
 }
 ///Deprecated: Just use Box instead!
 alias Coordinate = Box;
-alias Color = RGBA8888BE;
+alias Color = RGBA8888;

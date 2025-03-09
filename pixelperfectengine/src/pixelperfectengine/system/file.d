@@ -127,7 +127,7 @@ public T loadBitmapFromImage(T)(Image img) @trusted
 			throw new BitmapFormatException("Bitdepth mismatch exception!");
 		
 	}else static if(is(T == Bitmap32Bit)){
-		return new Bitmap32Bit(reinterpretCast!Color(img.imageData.convTo(PixelFormat.ARGB8888 | PixelFormat.BigEndian).raw), 
+		return new Bitmap32Bit(reinterpretCast!Color(img.imageData.convTo(PixelFormat.RGBA8888).raw),
 				img.width, img.height);
 
 	}
@@ -214,7 +214,7 @@ public Color[] loadPaletteFromFile(string filename) {
  */
 public Color[] loadPaletteFromImage (Image img) {
 	Color[] palette;
-	IPalette sourcePalette = img.palette.convTo(PixelFormat.RGBA8888 | PixelFormat.BigEndian);
+	IPalette sourcePalette = img.palette.convTo(PixelFormat.RGBA8888);
 	palette = reinterpretCast!Color(sourcePalette.raw);
 
 	assert(palette.length == sourcePalette.length, "Palette lenght import mismatch!");

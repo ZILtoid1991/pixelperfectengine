@@ -290,17 +290,3 @@ public struct MappingElement {
 				to!string(paletteSel) ~ "]";
 	}
 }
-/**
- * Graphics attribute extensions for sprites, tiles, etc.
- * Minus values in the `rgb` fields will apply a multiply effect, plus values will apply a screen effect.
- * `a` just controls the alpha channel for the given point.
- * `lX` and `lY` control the normal mapping effect.
- */
-public struct GraphicsAttrExt {
-	byte r;						///Red channel modifier
-	byte g;						///Green channel modifier
-	byte b;						///Blue channel modifier
-	ubyte a;					///Alpha channel modifier
-	short lX;					///X normal modifier
-	short lY;					///Y normal modifier
-}

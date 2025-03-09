@@ -32,17 +32,19 @@ public struct GLShader {
 			count = 1;
 		}
 		int opCmp(const ref RefCountEntry rhs) @safe @nogc nothrow pure const {
-			if (shaderID < rhs.shaderID) return -1;
-			else if (shaderID == rhs.shaderID) return 0;
-			else return 1;
+			return (shaderID > rhs.shaderID) - (shaderID < rhs.shaderID);
+			// if (shaderID < rhs.shaderID) return -1;
+			// else if (shaderID == rhs.shaderID) return 0;
+			// else return 1;
 		}
 		bool opEquals(const ref RefCountEntry rhs) @safe @nogc nothrow pure const {
 			return shaderID == rhs.shaderID;
 		}
 		int opCmp(const uint rhs) @safe @nogc nothrow pure const {
-			if (shaderID < rhs) return -1;
-			else if (shaderID == rhs) return 0;
-			else return 1;
+			return (shaderID > rhs) - (shaderID < rhs);
+			// if (shaderID < rhs) return -1;
+			// else if (shaderID == rhs) return 0;
+			// else return 1;
 		}
 		bool opEquals(const uint rhs) @safe @nogc nothrow pure const {
 			return shaderID == rhs;

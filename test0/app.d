@@ -64,7 +64,13 @@ class TileLayerTest : SystemEventListener, InputListener {
 	int framecounter;
 	this (int mapWidth, int mapHeight, int spriteNum) {
 		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);
-		output.getOpenGLHandle();
+		version (Windows) output.getOpenGLHandleAttribsARB([
+			OpenGLContextAtrb.MajorVersion, 3,
+			OpenGLContextAtrb.MinorVersion, 3,
+			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug | OpenGLContextFlags.ForwardCompatible,
+			0
+		]);
+		else output.getOpenGLHandle();
 		const glStatus = loadOpenGL();
 		if (glStatus < GLSupport.gl11) {
 			writeln("OpenGL not found!");
@@ -121,7 +127,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		// }
 		//s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
 		s.addBitmapSource(dlangMan, 0);
-		s.createSpriteMaterial(0, 0, Box(0, 0, 423, 239));
+		s.createSpriteMaterial(0, 0, Box(0, 0, 31, 31));
 		s.addSprite(0, 65_536, Point(0, 0), 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
 		//tcd.objects[65_536] = ocd.objects[65_536];
@@ -129,7 +135,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 
 		for(int i = 1 ; i < spriteNum ; i++){
 			const int x = uniform(0,320), y = uniform(0,240);
-			s.addSprite(dlangMan, i, x, y, 1);
+			s.addSprite(0, i, Point(x, y), 1);
 			ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
 		}
 		

@@ -8,5 +8,6 @@ uniform sampler2D texture1;
 
 void main() {
     vec4 texSlmp = texture(texture1, texMapping);
+//     fragColor = vec4(1.0, texSlmp.g, texSlmp.b, 1.0);
     fragColor = vec4(texSlmp.r, texSlmp.g, texSlmp.b, 1.0);
 }

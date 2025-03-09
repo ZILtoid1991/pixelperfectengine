@@ -73,10 +73,10 @@ public interface PaletteContainer {
 public class Raster : PaletteContainer {
 	float[] verticles = [
 		// positions        colors            texture coords
-		1.0f, -1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 1.0f, 1.0f,	// bottom right
-		1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 1.0f, 0.0f,	// top right
-		-1.0f, -1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 0.0f, 1.0f,	// bottom left
-		-1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 0.0f, 0.0f,	// top left
+		1.0f, -1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 1.0f, 0.0f,	// bottom right
+		1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 1.0f, 1.0f,	// top right
+		-1.0f, -1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 0.0f, 0.0f,	// bottom left
+		-1.0f, 1.0f, 0.0f,	1.0f, 1.0f, 1.0f, 0.0f, 1.0f,	// top left
 	];
 	uint[] indices = [
 		0, 1, 2,
@@ -159,10 +159,14 @@ public class Raster : PaletteContainer {
 		glGenTextures(1, &gl_Palette);
 		glBindTexture(GL_TEXTURE_2D, gl_Palette);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, palette.ptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 		glGenTextures(1, &gl_PaletteNM);
 		glBindTexture(GL_TEXTURE_2D, gl_PaletteNM);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RG, 256, 256, 0, GL_RG, GL_SHORT, palette.ptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 		rasterWidth=w;
 		rasterHeight=h;
@@ -205,30 +209,30 @@ public class Raster : PaletteContainer {
 		assert(gl_DepthBuffer.length);
 		assert(gl_FrameBuffer.length);
 
-		glUseProgram(gl_Program);
-		glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
-		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
+		// glUseProgram(gl_Program);
+		// glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
+		// //glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  //
 		glGenVertexArrays(1, &gl_VertexArray);
 		glGenBuffers(1, &gl_VertexBuffer);
 		glGenBuffers(1, &gl_VertexIndices);
+  //
+		// glBindVertexArray(gl_VertexArray);
+  //
+		// glBindBuffer(GL_ARRAY_BUFFER, gl_VertexBuffer);
+		// glBufferData(GL_ARRAY_BUFFER, verticles.length * float.sizeof, verticles.ptr, GL_STATIC_DRAW);
+  //
+		// glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_VertexIndices);
+		// glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.length * int.sizeof, indices.ptr, GL_STATIC_DRAW);
+  //
+		// glEnableVertexAttribArray(0);
+		// glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)0);
+		// glEnableVertexAttribArray(1);
+		// glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(3 * float.sizeof));
+		// glEnableVertexAttribArray(2);
+		// glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(6 * float.sizeof));
 
-		glBindVertexArray(gl_VertexArray);
-
-		glBindBuffer(GL_ARRAY_BUFFER, gl_VertexBuffer);
-		glBufferData(GL_ARRAY_BUFFER, verticles.length * float.sizeof, verticles.ptr, GL_STATIC_DRAW);
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_VertexIndices);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.length * int.sizeof, indices.ptr, GL_STATIC_DRAW);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)0);
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(3 * float.sizeof));
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(6 * float.sizeof));
-
-		glBindVertexArray(0);
+		// glBindVertexArray(0);
 
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
 		framesPerSecond = 0.0;
@@ -432,14 +436,14 @@ public class Raster : PaletteContainer {
 		glBindFramebuffer(GL_FRAMEBUFFER, gl_FrameBuffer[updatedBuffer]);
 		glViewport(0, 0, rasterWidth, rasterHeight);
 		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
+		// glEnable(GL_DEPTH_TEST);
 		foreach (Layer layer ; layerMap) {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
 					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);
 		}
 		// oW.gl_makeCurrent();
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		// glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		// if (screenSizeChanged) {
 		// 	glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
 		// 	screenSizeChanged = false;
@@ -447,12 +451,31 @@ public class Raster : PaletteContainer {
 		glDisable(GL_DEPTH_TEST);
 		glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
 		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
-		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
-		// 		cpu_FrameBuffer[displayedBuffer].getPtr);
-
+		glUseProgram(gl_Program);
+		glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
+		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
+		// glGenVertexArrays(1, &gl_VertexArray);
+		// glGenBuffers(1, &gl_VertexBuffer);
+		// glGenBuffers(1, &gl_VertexIndices);
+
+		glBindVertexArray(gl_VertexArray);
+
+		glBindBuffer(GL_ARRAY_BUFFER, gl_VertexBuffer);
+		glBufferData(GL_ARRAY_BUFFER, verticles.length * float.sizeof, verticles.ptr, GL_STATIC_DRAW);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_VertexIndices);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.length * int.sizeof, indices.ptr, GL_STATIC_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(3 * float.sizeof));
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(6 * float.sizeof));
+		// glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
+
 		glUseProgram(gl_Program);
 		glBindVertexArray(gl_VertexArray);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
