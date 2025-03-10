@@ -5,6 +5,7 @@ import std.string;
 import std.conv;
 import std.format;
 import std.random;
+import core.thread;
 
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.layers;
@@ -128,7 +129,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		//s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
 		s.addBitmapSource(dlangMan, 0);
 		s.createSpriteMaterial(0, 0, Box(0, 0, 31, 31));
-		s.addSprite(0, 65_536, Point(0, 0), 1);
+		s.addSprite(0, 65_536, Box(0, 0, 31, 31), 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
 		//tcd.objects[65_536] = ocd.objects[65_536];
 		// s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
@@ -268,8 +269,9 @@ class TileLayerTest : SystemEventListener, InputListener {
 				s.relMoveSprite(65_536,1,0);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
 			}
-			ocd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536).boxOf();
-			onTileCollision(getAllOverlappingTiles(s.getSpriteCoordinate(65_536).boxOf(), t));
+			Quad mainSpritePosition = s.getSpriteCoordinate(65_536);
+			ocd.objects.ptrOf(65_536).position = Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32);
+			onTileCollision(getAllOverlappingTiles(Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32), t));
 			//tcd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
 			ocd.testSingle(65_536);
 			//tcd.testAll();
@@ -301,6 +303,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,0,0,fpsCounter,BitmapAttrib(true, false));
 				framecounter = 0;
 			}
+			// Thread.sleep(msecs(20));
 			//t.relScroll(1,0);
 		}
 		destroy(output);
@@ -416,40 +419,28 @@ class TileLayerTest : SystemEventListener, InputListener {
 				r.addLayer(tt, 0);
 				break;
 			case hashCalc("sprtH-"):
-				if(s.getScaleSpriteHoriz(0) == 16)
-					s.scaleSpriteHoriz(0,-16);
-				else
-					s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) - 16);
+
 				break;
 			case hashCalc("sprtH+"):
-				if(s.getScaleSpriteHoriz(0) == -16)
-					s.scaleSpriteHoriz(0,16);
-				else
-					s.scaleSpriteHoriz(0,s.getScaleSpriteHoriz(0) + 16);
+
 				break;
 			case hashCalc("sprtV-"):
-				if(s.getScaleSpriteVert(0) == 16)
-					s.scaleSpriteVert(0,-16);
-				else
-					s.scaleSpriteVert(0,s.getScaleSpriteVert(0) - 16);
+
 				break;
 			case hashCalc("sprtV+"):
-				if(s.getScaleSpriteVert(0) == -16)
-					s.scaleSpriteVert(0,16);
-				else
-					s.scaleSpriteVert(0,s.getScaleSpriteVert(0) + 16);
+
 				break;
 			case hashCalc("2up"):
-				s.relMoveSprite(0,0,-1);
+				s.relMoveSprite(65_536,0,-1);
 				break;
 			case hashCalc("2down"):
-				s.relMoveSprite(0,0,1);
+				s.relMoveSprite(65_536,0,1);
 				break;
 			case hashCalc("2left"):
-				s.relMoveSprite(0,-1,0);
+				s.relMoveSprite(65_536,-1,0);
 				break;
 			case hashCalc("2right"):
-				s.relMoveSprite(0,1,0);
+				s.relMoveSprite(65_536,1,0);
 				break;
 			case hashCalc("fullscreen"):
 				if (isPressed) {

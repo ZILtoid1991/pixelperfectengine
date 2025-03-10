@@ -8,7 +8,7 @@ public import pixelperfectengine.concrete.dialogs;
 
 public import pixelperfectengine.system.input.interfaces;
 
-public import pixelperfectengine.graphics.layers : ISpriteLayer;
+public import pixelperfectengine.graphics.layers : SpriteLayer;
 
 import collections.linkedlist;
 import pixelperfectengine.system.etc : cmpObjPtr;
@@ -50,7 +50,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	protected StandardCursors cursor;
 	///Reference to the operating system window for resizing, cursors, etc.
 	private OSWindow osWindow;
-	private ISpriteLayer spriteLayer;
+	private SpriteLayer spriteLayer;
 	//private Window windowToMove;
 	protected MouseEventReceptor dragEventSrc;
 	private PopUpElement dragEventDestPopUp;
@@ -64,7 +64,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 *   rH = Raster height
 	 *   sl = The spritelayer, that will display the windows as sprites.
 	 */
-	public this(int sW, int sH, int rW, int rH, ISpriteLayer sl, OSWindow osWindow) {
+	public this(int sW, int sH, int rW, int rH, SpriteLayer sl, OSWindow osWindow) {
 		screenWidth = sW;
 		screenHeight = sH;
 		rasterWidth = rW;
@@ -148,7 +148,10 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 */
 	public void addBackground(ABitmap b) {
 		background = b;
-		spriteLayer.addSprite(background, 65_536, 0, 0);
+		// spriteLayer.addSprite(background, 65_536, 0, 0);
+		spriteLayer.addBitmapSource(background, 65_536);
+		spriteLayer.createSpriteMaterial(65_536, 65_536);
+		spriteLayer.addSprite(65_536, 65_536, Point(0, 0));
 	}
 	/**
 	 * Returns the window priority or -1 if the window can't be found.
@@ -178,10 +181,14 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 */
 	protected void updateSpriteOrder() {
 		spriteLayer.clear();
-		for (int i ; i < windows.length ; i++)
-			spriteLayer.addSprite(windows[i].getOutput, i, windows[i].getPosition.left, windows[i].getPosition.top);
-		if (background) spriteLayer.addSprite(background, 65_536, 0, 0);
-		if (baseWindow) spriteLayer.addSprite(baseWindow.getOutput, 65_535, 0, 0);
+		for (int i ; i < windows.length ; i++) {
+			// spriteLayer.addSprite(windows[i].getOutput, i, windows[i].getPosition.left, windows[i].getPosition.top);
+			spriteLayer.addBitmapSource(windows[i].getOutput, i);
+			spriteLayer.createSpriteMaterial(i, i);
+			spriteLayer.addSprite(i, i, windows[i].getPosition);
+		}
+		if (background) spriteLayer.addSprite(65_536, 65_536, Point(0, 0));
+		if (baseWindow) spriteLayer.addSprite(65_535, 65_535, Point(0, 0));
 	}
 	/**
 	 * Returns the default stylesheet, either one that has been set locally to this handler, or the global one.
@@ -214,14 +221,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	public void initDragEvent(MouseEventReceptor dragEventSrc) @safe nothrow {
 		this.dragEventSrc = dragEventSrc;
 	}
-	/**
-	 * Updates the window's coordinates.
-	 * DUPLICATE FUNCTION OF `refreshWindow`! REMOVE IT BY RELEASE VERSION OF 0.10.0, AND REPLACE IT WITH AN ALIAS!
-	 */
-	public void updateWindowCoord(Window sender) @safe nothrow {
-		const int n = whichWindow(sender);
-		spriteLayer.replaceSprite(sender.getOutput(), n, sender.getPosition());
-	}
+	alias updateWindowCoord = refreshWindow;
 	//implementation of the MouseListener interface starts here
 	/**
 	 * Called on mouse click events.
@@ -303,8 +303,11 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		import pixelperfectengine.graphics.layers.base : RenderingMode;
 		w.addHandler(this);
 		baseWindow = w;
-		spriteLayer.addSprite(w.getOutput, 65_535, w.getPosition.left, w.getPosition.top);
-		spriteLayer.setSpriteRenderingMode(65_535, RenderingMode.Blitter);
+		// spriteLayer.addSprite(w.getOutput, 65_535, w.getPosition.left, w.getPosition.top);
+		spriteLayer.addBitmapSource(w.getOutput, 65_535);
+		spriteLayer.createSpriteMaterial(65_535, 65_535);
+		spriteLayer.addSprite(65_535, 65_535, Point(0, 0));
+		// spriteLayer.setSpriteRenderingMode(65_535, RenderingMode.Blitter);
 		return baseWindow;
 	}
 	
@@ -317,10 +320,15 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 */
 	public void refreshWindow(Window sender) @safe nothrow {
 		if (sender is baseWindow) {
-			spriteLayer.replaceSprite(baseWindow.getOutput, 65_535);
+			// spriteLayer.replaceSprite(baseWindow.getOutput, 65_535);
+			spriteLayer.addBitmapSource(sender.getOutput, 65_535);
+			spriteLayer.createSpriteMaterial(65_535, 65_535);
+			spriteLayer.addSprite(65_535, 65_535, Point(0, 0));
 		} else {
 			const int n = whichWindow(sender);
-			spriteLayer.replaceSprite(windows[n].getOutput, n, windows[n].getPosition);
+			spriteLayer.addBitmapSource(sender.getOutput, n);
+			spriteLayer.createSpriteMaterial(n, n);
+			spriteLayer.addSprite(n, n, sender.getPosition);
 		}
 	}
 	/**
@@ -341,8 +349,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 			posY -= p.getPosition.height;
 		p.move(posX, posY);
 		numOfPopUpElements--;
-		spriteLayer.addSprite(p.getOutput(), numOfPopUpElements, p.getPosition.left, p.getPosition.top);
-
+		spriteLayer.addBitmapSource(p.getOutput, numOfPopUpElements);
+		spriteLayer.createSpriteMaterial(numOfPopUpElements, numOfPopUpElements);
+		spriteLayer.addSprite(numOfPopUpElements, numOfPopUpElements, Point(posX, posY));
 	}
 	/**
 	 * Adds a pop-up element into the environment and moves it to the given location.
@@ -357,7 +366,9 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		p.draw;
 		p.move(x, y);
 		numOfPopUpElements--;
-		spriteLayer.addSprite(p.getOutput,numOfPopUpElements, x, y);
+		spriteLayer.addBitmapSource(p.getOutput, numOfPopUpElements);
+		spriteLayer.createSpriteMaterial(numOfPopUpElements, numOfPopUpElements);
+		spriteLayer.addSprite(numOfPopUpElements, numOfPopUpElements, Point(x, y));
 	}
 	/**
 	 * Removes all pop-up elements from the environment, effectively ending the pop-up session.

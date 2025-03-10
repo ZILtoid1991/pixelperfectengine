@@ -178,6 +178,7 @@ public class MapFormat {
 	 */
 	public ABitmap[int] loadSprites(int layerID, PaletteContainer paletteTarget) @trusted {
 		import pixelperfectengine.system.file;
+		SpriteLayer currSpriteLayer = cast(SpriteLayer)layeroutput[layerID];
 		ABitmap[int] result;
 		Image[string] imageBuffer;	//Resource manager to minimize reloading image files
 		Tag tBase = layerData[layerID];
@@ -186,57 +187,44 @@ public class MapFormat {
 			switch (t0.getFullName.toString) {
 				case "File:SpriteSource":
 					string filename = t0.expectValue!string();
+					int imageID;
+					const int id = t0.expectValue!int();
 					if (imageBuffer.get(filename, null) is null) {
 						imageBuffer[filename] = loadImage(File(resolvePath(filename)));
+						switch (imageBuffer[filename].getBitdepth) {
+						case 1, 2, 4, 8:
+							currSpriteLayer.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(imageBuffer[filename]), imageID,
+									imageBuffer[filename].getBitdepth);
+							break;
+						default:
+							currSpriteLayer.addBitmapSource(loadBitmapFromImage!Bitmap32Bit(imageBuffer[filename]), imageID, 32);
+							break;
+						}
 					}
-					const int id = t0.expectValue!int();
-					/+if ("horizOffset" in t0.attributes && "vertOffset" in t0.attributes && "width" in t0.attributes && 
-							"height" in t0.attributes) {+/
+
 					if (t0.getAttribute!int("horizOffset", -1) != -1 && t0.getAttribute!int("vertOffset") != -1 && 
 							t0.getAttribute!int("width") && t0.getAttribute!int("height")) {
 						const int hOffset = t0.getAttribute!int("horizOffset"), vOffset = t0.getAttribute!int("vertOffset"),
 							w = t0.getAttribute!int("width"), h = t0.getAttribute!int("height");
-						switch (imageBuffer[filename].getBitdepth) {
-							case 2:
-								result[id] = loadBitmapSliceFromImage!Bitmap2Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-								break;
-							case 4:
-								result[id] = loadBitmapSliceFromImage!Bitmap4Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-								break;
-							case 8:
-								result[id] = loadBitmapSliceFromImage!Bitmap8Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-								break;
-							case 16:
-								result[id] = loadBitmapSliceFromImage!Bitmap16Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-								break;
-							default:
-								result[id] = loadBitmapSliceFromImage!Bitmap32Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-								break;
-						}
+						currSpriteLayer.createSpriteMaterial(id, imageID, Box.bySize(hOffset, vOffset, w, h));
 					} else {
-						switch (imageBuffer[filename].getBitdepth) {
-							case 2:
-								result[id] = loadBitmapFromImage!Bitmap2Bit(imageBuffer[filename]);
-								break;
-							case 4:
-								result[id] = loadBitmapFromImage!Bitmap4Bit(imageBuffer[filename]);
-								break;
-							case 8:
-								result[id] = loadBitmapFromImage!Bitmap8Bit(imageBuffer[filename]);
-								break;
-							case 16:
-								result[id] = loadBitmapFromImage!Bitmap16Bit(imageBuffer[filename]);
-								break;
-							default:
-								result[id] = loadBitmapFromImage!Bitmap32Bit(imageBuffer[filename]);
-								break;
-						}
+						currSpriteLayer.createSpriteMaterial(id, imageID);
 					}
 					break;
 				case "File:SpriteSheet":
 					string filename = t0.expectValue!string();
+					int imageID;
 					if (imageBuffer.get(filename, null) is null) {
-						imageBuffer[filename] = loadImage(File(filename));
+						imageBuffer[filename] = loadImage(File(resolvePath(filename)));
+						switch (imageBuffer[filename].getBitdepth) {
+						case 1, 2, 4, 8:
+							currSpriteLayer.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(imageBuffer[filename]), imageID,
+									imageBuffer[filename].getBitdepth);
+							break;
+						default:
+							currSpriteLayer.addBitmapSource(loadBitmapFromImage!Bitmap32Bit(imageBuffer[filename]), imageID, 32);
+							break;
+						}
 					}
 					foreach (Tag t1 ; t0.tags) {
 						if (t1.name == "SheetData") {
@@ -317,8 +305,8 @@ public class MapFormat {
 				foreach (MapObject key0; objList) {
 					if (key0.type == MapObject.MapObjectType.sprite) {
 						SpriteObject so = cast(SpriteObject)key0;
-						sl.addSprite(spr[so.ssID], so.pID, so.x, so.y, so.palSel, so.palShift, so.masterAlpha, so.scaleHoriz, 
-								so.scaleVert, so.rendMode);
+						// sl.addSprite(spr[so.ssID], so.pID, so.x, so.y, so.palSel, so.palShift, so.masterAlpha, so.scaleHoriz,
+						// 		so.scaleVert, so.rendMode);
 						if (ocd !is null && so.flags.toCollision) {
 							Quad spriteCoord = sl.getSpriteCoordinate(so.pID);
 							ocd.objects[so.pID] = CollisionShape(

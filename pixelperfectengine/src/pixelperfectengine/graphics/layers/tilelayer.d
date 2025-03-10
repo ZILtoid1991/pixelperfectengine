@@ -117,7 +117,7 @@ public class TileLayer : Layer, ITileLayer {
 	 *   page = page identifier.
 	 * Returns: Zero on success, or a specific error code.
 	 */
-	public override int addBitmapSource(ABitmap bitmap, int page) {
+	public override int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) {
 		//TODO: Implement
 		return -9;
 	}

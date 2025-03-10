@@ -39,6 +39,9 @@ T[] orderedInsert(T, alias less = "a > b", alias equal = "a == b")(ref T[] arr, 
 	arr.nogc_insertAt(val, 0);
 	return arr;
 }
+void fatal_trusted(const(char)[] errMsg) @trusted @nogc nothrow {
+	nu_fatal(errMsg);
+}
 /**
  * Does a binary searcn on an ordered array. Behavior and/or used functions can be adjusted with `less` and `equal`.
  * Params:
@@ -48,12 +51,14 @@ T[] orderedInsert(T, alias less = "a > b", alias equal = "a == b")(ref T[] arr, 
  * Returns: The value, or T.init if not found.
  */
 T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
-	size_t l, r = haysack.length, m;
-	while (l < r) {
-		m = (l+r)>>1;
-		if (binaryFun!equal(haysack[m], needle)) return haysack[m];
-		else if (binaryFun!less(haysack[m], needle)) r = m;
-		else l = m;
+	if (haysack.length) {
+		size_t l, r = haysack.length, m;
+		while (l < r) {
+			m = (l+r)>>1;
+			if (binaryFun!equal(haysack[m], needle)) return haysack[m];
+			else if (binaryFun!less(haysack[m], needle)) r = m - 1;
+			else l = m + 1;
+		}
 	}
 	return T.init;
 }
@@ -66,14 +71,28 @@ T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q ne
  * Returns: The position of the value, or -1 if not found.
  */
 sizediff_t searchByI(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
-	size_t l, r = haysack.length, m;
-	while (l < r) {
-		m = (l+r)>>1;
-		if (binaryFun!equal(haysack[m], needle)) return m;
-		else if (binaryFun!less(haysack[m], needle)) r = m;
-		else l = m;
+	if (haysack.length) {
+		size_t l, r = haysack.length, m;
+		while (l < r) {
+			m = (l+r)>>1;
+			if (binaryFun!equal(haysack[m], needle)) return m;
+			else if (binaryFun!less(haysack[m], needle)) r = m - 1;
+			else l = m + 1;
+		}
 	}
 	return -1;
+}
+T* searchByRef(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
+	if (haysack.length) {
+		size_t l, r = haysack.length, m;
+		while (l < r) {
+			m = (l+r)>>1;
+			if (binaryFun!equal(haysack[m], needle)) return &haysack[m];
+			else if (binaryFun!less(haysack[m], needle)) r = m - 1;
+			else l = m + 1;
+		}
+	}
+	return null;
 }
 T[] nogc_append(T)(ref T[] arr, T val) @nogc @trusted {
 	return nogc_insertAt(arr, val, arr.length);
@@ -120,7 +139,7 @@ T[] nogc_remove(T)(ref T[] arr, size_t pos) @nogc @trusted {
 	// if (pos + 1 != arr.length) {
 	// 	arr[pos..$-1] = arr[pos+1..$];
 	// }
-	if (pos + 1 != arr.length) arr[pos..$-1] = arr[pos+1..$];
+	if (pos + 1 != arr.length) dirtyCopy(arr[pos+1..$], arr[pos..$-1]); //arr[pos..$-1] = arr[pos+1..$];
 	arr.nogc_resize(arr.length-1);
 	return arr;
 }

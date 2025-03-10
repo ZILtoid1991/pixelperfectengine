@@ -126,10 +126,13 @@ abstract class Layer {
 	 *   pitch = The difference between lines in the amount of bytes. Must also contain any padding bytes, e.g.
 	 * pixels, etc.
 	 *   palette = Pointer to the first element on the palette.
-	 * Note: Due to the nature of how rendering functions work on vector extensions, arrays are not as feasible as
+	 * NOTES:
+	 * - Due to the nature of how rendering functions work on vector extensions, arrays are not as feasible as
 	 * in other places, so that's why pointers are used instead.
+	 * - Kind of deprecated, however is kept for TransformableTileLayer, as it's not too feasible to use the GPU for
+	 * that kind of effects without the use of a compute shader.
 	 */
-	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc ;
+	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc;
 
 	///Amount of virtual overscan, certain effects might rely on this.
 	protected float overscanAm;
@@ -140,7 +143,7 @@ abstract class Layer {
 	 *   page = page identifier.
 	 * Returns: Zero on success, or a specific error code.
 	 */
-	public abstract int addBitmapSource(ABitmap bitmap, int page);
+	public abstract int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) @trusted @nogc nothrow;
 	/**
 	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
 	 * Renders the layer's content to the texture target.

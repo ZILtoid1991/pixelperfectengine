@@ -302,68 +302,11 @@ public interface ISpriteLayer {
 	 *   y = New y position of the sprite.
 	 */
 	public Quad relMoveSprite(int n, int x, int y) @nogc @trusted nothrow;
+	public Quad moveSprite(int n, Box pos, bool hMirror = false, bool vMirror = false) @nogc @trusted nothrow;
+	public Quad moveSprite(int n, Quad pos) @nogc @trusted nothrow;
 	///Gets the coordinate of the sprite.
 	public Quad getSpriteCoordinate(int n) @nogc @trusted nothrow;
-	/** 
-	 * Creates a sprite from a bitmap with the given data, then places it to the display list. (New architecture)
-	 * Params:
-	 *   sprt = The bitmap to be used as the sprite.
-	 *   n = Priority ID of the sprite. Both identifies the sprite and decides it's display priority. Larger numbers will be drawn first, 
-	 * and thus will appear behind of smaller numbers, which also include negatives.
-	 *   x = X position of the sprite (top-left corner).
-	 *   y = Y position of the sprite (top-left corner).
-	 *   paletteSel = Selects a given palette.
-	 *   paletteSh = Determines how many bits are being used, and thus the palette size for selection.
-	 *   alpha = The transparency of the sprite.
-	 *   scaleHoriz = Horizontal scaling of the sprite. 1024 is the base value, anything less will stretch, greater will shrink the sprite.
-	 *   scaleVert = Ditto for vertical.
-	 *   renderMode = Determines the rendering mode of the sprite. By default, it's determined by the layer itself. Any of the default 
-	 * other methods can be selected here, or a specially written rendering function can be specified with a different function.
-	 * Returns: The current area of the sprite.
-	 */
-	public Box addSprite(ABitmap sprt, int n, int x, int y, ushort paletteSel = 0, ubyte paletteSh = 0, 
-			ubyte alpha = ubyte.max, int scaleHoriz = 1024, int scaleVert = 1024, RenderingMode renderMode = RenderingMode.init) 
-			@trusted nothrow;
-	/+
-	/** 
-	 * Places a new sprite onto the layer with the given parameters.
-	 * Params:
-	 *   s = The bitmap to be displayed as the sprite.
-	 *   n = Priority ID. Lower number (including negatives) get to drawn last, thus appearing on top.
-	 *   c = The box that sets the position of the sprite.
-	 *   paletteSel = The ID of the selected palette.
-	 *   scaleHoriz = Horizontal scaling.
-	 *   scaleVert = Vertical scaling.
-	 */
-	public void addSprite(ABitmap s, int n, Box c, ushort paletteSel = 0, int scaleHoriz = 1024, 
-			int scaleVert = 1024) @safe nothrow;
-	///Adds a sprite to the layer.
-	public void addSprite(ABitmap s, int n, int x, int y, ushort paletteSel = 0, int scaleHoriz = 1024, 
-			int scaleVert = 1024) @safe nothrow;+/
-	///Sets the rendering function for the sprite (defaults to the layer's rendering function)
-	public RenderFunc setSpriteRenderingMode(int n, RenderingMode mode) @nogc @trusted pure nothrow;
-	///Replaces the sprite. If the new sprite has a different dimension, the old sprite's upper-left corner will be used.
-	public void replaceSprite(ABitmap s, int n) @trusted nothrow;
-	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(ABitmap s, int n, int x, int y) @trusted nothrow;
-	///Replaces the sprite and moves to the given position.
-	public void replaceSprite(ABitmap s, int n, Box c) @trusted nothrow;
-	///Returns the displayed portion of the sprite.
-	public @nogc Box getSlice(int n) @trusted nothrow;
-	///Writes the displayed portion of the sprite.
-	///Returns the new slice, if invalid (greater than the bitmap, etc.) returns the old one.
-	public Box setSlice(int n, Box slice) @trusted nothrow;
-	///Returns the selected paletteID of the sprite.
-	public @nogc ushort getPaletteID(int n) @trusted nothrow;
-	///Sets the paletteID of the sprite. Returns the new ID, which is truncated to the possible values with a simple binary and operation
-	///Palette must exist in the parent Raster, otherwise AccessError might happen
-	public @nogc ushort setPaletteID(int n, ushort paletteID) @trusted nothrow;
-	///Scales bitmap horizontally
-	public int scaleSpriteHoriz(int n, int hScl) @trusted nothrow;
-	///Scales bitmap vertically
-	public int scaleSpriteVert(int n, int vScl) @trusted nothrow;
-	///Gets the sprite's current horizontal scale value
-	public int getScaleSpriteHoriz(int n) @nogc @trusted nothrow;
-	///Gets the sprite's current vertical scale value
-	public int getScaleSpriteVert(int n) @nogc @trusted nothrow;
+	public void setSpriteShader(int n, GLShader shader) @nogc @trusted nothrow;
+
+
 }

@@ -141,7 +141,7 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	 *   page = page identifier.
 	 * Returns: Zero on success, or a specific error code.
 	 */
-	public override int addBitmapSource(ABitmap bitmap, int page) {
+	public override int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) {
 		//TODO: Implement
 		return -9;
 	}
