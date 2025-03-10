@@ -95,9 +95,11 @@ T[] nogc_insertAt(T)(ref T[] arr, T val, size_t pos) @nogc @trusted {
 	arr[pos] = val;
 	return arr;
 }
+///Sets all of `dest` to null, useful for certain refcounted types.
 package void setToNull(T)(T[] dest) @nogc @system nothrow {
 	nu_memset(dest.ptr, 0, dest.length * T.sizeof);
 }
+///Does a memory direct memory copy while also circumventing copy constructors.
 package void dirtyCopy(T)(T[] src, T[] dest) @nogc @system nothrow {
 	assert(src.length == dest.length);
 	nu_memcpy(dest.ptr, src.ptr, src.length * T.sizeof);
@@ -150,6 +152,7 @@ T[] nogc_resize(T)(ref T[] arr, size_t length) @nogc @trusted {
 T[] nogc_newArray(T)(size_t length) @nogc @trusted {
 	return (cast(T*)nu_aligned_alloc(T.sizeof * length, T.alignof))[0..length];
 }
+/// Initializes a new array with the supplied data.
 T[] nogc_initNewArray(T)(size_t length, T initData = T.init) @nogc @trusted {
 	T[] result = nogc_newArray!T(length);
 	for (size_t i ; i < length ; i++) {
@@ -157,7 +160,7 @@ T[] nogc_initNewArray(T)(size_t length, T initData = T.init) @nogc @trusted {
 	}
 	return result;
 }
-/// Frees the array then sets it to null
+/// Frees the array then sets it to null.
 T[] nogc_free(T)(ref T[] arr) @nogc @trusted {
 	if (arr.length) {
 		static if (!isObjectiveC!T && hasElaborateDestructor!T && !isHeapAllocated!T) {
@@ -169,4 +172,23 @@ T[] nogc_free(T)(ref T[] arr) @nogc @trusted {
 	arr = null;
 	return arr;
 }
-
+/// Sets the growth strategy for the dynamic array.
+enum LTrimStrategy {
+	None,		/// Left hand trim is disabled, front deletion will result in copy.
+	UseForAny,	/// Left hand trim can be used for any growth.
+	Reserve,	/// Reserve left hand trim for the future, keep on growth.
+	KeepUntilGrowth,/// Left hand trim kept until growth, then it's discarded if not used.
+}
+/**
+ * Implements a non-garbage collected dynamic array with automatic growth.
+ * `isOAU` sets the content of the array to ordered and unique, which enables binary 
+ * search among others.
+ * `growthStrategy` sets the growth function of the array.
+ * `lts` sets the left hand trim strategy of the array, see enumerator `LTrimStrategy` 
+ * for more info
+ */
+public struct DynArray(T, bool isOAU = false, alias growthStrategy = "a += a;", LTrimStrategy lts = LTrimStrategy.None) {
+	package T[] backend;	/// The underlying memory slice and its current capadity
+	package size_t lTrim; /// Left hand trim, used when it's easier to trim the array at the left side.
+	package size_t rTrim; /// Right hand trim, used when it's easier to trim the array at the right side.
+}
