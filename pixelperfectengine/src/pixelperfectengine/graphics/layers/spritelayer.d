@@ -28,69 +28,35 @@ import numem;
  * General-purpose sprite controller and renderer.
  */
 public class SpriteLayer : Layer, ISpriteLayer {
-
-
-
-
-
-	protected GLShader defaultShader;
-	protected TextureEntry[] gl_materials;
-	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
-	protected Material[] materialList;
-	protected DisplayListItem_Sprt[] displayList_sprt;
-	protected DisplayListItem_GL gl_RenderOut;
-	protected PolygonIndices[2] gl_PlIndices;// = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
-	//size_t[8] prevSize;
-	///Default ctor DEPRECATED since OpenGL move
-	public this(RenderingMode renderMode = RenderingMode.AlphaBlend) nothrow @safe {
-		setRenderingMode(renderMode);
-	}
-	public this(GLShader defaultShader) @trusted @nogc nothrow {
-		this.defaultShader = defaultShader;
-		glGenVertexArrays(1, &gl_vertexArray);
-		glGenBuffers(1, &gl_vertexBuffer);
-		glGenBuffers(1, &gl_vertexIndices);
-		gl_PlIndices = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
-	}
-
-	~this() {
-		import bindbc.opengl;
-		for (size_t i ; i < gl_materials.length ; i++) {
-			glDeleteTextures(1, &gl_materials[i].glTextureID);
-		}
-		gl_materials.nogc_free();
-		materialList.nogc_free();
-		displayList_sprt.nogc_free();
-	}
-
-
+	/**
+	 * Defines a singular sprite material for the current layer instance to be used.
+	 */
 	protected struct Material {
-		int materialID;
-		uint pageID;
-		ushort width;
-		ushort height;
-		float left;
-		float top;
-		float right;
-		float bottom;
+		int materialID;	/// The material ID, which is also used for ordering.
+		uint pageID;	/// Identifies which texture is being used for the material.
+		ushort width;	/// Defines the sprite's width
+		ushort height;	/// Defines the sprite's height
+		float left;		/// Defines the left-edge of the sprite on the texture
+		float top;		/// Defines the top-edge of the sprite on the texture
+		float right;	/// Defines the right-edge of the sprite on the texture
+		float bottom;	/// Defines the bottom-edge of the sprite on the texture
+		/// Used for sorting and accessing
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			return (materialID > rhs) - (materialID < rhs);
-			// if (materialID > rhs) return -1;
-			// else if (materialID == rhs) return 0;
-			// else return 1;
 		}
+		/// Used for sorting and accessing
 		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
 			return materialID == rhs;
 		}
+		/// Used for sorting and accessing
 		int opCmp(const ref Material rhs) @nogc @safe pure nothrow const {
 			return (materialID > rhs.materialID) - (materialID < rhs.materialID);
-			// if (materialID > rhs.materialID) return -1;
-			// else if (materialID == rhs.materialID) return 0;
-			// else return 1;
 		}
+		/// Used for sorting and accessing
 		bool opEquals(const ref Material rhs) @nogc @safe pure nothrow const {
 			return materialID == rhs.materialID;
 		}
+		/// Used to shut up DLangServer
 		size_t toHash() @nogc @safe pure nothrow const {
 			return materialID;
 		}
@@ -122,12 +88,6 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		size_t toHash() @nogc @safe pure nothrow const {
 			return id;
 		}
-	}
-	protected struct DisplayListItem_GL {
-		Vertex		ul;
-		Vertex		ur;
-		Vertex		ll;
-		Vertex		lr;
 	}
 	protected @PPECFG_Memfix struct DisplayListItem_Sprt {
 		int spriteID;
@@ -166,18 +126,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		}
 		int opCmp(int rhs) @nogc @safe pure nothrow const {
 			return (spriteID > rhs) - (spriteID < rhs);
-			// if (spriteID < rhs) return -1;
-			// else if (spriteID == rhs) return 0;
-			// else return 1;
 		}
 		bool opEquals(int rhs) @nogc @safe pure nothrow const {
 			return spriteID == rhs;
 		}
 		int opCmp(const ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
 			return (spriteID > rhs.spriteID) - (spriteID < rhs.spriteID);
-			// if (spriteID < rhs.spriteID) return -1;
-			// else if (spriteID == rhs.spriteID) return 0;
-			// else return 1;
 		}
 		bool opEquals(const ref DisplayListItem_Sprt rhs) @nogc @safe pure nothrow const {
 			return spriteID == rhs.spriteID;
@@ -186,6 +140,56 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			return spriteID;
 		}
 	}
+
+	/// The default shader to be used on sprites with color lookup.
+	protected GLShader defaultShader;
+	/// The default shader to be used on sprites without color lookup.
+	protected GLShader defaultShader32;
+	/// Contains all textures used for this layer.
+	protected TextureEntry[] gl_materials;
+	/// Used for drawing the polygons to the screen.
+	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
+	/// Contains all material data associated with the layer.
+	/// See struct `Material` for more information.
+	protected Material[] materialList;
+	/// Contains the displayed sprites in order of display.
+	/// See struct `DisplayListItem_Sprt` for more information.
+	protected DisplayListItem_Sprt[] displayList_sprt;
+	/// Contains the data needed to render the currently displayed sprite.
+	protected DisplayListItem_GL gl_RenderOut;
+	/// Contains the poligon indices for rendering, likely to be kept as a constant
+	protected PolygonIndices[2] gl_PlIndices;// = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
+	//size_t[8] prevSize;
+	
+	public this(GLShader defaultShader, GLShader defaultShader32) @trusted @nogc nothrow {
+		this.defaultShader = defaultShader;
+		this.defaultShader32 = defaultShader32;
+		glGenVertexArrays(1, &gl_vertexArray);
+		glGenBuffers(1, &gl_vertexBuffer);
+		glGenBuffers(1, &gl_vertexIndices);
+		gl_PlIndices = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
+	}
+	/// Manually finalizes any non-static data arrays.
+	~this() {
+		import bindbc.opengl;
+		for (size_t i ; i < gl_materials.length ; i++) {
+			glDeleteTextures(1, &gl_materials[i].glTextureID);
+		}
+		gl_materials.nogc_free();
+		materialList.nogc_free();
+		displayList_sprt.nogc_free();
+	}
+	
+	
+	
+	
+	protected struct DisplayListItem_GL {
+		Vertex		ul;
+		Vertex		ur;
+		Vertex		ll;
+		Vertex		lr;
+	}
+	
 
 	/**
 	 * Creates a sprite material for this layer.
