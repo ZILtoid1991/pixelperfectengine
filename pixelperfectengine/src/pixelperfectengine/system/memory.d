@@ -82,6 +82,14 @@ sizediff_t searchByI(T, Q, alias less = "a > b", alias equal = "a == b")(T[] hay
 	}
 	return -1;
 }
+/**
+ * Does a binary searcn on an ordered array. Behavior and/or used functions can be adjusted with `less` and `equal`.
+ * Params:
+ *   haysack = The array on which the search is done. Must be sorted before the search.
+ *   needle = The value to be found, can be the exact same as the array's type, or a type that is compatible with the
+ *  specified functions
+ * Returns: The pointer to the value, or null otherwise.
+ */
 T* searchByRef(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
 	if (haysack.length) {
 		size_t l, r = haysack.length, m;
@@ -123,6 +131,7 @@ package void dirtyCopy(T)(T[] src, T[] dest) @nogc @system nothrow {
 	assert(src.length == dest.length);
 	nu_memcpy(dest.ptr, src.ptr, src.length * T.sizeof);
 }
+/// Shifts elements by the given amount.
 package void shiftElements(T)(ref T[] arr, sizediff_t amount, size_t position) @nogc @system nothrow {
 	if (amount > 0) dirtyCopy(arr[position..$-amount], arr[position+amount..$]);
 	else if (amount < 0) dirtyCopy(arr[position-amount..$], arr[position..$+amount]);
@@ -200,14 +209,19 @@ enum LTrimStrategy {
 }
 /**
  * Implements a non-garbage collected dynamic array with automatic growth.
- * `isOAU` sets the content of the array to ordered and unique, which enables binary 
- * search among others.
  * `growthStrategy` sets the growth function of the array.
  * `lts` sets the left hand trim strategy of the array, see enumerator `LTrimStrategy` 
  * for more info
  */
-public struct DynArray(T, bool isOAU = false, alias growthStrategy = "a += a;", LTrimStrategy lts = LTrimStrategy.None) {
+public struct DynArray(T, alias growthStrategy = "a += a;", LTrimStrategy lts = LTrimStrategy.None) {
 	package T[] backend;	/// The underlying memory slice and its current capadity
 	package size_t lTrim; /// Left hand trim, used when it's easier to trim the array at the left side.
 	package size_t rTrim; /// Right hand trim, used when it's easier to trim the array at the right side.
+	size_t capacity() @nogc @safe pure nothrow const {
+		return backend.length;
+	}
+	size_t length() @nogc @safe pure nothrow const {
+		return backend.length - lTrim - rTrim;
+	}
+	alias opDollar = length;
 }
