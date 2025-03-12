@@ -178,6 +178,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		gl_materials.nogc_free();
 		materialList.nogc_free();
 		displayList_sprt.nogc_free();
+		glDeleteBuffers(1, &gl_vertexIndices);
+		glDeleteBuffers(1, &gl_vertexBuffer);
+		glDeleteVertexArrays(1, &gl_vertexArray);
 	}
 	
 	
@@ -226,7 +229,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 *   n = Priority ID of the sprite.
 	 *   position = Determines where the sprite should be drawn on the layer.
 	 *   paletteSel = Palette selector for indexed bitmaps.
-	 *   paletteSh = Palette shift amount in bits.
+	 *   paletteSh = Palette shift amount in bits. Please note that it may affect
 	 *   alpha = Alpha channel for the whole of the sprite.
 	 *   shaderID = Shader program identifier, zero for default.
 	 */
@@ -234,11 +237,20 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow {
 		import numem : nu_fatal;
-		if (shaderID == 0) shaderID = defaultShader;
 		GraphicsAttrExt gae = GraphicsAttrExt(128,128,128,alpha,0,0);
 		if (!paletteSh) {
-			paletteSh = 8;
-			//paletteSh = gl_materials.searchBy(materialList.searchBy(sprt).pageID).paletteSh;
+			const pageID = materialList.searchBy(sprt).pageID;
+			foreach (TextureEntry te ; gl_materials) {
+				if (te.glTextureID == pageID) {
+					paletteSh = te.paletteSh;
+					break;
+				}
+			}
+			if (!paletteSh) paletteSh = 8;
+		}
+		if (shaderID == 0) {
+			if (paletteSh == 32) shaderID = defaultShader32;
+			else shaderID = defaultShader;
 		}
 		try {
 			displayList_sprt.orderedInsert(DisplayListItem_Sprt(n, sprt, position, [0.0, 0.0, 0.0, 0.0], paletteSel, paletteSh,
@@ -369,7 +381,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			glActiveTexture(GL_TEXTURE2);
 			glBindTexture(GL_TEXTURE_2D, palNM);
 		}
-		foreach (ref DisplayListItem_Sprt sprt ; displayList_sprt) {	//Iterate over all sprites within the displaylist
+		foreach_reverse (ref DisplayListItem_Sprt sprt ; displayList_sprt) {	//Iterate over all sprites within the displaylist
 			if (displayAreaWS.isBetween(sprt.position.topLeft) || displayAreaWS.isBetween(sprt.position.topRight) ||
 					displayAreaWS.isBetween(sprt.position.bottomLeft) || displayAreaWS.isBetween(sprt.position.bottomRight)) {//Check whether the sprite is on the display area
 					//get sprite material

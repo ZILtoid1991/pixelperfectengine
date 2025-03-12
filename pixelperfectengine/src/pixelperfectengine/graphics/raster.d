@@ -188,7 +188,7 @@ public class Raster : PaletteContainer {
 
 			glGenRenderbuffers(1, &depthBuffer);
 			glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH32F_STENCIL8, w, h);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
 			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
 
 			// assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE);
@@ -209,30 +209,9 @@ public class Raster : PaletteContainer {
 		assert(gl_DepthBuffer.length);
 		assert(gl_FrameBuffer.length);
 
-		// glUseProgram(gl_Program);
-		// glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
-		// //glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  //
 		glGenVertexArrays(1, &gl_VertexArray);
 		glGenBuffers(1, &gl_VertexBuffer);
 		glGenBuffers(1, &gl_VertexIndices);
-  //
-		// glBindVertexArray(gl_VertexArray);
-  //
-		// glBindBuffer(GL_ARRAY_BUFFER, gl_VertexBuffer);
-		// glBufferData(GL_ARRAY_BUFFER, verticles.length * float.sizeof, verticles.ptr, GL_STATIC_DRAW);
-  //
-		// glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_VertexIndices);
-		// glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.length * int.sizeof, indices.ptr, GL_STATIC_DRAW);
-  //
-		// glEnableVertexAttribArray(0);
-		// glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)0);
-		// glEnableVertexAttribArray(1);
-		// glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(3 * float.sizeof));
-		// glEnableVertexAttribArray(2);
-		// glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(6 * float.sizeof));
-
-		// glBindVertexArray(0);
 
 		frameTime = MonoTimeImpl!(ClockType.normal).currTime();
 		framesPerSecond = 0.0;
@@ -435,7 +414,7 @@ public class Raster : PaletteContainer {
 		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
 		glBindFramebuffer(GL_FRAMEBUFFER, gl_FrameBuffer[updatedBuffer]);
 		glViewport(0, 0, rasterWidth, rasterHeight);
-		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		// glEnable(GL_DEPTH_TEST);
 		foreach (Layer layer ; layerMap) {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
@@ -443,14 +422,14 @@ public class Raster : PaletteContainer {
 		}
 		// oW.gl_makeCurrent();
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		// glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		// if (screenSizeChanged) {
 		// 	glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
 		// 	screenSizeChanged = false;
 		// }
 		glDisable(GL_DEPTH_TEST);
 		glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
-		// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(gl_Program);
 		glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
 		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);

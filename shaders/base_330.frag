@@ -21,9 +21,7 @@ vec4 clut(vec2 position) {
 }
 
 void main() {
-//     fragColor = clut(texMapping);
     vec4 color = clut(texMapping);
     if (color.a <= 0.01) discard;
     fragColor = color;
-//     fragColor = vec4(fragColor.r, 1.0, fragColor.b, 1.0);
 }

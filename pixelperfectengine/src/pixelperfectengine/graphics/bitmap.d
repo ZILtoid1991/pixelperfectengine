@@ -385,6 +385,9 @@ public class Bitmap(string S,T) : ABitmap {
 	@nogc public T* getPtr() pure @trusted nothrow {
 		return pixels.ptr;
 	}
+	public T[] getRawdata() @mogc @safe pure nothrow {
+		return pixels;
+	}
 	override string wordLengthByString() @safe @nogc pure nothrow @property const {
 		return S;
 	}

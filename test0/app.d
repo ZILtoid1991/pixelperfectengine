@@ -92,7 +92,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
 		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(RenderingMode.AlphaBlend);
 		s = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
-				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)));
+				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
 		// r.addLayer(tt, 1);
 		// r.addLayer(t, 0);
 		r.addLayer(s, 2);
@@ -460,20 +461,20 @@ class TileLayerTest : SystemEventListener, InputListener {
 	 *   height = active area height.
 	 */
 	public void windowResize(OSWindow window, int width, int height) {
-		// immutable double origAspectRatio = 424.0 / 240.0;//Calculate original aspect ratio
-		// double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio
-		// if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
-		// 	const double visibleWidth = height * origAspectRatio;
-		// 	const double sideOffset = (width - visibleWidth) / 2.0;
-		// 	r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
-		// 	// glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
-		// } else {	//Display area is now taller, padding needs to be added on the top and bottom
-		// 	const double visibleHeight = width / origAspectRatio;
-		// 	const double topOffset = (height - visibleHeight) / 2.0;
-		// 	r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
-		// 	// glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
-		// }
-		r.readjustViewport(width, height, 0, 0);
+		immutable double origAspectRatio = 424.0 / 240.0;//Calculate original aspect ratio
+		double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio
+		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
+			const double visibleWidth = height * origAspectRatio;
+			const double sideOffset = (width - visibleWidth) / 2.0;
+			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
+			// glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+		} else {	//Display area is now taller, padding needs to be added on the top and bottom
+			const double visibleHeight = width / origAspectRatio;
+			const double topOffset = (height - visibleHeight) / 2.0;
+			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
+			// glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+		}
+		// r.readjustViewport(width, height, 0, 0);
 	}
 	/**
 	 * Called when an axis is being operated.

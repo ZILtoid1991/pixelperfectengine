@@ -8,14 +8,17 @@ module pixelperfectengine.graphics.layers.tilelayer;
 
 public import pixelperfectengine.graphics.layers.base;
 public import pixelperfectengine.graphics.shaders;
+import pixelperfectengine.system.memory;
 import collections.treemap;
+import bindbc.opengl;
+import std.math;
 
 public class TileLayer : Layer, ITileLayer {
 	/**
 	 * Implements a single tile to be displayed.
-	 * Is ordered in a BinarySearchTree for fast lookup.
+	 * Is ordered in a BinarySearchTree for fast lookup. DEPRECATED!
 	 */
-	protected struct DisplayListItem {
+	protected struct DisplayListItem {//DEPRECATED!
 		ABitmap tile;			///reference counting only
 		void* pixelDataPtr;		///points to the pixeldata
 		//Color* palettePtr;		///points to the palette if present
@@ -70,6 +73,7 @@ public class TileLayer : Layer, ITileLayer {
 			return result;
 		}
 	}
+
 	protected int			tileX;	///Tile width
 	protected int			tileY;	///Tile height
 	protected int			mX;		///Map width
@@ -77,12 +81,26 @@ public class TileLayer : Layer, ITileLayer {
 	protected size_t		totalX;	///Total width of the tilelayer in pixels
 	protected size_t		totalY;	///Total height of the tilelayer in pixels
 	protected MappingElement[] mapping;///Contains the mapping data
+	protected GraphicsAttrExt[] mapping_grExt;
 	protected GLShader		shader;	///The main shader program used on the layer
+	protected DynArray!TileVertex gl_displayList;
+	protected DynArray!PolygonIndices gl_polygonIndices;
+	protected DynArray!ubyte gl_textureData;
+	protected int			gl_textureWidth;
+	protected int			gl_textureHeight;
+	protected int			gl_texturePages;
+	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
+	protected GLuint		gl_texture;
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
-	protected Color[] 		src;		///Local buffer
-	alias DisplayList = TreeMap!(wchar, DisplayListItem, true);
-	protected DisplayList displayList;	///displaylist using a BST to allow skipping elements
+	protected Color[] 		src;		///Local buffer DEPRECATED!
+	protected float			x0;
+	protected float			y0;
+	protected float			scaleH;
+	protected float			scaleV;
+	protected float			theta = 0.0;
+	alias DisplayList = TreeMap!(wchar, DisplayListItem, true);//DEPRECATED!
+	protected DisplayList displayList;	///displaylist using a BST to allow skipping elements DEPRECATED!
 	/**
 	 * Enables the TileLayer to access other parts of the palette if needed.
 	 * Does not effect 16 bit bitmaps, but effects all 4 and 8 bit bitmap
@@ -97,7 +115,7 @@ public class TileLayer : Layer, ITileLayer {
 	public ubyte		masterVal;		///Sets the master alpha value for the layer
 	///Emulates horizontal blanking interrupt effects, like per-line scrolling.
 	///line no -1 indicates that no lines have been drawn yet.
-	public @nogc void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;
+	public @nogc void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;//DEPRECATED!
 	///Constructor. tX , tY : Set the size of the tiles on the layer. DEPRECATED
 	this(int tX, int tY, RenderingMode renderMode = RenderingMode.AlphaBlend){
 		tileX=tX;
@@ -105,10 +123,25 @@ public class TileLayer : Layer, ITileLayer {
 		setRenderingMode(renderMode);
 		src.length = tileX;
 	}
-	this (int tX, int tY, GLShader shader = GLShader(0)) @nogc nothrow {
+	this (int tX, int tY, GLShader shader = GLShader(0)) @nogc @trusted nothrow {
 		tileX=tX;
 		tileY=tY;
 		this.shader = shader;
+		glGenVertexArrays(1, &gl_vertexArray);
+		glGenBuffers(1, &gl_vertexBuffer);
+		glGenBuffers(1, &gl_vertexIndices);
+		glGenTextures(1, gl_texture);
+		glBindTexture(GL_TEXTURE_3D, textureID);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP);
+	}
+	~this() @nogc @trusted nothrow {
+		glDeleteBuffers(1, &gl_vertexIndices);
+		glDeleteBuffers(1, &gl_vertexBuffer);
+		glDeleteVertexArrays(1, &gl_vertexArray);
 	}
 	/**
 	 * Adds a bitmap source to the layer.
@@ -117,9 +150,24 @@ public class TileLayer : Layer, ITileLayer {
 	 *   page = page identifier.
 	 * Returns: Zero on success, or a specific error code.
 	 */
-	public override int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) {
-		//TODO: Implement
-		return -9;
+	public override int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) @trusted @nogc nothrow {
+		try {
+			if (gl_textureData.length == 0) {
+				gl_textureWidth = bitmap.width();
+				gl_textureHeight = bitmap.height();
+			} else if (gl_textureWidth != bitmap.width() || gl_textureHeight != bitmap.height()) {
+				return TextureUploadError.TextureSizeMismatch;
+			}
+			if (is(bitmap == Bitmap8Bit)) {
+				gl_textureData ~= (cast(Bitmap8Bit)bitmap).getRawdata();
+			}
+			gl_texturePages++;
+		} catch (NuException e) {
+
+		} catch (Exception e) {
+
+		}
+		return 0;
 	}
 	/**
 	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
@@ -155,7 +203,7 @@ public class TileLayer : Layer, ITileLayer {
 	 * Note: This visual effect rely on overscan amount set correctly.
 	 */
 	public void rotate(ushort theta) {
-		//TODO: Implement
+		this.theta = PI * (theta / 65_535.0) * 2.0;
 	}
 	/**
 	 * Sets the horizontal scaling amount.
@@ -165,7 +213,7 @@ public class TileLayer : Layer, ITileLayer {
 	 * the layer.
 	 */
 	public void scaleHoriz(short amount) {
-		//TODO: Implement
+		scaleH = cast(float)0x10_00 / amount;
 	}
 	/**
 	 * Sets the vertical scaling amount.
@@ -175,7 +223,7 @@ public class TileLayer : Layer, ITileLayer {
 	 * the layer.
 	 */
 	public void scaleVert(short amount) {
-		//TODO: Implement
+		scaleV = cast(float)0x10_00 / amount;
 	}
 	/**
 	 * Sets the transformation midpoint relative to the middle of the screen.

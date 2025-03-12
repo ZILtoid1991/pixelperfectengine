@@ -205,7 +205,7 @@ enum LTrimStrategy {
 	None,		/// Left hand trim is disabled, front deletion will result in copy.
 	UseForAny,	/// Left hand trim can be used for any growth.
 	Reserve,	/// Reserve left hand trim for the future, keep on growth.
-	KeepUntilGrowth,/// Left hand trim kept until growth, then it's discarded if not used.
+	KeepUntilGrowth,/// Left hand trim kept until growth on right hand, then it's discarded if not used.
 }
 /**
  * Implements a non-garbage collected dynamic array with automatic growth.
@@ -213,15 +213,143 @@ enum LTrimStrategy {
  * `lts` sets the left hand trim strategy of the array, see enumerator `LTrimStrategy` 
  * for more info
  */
-public struct DynArray(T, alias growthStrategy = "a += a;", LTrimStrategy lts = LTrimStrategy.None) {
+public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts = LTrimStrategy.None) {
 	package T[] backend;	/// The underlying memory slice and its current capadity
 	package size_t lTrim; /// Left hand trim, used when it's easier to trim the array at the left side.
 	package size_t rTrim; /// Right hand trim, used when it's easier to trim the array at the right side.
+	this(T[] data) @nogc @safe nothrow {
+		backend = data;
+	}
+	this(size_t amount) @nogc @safe {
+		backend = nogc_newArray(amount);
+	}
+	this(size_t amount, T initVal) @nogc @safe {
+		backend = nogc_initNewArray(amount, initVal);
+	}
+	void free() @nogc @safe {
+		backend.nogc_free();
+	}
 	size_t capacity() @nogc @safe pure nothrow const {
 		return backend.length;
 	}
 	size_t length() @nogc @safe pure nothrow const {
 		return backend.length - lTrim - rTrim;
 	}
+	size_t remain() @nogc @safe pure nothrow const {
+		static if (lts == LTrimStrategy.KeepUntilGrowth || lts == LTrimStrategy.Reserve) return capacity - length - lTrim;
+		else return capacity - length;
+	}
+	size_t reserve(size_t amount) @nogc @safe {
+		amount = amount > length ? amount : length;
+		const oldLength = length;
+		backend.nogc_resize(amount);
+		rTrim = capacity - oldLength - lTrim;
+		return capacity;
+	}
+	package void grow() @nogc @trusted {
+		size_t a = backend.length;
+		const b = a;
+		mixin(growthStrategy);
+		static if (lts == LTrimStrategy.KeepUntilGrowth) {
+			T[] newbackend = nogc_newArray(a);
+			dirtyCopy(backend[lTrim..$], newbackend[0..backend.length-lTrim]);
+			backend.nogc_free();
+			backend = newbackend;
+		} else {
+			backend.nogc_resize(a);
+		}
+		rTrim = a - b;
+	}
 	alias opDollar = length;
+	ref T opIndex(size_t index) @nogc @safe pure nothrow {
+		assert(index < length);
+		return backend[lTrim + index];
+	}
+	ref T[] opSlice(size_t i, size_t j) @nogc @safe pure nothrow {
+		assert(i <= j);
+		assert(i < length);
+		assert(j <= length);
+		return backend[lTrim+i..lTrim+j];
+	}
+	T remove(size_t index) @nogc @safe {
+		assert(index < length);
+		T result = backend[lTrim + index];
+		static if (lts == LTrimStrategy.None) {
+			rTrim++;
+			static if (hasUDA(T, PPECFG_Memfix)) {
+				backend.shiftElements(-1, index);
+				setToNull(backend[length - 1..length]);
+			} else {
+				backend[index..length - 1] = backend[index + 1..length];
+			}
+		} else {
+			const midpoint = length>>1;
+			if (index < midpoint) {
+				lTrim++;
+				static if (hasUDA(T, PPECFG_Memfix)) {
+					dirtyCopy(backend[lTrim - 1..lTrim + index - 1], backend[lTrim..lTrim + index]);
+					setToNull(backend[lTrim - 1..lTrim]);
+				} else {
+					backend[lTrim..lTrim + index] = backend[lTrim - 1..lTrim + index - 1];
+				}
+			} else {
+				rTrim++;
+				static if (hasUDA(T, PPECFG_Memfix)) {
+					backend.shiftElements(-1, lTrim + index);
+					setToNull(backend[lTrim + index..lTrim + index + 1]);
+				} else {
+					backend[lTrim + index..lTrim + length - 1] = backend[lTrim + index + 1..lTrim + length];
+				}
+			}
+		}
+		return result;
+	}
+	ref T insert(size_t index, T elem) @nogc @safe {
+		assert(index <= length);
+		if (!remain()) grow();
+		static if (lts == LTrimStrategy.None) {
+			static if (hasUDA(T, PPECFG_Memfix)) {
+				if (index != length) backend.shiftElements(1, index);
+				setToNull(backend[index..index + 1]);
+			} else {
+				backend[index + 1..length + 1] = backend[index..length];
+			}
+			backend[index] = elem;
+			rTrim--;
+		} else {
+			const midpoint = length>>1;
+			if ((index < midpoint || (lts == LTrimStrategy.UseForAny && !rTrim)) && lTrim) {
+				static if (hasUDA(T, PPECFG_Memfix)) {
+					dirtyCopy(backend[lTrim..lTrim + index], backend[lTrim - 1..lTrim + index - 1]);
+					setToNull(backend[lTrim + index..lTrim + index + 1]);
+				} else {
+					backend[lTrim - 1..lTrim + index - 1] = backend[lTrim..lTrim + index];
+				}
+				backend[index] = elem;
+				lTrim--;
+				return backend[index];
+			}
+			static if (hasUDA(T, PPECFG_Memfix)) {
+				if (index + lTrim != length) backend.shiftElements(1, lTrim + index);
+				setToNull(backend[lTrim + index..lTrim + index + 1]);
+			} else {
+				backend[lTrim + index + 1..lTrim + length + 1] = backend[lTrim + index..lTrim + length];
+			}
+			backend[index] = elem;
+			rTrim--;
+		}
+		return backend[index];
+	}
+	ref T opOpAssign(string op : "~")(T elem) @nogc @safe {
+		insert(length, elem);
+	}
+	T[] opOpAssign(string op : "~")(T[] slice) @nogc @safe {
+		if (remain < slice.length) reserve(length + slice.length);
+		backend[lTrim + length..lTrim + length + slice.length] = slice[0..$];
+		rTrim -= slice.length;
+		return backend[lTrim..lTrim + length];
+	}
+	T* ptr() @system @nogc nothrow pure {
+		return backend.ptr + lTrim;
+	}
 }

@@ -183,6 +183,7 @@ public enum TextureUploadError {
 	TextureFormatNotSupported	=	-1,
 	TextureTooBig				=	-2,
 	OutOfMemory					=	-3,
+	TextureSizeMismatch			=	-4,
 }
 /**
  * Mostly used for internal communication and scripting.
