@@ -217,28 +217,47 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	package T[] backend;	/// The underlying memory slice and its current capadity
 	package size_t lTrim; /// Left hand trim, used when it's easier to trim the array at the left side.
 	package size_t rTrim; /// Right hand trim, used when it's easier to trim the array at the right side.
+	/**
+	 * Creates a dynamic array from the given slice.
+	 * Params:
+	 *   data = the data to be used as a starting point.
+	 * NOTE: the data must be managed by numem.
+	 */
 	this(T[] data) @nogc @safe nothrow {
 		backend = data;
 	}
+	/**
+	 * Creates an array with the given amount of reserve.
+	 */
 	this(size_t amount) @nogc @safe {
 		backend = nogc_newArray(amount);
+		rTrim = amount;
 	}
+	/// Creates an array with the given amount of initial values.
 	this(size_t amount, T initVal) @nogc @safe {
 		backend = nogc_initNewArray(amount, initVal);
 	}
+	/// Frees up the memory used by the array.
 	void free() @nogc @safe {
 		backend.nogc_free();
+		lTrim = 0;
+		rTrim = 0;
 	}
+	/// Returns the maximum elements that can be stored by this array.
 	size_t capacity() @nogc @safe pure nothrow const {
 		return backend.length;
 	}
+	/// Returns the number of the elements currently held by this array.
 	size_t length() @nogc @safe pure nothrow const {
 		return backend.length - lTrim - rTrim;
 	}
+	/// Returns the number of elements that can be stored by this array.
+	/// Does not factor into left hand trim with certain strategies.
 	size_t remain() @nogc @safe pure nothrow const {
 		static if (lts == LTrimStrategy.KeepUntilGrowth || lts == LTrimStrategy.Reserve) return capacity - length - lTrim;
 		else return capacity - length;
 	}
+	/// Reserves the set amount of memory, then returns the new capacity.
 	size_t reserve(size_t amount) @nogc @safe {
 		amount = amount > length ? amount : length;
 		const oldLength = length;
@@ -246,6 +265,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		rTrim = capacity - oldLength - lTrim;
 		return capacity;
 	}
+	/// Executes the growth strategy set for the current instance (default is a *= 2).
 	package void grow() @nogc @trusted {
 		size_t a = backend.length;
 		const b = a;
@@ -261,16 +281,19 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		rTrim = a - b;
 	}
 	alias opDollar = length;
+	///Returns the element held on `index`.
 	ref T opIndex(size_t index) @nogc @safe pure nothrow {
 		assert(index < length);
 		return backend[lTrim + index];
 	}
+	/// Returns a slice from the array.
 	ref T[] opSlice(size_t i, size_t j) @nogc @safe pure nothrow {
 		assert(i <= j);
 		assert(i < length);
 		assert(j <= length);
 		return backend[lTrim+i..lTrim+j];
 	}
+	/// Removes the element held on the index and returns the element.
 	T remove(size_t index) @nogc @safe {
 		assert(index < length);
 		T result = backend[lTrim + index];
@@ -304,6 +327,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		}
 		return result;
 	}
+	///Inserts a new element at index, then returns is.
 	ref T insert(size_t index, T elem) @nogc @safe {
 		assert(index <= length);
 		if (!remain()) grow();
@@ -345,10 +369,12 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	}
 	T[] opOpAssign(string op : "~")(T[] slice) @nogc @safe {
 		if (remain < slice.length) reserve(length + slice.length);
+		
 		backend[lTrim + length..lTrim + length + slice.length] = slice[0..$];
 		rTrim -= slice.length;
 		return backend[lTrim..lTrim + length];
 	}
+	/// Returns the pointer to the first element.
 	T* ptr() @system @nogc nothrow pure {
 		return backend.ptr + lTrim;
 	}
