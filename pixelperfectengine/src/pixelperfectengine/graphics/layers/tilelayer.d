@@ -73,6 +73,13 @@ public class TileLayer : Layer, ITileLayer {
 			return result;
 		}
 	}
+	struct TileDefinition {
+		wchar id;
+		ubyte paletteSh;
+		ubyte page;
+		int x;
+		int y;
+	}
 
 	protected int			tileX;	///Tile width
 	protected int			tileY;	///Tile height
@@ -88,7 +95,8 @@ public class TileLayer : Layer, ITileLayer {
 	protected DynArray!ubyte gl_textureData;
 	protected int			gl_textureWidth;
 	protected int			gl_textureHeight;
-	protected int			gl_texturePages;
+	protected short			gl_texturePages;
+	protected short			textureType;
 	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
 	protected GLuint		gl_texture;
 	//private wchar[] mapping;
@@ -130,8 +138,8 @@ public class TileLayer : Layer, ITileLayer {
 		glGenVertexArrays(1, &gl_vertexArray);
 		glGenBuffers(1, &gl_vertexBuffer);
 		glGenBuffers(1, &gl_vertexIndices);
-		glGenTextures(1, gl_texture);
-		glBindTexture(GL_TEXTURE_3D, textureID);
+		glGenTextures(1, &gl_texture);
+		glBindTexture(GL_TEXTURE_3D, gl_texture);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -142,6 +150,7 @@ public class TileLayer : Layer, ITileLayer {
 		glDeleteBuffers(1, &gl_vertexIndices);
 		glDeleteBuffers(1, &gl_vertexBuffer);
 		glDeleteVertexArrays(1, &gl_vertexArray);
+		glDeleteTextures(1, &gl_texture);
 	}
 	/**
 	 * Adds a bitmap source to the layer.
@@ -155,15 +164,25 @@ public class TileLayer : Layer, ITileLayer {
 			if (gl_textureData.length == 0) {
 				gl_textureWidth = bitmap.width();
 				gl_textureHeight = bitmap.height();
+				if (is(bitmap == Bitmap8Bit)) textureType = 8;
+				else if (is(bitmap == Bitmap32Bit)) textureType = 32;
 			} else if (gl_textureWidth != bitmap.width() || gl_textureHeight != bitmap.height()) {
 				return TextureUploadError.TextureSizeMismatch;
 			}
 			if (is(bitmap == Bitmap8Bit)) {
+				if (textureType != 8) TextureUploadError.TextureTypeMismatch;
 				gl_textureData ~= (cast(Bitmap8Bit)bitmap).getRawdata();
+			} else if (is(bitmap == Bitmap32Bit)) {
+				if (textureType != 32) TextureUploadError.TextureTypeMismatch;
+				gl_textureData ~= (cast(Bitmap32Bit)bitmap).getRawdata();
 			}
 			gl_texturePages++;
+			glBindTexture(GL_TEXTURE_3D, gl_texture);
+			glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, textureType == 8 ? GL_RED : GL_RGBA, gl_textureWidth, gl_textureHeight,
+					gl_texturePages, 0, textureType == 8 ? GL_R8 : GL_RGBA8, gl_textureData.ptr);
 		} catch (NuException e) {
-
+			e.free;
+			return TextureUploadError.OutOfMemory;
 		} catch (Exception e) {
 
 		}
@@ -244,7 +263,10 @@ public class TileLayer : Layer, ITileLayer {
 	 *   height = the height of the color attribute table.
 	 */
 	public void setAttributeTable(GraphicsAttrExt[] table, int width, int height){
-
+		assert(mX == width);
+		assert(mY == height);
+		assert(table.length = mX * mY * 4);
+		mapping_grExt = table;
 	}
 	/**
 	 * Writes the color attribute table at the given location.
@@ -256,7 +278,11 @@ public class TileLayer : Layer, ITileLayer {
 	 * set.
 	 */
 	public GraphicsAttrExt[4] writeAttributeTable(int x, int y, GraphicsAttrExt[4] c){
-		return [GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init];
+		assert(x >= 0 && x < mX);
+		assert(y >= 0 && y < mY);
+		const size_t pos = (x + (y * mX)) * 4;
+		mapping_grExt[pos..pos+4] = c;
+		return mapping_grExt[pos..pos+4];
 	}
 	/**
 	 * Reads the color attribute table at the given location.
@@ -267,13 +293,29 @@ public class TileLayer : Layer, ITileLayer {
 	 * table is not set.
 	 */
 	public GraphicsAttrExt[4] readAttributeTable(int x, int y) {
-		return [GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init];
+		final switch (warpMode) with (WarpMode) {
+			case Off, TileRepeat:
+				if(x < 0 || y < 0 || x >= mX || y >= mY){
+					return [GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init];
+				}
+				break;
+			case MapRepeat:
+				//x *= x > 0 ? 1 : -1;
+				x = cast(uint)x % mX;
+				//y *= y > 0 ? 1 : -1;
+				y = cast(uint)y % mY;
+				break;
+		}
+		return mapping_grExt[(x+(mX*y))*4..(x+4+(mX*y))*4];
+
 	}
 	/**
 	 * Clears the color attribute table and returns the table as a backup.
 	 */
 	public GraphicsAttrExt[] clearAttributeTable() {
-		return null;
+		GraphicsAttrExt[] result = mapping_grExt;
+		mapping_grExt = null;
+		return result;
 	}
 	///Gets the the ID of the given element from the mapping. x , y : Position.
 	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const {
@@ -347,7 +389,7 @@ public class TileLayer : Layer, ITileLayer {
 		return readMapping(x, y);
 	}
 	public override LayerType getLayerType() @nogc @safe pure nothrow const {
-		return LayerType.TransformableTile;
+		return LayerType.Tile;
 	}
 	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette) {
 		import std.stdio : printf;
