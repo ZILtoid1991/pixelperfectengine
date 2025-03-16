@@ -18,4 +18,5 @@ void main() {
     texMapping = texPos;
     lightingCol = color;
     lightingDir = lDir;
+    zVal = vert.z;
 }

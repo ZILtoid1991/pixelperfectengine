@@ -11,9 +11,10 @@ layout(location = 4)in vec2 palSel;
 uniform mat2 transformMatrix;
 uniform vec2 transformPoint;
 
-out vec2 texMapping;        // Texture mapping data, by default `texPos` is sent here without modification
+out vec3 texMapping;        // Texture mapping data, by default `texPos` is sent here without modification
 out vec4 lightingCol;       // Lighting color
 out vec2 lightingDir;       // Lighting direction
+out vec2 paletteSel;
 out float zVal;
 
 void main() {
@@ -21,4 +22,6 @@ void main() {
     texMapping = texPos;
     lightingCol = color;
     lightingDir = lDir;
+    paletteSel = palSel;
+    zVal = vert.z;
 }
