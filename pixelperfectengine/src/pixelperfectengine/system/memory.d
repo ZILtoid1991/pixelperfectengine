@@ -207,6 +207,9 @@ enum LTrimStrategy {
 	Reserve,	/// Reserve left hand trim for the future, keep on growth.
 	KeepUntilGrowth,/// Left hand trim kept until growth on right hand, then it's discarded if not used.
 }
+package immutable string[] attrList =
+		["@system ", "@system @nogc", "@system @nogc nothrow", "@system nothrow",
+		"@safe", "@safe @nogc", "@safe @nogc nothrow", "@safe nothrow"];
 /**
  * Implements a non-garbage collected dynamic array with automatic growth.
  * `growthStrategy` sets the growth function of the array.
@@ -214,6 +217,65 @@ enum LTrimStrategy {
  * for more info
  */
 public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts = LTrimStrategy.None) {
+	package static string opApplyGen() {
+		import pixelperfectengine.system.etc : interpolateStr;
+		immutable string opApplyCode = q"{
+			int opApply(int delegate(T) %attr% dg) %attr% {
+				for (sizediff_t i ; i < length ; i++) {
+					if (dg(backend[lTrim + i])) return 1;
+				}
+				return 0;
+			}
+			int opApply(int delegate(ref T) %attr% dg) %attr% {
+				for (sizediff_t i ; i < length ; i++) {
+					if (dg(backend[lTrim + i])) return 1;
+				}
+				return 0;
+			}
+			int opApplyReverse(int delegate(T) %attr% dg) %attr% {
+				for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
+					if (dg(backend[lTrim + i])) return 1;
+				}
+				return 0;
+			}
+			int opApplyReverse(int delegate(ref T) %attr% dg) %attr% {
+				for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
+					if (dg(backend[lTrim + i])) return 1;
+				}
+				return 0;
+			}
+			int opApply(int delegate(size_t, T) %attr% dg) %attr% {
+				for (sizediff_t i ; i < length ; i++) {
+					if (dg(i, backend[lTrim + i])) return 1;
+				}
+				return 0;
+			}
+			int opApply(int delegate(size_t, ref T) %attr% dg) %attr% {
+				for (sizediff_t i ; i < length ; i++) {
+					if (dg(i, backend[lTrim + i])) return 1;
+				}
+				return 0;
+			}
+			int opApplyReverse(int delegate(size_t, T) %attr% dg) %attr% {
+				for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
+					if (dg(i, backend[lTrim + i])) return 1;
+				}
+				return 0;
+			}
+			int opApplyReverse(int delegate(size_t, ref T) %attr% dg) %attr% {
+				for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
+					if (dg(i, backend[lTrim + i])) return 1;
+				}
+				return 0;
+			}
+		}";
+		string result;
+		foreach (string attr ; attrList) {
+			string[string] attrInterpolation = ["attr" : attr];
+			result ~= interpolateStr(opApplyCode, attrInterpolation);
+		}
+		return result;
+	}
 	package T[] backend;	/// The underlying memory slice and its current capadity
 	package size_t lTrim; /// Left hand trim, used when it's easier to trim the array at the left side.
 	package size_t rTrim; /// Right hand trim, used when it's easier to trim the array at the right side.
@@ -230,12 +292,12 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	 * Creates an array with the given amount of reserve.
 	 */
 	this(size_t amount) @nogc @safe {
-		backend = nogc_newArray(amount);
+		backend = nogc_newArray!T(amount);
 		rTrim = amount;
 	}
 	/// Creates an array with the given amount of initial values.
 	this(size_t amount, T initVal) @nogc @safe {
-		backend = nogc_initNewArray(amount, initVal);
+		backend = nogc_initNewArray!T(amount, initVal);
 	}
 	/// Frees up the memory used by the array.
 	void free() @nogc @safe {
@@ -287,7 +349,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		return backend[lTrim + index];
 	}
 	/// Returns a slice from the array.
-	ref T[] opSlice(size_t i, size_t j) @nogc @safe pure nothrow {
+	T[] opSlice(size_t i, size_t j) @nogc @safe pure nothrow {
 		assert(i <= j);
 		assert(i < length);
 		assert(j <= length);
@@ -299,7 +361,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		T result = backend[lTrim + index];
 		static if (lts == LTrimStrategy.None) {
 			rTrim++;
-			static if (hasUDA(T, PPECFG_Memfix)) {
+			static if (hasUDA!(T, PPECFG_Memfix)) {
 				backend.shiftElements(-1, index);
 				setToNull(backend[length - 1..length]);
 			} else {
@@ -309,7 +371,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 			const midpoint = length>>1;
 			if (index < midpoint) {
 				lTrim++;
-				static if (hasUDA(T, PPECFG_Memfix)) {
+				static if (hasUDA!(T, PPECFG_Memfix)) {
 					dirtyCopy(backend[lTrim - 1..lTrim + index - 1], backend[lTrim..lTrim + index]);
 					setToNull(backend[lTrim - 1..lTrim]);
 				} else {
@@ -317,7 +379,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 				}
 			} else {
 				rTrim++;
-				static if (hasUDA(T, PPECFG_Memfix)) {
+				static if (hasUDA!(T, PPECFG_Memfix)) {
 					backend.shiftElements(-1, lTrim + index);
 					setToNull(backend[lTrim + index..lTrim + index + 1]);
 				} else {
@@ -332,7 +394,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		assert(index <= length);
 		if (!remain()) grow();
 		static if (lts == LTrimStrategy.None) {
-			static if (hasUDA(T, PPECFG_Memfix)) {
+			static if (hasUDA!(T, PPECFG_Memfix)) {
 				if (index != length) backend.shiftElements(1, index);
 				setToNull(backend[index..index + 1]);
 			} else {
@@ -343,7 +405,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		} else {
 			const midpoint = length>>1;
 			if ((index < midpoint || (lts == LTrimStrategy.UseForAny && !rTrim)) && lTrim) {
-				static if (hasUDA(T, PPECFG_Memfix)) {
+				static if (hasUDA!(T, PPECFG_Memfix)) {
 					dirtyCopy(backend[lTrim..lTrim + index], backend[lTrim - 1..lTrim + index - 1]);
 					setToNull(backend[lTrim + index..lTrim + index + 1]);
 				} else {
@@ -353,7 +415,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 				lTrim--;
 				return backend[index];
 			}
-			static if (hasUDA(T, PPECFG_Memfix)) {
+			static if (hasUDA!(T, PPECFG_Memfix)) {
 				if (index + lTrim != length) backend.shiftElements(1, lTrim + index);
 				setToNull(backend[lTrim + index..lTrim + index + 1]);
 			} else {
@@ -378,4 +440,63 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	T* ptr() @system @nogc nothrow pure {
 		return backend.ptr + lTrim;
 	}
+	mixin(opApplyGen());
+}
+public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", string growthStrategy = "a += a;",
+		LTrimStrategy lts = LTrimStrategy.None) {
+	alias BET = DynArray!(T, growthStrategy, lts);
+	package BET backend;
+	this(size_t amount) @nogc @safe {
+		backend = BET(amount);
+	}
+	alias free = backend.free;
+	alias capacity = backend.capacity;
+	alias length = backend.length;
+	alias remain = backend.remain;
+	alias reserve = backend.reserve;
+	alias opDollar = length;
+	alias opSlice = backend.opSlice;
+	alias remove = backend.remove;
+	alias ptr = backend.ptr;
+	ref T insert(T elem) @nogc @safe {
+		if (!remain()) backend.grow();
+		for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
+			if (binaryFun!equal(backend[i], elem)) {
+				backend[i] = val;
+				return backend[i];
+			} else if (binaryFun!less(backend[i], elem)) {
+				backend.insert(i, elem);
+				return backend[i];
+			}
+		}
+		backend.insert(0, elem);
+		return backend[0];
+	}
+	T searchBy(Q)(Q needle) @nogc @safe nothrow {
+		if (length) {
+			size_t l, r = length, m;
+			while (l < r) {
+				m = (l+r)>>1;
+				if (binaryFun!equal(backend[m], needle)) return backend[m];
+				else if (binaryFun!less(backend[m], needle)) r = m - 1;
+				else l = m + 1;
+			}
+		}
+		return T.init;
+	}
+	sizediff_t searchIndexBy(Q)(Q needle) @nogc @safe nothrow {
+		if (length) {
+			size_t l, r = length, m;
+			while (l < r) {
+				m = (l+r)>>1;
+				if (binaryFun!equal(backend[m], needle)) return m;
+				else if (binaryFun!less(backend[m], needle)) r = m - 1;
+				else l = m + 1;
+			}
+		}
+		return -1;
+	}
+	alias opIndex = backend.opIndex;
+	alias opApply = backend.opApply;
+	alias opApplyReverse = backend.opApplyReverse;
 }
