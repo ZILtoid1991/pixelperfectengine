@@ -12,7 +12,7 @@ uniform mat2 transformMatrix;
 uniform vec2 transformPoint;
 
 out vec3 texMapping;        // Texture mapping data, by default `texPos` is sent here without modification
-out vec4 lightingCol;       // Lighting color
+out vec4 lightingData;      // Lighting color
 out vec2 lightingDir;       // Lighting direction
 out vec2 paletteSel;
 out float zVal;
