@@ -12,6 +12,8 @@ import pixelperfectengine.system.memory;
 import collections.treemap;
 import bindbc.opengl;
 import std.math;
+import inteli.xmmintrin;
+import pixelperfectengine.system.intrinsics;
 
 public class TileLayer : Layer, ITileLayer {
 	/**
@@ -74,13 +76,34 @@ public class TileLayer : Layer, ITileLayer {
 		}
 	}
 	struct TileDefinition {
-		wchar id;
+		wchar id = 0xFFFF;
 		ubyte paletteSh;
 		ubyte page;
 		int x;
 		int y;
+		int opCmp(const int rhs) @nogc @safe pure nothrow const {
+			return (id > rhs) - (id < rhs);
+			// if (id > rhs) return -1;
+			// else if (id == rhs) return 0;
+			// else return 1;
+		}
+		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
+			return id == rhs;
+		}
+		int opCmp(const ref TileDefinition rhs) @nogc @safe pure nothrow const {
+			return (id > rhs.id) - (id < rhs.id);
+			// if (id > rhs.id) return -1;
+			// else if (id == rhs.id) return 0;
+			// else return 1;
+		}
+		bool opEquals(const ref TileDefinition rhs) @nogc @safe pure nothrow const {
+			return id == rhs.id;
+		}
+		size_t toHash() @nogc @safe pure nothrow const {
+			return id;
+		}
 	}
-
+	protected __m128d		textureRec;
 	protected int			tileX;	///Tile width
 	protected int			tileY;	///Tile height
 	protected int			mX;		///Map width
@@ -93,6 +116,7 @@ public class TileLayer : Layer, ITileLayer {
 	protected DynArray!TileVertex gl_displayList;
 	protected DynArray!PolygonIndices gl_polygonIndices;
 	protected DynArray!ubyte gl_textureData;
+	protected OrderedArraySet!TileDefinition tiles;
 	protected int			gl_textureWidth;
 	protected int			gl_textureHeight;
 	protected short			gl_texturePages;
@@ -102,11 +126,14 @@ public class TileLayer : Layer, ITileLayer {
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
 	protected Color[] 		src;		///Local buffer DEPRECATED!
-	protected float			x0;
-	protected float			y0;
-	protected float			scaleH;
-	protected float			scaleV;
-	protected float			theta = 0.0;
+	protected int			prevSX, prevSY;
+	protected short			x0, x0P;
+	protected short			y0, y0P;
+	protected short			scaleH, scaleHP;
+	protected short			scaleV, scaleVP;
+	protected short			shearH, shearHP;
+	protected short			shearV, shearVP;
+	protected ushort		theta, thetaP;
 	alias DisplayList = TreeMap!(wchar, DisplayListItem, true);//DEPRECATED!
 	protected DisplayList displayList;	///displaylist using a BST to allow skipping elements DEPRECATED!
 	/**
@@ -151,6 +178,10 @@ public class TileLayer : Layer, ITileLayer {
 		glDeleteBuffers(1, &gl_vertexBuffer);
 		glDeleteVertexArrays(1, &gl_vertexArray);
 		glDeleteTextures(1, &gl_texture);
+		gl_displayList.free();
+		gl_polygonIndices.free();
+		tiles.free();
+		gl_textureData.free();
 	}
 	/**
 	 * Adds a bitmap source to the layer.
@@ -166,6 +197,7 @@ public class TileLayer : Layer, ITileLayer {
 				gl_textureHeight = bitmap.height();
 				if (is(bitmap == Bitmap8Bit)) textureType = 8;
 				else if (is(bitmap == Bitmap32Bit)) textureType = 32;
+				textureRec = _vect([1.0 / (gl_textureWidth - 1), 1.0 / (gl_textureHeight - 1)]);
 			} else if (gl_textureWidth != bitmap.width() || gl_textureHeight != bitmap.height()) {
 				return TextureUploadError.TextureSizeMismatch;
 			}
@@ -187,6 +219,59 @@ public class TileLayer : Layer, ITileLayer {
 
 		}
 		return 0;
+	}
+	public final void reprocessTilemap() @trusted @nogc nothrow {
+		if (sX != prevSX || sY != prevSY || scaleH != scaleHP || scaleV != scaleVP || shearH != shearHP ||
+				shearV != shearVP || x0 != x0P || y0 != y0P || theta != thetaP) {	//check if any transform parameters changed, if yes, move onto the next step
+			//set all previous vals to the current ones
+			prevSX = sX;
+			prevSY = sY;
+			x0P = x0;
+			y0P = y0;
+			scaleHP = scaleH;
+			scaleVP = scaleV;
+			shearHP = shearH;
+			shearVP = shearV;
+			thetaP = theta;
+			//clear the display lists
+			gl_displayList.length = 0;
+			gl_polygonIndices.length = 0;
+			//rebuild the display list
+			const xFrom = sX - cast(int)(rasterX * overscanAm);
+			const xTo = sX + cast(int)(rasterX * (overscanAm + 1));
+			const yFrom = sY - cast(int)(rasterY * overscanAm);
+			const yTo = sY + cast(int)(rasterY * (overscanAm + 1));
+			__m128d screenSizeRec = _vect([2.0 / rasterX, -2.0 / rasterY]);
+			immutable __m128d OGL_OFFSET = __m128d([-1.0, 1.0]);
+			immutable float Z_REC = 1.0 / ubyte.max;
+			const __m128d tileSize = _conv2ints(tileX, tileY) * screenSizeRec;
+			const __m128d tileSizeText = _conv2ints(tileX, tileY) * textureRec;
+			const pagesRec = 1.0 / gl_texturePages;
+			for (int y = yFrom ; y <= yTo ; y += tileY) {
+				for (int x = xFrom ; x <= xTo ; x += tileX) {
+					MappingElement me = tileByPixel(x, y);
+					if (me.tileID != 0xFFFF) {
+						TileDefinition td = tiles.searchBy(me.tileID);
+						if (td.id == 0xFFFF) continue;
+						const p = cast(int)gl_displayList.length;
+						const z = me.attributes.priority * Z_REC;
+						const u = td.page * pagesRec;
+						gl_polygonIndices ~= PolygonIndices(p + 0, p + 1, p + 2);
+						gl_polygonIndices ~= PolygonIndices(p + 1, p + 3, p + 2);
+						__m128d positionULC = _conv2ints(x, y) * screenSizeRec + OGL_OFFSET;
+						__m128 pULC = _mm_cvtpd_ps(positionULC), pLRC = _mm_cvtpd_ps(positionULC + tileSize);
+						__m128d tileULC = _conv2ints(td.x, td.y) * textureRec;
+						__m128 tULC = _mm_cvtpd_ps(tileULC), tLRC = _mm_cvtpd_ps(tileULC * tileSizeText);
+						const colorSelY = (me.paletteSel + paletteOffset)>>(8-td.paletteSh),
+								colorSelX = (me.paletteSel + paletteOffset)&((1<<(8-td.paletteSh))-1);
+						gl_displayList ~= TileVertex(pULC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tULC[1], u, 0.0, 0.0, colorSelX, colorSelY);
+						gl_displayList ~= TileVertex(pULC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tLRC[1], u, 0.0, 0.0, colorSelX, colorSelY);
+						gl_displayList ~= TileVertex(pLRC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tULC[1], u, 0.0, 0.0, colorSelX, colorSelY);
+						gl_displayList ~= TileVertex(pLRC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tLRC[1], u, 0.0, 0.0, colorSelX, colorSelY);
+					}
+				}
+			}
+		}
 	}
 	/**
 	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
