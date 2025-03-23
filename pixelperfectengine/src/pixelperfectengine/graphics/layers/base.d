@@ -133,7 +133,6 @@ abstract class Layer {
 	 * that kind of effects without the use of a compute shader.
 	 */
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc;
-
 	///Amount of virtual overscan, certain effects might rely on this.
 	protected float overscanAm;
 	/**
@@ -161,7 +160,11 @@ abstract class Layer {
 		else flags &= ~CLEAR_Z_BUFFER;
 	}
 	///Sets the overscan amount, on which some effects are dependent on.
-	// public abstract void setOverscanAmount(float valH, float valV);
+	public final float setOverscanAmount(float amount) @nogc @safe nothrow pure {
+		if (amount >= 0.0) overscanAm = amount;
+		else overscanAm = 0.0;
+		return overscanAm;
+	}
 
 	///Returns the type of the layer.
 	///Useful with certain scripting languages.
