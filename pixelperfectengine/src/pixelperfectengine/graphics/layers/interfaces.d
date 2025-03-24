@@ -24,14 +24,14 @@ public interface ITileLayer {
 	 *  paletteSh = palette shift amount, or how many bits are actually used of the bitmap. This enables less than 16
 	 * or 256 color chunks on the palette to be selected.
 	 */
-	public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0);
+	public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0) @nogc @safe;
 	/**
 	 * Sets the rotation amount for the layer.
 	 * Params:
 	 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
 	 * Note: This visual effect rely on overscan amount set correctly.
 	 */
-	public void rotate(ushort theta);
+	public void rotate(ushort theta) @nogc @safe pure nothrow;
 	/**
 	 * Sets the horizontal scaling amount.
 	 * Params:
@@ -39,7 +39,7 @@ public interface ITileLayer {
 	 * greater will minimize, lesser will magnify the layer. Negative values mirror
 	 * the layer.
 	 */
-	public void scaleHoriz(short amount);
+	public void scaleHoriz(short amount) @nogc @safe pure nothrow;
 	/**
 	 * Sets the vertical scaling amount.
 	 * Params:
@@ -47,7 +47,9 @@ public interface ITileLayer {
 	 * greater will minimize, lesser will magnify the layer. Negative values mirror
 	 * the layer.
 	 */
-	public void scaleVert(short amount);
+	public void scaleVert(short amount) @nogc @safe pure nothrow;
+	public void shearHoriz(short amount) @nogc @safe pure nothrow;
+	public void shearVert(short amount) @nogc @safe pure nothrow;
 	/**
 	 * Sets the transformation midpoint relative to the middle of the screen.
 	 * Params:
