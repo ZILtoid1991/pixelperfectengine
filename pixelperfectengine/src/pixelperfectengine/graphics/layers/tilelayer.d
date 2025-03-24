@@ -12,7 +12,7 @@ import pixelperfectengine.system.memory;
 import collections.treemap;
 import bindbc.opengl;
 import std.math;
-import inteli.xmmintrin;
+import inteli.emmintrin;
 import pixelperfectengine.system.intrinsics;
 
 public class TileLayer : Layer, ITileLayer {
@@ -83,20 +83,33 @@ public class TileLayer : Layer, ITileLayer {
 		int y;
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			return (id > rhs) - (id < rhs);
-			// if (id > rhs) return -1;
-			// else if (id == rhs) return 0;
-			// else return 1;
 		}
 		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
 			return id == rhs;
 		}
 		int opCmp(const ref TileDefinition rhs) @nogc @safe pure nothrow const {
 			return (id > rhs.id) - (id < rhs.id);
-			// if (id > rhs.id) return -1;
-			// else if (id == rhs.id) return 0;
-			// else return 1;
 		}
 		bool opEquals(const ref TileDefinition rhs) @nogc @safe pure nothrow const {
+			return id == rhs.id;
+		}
+		size_t toHash() @nogc @safe pure nothrow const {
+			return id;
+		}
+	}
+	struct PageDefinition {
+		int id;
+		int page;
+		int opCmp(const int rhs) @nogc @safe pure nothrow const {
+			return (id > rhs) - (id < rhs);
+		}
+		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
+			return id == rhs;
+		}
+		int opCmp(const ref PageDefinition rhs) @nogc @safe pure nothrow const {
+			return (id > rhs.id) - (id < rhs.id);
+		}
+		bool opEquals(const ref PageDefinition rhs) @nogc @safe pure nothrow const {
 			return id == rhs.id;
 		}
 		size_t toHash() @nogc @safe pure nothrow const {
@@ -117,6 +130,7 @@ public class TileLayer : Layer, ITileLayer {
 	protected DynArray!PolygonIndices gl_polygonIndices;
 	protected DynArray!ubyte gl_textureData;
 	protected OrderedArraySet!TileDefinition tiles;
+	protected OrderedArraySet!PageDefinition pages;
 	protected int			gl_textureWidth;
 	protected int			gl_textureHeight;
 	protected short			gl_texturePages;
@@ -181,6 +195,7 @@ public class TileLayer : Layer, ITileLayer {
 		gl_displayList.free();
 		gl_polygonIndices.free();
 		tiles.free();
+		pages.free();
 		gl_textureData.free();
 	}
 	/**
@@ -202,16 +217,17 @@ public class TileLayer : Layer, ITileLayer {
 				return TextureUploadError.TextureSizeMismatch;
 			}
 			if (is(bitmap == Bitmap8Bit)) {
-				if (textureType != 8) TextureUploadError.TextureTypeMismatch;
+				if (textureType != 8) return TextureUploadError.TextureTypeMismatch;
 				gl_textureData ~= (cast(Bitmap8Bit)bitmap).getRawdata();
 			} else if (is(bitmap == Bitmap32Bit)) {
-				if (textureType != 32) TextureUploadError.TextureTypeMismatch;
-				gl_textureData ~= (cast(Bitmap32Bit)bitmap).getRawdata();
+				if (textureType != 32) return TextureUploadError.TextureTypeMismatch;
+				gl_textureData ~= cast(ubyte[])((cast(Bitmap32Bit)bitmap).getRawdata());
 			}
 			gl_texturePages++;
 			glBindTexture(GL_TEXTURE_3D, gl_texture);
 			glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, textureType == 8 ? GL_RED : GL_RGBA, gl_textureWidth, gl_textureHeight,
-					gl_texturePages, 0, textureType == 8 ? GL_R8 : GL_RGBA8, gl_textureData.ptr);
+					gl_texturePages, 0, textureType == 8 ? GL_R8 : GL_RGBA8,  GL_UNSIGNED_BYTE, gl_textureData.ptr);
+			pages.insert(PageDefinition(page, gl_texturePages));
 		} catch (NuException e) {
 			e.free;
 			return TextureUploadError.OutOfMemory;
@@ -264,10 +280,14 @@ public class TileLayer : Layer, ITileLayer {
 						__m128 tULC = _mm_cvtpd_ps(tileULC), tLRC = _mm_cvtpd_ps(tileULC * tileSizeText);
 						const colorSelY = (me.paletteSel + paletteOffset)>>(8-td.paletteSh),
 								colorSelX = (me.paletteSel + paletteOffset)&((1<<(8-td.paletteSh))-1);
-						gl_displayList ~= TileVertex(pULC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tULC[1], u, 0.0, 0.0, colorSelX, colorSelY);
-						gl_displayList ~= TileVertex(pULC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tLRC[1], u, 0.0, 0.0, colorSelX, colorSelY);
-						gl_displayList ~= TileVertex(pLRC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tULC[1], u, 0.0, 0.0, colorSelX, colorSelY);
-						gl_displayList ~= TileVertex(pLRC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tLRC[1], u, 0.0, 0.0, colorSelX, colorSelY);
+						gl_displayList ~= TileVertex(pULC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tULC[1], u, 0.0, 0.0,
+								colorSelX, colorSelY);
+						gl_displayList ~= TileVertex(pULC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tLRC[1], u, 0.0, 0.0,
+								colorSelX, colorSelY);
+						gl_displayList ~= TileVertex(pLRC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tULC[1], u, 0.0, 0.0,
+								colorSelX, colorSelY);
+						gl_displayList ~= TileVertex(pLRC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tLRC[1], u, 0.0, 0.0,
+								colorSelX, colorSelY);
 					}
 				}
 			}
@@ -285,7 +305,49 @@ public class TileLayer : Layer, ITileLayer {
 	 */
 	public override void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
 			@nogc nothrow {
-		//TODO: Implement
+		reprocessTilemap();
+		//Constants begin
+		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
+		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
+		__m128d screenSizeRec = _vect([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
+		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
+		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
+		immutable __m128 COLOR_REC = __m128([1.0 / 255, 1.0 / 255, 1.0 / 255, 1.0 / 255]);
+		const __m128i scrollVec = _vect([sX, sY, 0, 0]), offsetsVec = _mm_loadu_si64(offsets.ptr);
+		//Constants end
+		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, palette);
+		if (palNM) {
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, palNM);
+		}
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
+		glUseProgram(shader);
+		glUniform1i(glGetUniformLocation(shader, "mainTexture"), 0);
+		glUniform1i(glGetUniformLocation(shader, "palette"), 1);
+		glUniform1i(glGetUniformLocation(shader, "paletteMipMap"), 2);
+
+		glBindVertexArray(gl_vertexArray);
+
+		glBindBuffer(GL_ARRAY_BUFFER, gl_vertexBuffer);
+		glBufferData(GL_ARRAY_BUFFER, TileVertex.sizeof * gl_displayList.length, &gl_displayList.ptr, GL_STREAM_DRAW);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertexIndices);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, PolygonIndices.sizeof * gl_polygonIndices.length, gl_polygonIndices.ptr,
+				GL_STREAM_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(3 * float.sizeof));
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(7 * float.sizeof));
+		glEnableVertexAttribArray(3);
+		glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(9 * float.sizeof));
+
+		glDrawElements(GL_TRIANGLES, cast(int)(gl_polygonIndices.length * 3), GL_UNSIGNED_INT, null);
 	}
 	/**
 	 * Adds a new tile to the layer from the internal texture sources.
@@ -297,8 +359,9 @@ public class TileLayer : Layer, ITileLayer {
 	 *  paletteSh = palette shift amount, or how many bits are actually used of the bitmap. This enables less than 16
 	 * or 256 color chunks on the palette to be selected.
 	 */
-	public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0) {
-		//TODO: Implement
+	public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0) @nogc @safe {
+		const pageNum = pages.searchBy(page).page;
+		tiles.insert(TileDefinition(id, paletteSh, cast(ubyte)pageNum, x, y));
 	}
 	/**
 	 * Sets the rotation amount for the layer.
@@ -306,8 +369,8 @@ public class TileLayer : Layer, ITileLayer {
 	 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
 	 * Note: This visual effect rely on overscan amount set correctly.
 	 */
-	public void rotate(ushort theta) {
-		this.theta = PI * (theta / 65_535.0) * 2.0;
+	public void rotate(ushort theta) @nogc @safe pure nothrow {
+		this.theta = theta;
 	}
 	/**
 	 * Sets the horizontal scaling amount.
@@ -316,8 +379,8 @@ public class TileLayer : Layer, ITileLayer {
 	 * greater will minimize, lesser will magnify the layer. Negative values mirror
 	 * the layer.
 	 */
-	public void scaleHoriz(short amount) {
-		scaleH = cast(float)0x10_00 / amount;
+	public void scaleHoriz(short amount) @nogc @safe pure nothrow {
+		scaleH = amount;
 	}
 	/**
 	 * Sets the vertical scaling amount.
@@ -326,8 +389,14 @@ public class TileLayer : Layer, ITileLayer {
 	 * greater will minimize, lesser will magnify the layer. Negative values mirror
 	 * the layer.
 	 */
-	public void scaleVert(short amount) {
-		scaleV = cast(float)0x10_00 / amount;
+	public void scaleVert(short amount) @nogc @safe pure nothrow {
+		scaleV = amount;
+	}
+	public void shearHoriz(short amount) @nogc @safe pure nothrow {
+		shearH = amount;
+	}
+	public void shearVert(short amount) @nogc @safe pure nothrow {
+		shearH = amount;
 	}
 	/**
 	 * Sets the transformation midpoint relative to the middle of the screen.
@@ -336,7 +405,8 @@ public class TileLayer : Layer, ITileLayer {
 	 *   y0 = y coordinate of the midpoint.
 	 */
 	public void setTransformMidpoint(short x0, short y0) {
-		//TODO: Implement
+		this.x0 = x0;
+		this.y0 = y0;
 	}
 	/**
 	 * Sets a color attribute table for the layer.
@@ -347,10 +417,10 @@ public class TileLayer : Layer, ITileLayer {
 	 *   width = the width of the color attribute table.
 	 *   height = the height of the color attribute table.
 	 */
-	public void setAttributeTable(GraphicsAttrExt[] table, int width, int height){
+	public void setAttributeTable(GraphicsAttrExt[] table, int width, int height) {
 		assert(mX == width);
 		assert(mY == height);
-		assert(table.length = mX * mY * 4);
+		assert(table.length == mX * mY * 4);
 		mapping_grExt = table;
 	}
 	/**
@@ -362,12 +432,12 @@ public class TileLayer : Layer, ITileLayer {
 	 * Returns: the newly written color, or Color.init if color attribute table is not
 	 * set.
 	 */
-	public GraphicsAttrExt[4] writeAttributeTable(int x, int y, GraphicsAttrExt[4] c){
+	public GraphicsAttrExt[4] writeAttributeTable(int x, int y, GraphicsAttrExt[4] c) {
 		assert(x >= 0 && x < mX);
 		assert(y >= 0 && y < mY);
 		const size_t pos = (x + (y * mX)) * 4;
 		mapping_grExt[pos..pos+4] = c;
-		return mapping_grExt[pos..pos+4];
+		return c;
 	}
 	/**
 	 * Reads the color attribute table at the given location.
@@ -378,6 +448,7 @@ public class TileLayer : Layer, ITileLayer {
 	 * table is not set.
 	 */
 	public GraphicsAttrExt[4] readAttributeTable(int x, int y) {
+		if (!mapping_grExt) return [GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init, GraphicsAttrExt.init];
 		final switch (warpMode) with (WarpMode) {
 			case Off, TileRepeat:
 				if(x < 0 || y < 0 || x >= mX || y >= mY){
@@ -391,7 +462,8 @@ public class TileLayer : Layer, ITileLayer {
 				y = cast(uint)y % mY;
 				break;
 		}
-		return mapping_grExt[(x+(mX*y))*4..(x+4+(mX*y))*4];
+		const pos = (x+(mX*y))*4;
+		return [mapping_grExt[pos], mapping_grExt[pos + 1], mapping_grExt[pos + 2], mapping_grExt[pos + 3]];
 
 	}
 	/**
