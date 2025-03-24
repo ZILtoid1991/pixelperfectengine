@@ -313,6 +313,25 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	size_t length() @nogc @safe pure nothrow const {
 		return backend.length - lTrim - rTrim;
 	}
+	size_t length(size_t val) @nogc @trusted {
+		if (!length) {
+			lTrim = 0;
+			rTrim = backend.length;
+		} else if (val >= remain) {
+			// reserve(val);
+			grow();
+		} else {
+			sizediff_t newrTrim = capacity - lTrim - val;
+			if (newrTrim < -1) {
+				rTrim = 0;
+				backend.shiftElements(newrTrim, lTrim);
+				lTrim = 0;
+			} else {
+				rTrim = newrTrim;
+			}
+		}
+		return val;
+	}
 	/// Returns the number of elements that can be stored by this array.
 	/// Does not factor into left hand trim with certain strategies.
 	size_t remain() @nogc @safe pure nothrow const {
@@ -428,6 +447,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	}
 	ref T opOpAssign(string op : "~")(T elem) @nogc @safe {
 		insert(length, elem);
+		return opIndex(length - 1);
 	}
 	T[] opOpAssign(string op : "~")(T[] slice) @nogc @safe {
 		if (remain < slice.length) reserve(length + slice.length);
@@ -445,15 +465,33 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", string growthStrategy = "a += a;",
 		LTrimStrategy lts = LTrimStrategy.None) {
 	alias BET = DynArray!(T, growthStrategy, lts);
-	package BET backend;
+	public BET backend;
 	this(size_t amount) @nogc @safe {
 		backend = BET(amount);
 	}
-	alias free = backend.free;
-	alias capacity = backend.capacity;
-	alias length = backend.length;
-	alias remain = backend.remain;
-	alias reserve = backend.reserve;
+	// alias free = backend.free;
+	void free() @nogc @safe {
+		backend.free;
+	}
+	// alias capacity = backend.capacity;
+	size_t capacity() @nogc @safe pure nothrow const {
+		return backend.capacity();
+	}
+	// alias length = backend.length;
+	size_t length() @nogc @safe pure nothrow const {
+		return backend.length();
+	}
+	size_t length(size_t val) @nogc @safe {
+		return backend.length(val);
+	}
+	// alias remain = backend.remain;
+	size_t remain() @nogc @safe pure nothrow const {
+		return backend.remain;
+	}
+	// alias reserve = backend.reserve;
+	size_t reserve(size_t amount) @nogc @safe {
+		return backend.reserve(amount);
+	}
 	alias opDollar = length;
 	alias opSlice = backend.opSlice;
 	alias remove = backend.remove;
@@ -462,7 +500,7 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 		if (!remain()) backend.grow();
 		for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
 			if (binaryFun!equal(backend[i], elem)) {
-				backend[i] = val;
+				backend[i] = elem;
 				return backend[i];
 			} else if (binaryFun!less(backend[i], elem)) {
 				backend.insert(i, elem);
