@@ -34,7 +34,8 @@ __m128i _vect(int[4] arg) @nogc @trusted pure nothrow {
 }
 pragma(inline, true)
 __m128d _conv2ints(int arg0, int arg1) @nogc @trusted pure nothrow {
-	return _mm_cvtpi32_pd(arg0 | (arg1<<32L));
+	long val = arg0 | (cast(long)arg1<<32L);
+	return _mm_cvtpi32_pd(cast(__m64)val);
 }
 pragma(inline, true)
 __m128d _conv2shorts(short* memAddr) @nogc @trusted pure nothrow {
