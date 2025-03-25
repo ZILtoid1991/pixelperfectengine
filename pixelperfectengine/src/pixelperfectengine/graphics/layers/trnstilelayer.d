@@ -201,6 +201,10 @@ public class TransformableTileLayer(BMPType = Bitmap16Bit, int TileX = 8, int Ti
 	public void scaleVert(short amount) {
 		//TODO: Implement
 	}
+	public void shearHoriz(short amount) @nogc @safe pure nothrow {
+	}
+	public void shearVert(short amount) @nogc @safe pure nothrow {
+	}
 	/**
 	 * Sets a color attribute table for the layer.
 	 * Color attribute table can be per-tile, per-vertex, or unique to each vertex of

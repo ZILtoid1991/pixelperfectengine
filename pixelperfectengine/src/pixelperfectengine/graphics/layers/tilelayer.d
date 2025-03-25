@@ -166,16 +166,14 @@ public class TileLayer : Layer, ITileLayer {
 	///line no -1 indicates that no lines have been drawn yet.
 	public @nogc void delegate(int line, ref int sX0, ref int sY0) hBlankInterrupt;//DEPRECATED!
 	///Constructor. tX , tY : Set the size of the tiles on the layer. DEPRECATED
-	this(int tX, int tY, RenderingMode renderMode = RenderingMode.AlphaBlend){
-		tileX=tX;
-		tileY=tY;
-		setRenderingMode(renderMode);
-		src.length = tileX;
-	}
 	this (int tX, int tY, GLShader shader = GLShader(0)) @nogc @trusted nothrow {
 		tileX=tX;
 		tileY=tY;
 		this.shader = shader;
+		gl_displayList.reserve(256);
+		gl_polygonIndices.reserve(256);
+		tiles.reserve(16);
+		pages.reserve(4);
 		glGenVertexArrays(1, &gl_vertexArray);
 		glGenBuffers(1, &gl_vertexBuffer);
 		glGenBuffers(1, &gl_vertexIndices);
@@ -310,9 +308,10 @@ public class TileLayer : Layer, ITileLayer {
 		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
 		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
 		__m128d screenSizeRec = _vect([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
-		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
+		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([cast(double)offsets[0], cast(double)offsets[1]]);	//Offset to the top-left corner of the display area
 		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
 		immutable __m128 COLOR_REC = __m128([1.0 / 255, 1.0 / 255, 1.0 / 255, 1.0 / 255]);
+		immutable __m128 TRNS_PARAMS_REC = __m128([1.0 / 0x10_00, 1.0 / 0x10_00, 1.0 / 0x10_00, 1.0 / 0x10_00]);
 		const __m128i scrollVec = _vect([sX, sY, 0, 0]), offsetsVec = _mm_loadu_si64(offsets.ptr);
 		//Constants end
 		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
@@ -322,30 +321,40 @@ public class TileLayer : Layer, ITileLayer {
 			glActiveTexture(GL_TEXTURE2);
 			glBindTexture(GL_TEXTURE_2D, palNM);
 		}
+		//Calculate transform parameters
+		short[4] abcd = [scaleH, shearH, shearV, scaleV];
+		const double thetaF = PI * 2.0 * (theta * (1.0 / ushort.max));
+		const __m128 rotateVec = _vect([cos(thetaF), -1.0 * sin(thetaF), sin(thetaF), cos(thetaF)]);
+		__m128 trnsParams = _conv4shorts(abcd.ptr) * TRNS_PARAMS_REC * rotateVec;
+		//Render begin
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
 		glUseProgram(shader);
 		glUniform1i(glGetUniformLocation(shader, "mainTexture"), 0);
 		glUniform1i(glGetUniformLocation(shader, "palette"), 1);
 		glUniform1i(glGetUniformLocation(shader, "paletteMipMap"), 2);
+		glUniform2fv(glGetUniformLocation(shader, "transformMatrix"), 4, trnsParams.ptr);
+		glUniform2f(glGetUniformLocation(shader, "transformPoint"), x0, y0);
 
 		glBindVertexArray(gl_vertexArray);
 
 		glBindBuffer(GL_ARRAY_BUFFER, gl_vertexBuffer);
-		glBufferData(GL_ARRAY_BUFFER, TileVertex.sizeof * gl_displayList.length, &gl_displayList.ptr, GL_STREAM_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, TileVertex.sizeof * gl_displayList.length, gl_displayList.ptr, GL_STREAM_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertexIndices);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, PolygonIndices.sizeof * gl_polygonIndices.length, gl_polygonIndices.ptr,
 				GL_STREAM_DRAW);
 
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)0);
 		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(3 * float.sizeof));
+		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)(TileVertex.r.offsetof));
 		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(7 * float.sizeof));
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)(TileVertex.s.offsetof));
 		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(9 * float.sizeof));
+		glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)(TileVertex.lX.offsetof));
+		glEnableVertexAttribArray(4);
+		glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)(TileVertex.selX.offsetof));
 
 		glDrawElements(GL_TRIANGLES, cast(int)(gl_polygonIndices.length * 3), GL_UNSIGNED_INT, null);
 	}

@@ -29,6 +29,10 @@ __m128d _vect(double[2] arg) @nogc @trusted pure nothrow {
 	return _mm_load_pd(arg.ptr);
 }
 pragma(inline, true)
+__m128 _vect(float[4] arg) @nogc @trusted pure nothrow {
+	return _mm_load_ps(arg.ptr);
+}
+pragma(inline, true)
 __m128i _vect(int[4] arg) @nogc @trusted pure nothrow {
 	return _mm_loadu_si32(arg.ptr);
 }
@@ -43,6 +47,10 @@ __m128d _conv2shorts(short* memAddr) @nogc @trusted pure nothrow {
 	workpad[0] = memAddr[0];
 	workpad[1] = memAddr[1];
 	return _mm_cvtepi32_pd(workpad);
+}
+pragma(inline, true)
+__m128 _conv4shorts(short* memAddr) @nogc @trusted pure nothrow {
+	return _mm_cvtepi32_ps(_mm_loadl_epi64(cast(__m128i*)memAddr));
 }
 pragma(inline, true)
 __m128 _conv4ubytes(ubyte* memAddr) @nogc @trusted pure nothrow {

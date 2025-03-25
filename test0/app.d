@@ -68,7 +68,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 		version (Windows) output.getOpenGLHandleAttribsARB([
 			OpenGLContextAtrb.MajorVersion, 3,
 			OpenGLContextAtrb.MinorVersion, 3,
-			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug | OpenGLContextFlags.ForwardCompatible,
+			OpenGLContextAtrb.ProfileMask, 1,
+			// OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
 			0
 		]);
 		else output.getOpenGLHandle();
@@ -85,17 +86,20 @@ class TileLayerTest : SystemEventListener, InputListener {
 		r = new Raster(424,240,output, 1);
 		r.readjustViewport(424 * 4, 240 * 4, 0, 0);
 		//output.setMainRaster(r);
-		t = new TileLayer(16,16, RenderingMode.Copy);
-		textLayer = new TileLayer(8,8, RenderingMode.AlphaBlend);
-		textLayer.paletteOffset = 512;
-		textLayer.masterVal = 127;
-		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
+
 		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(RenderingMode.AlphaBlend);
 		s = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
+		GLShader tileShader = GLShader(loadShader(`%SHADERS%/tile_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/tile_%SHDRVER%.frag`));
+		t = new TileLayer(16,16, tileShader);
+		textLayer = new TileLayer(8,8, tileShader);
+		textLayer.paletteOffset = 512;
+		textLayer.masterVal = 127;
+		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
 		// r.addLayer(tt, 1);
-		// r.addLayer(t, 0);
+		r.addLayer(t, 0);
 		r.addLayer(s, 2);
 		// r.addLayer(textLayer, 65_536);
 
@@ -141,14 +145,12 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
 		}
 		
-		tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
+		//tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
+		
+		t.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(tileSource), 0);
 		
 		for (int i; i < tiles.length; i++) {
-			tt.addTile(tiles[i], cast(wchar)i);
-		}
-		
-		for (int i; i < tiles.length; i++) {
-			t.addTile(tiles[i], cast(wchar)i);
+			t.addTile(cast(wchar)i, 0, i & 0x07, i>>3);
 		}
 		
 		{

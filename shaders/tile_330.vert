@@ -1,4 +1,4 @@
-#version 330
+#version 330 core
 
 // Basic tile shader for PixelPerfectEngine
 
@@ -18,9 +18,9 @@ out vec2 paletteSel;
 out float zVal;
 
 void main() {
-    gl_Position = vec4(vert, 1.0);
+    gl_Position = vec4((vert.xy - transformPoint) * transformMatrix + transformPoint, vert.z, 1.0);
     texMapping = texPos;
-    lightingCol = color;
+    lightingData = color;
     lightingDir = lDir;
     paletteSel = palSel;
     zVal = vert.z;

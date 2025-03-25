@@ -351,6 +351,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		size_t a = backend.length;
 		const b = a;
 		mixin(growthStrategy);
+		if (!a) a = 4;
 		static if (lts == LTrimStrategy.KeepUntilGrowth) {
 			T[] newbackend = nogc_newArray(a);
 			dirtyCopy(backend[lTrim..$], newbackend[0..backend.length-lTrim]);
@@ -409,16 +410,12 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		return result;
 	}
 	///Inserts a new element at index, then returns is.
-	ref T insert(size_t index, T elem) @nogc @safe {
+	ref T insert(size_t index, T elem) @nogc @trusted {
 		assert(index <= length);
 		if (!remain()) grow();
 		static if (lts == LTrimStrategy.None) {
-			static if (hasUDA!(T, PPECFG_Memfix)) {
-				if (index != length) backend.shiftElements(1, index);
-				setToNull(backend[index..index + 1]);
-			} else {
-				backend[index + 1..length + 1] = backend[index..length];
-			}
+			if (index != length) backend.shiftElements(1, index);
+			static if (hasUDA!(T, PPECFG_Memfix)) setToNull(backend[index..index + 1]);
 			backend[index] = elem;
 			rTrim--;
 		} else {
