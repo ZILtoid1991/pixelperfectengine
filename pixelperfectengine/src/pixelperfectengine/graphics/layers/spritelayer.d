@@ -61,26 +61,21 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			return materialID;
 		}
 	}
+	/// Defines a texture item for the layer.
 	protected struct TextureEntry {
-		int id;
-		uint glTextureID;
-		ushort width;
-		ushort height;
+		int id;				/// Local name identifier
+		uint glTextureID;	/// OpenGL texture identifier
+		ushort width;		/// width of the texture
+		ushort height;		/// height of the texture
 		ubyte paletteSh;
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			return (id > rhs) - (id < rhs);
-			// if (id > rhs) return -1;
-			// else if (id == rhs) return 0;
-			// else return 1;
 		}
 		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
 			return id == rhs;
 		}
 		int opCmp(const ref TextureEntry rhs) @nogc @safe pure nothrow const {
 			return (id > rhs.id) - (id < rhs.id);
-			// if (id > rhs.id) return -1;
-			// else if (id == rhs.id) return 0;
-			// else return 1;
 		}
 		bool opEquals(const ref TextureEntry rhs) @nogc @safe pure nothrow const {
 			return id == rhs.id;
@@ -89,15 +84,16 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			return id;
 		}
 	}
+	/// Defines a displaylist item for the layer.
 	protected @PPECFG_Memfix struct DisplayListItem_Sprt {
-		int spriteID;
-		int materialID;
-		Quad position;
-		float[4] slice;
-		ushort palSel;
-		ubyte palSh;
-		ubyte pri;
-		GLShader programID;
+		int spriteID;		/// Sprite identifier
+		int materialID;		/// Material identifier, contains the OpenGL texture identifier
+		Quad position;		/// Defines the position of the sprite on the 2D plane
+		float[4] slice;		/// Defines the position of the material on the texture
+		ushort palSel;		/// Selects the palette for the given sprite, see chapter on palettes in manual for more information.
+		ubyte palSh;		/// Defines how the palette selection works, see chapter on palettes in manual for more information.
+		ubyte pri;			/// Priority value, used for Z buffering.
+		GLShader programID;	/// Contains the shader program ID for the sprite.
 		///Contains attributes associated with each corner of the sprite
 		///Order: upper-left ; upper-right ; lower-left ; lower-right
 		GraphicsAttrExt[4] attr;
