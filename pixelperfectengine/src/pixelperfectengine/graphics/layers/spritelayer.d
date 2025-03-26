@@ -178,10 +178,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		glDeleteBuffers(1, &gl_vertexBuffer);
 		glDeleteVertexArrays(1, &gl_vertexArray);
 	}
-	
-	
-	
-	
+	/**
+	 * Defines the verticles used for displaying a sprite.
+	 */
 	protected struct DisplayListItem_GL {
 		Vertex		ul;
 		Vertex		ur;
@@ -205,6 +204,13 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				area.left * xStep, area.top * yStep, area.right * xStep, area.bottom * yStep));
 		return 0;
 	}
+	/**
+	 * Creates a sprite material for this layer using the whole page area.
+	 * Params:
+	 *   id = desired ID of the sprite material. Note that when updating a previously used one, sizes won't be updated for any displayed sprites.
+	 *   page = identifier number of the sprite sheet being used.
+	 * Returns: Zero on success, or a specific error code
+	 */
 	public int createSpriteMaterial(int id, int page) @safe @nogc nothrow {
 		TextureEntry te = gl_materials.searchBy(page);
 		materialList.orderedInsert(Material(id, te.glTextureID, te.width, te.height,
