@@ -4,7 +4,7 @@ import std.stdio;
 import std.string;
 import std.conv;
 import std.format;
-import std.random;
+// import std.random;
 import core.thread;
 
 import pixelperfectengine.graphics.raster;
@@ -21,6 +21,7 @@ import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.config;
+import pixelperfectengine.system.rng;
 
 import bindbc.opengl;
 
@@ -53,7 +54,6 @@ class TileLayerTest : SystemEventListener, InputListener {
 	Raster r;
 	TileLayer t;
 	TileLayer textLayer;
-	TransformableTileLayer!(Bitmap8Bit,16,16) tt;
 	Bitmap8Bit[] tiles;
 	Bitmap8Bit dlangMan;
 	Bitmap1Bit dlangManCS;
@@ -63,13 +63,14 @@ class TileLayerTest : SystemEventListener, InputListener {
 	TileCollisionDetector tcd;
 	float theta;
 	int framecounter;
+	RandomNumberGenerator rng;
 	this (int mapWidth, int mapHeight, int spriteNum) {
 		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);
 		version (Windows) output.getOpenGLHandleAttribsARB([
 			OpenGLContextAtrb.MajorVersion, 3,
 			OpenGLContextAtrb.MinorVersion, 3,
 			OpenGLContextAtrb.ProfileMask, 1,
-			// OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
+			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
 			0
 		]);
 		else output.getOpenGLHandle();
@@ -77,7 +78,12 @@ class TileLayerTest : SystemEventListener, InputListener {
 		if (glStatus < GLSupport.gl11) {
 			writeln("OpenGL not found!");
 		}
-		theta = 0;
+		{
+			writefln("%X", glGetError());
+
+		}
+		writeln(fromStringz(glGetString(GL_VERSION)));
+		rng = RandomNumberGenerator.defaultSeed();
 		isRunning = true;
 		Image tileSource = loadImage(File(resolvePath("%PATH%/assets/sci-fi-tileset.png")));
 		//Image tileSource = loadImage(File("../assets/_system/concreteGUIE0.tga"));
@@ -87,7 +93,6 @@ class TileLayerTest : SystemEventListener, InputListener {
 		r.readjustViewport(424 * 4, 240 * 4, 0, 0);
 		//output.setMainRaster(r);
 
-		tt = new TransformableTileLayer!(Bitmap8Bit,16,16)(RenderingMode.AlphaBlend);
 		s = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
@@ -140,7 +145,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		// s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
 
 		for(int i = 1 ; i < spriteNum ; i++){
-			const int x = uniform(0,320), y = uniform(0,240);
+			const int x = rng() % 424, y = rng() % 240;
 			s.addSprite(0, i, Point(x, y), 1);
 			ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
 		}
@@ -149,7 +154,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		
 		t.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(tileSource), 0);
 		
-		for (int i; i < tiles.length; i++) {
+		for (int i; i < ((tileSource.width / 16) * (tileSource.height / 16)); i++) {
 			t.addTile(cast(wchar)i, 0, i & 0x07, i>>3);
 		}
 		
@@ -163,9 +168,10 @@ class TileLayerTest : SystemEventListener, InputListener {
 		MappingElement[] mapping;
 		mapping.length = mapWidth * mapHeight;//64*64;
 		//attrMapping.length = 256*256;
+
 		for(int i; i < mapping.length; i++){
 			//mapping[i] = to!wchar(uniform(0x0000,0x00AA));
-			const int rnd = uniform(0,1024);
+			const int rnd = rng() & 0xFFFF;
 			//attrMapping[i] = BitmapAttrib(rnd & 1 ? true : false, rnd & 2 ? true : false);
 			mapping[i] = MappingElement(cast(wchar)(rnd & 63), BitmapAttrib(rnd & 1024 ? true : false, rnd & 512 ? true : false));
 			//mapping[i] = MappingElement(0x0, BitmapAttrib(false,false));
@@ -220,12 +226,14 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.addBinding(BindingCode(ScanCode.F11, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("fullscreen"));
 		}
 		
-		tt.loadMapping(mapWidth, mapHeight, mapping);
-		tt.warpMode = WarpMode.Off;
+		// tt.loadMapping(mapWidth, mapHeight, mapping);
+		// tt.warpMode = WarpMode.Off;
 		
 		t.loadMapping(mapWidth, mapHeight, mapping);
 		t.warpMode = WarpMode.TileRepeat;
 		
+		t.reprocessTilemap();
+
 		//t.setWrapMode(true);
 		//tt.D = -256;
 		//loadPaletteFromXMP(tileSource, "default", r);
@@ -280,22 +288,18 @@ class TileLayerTest : SystemEventListener, InputListener {
 			//tcd.testAll();
 			if(scrup) {
 				t.relScroll(0,-1);
-				tt.relScroll(0,-1);
 				s.relScroll(0,-1);
 			}
 			if(scrdown) {
 				t.relScroll(0,1);
-				tt.relScroll(0,1);
 				s.relScroll(0,1);
 			}
 			if(scrleft) {
 				t.relScroll(-1,0);
-				tt.relScroll(-1,0);
 				s.relScroll(-1,0);
 			}
 			if(scrright) {
 				t.relScroll(1,0);
-				tt.relScroll(1,0);
 				s.relScroll(1,0);
 			}
 			
@@ -380,46 +384,46 @@ class TileLayerTest : SystemEventListener, InputListener {
 				scrright = isPressed;
 				break;
 			case hashCalc("A+"): 	//A+
-				tt.A = cast(short)(tt.A + 16);
+
 				break;
 			case hashCalc("A-"):	//A-
-				tt.A = cast(short)(tt.A - 16);
+
 				break;
 			case hashCalc("B+"):	//B+
-				tt.B = cast(short)(tt.B + 16);
+
 				break;
 			case hashCalc("B-"):	//B-
-				tt.B = cast(short)(tt.B - 16);
+
 				break;
 			case hashCalc("C+"):	//C+
-				tt.C = cast(short)(tt.C + 16);
+
 				break;
 			case hashCalc("C-"):	//C-
-				tt.C = cast(short)(tt.C - 16);
+
 				break;
 			case hashCalc("D+"):	//D+
-				tt.D = cast(short)(tt.D + 16);
+
 				break;
 			case hashCalc("D-"):	//D-
-				tt.D = cast(short)(tt.D - 16);
+
 				break;
 			case hashCalc("x0+"):	//x0+
-				tt.x_0 = cast(short)(tt.x_0 + 1);
+
 				break;
 			case hashCalc("x0-"):	//x0-
-				tt.x_0 = cast(short)(tt.x_0 - 1);
+
 				break;
 			case hashCalc("y0+"):	//y0+
-				tt.y_0 = cast(short)(tt.y_0 + 1);
+
 				break;
 			case hashCalc("y0-"):	//y0-
-				tt.y_0 = cast(short)(tt.y_0 - 1);
+
 				break;
 			case hashCalc("hidettl"):
-				r.removeLayer(0);
+
 				break;
 			case hashCalc("unhidettl"):
-				r.addLayer(tt, 0);
+
 				break;
 			case hashCalc("sprtH-"):
 
