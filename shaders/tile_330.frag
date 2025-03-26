@@ -10,16 +10,17 @@ in vec2 lightingDir;
 in vec2 paletteSel;
 in float zVal;
 
-uniform sampler2D mainTexture;  // Primary texture data
+uniform sampler3D mainTexture;  // Primary texture data
 uniform sampler2D palette;      // Palette for indexed colors
 uniform sampler2D paletteMipMap;// Palette for indexed mipmaps
 
-vec4 clut(vec3 position) {
-    return texture(palette, vec2(texture(mainTexture, position).r + paletteOffset.x, paletteOffset.y));
+vec4 clut(vec3 position, vec2 paletteOffset) {
+    float i = texture(mainTexture, position).r;
+    return texture(palette, vec2(i + paletteOffset.x, paletteOffset.y));
 }
 
 void main() {
-    vec4 color = clut(texMapping);
+    vec4 color = clut(texMapping, paletteSel);
     if (color.a <= 0.01) discard;
     fragColor = color;
 }
