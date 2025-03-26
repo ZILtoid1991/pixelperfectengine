@@ -179,11 +179,11 @@ public class TileLayer : Layer, ITileLayer {
 		glGenBuffers(1, &gl_vertexIndices);
 		glGenTextures(1, &gl_texture);
 		glBindTexture(GL_TEXTURE_3D, gl_texture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
 	}
 	~this() @nogc @trusted nothrow {
 		glDeleteBuffers(1, &gl_vertexIndices);
@@ -223,7 +223,7 @@ public class TileLayer : Layer, ITileLayer {
 			}
 			gl_texturePages++;
 			glBindTexture(GL_TEXTURE_3D, gl_texture);
-			glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, textureType == 8 ? GL_RED : GL_RGBA, gl_textureWidth, gl_textureHeight,
+			glTexImage3D(GL_TEXTURE_3D, 0, textureType == 8 ? GL_RED : GL_RGBA, gl_textureWidth, gl_textureHeight,
 					gl_texturePages, 0, textureType == 8 ? GL_R8 : GL_RGBA8,  GL_UNSIGNED_BYTE, gl_textureData.ptr);
 			pages.insert(PageDefinition(page, gl_texturePages));
 		} catch (NuException e) {
@@ -235,61 +235,61 @@ public class TileLayer : Layer, ITileLayer {
 		return 0;
 	}
 	public final void reprocessTilemap() @trusted @nogc nothrow {
-		if (sX != prevSX || sY != prevSY || scaleH != scaleHP || scaleV != scaleVP || shearH != shearHP ||
-				shearV != shearVP || x0 != x0P || y0 != y0P || theta != thetaP) {	//check if any transform parameters changed, if yes, move onto the next step
-			//set all previous vals to the current ones
-			prevSX = sX;
-			prevSY = sY;
-			x0P = x0;
-			y0P = y0;
-			scaleHP = scaleH;
-			scaleVP = scaleV;
-			shearHP = shearH;
-			shearVP = shearV;
-			thetaP = theta;
-			//clear the display lists
-			gl_displayList.length = 0;
-			gl_polygonIndices.length = 0;
-			//rebuild the display list
-			const xFrom = sX - cast(int)(rasterX * overscanAm);
-			const xTo = sX + cast(int)(rasterX * (overscanAm + 1));
-			const yFrom = sY - cast(int)(rasterY * overscanAm);
-			const yTo = sY + cast(int)(rasterY * (overscanAm + 1));
-			__m128d screenSizeRec = _vect([2.0 / rasterX, -2.0 / rasterY]);
-			immutable __m128d OGL_OFFSET = __m128d([-1.0, 1.0]);
-			immutable float Z_REC = 1.0 / ubyte.max;
-			const __m128d tileSize = _conv2ints(tileX, tileY) * screenSizeRec;
-			const __m128d tileSizeText = _conv2ints(tileX, tileY) * textureRec;
-			const pagesRec = 1.0 / gl_texturePages;
-			for (int y = yFrom ; y <= yTo ; y += tileY) {
-				for (int x = xFrom ; x <= xTo ; x += tileX) {
-					MappingElement me = tileByPixel(x, y);
-					if (me.tileID != 0xFFFF) {
-						TileDefinition td = tiles.searchBy(me.tileID);
-						if (td.id == 0xFFFF) continue;
-						const p = cast(int)gl_displayList.length;
-						const z = me.attributes.priority * Z_REC;
-						const u = td.page * pagesRec;
-						gl_polygonIndices ~= PolygonIndices(p + 0, p + 1, p + 2);
-						gl_polygonIndices ~= PolygonIndices(p + 1, p + 3, p + 2);
-						__m128d positionULC = _conv2ints(x, y) * screenSizeRec + OGL_OFFSET;
-						__m128 pULC = _mm_cvtpd_ps(positionULC), pLRC = _mm_cvtpd_ps(positionULC + tileSize);
-						__m128d tileULC = _conv2ints(td.x, td.y) * textureRec;
-						__m128 tULC = _mm_cvtpd_ps(tileULC), tLRC = _mm_cvtpd_ps(tileULC * tileSizeText);
-						const colorSelY = (me.paletteSel + paletteOffset)>>(8-td.paletteSh),
-								colorSelX = (me.paletteSel + paletteOffset)&((1<<(8-td.paletteSh))-1);
-						gl_displayList ~= TileVertex(pULC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tULC[1], u, 0.0, 0.0,
-								colorSelX, colorSelY);
-						gl_displayList ~= TileVertex(pULC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tLRC[1], u, 0.0, 0.0,
-								colorSelX, colorSelY);
-						gl_displayList ~= TileVertex(pLRC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tULC[1], u, 0.0, 0.0,
-								colorSelX, colorSelY);
-						gl_displayList ~= TileVertex(pLRC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tLRC[1], u, 0.0, 0.0,
-								colorSelX, colorSelY);
-					}
+		// if (sX != prevSX || sY != prevSY || scaleH != scaleHP || scaleV != scaleVP || shearH != shearHP ||
+		// 		shearV != shearVP || x0 != x0P || y0 != y0P || theta != thetaP) {	//check if any transform parameters changed, if yes, move onto the next step
+		// 	//set all previous vals to the current ones
+		// 	prevSX = sX;
+		// 	prevSY = sY;
+		// 	x0P = x0;
+		// 	y0P = y0;
+		// 	scaleHP = scaleH;
+		// 	scaleVP = scaleV;
+		// 	shearHP = shearH;
+		// 	shearVP = shearV;
+		// 	thetaP = theta;
+		//clear the display lists
+		gl_displayList.length = 0;
+		gl_polygonIndices.length = 0;
+		//rebuild the display list
+		const xFrom = sX - cast(int)(rasterX * overscanAm);
+		const xTo = sX + cast(int)(rasterX * (overscanAm + 1));
+		const yFrom = sY - cast(int)(rasterY * overscanAm);
+		const yTo = sY + cast(int)(rasterY * (overscanAm + 1));
+		__m128d screenSizeRec = _vect([2.0 / rasterX, -2.0 / rasterY]);
+		immutable __m128d OGL_OFFSET = __m128d([-1.0, 1.0]);
+		immutable float Z_REC = 1.0 / ubyte.max;
+		const __m128d tileSize = _conv2ints(tileX, tileY) * screenSizeRec;
+		const __m128d tileSizeText = _conv2ints(tileX, tileY) * textureRec;
+		const pagesRec = 1.0 / gl_texturePages;
+		for (int y = yFrom ; y <= yTo ; y += tileY) {
+			for (int x = xFrom ; x <= xTo ; x += tileX) {
+				MappingElement me = tileByPixel(x, y);
+				if (me.tileID != 0xFFFF) {
+					TileDefinition td = tiles.searchBy(me.tileID);
+					if (td.id == 0xFFFF) continue;
+					const p = cast(int)gl_displayList.length;
+					const z = me.attributes.priority * Z_REC;
+					const u = td.page * pagesRec;
+					gl_polygonIndices ~= PolygonIndices(p + 0, p + 1, p + 2);
+					gl_polygonIndices ~= PolygonIndices(p + 1, p + 3, p + 2);
+					__m128d positionULC = _conv2ints(x, y) * screenSizeRec + OGL_OFFSET;
+					__m128 pULC = _mm_cvtpd_ps(positionULC), pLRC = _mm_cvtpd_ps(positionULC + tileSize);
+					__m128d tileULC = _conv2ints(td.x, td.y) * textureRec;
+					__m128 tULC = _mm_cvtpd_ps(tileULC), tLRC = _mm_cvtpd_ps(tileULC * tileSizeText);
+					const colorSelY = (me.paletteSel + paletteOffset)>>(8-td.paletteSh),
+							colorSelX = (me.paletteSel + paletteOffset)&((1<<(8-td.paletteSh))-1);
+					gl_displayList ~= TileVertex(pULC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tULC[1], u, 0.0, 0.0,
+							colorSelX, colorSelY);
+					gl_displayList ~= TileVertex(pULC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tLRC[1], u, 0.0, 0.0,
+							colorSelX, colorSelY);
+					gl_displayList ~= TileVertex(pLRC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tULC[1], u, 0.0, 0.0,
+							colorSelX, colorSelY);
+					gl_displayList ~= TileVertex(pLRC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tLRC[1], u, 0.0, 0.0,
+							colorSelX, colorSelY);
 				}
 			}
 		}
+		//}
 	}
 	/**
 	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
@@ -303,7 +303,7 @@ public class TileLayer : Layer, ITileLayer {
 	 */
 	public override void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
 			@nogc nothrow {
-		reprocessTilemap();
+		// reprocessTilemap();
 		//Constants begin
 		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
 		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
@@ -328,12 +328,12 @@ public class TileLayer : Layer, ITileLayer {
 		__m128 trnsParams = _conv4shorts(abcd.ptr) * TRNS_PARAMS_REC * rotateVec;
 		//Render begin
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
+		glBindTexture(GL_TEXTURE_3D, gl_texture);
 		glUseProgram(shader);
 		glUniform1i(glGetUniformLocation(shader, "mainTexture"), 0);
 		glUniform1i(glGetUniformLocation(shader, "palette"), 1);
 		glUniform1i(glGetUniformLocation(shader, "paletteMipMap"), 2);
-		glUniform2fv(glGetUniformLocation(shader, "transformMatrix"), 4, trnsParams.ptr);
+		glUniformMatrix2fv(glGetUniformLocation(shader, "transformMatrix"), 1, GL_FALSE, &trnsParams[0]);
 		glUniform2f(glGetUniformLocation(shader, "transformPoint"), x0, y0);
 
 		glBindVertexArray(gl_vertexArray);
