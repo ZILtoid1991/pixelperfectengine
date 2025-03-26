@@ -134,7 +134,7 @@ abstract class Layer {
 	 */
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc;
 	///Amount of virtual overscan, certain effects might rely on this.
-	protected float overscanAm;
+	protected float overscanAm = 0.0;
 	/**
 	 * Adds a bitmap source to the layer.
 	 * Params:
