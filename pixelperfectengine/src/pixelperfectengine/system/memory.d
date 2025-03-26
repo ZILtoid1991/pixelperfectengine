@@ -509,24 +509,24 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 	}
 	T searchBy(Q)(Q needle) @nogc @safe nothrow {
 		if (length) {
-			size_t l, r = length, m;
+			size_t l, r = length - 1, m;
 			while (l < r) {
 				m = (l+r)>>1;
 				if (binaryFun!equal(backend[m], needle)) return backend[m];
-				else if (binaryFun!less(backend[m], needle)) r = m - 1;
-				else l = m + 1;
+				else if (binaryFun!less(backend[m], needle)) l = m + 1;
+				else r = m - 1;
 			}
 		}
 		return T.init;
 	}
 	sizediff_t searchIndexBy(Q)(Q needle) @nogc @safe nothrow {
 		if (length) {
-			size_t l, r = length, m;
+			size_t l, r = length - 1, m;
 			while (l < r) {
 				m = (l+r)>>1;
 				if (binaryFun!equal(backend[m], needle)) return m;
-				else if (binaryFun!less(backend[m], needle)) r = m - 1;
-				else l = m + 1;
+				else if (binaryFun!less(backend[m], needle)) l = m + 1;
+				else r = m - 1;
 			}
 		}
 		return -1;
