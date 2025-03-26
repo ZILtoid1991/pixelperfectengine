@@ -334,10 +334,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.width, bitmap.height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,
 					pixelData);
 		}
-		{
-			const ulong errCode = glGetError();
-			if (errCode != GL_NO_ERROR) nu_fatal((cast(char*)&errCode)[0..8]);
-		}
+
 		if (!pixelData) return -1;
 		if (exists == -1) gl_materials.orderedInsert
 			(TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height, palSh));
