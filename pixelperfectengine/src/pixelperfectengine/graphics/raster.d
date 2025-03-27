@@ -414,8 +414,8 @@ public class Raster : PaletteContainer {
 		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
 		glBindFramebuffer(GL_FRAMEBUFFER, gl_FrameBuffer[updatedBuffer]);
 		glViewport(0, 0, rasterWidth, rasterHeight);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		// glEnable(GL_DEPTH_TEST);
+		glClear(GL_COLOR_BUFFER_BIT /+| GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT+/);
+		glDisable(GL_DEPTH_TEST);
 		foreach (Layer layer ; layerMap) {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
 					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);

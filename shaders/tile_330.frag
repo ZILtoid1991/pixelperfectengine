@@ -4,7 +4,7 @@
 
 out vec4 fragColor;             // Color output
 
-in vec3 texMapping;             // Texture mapping position
+in uvec3 texMapping;             // Texture mapping position
 in vec4 lightingData;           // Lighting data, can be repurposed for other things
 in vec2 lightingDir;
 in vec2 paletteSel;
@@ -14,8 +14,8 @@ uniform sampler3D mainTexture;  // Primary texture data
 uniform sampler2D palette;      // Palette for indexed colors
 uniform sampler2D paletteMipMap;// Palette for indexed mipmaps
 
-vec4 clut(vec3 position, vec2 paletteOffset) {
-    float i = texture(mainTexture, position).r;
+vec4 clut(uvec3 position, vec2 paletteOffset) {
+    float i = texelFetch(mainTexture, position).r;
     return texture(palette, vec2(i + paletteOffset.x, paletteOffset.y));
 }
 

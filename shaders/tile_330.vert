@@ -2,26 +2,30 @@
 
 // Basic tile shader for PixelPerfectEngine
 
-layout(location = 0)in vec3 vert;
-layout(location = 1)in vec4 color;
-layout(location = 2)in vec3 texPos;
-layout(location = 3)in vec2 lDir;
-layout(location = 4)in vec2 palSel;
+layout(location = 0)in uvec2 vert;
+layout(location = 1)in uint palSel;
+layout(location = 1)in uint texPos;
+layout(location = 2)in ivec4 color;
+layout(location = 3)in ivec2 lDir;
 
 uniform mat2 transformMatrix;
 uniform vec2 transformPoint;
+uniform vec2 bias;
+uniform vec2 tileSize;
 
-out vec3 texMapping;        // Texture mapping data, by default `texPos` is sent here without modification
+
+out uvec3 texMapping;       // Texture mapping data, by default `texPos` is sent here without modification
 out vec4 lightingData;      // Lighting color
 out vec2 lightingDir;       // Lighting direction
 out vec2 paletteSel;
-out float zVal;
 
 void main() {
-    gl_Position = vec4((vert.xy - transformPoint) * transformMatrix + transformPoint, vert.z, 1.0);
-    texMapping = texPos;
-    lightingData = color;
+    vec2 fvert = vert * tileSize + bias + vec2(-1.0, 1.0);
+    gl_Position = vec4((fvert.xy - transformPoint) * transformMatrix + transformPoint, 0.0, 1.0);
+    texMapping.x = vert & 0x7FFF;
+    texMapping.y = (vert>>14) & 0x7FFF;
+    texmapping.z = vert>>28;
+    lightingData = color * vec4(1.0 / 255, 1.0 / 255,  1.0 / 255, 1.0 / 255);
     lightingDir = lDir;
-    paletteSel = palSel;
-    zVal = vert.z;
+    paletteSel = vec2((palSel & 0xFF) * (1.0 / 255), (palSel>>8) * (1.0 / 255));
 }

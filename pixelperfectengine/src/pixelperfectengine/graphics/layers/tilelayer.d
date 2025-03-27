@@ -79,8 +79,8 @@ public class TileLayer : Layer, ITileLayer {
 		wchar id = 0xFFFF;
 		ubyte paletteSh;
 		ubyte page;
-		int x;
-		int y;
+		ushort x;
+		ushort y;
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			return (id > rhs) - (id < rhs);
 		}
@@ -255,37 +255,33 @@ public class TileLayer : Layer, ITileLayer {
 		const xTo = sX + cast(int)(rasterX * (overscanAm + 1));
 		const yFrom = sY - cast(int)(rasterY * overscanAm);
 		const yTo = sY + cast(int)(rasterY * (overscanAm + 1));
-		__m128d screenSizeRec = _vect([2.0 / rasterX, -2.0 / rasterY]);
-		immutable __m128d OGL_OFFSET = __m128d([-1.0, 1.0]);
-		immutable float Z_REC = 1.0 / ubyte.max;
-		const __m128d tileSize = _conv2ints(tileX, tileY) * screenSizeRec;
-		const __m128d tileSizeText = _conv2ints(tileX, tileY) * textureRec;
-		const pagesRec = 1.0 / gl_texturePages;
-		for (int y = yFrom ; y <= yTo ; y += tileY) {
-			for (int x = xFrom ; x <= xTo ; x += tileX) {
+		//__m128d screenSizeRec = _vect([2.0 / rasterX, -2.0 / rasterY]);
+		//immutable __m128d OGL_OFFSET = __m128d([-1.0, 1.0]);
+		//immutable float Z_REC = 1.0 / ubyte.max;
+		//const __m128d tileSize = _conv2ints(tileX, tileY) * screenSizeRec;
+		//const __m128d tileSizeText = _conv2ints(tileX, tileY) * textureRec;
+		//const pagesRec = 1.0 / gl_texturePages;
+		for (int y = yFrom, tx ; y <= yTo ; y += tileY, tx++) {
+			for (int x = xFrom, ty ; x <= xTo ; x += tileX, ty++) {
 				MappingElement me = tileByPixel(x, y);
 				if (me.tileID != 0xFFFF) {
+					const p = cast(int)gl_polygonIndices.length;
 					TileDefinition td = tiles.searchBy(me.tileID);
 					if (td.id == 0xFFFF) continue;
-					const p = cast(int)gl_displayList.length;
-					const z = me.attributes.priority * Z_REC;
-					const u = td.page * pagesRec;
 					gl_polygonIndices ~= PolygonIndices(p + 0, p + 1, p + 2);
 					gl_polygonIndices ~= PolygonIndices(p + 1, p + 3, p + 2);
-					__m128d positionULC = _conv2ints(x, y) * screenSizeRec + OGL_OFFSET;
-					__m128 pULC = _mm_cvtpd_ps(positionULC), pLRC = _mm_cvtpd_ps(positionULC + tileSize);
-					__m128d tileULC = _conv2ints(td.x, td.y) * textureRec;
-					__m128 tULC = _mm_cvtpd_ps(tileULC), tLRC = _mm_cvtpd_ps(tileULC * tileSizeText);
-					const colorSelY = (me.paletteSel + paletteOffset)>>(8-td.paletteSh),
-							colorSelX = (me.paletteSel + paletteOffset)&((1<<(8-td.paletteSh))-1);
-					gl_displayList ~= TileVertex(pULC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tULC[1], u, 0.0, 0.0,
-							colorSelX, colorSelY);
-					gl_displayList ~= TileVertex(pULC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tULC[0], tLRC[1], u, 0.0, 0.0,
-							colorSelX, colorSelY);
-					gl_displayList ~= TileVertex(pLRC[0], pULC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tULC[1], u, 0.0, 0.0,
-							colorSelX, colorSelY);
-					gl_displayList ~= TileVertex(pLRC[0], pLRC[1], z, 0.5, 0.5, 0.5, 1.0, tLRC[0], tLRC[1], u, 0.0, 0.0,
-							colorSelX, colorSelY);
+					gl_displayList ~= TileVertex(cast(ubyte)tx, cast(ubyte)ty,
+							cast(ushort)((me.paletteSel<<td.paletteSh) + paletteOffset),
+							PackedTextureMapping(td.x, td.y, td.page), GraphicsAttrExt.init);
+					gl_displayList ~= TileVertex(cast(ubyte)(tx + 1), cast(ubyte)ty,
+							cast(ushort)((me.paletteSel<<td.paletteSh) + paletteOffset),
+							PackedTextureMapping(td.x + tileX, td.y, td.page), GraphicsAttrExt.init);
+					gl_displayList ~= TileVertex(cast(ubyte)tx, cast(ubyte)(ty + 1),
+							cast(ushort)((me.paletteSel<<td.paletteSh) + paletteOffset),
+							PackedTextureMapping(td.x, (td.y + tileY), td.page), GraphicsAttrExt.init);
+					gl_displayList ~= TileVertex(cast(ubyte)(tx + 1), cast(ubyte)(ty + 1),
+							cast(ushort)((me.paletteSel<<td.paletteSh) + paletteOffset),
+							PackedTextureMapping((td.x + tileX), (td.y + tileY), td.page), GraphicsAttrExt.init);
 				}
 			}
 		}
@@ -339,22 +335,23 @@ public class TileLayer : Layer, ITileLayer {
 		glBindVertexArray(gl_vertexArray);
 
 		glBindBuffer(GL_ARRAY_BUFFER, gl_vertexBuffer);
-		glBufferData(GL_ARRAY_BUFFER, TileVertex.sizeof * gl_displayList.length, gl_displayList.ptr, GL_STREAM_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, TileVertex.sizeof * gl_displayList.length, gl_displayList.ptr, GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertexIndices);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, PolygonIndices.sizeof * gl_polygonIndices.length, gl_polygonIndices.ptr,
-				GL_STREAM_DRAW);
+				GL_STATIC_DRAW);
 
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)0);
+		glVertexAttribIPointer(0, 2, GL_UNSIGNED_BYTE, cast(int)(TileVertex.sizeof), cast(void*)0);
 		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)(TileVertex.r.offsetof));
+		glVertexAttribIPointer(1, 1, GL_UNSIGNED_SHORT, cast(int)(TileVertex.sizeof), cast(void*)TileVertex.palSel.offsetof);
 		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)(TileVertex.s.offsetof));
+		glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, cast(int)(TileVertex.sizeof), cast(void*)TileVertex.ptm.offsetof);
 		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)(TileVertex.lX.offsetof));
+		glVertexAttribIPointer(3, 4, GL_UNSIGNED_BYTE, cast(int)(TileVertex.sizeof),
+				cast(void*)TileVertex.attributes.r.offsetof);
 		glEnableVertexAttribArray(4);
-		glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, cast(int)(TileVertex.sizeof), cast(void*)(TileVertex.selX.offsetof));
+		glVertexAttribIPointer(4, 2, GL_SHORT, cast(int)(TileVertex.sizeof), cast(void*)TileVertex.attributes.lX.offsetof);
 
 		glDrawElements(GL_TRIANGLES, cast(int)(gl_polygonIndices.length * 3), GL_UNSIGNED_INT, null);
 	}
@@ -370,7 +367,7 @@ public class TileLayer : Layer, ITileLayer {
 	 */
 	public void addTile(wchar id, int page, int x, int y, ubyte paletteSh = 0) @nogc @safe {
 		const pageNum = pages.searchBy(page).page;
-		tiles.insert(TileDefinition(id, paletteSh, cast(ubyte)pageNum, x, y));
+		tiles.insert(TileDefinition(id, paletteSh, cast(ubyte)pageNum, cast(ushort)x, cast(ushort)y));
 	}
 	/**
 	 * Sets the rotation amount for the layer.

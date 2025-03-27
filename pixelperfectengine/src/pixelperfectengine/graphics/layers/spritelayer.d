@@ -34,12 +34,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected struct Material {
 		int materialID;	/// The material ID, which is also used for ordering.
 		uint pageID;	/// Identifies which texture is being used for the material.
-		ushort width;	/// Defines the sprite's width
-		ushort height;	/// Defines the sprite's height
-		float left;		/// Defines the left-edge of the sprite on the texture
-		float top;		/// Defines the top-edge of the sprite on the texture
-		float right;	/// Defines the right-edge of the sprite on the texture
-		float bottom;	/// Defines the bottom-edge of the sprite on the texture
+		ushort left;	/// Defines the left-edge of the sprite on the texture
+		ushort top;		/// Defines the top-edge of the sprite on the texture
+		ushort right;	/// Defines the right-edge of the sprite on the texture
+		ushort bottom;	/// Defines the bottom-edge of the sprite on the texture
 		/// Used for sorting and accessing
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			return (materialID > rhs) - (materialID < rhs);
@@ -142,7 +140,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	/// The default shader to be used on sprites without color lookup.
 	protected GLShader defaultShader32;
 	/// Contains all textures used for this layer.
-	protected TextureEntry[] gl_materials;
+	protected OrderedArraySet!(TextureEntry) gl_materials;
 	/// Used for drawing the polygons to the screen.
 	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
 	/// Contains all material data associated with the layer.
@@ -182,10 +180,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 * Defines the verticles used for displaying a sprite.
 	 */
 	protected struct DisplayListItem_GL {
-		Vertex		ul;
-		Vertex		ur;
-		Vertex		ll;
-		Vertex		lr;
+		SpriteVertex		ul;
+		SpriteVertex		ur;
+		SpriteVertex		ll;
+		SpriteVertex		lr;
 	}
 	
 
@@ -199,9 +197,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public int createSpriteMaterial(int id, int page, Box area) @safe @nogc nothrow {
 		TextureEntry te = gl_materials.searchBy(page);
-		const double xStep = 1.0 / (te.width - 1), yStep = 1.0 / (te.height - 1);
-		materialList.orderedInsert(Material(id, te.glTextureID, cast(ushort)area.width, cast(ushort)area.height,
-				area.left * xStep, area.top * yStep, area.right * xStep, area.bottom * yStep));
+		materialList.orderedInsert(Material(id, te.glTextureID,
+				cast(ushort)area.left, cast(ushort)area.top, cast(ushort)area.right, cast(ushort)area.bottom));
 		return 0;
 	}
 	/**
@@ -213,8 +210,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public int createSpriteMaterial(int id, int page) @safe @nogc nothrow {
 		TextureEntry te = gl_materials.searchBy(page);
-		materialList.orderedInsert(Material(id, te.glTextureID, te.width, te.height,
-				0.0, 0.0, 1.0, 1.0));
+		materialList.orderedInsert(Material(id, te.glTextureID, 0, 0, te.width, te.height));
 		return 0;
 	}
 	/**
@@ -362,18 +358,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
 		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
 		immutable __m128 COLOR_REC = __m128([1.0 / 255, 1.0 / 255, 1.0 / 255, 1.0 / 255]);
-		const __m128i scrollVec = _vect([sX, sY, 0, 0]), offsetsVec = _mm_loadu_si64(offsets.ptr);
+		const __m128i scrollVec = _vect([sX, sY, sX + sizes[2], sY + sizes[3]]), offsetsVec = _mm_loadu_si64(offsets.ptr);
 		//Constants end
-		//Stack prealloc block begin
-
-		//Stack prealloc block end
 		//Select palettes
-		// glBindTexture(GL_TEXTURE_2D, 0);
-		// glBindFramebuffer(GL_FRAMEBUFFER, workpad);
-
-		// glViewport(0, 0, sizes[0], sizes[1]);
-
-		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
+		//if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, palette);
 		if (palNM) {
@@ -388,55 +376,31 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, cm.pageID);
 				//Calculate and store sprite location on the display area
-				// spriteLoc = [sprt.position.topLeft.x - (sX - offsets[0]),
-						// sprt.position.topLeft.y - (sY - offsets[1]),
-						// sprt.position.topRight.x - (sX - offsets[0]),
-						// sprt.position.topRight.y - (sY - offsets[1]),
-						// sprt.position.bottomLeft.x - (sX - offsets[0]),
-						// sprt.position.bottomLeft.y - (sY - offsets[1]),
-						// sprt.position.bottomRight.x - (sX - offsets[0]),
-						// sprt.position.bottomRight.y - (sY - offsets[1])];
-				_store2s(&gl_RenderOut.ul.x, _mm_cvtpd_ps(_mm_cvtepi32_pd(_mm_loadu_si64(&sprt.position.topLeft) -
-						(scrollVec - offsetsVec)) * screenSizeRec + OGL_OFFSET));
-				_store2s(&gl_RenderOut.ur.x, _mm_cvtpd_ps(_mm_cvtepi32_pd(_mm_loadu_si64(&sprt.position.topRight) -
-						(scrollVec - offsetsVec)) * screenSizeRec + OGL_OFFSET));
-				_store2s(&gl_RenderOut.ll.x, _mm_cvtpd_ps(_mm_cvtepi32_pd(_mm_loadu_si64(&sprt.position.bottomLeft) -
-						(scrollVec - offsetsVec)) * screenSizeRec + OGL_OFFSET));
-				_store2s(&gl_RenderOut.lr.x, _mm_cvtpd_ps(_mm_cvtepi32_pd(_mm_loadu_si64(&sprt.position.bottomRight) -
-						(scrollVec - offsetsVec)) * screenSizeRec + OGL_OFFSET));
-				//calculate and store Z values
-				float zF = sprt.pri * (1.0 / 255);
-				gl_RenderOut.ul.z = zF;
-				gl_RenderOut.ur.z = zF;
-				gl_RenderOut.ll.z = zF;
-				gl_RenderOut.lr.z = zF;
-				//calculate and store color values
-				// spriteCl = [sprt.attr[0].r, sprt.attr[0].g, sprt.attr[0].b, sprt.attr[0].a,
-						// sprt.attr[1].r, sprt.attr[1].g, sprt.attr[1].b, sprt.attr[1].a,
-						// sprt.attr[2].r, sprt.attr[2].g, sprt.attr[2].b, sprt.attr[2].a,
-						// sprt.attr[3].r, sprt.attr[3].g, sprt.attr[3].b, sprt.attr[3].a];
-				_mm_storeu_ps(&gl_RenderOut.ul.r, _conv4ubytes(&sprt.attr[0].r) * COLOR_REC);
-				_mm_storeu_ps(&gl_RenderOut.ur.r, _conv4ubytes(&sprt.attr[1].r) * COLOR_REC);
-				_mm_storeu_ps(&gl_RenderOut.ll.r, _conv4ubytes(&sprt.attr[2].r) * COLOR_REC);
-				_mm_storeu_ps(&gl_RenderOut.lr.r, _conv4ubytes(&sprt.attr[3].r) * COLOR_REC);
-				//store texture mapping data
-				__m128 sprtSliceCalc = _mm_loadu_ps(&cm.left) + _mm_loadu_ps(&sprt.slice[0]);
-				gl_RenderOut.ul.s = sprtSliceCalc[0];
-				gl_RenderOut.ul.t = sprtSliceCalc[1];
-				gl_RenderOut.ur.s = sprtSliceCalc[2];
-				gl_RenderOut.ur.t = sprtSliceCalc[1];
-				gl_RenderOut.ll.s = sprtSliceCalc[0];
-				gl_RenderOut.ll.t = sprtSliceCalc[3];
-				gl_RenderOut.lr.s = sprtSliceCalc[2];
-				gl_RenderOut.lr.t = sprtSliceCalc[3];
-				//calcolate and store lighting direction data
-				// spriteLoc = [sprt.attr[0].lX, sprt.attr[0].lY, sprt.attr[1].lX, sprt.attr[1].lY,
-				// 		sprt.attr[2].lX, sprt.attr[2].lY, sprt.attr[3].lX, sprt.attr[3].lY];
+				__m128i translatedPosition = _mm_loadu_si128(cast(const(__m128i)*)&displayAreaWS) - scrollVec;
+				short8 tppck = _mm_packs_epi16(translatedPosition, MM_NULLVEC);
+				gl_RenderOut.ul.x = tppck[0];
+				gl_RenderOut.ul.y = tppck[1];
+				gl_RenderOut.ur.x = tppck[2];
+				gl_RenderOut.ur.y = tppck[1];
+				gl_RenderOut.ll.x = tppck[0];
+				gl_RenderOut.ll.y = tppck[3];
+				gl_RenderOut.lr.x = tppck[2];
+				gl_RenderOut.lr.y = tppck[3];
+				//Store sprite material position
+				gl_RenderOut.ul.s = cm.left;
+				gl_RenderOut.ul.t = cm.top;
+				gl_RenderOut.ur.s = cm.right;
+				gl_RenderOut.ur.t = cm.top;
+				gl_RenderOut.ll.s = cm.left;
+				gl_RenderOut.ll.t = cm.bottom;
+				gl_RenderOut.lr.s = cm.right;
+				gl_RenderOut.lr.t = cm.bottom;
+				//Store sprite attributes
+				gl_RenderOut.ul.attributes = sprt.attr[0];
+				gl_RenderOut.ur.attributes = sprt.attr[1];
+				gl_RenderOut.ll.attributes = sprt.attr[2];
+				gl_RenderOut.lr.attributes = sprt.attr[3];
 
-				_store2s(&gl_RenderOut.ul.lX, _mm_cvtpd_ps(_conv2shorts(&sprt.attr[0].lX) * LDIR_REC));
-				_store2s(&gl_RenderOut.ur.lX, _mm_cvtpd_ps(_conv2shorts(&sprt.attr[1].lX) * LDIR_REC));
-				_store2s(&gl_RenderOut.ll.lX, _mm_cvtpd_ps(_conv2shorts(&sprt.attr[2].lX) * LDIR_REC));
-				_store2s(&gl_RenderOut.lr.lX, _mm_cvtpd_ps(_conv2shorts(&sprt.attr[3].lX) * LDIR_REC));
 				glUseProgram(sprt.programID);
 				glUniform1i(glGetUniformLocation(sprt.programID, "mainTexture"), 0);
 				glUniform1i(glGetUniformLocation(sprt.programID, "palette"), 1);
@@ -444,7 +408,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				const colorSelY = sprt.palSel>>(8-sprt.palSh), colorSelX = sprt.palSel&((1<<(8-sprt.palSh))-1);
 				glUniform2f(glGetUniformLocation(sprt.programID, "paletteOffset"),colorSelX * (1.0 / 256),colorSelY * (1.0 / 256));
 				// glUniform1f(glGetUniformLocation(gl_Program, "palLengthMult"), 1.0 / (9 - sprt.palSh));
-
+				// bind vertex arrays
 				glBindVertexArray(gl_vertexArray);
 
 				glBindBuffer(GL_ARRAY_BUFFER, gl_vertexBuffer);
@@ -454,13 +418,15 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * 6, gl_PlIndices.ptr, GL_STREAM_DRAW);
 
 				glEnableVertexAttribArray(0);
-				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)0);
+				glVertexAttribIPointer(0, 2, GL_SHORT, cast(int)(SpriteVertex.sizeof), cast(void*)0);
 				glEnableVertexAttribArray(1);
-				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(3 * float.sizeof));
+				glVertexAttribIPointer(1, 2, GL_UNSIGNED_SHORT, cast(int)(SpriteVertex.sizeof), cast(void*)SpriteVertex.s.offsetof);
 				glEnableVertexAttribArray(2);
-				glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(7 * float.sizeof));
+				glVertexAttribIPointer(2, 4, GL_UNSIGNED_BYTE, cast(int)(SpriteVertex.sizeof),
+						cast(void*)SpriteVertex.attributes.r.offsetof);
 				glEnableVertexAttribArray(3);
-				glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, cast(int)(11 * float.sizeof), cast(void*)(9 * float.sizeof));
+				glVertexAttribIPointer(3, 2, GL_SHORT, cast(int)(SpriteVertex.sizeof),
+						cast(void*)SpriteVertex.attributes.lX.offsetof);
 				glBindVertexArray(gl_vertexArray);
 				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 			}

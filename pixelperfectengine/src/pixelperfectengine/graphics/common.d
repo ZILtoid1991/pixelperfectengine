@@ -214,8 +214,8 @@ public struct SpriteVertex {
  * To Do: Try to somehow optimize some of the per-tile stuff, so they won't be repeated multiple times
  */
 public struct TileVertex {
-	ubyte col;			/// Column of the visible tilemap.
 	ubyte row;			/// Row of the visible tilemap.
+	ubyte col;			/// Column of the visible tilemap.
 	ushort palSel;		/// Palette selector
 	PackedTextureMapping ptm;	/// Texture array mapping packed into a single 32 bit value.
 	GraphicsAttrExt attributes;	/// Color and mipmap modifiers.
@@ -225,6 +225,11 @@ public struct TileVertex {
  */
 public struct PackedTextureMapping {
 	uint base;
+	this (uint s, uint t, uint u) @nogc @safe pure nothrow {
+		this.s = s;
+		this.t = t;
+		this.u = u;
+	}
 	ushort s() @nogc @safe pure nothrow const {
 		return cast(ushort)(base & 0x3F_FF);
 	}
@@ -261,7 +266,7 @@ public struct GraphicsAttrExt {
 	ubyte r = 128;				///Red channel modifier
 	ubyte g = 128;				///Green channel modifier
 	ubyte b = 128;				///Blue channel modifier
-	ubyte a;					///Alpha channel modifier
+	ubyte a = 255;				///Alpha channel modifier
 	short lX;					///X normal modifier
 	short lY;					///Y normal modifier
 }
