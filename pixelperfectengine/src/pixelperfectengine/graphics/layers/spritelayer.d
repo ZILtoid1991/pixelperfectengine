@@ -169,7 +169,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		for (size_t i ; i < gl_materials.length ; i++) {
 			glDeleteTextures(1, &gl_materials[i].glTextureID);
 		}
-		gl_materials.nogc_free();
+		gl_materials.free();
 		materialList.nogc_free();
 		displayList_sprt.nogc_free();
 		glDeleteBuffers(1, &gl_vertexIndices);
