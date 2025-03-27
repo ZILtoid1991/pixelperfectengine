@@ -194,23 +194,17 @@ public struct Quad {
 	}
 }
 /**
- * Defines Vertex data.
+ * Defines sprite vertex data.
  * Color channels can be repurposed to pass arbitrary data to the shaders if lighting etc. is not needed.
  * Normal mapping modifiers can be repurposed to pass arbitrary data to the shaders if normal mapping is
  * not needed
  */
-public struct Vertex {
-	float x;		/// X coordinate of the vertex.
-	float y;		/// Y coordinate of the vertex.
-	float z;		/// Z coordinate of the vertex.
-	float r;		/// Red color channel of the vertex.
-	float g;		/// Green color channel of the vertex.
-	float b;		/// Blue color channel of the vertex.
-	float a;		/// Alpha channel of the vertex.
-	float s;		///	X coordinate for texture mapping.
-	float t;		/// Y coordinate for texture mapping.
-	float lX;		/// X modifier for normal mapping.
-	float lY;		/// Y modifier for normal mapping.
+public struct SpriteVertex {
+	short x;		/// X coordinate of the vertex in pixels on the visible screen.
+	short y;		/// Y coordinate of the vertex in pixels on the visible screen.
+	ushort s;		/// X coordinate for texture mapping in pixels.
+	ushort t;		/// y coordinate for texture mapping in pixels.
+	GraphicsAttrExt attributes;	/// Color and mipmap modifiers.
 }
 /**
  * Defines Vertex data for tiles.
@@ -220,20 +214,41 @@ public struct Vertex {
  * To Do: Try to somehow optimize some of the per-tile stuff, so they won't be repeated multiple times
  */
 public struct TileVertex {
-	float x;		/// X coordinate of the vertex.
-	float y;		/// Y coordinate of the vertex.
-	float z;		/// Z coordinate of the vertex.
-	float r;		/// Red color channel of the vertex.
-	float g;		/// Green color channel of the vertex.
-	float b;		/// Blue color channel of the vertex.
-	float a;		/// Alpha channel of the vertex.
-	float s;		///	X coordinate for texture mapping.
-	float t;		/// Y coordinate for texture mapping.
-	float u;		/// Page identifier of the tile sheet.
-	float lX;		/// X modifier for normal mapping.
-	float lY;		/// Y modifier for normal mapping.
-	float selX;		/// X selector for palette.
-	float selY;		/// Y selector for palette.
+	ubyte col;			/// Column of the visible tilemap.
+	ubyte row;			/// Row of the visible tilemap.
+	ushort palSel;		/// Palette selector
+	PackedTextureMapping ptm;	/// Texture array mapping packed into a single 32 bit value.
+	GraphicsAttrExt attributes;	/// Color and mipmap modifiers.
+}
+/**
+ * Defines 2D texture array mapping data packed into a 32 bit value.
+ */
+public struct PackedTextureMapping {
+	uint base;
+	ushort s() @nogc @safe pure nothrow const {
+		return cast(ushort)(base & 0x3F_FF);
+	}
+	ushort t() @nogc @safe pure nothrow const {
+		return cast(ushort)((base>>14) & 0x3F_FF);
+	}
+	ubyte u() @nogc @safe pure nothrow const {
+		return cast(ubyte)(base>>28);
+	}
+	ushort s(uint val) @nogc @safe pure nothrow {
+		base &= 0xFF_FF_C0_00;
+		base |= val & 0x3F_FF;
+		return cast(ushort)(base & 0x3F_FF);
+	}
+	ushort t(uint val) @nogc @safe pure nothrow {
+		base &= 0xF0_00_3F_FF;
+		base |= (val & 0x3F_FF)<<14;
+		return cast(ushort)((base>>14) & 0x3F_FF);
+	}
+	ubyte u(uint val) @nogc @safe pure nothrow {
+		base &= 0x0F_FF_FF_FF;
+		base |= val<<28;
+		return cast(ubyte)(base>>28);
+	}
 }
 /**
  * Graphics attribute extensions for sprites, tiles, etc.
