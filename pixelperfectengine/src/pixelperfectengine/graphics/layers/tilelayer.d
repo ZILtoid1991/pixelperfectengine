@@ -17,74 +17,18 @@ import pixelperfectengine.system.intrinsics;
 
 public class TileLayer : Layer, ITileLayer {
 	/**
-	 * Implements a single tile to be displayed.
-	 * Is ordered in a BinarySearchTree for fast lookup. DEPRECATED!
+	 *
 	 */
-	protected struct DisplayListItem {//DEPRECATED!
-		ABitmap tile;			///reference counting only
-		void* pixelDataPtr;		///points to the pixeldata
-		//Color* palettePtr;		///points to the palette if present
-		wchar ID;				///ID, mainly as a padding to 32 bit alignment
-		ubyte wordLength;		///to avoid calling the more costly classinfo
-		/**
-		 * Sets the maximum accessable color amount by the bitmap.
-		 * By default, for 4 bit bitmaps, it's 4, and it enables 256 * 16 color palettes.
-		 * This limitation is due to the way how the MappingElement struct works.
-		 * 8 bit bitmaps can assess the full 256 * 256 palette space.
-		 * Lower values can be described to avoid wasting palettes space in cases when the
-		 * bitmaps wouldn't use their full capability.
-		 */
-		ubyte paletteSh;		
-		/** 
-		 * Creates a tile-ID association.
-		 * Params:
-		 *   ID = The character ID of the tile.
-		 *   tile = The bitmap to become the tile
-		 *   paletteSh = 
-		 */
-		this(wchar ID, ABitmap tile, ubyte paletteSh = 0) pure @safe {
-			//palettePtr = tile.getPalettePtr();
-			//this.paletteSel = paletteSel;
-			this.ID = ID;
-			this.tile=tile;
-			if (typeid(tile) is typeid(Bitmap2Bit)) {
-				wordLength = 2;
-				this.paletteSh = paletteSh ? paletteSh : 2;
-				pixelDataPtr = (cast(Bitmap2Bit)(tile)).getPtr;
-			} else if (typeid(tile) is typeid(Bitmap4Bit)) {
-				wordLength = 4;
-				this.paletteSh = paletteSh ? paletteSh : 4;
-				pixelDataPtr = (cast(Bitmap4Bit)(tile)).getPtr;
-			} else if (typeid(tile) is typeid(Bitmap8Bit)) {
-				wordLength = 8;
-				this.paletteSh = paletteSh ? paletteSh : 8;
-				pixelDataPtr = (cast(Bitmap8Bit)(tile)).getPtr;
-			} else if (typeid(tile) is typeid(Bitmap16Bit)) {
-				wordLength = 16;
-				pixelDataPtr = (cast(Bitmap16Bit)(tile)).getPtr;
-			} else if (typeid(tile) is typeid(Bitmap32Bit)) {
-				wordLength = 32;
-				pixelDataPtr = (cast(Bitmap32Bit)(tile)).getPtr;
-			} else {
-				throw new TileFormatException("Bitmap format not supported!");
-			}
-		}
-		string toString() const {
-			import std.conv : to;
-			string result = to!string(cast(ushort)ID) ~ " ; " ~ to!string(pixelDataPtr) ~ " ; " ~ to!string(wordLength);
-			return result;
-		}
-	}
 	struct TileDefinition {
 		wchar id = 0xFFFF;
 		ubyte paletteSh;
 		ubyte page;
 		ushort x;
 		ushort y;
-		int opCmp(const int rhs) @nogc @safe pure nothrow const {
-			return (id > rhs) - (id < rhs);
+		int opCmp(const ref wchar rhs) @nogc @safe pure nothrow const {
+			return (id < rhs) - (id > rhs);
 		}
-		bool opEquals(const int rhs) @nogc @safe pure nothrow const {
+		bool opEquals(const ref wchar rhs) @nogc @safe pure nothrow const {
 			return id == rhs;
 		}
 		int opCmp(const ref TileDefinition rhs) @nogc @safe pure nothrow const {
@@ -97,6 +41,9 @@ public class TileLayer : Layer, ITileLayer {
 			return id;
 		}
 	}
+	/**
+	 *
+	 */
 	struct PageDefinition {
 		int id;
 		int page;
@@ -129,7 +76,7 @@ public class TileLayer : Layer, ITileLayer {
 	protected DynArray!TileVertex gl_displayList;
 	protected DynArray!PolygonIndices gl_polygonIndices;
 	protected DynArray!ubyte gl_textureData;
-	protected OrderedArraySet!TileDefinition tiles;
+	protected OrderedArraySet!(TileDefinition/+, "a < b"+/) tiles;
 	protected OrderedArraySet!PageDefinition pages;
 	protected int			gl_textureWidth;
 	protected int			gl_textureHeight;
@@ -140,16 +87,14 @@ public class TileLayer : Layer, ITileLayer {
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
 	protected Color[] 		src;		///Local buffer DEPRECATED!
-	protected int			prevSX, prevSY;
-	protected short			x0, x0P;
-	protected short			y0, y0P;
-	protected short			scaleH, scaleHP;
-	protected short			scaleV, scaleVP;
-	protected short			shearH, shearHP;
-	protected short			shearV, shearVP;
-	protected ushort		theta, thetaP;
-	alias DisplayList = TreeMap!(wchar, DisplayListItem, true);//DEPRECATED!
-	protected DisplayList displayList;	///displaylist using a BST to allow skipping elements DEPRECATED!
+	protected short			x0;
+	protected short			y0;
+	protected short			scaleH = 0x10_00;
+	protected short			scaleV = 0x10_00;
+	protected short			shearH;
+	protected short			shearV;
+	protected ushort		theta;
+
 	/**
 	 * Enables the TileLayer to access other parts of the palette if needed.
 	 * Does not effect 16 bit bitmaps, but effects all 4 and 8 bit bitmap
@@ -178,12 +123,12 @@ public class TileLayer : Layer, ITileLayer {
 		glGenBuffers(1, &gl_vertexBuffer);
 		glGenBuffers(1, &gl_vertexIndices);
 		glGenTextures(1, &gl_texture);
-		glBindTexture(GL_TEXTURE_3D, gl_texture);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP);
 	}
 	~this() @nogc @trusted nothrow {
 		glDeleteBuffers(1, &gl_vertexIndices);
@@ -208,24 +153,30 @@ public class TileLayer : Layer, ITileLayer {
 			if (gl_textureData.length == 0) {
 				gl_textureWidth = bitmap.width();
 				gl_textureHeight = bitmap.height();
-				if (is(bitmap == Bitmap8Bit)) textureType = 8;
-				else if (is(bitmap == Bitmap32Bit)) textureType = 32;
+				if (typeid(bitmap) is typeid(Bitmap8Bit)) textureType = 8;
+				else if (typeid(bitmap) is typeid(Bitmap32Bit)) textureType = 32;
 				textureRec = _vect([1.0 / (gl_textureWidth - 1), 1.0 / (gl_textureHeight - 1)]);
+				gl_textureData.reserve(bitmap.width * bitmap.height * (textureType / 8));
 			} else if (gl_textureWidth != bitmap.width() || gl_textureHeight != bitmap.height()) {
 				return TextureUploadError.TextureSizeMismatch;
 			}
-			if (is(bitmap == Bitmap8Bit)) {
+			if (typeid(bitmap) is typeid(Bitmap8Bit)) {
 				if (textureType != 8) return TextureUploadError.TextureTypeMismatch;
-				gl_textureData ~= (cast(Bitmap8Bit)bitmap).getRawdata();
-			} else if (is(bitmap == Bitmap32Bit)) {
+				gl_textureData.appendAtEnd((cast(Bitmap8Bit)bitmap).getRawdata());
+				glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
+				glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RED, gl_textureWidth, gl_textureHeight, gl_texturePages + 1, 0, GL_RED,
+						GL_UNSIGNED_BYTE, gl_textureData.ptr);
+				pages.insert(PageDefinition(page, gl_texturePages));
+			} else if (typeid(bitmap) is typeid(Bitmap32Bit)) {
 				if (textureType != 32) return TextureUploadError.TextureTypeMismatch;
-				gl_textureData ~= cast(ubyte[])((cast(Bitmap32Bit)bitmap).getRawdata());
+				gl_textureData.appendAtEnd(cast(ubyte[])((cast(Bitmap32Bit)bitmap).getRawdata()));
+				glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
+				glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, gl_textureWidth, gl_textureHeight, gl_texturePages + 1, 0, GL_RGBA8,
+						GL_UNSIGNED_INT_8_8_8_8, gl_textureData.ptr);
+				pages.insert(PageDefinition(page, gl_texturePages));
 			}
+
 			gl_texturePages++;
-			glBindTexture(GL_TEXTURE_3D, gl_texture);
-			glTexImage3D(GL_TEXTURE_3D, 0, textureType == 8 ? GL_RED : GL_RGBA, gl_textureWidth, gl_textureHeight,
-					gl_texturePages, 0, textureType == 8 ? GL_R8 : GL_RGBA8,  GL_UNSIGNED_BYTE, gl_textureData.ptr);
-			pages.insert(PageDefinition(page, gl_texturePages));
 		} catch (NuException e) {
 			e.free;
 			return TextureUploadError.OutOfMemory;
@@ -235,18 +186,7 @@ public class TileLayer : Layer, ITileLayer {
 		return 0;
 	}
 	public final void reprocessTilemap() @trusted @nogc nothrow {
-		// if (sX != prevSX || sY != prevSY || scaleH != scaleHP || scaleV != scaleVP || shearH != shearHP ||
-		// 		shearV != shearVP || x0 != x0P || y0 != y0P || theta != thetaP) {	//check if any transform parameters changed, if yes, move onto the next step
-		// 	//set all previous vals to the current ones
-		// 	prevSX = sX;
-		// 	prevSY = sY;
-		// 	x0P = x0;
-		// 	y0P = y0;
-		// 	scaleHP = scaleH;
-		// 	scaleVP = scaleV;
-		// 	shearHP = shearH;
-		// 	shearVP = shearV;
-		// 	thetaP = theta;
+
 		//clear the display lists
 		gl_displayList.length = 0;
 		gl_polygonIndices.length = 0;
@@ -255,17 +195,11 @@ public class TileLayer : Layer, ITileLayer {
 		const xTo = sX + cast(int)(rasterX * (overscanAm + 1));
 		const yFrom = sY - cast(int)(rasterY * overscanAm);
 		const yTo = sY + cast(int)(rasterY * (overscanAm + 1));
-		//__m128d screenSizeRec = _vect([2.0 / rasterX, -2.0 / rasterY]);
-		//immutable __m128d OGL_OFFSET = __m128d([-1.0, 1.0]);
-		//immutable float Z_REC = 1.0 / ubyte.max;
-		//const __m128d tileSize = _conv2ints(tileX, tileY) * screenSizeRec;
-		//const __m128d tileSizeText = _conv2ints(tileX, tileY) * textureRec;
-		//const pagesRec = 1.0 / gl_texturePages;
-		for (int y = yFrom, tx ; y <= yTo ; y += tileY, tx++) {
-			for (int x = xFrom, ty ; x <= xTo ; x += tileX, ty++) {
+		for (int y = yFrom, ty ; y <= yTo ; y += tileY, ty++) {
+			for (int x = xFrom, tx ; x <= xTo ; x += tileX, tx++) {
 				MappingElement me = tileByPixel(x, y);
 				if (me.tileID != 0xFFFF) {
-					const p = cast(int)gl_polygonIndices.length;
+					const p = cast(int)gl_displayList.length;
 					TileDefinition td = tiles.searchBy(me.tileID);
 					if (td.id == 0xFFFF) continue;
 					gl_polygonIndices ~= PolygonIndices(p + 0, p + 1, p + 2);
@@ -304,9 +238,7 @@ public class TileLayer : Layer, ITileLayer {
 		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
 		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
 		__m128d screenSizeRec = _vect([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
-		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([cast(double)offsets[0], cast(double)offsets[1]]);	//Offset to the top-left corner of the display area
-		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
-		immutable __m128 COLOR_REC = __m128([1.0 / 255, 1.0 / 255, 1.0 / 255, 1.0 / 255]);
+
 		immutable __m128 TRNS_PARAMS_REC = __m128([1.0 / 0x10_00, 1.0 / 0x10_00, 1.0 / 0x10_00, 1.0 / 0x10_00]);
 		const __m128i scrollVec = _vect([sX, sY, 0, 0]), offsetsVec = _mm_loadu_si64(offsets.ptr);
 		//Constants end
@@ -321,16 +253,19 @@ public class TileLayer : Layer, ITileLayer {
 		short[4] abcd = [scaleH, shearH, shearV, scaleV];
 		const double thetaF = PI * 2.0 * (theta * (1.0 / ushort.max));
 		const __m128 rotateVec = _vect([cos(thetaF), -1.0 * sin(thetaF), sin(thetaF), cos(thetaF)]);
-		__m128 trnsParams = _conv4shorts(abcd.ptr) * TRNS_PARAMS_REC * rotateVec;
+		__m128 trnsParams = (_conv4shorts(abcd.ptr) * TRNS_PARAMS_REC) * rotateVec;
 		//Render begin
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_3D, gl_texture);
-		glUseProgram(shader);
-		glUniform1i(glGetUniformLocation(shader, "mainTexture"), 0);
-		glUniform1i(glGetUniformLocation(shader, "palette"), 1);
-		glUniform1i(glGetUniformLocation(shader, "paletteMipMap"), 2);
-		glUniformMatrix2fv(glGetUniformLocation(shader, "transformMatrix"), 1, GL_FALSE, &trnsParams[0]);
-		glUniform2f(glGetUniformLocation(shader, "transformPoint"), x0, y0);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
+		GLuint currshader = shader;
+		glUseProgram(currshader);
+		glUniform1i(glGetUniformLocation(currshader, "mainTexture"), 0);
+		glUniform1i(glGetUniformLocation(currshader, "palette"), 1);
+		glUniform1i(glGetUniformLocation(currshader, "paletteMipMap"), 2);
+		glUniformMatrix2fv(glGetUniformLocation(currshader, "transformMatrix"), 1, GL_FALSE, &trnsParams[0]);
+		glUniform2f(glGetUniformLocation(currshader, "transformPoint"), x0, y0);
+		glUniform2f(glGetUniformLocation(currshader, "bias"), screenSizeRec[0] * (sX%tileX), screenSizeRec[1] * (sY%tileY));
+		glUniform2f(glGetUniformLocation(currshader, "tileSize"), screenSizeRec[0] * tileX, screenSizeRec[1] * tileY);
 
 		glBindVertexArray(gl_vertexArray);
 
@@ -349,9 +284,10 @@ public class TileLayer : Layer, ITileLayer {
 		glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, cast(int)(TileVertex.sizeof), cast(void*)TileVertex.ptm.offsetof);
 		glEnableVertexAttribArray(3);
 		glVertexAttribIPointer(3, 4, GL_UNSIGNED_BYTE, cast(int)(TileVertex.sizeof),
-				cast(void*)TileVertex.attributes.r.offsetof);
+				cast(void*)TileVertex.attributes.offsetof);
 		glEnableVertexAttribArray(4);
-		glVertexAttribIPointer(4, 2, GL_SHORT, cast(int)(TileVertex.sizeof), cast(void*)TileVertex.attributes.lX.offsetof);
+		glVertexAttribIPointer(4, 2, GL_SHORT, cast(int)(TileVertex.sizeof),
+				cast(void*)(TileVertex.attributes.lX.offsetof + GraphicsAttrExt.lX.offsetof));
 
 		glDrawElements(GL_TRIANGLES, cast(int)(gl_polygonIndices.length * 3), GL_UNSIGNED_INT, null);
 	}
@@ -529,21 +465,10 @@ public class TileLayer : Layer, ITileLayer {
 		totalX=mX*tileX;
 		totalY=mY*tileY;
 	}
-	///Adds a tile to the tileSet. t : The tile. id : The ID in wchar to differentiate between different tiles.
-	public void addTile(ABitmap tile, wchar id, ubyte paletteSh = 0) {
-		if(tile.width==tileX && tile.height==tileY) {
-			displayList[id] = DisplayListItem(id, tile, paletteSh);
-		}else{
-			throw new TileFormatException("Incorrect tile size!", __FILE__, __LINE__, null);
-		}
-	}
-	///Returns a tile from the displaylist
-	public ABitmap getTile(wchar id) {
-		return displayList[id].tile;
-	}
 	///Removes the tile with the ID from the set.
 	public void removeTile(wchar id) {
-		displayList.remove(id);
+		sizediff_t index = tiles.searchIndexBy(id);
+		if (index != -1) tiles.remove(index);
 	}
 	///Returns which tile is at the given pixel
 	public MappingElement tileByPixel(int x, int y) @nogc @safe pure nothrow const {
@@ -554,95 +479,7 @@ public class TileLayer : Layer, ITileLayer {
 	public override LayerType getLayerType() @nogc @safe pure nothrow const {
 		return LayerType.Tile;
 	}
-	public @nogc override void updateRaster(void* workpad, int pitch, Color* palette) {
-		import std.stdio : printf;
-		int sX0 = sX, sY0 = sY;
-		if (hBlankInterrupt !is null)
-			hBlankInterrupt(-1, sX0, sY0);
 
-		for (int line  ; line < rasterY ; line++) {
-			if (hBlankInterrupt !is null)
-				hBlankInterrupt(line, sX0, sY0);
-			if ((sY0 >= 0 && sY0 < totalY) || warpMode != WarpMode.Off) {
-				int sXlocal = sX0;
-				int sYAbs = sY0 & int.max;
-				const sizediff_t offsetP = line * pitch;	// The offset of the line that is being written
-				void* w0 = workpad + offsetP;
-				const int offsetY = sYAbs % tileY;		//Offset of the current line of the tiles in this line
-				const int offsetX0 = tileX - ((cast(uint)sXlocal + rasterX) % tileX);		//Scroll offset of the rightmost column
-				const int offsetX = (cast(uint)sXlocal % tileX);		//Scroll offset of the leftmost column
-				int tileXLength = offsetX ? tileX - offsetX : tileX;
-				for (int col ; col < rasterX ; ) {
-					//const int sXCurr = col && sX < 0 ? sXlocal - tileXLength : sXlocal;
-					const MappingElement currentTile = tileByPixel(sXlocal, sYAbs);
-					if (currentTile.tileID != 0xFFFF) {
-						const DisplayListItem tileInfo = displayList[currentTile.tileID];
-						const int offsetX1 = col ? 0 : offsetX;
-						const int offsetY0 = currentTile.attributes.vertMirror ? tileY - offsetY - 1 : offsetY;
-						if (col + tileXLength > rasterX) {
-							tileXLength -= offsetX0;
-						}
-						switch (tileInfo.wordLength) {
-							case 2:
-								import CPUblit.colorlookup : colorLookup2Bit;
-								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + (offsetX1 + (offsetY0 * tileX)>>>2);
-								colorLookup2Bit(tileSrc, cast(uint*)src, (cast(uint*)palette) + 
-										(currentTile.paletteSel<<tileInfo.paletteSh) + paletteOffset, tileXLength, offsetX1 & 2);
-								if(currentTile.attributes.horizMirror){//Horizontal mirroring
-									flipHorizontal(src);
-								}
-								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength,masterVal);
-								break;
-							case 4:
-								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + (offsetX1 + (offsetY0 * tileX)>>>1);
-								main4BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + 
-										(currentTile.paletteSel<<tileInfo.paletteSh) + paletteOffset, tileXLength, offsetX1 & 1);
-								if(currentTile.attributes.horizMirror){//Horizontal mirroring
-									flipHorizontal(src);
-								}
-								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength,masterVal);
-								break;
-							case 8:
-								ubyte* tileSrc = cast(ubyte*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
-								main8BitColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette) + 
-										(currentTile.paletteSel<<tileInfo.paletteSh) + paletteOffset, tileXLength);
-								if(currentTile.attributes.horizMirror){//Horizontal mirroring
-									flipHorizontal(src);
-								}
-								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength,masterVal);
-								break;
-							case 16:
-								ushort* tileSrc = cast(ushort*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
-								mainColorLookupFunction(tileSrc, cast(uint*)src, (cast(uint*)palette), tileXLength);
-								if(currentTile.attributes.horizMirror){//Horizontal mirroring
-									flipHorizontal(src);
-								}
-								mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength,masterVal);
-								break;
-							case 32:
-								Color* tileSrc = cast(Color*)tileInfo.pixelDataPtr + offsetX1 + (offsetY0 * tileX);
-								if(!currentTile.attributes.horizMirror) {
-									mainRenderingFunction(cast(uint*)tileSrc,cast(uint*)w0,tileXLength,masterVal);
-								} else {
-									copy(cast(uint*)tileSrc, cast(uint*)src, tileXLength);
-									flipHorizontal(src);
-									mainRenderingFunction(cast(uint*)src,cast(uint*)w0,tileXLength,masterVal);
-								}
-								break;
-							default: break;
-						}
-
-					}
-					sXlocal += tileXLength;
-					col += tileXLength;
-					w0 += tileXLength<<2;
-
-					tileXLength = tileX;
-				}
-			}
-			sY0++;
-		}
-	}
 	public MappingElement[] getMapping() @nogc @safe pure nothrow {
 		return mapping;
 	}
@@ -677,5 +514,8 @@ public class TileLayer : Layer, ITileLayer {
 		for (size_t i ; i < mapping.length ; i++) {
 			mapping[i] = MappingElement.init;
 		}
+	}
+	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {	//DEPRECATED
+
 	}
 }
