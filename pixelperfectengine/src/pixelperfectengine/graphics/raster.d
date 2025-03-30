@@ -186,10 +186,10 @@ public class Raster : PaletteContainer {
 			// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
 
-			glGenRenderbuffers(1, &depthBuffer);
-			glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
+			// glGenRenderbuffers(1, &depthBuffer);
+			// glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
+			// glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+			// glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
 
 			// assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE);
 
@@ -414,8 +414,8 @@ public class Raster : PaletteContainer {
 		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
 		glBindFramebuffer(GL_FRAMEBUFFER, gl_FrameBuffer[updatedBuffer]);
 		glViewport(0, 0, rasterWidth, rasterHeight);
-		glClear(GL_COLOR_BUFFER_BIT /+| GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT+/);
 		glDisable(GL_DEPTH_TEST);
+		glClear(GL_COLOR_BUFFER_BIT/+ | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT+/);
 		foreach (Layer layer ; layerMap) {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
 					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);
