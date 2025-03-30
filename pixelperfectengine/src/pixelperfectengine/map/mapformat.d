@@ -122,39 +122,30 @@ public class MapFormat {
 			foreach (t0; tileSource) {
 				string path = t0.getValue!string();
 				Image i = loadImage(File(resolvePath(path), "rb"));
-				void helperFunc(T)(T[] bitmaps, Tag source) {
+				void helperFunc(T)(T bitmap, Tag source) {
 					TileLayer tl = cast(TileLayer)layeroutput[key];
 					Tag tileInfo = source.getTag("Embed:TileInfo", null);
-					if(tileInfo !is null)
-						foreach (t1 ; tileInfo.tags) {
-							tl.addTile(bitmaps[t1.values[0].get!int()], cast(wchar)t1.values[1].get!int());
+					int tW = tl.getTileWidth, tH = tl.getTileHeight;
+					int numOfCol = bitmap.width % tW, numOfRow = bitmap.height % tH;
+					int imageID;
+					tl.addBitmapSource(bitmap, imageID, cast(ubyte)source.getAttribute!int("palShift"));
+					if(tileInfo !is null) {
+						foreach (Tag t1 ; tileInfo.tags) {
+							int tileNum = t1.values[0].get!int();
+							int x = tileNum / numOfCol;
+							int y = (tileNum - x) / numOfRow;
+							tl.addTile(cast(wchar)t1.values[1].get!int(), imageID, x, y);
 						}
+					}
 				}
 				switch(i.getBitdepth){
-					case 2:
-						Bitmap2Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap2Bit)(i, value.values[2].get!int(), 
-								value.values[3].get!int());
-						helperFunc(bitmaps, t0);
-						break;
-					case 4:
-						Bitmap4Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap4Bit)(i, value.values[2].get!int(), 
-								value.values[3].get!int());
-						helperFunc(bitmaps, t0);
-						break;
-					case 8:
-						Bitmap8Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap8Bit)(i, value.values[2].get!int(), 
-								value.values[3].get!int());
-						helperFunc(bitmaps, t0);
-						break;
-					case 16:
-						Bitmap16Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap16Bit)(i, value.values[2].get!int(), 
-								value.values[3].get!int());
-						helperFunc(bitmaps, t0);
+					case 2, 4, 8:
+						Bitmap8Bit bitmap = loadBitmapFromImage!(Bitmap8Bit)(i);
+						helperFunc(bitmap, t0);
 						break;
 					case 32:
-						Bitmap32Bit[] bitmaps = loadBitmapSheetFromImage!(Bitmap32Bit)(i, value.values[2].get!int(), 
-								value.values[3].get!int());
-						helperFunc(bitmaps, t0);
+						Bitmap32Bit bitmap = loadBitmapFromImage!(Bitmap32Bit)(i);
+						helperFunc(bitmap, t0);
 						break;
 					default:
 						throw new Exception("Unsupported image bitdepth");

@@ -1,5 +1,7 @@
 # PixelPerfectEngine Extendible Map Format
 
+NOTE: To be modified to the new resouce management system.
+
 ## Pre-requirements
 
 * Knowledge of SDLang (https://sdlang.org/)
