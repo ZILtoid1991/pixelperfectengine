@@ -17,7 +17,7 @@ uniform vec2 paletteOffset;     // Palette offset in case palette selection is u
 // uniform float palLengthMult;    // Palette lenght multiplier
 
 void main() {
-    vec4 color = texture(mainTexture, texMapping);
+    vec4 color = texelFetch(mainTexture, ivec2(texMapping.x, texMapping.y), 0);
     if (color.a <= 0.01) discard;
     fragColor = color;
 }
