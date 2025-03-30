@@ -155,13 +155,13 @@ class TileLayerTest : SystemEventListener, InputListener {
 		t.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(tileSource), 0);
 		
 		for (int i; i < ((tileSource.width / 16) * (tileSource.height / 16)); i++) {
-			t.addTile(cast(wchar)i, 0, i & 0x07, i>>3);
+			t.addTile(cast(wchar)i, 0, (i & 0x07)<<4, (i>>3)<<4);
 		}
 		
 		{
-			Bitmap8Bit[] fontSet = loadBitmapSheetFromImage!Bitmap8Bit(fontSource, 8, 8);
-			for (ushort i; i < fontSet.length; i++) {
-				textLayer.addTile(fontSet[i], i, 1);
+			textLayer.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(fontSource), 0, 1);
+			for (ushort i; i < 256; i++) {
+				textLayer.addTile(i, 0, (i & 0x0F)<<3, (i & 0xF0)>>1, 1);
 			}
 		}
 		//wchar[] mapping;
