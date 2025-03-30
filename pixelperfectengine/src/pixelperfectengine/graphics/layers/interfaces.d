@@ -163,19 +163,6 @@ public interface ITileLayer {
 	public size_t getTX() @nogc @safe pure nothrow const;
 	/// Returns the total height of the tile layer.
 	public size_t getTY() @nogc @safe pure nothrow const;
-	/**
-	 * Adds a new tile to the layer. DEPRECATED
-	 * Params: 
-	 *  tile: the bitmap representing the tile. Must be the same size as all the others. Some tilelayers might require
-	 * an exact format of tiles.
-	 *  id: the character ID of the tile represented on the map.
-	 *  paletteSh: palette shift amount, or how many bits are actually used of the bitmap. This enables less than 16 
-	 * or 256 color chunks on the palette to be selected.
-	 * Throws: TileFormatException if size or format is wrong.
-	 */
-	public void addTile(ABitmap tile, wchar id, ubyte paletteSh = 0) pure;
-	/// Returns the bitmap associated with the tile ID.
-	public ABitmap getTile(wchar id) @nogc @safe pure nothrow;
 	/// Sets the warp mode.
 	/// Returns the new warp mode that is being used.
 	public WarpMode setWarpMode(WarpMode mode) @nogc @safe pure nothrow;
