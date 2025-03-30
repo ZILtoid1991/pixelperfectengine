@@ -58,6 +58,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		size_t toHash() @nogc @safe pure nothrow const {
 			return materialID;
 		}
+		int width() @nogc @safe pure nothrow const {
+			return right - left + 1;
+		}
+		int height() @nogc @safe pure nothrow const {
+			return bottom - top + 1;
+		}
 	}
 	/// Defines a texture item for the layer.
 	protected struct TextureEntry {
@@ -145,10 +151,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
 	/// Contains all material data associated with the layer.
 	/// See struct `Material` for more information.
-	protected Material[] materialList;
+	protected OrderedArraySet!Material materialList;
 	/// Contains the displayed sprites in order of display.
 	/// See struct `DisplayListItem_Sprt` for more information.
-	protected DisplayListItem_Sprt[] displayList_sprt;
+	protected OrderedArraySet!DisplayListItem_Sprt displayList_sprt;
 	/// Contains the data needed to render the currently displayed sprite.
 	protected DisplayListItem_GL gl_RenderOut;
 	/// Contains the poligon indices for rendering, likely to be kept as a constant
@@ -170,8 +176,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			glDeleteTextures(1, &gl_materials[i].glTextureID);
 		}
 		gl_materials.free();
-		materialList.nogc_free();
-		displayList_sprt.nogc_free();
+		materialList.free();
+		displayList_sprt.free();
 		glDeleteBuffers(1, &gl_vertexIndices);
 		glDeleteBuffers(1, &gl_vertexBuffer);
 		glDeleteVertexArrays(1, &gl_vertexArray);
@@ -197,7 +203,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public int createSpriteMaterial(int id, int page, Box area) @safe @nogc nothrow {
 		TextureEntry te = gl_materials.searchBy(page);
-		materialList.orderedInsert(Material(id, te.glTextureID,
+		materialList.insert(Material(id, te.glTextureID,
 				cast(ushort)area.left, cast(ushort)area.top, cast(ushort)area.right, cast(ushort)area.bottom));
 		return 0;
 	}
@@ -210,15 +216,15 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public int createSpriteMaterial(int id, int page) @safe @nogc nothrow {
 		TextureEntry te = gl_materials.searchBy(page);
-		materialList.orderedInsert(Material(id, te.glTextureID, 0, 0, te.width, te.height));
+		materialList.insert(Material(id, te.glTextureID, 0, 0, te.width, te.height));
 		return 0;
 	}
 	/**
 	 * Removes sprite material designated by `id`.
 	 */
 	public void removeSpriteMaterial(int id) @safe @nogc nothrow {
-		sizediff_t index = materialList.searchByI(id);
-		if (index != -1) materialList.nogc_remove(id);
+		sizediff_t index = materialList.searchIndexBy(id);
+		if (index != -1) materialList.remove(id);
 	}
 	/**
 	 * Adds a sprite to the given location.
@@ -251,7 +257,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			else shaderID = defaultShader;
 		}
 		try {
-			displayList_sprt.orderedInsert(DisplayListItem_Sprt(n, sprt, position, [0.0, 0.0, 0.0, 0.0], paletteSel, paletteSh,
+			displayList_sprt.insert(DisplayListItem_Sprt(n, sprt, position, [0.0, 0.0, 0.0, 0.0], paletteSel, paletteSh,
 					0, shaderID, [gae, gae, gae, gae]));
 		} catch (NuException e) {
 			try {
@@ -280,8 +286,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			ubyte alpha = ubyte.max, GLShader shaderID = GLShader(0))
 			@trusted nothrow {
 		// BUGFIX: without these, sprites will be look wobbly
-		position.right += 1;
-		position.bottom += 1;
+		// position.right += 1;
+		// position.bottom += 1;
 		return addSprite(sprt, n, Quad(position.cornerUL, position.cornerUR, position.cornerLL, position.cornerLR),
 				paletteSel, paletteSh, alpha, shaderID);
 	}
@@ -312,7 +318,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public override int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) @trusted @nogc nothrow {
 		import bindbc.opengl;
-		const sizediff_t exists = gl_materials.searchByI(page);
+		const sizediff_t exists = gl_materials.searchIndexBy(page);
 		if (exists != -1) glDeleteTextures(1, &gl_materials[exists].glTextureID);
 		void* pixelData;
 		GLuint textureID;
@@ -332,9 +338,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		}
 
 		if (!pixelData) return -1;
-		if (exists == -1) gl_materials.orderedInsert
-			(TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height, palSh));
-		else gl_materials[exists] = TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height, palSh);
+		if (exists == -1) {
+			gl_materials.insert(TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height, palSh));
+		} else {
+			gl_materials[exists] = TextureEntry(page, textureID, cast(ushort)bitmap.width, cast(ushort)bitmap.height, palSh);
+		}
 		return 0;
 	}
 	/**
@@ -368,24 +376,35 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			glActiveTexture(GL_TEXTURE2);
 			glBindTexture(GL_TEXTURE_2D, palNM);
 		}
+		GLuint prevPrg;
+		GLuint prevTexture;
+		GLint paletteOffset;
+		GLint mainTexture;
 		foreach_reverse (ref DisplayListItem_Sprt sprt ; displayList_sprt) {	//Iterate over all sprites within the displaylist
 			if (displayAreaWS.isBetween(sprt.position.topLeft) || displayAreaWS.isBetween(sprt.position.topRight) ||
 					displayAreaWS.isBetween(sprt.position.bottomLeft) || displayAreaWS.isBetween(sprt.position.bottomRight)) {//Check whether the sprite is on the display area
 					//get sprite material
+				GLuint prg = sprt.programID.shaderID;
 				Material cm = materialList.searchBy(sprt.materialID);
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, cm.pageID);
+				if (prevTexture != cm.pageID){
+					prevTexture = cm.pageID;
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, cm.pageID);
+				}
 				//Calculate and store sprite location on the display area
-				__m128i translatedPosition = _mm_loadu_si128(cast(const(__m128i)*)&displayAreaWS) - scrollVec;
-				short8 tppck = _mm_packs_epi16(translatedPosition, MM_NULLVEC);
+				__m128i ulur = _mm_loadu_si64(&sprt.position.topLeft) |
+						_mm_slli_si128!8(_mm_loadu_si64(&sprt.position.topRight));
+				__m128i lllr = _mm_loadu_si64(&sprt.position.bottomLeft) |
+						_mm_slli_si128!8(_mm_loadu_si64(&sprt.position.bottomRight));
+				short8 tppck = cast(short8)_mm_packs_epi32(ulur - scrollVec, lllr - scrollVec);
 				gl_RenderOut.ul.x = tppck[0];
 				gl_RenderOut.ul.y = tppck[1];
 				gl_RenderOut.ur.x = tppck[2];
-				gl_RenderOut.ur.y = tppck[1];
-				gl_RenderOut.ll.x = tppck[0];
-				gl_RenderOut.ll.y = tppck[3];
-				gl_RenderOut.lr.x = tppck[2];
-				gl_RenderOut.lr.y = tppck[3];
+				gl_RenderOut.ur.y = tppck[3];
+				gl_RenderOut.ll.x = tppck[4];
+				gl_RenderOut.ll.y = tppck[5];
+				gl_RenderOut.lr.x = tppck[6];
+				gl_RenderOut.lr.y = tppck[7];
 				//Store sprite material position
 				gl_RenderOut.ul.s = cm.left;
 				gl_RenderOut.ul.t = cm.top;
@@ -400,13 +419,18 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				gl_RenderOut.ur.attributes = sprt.attr[1];
 				gl_RenderOut.ll.attributes = sprt.attr[2];
 				gl_RenderOut.lr.attributes = sprt.attr[3];
-
-				glUseProgram(sprt.programID);
-				glUniform1i(glGetUniformLocation(sprt.programID, "mainTexture"), 0);
-				glUniform1i(glGetUniformLocation(sprt.programID, "palette"), 1);
-				glUniform1i(glGetUniformLocation(sprt.programID, "paletteMipMap"), 2);
+				if (prevPrg != prg) {
+					prevPrg = prg;
+					glUseProgram(prg);
+					glUniform1i(glGetUniformLocation(prg, "palette"), 1);
+					glUniform1i(glGetUniformLocation(prg, "paletteMipMap"), 2);
+					glUniform2f(glGetUniformLocation(prg, "stepSizes"), screenSizeRec[0], screenSizeRec[1]);
+					paletteOffset = glGetUniformLocation(prg, "paletteOffset");
+					mainTexture = glGetUniformLocation(prg, "mainTexture");
+				}
 				const colorSelY = sprt.palSel>>(8-sprt.palSh), colorSelX = sprt.palSel&((1<<(8-sprt.palSh))-1);
-				glUniform2f(glGetUniformLocation(sprt.programID, "paletteOffset"),colorSelX * (1.0 / 256),colorSelY * (1.0 / 256));
+				glUniform2f(paletteOffset,colorSelX * (1.0 / 256),colorSelY * (1.0 / 256));
+				glUniform1i(mainTexture, 0);
 				// glUniform1f(glGetUniformLocation(gl_Program, "palLengthMult"), 1.0 / (9 - sprt.palSh));
 				// bind vertex arrays
 				glBindVertexArray(gl_vertexArray);
@@ -423,10 +447,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 				glVertexAttribIPointer(1, 2, GL_UNSIGNED_SHORT, cast(int)(SpriteVertex.sizeof), cast(void*)SpriteVertex.s.offsetof);
 				glEnableVertexAttribArray(2);
 				glVertexAttribIPointer(2, 4, GL_UNSIGNED_BYTE, cast(int)(SpriteVertex.sizeof),
-						cast(void*)SpriteVertex.attributes.r.offsetof);
+						cast(void*)SpriteVertex.attributes.offsetof);
 				glEnableVertexAttribArray(3);
 				glVertexAttribIPointer(3, 2, GL_SHORT, cast(int)(SpriteVertex.sizeof),
-						cast(void*)SpriteVertex.attributes.lX.offsetof);
+						cast(void*)(SpriteVertex.attributes.offsetof + GraphicsAttrExt.lX.offsetof));
 				glBindVertexArray(gl_vertexArray);
 				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 			}
@@ -442,7 +466,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Sets the paletteID of the sprite. Returns the new ID, which is truncated to the possible values with a simple binary and operation
 	///Palette must exist in the parent Raster, otherwise AccessError might happen during 
 	public ushort setPaletteID(int n, ushort paletteID) @nogc @trusted nothrow {
-		sizediff_t index = displayList_sprt.searchByI(n);
+		sizediff_t index = displayList_sprt.searchIndexBy(n);
 		if (index == -1) return 0;
 		return displayList_sprt[n].palSel;
 	}
@@ -451,8 +475,8 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 */
 	public void removeSprite(int n) @nogc @safe nothrow {
 		try {
-			const sizediff_t pos = displayList_sprt.searchByI(n);
-			if (pos == -1) displayList_sprt.nogc_remove(pos);
+			const sizediff_t pos = displayList_sprt.searchIndexBy(n);
+			if (pos == -1) displayList_sprt.remove(pos);
 		} catch (Exception e) {
 			fatal_trusted(e.msg);
 
@@ -461,7 +485,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	///Clears all sprite from the layer.
 	public void clear() @safe nothrow {
 		try {
-			displayList_sprt.nogc_free();
+			displayList_sprt.length = 0;
 		} catch (Exception e) {
 			fatal_trusted(e.msg);
 		}
@@ -470,7 +494,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 * Moves a sprite to the given position.
 	 */
 	public Quad moveSprite(int n, int x, int y) @nogc @safe nothrow {
-		const sizediff_t i = displayList_sprt.searchByI(n);
+		const sizediff_t i = displayList_sprt.searchIndexBy(n);
 		if (i == -1) return Quad.init;
 		displayList_sprt[i].position.move(x, y);
 		return displayList_sprt[i].position;
@@ -479,14 +503,14 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	 * Moves a sprite by the given amount.
 	 */
 	public Quad relMoveSprite(int n, int x, int y) @nogc @safe nothrow {
-		const sizediff_t i = displayList_sprt.searchByI(n);
+		const sizediff_t i = displayList_sprt.searchIndexBy(n);
 		if (i == -1) return Quad.init;
 		displayList_sprt[i].position.relMove(x, y);
 		return displayList_sprt[i].position;
 		//checkSprite(*sprt);
 	}
 	public void setSpriteShader(int n, GLShader shader) @nogc @safe nothrow {
-		const sizediff_t i = displayList_sprt.searchByI(n);
+		const sizediff_t i = displayList_sprt.searchIndexBy(n);
 		if (i == -1) return;
 		if(shader == 0) displayList_sprt[i].programID = defaultShader;
 		else displayList_sprt[i].programID = shader;
@@ -520,7 +544,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		return moveSprite(n, pos);
 	}
 	public Quad moveSprite(int n, Quad pos) @nogc @trusted nothrow {
-		const sizediff_t i = displayList_sprt.searchByI(n);
+		const sizediff_t i = displayList_sprt.searchIndexBy(n);
 		if (i == -1) return Quad.init;
 		displayList_sprt[i].position = pos;
 		return pos;
@@ -532,7 +556,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		item.renderFunc = getRenderingFunc(mode);
 	} */
 	public Quad getSpriteCoordinate(int n) @nogc @trusted nothrow {
-		const sizediff_t i = displayList_sprt.searchByI(n);
+		const sizediff_t i = displayList_sprt.searchIndexBy(n);
 		if (i == -1) return Quad.init;
 		return displayList_sprt[i].position;
 	}
