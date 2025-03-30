@@ -231,28 +231,28 @@ public struct PackedTextureMapping {
 		this.u = u;
 	}
 	ushort s() @nogc @safe pure nothrow const {
-		return cast(ushort)(base & 0x3F_FF);
+		return cast(ushort)(base & 0x0F_FF);
 	}
 	ushort t() @nogc @safe pure nothrow const {
-		return cast(ushort)((base>>14) & 0x3F_FF);
+		return cast(ushort)((base>>12) & 0x0F_FF);
 	}
 	ubyte u() @nogc @safe pure nothrow const {
-		return cast(ubyte)(base>>28);
+		return cast(ubyte)(base>>24);
 	}
 	ushort s(uint val) @nogc @safe pure nothrow {
-		base &= 0xFF_FF_C0_00;
-		base |= val & 0x3F_FF;
+		base &= 0xFF_FF_F0_00;
+		base |= val & 0x0F_FF;
 		return cast(ushort)(base & 0x3F_FF);
 	}
 	ushort t(uint val) @nogc @safe pure nothrow {
-		base &= 0xF0_00_3F_FF;
-		base |= (val & 0x3F_FF)<<14;
-		return cast(ushort)((base>>14) & 0x3F_FF);
+		base &= 0xFF_00_0F_FF;
+		base |= (val & 0x0F_FF)<<12;
+		return cast(ushort)((base>>12) & 0x0F_FF);
 	}
 	ubyte u(uint val) @nogc @safe pure nothrow {
-		base &= 0x0F_FF_FF_FF;
-		base |= val<<28;
-		return cast(ubyte)(base>>28);
+		base &= 0x00_FF_FF_FF;
+		base |= val<<24;
+		return cast(ubyte)(base>>24);
 	}
 }
 /**
