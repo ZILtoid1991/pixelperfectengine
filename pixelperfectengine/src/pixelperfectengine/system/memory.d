@@ -220,20 +220,8 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	package static string opApplyGen() {
 		import pixelperfectengine.system.etc : interpolateStr;
 		immutable string opApplyCode = q"{
-			int opApply(int delegate(T) %attr% dg) %attr% {
-				for (sizediff_t i ; i < length ; i++) {
-					if (dg(backend[lTrim + i])) return 1;
-				}
-				return 0;
-			}
 			int opApply(int delegate(ref T) %attr% dg) %attr% {
 				for (sizediff_t i ; i < length ; i++) {
-					if (dg(backend[lTrim + i])) return 1;
-				}
-				return 0;
-			}
-			int opApplyReverse(int delegate(T) %attr% dg) %attr% {
-				for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
 					if (dg(backend[lTrim + i])) return 1;
 				}
 				return 0;
@@ -244,20 +232,8 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 				}
 				return 0;
 			}
-			int opApply(int delegate(size_t, T) %attr% dg) %attr% {
-				for (sizediff_t i ; i < length ; i++) {
-					if (dg(i, backend[lTrim + i])) return 1;
-				}
-				return 0;
-			}
 			int opApply(int delegate(size_t, ref T) %attr% dg) %attr% {
 				for (sizediff_t i ; i < length ; i++) {
-					if (dg(i, backend[lTrim + i])) return 1;
-				}
-				return 0;
-			}
-			int opApplyReverse(int delegate(size_t, T) %attr% dg) %attr% {
-				for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
 					if (dg(i, backend[lTrim + i])) return 1;
 				}
 				return 0;
@@ -376,7 +352,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		return backend[lTrim+i..lTrim+j];
 	}
 	/// Removes the element held on the index and returns the element.
-	T remove(size_t index) @nogc @safe {
+	T remove(size_t index) @nogc @trusted {
 		assert(index < length);
 		T result = backend[lTrim + index];
 		static if (lts == LTrimStrategy.None) {
@@ -447,9 +423,15 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		return opIndex(length - 1);
 	}
 	T[] opOpAssign(string op : "~")(T[] slice) @nogc @safe {
+		return appendAtEnd(slice);
+	}
+	T[] appendAtEnd(T[] slice) @nogc @trusted {
 		if (remain < slice.length) reserve(length + slice.length);
-		
-		backend[lTrim + length..lTrim + length + slice.length] = slice[0..$];
+		static if (hasUDA!(T, PPECFG_Memfix)) {
+			dirtyCopy(slice, backend[lTrim+length..lTrim+length+slice.length]);
+		} else {
+			backend[lTrim + length..lTrim + length + slice.length] = slice[0..$];
+		}
 		rTrim -= slice.length;
 		return backend[lTrim..lTrim + length];
 	}
@@ -491,8 +473,12 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 	}
 	alias opDollar = length;
 	alias opSlice = backend.opSlice;
-	alias remove = backend.remove;
-	alias ptr = backend.ptr;
+	T remove(size_t index) @nogc @safe {
+		return backend.remove(index);
+	}
+	T* ptr() @system @nogc nothrow pure {
+		return backend.ptr;
+	}
 	ref T insert(T elem) @nogc @safe {
 		if (!remain()) backend.grow();
 		for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
@@ -509,29 +495,56 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 	}
 	T searchBy(Q)(Q needle) @nogc @safe nothrow {
 		if (length) {
-			size_t l, r = length - 1, m;
-			while (l < r) {
+			sizediff_t l, r = length - 1, m;
+			while (l <= r) {
 				m = (l+r)>>1;
 				if (binaryFun!equal(backend[m], needle)) return backend[m];
-				else if (binaryFun!less(backend[m], needle)) l = m + 1;
-				else r = m - 1;
+				else if (binaryFun!less(backend[m], needle)) r = m - 1;
+				else l = m + 1;
 			}
+			if (binaryFun!equal(backend[m], needle)) return backend[m];
 		}
 		return T.init;
 	}
 	sizediff_t searchIndexBy(Q)(Q needle) @nogc @safe nothrow {
 		if (length) {
-			size_t l, r = length - 1, m;
-			while (l < r) {
+			sizediff_t l, r = length - 1, m;
+			while (l <= r) {
 				m = (l+r)>>1;
 				if (binaryFun!equal(backend[m], needle)) return m;
-				else if (binaryFun!less(backend[m], needle)) l = m + 1;
-				else r = m - 1;
+				else if (binaryFun!less(backend[m], needle)) r = m - 1;
+				else l = m + 1;
 			}
+			if (binaryFun!equal(backend[m], needle)) return m;
 		}
 		return -1;
 	}
-	alias opIndex = backend.opIndex;
-	alias opApply = backend.opApply;
-	alias opApplyReverse = backend.opApplyReverse;
+	//alias opIndex = backend.opIndex;
+	ref T opIndex(size_t index) @nogc @safe pure nothrow {
+		return backend[index];
+	}
+	package static string opApplyGen() {
+		import pixelperfectengine.system.etc : interpolateStr;
+		immutable string opApplyCode = q"{
+			int opApply(int delegate(ref T) %attr% dg) %attr% {
+				return backend.opApply(dg);
+			}
+			int opApplyReverse(int delegate(ref T) %attr% dg) %attr% {
+				return backend.opApplyReverse(dg);
+			}
+			int opApply(int delegate(size_t, ref T) %attr% dg) %attr% {
+				return backend.opApply(dg);
+			}
+			int opApplyReverse(int delegate(size_t, ref T) %attr% dg) %attr% {
+				return backend.opApplyReverse(dg);
+			}
+		}";
+		string result;
+		foreach (string attr ; attrList) {
+			string[string] attrInterpolation = ["attr" : attr];
+			result ~= interpolateStr(opApplyCode, attrInterpolation);
+		}
+		return result;
+	}
+	mixin(opApplyGen());
 }
