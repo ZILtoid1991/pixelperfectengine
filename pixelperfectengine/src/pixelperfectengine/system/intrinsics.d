@@ -50,7 +50,7 @@ __m128d _conv2shorts(short* memAddr) @nogc @trusted pure nothrow {
 }
 pragma(inline, true)
 __m128 _conv4shorts(short* memAddr) @nogc @trusted pure nothrow {
-	return _mm_cvtepi32_ps(_mm_loadl_epi64(cast(__m128i*)memAddr));
+	return _mm_cvtepi32_ps(_mm_unpacklo_epi16(_mm_loadu_si64(memAddr), MM_NULLVEC));
 }
 pragma(inline, true)
 __m128 _conv4ubytes(ubyte* memAddr) @nogc @trusted pure nothrow {
