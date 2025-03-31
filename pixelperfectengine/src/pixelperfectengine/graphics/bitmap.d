@@ -22,7 +22,7 @@ public struct BitmapAttrib{
 		bool, "vertMirror", 1,
 		bool, "xyRotate", 1,
 		ubyte, "priority", 5));
-	public this(bool horizMirror, bool vertMirror, ubyte priority = 0) @nogc nothrow @safe pure{
+	public this(bool horizMirror, bool vertMirror, bool xyRotate, ubyte priority = 0) @nogc nothrow @safe pure{
 		this.horizMirror = horizMirror;
 		this.vertMirror = vertMirror;
 		this.priority = priority;
