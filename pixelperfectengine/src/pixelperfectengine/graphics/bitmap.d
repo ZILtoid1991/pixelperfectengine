@@ -25,6 +25,7 @@ public struct BitmapAttrib{
 	public this(bool horizMirror, bool vertMirror, bool xyRotate, ubyte priority = 0) @nogc nothrow @safe pure{
 		this.horizMirror = horizMirror;
 		this.vertMirror = vertMirror;
+		this.xyRotate = xyRotate;
 		this.priority = priority;
 	}
 	string toString() const @safe pure nothrow{
