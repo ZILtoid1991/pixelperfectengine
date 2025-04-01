@@ -52,15 +52,25 @@ public class TestElements : InputListener, SystemEventListener {
 
 	public this() {
 		outScrn = new OSWindow("Test nr. 3", "ppe_test3", -1, -1, 848 * GUIScaling, 480 * GUIScaling, WindowCfgFlags.IgnoreMenuKey);
-		outScrn.getOpenGLHandle();
+		version (Windows) outScrn.getOpenGLHandleAttribsARB([
+			OpenGLContextAtrb.MajorVersion, 3,
+			OpenGLContextAtrb.MinorVersion, 3,
+			OpenGLContextAtrb.ProfileMask, 1,
+			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
+			0
+		]);
+		else outScrn.getOpenGLHandle();
 		const glStatus = loadOpenGL();
 		if (glStatus < GLSupport.gl11) {
 			writeln("OpenGL not found!");
 		}
-		sprtL = new SpriteLayer(RenderingMode.Copy);
-		mainRaster = new Raster(848,480,outScrn,0,1);
+		sprtL = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
+		mainRaster = new Raster(848,480,outScrn,1);
+		mainRaster.readjustViewport(840 * GUIScaling, 480 * GUIScaling, 0, 0);
 		mainRaster.addLayer(sprtL,0);
-		mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")));
+		mainRaster.loadPaletteChunk(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")), 0);
 		wh = new WindowHandler(848 * GUIScaling, 480 * GUIScaling, 848, 480, sprtL, outScrn);
 		ih = new InputHandler();
 		ih.inputListener = this;
@@ -86,12 +96,12 @@ public class TestElements : InputListener, SystemEventListener {
 		flipScreen = true;
 	}
 	public void whereTheMagicHappens() {
-		mainRaster.refresh();
+		mainRaster.refresh_GL();
 		while(isRunning) {
-			if (flipScreen) {
-				flipScreen = false;
-				mainRaster.refresh();
-			}
+			// if (flipScreen) {
+				// flipScreen = false;
+				mainRaster.refresh_GL();
+			// }
 			//mainRaster.refresh();
 			ih.test();
 			Thread.sleep(dur!"msecs"(10));
