@@ -34,7 +34,7 @@ __m128 _vect(float[4] arg) @nogc @trusted pure nothrow {
 }
 pragma(inline, true)
 __m128i _vect(int[4] arg) @nogc @trusted pure nothrow {
-	return _mm_loadu_si32(arg.ptr);
+	return _mm_loadu_si128(cast(const(__m128i)*)arg.ptr);
 }
 pragma(inline, true)
 __m128d _conv2ints(int arg0, int arg1) @nogc @trusted pure nothrow {
@@ -50,7 +50,12 @@ __m128d _conv2shorts(short* memAddr) @nogc @trusted pure nothrow {
 }
 pragma(inline, true)
 __m128 _conv4shorts(short* memAddr) @nogc @trusted pure nothrow {
-	return _mm_cvtepi32_ps(_mm_unpacklo_epi16(_mm_loadu_si64(memAddr), MM_NULLVEC));
+	__m128i workpad;
+	workpad[0] = memAddr[0];
+	workpad[1] = memAddr[1];
+	workpad[2] = memAddr[2];
+	workpad[3] = memAddr[3];
+	return _mm_cvtepi32_ps(workpad);
 }
 pragma(inline, true)
 __m128 _conv4ubytes(ubyte* memAddr) @nogc @trusted pure nothrow {
@@ -60,4 +65,20 @@ __m128 _conv4ubytes(ubyte* memAddr) @nogc @trusted pure nothrow {
     b = _mm_unpacklo_epi16(b, MM_NULLVEC);
 
     return _mm_cvtepi32_ps(b);
+}
+/**
+ * Custom intrinsic that implements matrix multiplication.
+ * Params:
+ *   a = Left hand side of the multiplication.
+ *   b = Right hand side of the multiplication.
+ * Returns: a float4 containing the result.
+ */
+pragma(inline, true)
+__m128 matrix22Mult(__m128 a, __m128 b) @nogc @trusted pure nothrow {
+	__m128 c;
+	c[0] = a[0] * b[0] + a[1] * b[2];
+	c[1] = a[0] * b[1] + a[1] * b[3];
+	c[2] = a[2] * b[0] + a[3] * b[2];
+	c[3] = a[2] * b[1] + a[3] * b[3];
+	return c;
 }
