@@ -61,6 +61,7 @@ abstract class Layer {
 	protected int		sY;		///Vertical scroll position
 	protected int		rasterX;///Raster width (visible)
 	protected int		rasterY;///Haster height
+	protected ushort[4]	overscanAm;
 
 	/**
 	 * Sets up the layer for the current rasterizer.
@@ -133,8 +134,6 @@ abstract class Layer {
 	 * that kind of effects without the use of a compute shader.
 	 */
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc;
-	///Amount of virtual overscan, certain effects might rely on this.
-	protected float overscanAm = 0.0;
 	/**
 	 * Adds a bitmap source to the layer.
 	 * Params:
@@ -160,9 +159,8 @@ abstract class Layer {
 		else flags &= ~CLEAR_Z_BUFFER;
 	}
 	///Sets the overscan amount, on which some effects are dependent on.
-	public final float setOverscanAmount(float amount) @nogc @safe nothrow pure {
-		if (amount >= 0.0) overscanAm = amount;
-		else overscanAm = 0.0;
+	public final ushort[4] setOverscanAmount(ushort[4] amount) @nogc @safe nothrow pure {
+		overscanAm = amount;
 		return overscanAm;
 	}
 
@@ -286,7 +284,7 @@ public struct MappingElement {
 	BitmapAttrib attributes;	///General attributes, such as vertical and horizontal mirroring. The extra 6 bits can be used for various purposes
 	ubyte paletteSel;			///Selects the palette for the bitmap if supported
 	///Default constructor
-	this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false), ubyte paletteSel = 0)
+	this(wchar tileID, BitmapAttrib attributes = BitmapAttrib(false, false, false), ubyte paletteSel = 0)
 			@nogc @safe pure nothrow {
 		this.tileID = tileID;
 		this.attributes = attributes;
