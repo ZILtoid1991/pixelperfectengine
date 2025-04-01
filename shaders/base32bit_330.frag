@@ -18,6 +18,6 @@ uniform vec2 paletteOffset;     // Palette offset in case palette selection is u
 
 void main() {
     vec4 color = texelFetch(mainTexture, ivec2(texMapping.x, texMapping.y), 0);
-    if (color.a <= 0.01) discard;
+    color.a *= lightingData.a;
     fragColor = color;
 }

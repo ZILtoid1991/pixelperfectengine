@@ -6,7 +6,7 @@
 out vec4 fragColor;             // Color output
 
 in vec2 texMapping;             // Texture mapping position
-in vec4 lightingData;           // Lighting data, can be repurposed for other things
+in vec4 lightingCol;            // Lighting data, can be repurposed for other things
 in vec2 lightingDir;
 in float zVal;
 
@@ -22,6 +22,7 @@ vec4 clut(vec2 position) {
 
 void main() {
     vec4 color = clut(texMapping);
-    if (color.a <= 0.01) discard;
+//     color.a = lightingData.a;
+    color.a *= lightingCol.a;
     fragColor = color;
 }

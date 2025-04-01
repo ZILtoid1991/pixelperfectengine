@@ -20,7 +20,7 @@ out vec2 lightingDir;       // Lighting direction
 out vec2 paletteSel;
 
 void main() {
-    vec2 fvert = vec2(vert.xy) * tileSize + bias + vec2(-1.0, 1.0) - transformPoint;
+    vec2 fvert = vec2(vert.xy) * tileSize - bias + vec2(-1.0, 1.0) - transformPoint;
     gl_Position = vec4(fvert * transformMatrix + transformPoint, 0.0, 1.0);
     texMapping.x = uint(texPos) & uint(0x0FFF);
     texMapping.y = (texPos>>12) & uint(0x0FFF);

@@ -21,6 +21,6 @@ vec4 clut(vec3 position, vec2 paletteOffset) {
 
 void main() {
     vec4 color = clut(texMapping, paletteSel);
-    if (color.a <= 0.01) discard;
+    color.a *= lightingData.a;
     fragColor = color;
 }
