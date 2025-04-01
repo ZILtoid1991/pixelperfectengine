@@ -61,8 +61,9 @@ class TileLayerTest : SystemEventListener, InputListener {
 	InputHandler ih;
 	ObjectCollisionDetector ocd;
 	TileCollisionDetector tcd;
-	float theta;
 	int framecounter;
+	short scaleH = 0x10_00, shearH, shearV, scaleV = 0x10_00, x0, y0;
+	ushort theta;
 	RandomNumberGenerator rng;
 	this (int mapWidth, int mapHeight, int spriteNum) {
 		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);
@@ -99,6 +100,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		GLShader tileShader = GLShader(loadShader(`%SHADERS%/tile_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/tile_%SHDRVER%.frag`));
 		t = new TileLayer(16,16, tileShader);
+		t.setOverscanAmount([212,120,212,120]);
 		textLayer = new TileLayer(8,8, tileShader);
 		textLayer.paletteOffset = 512;
 		textLayer.masterVal = 127;
@@ -106,7 +108,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		// r.addLayer(tt, 1);
 		r.addLayer(t, 0);
 		r.addLayer(s, 2);
-		// r.addLayer(textLayer, 65_536);
+		r.addLayer(textLayer, 65_536);
 
 		// Color[] localPal = loadPaletteFromImage(tileSource);
 		// localPal.length = 256;
@@ -173,7 +175,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 			//mapping[i] = to!wchar(uniform(0x0000,0x00AA));
 			const int rnd = rng() & 0xFFFF;
 			//attrMapping[i] = BitmapAttrib(rnd & 1 ? true : false, rnd & 2 ? true : false);
-			mapping[i] = MappingElement(cast(wchar)(rnd & 63), BitmapAttrib(rnd & 1024 ? true : false, rnd & 512 ? true : false));
+			mapping[i] = MappingElement(cast(wchar)(rnd & 63),
+				BitmapAttrib(rnd & 1024 ? true : false, rnd & 512 ? true : false, rnd & 0x8000 ? true : false));
 			//mapping[i] = MappingElement(0x0, BitmapAttrib(false,false));
 		}
 		ih = new InputHandler();
@@ -211,6 +214,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.addBinding(BindingCode(ScanCode.G, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("x0-"));
 			ih.addBinding(BindingCode(ScanCode.Y, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("y0+"));
 			ih.addBinding(BindingCode(ScanCode.H, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("y0-"));
+			ih.addBinding(BindingCode(ScanCode.U, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("theta+"));
+			ih.addBinding(BindingCode(ScanCode.J, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("theta-"));
 			ih.addBinding(BindingCode(ScanCode.PAGEUP, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("alpha+"));
 			ih.addBinding(BindingCode(ScanCode.PAGEDOWN, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("alpha-"));
 			ih.addBinding(BindingCode(ScanCode.HOME, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("hidettl"));
@@ -234,28 +239,17 @@ class TileLayerTest : SystemEventListener, InputListener {
 		
 		t.reprocessTilemap();
 
-		//t.setWrapMode(true);
-		//tt.D = -256;
-		//loadPaletteFromXMP(tileSource, "default", r);
-
 		/*for(int y ; y < 240 ; y++){
 			for(int x ; x < 240 ; x++){
 				writeln('[',x,',',y,"] : ", t.transformFunc([x,y]));
 			}
 		}*/
 		
-		//writeln(r.palette);
-		//r.palette[0].alpha = 255;
-		//r.palette[256].base = 0;
-		//textLayer.writeTextToMap(2,2,0,"Hello world!",BitmapAttrib(true, false));
-		textLayer.writeTextToMap(0, 0, 0, "Framerate:", BitmapAttrib(true, false));
-		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false));
-		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false));
-		textLayer.writeTextToMap(0, 3, 0, "Overlapping tiles:", BitmapAttrib(true, false));
-		//writeln(tt);
-		//r.palette[0] = 255;
-		//r.addRefreshListener(output, 0);
-
+		textLayer.writeTextToMap(0, 0, 0, "Framerate:", BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(0, 3, 0, "Overlapping tiles:", BitmapAttrib(true, false, false));
+		textLayer.reprocessTilemap();
 	}
 	private @nogc void ttlHBlankInterrupt(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y){
 		localABCD[0]++;
@@ -266,19 +260,19 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.test();
 			if(up) {
 				s.relMoveSprite(65_536,0,-1);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(down) {
 				s.relMoveSprite(65_536,0,1);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(left) {
 				s.relMoveSprite(65_536,-1,0);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(right) {
 				s.relMoveSprite(65_536,1,0);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			Quad mainSpritePosition = s.getSpriteCoordinate(65_536);
 			ocd.objects.ptrOf(65_536).position = Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32);
@@ -289,25 +283,29 @@ class TileLayerTest : SystemEventListener, InputListener {
 			if(scrup) {
 				t.relScroll(0,-1);
 				s.relScroll(0,-1);
+				t.reprocessTilemap();
 			}
 			if(scrdown) {
 				t.relScroll(0,1);
 				s.relScroll(0,1);
+				t.reprocessTilemap();
 			}
 			if(scrleft) {
 				t.relScroll(-1,0);
 				s.relScroll(-1,0);
+				t.reprocessTilemap();
 			}
 			if(scrright) {
 				t.relScroll(1,0);
 				s.relScroll(1,0);
+				t.reprocessTilemap();
 			}
 			
 			framecounter++;
 			if(framecounter == 10){
 				float avgFPS = r.avgfps;
 				wstring fpsCounter = format(" %3.3f"w, avgFPS);
-				textLayer.writeTextToMap(10,0,0,fpsCounter,BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,0,0,fpsCounter,BitmapAttrib(true, false, false));
 				framecounter = 0;
 			}
 			// Thread.sleep(msecs(20));
@@ -316,21 +314,22 @@ class TileLayerTest : SystemEventListener, InputListener {
 		destroy(output);
 	}
 	public void onCollision(ObjectCollisionEvent event) {
-		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));
+		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false, false));
 		final switch (event.type) with (ObjectCollisionEvent.Type) {
 			case None:
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 				break;
 			case BoxEdge:
-				textLayer.writeTextToMap(10,2,0,"     BoxEdge",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"     BoxEdge",BitmapAttrib(true, false, false));
 				break;
 			case BoxOverlap:
-				textLayer.writeTextToMap(10,2,0,"  BoxOverlap",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"  BoxOverlap",BitmapAttrib(true, false, false));
 				break;
 			case ShapeOverlap:
-				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false, false));
 				break;
 		}
+		textLayer.reprocessTilemap();
 	}
 	public void onTileCollision(MappingElement[] overlapList) {
 		wstring tileList = "[";
@@ -338,7 +337,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 			tileList ~= format("%4X;"w, me.tileID);
 		}
 		tileList ~= "]";
-		textLayer.writeTextToMap(10,4,0,tileList,BitmapAttrib(true, false));
+		textLayer.writeTextToMap(10,4,0,tileList,BitmapAttrib(true, false, false));
+		textLayer.reprocessTilemap();
 	}
 	override public void onQuit() {
 		isRunning = false;
@@ -384,40 +384,46 @@ class TileLayerTest : SystemEventListener, InputListener {
 				scrright = isPressed;
 				break;
 			case hashCalc("A+"): 	//A+
-
+				if (isPressed) t.scaleHoriz(scaleH += 16);
 				break;
 			case hashCalc("A-"):	//A-
-
+				if (isPressed) t.scaleHoriz(scaleH -= 16);
 				break;
 			case hashCalc("B+"):	//B+
-
+				if (isPressed) t.shearHoriz(shearH += 16);
 				break;
 			case hashCalc("B-"):	//B-
-
+				if (isPressed) t.shearHoriz(shearH -= 16);
 				break;
 			case hashCalc("C+"):	//C+
-
+				if (isPressed) t.shearVert(shearV += 16);
 				break;
 			case hashCalc("C-"):	//C-
-
+				if (isPressed) t.shearVert(shearV -= 16);
 				break;
 			case hashCalc("D+"):	//D+
-
+				if (isPressed) t.scaleVert(scaleV += 16);
 				break;
 			case hashCalc("D-"):	//D-
-
+				if (isPressed) t.scaleVert(scaleV -= 16);
 				break;
 			case hashCalc("x0+"):	//x0+
-
+				if (isPressed) t.setTransformMidpoint(x0++, y0);
 				break;
 			case hashCalc("x0-"):	//x0-
-
+				if (isPressed) t.setTransformMidpoint(x0--, y0);
 				break;
 			case hashCalc("y0+"):	//y0+
-
+				if (isPressed) t.setTransformMidpoint(x0, y0++);
 				break;
 			case hashCalc("y0-"):	//y0-
-
+				if (isPressed) t.setTransformMidpoint(x0, y0--);
+				break;
+			case hashCalc("theta+"):
+				if (isPressed) t.rotate(theta+=256);
+				break;
+			case hashCalc("theta-"):
+				if (isPressed) t.rotate(theta-=256);
 				break;
 			case hashCalc("hidettl"):
 
