@@ -84,7 +84,6 @@ public class Raster : PaletteContainer {
 	];
 	
 	private ushort rasterWidth, rasterHeight;///Stores virtual screen resolution.
-	public Bitmap32Bit[] cpu_FrameBuffer;///Framebuffers for CPU rendering
 	public GLuint[] 	gl_FrameBufferTexture;	///Framebuffers for OpenGL rendering
 	public GLuint[]		gl_DepthBuffer;
 	public GLuint[]		gl_FrameBuffer;
@@ -326,7 +325,7 @@ public class Raster : PaletteContainer {
 		rasterWidth = width;
 		rasterHeight = height;
 		for (int i ; i < nOfBuffers ; i++) {
-			cpu_FrameBuffer[i] = new Bitmap32Bit(rasterWidth, rasterHeight);
+			// cpu_FrameBuffer[i] = new Bitmap32Bit(rasterWidth, rasterHeight);
 			glDeleteTextures(1, &gl_FrameBufferTexture[i]);
 			glGenTextures(1, &gl_FrameBufferTexture[i]);
 			glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[i]);
@@ -359,7 +358,7 @@ public class Raster : PaletteContainer {
 	/**
 	 * Refreshes the whole framebuffer.
 	 */
-	public void refresh() @system {
+	public deprecated void refresh() @system {
 		r = true;
 		
 		//get frame duration
@@ -377,20 +376,20 @@ public class Raster : PaletteContainer {
 		if(displayedBuffer >= nOfBuffers) displayedBuffer = 0;
 
 		foreach (Layer layer ; layerMap) {
-			layer.updateRaster
-					(cpu_FrameBuffer[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width * 4, _palette.ptr);
+			// layer.updateRaster
+			// 		(cpu_FrameBuffer[updatedBuffer].getPtr, cast(int)cpu_FrameBuffer[updatedBuffer].width * 4, _palette.ptr);
 		}
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, 
-				cpu_FrameBuffer[displayedBuffer].getPtr);
+		// glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
+		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rasterWidth, rasterHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
+		// 		cpu_FrameBuffer[displayedBuffer].getPtr);
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
-		glUseProgram(gl_Program);
-		glBindVertexArray(gl_VertexArray);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
+		// glActiveTexture(GL_TEXTURE0);
+		// glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
+		// glUseProgram(gl_Program);
+		// glBindVertexArray(gl_VertexArray);
+		// glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 
 		oW.gl_swapBuffers();
 		r = false;
@@ -416,6 +415,8 @@ public class Raster : PaletteContainer {
 		glViewport(0, 0, rasterWidth, rasterHeight);
 		glDisable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT/+ | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT+/);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		foreach (Layer layer ; layerMap) {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
 					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);
@@ -428,6 +429,7 @@ public class Raster : PaletteContainer {
 		// 	screenSizeChanged = false;
 		// }
 		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
 		glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glUseProgram(gl_Program);
