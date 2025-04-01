@@ -364,9 +364,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
 		__m128d screenSizeRec = _vect([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
 		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
-		immutable __m128d LDIR_REC = __m128d([1.0 / short.max, 1.0 / short.max]);
-		immutable __m128 COLOR_REC = __m128([1.0 / 255, 1.0 / 255, 1.0 / 255, 1.0 / 255]);
-		const __m128i scrollVec = _vect([sX, sY, sX + sizes[2], sY + sizes[3]]), offsetsVec = _mm_loadu_si64(offsets.ptr);
+		const __m128i scrollVec = _vect([sX, sY, sX, sY]);
 		//Constants end
 		//Select palettes
 		//if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
