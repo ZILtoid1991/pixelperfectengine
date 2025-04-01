@@ -89,11 +89,12 @@ public class TileLayer : Layer, ITileLayer {
 	protected Color[] 		src;		///Local buffer DEPRECATED!
 	protected short			x0;
 	protected short			y0;
-	protected short			scaleH = 0x10_00;
-	protected short			scaleV = 0x10_00;
+	protected short			scaleH = 0x01_00;
+	protected short			scaleV = 0x01_00;
 	protected short			shearH;
 	protected short			shearV;
 	protected ushort		theta;
+	// protected int			sX0, sY0;
 
 	/**
 	 * Enables the TileLayer to access other parts of the palette if needed.
@@ -129,6 +130,7 @@ public class TileLayer : Layer, ITileLayer {
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP);
+		masterVal = 0xFF;
 	}
 	~this() @nogc @trusted nothrow {
 		glDeleteBuffers(1, &gl_vertexIndices);
@@ -186,36 +188,47 @@ public class TileLayer : Layer, ITileLayer {
 		return 0;
 	}
 	public final void reprocessTilemap() @trusted @nogc nothrow {
-
+		// sX0 = sX;
+		// sY0 = sY;
 		//clear the display lists
 		gl_displayList.length = 0;
 		gl_polygonIndices.length = 0;
 		//rebuild the display list
-		const xFrom = sX - cast(int)(rasterX * overscanAm);
-		const xTo = sX + cast(int)(rasterX * (overscanAm + 1));
-		const yFrom = sY - cast(int)(rasterY * overscanAm);
-		const yTo = sY + cast(int)(rasterY * (overscanAm + 1));
+		const xFrom = sX - overscanAm[0];
+		const xTo = sX + overscanAm[2] + tileX + rasterX;
+		const yFrom = sY - overscanAm[1];
+		const yTo = sY + overscanAm[3] + tileY + rasterY;
 		for (int y = yFrom, ty ; y <= yTo ; y += tileY, ty++) {
 			for (int x = xFrom, tx ; x <= xTo ; x += tileX, tx++) {
 				MappingElement me = tileByPixel(x, y);
 				if (me.tileID != 0xFFFF) {
-					const p = cast(int)gl_displayList.length;
 					TileDefinition td = tiles.searchBy(me.tileID);
 					if (td.id == 0xFFFF) continue;
+					const p = cast(int)gl_displayList.length;
+					const h1 = me.attributes.horizMirror ? tx + 1 : tx;
+					const h2 = me.attributes.horizMirror ? tx : tx + 1;
+					const v1 = me.attributes.vertMirror ? ty + 1 : ty;
+					const v2 = me.attributes.vertMirror ? ty : ty + 1;
+					const xy11 = me.attributes.xyRotate ? td.x : td.x + tileX;
+					const xy21 = me.attributes.xyRotate ? td.x + tileX : td.x;
+					const xy12 = me.attributes.xyRotate ? td.y + tileY : td.y;
+					const xy22 = me.attributes.xyRotate ? td.y : td.y + tileY;
 					gl_polygonIndices ~= PolygonIndices(p + 0, p + 1, p + 2);
 					gl_polygonIndices ~= PolygonIndices(p + 1, p + 3, p + 2);
-					gl_displayList ~= TileVertex(cast(ubyte)tx, cast(ubyte)ty,
+					GraphicsAttrExt uniform;
+					uniform.a = masterVal;
+					gl_displayList ~= TileVertex(cast(ubyte)h1, cast(ubyte)v1,
 							cast(ushort)((me.paletteSel<<td.paletteSh) + paletteOffset),
-							PackedTextureMapping(td.x, td.y, td.page), GraphicsAttrExt.init);
-					gl_displayList ~= TileVertex(cast(ubyte)(tx + 1), cast(ubyte)ty,
+							PackedTextureMapping(td.x, td.y, td.page), uniform);
+					gl_displayList ~= TileVertex(cast(ubyte)h2, cast(ubyte)v1,
 							cast(ushort)((me.paletteSel<<td.paletteSh) + paletteOffset),
-							PackedTextureMapping(td.x + tileX, td.y, td.page), GraphicsAttrExt.init);
-					gl_displayList ~= TileVertex(cast(ubyte)tx, cast(ubyte)(ty + 1),
+							PackedTextureMapping(xy11, xy12, td.page), uniform);
+					gl_displayList ~= TileVertex(cast(ubyte)h1, cast(ubyte)v2,
 							cast(ushort)((me.paletteSel<<td.paletteSh) + paletteOffset),
-							PackedTextureMapping(td.x, (td.y + tileY), td.page), GraphicsAttrExt.init);
-					gl_displayList ~= TileVertex(cast(ubyte)(tx + 1), cast(ubyte)(ty + 1),
+							PackedTextureMapping(xy21, xy22, td.page), uniform);
+					gl_displayList ~= TileVertex(cast(ubyte)h2, cast(ubyte)v2,
 							cast(ushort)((me.paletteSel<<td.paletteSh) + paletteOffset),
-							PackedTextureMapping((td.x + tileX), (td.y + tileY), td.page), GraphicsAttrExt.init);
+							PackedTextureMapping((td.x + tileX), (td.y + tileY), td.page), uniform);
 				}
 			}
 		}
@@ -235,12 +248,11 @@ public class TileLayer : Layer, ITileLayer {
 			@nogc nothrow {
 		// reprocessTilemap();
 		//Constants begin
-		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
-		const Box displayAreaWS = Box.bySize(sX + offsets[0], sY + offsets[1], sizes[2], sizes[3]);
 		__m128d screenSizeRec = _vect([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
 
-		immutable __m128 TRNS_PARAMS_REC = __m128([1.0 / 0x10_00, 1.0 / 0x10_00, 1.0 / 0x10_00, 1.0 / 0x10_00]);
-		const __m128i scrollVec = _vect([sX, sY, 0, 0]), offsetsVec = _mm_loadu_si64(offsets.ptr);
+		immutable __m128 TRNS_PARAMS_REC = __m128([1.0 / 0x01_00, 1.0 / 0x01_00, 1.0 / 0x01_00, 1.0 / 0x01_00]);
+		const sX0 = sX - overscanAm[0], sY0 = sY - overscanAm[1];
+		const tXMod = sX0%tileX, tYMod = sY0%tileY;
 		//Constants end
 		if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
 		glActiveTexture(GL_TEXTURE1);
@@ -253,7 +265,12 @@ public class TileLayer : Layer, ITileLayer {
 		short[4] abcd = [scaleH, shearH, shearV, scaleV];
 		const double thetaF = PI * 2.0 * (theta * (1.0 / ushort.max));
 		const __m128 rotateVec = _vect([cos(thetaF), -1.0 * sin(thetaF), sin(thetaF), cos(thetaF)]);
-		__m128 trnsParams = (_conv4shorts(abcd.ptr) * TRNS_PARAMS_REC) * rotateVec;
+		const __m128 trnsParams = matrix22Mult(_conv4shorts(abcd.ptr) * TRNS_PARAMS_REC, rotateVec);
+		// __m128 trnsParams;
+		// trnsParams[0] = trnsParams0[0] * rotateVec[0] + trnsParams0[1] * rotateVec[2];
+		// trnsParams[1] = trnsParams0[0] * rotateVec[1] + trnsParams0[1] * rotateVec[3];
+		// trnsParams[2] = trnsParams0[2] * rotateVec[0] + trnsParams0[3] * rotateVec[2];
+		// trnsParams[3] = trnsParams0[2] * rotateVec[1] + trnsParams0[3] * rotateVec[3];
 		//Render begin
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
@@ -263,8 +280,10 @@ public class TileLayer : Layer, ITileLayer {
 		glUniform1i(glGetUniformLocation(currshader, "palette"), 1);
 		glUniform1i(glGetUniformLocation(currshader, "paletteMipMap"), 2);
 		glUniformMatrix2fv(glGetUniformLocation(currshader, "transformMatrix"), 1, GL_FALSE, &trnsParams[0]);
-		glUniform2f(glGetUniformLocation(currshader, "transformPoint"), x0, y0);
-		glUniform2f(glGetUniformLocation(currshader, "bias"), screenSizeRec[0] * (sX%tileX), screenSizeRec[1] * (sY%tileY));
+		glUniform2f(glGetUniformLocation(currshader, "transformPoint"), x0 * screenSizeRec[0], y0 * screenSizeRec[1]);
+		glUniform2f(glGetUniformLocation(currshader, "bias"),
+				screenSizeRec[0] * ((overscanAm[0]) + (tXMod) + (sX0 < 0 ? tileX - (tXMod ? 0 : tileX) : 0)),
+				screenSizeRec[1] * ((overscanAm[1]) + (tYMod) + (sY0 < 0 ? tileY - (tYMod ? 0 : tileY) : 0)));
 		glUniform2f(glGetUniformLocation(currshader, "tileSize"), screenSizeRec[0] * tileX, screenSizeRec[1] * tileY);
 
 		glBindVertexArray(gl_vertexArray);
@@ -338,7 +357,7 @@ public class TileLayer : Layer, ITileLayer {
 		shearH = amount;
 	}
 	public void shearVert(short amount) @nogc @safe pure nothrow {
-		shearH = amount;
+		shearV = amount;
 	}
 	/**
 	 * Sets the transformation midpoint relative to the middle of the screen.
