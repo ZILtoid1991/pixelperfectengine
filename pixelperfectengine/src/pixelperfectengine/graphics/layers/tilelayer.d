@@ -15,16 +15,26 @@ import std.math;
 import inteli.emmintrin;
 import pixelperfectengine.system.intrinsics;
 
+/**
+ * Implements a tile layer with some basic transformation and lighting capabilities.
+ * BUGS:
+ *   [Shader] Default shaders apply transformation on the screen size vectors, this causes
+ * rotation to look odd.
+ */
 public class TileLayer : Layer, ITileLayer {
 	/**
-	 *
+	 * Defines a tile material with an identifier and material position.
+	 * Only defines the upper-left corner of the material, since the rest can be easily 
+	 * calculated with some additional constants.
+	 * BUGS:
+	 *   Functions `opCmp` don't work as should, and a temporary hack has been done to mitigate it.
 	 */
 	struct TileDefinition {
-		wchar id = 0xFFFF;
-		ubyte paletteSh;
-		ubyte page;
-		ushort x;
-		ushort y;
+		wchar id = 0xFFFF;	/// Character identifier of the tile.
+		ubyte paletteSh;	/// Defines how many bits are useful information.
+		ubyte page;			/// The page the tile is contained on the texture array.
+		ushort x;			/// X coordinate of the top-left corner.
+		ushort y;			/// Y coordinate of the top-left corner.
 		int opCmp(const ref wchar rhs) @nogc @safe pure nothrow const {
 			return (id < rhs) - (id > rhs);
 		}
@@ -42,7 +52,7 @@ public class TileLayer : Layer, ITileLayer {
 		}
 	}
 	/**
-	 *
+	 * Defines a page in the texture array, purely used for the ID system.
 	 */
 	struct PageDefinition {
 		int id;
@@ -64,30 +74,33 @@ public class TileLayer : Layer, ITileLayer {
 		}
 	}
 	protected __m128d		textureRec;
-	protected int			tileX;	///Tile width
-	protected int			tileY;	///Tile height
-	protected int			mX;		///Map width
-	protected int			mY;		///Map height
-	protected size_t		totalX;	///Total width of the tilelayer in pixels
-	protected size_t		totalY;	///Total height of the tilelayer in pixels
-	protected MappingElement[] mapping;///Contains the mapping data
-	protected GraphicsAttrExt[] mapping_grExt;
-	protected GLShader		shader;	///The main shader program used on the layer
-	protected DynArray!TileVertex gl_displayList;
-	protected DynArray!PolygonIndices gl_polygonIndices;
-	protected DynArray!ubyte gl_textureData;
+	protected int			tileX;	/// Tile width
+	protected int			tileY;	/// Tile height
+	protected int			mX;		/// Map width
+	protected int			mY;		/// Map height
+	protected size_t		totalX;	/// Total width of the tilelayer in pixels
+	protected size_t		totalY;	/// Total height of the tilelayer in pixels
+	protected MappingElement[] mapping;/// Contains the mapping data.
+	protected GraphicsAttrExt[] mapping_grExt;/// Contains the extended mapping data.
+	protected GLShader		shader;	/// The main shader program used on the layer.
+	protected DynArray!TileVertex gl_displayList;	/// Contains the verticles to be displayed
+	protected DynArray!PolygonIndices gl_polygonIndices;	/// Contains the verticle indexes of each tile
+	protected DynArray!ubyte gl_textureData;	/// Contains the data for the texture
+	/// Contains the tile definitions for the layer.
 	protected OrderedArraySet!(TileDefinition/+, "a < b"+/) tiles;
+	/// Contains the page definitions for the layer.
 	protected OrderedArraySet!PageDefinition pages;
-	protected int			gl_textureWidth;
-	protected int			gl_textureHeight;
-	protected short			gl_texturePages;
-	protected short			textureType;
+	protected int			gl_textureWidth;	/// Defines the width of the texture
+	protected int			gl_textureHeight;	/// Defines the height of the texture
+	protected short			gl_texturePages;	/// Defines the number of pages of the texture array
+	protected short			textureType;		/// Defines the type of the texture
+	/// Contains OpenGL buffer identifiers.
 	protected uint gl_vertexArray, gl_vertexBuffer, gl_vertexIndices;
-	protected GLuint		gl_texture;
+	protected GLuint		gl_texture;	/// Contains the OpenGL texture identifier.
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
 	protected Color[] 		src;		///Local buffer DEPRECATED!
-	protected short			x0;
+	protected short			x0;			///
 	protected short			y0;
 	protected short			scaleH = 0x01_00;
 	protected short			scaleV = 0x01_00;
@@ -187,6 +200,7 @@ public class TileLayer : Layer, ITileLayer {
 		}
 		return 0;
 	}
+	/// Reprocesses the display list for the tilemap and applies anz changes made since.
 	public final void reprocessTilemap() @trusted @nogc nothrow {
 		// sX0 = sX;
 		// sY0 = sY;
@@ -198,8 +212,8 @@ public class TileLayer : Layer, ITileLayer {
 		const xTo = sX + overscanAm[2] + tileX + rasterX;
 		const yFrom = sY - overscanAm[1];
 		const yTo = sY + overscanAm[3] + tileY + rasterY;
-		for (int y = yFrom, ty ; y <= yTo ; y += tileY, ty++) {
-			for (int x = xFrom, tx ; x <= xTo ; x += tileX, tx++) {
+		for (int y = yFrom, ty ; y <= yTo && ty <= 255 ; y += tileY, ty++) {
+			for (int x = xFrom, tx ; x <= xTo && tx <= 255 ; x += tileX, tx++) {
 				MappingElement me = tileByPixel(x, y);
 				if (me.tileID != 0xFFFF) {
 					TileDefinition td = tiles.searchBy(me.tileID);
