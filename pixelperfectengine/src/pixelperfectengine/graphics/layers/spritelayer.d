@@ -319,10 +319,11 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public override int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) @trusted @nogc nothrow {
 		import bindbc.opengl;
 		const sizediff_t exists = gl_materials.searchIndexBy(page);
-		if (exists != -1) glDeleteTextures(1, &gl_materials[exists].glTextureID);
+		//glDeleteTextures(1, &gl_materials[exists].glTextureID);
 		void* pixelData;
 		GLuint textureID;
-		glGenTextures(1, &textureID);
+		if (exists != -1) textureID = gl_materials[exists].glTextureID;
+		else glGenTextures(1, &textureID);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
