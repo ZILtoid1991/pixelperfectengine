@@ -117,7 +117,8 @@ public class TestElements : InputListener, SystemEventListener {
 	public void windowResize(OSWindow window, int width, int height) {
 		mainRaster.resizeRaster(cast(ushort)(width / GUIScaling), cast(ushort)(height / GUIScaling));
 		wh.resizeRaster(width, height, width / GUIScaling, height / GUIScaling);
-		glViewport(0, 0, width, height);
+		mainRaster.readjustViewport(width, height, 0, 0);
+		//glViewport(0, 0, width, height);
 		rasterRefresh();
 	}
 	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
