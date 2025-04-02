@@ -326,13 +326,15 @@ public class Raster : PaletteContainer {
 		rasterHeight = height;
 		for (int i ; i < nOfBuffers ; i++) {
 			// cpu_FrameBuffer[i] = new Bitmap32Bit(rasterWidth, rasterHeight);
-			glDeleteTextures(1, &gl_FrameBufferTexture[i]);
-			glGenTextures(1, &gl_FrameBufferTexture[i]);
+			// glDeleteTextures(1, &gl_FrameBufferTexture[i]);
+			// glGenTextures(1, &gl_FrameBufferTexture[i]);
 			glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[i]);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, null);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gl_FrameBufferTexture[i], 0);
 		}
 		foreach (Layer key; layerMap) {
 			key.setRasterizer(rasterWidth, rasterHeight);
