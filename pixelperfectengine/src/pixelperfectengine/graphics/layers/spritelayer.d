@@ -25,11 +25,15 @@ import numem;
 
 
 /**
- * General-purpose sprite controller and renderer.
+ * General-purpose sprite controller and renderer, used for all kinds of sprites, including windowing.
+ * Bugs:
+ *   It doesn't like non power of two sprites, likely a workaround is needed.
  */
 public class SpriteLayer : Layer, ISpriteLayer {
 	/**
 	 * Defines a singular sprite material for the current layer instance to be used.
+	 * Bugs:
+	 *   [Severe] Ordering issue when used in an arraymap
 	 */
 	protected struct Material {
 		int materialID;	/// The material ID, which is also used for ordering.
