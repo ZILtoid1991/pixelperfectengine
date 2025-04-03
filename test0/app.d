@@ -62,7 +62,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	ObjectCollisionDetector ocd;
 	TileCollisionDetector tcd;
 	int framecounter;
-	short scaleH = 0x10_00, shearH, shearV, scaleV = 0x10_00, x0, y0;
+	short scaleH = 0x01_00, shearH, shearV, scaleV = 0x01_00, x0, y0;
 	ushort theta;
 	RandomNumberGenerator rng;
 	this (int mapWidth, int mapHeight, int spriteNum) {
