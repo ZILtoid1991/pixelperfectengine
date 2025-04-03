@@ -17,16 +17,17 @@ import pixelperfectengine.system.intrinsics;
 
 /**
  * Implements a tile layer with some basic transformation and lighting capabilities.
- * BUGS:
- *   [Shader] Default shaders apply transformation on the screen size vectors, this causes
- * rotation to look odd.
+ * Bugs:
+ *   Default shaders apply transformation on the screen size vectors, this causes
+ * rotation and shearing to look odd. Don't know if it can be fixed from CPU side,
+ * a shader-side issue, or I have to rething the whole pipeline.
  */
 public class TileLayer : Layer, ITileLayer {
 	/**
 	 * Defines a tile material with an identifier and material position.
 	 * Only defines the upper-left corner of the material, since the rest can be easily 
 	 * calculated with some additional constants.
-	 * BUGS:
+	 * Bugs:
 	 *   Functions `opCmp` don't work as should, and a temporary hack has been done to mitigate it.
 	 */
 	struct TileDefinition {
@@ -279,12 +280,7 @@ public class TileLayer : Layer, ITileLayer {
 		short[4] abcd = [scaleH, shearH, shearV, scaleV];
 		const double thetaF = PI * 2.0 * (theta * (1.0 / ushort.max));
 		const __m128 rotateVec = _vect([cos(thetaF), -1.0 * sin(thetaF), sin(thetaF), cos(thetaF)]);
-		const __m128 trnsParams = matrix22Mult(_conv4shorts(abcd.ptr) * TRNS_PARAMS_REC, rotateVec);
-		// __m128 trnsParams;
-		// trnsParams[0] = trnsParams0[0] * rotateVec[0] + trnsParams0[1] * rotateVec[2];
-		// trnsParams[1] = trnsParams0[0] * rotateVec[1] + trnsParams0[1] * rotateVec[3];
-		// trnsParams[2] = trnsParams0[2] * rotateVec[0] + trnsParams0[3] * rotateVec[2];
-		// trnsParams[3] = trnsParams0[2] * rotateVec[1] + trnsParams0[3] * rotateVec[3];
+		const __m128 trnsParams = matrix22Mult(_conv4shorts(abcd.ptr), rotateVec) * TRNS_PARAMS_REC;
 		//Render begin
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, gl_texture);
