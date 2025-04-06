@@ -16,6 +16,7 @@ import numem.core.hooks;
 import numem.core.traits;
 import numem.core.atomic;
 public import numem : nogc_new, nogc_delete, nogc_move, nogc_copy;
+import core.stdc.stdio;
 
 /// UDA to get around certain issues regarding of structs with refcounting dtors.
 struct PPECFG_Memfix {}
@@ -290,20 +291,31 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 		return backend.length - lTrim - rTrim;
 	}
 	size_t length(size_t val) @nogc @trusted {
+		size_t oldLength = length;
 		if (!length) {
 			lTrim = 0;
 			rTrim = backend.length;
 		} else if (val >= remain) {
-			// reserve(val);
-			grow();
+			reserve(val);
+			//grow();
 		} else {
 			sizediff_t newrTrim = capacity - lTrim - val;
 			if (newrTrim < -1) {
-				rTrim = 0;
-				backend.shiftElements(newrTrim, lTrim);
+				//rTrim = 0;
+				backend.shiftElements(lTrim * -1, oldLength);
 				lTrim = 0;
 			} else {
 				rTrim = newrTrim;
+			}
+			static if (hasUDA!(T, PPECFG_Memfix)) {
+				if (length > oldLength) {
+					backend[$-rTrim..$].setToNull();
+				} else {
+					for (sizediff_t i = length ; i < oldLength + lTrim ; i++) {
+						backend[i] = T.init;
+					}
+				}
+				//	backend[$-rTrim..$].setToNull();
 			}
 		}
 		return val;
@@ -355,11 +367,12 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	T remove(size_t index) @nogc @trusted {
 		assert(index < length);
 		T result = backend[lTrim + index];
+		static if (hasUDA!(T, PPECFG_Memfix)) backend[lTrim + index] = T.init;
 		static if (lts == LTrimStrategy.None) {
 			rTrim++;
 			static if (hasUDA!(T, PPECFG_Memfix)) {
 				backend.shiftElements(-1, index);
-				setToNull(backend[length - 1..length]);
+				//setToNull(backend[length - 1..length]);
 			} else {
 				backend[index..length - 1] = backend[index + 1..length];
 			}
@@ -369,7 +382,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 				lTrim++;
 				static if (hasUDA!(T, PPECFG_Memfix)) {
 					dirtyCopy(backend[lTrim - 1..lTrim + index - 1], backend[lTrim..lTrim + index]);
-					setToNull(backend[lTrim - 1..lTrim]);
+					//setToNull(backend[lTrim - 1..lTrim]);
 				} else {
 					backend[lTrim..lTrim + index] = backend[lTrim - 1..lTrim + index - 1];
 				}
@@ -377,7 +390,7 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 				rTrim++;
 				static if (hasUDA!(T, PPECFG_Memfix)) {
 					backend.shiftElements(-1, lTrim + index);
-					setToNull(backend[lTrim + index..lTrim + index + 1]);
+					//setToNull(backend[lTrim + index..lTrim + index + 1]);
 				} else {
 					backend[lTrim + index..lTrim + length - 1] = backend[lTrim + index + 1..lTrim + length];
 				}
@@ -472,8 +485,10 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 		return backend.reserve(amount);
 	}
 	alias opDollar = length;
-	alias opSlice = backend.opSlice;
-	T remove(size_t index) @nogc @safe {
+	T[] opSlice(size_t i, size_t j) @nogc @safe pure nothrow {
+		return backend[i..j];
+	}
+	T remove(size_t index) @nogc @trusted {
 		return backend.remove(index);
 	}
 	T* ptr() @system @nogc nothrow pure {
@@ -481,7 +496,14 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 	}
 	ref T insert(T elem) @nogc @safe {
 		if (!remain()) backend.grow();
-		for (sizediff_t i = length - 1 ; i >= 0 ; i--) {
+		for (sizediff_t i; i < length ; i++) {
+			// if (backend[i] == elem) {
+				// backend[i] = elem;
+				// return backend[i];
+			// } else if (backend[i] > elem) {
+				// backend.insert(i, elem);
+				// return backend[i];
+			// }
 			if (binaryFun!equal(backend[i], elem)) {
 				backend[i] = elem;
 				return backend[i];
@@ -490,32 +512,42 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 				return backend[i];
 			}
 		}
-		backend.insert(0, elem);
+		backend.insert(length, elem);
 		return backend[0];
 	}
 	T searchBy(Q)(Q needle) @nogc @safe nothrow {
 		if (length) {
+			if (backend[0] == needle) return backend[0];
 			sizediff_t l, r = length - 1, m;
 			while (l <= r) {
-				m = (l+r)>>1;
+				m = (l+r)/2;
+				// if (backend[m] > needle) r = m - 1;
+				// else if (backend[m] < needle) l = m + 1;
+				// else return backend[m];
 				if (binaryFun!equal(backend[m], needle)) return backend[m];
 				else if (binaryFun!less(backend[m], needle)) r = m - 1;
 				else l = m + 1;
 			}
-			if (binaryFun!equal(backend[m], needle)) return backend[m];
+			if (backend[m] == needle) return backend[m];
+			//if (binaryFun!equal(backend[m], needle)) return backend[m];
 		}
 		return T.init;
 	}
 	sizediff_t searchIndexBy(Q)(Q needle) @nogc @safe nothrow {
 		if (length) {
+			if (backend[0] == needle) return 0;
 			sizediff_t l, r = length - 1, m;
 			while (l <= r) {
-				m = (l+r)>>1;
+				m = (l+r)/2;
+				// if (backend[m] > needle) r = m - 1;
+				// else if (backend[m] < needle) l = m + 1;
+				// else return m;
 				if (binaryFun!equal(backend[m], needle)) return m;
 				else if (binaryFun!less(backend[m], needle)) r = m - 1;
 				else l = m + 1;
 			}
-			if (binaryFun!equal(backend[m], needle)) return m;
+			if (backend[m] == needle) return m;
+			// if (binaryFun!equal(backend[m], needle)) return m;
 		}
 		return -1;
 	}
@@ -547,4 +579,7 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 		return result;
 	}
 	mixin(opApplyGen());
+}
+unittest {
+
 }
