@@ -174,16 +174,26 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		state.isRunning = true;
 		outScrn = new OSWindow("PixelPerfectEngine Audio Development Kit", "ppe_adk", -1, -1,
 				848 * guiScaling, 480 * guiScaling, WindowCfgFlags.IgnoreMenuKey);
-		outScrn.getOpenGLHandle();
+		version (Windows) outScrn.getOpenGLHandleAttribsARB([
+			OpenGLContextAtrb.MajorVersion, 3,
+			OpenGLContextAtrb.MinorVersion, 3,
+			OpenGLContextAtrb.ProfileMask, 1,
+			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
+			0
+		]);
+		else outScrn.getOpenGLHandle();
 		const glStatus = loadOpenGL();
-		if (glStatus < GLSupport.gl11) {
+		if (glStatus < GLSupport.gl33) {
 			writeln("OpenGL not found!");
 		}
-		mainRaster = new Raster(848,480,outScrn,0, 1);
-		windowing = new SpriteLayer(RenderingMode.Copy);
+		mainRaster = new Raster(848,480,outScrn);
+		mainRaster.readjustViewport(840 * guiScaling, 480 * guiScaling, 0, 0);
+		windowing = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
 		//windowing.addSprite(new Bitmap8Bit(848, 480), -65_536, 0, 0);
 		wh = new WindowHandler(1696,960,848,480,windowing,outScrn);
-		mainRaster.loadPalette(loadPaletteFromFile(resolvePath("%SYSTEM%/concreteGUIE1.tga")));
+		mainRaster.loadPaletteChunk(loadPaletteFromFile(resolvePath("%SYSTEM%/concreteGUIE1.tga")), 0);
 		mainRaster.addLayer(windowing, 0);
 		INIT_CONCRETE();
 		// {
@@ -328,7 +338,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		WindowElement.onDraw = &rasterRefresh;
 		Window.onDrawUpdate = &rasterRefresh;
 		initMIDI();
-		Bitmap4Bit background = new Bitmap4Bit(848, 480);
+		Bitmap8Bit background = new Bitmap8Bit(848, 480);
 		wh.addBackground(background);
 		wh.addWindow(new AudioConfig(this));
 		eventStack = new UndoableStack(10);
@@ -340,10 +350,10 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	}
 	void whereTheMagicHappens() {
 		while (state.isRunning) {
-			if (state.flipScreen) {
-				state.flipScreen = false;
-				mainRaster.refresh();
-			}
+			// if (state.flipScreen) {
+				// state.flipScreen = false;
+			mainRaster.refresh_GL();
+			// }
 			ih.test();
 			Thread.sleep(dur!"msecs"(10));
 			timer.test();
@@ -595,8 +605,9 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void windowResize(OSWindow window, int width, int height) {
 		mainRaster.resizeRaster(cast(ushort)(width / guiScaling), cast(ushort)(height / guiScaling));
 		wh.resizeRaster(width, height, width / guiScaling, height / guiScaling);
-		glViewport(0, 0, width, height);
-		rasterRefresh();
+		mainRaster.readjustViewport(width, height, 0, 0);
+		// glViewport(0, 0, width, height);
+		// rasterRefresh();
 	}
 	public void inputDeviceAdded(InputDevice id) {
 

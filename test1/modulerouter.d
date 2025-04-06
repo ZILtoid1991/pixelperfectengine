@@ -21,7 +21,7 @@ public class ModuleRouter : Window {
 	AudioDevKit adk;
 	string[2][] moduleList;
 	public this(AudioDevKit adk){
-		super(Box(0, 16, 640, 480), "Modules and Routing");
+		super(Box.bySize(0, 16, 640, 480 - 16), "Modules and Routing");
 		listView_modules = new ListView(new ListViewHeader(16, [256, 256], ["Type", "Name"]), null, "listView_modules", 
 				Box(5, 20, 530, 175));
 		listView_routing = new ListView(new ListViewHeader(16, [256, 256], ["From", "To"]), null, "listView_routing", 

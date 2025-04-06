@@ -107,7 +107,7 @@ public class SampleMan : Window {
 		moduleName = adk.selectedModID;
 		this.adk = adk;
 
-		super(Box(0, 0, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
+		super(Box.bySize(16, 16, 520, 322), "Sample manager ["d ~ moduleName.to!dstring ~ "]"d);
 		listView_sampleList = new ListView(new ListViewHeader(16, [40, 120, 250], ["ID" ,"name" ,"file source"]), null, 
 				"listView0", Box(5, 20, 335, 185));
 		button_load = new Button("Load"d, "button_load", Box(340, 20, 440, 40));

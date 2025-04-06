@@ -25,7 +25,7 @@ public class PresetEditor : Window {
 	
 	//CheckBox	checkBox_globals;
 	public this(AudioDevKit adk) {
-		super(Box(0, 0, 330, 330), "`" ~ toUTF32(adk.selectedModID) ~ "` presets"d);
+		super(Box.bySize(16, 16, 332, 330), "`" ~ toUTF32(adk.selectedModID) ~ "` presets"d);
 		listView_presets = new ListView(new ListViewHeader(16, [32, 32, 240], ["Bank" ,"Prg" ,"Name"]), null, 
 				"listView_presets", Box(5, 20, 230, 100));
 		listView_values = new ListView(new ListViewHeader(16, [200, 100], ["Name" ,"Value"]), null, "listView_values", 
