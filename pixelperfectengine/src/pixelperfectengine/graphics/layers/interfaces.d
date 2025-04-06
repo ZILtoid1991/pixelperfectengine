@@ -141,7 +141,7 @@ public interface ITileLayer {
 	 */
 	public void loadMapping(int x, int y, MappingElement[] mapping) @safe pure;
 	/// Removes the tile from the display list with the given ID.
-	public void removeTile(wchar id) pure;
+	public void removeTile(wchar id) @safe @nogc;
 	/// .
 	/** 
 	 * Reads the mapping element from the given area, while accounting for warp mode.
