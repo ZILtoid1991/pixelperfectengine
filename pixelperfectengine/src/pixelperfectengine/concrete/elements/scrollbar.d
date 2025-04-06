@@ -128,6 +128,7 @@ public class VertScrollBar : ScrollBar {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (state != ElementState.Enabled) return;
@@ -213,6 +214,7 @@ public class HorizScrollBar : ScrollBar {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (state != ElementState.Enabled) return;

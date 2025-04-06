@@ -65,6 +65,7 @@ public class Panel : WindowElement, ElementContainer {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	/**
 	 * Adds an element to the panel
@@ -203,7 +204,12 @@ public class Panel : WindowElement, ElementContainer {
 	public void closePopUp(PopUpElement p) {
 		parent.closePopUp(p);
 	}
-
+	public void updateOutput(PopUpElement p) {
+		//parent.updateOutput(p);
+	}
+	public void updateOutput(WindowElement sender) {
+		if (parent) parent.updateOutput(sender);
+	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		foreach (WindowElement we; subElems) {
 			if (we.getPosition.isBetween(mce.x, mce.y)) {

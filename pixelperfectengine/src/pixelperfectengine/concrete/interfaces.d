@@ -139,6 +139,7 @@ public interface ElementContainer : PopUpHandler, Canvas {
 	 * Sets the cursor to the given type on request.
 	 */
 	public void requestCursor(StandardCursors type);
+	public void updateOutput(WindowElement sender);
 }
 /**
  * Implemented by any object that can store stylesheets.
@@ -192,4 +193,5 @@ public interface PopUpHandler : StyleSheetContainer {
 	 * Closes a single popup element.
 	 */
 	public void closePopUp(PopUpElement p);
+	public void updateOutput(PopUpElement p);
 }

@@ -1,6 +1,7 @@
 module pixelperfectengine.concrete.popup.popuplabel;
 
 import pixelperfectengine.concrete.popup.base;
+import pixelperfectengine.system.math;
 
 /**
  *
@@ -36,7 +37,7 @@ public class PopUpLabel : PopUpElement {
 				scroll = 0;
 		}
 		if (output is null) {
-			output = new BitmapDrawer(maxWidth + 2 * ss.drawParameters["PopUpLabelHorizPadding"], 
+			output = new BitmapDrawer(padToNext(4, maxWidth + 2 * ss.drawParameters["PopUpLabelHorizPadding"]),
 					finalHeight);
 			position = Box.bySize(0, 0, output.output.width, output.output.height);
 		}
@@ -50,6 +51,7 @@ public class PopUpLabel : PopUpElement {
 					position.width - ss.drawParameters["PopUpLabelHorizPadding"] - 1, 
 					position.height - ss.drawParameters["PopUpLabelVertPadding"] - 1), outputTextInLines, 0 , scroll);
 		}
+		parent.updateOutput(this);
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		parent.endPopUpSession(this);

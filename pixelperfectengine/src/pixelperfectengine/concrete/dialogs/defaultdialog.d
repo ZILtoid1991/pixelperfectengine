@@ -14,13 +14,13 @@ public class DefaultDialog : Window{
 			string[] values = ["close"], StyleSheet customStyle = null) {
 		const int textHeight = message.getTotalHeight(width);
 		if (!customStyle) customStyle = globalDefaultStyle;
-		super(Box.bySize(pos.x, pos.y, width + customStyle.drawParameters["defDialogPadding"], 
-				textHeight + customStyle.drawParameters["WindowTopPadding"] + customStyle.drawParameters["WindowBottomPadding"] +
-				customStyle.drawParameters["ComponentHeight"]), 
+		super(Box.bySize(pos.x, pos.y, width + customStyle.drawParameters["defDialogPadding"],
+				textHeight + customStyle.drawParameters["WindowTopPadding"] +
+				customStyle.drawParameters["WindowBottomPadding"] + customStyle.drawParameters["ComponentHeight"]),
 				title, null, customStyle);
 		//generate text
 		if(options.length == 0)
-			options ~= new Text("Ok", getStyleSheet().getChrFormatting("button"));
+			options ~= new Text("Ok", customStyle.getChrFormatting("button"));
 		
 		this.source = source;
 		int x1, x2;

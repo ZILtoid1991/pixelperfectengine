@@ -447,6 +447,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	/** 
 	 * Returns the numfer of entries the ListView has.
@@ -829,7 +830,6 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 		} else {
 			super.passMCE(mec, mce);
 		}
-		
 		draw();
 	}
 	///Passes mouse move event
@@ -885,6 +885,12 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	 */
 	public void closePopUp(PopUpElement p) {
 		parent.closePopUp(p);
+	}
+	public void updateOutput(PopUpElement p) {
+		//parent.updateOutput(p);
+	}
+	public void updateOutput(WindowElement sender) {
+		if (parent) parent.updateOutput(sender);
 	}
 	//Interface `TextInputListener` starts here
 	/**

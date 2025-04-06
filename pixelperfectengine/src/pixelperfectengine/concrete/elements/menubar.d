@@ -56,6 +56,7 @@ public class MenuBar : WindowElement {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	private void redirectIncomingEvents(Event ev){
 		if(onMenuEvent !is null){

@@ -75,6 +75,7 @@ public class CheckBox : WindowElement, ISmallButton {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	
 	

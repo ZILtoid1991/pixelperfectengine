@@ -184,8 +184,10 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		for (int i ; i < windows.length ; i++) {
 			// spriteLayer.addSprite(windows[i].getOutput, i, windows[i].getPosition.left, windows[i].getPosition.top);
 			spriteLayer.addBitmapSource(windows[i].getOutput, i);
-			spriteLayer.createSpriteMaterial(i, i);
-			spriteLayer.addSprite(i, i, windows[i].getPosition);
+			spriteLayer.createSpriteMaterial(i, i, Box.bySize(0, 0, windows[i].getPosition().width+1,
+					windows[i].getPosition().height+1));
+			spriteLayer.addSprite(i, i, Box(windows[i].getPosition.left, windows[i].getPosition.top,
+					windows[i].getPosition.right + 1, windows[i].getPosition.bottom + 1));
 		}
 		if (background) spriteLayer.addSprite(65_536, 65_536, Point(0, 0));
 		if (baseWindow) spriteLayer.addSprite(65_535, 65_535, Point(0, 0));
@@ -322,13 +324,16 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		if (sender is baseWindow) {
 			// spriteLayer.replaceSprite(baseWindow.getOutput, 65_535);
 			spriteLayer.addBitmapSource(sender.getOutput, 65_535);
-			spriteLayer.createSpriteMaterial(65_535, 65_535);
+			spriteLayer.createSpriteMaterial(65_535, 65_535,  Box.bySize(0, 0, sender.getPosition().width+1,
+					sender.getPosition().height));
 			spriteLayer.addSprite(65_535, 65_535, Point(0, 0));
 		} else {
 			const int n = whichWindow(sender);
 			spriteLayer.addBitmapSource(sender.getOutput, n);
-			spriteLayer.createSpriteMaterial(n, n);
-			spriteLayer.addSprite(n, n, sender.getPosition);
+			spriteLayer.createSpriteMaterial(n, n, Box.bySize(0, 0, sender.getPosition().width+1,
+					sender.getPosition().height+1));
+			spriteLayer.addSprite(n, n,
+					Box(sender.getPosition.left, sender.getPosition.top, sender.getPosition.right + 1, sender.getPosition.bottom + 1));
 		}
 	}
 	/**
@@ -409,6 +414,30 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	public void closePopUp(PopUpElement p){
 		popUpElements.removeByElem(p);
 		if (PopUpElement.onDraw !is null) PopUpElement.onDraw();
+	}
+	void updateOutput(PopUpElement p) {
+		for (int i = -1, j ; i >= numOfPopUpElements && j < popUpElements.length ; i--, j++) {
+			if (popUpElements[j] is p) {
+				spriteLayer.addBitmapSource(p.getOutput, i);
+				return;
+			}
+		}
+	}
+	void updateOutput(Window w) {
+		if (w is baseWindow) {
+			spriteLayer.addBitmapSource(w.getOutput, 65_535);
+			spriteLayer.createSpriteMaterial(65_535, 65_535, Box.bySize(0, 0, w.getPosition().width+1,
+					w.getPosition().height+1));
+			spriteLayer.addSprite(65_535, 65_535, w.getPosition);
+		} else {
+			const int n = whichWindow(w);
+			if (n == -1) return;
+			spriteLayer.addBitmapSource(w.getOutput, n);
+			spriteLayer.createSpriteMaterial(n, n, Box.bySize(0, 0, w.getPosition().width+1,
+					w.getPosition().height+1));
+			spriteLayer.addSprite(n, n,
+					Box(w.getPosition.left, w.getPosition.top, w.getPosition.right + 1, w.getPosition.bottom + 1));
+		}
 	}
 	//implementation of the `InputListener` interface
 	/**

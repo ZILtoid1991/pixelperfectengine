@@ -17,6 +17,7 @@ public import pixelperfectengine.concrete.windowhandler;
 
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.input.interfaces;
+import pixelperfectengine.system.math;
 
 import std.algorithm.mutation;
 import std.stdio;
@@ -75,7 +76,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 */
 	public this(Box size, Text title, ISmallButton[] smallButtons, StyleSheet customStyle = null) {
 		position = size;
-		output = new BitmapDrawer(position.width, position.height);
+		output = new BitmapDrawer(padToNext(4, position.width()), position.height);
 		this.title = title;
 		this.customStyle = customStyle;
 		foreach (key; smallButtons) {
@@ -116,8 +117,22 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 */
 	public Box setPosition(Box newPos) {
 		position = newPos;
-		if (output.output.width != position.width || output.output.height != position.height) {
-			output = new BitmapDrawer(position.width, position.height);
+		if(output.output.width < position.width || output.output.height < position.height) {
+			output = new BitmapDrawer(padToNext(4, position.width()), position.height());
+			handler.refreshWindow(this);
+			const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
+			int left, right = position.width;
+			Box b;
+			foreach (ISmallButton key; smallButtons) {
+				if (key.isLeftSide) {
+					b = Box.bySize(left, 0, headerHeight, headerHeight);
+					left += headerHeight;
+				} else {
+					b = Box.bySize(right - headerHeight, 0, headerHeight, headerHeight);
+					right -= headerHeight;
+				}
+				(cast(WindowElement)key).setPosition(b);
+			}
 			draw();
 		}
 		if (onDrawUpdate !is null)
@@ -185,8 +200,8 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		drawHeader();
 	}
 	protected void outputSurfaceRecalc() {
-		if(output.output.width != position.width || output.output.height != position.height) {
-			output = new BitmapDrawer(position.width(), position.height());
+		if(output.output.width < position.width || output.output.height < position.height) {
+			output = new BitmapDrawer(padToNext(4, position.width()), position.height());
 			handler.refreshWindow(this);
 			const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
 			int left, right = position.width;
@@ -224,6 +239,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		foreach (WindowElement we; elements) {
 			we.draw();
 		}
+		handler.updateOutput(this);
 		if (onDrawUpdate !is null)
 			onDrawUpdate();
 	}
@@ -336,7 +352,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		handler = wh;
 	}
 	
-	public Coordinate getAbsolutePosition(WindowElement sender) {
+	public Box getAbsolutePosition(WindowElement sender) {
 		Box p = sender.getPosition();
 		p.relMove(position.left, position.top);
 		return p;
@@ -762,6 +778,12 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 */
 	public void closePopUp(PopUpElement p) {
 		handler.closePopUp(p);
+	}
+	public void updateOutput(PopUpElement p) {
+		handler.updateOutput(p);
+	}
+	public void updateOutput(WindowElement sender) {
+		if (handler) handler.updateOutput(this);
 	}
 	///Generates a generic close button
 	public static SmallButton closeButton(StyleSheet ss = globalDefaultStyle) {

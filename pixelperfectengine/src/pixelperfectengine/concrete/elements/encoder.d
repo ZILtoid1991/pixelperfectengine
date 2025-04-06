@@ -73,6 +73,7 @@ public class SlidingEncoder : WindowElement {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (mce.button == MouseButtons.Left && track.isBetween(mce.x - position.left, mce.y - position.top)) {

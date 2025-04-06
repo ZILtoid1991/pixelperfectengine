@@ -65,6 +65,7 @@ public class Button : WindowElement {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	
 }

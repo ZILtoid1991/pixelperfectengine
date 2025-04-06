@@ -1,6 +1,7 @@
 module pixelperfectengine.concrete.popup.popupmenu;
 
 import pixelperfectengine.concrete.popup.base;
+import pixelperfectengine.system.math;
 
 /**
  * To create drop-down lists, menu bars, etc.
@@ -39,17 +40,10 @@ public class PopUpMenu : PopUpElement {
 			width += (ss.drawParameters["PopUpMenuHorizPadding"] * 2);
 			height += ss.drawParameters["PopUpMenuVertPadding"] * 2;
 			position = Box(0, 0, width - 1, height - 1);
-			output = new BitmapDrawer(width, height);
+			output = new BitmapDrawer(padToNext(4, position.width()), height);
 		}
 		Box position0 = Box(0, 0, width - 1, height - 1);
-		output.drawFilledBox(position0, ss.getColor("window"));//output.drawFilledRectangle(0,width - 1,0,height - 1,ss.getColor("window"));
-
-		/* if(select > -1){
-			int y0 = cast(int)((height / elements.length) * select);
-			int y1 = cast(int)((height / elements.length) + y0);
-			output.drawFilledBox(Box(1, y0 + 1, position0.width - 1, y1 - 1), ss.getColor("selection")); //output.drawFilledRectangle(1, width - 1, y0 + 1, y1 + 1, ss.getColor("selection"));
-		} */
-
+		output.drawFilledBox(position0, ss.getColor("window"));
 
 		int y = 1 + ss.drawParameters["PopUpMenuVertPadding"];
 		foreach(size_t i, PopUpMenuElement e; elements){
@@ -93,6 +87,7 @@ public class PopUpMenu : PopUpElement {
 		if(onDraw !is null){
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (mce.state) {

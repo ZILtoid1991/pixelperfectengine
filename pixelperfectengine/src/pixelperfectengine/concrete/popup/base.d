@@ -17,14 +17,7 @@ public abstract class PopUpElement : MouseEventReceptor {
 	protected PopUpHandler parent;
 	protected string source;
 	protected Text text;
-	/*public void delegate(Event ev) onMouseLClickRel;
-	public void delegate(Event ev) onMouseRClickRel;
-	public void delegate(Event ev) onMouseMClickRel;
-	public void delegate(Event ev) onMouseHover;
-	public void delegate(Event ev) onMouseMove;
-	public void delegate(Event ev) onMouseLClickPre;
-	public void delegate(Event ev) onMouseRClickPre;
-	public void delegate(Event ev) onMouseMClickPre;*/
+
 
 	public static void delegate() onDraw;			///Called when the element finished drawing
 	public void delegate(Event ev) onMouseClick;	///Called on mouse click on element

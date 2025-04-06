@@ -51,6 +51,7 @@ public class SmallButton : WindowElement, ISmallButton {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	/**
 	 * Returns true if the SmallButton is of size `height`, false otherwise.

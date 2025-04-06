@@ -1,6 +1,7 @@
 module pixelperfectengine.concrete.popup.popuptextinput;
 
 public import pixelperfectengine.concrete.popup.base;
+import pixelperfectengine.system.math;
 
 /**
  * Text input in pop-up fashion.
@@ -17,7 +18,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 		this.position = position;
 		this.onTextInput = onTextInput;
 		enableEdit = true;
-		output = new BitmapDrawer(position.width, position.height);
+		output = new BitmapDrawer(padToNext(4, position.width()), position.height);
 		inputhandler.startTextInput(this, false, position);
 	}
 	public override void draw() {
@@ -65,6 +66,7 @@ public class PopUpTextInput : PopUpElement, TextInputListener {
 		if(onDraw !is null){
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	private void deleteCharacter(size_t n){
 		text.removeChar(n);

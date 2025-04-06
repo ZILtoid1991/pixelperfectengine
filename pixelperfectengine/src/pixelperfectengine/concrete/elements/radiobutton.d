@@ -57,6 +57,7 @@ public class RadioButton : WindowElement, IRadioButton, ISmallButton {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {

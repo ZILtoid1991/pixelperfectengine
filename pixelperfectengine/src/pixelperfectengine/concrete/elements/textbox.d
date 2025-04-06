@@ -128,6 +128,7 @@ public class TextBox : WindowElement, TextInputListener {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 	/**
      * Passes text editing events to the target, alongside with a window ID and a timestamp.

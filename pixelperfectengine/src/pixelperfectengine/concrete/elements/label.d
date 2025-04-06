@@ -31,5 +31,6 @@ public class Label : WindowElement {
 		if (onDraw !is null) {
 			onDraw();
 		}
+		parent.updateOutput(this);
 	}
 }
