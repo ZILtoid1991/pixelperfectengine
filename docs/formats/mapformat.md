@@ -133,12 +133,20 @@ restricted to internal use.
 
 ## Common subtags
 
+### 'ShaderProgram'
+
+`ShaderProgram "%SHADERS%/tile_%SHDRVER%.vert" "%SHADERS%/tile_%SHDRVER%.frag"`
+
+Defines a single shader for the current layer.
+
 ### 'RenderingMode'
 
 `RenderingMode "AlphaBlend"`
 
 Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
 "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
+
+Will likely be deprecated in the future in favor of shader programs.
 
 ### 'RepeatMode'
 

@@ -8,6 +8,7 @@ import sdlang;
 
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster : PaletteContainer;
+import pixelperfectengine.graphics.shaders;
 import std.stdio;
 import std.exception : enforce;
 import std.typecons : BitFlags;
@@ -85,14 +86,20 @@ public class MapFormat {
 				case "Layer":
 					const int priority = t0.values[1].get!int;
 					layerData[priority] = t0;
-					RenderingMode lrd = renderingModeLookup.get(t0.getTagValue!string("RenderingMode"), RenderingMode.Copy);
-					
+					// RenderingMode lrd = renderingModeLookup.get(t0.getTagValue!string("RenderingMode"), RenderingMode.Copy);
+					string shdrPathV, shdrPathF;
+					Tag shdrDescr = t0.getTag("ShaderProgram");
+					if (shdrDescr) {
+						shdrPathV = shdrDescr.values[0].get!string;
+						shdrPathF = shdrDescr.values[1].get!string;
+					}
+					GLShader shdr = GLShader(loadShader(shdrPathV), loadShader(shdrPathF));
 					switch (t0.name) {
 						case "Tile":
-							layeroutput[priority] = new TileLayer(t0.values[2].get!int, t0.values[3].get!int, lrd);
+							layeroutput[priority] = new TileLayer(t0.values[2].get!int, t0.values[3].get!int, shdr);
 							break;
 						case "Sprite":
-							layeroutput[priority] = new SpriteLayer(lrd);
+							layeroutput[priority] = new SpriteLayer(shdr, shdr);
 							break;
 						default:
 							throw new Exception("Unsupported layer format");
