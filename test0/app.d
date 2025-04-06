@@ -76,7 +76,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		]);
 		else output.getOpenGLHandle();
 		const glStatus = loadOpenGL();
-		if (glStatus < GLSupport.gl11) {
+		if (glStatus < GLSupport.gl33) {
 			writeln("OpenGL not found!");
 		}
 		{
@@ -141,7 +141,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		//s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
 		s.addBitmapSource(dlangMan, 0);
 		s.createSpriteMaterial(0, 0, Box(0, 0, 31, 31));
-		s.addSprite(0, 65_536, Box(0, 0, 31, 31), 1);
+		s.addSprite(0, -65_536, Box(0, 0, 31, 31), 1);
 		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
 		//tcd.objects[65_536] = ocd.objects[65_536];
 		// s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
@@ -259,22 +259,22 @@ class TileLayerTest : SystemEventListener, InputListener {
 			r.refresh_GL();
 			ih.test();
 			if(up) {
-				s.relMoveSprite(65_536,0,-1);
+				s.relMoveSprite(-65_536,0,-1);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(down) {
-				s.relMoveSprite(65_536,0,1);
+				s.relMoveSprite(-65_536,0,1);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(left) {
-				s.relMoveSprite(65_536,-1,0);
+				s.relMoveSprite(-65_536,-1,0);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(right) {
-				s.relMoveSprite(65_536,1,0);
+				s.relMoveSprite(-65_536,1,0);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
-			Quad mainSpritePosition = s.getSpriteCoordinate(65_536);
+			Quad mainSpritePosition = s.getSpriteCoordinate(-65_536);
 			ocd.objects.ptrOf(65_536).position = Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32);
 			onTileCollision(getAllOverlappingTiles(Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32), t));
 			//tcd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
@@ -479,14 +479,11 @@ class TileLayerTest : SystemEventListener, InputListener {
 			const double visibleWidth = height * origAspectRatio;
 			const double sideOffset = (width - visibleWidth) / 2.0;
 			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
-			// glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
 		} else {	//Display area is now taller, padding needs to be added on the top and bottom
 			const double visibleHeight = width / origAspectRatio;
 			const double topOffset = (height - visibleHeight) / 2.0;
 			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
-			// glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
 		}
-		// r.readjustViewport(width, height, 0, 0);
 	}
 	/**
 	 * Called when an axis is being operated.
