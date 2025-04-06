@@ -62,15 +62,25 @@ public class MapFormatTester : SystemEventListener, InputListener {
 	BitFlags!ControlFlags controlFlags;
 	TileLayer		textLayer;
 	SpriteLayer		gameField;
+	GLShader		tileShader;
 	this(string path) {
 		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);//new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
-		output.getOpenGLHandle();
+		version (Windows) output.getOpenGLHandleAttribsARB([
+			OpenGLContextAtrb.MajorVersion, 3,
+			OpenGLContextAtrb.MinorVersion, 3,
+			OpenGLContextAtrb.ProfileMask, 1,
+			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
+			0
+		]);
+		else output.getOpenGLHandle();
 		const glStatus = loadOpenGL();
-		if (glStatus < GLSupport.gl11) {
+		if (glStatus < GLSupport.gl33) {
 			writeln("OpenGL not found!");
 		}
 		stateFlags.isRunning = true;
-		r = new Raster(424,240,output,0);
+		tileShader = GLShader(loadShader(`%SHADERS%/tile_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/tile_%SHDRVER%.frag`));
+		r = new Raster(424,240,output);
 		Image fontSource = loadImage(File(resolvePath("%SYSTEM%/codepage_8_8.png")));
 		ih = new InputHandler();
 		ih.systemEventListener = this;
@@ -85,14 +95,14 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		}
 
 
-		textLayer = new TileLayer(8,8, RenderingMode.AlphaBlend);
+		textLayer = new TileLayer(8,8, tileShader);
 		textLayer.paletteOffset = 512;
 		textLayer.masterVal = 127;
 		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
 		{
-			Bitmap8Bit[] fontSet = loadBitmapSheetFromImage!Bitmap8Bit(fontSource, 8, 8);
-			for (ushort i; i < fontSet.length; i++) {
-				textLayer.addTile(fontSet[i], i, 1);
+			textLayer.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(fontSource), 0, 1);
+			for (ushort i; i < 256; i++) {
+				textLayer.addTile(i, 0, (i & 0x0F)<<3, (i & 0xF0)>>1, 1);
 			}
 		}
 		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false));
@@ -119,7 +129,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
-			r.refresh();
+			r.refresh_GL();
 			ih.test();
 			ocd.objects.ptrOf(65_536).position = gameField.getSpriteCoordinate(65_536);
 			if(controlFlags.up) {
@@ -211,11 +221,11 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
 			const double visibleWidth = height * origAspectRatio;
 			const double sideOffset = (width - visibleWidth) / 2.0;
-			glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
 		} else {	//Display area is now taller, padding needs to be added on the top and bottom
 			const double visibleHeight = width / origAspectRatio;
 			const double topOffset = (height - visibleHeight) / 2.0;
-			glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
 		}
 	}
 	
