@@ -37,7 +37,7 @@ public class TileLayer : Layer, ITileLayer {
 		ushort x;			/// X coordinate of the top-left corner.
 		ushort y;			/// Y coordinate of the top-left corner.
 		int opCmp(const ref wchar rhs) @nogc @safe pure nothrow const {
-			return (id < rhs) - (id > rhs);
+			return (id > rhs) - (id < rhs);
 		}
 		bool opEquals(const ref wchar rhs) @nogc @safe pure nothrow const {
 			return id == rhs;
