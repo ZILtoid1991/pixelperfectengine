@@ -126,10 +126,10 @@ public class Raster : PaletteContainer {
 	 *   w = Raster width.
 	 *   h = Raster height.
 	 *   oW = The OS window for the target.
-	 *   buffers = Number of buffers, 2 recommended for double buffering, 1 recommended for GUI apps 
+	 *   buffers = Number of buffers, should be 1.
 	 * especially if they're not constantly updating.
 	 */
-	public this (ushort w, ushort h, OSWindow oW, ubyte buffers = 2) {
+	public this (ushort w, ushort h, OSWindow oW, ubyte buffers = 1) {
 		// assert(paletteLength <= 65_536);
 		//Shader initialization block
 		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
