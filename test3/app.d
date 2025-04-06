@@ -61,7 +61,7 @@ public class TestElements : InputListener, SystemEventListener {
 		]);
 		else outScrn.getOpenGLHandle();
 		const glStatus = loadOpenGL();
-		if (glStatus < GLSupport.gl11) {
+		if (glStatus < GLSupport.gl33) {
 			writeln("OpenGL not found!");
 		}
 		sprtL = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
