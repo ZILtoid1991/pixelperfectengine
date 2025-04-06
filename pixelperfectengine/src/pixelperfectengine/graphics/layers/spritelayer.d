@@ -42,6 +42,17 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		ushort top;		/// Defines the top-edge of the sprite on the texture
 		ushort right;	/// Defines the right-edge of the sprite on the texture
 		ushort bottom;	/// Defines the bottom-edge of the sprite on the texture
+		this(int materialID,uint pageID,ushort left,ushort top,ushort right,ushort bottom) @nogc @safe pure nothrow {
+			this.materialID = materialID;
+			this.pageID = pageID;
+			this.left = left;
+			this.top = top;
+			this.right = right;
+			this.bottom = bottom;
+		}
+		this(int materialID) @nogc @safe pure nothrow {
+			this.materialID = materialID;
+		}
 		/// Used for sorting and accessing
 		int opCmp(const int rhs) @nogc @safe pure nothrow const {
 			return (materialID > rhs) - (materialID < rhs);
@@ -129,7 +140,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			this.attr = rhs.attr;
 		}
 		int opCmp(int rhs) @nogc @safe pure nothrow const {
-			return (spriteID > rhs) - (spriteID < rhs);
+			return (spriteID < rhs) - (spriteID > rhs);
 		}
 		bool opEquals(int rhs) @nogc @safe pure nothrow const {
 			return spriteID == rhs;
@@ -479,10 +490,9 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public void removeSprite(int n) @nogc @safe nothrow {
 		try {
 			const sizediff_t pos = displayList_sprt.searchIndexBy(n);
-			if (pos == -1) displayList_sprt.remove(pos);
+			if (pos != -1) displayList_sprt.remove(pos);
 		} catch (Exception e) {
 			fatal_trusted(e.msg);
-
 		}
 	}
 	///Clears all sprite from the layer.
