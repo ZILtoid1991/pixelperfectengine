@@ -645,8 +645,16 @@ public class QM816 : AudioModule {
 		float			velocity	=	0;
 		///Pitch bend parameter, with the amount of pitch shifting in semitones + fractions
 		float			pitchBend	=	0;
+		///The speed of the portamento, 4 sec max
+		float			portamentoSpeed = 0;
+		///The currently outputted amount of portamento
+		float			portamentoOut = 0;
 		///The note that is currently being played
 		ubyte			note;
+		///Note for the portamento
+		ubyte			portamentoNote;
+		///0: Key on/off, 1: Portamento enable, 2: Portamento running
+		ubyte			flags;
 	}
 	/**
 	Defines a preset.
@@ -1102,6 +1110,12 @@ public class QM816 : AudioModule {
 								ccLow[ch][data0.note] = data0.value;
 								chCtrls[ch].auxCtrl = cast(double)((ccLow[ch][2]<<7) + ccLow[ch][34]) / (ushort.max>>2);
 								break;
+							case 5, (32 + 5):	//Portamento speed
+								ccLow[ch][data0.note] = data0.value;
+								chCtrls[ch].portamentoSpeed = cast(double)((ccLow[ch][5]<<7) + ccLow[ch][32+5]) / (ushort.max>>2);
+								chCtrls[ch].portamentoSpeed *= 4.0;
+								chCtrls[ch].portamentoSpeed /= intSlmpRate;
+								break;
 							case 6, 38:			//Data Entry
 								ccLow[ch][data0.note] = data0.value;
 								//paramTemp = [0xFF,0xFF,0xFF,0xFF];
@@ -1150,6 +1164,10 @@ public class QM816 : AudioModule {
 								ccLow[ch][data0.note] = data0.value;
 								setUnregisteredParam(convertM1CtrlValToM2(ccLow[ch][31], ccLow[ch][32+31]), [OperatorParamNums.TuneFine, 1], 
 										ch);
+								break;
+							case 65:		//Portamento on/off
+								if (data0.value <= 63) chCtrls[ch].flags &= ~0x02;
+								else chCtrls[ch].flags |= 0x02;
 								break;
 //
 							case 73:
@@ -1304,6 +1322,11 @@ public class QM816 : AudioModule {
 								break;
 							case 2:
 								chCtrls[data0.channel].auxCtrl = cast(double)data1 / uint.max;
+								break;
+							case 5:
+								chCtrls[data0.channel].portamentoSpeed = cast(double)data1 / uint.max;
+								chCtrls[ch].portamentoSpeed *= 4.0;
+								chCtrls[ch].portamentoSpeed /= intSlmpRate;
 								break;
 							case 18:
 								setUnregisteredParam(data1, [OperatorParamNums.Level, 0], data0.channel);
