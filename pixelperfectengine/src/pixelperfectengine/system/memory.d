@@ -218,6 +218,10 @@ package immutable string[] attrList =
  * for more info
  */
 public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts = LTrimStrategy.None) {
+	/**
+	 * Hack: Generates `opApply` and `opApplyReverse` overrides with the appropriate 
+	 * attributes.
+	 */
 	package static string opApplyGen() {
 		import pixelperfectengine.system.etc : interpolateStr;
 		immutable string opApplyCode = q"{
@@ -454,6 +458,10 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	}
 	mixin(opApplyGen());
 }
+/**
+ * Implements an ordered array set, that can be optionally used as an arraymap using the
+ * `searchBy` function.
+ */
 public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", string growthStrategy = "a += a;",
 		LTrimStrategy lts = LTrimStrategy.None) {
 	alias BET = DynArray!(T, growthStrategy, lts);
@@ -461,26 +469,27 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 	this(size_t amount) @nogc @safe {
 		backend = BET(amount);
 	}
-	// alias free = backend.free;
+	/// Frees the underlying memory.
 	void free() @nogc @safe {
 		backend.free;
 	}
-	// alias capacity = backend.capacity;
+	/// Returns the capacity of the array.
 	size_t capacity() @nogc @safe pure nothrow const {
 		return backend.capacity();
 	}
-	// alias length = backend.length;
+	/// Returns the current length of the array. (Do not use!)
 	size_t length() @nogc @safe pure nothrow const {
 		return backend.length();
 	}
+	/// Sets the length of the array. (Do not use!)
 	size_t length(size_t val) @nogc @safe {
 		return backend.length(val);
 	}
-	// alias remain = backend.remain;
+	/// Returns the remaining amount of memory space.
 	size_t remain() @nogc @safe pure nothrow const {
 		return backend.remain;
 	}
-	// alias reserve = backend.reserve;
+	/// Sets the memory reserve to the given amount.
 	size_t reserve(size_t amount) @nogc @safe {
 		return backend.reserve(amount);
 	}
@@ -488,12 +497,16 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 	T[] opSlice(size_t i, size_t j) @nogc @safe pure nothrow {
 		return backend[i..j];
 	}
+	/// Removes `index` from the array, then returns it.
 	T remove(size_t index) @nogc @trusted {
 		return backend.remove(index);
 	}
+	/// Returns the pointer of the first element.
 	T* ptr() @system @nogc nothrow pure {
 		return backend.ptr;
 	}
+	/// Inserts `elem` or overwrites an element in array equal with `elem`, then returns
+	/// a reference from the array.
 	ref T insert(T elem) @nogc @safe {
 		if (!remain()) backend.grow();
 		for (sizediff_t i; i < length ; i++) {
@@ -515,6 +528,8 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 		backend.insert(length, elem);
 		return backend[0];
 	}
+	/// Searches `needle` in the array with comparisons defined by template parameters 
+	/// `less` and `equal`, and returns the found element. Returns T.init if not found.
 	T searchBy(Q)(Q needle) @nogc @safe nothrow {
 		if (length) {
 			if (backend[0] == needle) return backend[0];
@@ -533,6 +548,9 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 		}
 		return T.init;
 	}
+	/// Searches `needle` in the array with comparisons defined by template parameters 
+	/// `less` and `equal`, and returns the found element's index. Returns -1 if not 
+	/// found.
 	sizediff_t searchIndexBy(Q)(Q needle) @nogc @safe nothrow {
 		if (length) {
 			if (backend[0] == needle) return 0;
