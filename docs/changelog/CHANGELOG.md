@@ -1,3 +1,27 @@
+# 0.12.0-beta
+
+## Full rework of rendering and move to OpenGL
+
+CPU rendering is now mostly deprecated in favor of rendering on the GPU via OpenGL. This also means a massive refactoring of the rendering pipeline and associated API.
+
+This comes with the following changes:
+
+* Sprites are now defined as Quads, and any of their corners can be freely defined, mirroring and scaling is done as such. Rotation is now also available.
+* The regular tile layer gained the ability of a limited transformation. The layer can be sheared and rotated, but per-scanline effects are no longer available, and is heavily dependent on the overscan to work correctly. In the future, a per-tile approach will be added.
+* The transformable tile layer might get deprecated.
+* Palettes are now stored in two 256x256 textures. the first one contains color, the second one contains normal mapping.
+* Additional API has been added to Concrete do deal with the use of GPU textures.
+
+To be done:
+
+* Fix incorrect tile layer rotation and shearing, likely will mean reworking of shader architecture.
+* Optimize sprite draws, with the use of Uniform Buffer Objects, and unify all draw calls if they're using the same texture and shader.
+
+# 0.11.0
+
+* SDL removed in favor of iota.
+* Added fulscreen and resizable raster support.
+
 # 0.11.0-beta
 
 ## IMBC
