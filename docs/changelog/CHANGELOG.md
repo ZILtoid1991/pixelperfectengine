@@ -16,6 +16,16 @@ To be done:
 
 * Fix incorrect tile layer rotation and shearing, likely will mean reworking of shader architecture.
 * Optimize sprite draws, with the use of Uniform Buffer Objects, and unify all draw calls if they're using the same texture and shader.
+* Finalize API as much as possible.
+
+## Collision detection rework
+
+Collision detector has been reworked to work with arraymaps instead of treemaps, to improve performance. Collision detection is also been moved to the `physics` subsystem.
+
+## Other improvements:
+
+* (test1) work on sequencer has begun.
+* (QM816) added portamento support.
 
 # 0.11.0
 
