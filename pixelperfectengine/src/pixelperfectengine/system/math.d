@@ -5,3 +5,19 @@ int padToNext(int pad, int val) @nogc @safe pure nothrow {
 	if (modulo) return val + (pad - modulo);
 	return val;
 }
+
+T max(T[] vals) @nogc @safe pure nothrow {
+	T result = vals[0];
+	for (sizediff_t i = 1 ; i < vals.length ; i++) {
+		if (vals[i] > result) result = vals[i];
+	}
+	return result;
+}
+
+T min(T[] vals) @nogc @safe pure nothrow {
+	T result = vals[0];
+	for (sizediff_t i = 1 ; i < vals.length ; i++) {
+		if (vals[i] < result) result = vals[i];
+	}
+	return result;
+}

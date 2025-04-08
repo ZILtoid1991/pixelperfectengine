@@ -9,6 +9,7 @@ module pixelperfectengine.graphics.common;
 //public import CPUblit.colorspaces;
 public import pixelperfectengine.system.exc;
 import pixelperfectengine.system.memory;
+import pixelperfectengine.system.math;
 
 import dimage.types : RGBA8888;
 import bindbc.opengl;
@@ -184,12 +185,35 @@ public struct Quad {
 		bottomLeft += vec;
 		bottomRight += vec;
 	}
+	public void rotate(ushort amount) @nogc @safe pure nothrow {
+		Point avg = Point((topLeft.x + topRight.x + bottomLeft.x + bottomRight.x) / 4,
+				(topLeft.y + topRight.y + bottomLeft.y + bottomRight.y) / 4);
+	}
+	public void rotate(ushort amount, Point midpoint) @nogc @safe pure nothrow {
+
+	}
+	public void hMirror() @nogc @safe pure nothrow {
+		Point p = topLeft;
+		topLeft = topRight;
+		topRight = p;
+		p = bottomLeft;
+		bottomLeft = bottomRight;
+		bottomRight = p;
+	}
+	public void vMirror() @nogc @safe pure nothrow {
+		Point p = topLeft;
+		topLeft = bottomLeft;
+		bottomLeft = p;
+		p = topRight;
+		topRight = bottomRight;
+		bottomRight = p;
+	}
 	public Box boxOf() @nogc @safe pure nothrow {
 		Box result;
-		result.left = topLeft.x < bottomLeft.x ? topLeft.x : bottomLeft.x;
-		result.top = topLeft.y < topRight.y ? topLeft.y : topRight.y;
-		result.right = topRight.x < bottomRight.x ? topRight.x : bottomRight.x;
-		result.bottom = bottomLeft.y < bottomRight.y ? bottomLeft.y : bottomRight.y;
+		result.left = min([topLeft.x, bottomLeft.x, topRight.x, bottomRight.x]);
+		result.top = min([topLeft.y, bottomLeft.y, topRight.y, bottomRight.y]);
+		result.right = max([topLeft.x, bottomLeft.x, topRight.x, bottomRight.x]);
+		result.bottom = max([topLeft.y, bottomLeft.y, topRight.y, bottomRight.y]);
 		return result;
 	}
 }
