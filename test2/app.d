@@ -105,8 +105,8 @@ public class MapFormatTester : SystemEventListener, InputListener {
 				textLayer.addTile(i, 0, (i & 0x0F)<<3, (i & 0xF0)>>1, 1);
 			}
 		}
-		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false));
-		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false));
+		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false, false));
 
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 
@@ -134,38 +134,38 @@ public class MapFormatTester : SystemEventListener, InputListener {
 			ocd.objects.ptrOf(65_536).position = gameField.getSpriteCoordinate(65_536);
 			if(controlFlags.up) {
 				gameField.relMoveSprite(65_536,0,-1);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(controlFlags.down) {
 				gameField.relMoveSprite(65_536,0,1);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(controlFlags.left) {
 				gameField.relMoveSprite(65_536,-1,0);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			if(controlFlags.right) {
 				gameField.relMoveSprite(65_536,1,0);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 			}
 			ocd.testSingle(65_536);
 		}
 		destroy(output);
 	}
 	public void onCollision(ObjectCollisionEvent event) {
-		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false));
+		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false, false));
 		final switch (event.type) with (ObjectCollisionEvent.Type) {
 			case None:
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
 				break;
 			case BoxEdge:
-				textLayer.writeTextToMap(10,2,0,"     BoxEdge",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"     BoxEdge",BitmapAttrib(true, false, false));
 				break;
 			case BoxOverlap:
-				textLayer.writeTextToMap(10,2,0,"  BoxOverlap",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"  BoxOverlap",BitmapAttrib(true, false, false));
 				break;
 			case ShapeOverlap:
-				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false));
+				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false, false));
 				break;
 		}
 	}
