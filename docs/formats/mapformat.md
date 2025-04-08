@@ -139,6 +139,12 @@ restricted to internal use.
 
 Defines a single shader for the current layer.
 
+### 'ShaderProgram32'
+
+`ShaderProgram32 "%SHADERS%/tile_%SHDRVER%.vert" "%SHADERS%/tile32_%SHDRVER%.frag"`
+
+Defines the 32 bit shader program for the layer if needed.
+
 ### 'RenderingMode'
 
 `RenderingMode "AlphaBlend"`
@@ -290,7 +296,7 @@ The tag must have at least one unnamed child tag to describe sprites.
 
 Value notation:
 
-1) Sprite ID. Must be unique.
+1) Sprite ID. Must be unique per layer.
 2) X position where the sprite begins.
 3) Y position where the sprite begins.
 4) Width of the sprite.
@@ -336,6 +342,25 @@ Value notation:
 ### 'ToCollision'
 
 Marks object to be added to collision detection.
+
+## 'Quad'
+
+`Object:Quad "nameOfObject" 16 0 0 15 0 0 15 15 15`
+
+Defines a Quad object, can be used for various purposes.
+
+Value notation:
+
+1) Name of the object.
+2) Unique ID.
+3) Top-left X coordinate.
+4) Top-left Y coordinate.
+5) Top-right X coordinate.
+6) Top-right Y coordinate.
+7) Bottom-left X coordinate.
+8) Bottom-left Y coordinate.
+9) Bottom-right X coordinate.
+10) Bottom-right Y coordinate.
 
 ## 'Polyline'
 
@@ -385,30 +410,54 @@ Values are x and y coordinates.
 An optional final segment that is ensured to be connected to the first segment, or closes the polyline object. Can have
 both point- and line-related extra data tags.
 
-## 'Sprite'
+## 'Sprite' and 'QuadSprite'
 
-`Object:Sprite "playerObject" 0 0 200 200 scaleHoriz=1024 scaleVert=1024 masterAlpha=250`
+`Object:Sprite "playerObject" 0 0 200 200 hMirror=true vMirror=true masterAlpha=250`
+
+`Object:QuadSprite "playerObject" 0 0 200 200 250 200 200 250 250 250`
 
 Defines a sprite object. Only can be used on sprite layers.
 
-Value notation:
+Value notation ('Sprite'):
 
 1) The name of the object.
 2) Unique sprite ID with priority in mind.
 3) Sprite source identificator.
-4) X coordinate.
-5) Y coordinate.
+4) X coordinate of the upper-left corner.
+5) Y coordinate of the upper-left corner.
 
-`scaleHoriz` and `scaleVert` sets the horizontal and vertical scaling values with 1024 (1.0) being the default one. 
-`masterAlpha` sets the master alpha value for rendering to the raster. `palSel` selects the palette, and `palShift` 
+Value notation ('QuadSprite'):
+
+1) The name of the object.
+2) Unique sprite ID with priority in mind.
+3) Sprite source identificator.
+4) X coordinate of the upper-left corner.
+5) Y coordinate of the upper-left corner.
+6) X coordinate of the upper-right corner.
+7) Y coordinate of the upper-right corner.
+8) X coordinate of the lower-left corner.
+9) Y coordinate of the lower-left corner.
+10) X coordinate of the lower-right corner.
+11) Y coordinate of the lower-right corner.
+
+Attributes:
+
+- `scaleHoriz` and `scaleVert` sets the horizontal and vertical scaling values with 1024 (1.0) being the default one (deprecated).
+- `hMirror` and `vMirror` mirrors the sprite either horizontally or vertically.
+`lrCornerX` and `lrCornerY` define the lower-right corner of a sprite, which is now the preferred way of implementing scaling. Can also mirror sprites if this corner is on the other side of the upper-left corner previously discussed.
+- `masterAlpha` sets the master alpha value for rendering to the raster. `palSel` selects the palette, and `palShift` 
 sets the length of the selected palette.
+
+### 'ShaderProgram'
 
 ### 'RenderingMode'
 
 `RenderingMode "AlphaBlend"`
 
-Sets the rendering mode of the layer. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
+Sets the rendering mode of the sprite. Currently accepted values are: "Copy", "Blitter", "AlphaBlend", "Add", "AddBl", 
 "Multiply", "MultiplyBl", "Subtract", "SubtractBl", "Diff", "DiffBl", "Screen", "ScreenBl", "AND", "OR", "XOR".
+
+Deprecated for shaders.
 
 ### 'ToCollision'
 
