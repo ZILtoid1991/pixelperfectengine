@@ -1325,8 +1325,8 @@ public class QM816 : AudioModule {
 								break;
 							case 5:
 								chCtrls[data0.channel].portamentoSpeed = cast(double)data1 / uint.max;
-								chCtrls[ch].portamentoSpeed *= 4.0;
-								chCtrls[ch].portamentoSpeed /= intSlmpRate;
+								chCtrls[data0.channel].portamentoSpeed *= 4.0;
+								chCtrls[data0.channel].portamentoSpeed /= intSlmpRate;
 								break;
 							case 18:
 								setUnregisteredParam(data1, [OperatorParamNums.Level, 0], data0.channel);
