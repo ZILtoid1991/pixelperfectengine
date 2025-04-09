@@ -10,6 +10,7 @@ module pixelperfectengine.graphics.common;
 public import pixelperfectengine.system.exc;
 import pixelperfectengine.system.memory;
 import pixelperfectengine.system.math;
+import std.math;
 
 import dimage.types : RGBA8888;
 import bindbc.opengl;
@@ -188,9 +189,27 @@ public struct Quad {
 	public void rotate(ushort amount) @nogc @safe pure nothrow {
 		Point avg = Point((topLeft.x + topRight.x + bottomLeft.x + bottomRight.x) / 4,
 				(topLeft.y + topRight.y + bottomLeft.y + bottomRight.y) / 4);
+		rotate(amount, avg);
 	}
 	public void rotate(ushort amount, Point midpoint) @nogc @safe pure nothrow {
-
+		const double theta = amount * (PI * 2.0 / ushort.max);
+		double[4] transformMatrix = [cos(theta), -sin(theta), sin(theta), cos(theta)];
+		topLeft -= midpoint;
+		topRight -= midpoint;
+		bottomLeft -= midpoint;
+		bottomRight -= midpoint;
+		topLeft = Point(cast(int)nearbyint((topLeft.x * transformMatrix[0]) + (topLeft.y * transformMatrix[1])),
+				cast(int)nearbyint((topLeft.x * transformMatrix[2]) + (topLeft.y * transformMatrix[3])));
+		topRight = Point(cast(int)nearbyint((topRight.x * transformMatrix[0]) + (topRight.y * transformMatrix[1])),
+				cast(int)nearbyint((topRight.x * transformMatrix[2]) + (topRight.y * transformMatrix[3])));
+		bottomLeft = Point(cast(int)nearbyint((bottomLeft.x * transformMatrix[0]) + (bottomLeft.y * transformMatrix[1])),
+				cast(int)nearbyint((bottomLeft.x * transformMatrix[2]) + (bottomLeft.y * transformMatrix[3])));
+		bottomRight = Point(cast(int)nearbyint((bottomRight.x * transformMatrix[0]) + (bottomRight.y * transformMatrix[1])),
+				cast(int)nearbyint((bottomRight.x * transformMatrix[2]) + (bottomRight.y * transformMatrix[3])));
+		topLeft += midpoint;
+		topRight += midpoint;
+		bottomLeft += midpoint;
+		bottomRight += midpoint;
 	}
 	public void hMirror() @nogc @safe pure nothrow {
 		Point p = topLeft;
@@ -210,10 +229,10 @@ public struct Quad {
 	}
 	public Box boxOf() @nogc @safe pure nothrow {
 		Box result;
-		result.left = min([topLeft.x, bottomLeft.x, topRight.x, bottomRight.x]);
-		result.top = min([topLeft.y, bottomLeft.y, topRight.y, bottomRight.y]);
-		result.right = max([topLeft.x, bottomLeft.x, topRight.x, bottomRight.x]);
-		result.bottom = max([topLeft.y, bottomLeft.y, topRight.y, bottomRight.y]);
+		result.left = min(topLeft.x, bottomLeft.x, topRight.x, bottomRight.x);
+		result.top = min(topLeft.y, bottomLeft.y, topRight.y, bottomRight.y);
+		result.right = max(topLeft.x, bottomLeft.x, topRight.x, bottomRight.x);
+		result.bottom = max(topLeft.y, bottomLeft.y, topRight.y, bottomRight.y);
 		return result;
 	}
 }
