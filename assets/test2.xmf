@@ -4,7 +4,7 @@ Metadata {
 	Resolution 424 240
 }
 Layer:Tile "64" 0 16 16 45 45 {
-	RenderingMode "Copy"
+	ShaderProgram "%SHADERS%/tile_%SHDRVER%.vert" "%SHADERS%/tile_%SHDRVER%.frag"
 	File:MapData "%PATH%/assets/test2_layer0.map"
 	File:TileSource "%PATH%/assets/sci-fi-tileset.png" {
 		Embed:TileInfo {
@@ -76,6 +76,8 @@ Layer:Tile "64" 0 16 16 45 45 {
 	}
 }
 Layer:Sprite "sprites" 16 {
+	ShaderProgram "%SHADERS%/base_%SHDRVER%.vert" "%SHADERS%/base_%SHDRVER%.frag"
+	ShaderProgram32 "%SHADERS%/base_%SHDRVER%.vert" "%SHADERS%/base32bit_%SHDRVER%.frag"
 	File:SpriteSource 0 "%PATH%/assets/d-man.tga" name="dlangman"
 	File:SpriteSource 1 "%PATH%/assets/d-man.tga" name="nothing" horizOffset=0 vertOffset=0 width=12 height=12
 	File:Palette "%PATH%/assets/d-man.tga" offset=256

@@ -88,18 +88,24 @@ public class MapFormat {
 					layerData[priority] = t0;
 					// RenderingMode lrd = renderingModeLookup.get(t0.getTagValue!string("RenderingMode"), RenderingMode.Copy);
 					string shdrPathV, shdrPathF;
-					Tag shdrDescr = t0.getTag("ShaderProgram");
+					GLShader shdr, shdr32;
+					Tag shdrDescr = t0.getTag("ShaderProgram"), shdrDescr32 = t0.getTag("ShaderProgram32");
 					if (shdrDescr) {
 						shdrPathV = shdrDescr.values[0].get!string;
 						shdrPathF = shdrDescr.values[1].get!string;
+						shdr = GLShader(loadShader(shdrPathV), loadShader(shdrPathF));
 					}
-					GLShader shdr = GLShader(loadShader(shdrPathV), loadShader(shdrPathF));
+					if (shdrDescr32) {
+						shdrPathV = shdrDescr.values[0].get!string;
+						shdrPathF = shdrDescr.values[1].get!string;
+						shdr32 = GLShader(loadShader(shdrPathV), loadShader(shdrPathF));
+					}
 					switch (t0.name) {
 						case "Tile":
 							layeroutput[priority] = new TileLayer(t0.values[2].get!int, t0.values[3].get!int, shdr);
 							break;
 						case "Sprite":
-							layeroutput[priority] = new SpriteLayer(shdr, shdr);
+							layeroutput[priority] = new SpriteLayer(shdr, shdr32);
 							break;
 						default:
 							throw new Exception("Unsupported layer format");

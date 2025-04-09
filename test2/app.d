@@ -131,7 +131,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		while (stateFlags.isRunning) {
 			r.refresh_GL();
 			ih.test();
-			ocd.objects.ptrOf(65_536).position = gameField.getSpriteCoordinate(65_536);
+			ocd.objects.ptrOf(65_536).position = gameField.getSpriteCoordinate(65_536).boxOf();
 			if(controlFlags.up) {
 				gameField.relMoveSprite(65_536,0,-1);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
