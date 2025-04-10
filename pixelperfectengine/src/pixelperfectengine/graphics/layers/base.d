@@ -296,3 +296,48 @@ public struct MappingElement {
 				to!string(paletteSel) ~ "]";
 	}
 }
+
+public struct MappingElement2 {
+	wchar tileID;
+	ushort _bitfield;
+	ushort paletteSel() @nogc @safe pure nothrow const {
+		return _bitfield & 0x0F_FF;
+	}
+	bool hMirror() @nogc @safe pure nothrow const {
+		return (_bitfield & 0x10_00) != 0;
+	}
+	bool vMirror() @nogc @safe pure nothrow const {
+		return (_bitfield & 0x20_00) != 0;
+	}
+	bool xyInvert() @nogc @safe pure nothrow const {
+		return (_bitfield & 0X40_00) != 0;
+	}
+	bool priority() @nogc @safe pure nothrow const {
+		return (_bitfield & 0x80_00) != 0;
+	}
+	ushort paletteSel(ushort val) @nogc @safe pure nothrow {
+		_bitfield &= 0xF0_00;
+		_bitfield |= val & 0x0F_FF;
+		return _bitfield & 0x0F_FF;
+	}
+	bool hMirror(bool val) @nogc @safe pure nothrow {
+		if (val) _bitfield |= 0x10_00;
+		else _bitfield &= ~0x10_00;
+		return (_bitfield & 0x10_00) != 0;
+	}
+	bool vMirror(bool val) @nogc @safe pure nothrow {
+		if (val) _bitfield |= 0x20_00;
+		else _bitfield &= ~0x20_00;
+		return (_bitfield & 0x20_00) != 0;
+	}
+	bool xyInvert(bool val) @nogc @safe pure nothrow {
+		if (val) _bitfield |= 0x40_00;
+		else _bitfield &= ~0x40_00;
+		return (_bitfield & 0X40_00) != 0;
+	}
+	bool priority(bool val) @nogc @safe pure nothrow {
+		if (val) _bitfield |= 0x80_00;
+		else _bitfield &= ~0x80_00;
+		return (_bitfield & 0x80_00) != 0;
+	}
+}
