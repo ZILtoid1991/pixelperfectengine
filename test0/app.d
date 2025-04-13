@@ -13,9 +13,9 @@ import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.bitmap;
 import pixelperfectengine.graphics.shaders;
 
-import pixelperfectengine.collision.common;
-import pixelperfectengine.collision.objectcollision;
-import pixelperfectengine.collision.tilecollision;
+import pixelperfectengine.physics.common;
+import pixelperfectengine.physics.objectcollision;
+import pixelperfectengine.physics.tilecollision;
 
 import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;
