@@ -1,8 +1,8 @@
-module pixelperfectengine.collision.tilecollision;
+module pixelperfectengine.physics.tilecollision;
 
 import pixelperfectengine.graphics.layers.interfaces : ITileLayer;
 import collections.treemap;
-public import pixelperfectengine.collision.common;
+public import pixelperfectengine.physics.common;
 
 /** 
  * Test objects against a tilemap.

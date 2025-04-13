@@ -1,13 +1,13 @@
-module pixelperfectengine.collision.objectcollision;
+module pixelperfectengine.physics.objectcollision;
 
 /*
- * Copyright (C) 2015-2020, by Laszlo Szeremi under the Boost license.
+ * Copyright (C) 2015-2020, 2025, by Laszlo Szeremi under the Boost license.
  *
- * Pixel Perfect Engine, collision.objectCollision module.
+ * Pixel Perfect Engine, physics.objectCollision module.
  */
 
 import collections.treemap;
-import pixelperfectengine.collision.common;
+import pixelperfectengine.physics.common;
 //import pixelperfectengine.collision.boxCollision;
 
 /**

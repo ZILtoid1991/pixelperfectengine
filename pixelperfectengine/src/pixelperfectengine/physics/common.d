@@ -1,9 +1,9 @@
-module pixelperfectengine.collision.common;
+module pixelperfectengine.physics.common;
 
 /*
- * Copyright (C) 2015-2020, by Laszlo Szeremi under the Boost license.
+ * Copyright (C) 2015-2020, 2025, by Laszlo Szeremi under the Boost license.
  *
- * Pixel Perfect Engine, collision.common module.
+ * Pixel Perfect Engine, physics.common module.
  */
 
 public import pixelperfectengine.graphics.common;
