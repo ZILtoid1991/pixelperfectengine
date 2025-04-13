@@ -10,8 +10,8 @@ import pixelperfectengine.graphics.layers;
 
 import pixelperfectengine.graphics.bitmap;
 
-import pixelperfectengine.collision.common;
-import pixelperfectengine.collision.objectcollision;
+import pixelperfectengine.physics.common;
+import pixelperfectengine.physics.objectcollision;
 
 import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;
@@ -81,6 +81,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		tileShader = GLShader(loadShader(`%SHADERS%/tile_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/tile_%SHDRVER%.frag`));
 		r = new Raster(424,240,output);
+		r.readjustViewport(424 * 4, 240 * 4, 0, 0);
 		Image fontSource = loadImage(File(resolvePath("%SYSTEM%/codepage_8_8.png")));
 		ih = new InputHandler();
 		ih.systemEventListener = this;
@@ -107,7 +108,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		}
 		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false, false));
 		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false, false));
-
+		textLayer.reprocessTilemap();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 
 		stateFlags.isRunning = true;
@@ -126,6 +127,12 @@ public class MapFormatTester : SystemEventListener, InputListener {
 				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
 				Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),Color(0x00,0x00,0xff,0xFF),
 				Color(0x00,0x00,0xff,0xFF)], 512);
+		foreach (Layer l ; r.layerMap) {
+			if (l.getLayerType == LayerType.Tile) {
+				TileLayer tl = cast(TileLayer)l;
+				tl.reprocessTilemap();
+			}
+		}
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
@@ -135,18 +142,22 @@ public class MapFormatTester : SystemEventListener, InputListener {
 			if(controlFlags.up) {
 				gameField.relMoveSprite(65_536,0,-1);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.reprocessTilemap();
 			}
 			if(controlFlags.down) {
 				gameField.relMoveSprite(65_536,0,1);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.reprocessTilemap();
 			}
 			if(controlFlags.left) {
 				gameField.relMoveSprite(65_536,-1,0);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.reprocessTilemap();
 			}
 			if(controlFlags.right) {
 				gameField.relMoveSprite(65_536,1,0);
 				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.reprocessTilemap();
 			}
 			ocd.testSingle(65_536);
 		}
@@ -168,6 +179,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false, false));
 				break;
 		}
+		textLayer.reprocessTilemap();
 	}
 
 	override public void onQuit() {
@@ -209,10 +221,12 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		
 	}
 
-	/** 
+	/**
 	 * Called if a window was resized.
 	 * Params:
 	 *   window = Handle to the OSWindow class.
+	 *   width = active area width.
+	 *   height = active area height.
 	 */
 	public void windowResize(OSWindow window, int width, int height) {
 		//Code template for window resizing that keeps the content relatively in ratio.
