@@ -18,8 +18,9 @@ import std.conv : to;
 import collections.treemap;
 public import pixelperfectengine.map.mapdata;
 import pixelperfectengine.system.file;
-import pixelperfectengine.collision.objectcollision;
+import pixelperfectengine.physics.objectcollision;
 import pixelperfectengine.system.exc : PPEException;
+import pixelperfectengine.system.etc : hashCalc;
 
 /**
  * Serializes/deserializes XMF map data in SDLang format.
@@ -139,15 +140,15 @@ public class MapFormat {
 					TileLayer tl = cast(TileLayer)layeroutput[key];
 					Tag tileInfo = source.getTag("Embed:TileInfo", null);
 					int tW = tl.getTileWidth, tH = tl.getTileHeight;
-					int numOfCol = bitmap.width % tW, numOfRow = bitmap.height % tH;
-					int imageID;
+					int numOfCol = bitmap.width / tW, numOfRow = bitmap.height / tH;
+					int imageID = hashCalc(path);
 					tl.addBitmapSource(bitmap, imageID, cast(ubyte)source.getAttribute!int("palShift"));
 					if(tileInfo !is null) {
 						foreach (Tag t1 ; tileInfo.tags) {
 							int tileNum = t1.values[0].get!int();
-							int x = tileNum / numOfCol;
-							int y = (tileNum - x) / numOfRow;
-							tl.addTile(cast(wchar)t1.values[1].get!int(), imageID, x, y);
+							int x = tileNum % numOfCol;
+							int y = (tileNum - x) % numOfRow;
+							tl.addTile(cast(wchar)t1.values[1].get!int(), imageID, x * tW, y * tH);
 						}
 					}
 				}
@@ -180,18 +181,18 @@ public class MapFormat {
 	 * Note: It's mainly intended for editor placeholders, but also could work with production-made games as long
 	 * as the limitations don't intercept anything major.
 	 */
-	public ABitmap[int] loadSprites(int layerID, PaletteContainer paletteTarget) @trusted {
+	public void loadSprites(int layerID, PaletteContainer paletteTarget) @trusted {
 		import pixelperfectengine.system.file;
 		SpriteLayer currSpriteLayer = cast(SpriteLayer)layeroutput[layerID];
-		ABitmap[int] result;
+		// ABitmap[int] result;
 		Image[string] imageBuffer;	//Resource manager to minimize reloading image files
 		Tag tBase = layerData[layerID];
-		if (tBase.name != "Sprite") return result;
+		if (tBase.name != "Sprite") return;
 		foreach (Tag t0; tBase.all.tags) {
 			switch (t0.getFullName.toString) {
 				case "File:SpriteSource":
 					string filename = t0.expectValue!string();
-					int imageID;
+					int imageID = hashCalc(filename);
 					const int id = t0.expectValue!int();
 					if (imageBuffer.get(filename, null) is null) {
 						imageBuffer[filename] = loadImage(File(resolvePath(filename)));
@@ -217,7 +218,7 @@ public class MapFormat {
 					break;
 				case "File:SpriteSheet":
 					string filename = t0.expectValue!string();
-					int imageID;
+					int imageID = hashCalc(filename);
 					if (imageBuffer.get(filename, null) is null) {
 						imageBuffer[filename] = loadImage(File(resolvePath(filename)));
 						switch (imageBuffer[filename].getBitdepth) {
@@ -235,23 +236,7 @@ public class MapFormat {
 							foreach (Tag t2 ; t1.tags) {
 								const int id = t2.values[0].get!int(), hOffset = t2.values[1].get!int(), vOffset = t2.values[2].get!int(),
 										w = t2.values[3].get!int(), h = t2.values[4].get!int();
-								switch (imageBuffer[filename].getBitdepth) {
-									case 2:
-										result[id] = loadBitmapSliceFromImage!Bitmap2Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-										break;
-									case 4:
-										result[id] = loadBitmapSliceFromImage!Bitmap4Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-										break;
-									case 8:
-										result[id] = loadBitmapSliceFromImage!Bitmap8Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-										break;
-									case 16:
-										result[id] = loadBitmapSliceFromImage!Bitmap16Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-										break;
-									default:
-										result[id] = loadBitmapSliceFromImage!Bitmap32Bit(imageBuffer[filename], hOffset, vOffset, w, h);
-										break;
-								}
+								currSpriteLayer.createSpriteMaterial(id, imageID, Box.bySize(hOffset, vOffset, w, h));
 							}
 						}
 					}
@@ -271,7 +256,7 @@ public class MapFormat {
 			}
 		}
 		
-		return result;
+		// return result;
 	}
 	/**
 	 * Returns all objects belonging to a `layerID` in an array.
@@ -300,35 +285,36 @@ public class MapFormat {
 	 * Note: This is a default parser and loader, one might want to write a more complicated one for their application.
 	 */
 	public void loadAllSpritesAndObjects(PaletteContainer paletteTarget, ObjectCollisionDetector ocd) @trusted {
-		import pixelperfectengine.collision.common;
+		import pixelperfectengine.physics.common;
 		foreach (key, value; layeroutput) {
-			ABitmap[int] spr = loadSprites(key, paletteTarget);
+			loadSprites(key, paletteTarget);
 			MapObject[] objList = getLayerObjects(key);
-			if (spr.length) {
+			/+if (spr.length) +/
+			{
 				SpriteLayer sl = cast(SpriteLayer)value;
 				foreach (MapObject key0; objList) {
 					if (key0.type == MapObject.MapObjectType.sprite) {
 						SpriteObject so = cast(SpriteObject)key0;
+						sl.addSprite(so.ssID, so.pID, Point(so.x, so.y), so.palSel, so.palShift, so.masterAlpha);
 						// sl.addSprite(spr[so.ssID], so.pID, so.x, so.y, so.palSel, so.palShift, so.masterAlpha, so.scaleHoriz,
 						// 		so.scaleVert, so.rendMode);
 						if (ocd !is null && so.flags.toCollision) {
-							Quad spriteCoord = sl.getSpriteCoordinate(so.pID);
-							ocd.objects[so.pID] = CollisionShape(
-									Box(spriteCoord.topLeft.x, spriteCoord.topLeft.y, spriteCoord.bottomRight.x, spriteCoord.bottomRight.y), null);
+							Box spriteCoord = sl.getSpriteCoordinate(so.pID).boxOf;
+							ocd.objects[so.pID] = CollisionShape(spriteCoord, null);
 						}
 					} else if (ocd !is null && key0.type == MapObject.MapObjectType.box && key0.flags.toCollision) {
 						BoxObject bo = cast(BoxObject)key0;
 						ocd.objects[bo.pID] = CollisionShape(bo.position, null);
 					}
 				}
-			} else if (ocd !is null) {
+			} /+else if (ocd !is null) {
 				foreach (MapObject key0; objList) {
 					if (ocd !is null && key0.type == MapObject.MapObjectType.box && key0.flags.toCollision) {
 						BoxObject bo = cast(BoxObject)key0;
 						ocd.objects[bo.pID] = CollisionShape(bo.position, null);
 					}
 				}
-			}
+			}+/
 		}
 	}
 	/**
@@ -343,7 +329,7 @@ public class MapFormat {
 				//writeln(t0.getValue!(ubyte[])());
 				tl.loadMapping(value.values[4].get!int(), value.values[5].get!int(), 
 						reinterpretCast!MappingElement(t0.expectValue!(ubyte[])()));
-				
+
 				continue;
 			}
 			t0 = value.getTag("File:MapData");
@@ -1101,31 +1087,30 @@ public class SpriteObject : MapObject {
 	public int 			ssID;	///Sprite source identifier
 	public int			x;		///X position
 	public int			y;		///Y position
-	public int			scaleHoriz;	///Horizontal scaling value
-	public int			scaleVert;	///Vertical scaling value
-	public RenderingMode	rendMode;///The rendering mode of the sprite
+	public int			lrX = -1;///Position of the lower-right corner
+	public int			lrY = -1;///Position of the lower-right corner
 	public ushort		palSel;	///Palette selector. Selects the given palette for the object.
 	public ubyte		palShift;	///Palette shift value. Determines palette length (2^x).
 	public ubyte		masterAlpha;///The main alpha channel of the sprite.
 	/**
 	 * Creates a new instance from scratch.
 	 */
-	public this (int pID, int gID, string name, int ssID, int x, int y, int scaleHoriz = 1024, int scaleVert = 1024, 
-			RenderingMode rendMode = RenderingMode.init, ushort palSel = 0, ubyte palShift = 0, ubyte masterAlpha = 0xFF) {
+	public this (int pID, int gID, string name, int ssID, int x, int y, int lrX = -1, int lrY = -1,
+			ushort palSel = 0, ubyte palShift = 0, ubyte masterAlpha = 0xFF) {
 		this.pID = pID;
 		this.gID = gID;
 		this.name = name;
 		this.ssID = ssID;
 		this.x = x;
 		this.y = y;
-		this.scaleHoriz = scaleHoriz;
-		this.scaleVert = scaleVert;
+		this.lrX = lrX;
+		this.lrY = lrY;
 		_type = MapObjectType.sprite;
 		Attribute[] attr;
-		if (scaleHoriz != 1024)
-			attr ~= new Attribute("scaleHoriz", Value(scaleHoriz));
-		if (scaleVert != 1024)
-			attr ~= new Attribute("scaleVert", Value(scaleVert));
+		if (lrX >= 0)
+			attr ~= new Attribute("lrCornerX", Value(lrX));
+		if (lrY >= 0)
+			attr ~= new Attribute("lrCornerY", Value(lrY));
 		if (palSel)
 			attr ~= new Attribute("palSel", Value(cast(int)palSel));
 		if (palShift)
@@ -1133,8 +1118,7 @@ public class SpriteObject : MapObject {
 		if (masterAlpha)
 			attr ~= new Attribute("masterAlpha", Value(cast(int)masterAlpha));
 		mainTag = new Tag("Object", "Sprite", [Value(name), Value(pID), Value(ssID), Value(x), Value(y)]);
-		if (rendMode != RenderingMode.init)
-			new Tag(mainTag, null,"RenderingMode", [Value(to!string(rendMode))]);
+
 	}
 	/**
 	 * Deserializes itself from a Tag.
@@ -1146,9 +1130,8 @@ public class SpriteObject : MapObject {
 		ssID = t.values[2].get!int();
 		x = t.values[3].get!int();
 		y = t.values[4].get!int();
-		scaleHoriz = t.getAttribute!int("scaleHoriz", 1024);
-		scaleVert = t.getAttribute!int("scaleVert", 1024);
-		rendMode = MapFormat.renderingModeLookup[t.getTagValue!string("RenderingMode", "null")];
+		lrX = t.getAttribute!int("lrCornerX", -1);
+		lrY = t.getAttribute!int("lrCornerY", -1);
 		palSel = cast(ushort)t.getAttribute!int("palSel", 0);
 		palShift = cast(ubyte)t.getAttribute!int("palShift", 0);
 		masterAlpha = cast(ubyte)t.getAttribute!int("masterAlpha", 255);

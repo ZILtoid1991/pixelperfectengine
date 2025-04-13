@@ -96,6 +96,5 @@ Layer:Sprite "sprites" 16 {
 	Object:Box "testObject" 2 64 64 96 96 {
 		ToCollision
 	}
-	RenderingMode "AlphaBlend"
 }
 File:Palette "%PATH%/assets/sci-fi-tileset.png" palShift=5

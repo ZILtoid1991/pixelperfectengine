@@ -100,7 +100,7 @@ restricted to internal use.
 `value[0]` is the name of the layer, `value[2]` and `value[3]` are horizontal and vertical tile sizes, `value[4]` and 
 `value[5]` are horizontal and vertical map sizes
 
-## 'TransformableTile'
+## 'TransformableTile' (Deprecated)
 
 `Layer:TransformableTile "Background 0" 0 32 32 256 256`
 
@@ -444,7 +444,7 @@ Attributes:
 
 - `scaleHoriz` and `scaleVert` sets the horizontal and vertical scaling values with 1024 (1.0) being the default one (deprecated).
 - `hMirror` and `vMirror` mirrors the sprite either horizontally or vertically.
-`lrCornerX` and `lrCornerY` define the lower-right corner of a sprite, which is now the preferred way of implementing scaling. Can also mirror sprites if this corner is on the other side of the upper-left corner previously discussed.
+- `lrCornerX` and `lrCornerY` define the lower-right corner of a sprite, which is now the preferred way of implementing scaling. Can also mirror sprites if this corner is on the other side of the upper-left corner previously discussed.
 - `masterAlpha` sets the master alpha value for rendering to the raster. `palSel` selects the palette, and `palShift` 
 sets the length of the selected palette.
 
