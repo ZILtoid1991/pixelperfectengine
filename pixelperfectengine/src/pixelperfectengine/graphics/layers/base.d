@@ -296,10 +296,26 @@ public struct MappingElement {
 				to!string(paletteSel) ~ "]";
 	}
 }
-
+/**
+ * Implements the newer mapping element for tile layers.
+ * Changes:
+ * - palette selector increased to 12 bits from 8 bits,
+ * - tile attributes are now built in, including horizontal and vertical mirroring, and XY
+ * invert,
+ * - single-bit priority, noting that the selected tile must be drawn on a second round.
+ */
 public struct MappingElement2 {
-	wchar tileID;
-	ushort _bitfield;
+	wchar tileID;		/// Selects which tile material will be used.
+	ushort _bitfield;	/// Contains the palette selector and the tile attributes.
+	this(wchar tileID, ushort paletteSel, bool hMirror = false, bool vMirror = false, 
+			bool xyInvert = false, bool priority = false) @nogc @safe pure nothrow {
+		this.tileID = tileID;
+		this.paletteSel = paletteSel;
+		this.hMirror = hMirror;
+		this.vMirror = vMirror;
+		this.xyInvert = xyInvert;
+		this.priority = priority;
+	}
 	ushort paletteSel() @nogc @safe pure nothrow const {
 		return _bitfield & 0x0F_FF;
 	}
