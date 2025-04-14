@@ -278,6 +278,7 @@ public enum WarpMode : ubyte {
  * * 1 bit for horizontal mirroring.
  * * 8 bits for palette selection (can be used for user-defined purposes if tiles are either 16 or 32 bit).
  * User defined purposes may include marking tiles with special purpose for the game logic.
+ * Deprecated: Will be slowly replaced with MappingElement2 instead.
  */
 public struct MappingElement {
 	wchar tileID;				///Determines which tile is being used for the given instance. 0xFFFF is reserved for transparency.
@@ -315,6 +316,14 @@ public struct MappingElement2 {
 		this.vMirror = vMirror;
 		this.xyInvert = xyInvert;
 		this.priority = priority;
+	}
+	this(MappingElement other) @nogc @safe pure nothrow {
+		this.tileID = other.tileID;
+		this.paletteSel = other.paletteSel;
+		this.hMirror = other.attributes.horizMirror;
+		this.vMirror = other.attributes.vertMirror;
+		this.xyInvert = other.attributes.xyRotate;
+		this.priority = other.attributes.priority != 0;
 	}
 	ushort paletteSel() @nogc @safe pure nothrow const {
 		return _bitfield & 0x0F_FF;

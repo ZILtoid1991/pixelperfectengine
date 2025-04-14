@@ -8,7 +8,7 @@ module pixelperfectengine.physics.common;
 
 public import pixelperfectengine.graphics.common;
 public import pixelperfectengine.graphics.bitmap;
-public import pixelperfectengine.graphics.layers : MappingElement;
+public import pixelperfectengine.graphics.layers : MappingElement2;
 import collections.treemap;
 
 /**
@@ -73,23 +73,23 @@ public struct TileCollisionEvent {
 	int					objectID;	///The ID of the object
 	int					numTilesH;	///Number of overlapping tiles horizontally
 	int					numTilesV;	///Number of overlapping tiles vertically
-	MappingElement[]	overlapList;///List of overlapping elements
-	MappingElement[] edgeTop() @safe pure nothrow const {
+	MappingElement2[]	overlapList;///List of overlapping elements
+	MappingElement2[] edgeTop() @safe pure nothrow const {
 		return overlapList[0..numTilesH].dup;
 	}
-	MappingElement[] edgeBottom() @safe pure nothrow const {
+	MappingElement2[] edgeBottom() @safe pure nothrow const {
 		return overlapList[$-numTilesH..$].dup;
 	}
-	MappingElement[] edgeLeft() @safe pure nothrow const {
-		MappingElement[] result;
+	MappingElement2[] edgeLeft() @safe pure nothrow const {
+		MappingElement2[] result;
 		result.reserve(numTilesV);
 		for (int i ; i < numTilesV ; i++) {
 			result ~= overlapList[i * numTilesH];
 		}
 		return result;
 	}
-	MappingElement[] edgeRight() @safe pure nothrow const {
-		MappingElement[] result;
+	MappingElement2[] edgeRight() @safe pure nothrow const {
+		MappingElement2[] result;
 		result.reserve(numTilesV);
 		for (int i ; i < numTilesV ; i++) {
 			result ~= overlapList[(i * numTilesH) + numTilesH - 1];

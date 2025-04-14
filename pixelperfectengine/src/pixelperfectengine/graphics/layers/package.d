@@ -8,5 +8,5 @@ module pixelperfectengine.graphics.layers;
 public import pixelperfectengine.graphics.layers.base;
 
 public import pixelperfectengine.graphics.layers.tilelayer;
-public import pixelperfectengine.graphics.layers.trnstilelayer;
+// public import pixelperfectengine.graphics.layers.trnstilelayer;
 public import pixelperfectengine.graphics.layers.spritelayer;

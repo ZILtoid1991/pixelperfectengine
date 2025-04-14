@@ -22,6 +22,7 @@ import pixelperfectengine.system.file;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.config;
 import pixelperfectengine.system.rng;
+import pixelperfectengine.system.memory;
 
 import bindbc.opengl;
 
@@ -167,17 +168,17 @@ class TileLayerTest : SystemEventListener, InputListener {
 			}
 		}
 		//wchar[] mapping;
-		MappingElement[] mapping;
-		mapping.length = mapWidth * mapHeight;//64*64;
+		MappingElement2[] mapping = nogc_newArray;
 		//attrMapping.length = 256*256;
 
 		for(int i; i < mapping.length; i++){
 			//mapping[i] = to!wchar(uniform(0x0000,0x00AA));
 			const int rnd = rng() & 0xFFFF;
 			//attrMapping[i] = BitmapAttrib(rnd & 1 ? true : false, rnd & 2 ? true : false);
-			mapping[i] = MappingElement(cast(wchar)(rnd & 63),
-				BitmapAttrib(rnd & 1024 ? true : false, rnd & 512 ? true : false, rnd & 0x8000 ? true : false));
-			//mapping[i] = MappingElement(0x0, BitmapAttrib(false,false));
+			// mapping[i] = MappingElement(cast(wchar)(rnd & 63),
+				// BitmapAttrib(rnd & 1024 ? true : false, rnd & 512 ? true : false, rnd & 0x8000 ? true : false));
+			mapping[i] = MappingElement2(cast(wchar)(rnd & 63), 0x00, rnd & 1024 ? true : false, rnd & 512 ? true : false,
+					rnd & 4096 ? true : false);
 		}
 		ih = new InputHandler();
 		ih.systemEventListener = this;
@@ -245,10 +246,10 @@ class TileLayerTest : SystemEventListener, InputListener {
 			}
 		}*/
 		
-		textLayer.writeTextToMap(0, 0, 0, "Framerate:", BitmapAttrib(true, false, false));
-		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false, false));
-		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false, false));
-		textLayer.writeTextToMap(0, 3, 0, "Overlapping tiles:", BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(0, 0, 0, "Framerate:", true, false, false);
+		textLayer.writeTextToMap(0, 1, 0, "Collision:", true, false, false);
+		textLayer.writeTextToMap(0, 2, 0, "Col. type:", true, false, false);
+		textLayer.writeTextToMap(0, 3, 0, "Overlapping tiles:", true, false, false);
 		textLayer.reprocessTilemap();
 	}
 	private @nogc void ttlHBlankInterrupt(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y){
@@ -260,19 +261,19 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ih.test();
 			if(up) {
 				s.relMoveSprite(-65_536,0,-1);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None", true, false, false);
 			}
 			if(down) {
 				s.relMoveSprite(-65_536,0,1);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None", true, false, false);
 			}
 			if(left) {
 				s.relMoveSprite(-65_536,-1,0);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None", true, false, false);
 			}
 			if(right) {
 				s.relMoveSprite(-65_536,1,0);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None", true, false, false);
 			}
 			Quad mainSpritePosition = s.getSpriteCoordinate(-65_536);
 			ocd.objects.ptrOf(65_536).position = Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32);
@@ -305,7 +306,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 			if(framecounter == 10){
 				float avgFPS = r.avgfps;
 				wstring fpsCounter = format(" %3.3f"w, avgFPS);
-				textLayer.writeTextToMap(10,0,0,fpsCounter,BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,0,0,fpsCounter,true, false, false);
 				framecounter = 0;
 			}
 			// Thread.sleep(msecs(20));
@@ -314,19 +315,19 @@ class TileLayerTest : SystemEventListener, InputListener {
 		destroy(output);
 	}
 	public void onCollision(ObjectCollisionEvent event) {
-		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB), true, false, false);
 		final switch (event.type) with (ObjectCollisionEvent.Type) {
 			case None:
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None", true, false, false);
 				break;
 			case BoxEdge:
-				textLayer.writeTextToMap(10,2,0,"     BoxEdge",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"     BoxEdge", true, false, false);
 				break;
 			case BoxOverlap:
-				textLayer.writeTextToMap(10,2,0,"  BoxOverlap",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"  BoxOverlap", true, false, false);
 				break;
 			case ShapeOverlap:
-				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"ShapeOverlap", true, false, false);
 				break;
 		}
 		textLayer.reprocessTilemap();
@@ -337,7 +338,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 			tileList ~= format("%4X;"w, me.tileID);
 		}
 		tileList ~= "]";
-		textLayer.writeTextToMap(10,4,0,tileList,BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(10,4,0,tileList, true, false, false);
 		textLayer.reprocessTilemap();
 	}
 	override public void onQuit() {

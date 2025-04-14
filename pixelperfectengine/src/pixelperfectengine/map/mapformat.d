@@ -771,7 +771,7 @@ public class MapFormat {
 	public void pullMapDataFromLayer(int pri) @trusted {
 		import pixelperfectengine.system.etc : reinterpretCast;
 		ITileLayer t = cast(ITileLayer)layeroutput[pri];
-		MappingElement[] mapping = t.getMapping;
+		MappingElement2[] mapping = t.getMapping;
 		if (layerData[pri].getTag("Embed:MapData") !is null) {
 			layerData[pri].getTag("Embed:MapData").values[0] = Value(reinterpretCast!ubyte(mapping));
 		} else if (layerData[pri].getTag("File:MapData") !is null) {

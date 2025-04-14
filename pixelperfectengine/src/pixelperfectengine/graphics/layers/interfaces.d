@@ -56,29 +56,7 @@ public interface ITileLayer {
 	 *   x0 = x coordinate of the midpoint.
 	 *   y0 = y coordinate of the midpoint.
 	 */
-	public void setTransformMidpoint(short x0, short y0);
-	/**
-	 * Writes to the transform lookup table.
-	 * Params:
-	 *   index = The index of the table, which correlates to the given line of the screen.
-	 *   theta = Rotation amount. 0x10_00 means a whole rotation.
-	 *   sX = Scrolling on the X axis.
-	 *   sY = Scrolling on the Y axis.
-	 *   x0 = x coordinate of the transformation midpoint.
-	 *   y0 = y coordinate of the transformation midpoint.
-	 *   sH = The amount of horizontal scaling, 0x10_00 is normal, anything
-	 * greater will minimize, lesser will magnify the layer. Negative values mirror
-	 * the layer.
-	 *   sV = The amount of vertical scaling, 0x10_00 is normal, anything
-	 * greater will minimize, lesser will magnify the layer. Negative values mirror
-	 * the layer.
-	 */
-	// public void writeTransformLookupTable(ushort index, ushort theta = 0, short sX = 0x00, short sY = 0x00,
-	// 		short x0 = 0x00, short y0 = 0x00, short sH = 0x10_00, short sV = 0x10_00);
-	/**
-	 * Clears the transform lookup table.
-	 */
-	// public void clearTransformLookupTable();
+	public void setTransformMidpoint(short x0, short y0) @nogc @safe pure nothrow;
 	/**
 	 * Sets a color attribute table for the layer.
 	 * Color attribute table can be per-tile, per-vertex, or unique to each vertex of
@@ -88,7 +66,7 @@ public interface ITileLayer {
 	 *   width = the width of the color attribute table.
 	 *   height = the height of the color attribute table.
 	 */
-	public void setAttributeTable(GraphicsAttrExt[] table, int width, int height);
+	public void setAttributeTable(GraphicsAttrExt[] table, int width, int height) @nogc @safe;
 	/**
 	 * Writes the color attribute table at the given location.
 	 * Params:
@@ -111,11 +89,11 @@ public interface ITileLayer {
 	/**
 	 * Clears the color attribute table and returns the table as a backup.
 	 */
-	public GraphicsAttrExt[] clearAttributeTable();
+	public GraphicsAttrExt[] clearAttributeTable() @nogc @safe;
 
 	/// Retrieves the mapping from the tile layer.
 	/// Can be used to retrieve data, e.g. for editors, saving game states
-	public MappingElement[] getMapping() @nogc @safe pure nothrow;
+	public MappingElement2[] getMapping() @nogc @safe pure nothrow;
 	/** 
 	 * Reads the mapping element from the given area, while accounting for warp mode.
 	 * Params:
@@ -123,14 +101,14 @@ public interface ITileLayer {
 	 *   y = y offset of the tile.
 	 * Returns: The tile at the given point.
 	 */
-	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const;
+	public MappingElement2 readMapping(int x, int y) @nogc @safe pure nothrow const;
 	/**
 	 * Writes the given element into the mapping at the given location.
 	 * Params:
 	 *   x = x offset of the tile.
 	 *   y = y offset of the tile.
 	 */
-	public void writeMapping(int x, int y, MappingElement w) @nogc @safe pure nothrow;
+	public void writeMapping(int x, int y, MappingElement2 w) @nogc @safe pure nothrow;
 	/** 
 	 * Loads a mapping into the layer.
 	 * Params:
@@ -139,7 +117,16 @@ public interface ITileLayer {
 	 *   mapping = an array representing the map.
 	 * Throws: MapFormatException if width and height doesn't represent the map.
 	 */
-	public void loadMapping(int x, int y, MappingElement[] mapping) @safe pure;
+	public void loadMapping(int x, int y, MappingElement[] mapping) @nogc @safe;
+	/**
+	 * Loads a mapping into the layer.
+	 * Params:
+	 *   x = width of the map.
+	 *   y = height of the map.
+	 *   mapping = an array representing the map.
+	 * Throws: MapFormatException if width and height doesn't represent the map.
+	 */
+	public void loadMapping(int x, int y, MappingElement2[] mapping) @nogc @safe;
 	/// Removes the tile from the display list with the given ID.
 	public void removeTile(wchar id) @safe @nogc;
 	/// .
@@ -150,7 +137,7 @@ public interface ITileLayer {
 	 *   y = y offset of the tile.
 	 * Returns: The tile at the given point.
 	 */
-	public MappingElement tileByPixel(int x, int y) @nogc @safe pure nothrow const;
+	public MappingElement2 tileByPixel(int x, int y) @nogc @safe pure nothrow const;
 	/// Returns the width of the tiles.
 	public int getTileWidth() @nogc @safe pure nothrow const;
 	/// Returns the height of the tiles.
@@ -176,7 +163,7 @@ public interface ITileLayer {
  * All transform parameters (A, B, C, D) are 256-based "fractional integers".
  * Kind of deprecated after move to OpenGL, many affine transform functions are available through the OpenGL renderer of the tile layer
  */
-public interface ITTL {
+public deprecated interface ITTL {
     ///Returns the horizontal scaling amount.
     ///256 means no scaling, negative values flip everything horizontally.
 	public @property short A() @nogc @safe nothrow pure const;

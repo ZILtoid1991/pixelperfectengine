@@ -81,7 +81,7 @@ public class TileLayer : Layer, ITileLayer {
 	protected int			mY;		/// Map height
 	protected size_t		totalX;	/// Total width of the tilelayer in pixels
 	protected size_t		totalY;	/// Total height of the tilelayer in pixels
-	protected MappingElement[] mapping;/// Contains the mapping data.
+	protected MappingElement2[] mapping;/// Contains the mapping data.
 	protected GraphicsAttrExt[] mapping_grExt;/// Contains the extended mapping data.
 	protected GLShader		shader;	/// The main shader program used on the layer.
 	protected DynArray!TileVertex gl_displayList;	/// Contains the verticles to be displayed
@@ -156,6 +156,8 @@ public class TileLayer : Layer, ITileLayer {
 		tiles.free();
 		pages.free();
 		gl_textureData.free();
+		mapping.nogc_free();
+		mapping_grExt.nogc_free();
 	}
 	/**
 	 * Adds a bitmap source to the layer.
@@ -215,19 +217,19 @@ public class TileLayer : Layer, ITileLayer {
 		const yTo = sY + overscanAm[3] + tileY + rasterY;
 		for (int y = yFrom, ty ; y <= yTo && ty <= 255 ; y += tileY, ty++) {
 			for (int x = xFrom, tx ; x <= xTo && tx <= 255 ; x += tileX, tx++) {
-				MappingElement me = tileByPixel(x, y);
+				MappingElement2 me = tileByPixel(x, y);
 				if (me.tileID != 0xFFFF) {
 					TileDefinition td = tiles.searchBy(me.tileID);
 					if (td.id == 0xFFFF) continue;
 					const p = cast(int)gl_displayList.length;
-					const h1 = me.attributes.horizMirror ? tx + 1 : tx;
-					const h2 = me.attributes.horizMirror ? tx : tx + 1;
-					const v1 = me.attributes.vertMirror ? ty + 1 : ty;
-					const v2 = me.attributes.vertMirror ? ty : ty + 1;
-					const xy11 = me.attributes.xyRotate ? td.x : td.x + tileX;
-					const xy21 = me.attributes.xyRotate ? td.x + tileX : td.x;
-					const xy12 = me.attributes.xyRotate ? td.y + tileY : td.y;
-					const xy22 = me.attributes.xyRotate ? td.y : td.y + tileY;
+					const h1 = me.hMirror ? tx + 1 : tx;
+					const h2 = me.hMirror ? tx : tx + 1;
+					const v1 = me.vMirror ? ty + 1 : ty;
+					const v2 = me.vMirror ? ty : ty + 1;
+					const xy11 = me.xyInvert ? td.x : td.x + tileX;
+					const xy21 = me.xyInvert ? td.x + tileX : td.x;
+					const xy12 = me.xyInvert ? td.y + tileY : td.y;
+					const xy22 = me.xyInvert ? td.y : td.y + tileY;
 					gl_polygonIndices ~= PolygonIndices(p + 0, p + 1, p + 2);
 					gl_polygonIndices ~= PolygonIndices(p + 1, p + 3, p + 2);
 					GraphicsAttrExt uniform;
@@ -445,12 +447,15 @@ public class TileLayer : Layer, ITileLayer {
 		mapping_grExt = null;
 		return result;
 	}
+	public void createAttributeTable() @nogc @safe {
+		if (!mapping_grExt) mapping_grExt = nogc_initNewArray!GraphicsAttrExt(mapping.length * 4);
+	}
 	///Gets the the ID of the given element from the mapping. x , y : Position.
-	public MappingElement readMapping(int x, int y) @nogc @safe pure nothrow const {
+	public MappingElement2 readMapping(int x, int y) @nogc @safe pure nothrow const {
 		final switch (warpMode) with (WarpMode) {
 			case Off:
 				if(x < 0 || y < 0 || x >= mX || y >= mY){
-					return MappingElement(0xFFFF);
+					return MappingElement2(0xFFFF, 0x000);
 				}
 				break;
 			case MapRepeat:
@@ -461,14 +466,14 @@ public class TileLayer : Layer, ITileLayer {
 				break;
 			case TileRepeat:
 				if(x < 0 || y < 0 || x >= mX || y >= mY){
-					return MappingElement(0x0000);
+					return MappingElement2(0x0000, 0x000);
 				}
 				break;
 		}
 		return mapping[x+(mX*y)];
 	}
 	///Writes to the map. x , y : Position. w : ID of the tile.
-	public void writeMapping(int x, int y, MappingElement w) @nogc @safe pure nothrow {
+	public void writeMapping(int x, int y, MappingElement2 w) @nogc @safe pure nothrow {
 		if(x >= 0 && y >= 0 && x < mX && y < mY)
 			mapping[x + (mX * y)] = w;
 	}
@@ -478,16 +483,30 @@ public class TileLayer : Layer, ITileLayer {
 	 * Requires the text to be in 16 bit format
 	 */
 	public void writeTextToMap(const int x, const int y, const ubyte color, wstring text, 
-			BitmapAttrib atrb = BitmapAttrib.init) @nogc @safe pure nothrow {
+			bool hMirror = false, bool vMirror = false) @nogc @safe pure nothrow {
 		for (int i ; i < text.length ; i++) {
-			writeMapping(x + i, y, MappingElement(text[i], atrb, color));
+			writeMapping(x + i, y, MappingElement2(text[i], color, hMirror, vMirror));
 		}
 	}
-	///Loads a mapping from an array. x , y : Sizes of the mapping. map : an array representing the elements of the map.
+	///Loads a mapping from an array. (Legacy)
+	///x , y : Sizes of the mapping. map : an array representing the elements of the map.
 	///x*y=map.length
-	public void loadMapping(int x, int y, MappingElement[] mapping) @safe pure {
-		if (x * y != mapping.length)
-			throw new MapFormatException("Incorrect map size!");
+	public void loadMapping(int x, int y, MappingElement[] mapping) @nogc @safe {
+		//if (x * y != mapping.length) throw new MapFormatException("Incorrect map size!");
+		mX=x;
+		mY=y;
+		this.mapping = nogc_newArray!MappingElement2(mapping.length);
+		for (size_t i ; i < mapping.length ; i++) {
+			this.mapping[i] = MappingElement2(mapping[i]);
+		}
+		totalX=mX*tileX;
+		totalY=mY*tileY;
+	}
+	///Loads a mapping from an array. (Legacy)
+	///x , y : Sizes of the mapping. map : an array representing the elements of the map.
+	///x*y=map.length
+	public void loadMapping(int x, int y, MappingElement2[] mapping) @nogc @safe {
+		//if (x * y != mapping.length) throw new MapFormatException("Incorrect map size!");
 		mX=x;
 		mY=y;
 		this.mapping = mapping;
@@ -500,7 +519,7 @@ public class TileLayer : Layer, ITileLayer {
 		if (index != -1) tiles.remove(index);
 	}
 	///Returns which tile is at the given pixel
-	public MappingElement tileByPixel(int x, int y) @nogc @safe pure nothrow const {
+	public MappingElement2 tileByPixel(int x, int y) @nogc @safe pure nothrow const {
 		x = cast(uint)x / tileX;
 		y = cast(uint)y / tileY;
 		return readMapping(x, y);
@@ -509,7 +528,7 @@ public class TileLayer : Layer, ITileLayer {
 		return LayerType.Tile;
 	}
 
-	public MappingElement[] getMapping() @nogc @safe pure nothrow {
+	public MappingElement2[] getMapping() @nogc @safe pure nothrow {
 		return mapping;
 	}
 	public int getTileWidth() @nogc @safe pure nothrow const {
@@ -541,7 +560,7 @@ public class TileLayer : Layer, ITileLayer {
 	}
 	public void clearTilemap() @nogc @safe pure nothrow {
 		for (size_t i ; i < mapping.length ; i++) {
-			mapping[i] = MappingElement.init;
+			mapping[i] = MappingElement2.init;
 		}
 	}
 	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {	//DEPRECATED

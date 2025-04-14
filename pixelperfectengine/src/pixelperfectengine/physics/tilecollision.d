@@ -58,9 +58,9 @@ public class TileCollisionDetector {
  * Returns: An array of the tiles overlapped by the object, with the tiles being in order of left-to-right,
  * top-to-bottom. This means the top-left tile is the first one.
  */
-public MappingElement[] getAllOverlappingTiles(Box object, ITileLayer layer) @safe nothrow {
+public MappingElement2[] getAllOverlappingTiles(Box object, ITileLayer layer) @safe nothrow {
 	const int tW = layer.getTileWidth, tH = layer.getTileHeight;
-	MappingElement[] overlapList;
+	MappingElement2[] overlapList;
 	int tY = object.top;
 	while (tY <= object.bottom) {
 		int tX = object.left;

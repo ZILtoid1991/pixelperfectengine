@@ -15,6 +15,7 @@ public import pixelperfectengine.graphics.common;
 
 /**
  * Bitmap attributes, mainly for layers.
+ * Will be deprecated slowly
  */
 public struct BitmapAttrib{
 	mixin(bitfields!(
