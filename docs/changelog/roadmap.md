@@ -32,9 +32,7 @@ Not yet materialized
 
 Due to the capabilities of the new format the engine uses (~~M2~~ IMBC), a special editor will be needed, that can do some scripting, etc.
 
-# Features planned for later
-
-## Get a better scripting engine
+# Get a better scripting engine
 
 Due to inability to get it working together with D in any meaningful way, the Lua engine had to be dropped.
 
@@ -47,21 +45,21 @@ Currently, I have two options:
 4. Port a pre-exiting one to D, that would otherwise involve complicated build processes. This would allow one popular Python implementation to be ported. However, this might need relicensing of my code, which I was thinking about already.
 5. Write a lightweight VM myself. I already done something like that with M2, all I need is to add heap allocation support, support for function calls, etc. The harder part is to implement compilers for it, also it would take precious time from other parts of the engine, which is already suffering from feature creep relative to my time I can invest into it.
 
-### Current status
+## Current status
 
-~~Work on PingusVM have been started. At worst there will be an assembly-like scripting language, with options to write a compiler.~~ Dropped in favor of a binding to wasmtime.
+Wasmtime-d added as a dependency to the engine, .
 
-## Path management
+# Path management
 
 There's now some preliminary path management, more features will be added later on.
 
 Potential users are being scared away by the engine's path system, and some stuff just outright tries to run the executable from random places where the `../system/` folder is not reachable.
 
-### Current status
+## Current status
 
-Implemented for the most part.
+Done!
 
-## GPU rendering (1.0.0)
+# GPU rendering (0.12.0)
 
 It's likely possible to do pixel perfect graphics without resorting to compute. It needs the followings:
 
@@ -71,27 +69,39 @@ It's likely possible to do pixel perfect graphics without resorting to compute. 
 
 Added benefits are speed (10 000+ objects per frame!), the possibility of low-res 3D graphics, and easy implementation of transformable sprites.
 
-### Pre-requirements
+## Pre-requirements
 
 Mostly finishing iota to a state it can replace the current SDL functionality. (DONE!)
 
-### Things probably need to be changed before, through, or after the GPU transition
+## Things probably need to be changed before, through, or after the GPU transition
 
 * Tile rendering needs to be figured out yet again. Either needs to stay on the CPU, completely offloaded to the GPU, or some hybrid approach. ~~The GPU approach would limit the scanline effects.~~ Scanline effects can be done with special shaders.
 * ~~In order to better take advantage of the GPU, the Tile Format has to be rewritten, probably to 64 bit words. This would give the user extra bitflags, per-tile alpha channel, per-tile compositing function, flags for rotation, etc.~~ Basic tile format will be mostly kept as is, tile rotation will be added though to a flag, the rest of the bitfield will be used as priority. However, extra data can be assigned for per-vertex color data, which can be used for color calculation, either shared or per-tile.
 
-### Complications
+## Complications
 
 The Transformable Tile Layer likely cannot be done without either heavy compromises, or heavy restructuring, especially not without compute shaders (not available on all GPUs). Likely it will be still be done by the CPU, then streamed to the GPU as textures, which at "retro" resolutions, shouldn't be too taxing on lower-end hardware. (Likely will be dropped with regular tile layer getting some of its capabilities instead)
 
-### Current status
+## Current status
 
-* Heavy consideration of also implementing a vulkan rendering pipeline (nuvk?).
+* Basic functionality works now, some optimization work might remain.
+* Tile layer now has basic transform support, but no raster interrupt effect emulation. Per-line scrolling might get added as an effect however.
+* TO DO: Implement the lighting system.
+* Heavy consideration of also implementing a vulkan rendering pipeline (nuvk? That would also give Metal support).
+
+# Move away from the GC
+
+With the use of `numem`, every new or rewritten system will be moved to a nogc system, to avoid potential pauses from garbage collection traces. At least numem allows operation alongside of Phobos and D's own GC (with some caveats).
+
+# Minor features
+
+## Updated mapping format
+
+* Create graphics attribute extension. (DONE!)
+* Create logic attribute extension for user data. (DONE!)
+* Rework of tile attribute system. (DONE!) (See `formats/mapdata.md` for more information)
+* Implement reader and writer for the new format. (TO DO!)
 
 ## Logging
 
 Add a logger to record events and errors.
-
-## Move away from the GC
-
-With the use of `numem`, every new or rewritten system will be moved to a nogc system, to avoid potential pauses from garbage collection traces. At least numem allows operation alongside of Phobos and D's own GC (with some caveats).
