@@ -17,6 +17,7 @@ import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;
 import pixelperfectengine.system.etc;
 import pixelperfectengine.system.config;
+import pixelperfectengine.system.memory;
 
 import pixelperfectengine.system.common;
 
@@ -99,15 +100,15 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		textLayer = new TileLayer(8,8, tileShader);
 		textLayer.paletteOffset = 512;
 		textLayer.masterVal = 127;
-		textLayer.loadMapping(53, 30, new MappingElement[](53 * 30));
+		textLayer.loadMapping(53, 30, nogc_initNewArray!MappingElement2(53 * 30));
 		{
 			textLayer.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(fontSource), 0, 1);
 			for (ushort i; i < 256; i++) {
 				textLayer.addTile(i, 0, (i & 0x0F)<<3, (i & 0xF0)>>1, 1);
 			}
 		}
-		textLayer.writeTextToMap(0, 1, 0, "Collision:", BitmapAttrib(true, false, false));
-		textLayer.writeTextToMap(0, 2, 0, "Col. type:", BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(0, 1, 0, "Collision:", true, false);
+		textLayer.writeTextToMap(0, 2, 0, "Col. type:", true, false);
 		textLayer.reprocessTilemap();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 
@@ -141,22 +142,22 @@ public class MapFormatTester : SystemEventListener, InputListener {
 			ocd.objects.ptrOf(65_536).position = gameField.getSpriteCoordinate(65_536).boxOf();
 			if(controlFlags.up) {
 				gameField.relMoveSprite(65_536,0,-1);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None",true, false);
 				textLayer.reprocessTilemap();
 			}
 			if(controlFlags.down) {
 				gameField.relMoveSprite(65_536,0,1);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None",true, false);
 				textLayer.reprocessTilemap();
 			}
 			if(controlFlags.left) {
 				gameField.relMoveSprite(65_536,-1,0);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None",true, false);
 				textLayer.reprocessTilemap();
 			}
 			if(controlFlags.right) {
 				gameField.relMoveSprite(65_536,1,0);
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None",true, false);
 				textLayer.reprocessTilemap();
 			}
 			ocd.testSingle(65_536);
@@ -164,19 +165,19 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		destroy(output);
 	}
 	public void onCollision(ObjectCollisionEvent event) {
-		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB),BitmapAttrib(true, false, false));
+		textLayer.writeTextToMap(10,1,0,format("%8X"w,event.idB), true, false);
 		final switch (event.type) with (ObjectCollisionEvent.Type) {
 			case None:
-				textLayer.writeTextToMap(10,2,0,"        None",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"        None", true, false);
 				break;
 			case BoxEdge:
-				textLayer.writeTextToMap(10,2,0,"     BoxEdge",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"     BoxEdge", true, false);
 				break;
 			case BoxOverlap:
-				textLayer.writeTextToMap(10,2,0,"  BoxOverlap",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"  BoxOverlap", true, false);
 				break;
 			case ShapeOverlap:
-				textLayer.writeTextToMap(10,2,0,"ShapeOverlap",BitmapAttrib(true, false, false));
+				textLayer.writeTextToMap(10,2,0,"ShapeOverlap", true, false);
 				break;
 		}
 		textLayer.reprocessTilemap();
