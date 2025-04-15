@@ -53,7 +53,7 @@ void fatal_trusted(const(char)[] errMsg) @trusted @nogc nothrow {
  */
 T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
 	if (haysack.length) {
-		size_t l, r = haysack.length, m;
+		sizediff_t l, r = haysack.length, m;
 		while (l < r) {
 			m = (l+r)>>1;
 			if (binaryFun!equal(haysack[m], needle)) return haysack[m];
@@ -73,7 +73,7 @@ T searchBy(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q ne
  */
 sizediff_t searchByI(T, Q, alias less = "a > b", alias equal = "a == b")(T[] haysack, Q needle) @nogc @safe nothrow {
 	if (haysack.length) {
-		size_t l, r = haysack.length, m;
+		sizediff_t l, r = haysack.length, m;
 		while (l < r) {
 			m = (l+r)>>1;
 			if (binaryFun!equal(haysack[m], needle)) return m;

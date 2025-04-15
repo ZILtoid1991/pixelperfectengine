@@ -63,6 +63,7 @@ public struct GLShader {
 	}
 	private static void refCountDecr(GLuint shaderID) @trusted @nogc nothrow {
 		import numem;
+		if (!refCount.length) return;
 		sizediff_t index = refCount.searchByI(shaderID);
 		if (index == -1) return; /+nu_fatal("Reference counter error: reference not found!");+/
 		refCount[index].count--;
