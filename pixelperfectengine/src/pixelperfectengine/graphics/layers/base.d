@@ -308,7 +308,7 @@ public struct MappingElement {
 public struct MappingElement2 {
 	wchar tileID;		/// Selects which tile material will be used.
 	ushort _bitfield;	/// Contains the palette selector and the tile attributes.
-	this(wchar tileID, ushort paletteSel, bool hMirror = false, bool vMirror = false, 
+	this(wchar tileID, ushort paletteSel = 0, bool hMirror = false, bool vMirror = false,
 			bool xyInvert = false, bool priority = false) @nogc @safe pure nothrow {
 		this.tileID = tileID;
 		this.paletteSel = paletteSel;
