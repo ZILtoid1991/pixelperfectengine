@@ -111,6 +111,7 @@ public class Raster : PaletteContainer {
 	//private Layer[int] layerList;
 	private bool r;					///Set to true if refresh is happening.
 	private bool screenSizeChanged;	///Set to true if screen size is changed.
+	private bool paletteUpdated;
 	protected int nOfBuffers;		///Number of framebuffers, 2 for double buffering.
 	protected int updatedBuffer;	///Framebuffer currently being updated
 	protected int displayedBuffer;///Framebuffer currently being displayed
@@ -245,17 +246,18 @@ public class Raster : PaletteContainer {
 		return _palette[index];
 	}
 	public Color setPaletteIndex(ushort index, Color val) @safe pure nothrow @nogc {
+		paletteUpdated = true;
 		return _palette[index] = val;
 	}
 	/**
 	 * Loads a palette into the object.
-	 * Returns the new palette of the object.
+	 * Returns the new palette of the object. DEPRECATED!
 	 */
 	public Color[] loadPalette(Color[] palette) @safe {
 		return _palette = palette;
 	}
 	/**
-	 * Adds a palette chunk to the end of the main palette.
+	 * Adds a palette chunk to the end of the main palette. DEPRECATED!
 	 */
 	public Color[] addPaletteChunk(Color[] paletteChunk) @safe {
 		return _palette ~= paletteChunk;
@@ -270,8 +272,9 @@ public class Raster : PaletteContainer {
 	public Color[] loadPaletteChunk(Color[] paletteChunk, ushort offset) @trusted {
 		if (paletteChunk.length + offset > _palette.length) _palette.length = offset + paletteChunk.length;
 		for (int i = offset, j ; j < paletteChunk.length ; i++, j++) _palette[i] = paletteChunk[j];
-		glBindTexture(GL_TEXTURE_2D, gl_Palette);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, _palette.ptr);
+		// glBindTexture(GL_TEXTURE_2D, gl_Palette);
+		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, _palette.ptr);
+		paletteUpdated = true;
 		return _palette;
 	}
 	/**
@@ -283,8 +286,9 @@ public class Raster : PaletteContainer {
 		for (int i = offset ; i < offset + lenght ; i++) {
 			_palette[i] = Color(0);
 		}
-		glBindTexture(GL_TEXTURE_2D, gl_Palette);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, _palette.ptr);
+		// glBindTexture(GL_TEXTURE_2D, gl_Palette);
+		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, _palette.ptr);
+		paletteUpdated = true;
 		return backup;
 	}
 	public void readjustViewport(int width, int height, int hOffset, int vOffset) {
@@ -398,6 +402,11 @@ public class Raster : PaletteContainer {
 	}
 
 	public void refresh_GL() @system {
+		if (paletteUpdated) {
+			glBindTexture(GL_TEXTURE_2D, gl_Palette);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, _palette.ptr);
+			paletteUpdated = false;
+		}
 		r = true;
 
 		//get frame duration
