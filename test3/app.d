@@ -68,7 +68,7 @@ public class TestElements : InputListener, SystemEventListener {
 				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
 		mainRaster = new Raster(848,480,outScrn,1);
-		mainRaster.readjustViewport(840 * GUIScaling, 480 * GUIScaling, 0, 0);
+		mainRaster.readjustViewport(848 * GUIScaling, 480 * GUIScaling, 0, 0);
 		mainRaster.addLayer(sprtL,0);
 		mainRaster.loadPaletteChunk(loadPaletteFromFile(getPathToAsset("/system/concreteGUIE1.tga")), 0);
 		wh = new WindowHandler(848 * GUIScaling, 480 * GUIScaling, 848, 480, sprtL, outScrn);
