@@ -94,7 +94,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	 */
 	public this(Box size, Text title, StyleSheet customStyle = null) {
 		position = size;
-		output = new BitmapDrawer(position.width(), position.height());
+		output = new BitmapDrawer(padToNext(4, position.width()), position.height());
 		this.title = title;
 		this.customStyle = customStyle;
 		SmallButton closeButton = closeButton(customStyle is null ? globalDefaultStyle : customStyle);
