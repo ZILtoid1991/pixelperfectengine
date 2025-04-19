@@ -52,17 +52,27 @@ public class Test5 : SystemEventListener, InputListener {
 		isRunning = true;
 		output = new OSWindow("Text processing and rendering test", "ppe_texttest", -1, -1, 424 * 4, 240 * 4, 
 				WindowCfgFlags.IgnoreMenuKey);
-		output.getOpenGLHandle();
+		version (Windows) output.getOpenGLHandleAttribsARB([
+			OpenGLContextAtrb.MajorVersion, 3,
+			OpenGLContextAtrb.MinorVersion, 3,
+			OpenGLContextAtrb.ProfileMask, 1,
+			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
+			0
+		]);
+		else output.getOpenGLHandle();
 		const glStatus = loadOpenGL();
-		if (glStatus < GLSupport.gl11) {
+		if (glStatus < GLSupport.gl33) {
 			writeln("OpenGL not found!");
 		}
-		r = new Raster(424,240,output,0);
-		s = new SpriteLayer(RenderingMode.AlphaBlend);
+		r = new Raster(424,240,output,1);
+		r.readjustViewport(424 * 4, 240 * 4, 0, 0);
+		s = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
 		r.addLayer(s, 0);
-		r.addPaletteChunk([Color(0x22,0x22,0x22,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x80,0x80,0x80,0xFF),
-				Color(0xff,0x00,0x00,0xFF),Color(0x00,0xff,0x00,0xFF),Color(0x00,0x00,0xff,0xFF)]);
-		r.setupPalette(256);
+		r.loadPaletteChunk([Color(0x22,0x22,0x22,0xFF),Color(0xff,0xff,0xff,0xFF),Color(0x80,0x80,0x80,0xFF),
+				Color(0xff,0x00,0x00,0xFF),Color(0x00,0xff,0x00,0xFF),Color(0x00,0x00,0xff,0xFF)],0);
+
 		ih = new InputHandler();
 		ih.inputListener = this;
 		ih.systemEventListener = this;
@@ -99,13 +109,13 @@ public class Test5 : SystemEventListener, InputListener {
 		writeln(txprs.output);
 
 		textOutput = new BitmapDrawer(424, 240);
-		s.addSprite(textOutput.output, 0, 0, 0);
+		// s.addSprite(textOutput.output, 0, 0, 0);
 		
 		drawNextText();
 	}
 	public void whereTheMagicHappens() {
 		while (isRunning) {
-			r.refresh();
+			r.refresh_GL();
 			ih.test();
 		}
 		destroy(output);
@@ -121,6 +131,9 @@ public class Test5 : SystemEventListener, InputListener {
 			txprs.output[availTexts[textPos]].interpolate(symbols);
 			textOutput.drawMultiLineText(Box.bySize(0, 0, 424, 240), txprs.output[availTexts[textPos]]);
 			textPos++;
+			s.addBitmapSource(textOutput.output, 0);
+			s.createSpriteMaterial(0, 0);
+			s.addSprite(0, 0, Point(0, 0));
 		}
 	}
 	public void onQuit() {
@@ -143,11 +156,11 @@ public class Test5 : SystemEventListener, InputListener {
 		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
 			const double visibleWidth = height * origAspectRatio;
 			const double sideOffset = (width - visibleWidth) / 2.0;
-			glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
 		} else {	//Display area is now taller, padding needs to be added on the top and bottom
 			const double visibleHeight = width / origAspectRatio;
 			const double topOffset = (height - visibleHeight) / 2.0;
-			glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
 		}
 	}
 	/**
