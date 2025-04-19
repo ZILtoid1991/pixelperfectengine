@@ -8,7 +8,7 @@ import pixelperfectengine.system.file;
 
 int main(string[] args) {
 	int guiScaling = 2;
-    foreach (string arg ; args[1..$]) {
+	foreach (string arg ; args[1..$]) {
 		if (arg.startsWith("--ui-scaling=")) {
 			try {
 				guiScaling = arg[13..$].to!int;
@@ -23,5 +23,5 @@ int main(string[] args) {
 	Editor e = new Editor(guiScaling);
 	e.whereTheMagicHappens();
 
-    return 0;
+	return 0;
 }

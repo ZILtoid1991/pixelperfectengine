@@ -12,6 +12,7 @@ import pixelperfectengine.system.etc : csvParser;
 import pixelperfectengine.system.timer;
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster;
+import pixelperfectengine.graphics.shaders;
 import pixelperfectengine.system.config;
 import std.bitmanip : bitfields;
 public import collections.linkedhashmap;
@@ -94,7 +95,7 @@ public class TopLevelWindow : Window {
 		foreach (WindowElement we; elements) {
 			we.draw();
 		}
-		
+		handler.updateOutput(this);
 	}
 }
 /**
@@ -165,6 +166,7 @@ public class DummyWindow : Window {
 			drawLine(Point(width, box.bottom), box.cornerLR, 18);
 			drawLine(Point(box.right, height), box.cornerLR, 18);
 		}
+		handler.updateOutput(this);
 	}
 }
 
@@ -206,18 +208,28 @@ public class Editor : SystemEventListener, InputListener{
 		import pixelperfectengine.system.systemutility;
 		import pixelperfectengine.system.file;
 		this.guiScaling = guiScaling;
-		sprtL = new SpriteLayer(RenderingMode.Copy);
 		outScrn = new OSWindow("WindowMaker for PPE/Concrete", "windowmaker", -1, -1, 848 * guiScaling, 480 * guiScaling, 
 				WindowCfgFlags.IgnoreMenuKey);
-		outScrn.getOpenGLHandle();
+		version (Windows) outScrn.getOpenGLHandleAttribsARB([
+			OpenGLContextAtrb.MajorVersion, 3,
+			OpenGLContextAtrb.MinorVersion, 3,
+			OpenGLContextAtrb.ProfileMask, 1,
+			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
+			0
+		]);
+		else outScrn.getOpenGLHandle();
 		const glStatus = loadOpenGL();	//Load the OpenGL symbols
-		assert (glStatus >= GLSupport.gl11, "OpenGL not found!");	//Error out if openGL does not work
-		mainRaster = new Raster(848,480,outScrn,0, 1);
+		assert (glStatus >= GLSupport.gl33, "OpenGL not found!");	//Error out if openGL does not work
+		mainRaster = new Raster(848,480,outScrn);
+		mainRaster.readjustViewport(848 * guiScaling, 480 * guiScaling, 0, 0);
+		sprtL = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
 		mainRaster.addLayer(sprtL,0);
 		typeSel = ElementType.NULL;
 
 		ewh = new WindowHandler(848 * guiScaling, 480 * guiScaling , 848, 480, sprtL, outScrn);
-		mainRaster.loadPalette(loadPaletteFromFile(getPathToAsset("../system/concreteGUIE1.tga")));
+		mainRaster.loadPaletteChunk(loadPaletteFromFile(getPathToAsset("../system/concreteGUIE1.tga")), 0);
 		INIT_CONCRETE();
 		inputH = new InputHandler();
 		inputH.systemEventListener = this;
@@ -372,25 +384,25 @@ public class Editor : SystemEventListener, InputListener{
 			if(state) {
 				x0 = x;
 				y0 = y;
-			}else{
+			} else {
 				Box c;
-				if(x > x0){
+				if(x > x0) {
 					c.left = x0;
 					c.right = x;
-				}else{
+				} else {
 					c.left = x;
 					c.right = x0;
 				}
-				if(y > y0){
+				if (y > y0) {
 					c.top = y0;
 					c.bottom = y;
-				}else{
+				} else {
 					c.top = y;
 					c.bottom = y0;
 				}
 				WindowElement we;
 				string s, type;
-				switch(typeSel){
+				switch (typeSel) {
 					case ElementType.Label:
 						s = getNextName("label");
 						type = "Label";
@@ -444,14 +456,12 @@ public class Editor : SystemEventListener, InputListener{
 			}
 		} else {
 			if (state) {
-				if(!moveElemMode && elements.getPtr(selection)) {
+				if (!moveElemMode && elements.getPtr(selection)) {
 					if (elements[selection].element.getPosition.isBetween(x,y)) {
 						initElemMove;
-						
 					} else if (elements[selection].element.getPosition.right <= x + 1 && 
 							elements[selection].element.getPosition.bottom <= y + 1) {
 						initElemResize;
-						
 					}
 				}
 			} else {
@@ -463,10 +473,10 @@ public class Editor : SystemEventListener, InputListener{
 	public void dragEvent(int x, int y, int relX, int relY, uint button) {
 		if (moveElemMode) {
 			Box temp = elements[selection].element.getPosition;
-			if(temp.left + relX < 0) relX -= temp.left + relX;
-			if(temp.right + relX >= dw.getPosition.width) relX -= (temp.right + relX) - dw.getPosition.width;
-			if(temp.top + relY < 0) relY -= temp.top + relY;
-			if(temp.bottom + relY >= dw.getPosition.height) relY -= (temp.bottom + relY) - dw.getPosition.height;
+			if (temp.left + relX < 0) relX -= temp.left + relX;
+			if (temp.right + relX >= dw.getPosition.width) relX -= (temp.right + relX) - dw.getPosition.width;
+			if (temp.top + relY < 0) relY -= temp.top + relY;
+			if (temp.bottom + relY >= dw.getPosition.height) relY -= (temp.bottom + relY) - dw.getPosition.height;
 			temp.relMove(relX, relY);
 			elements[selection].element.setPosition(temp);
 			dw.draw();
@@ -480,19 +490,19 @@ public class Editor : SystemEventListener, InputListener{
 		}
 	}
 
-	public void updateElementList(){
+	public void updateElementList() {
 		tlw.objectList.clear();
 		tlw.objectList ~= new ListViewItem(16, ["Window"d, ""d]);
-		foreach(s; elements){
+		foreach (s; elements) {
 			tlw.objectList ~= new ListViewItem(16, [conv.to!dstring(s.type), conv.to!dstring(s.name)]);
 		}
 		tlw.objectList.refresh();
 	}
-	public void updatePropertyList(){
+	public void updatePropertyList() {
 		import sdlang;
 		import std.utf;
 		tlw.propList.clear();
-		if(elements.getPtr(selection) !is null){
+		if (elements.getPtr(selection) !is null) {
 			string classname = elements[selection].type;
 			tlw.propList ~= [new ListViewItem(16, ["name"d, conv.to!dstring(selection)], [TextInputFieldType.None, 
 					TextInputFieldType.Text]), new ListViewItem(16, ["source"d, conv.to!dstring(wserializer.getValue(selection, 
@@ -527,7 +537,7 @@ public class Editor : SystemEventListener, InputListener{
 					break;
 			}
 			
-		}else{
+		} else {
 			tlw.propList ~= [new ListViewItem(16, ["name", conv.to!dstring(wserializer.getWindowName)], 
 					[TextInputFieldType.None, TextInputFieldType.Text]),
 					new ListViewItem(16, ["title", toUTF32(wserializer.getWindowValue("title")[0].get!string())], 
@@ -542,7 +552,7 @@ public class Editor : SystemEventListener, InputListener{
 		tlw.propList.refresh();
 	}
 
-	public void selectEvent(WindowElement we){
+	public void selectEvent(WindowElement we) {
 		foreach (s; elements) {
 			if (s.element is we) {
 				selection = s.name;
@@ -552,7 +562,7 @@ public class Editor : SystemEventListener, InputListener{
 		}
 	}
 
-	public void menuEvent(Event ev){
+	public void menuEvent(Event ev) {
 		import pixelperfectengine.concrete.dialogs.filedialog : FileDialog;
 		string source = (cast(MenuEvent)ev).itemSource;
 		switch(source){
@@ -673,10 +683,7 @@ public class Editor : SystemEventListener, InputListener{
 	}
 	public void whereTheMagicHappens(){
 		while(!onExit){
-			if (flipScreen) {
-				flipScreen = false;
-				mainRaster.refresh();
-			}
+			mainRaster.refresh_GL();
 			inputH.test();
 			Thread.sleep(dur!"msecs"(10));
 			timer.test();
@@ -694,7 +701,7 @@ public class Editor : SystemEventListener, InputListener{
 	public void windowResize(OSWindow window, int width, int height) {
 		mainRaster.resizeRaster(cast(ushort)(width / guiScaling), cast(ushort)(height / guiScaling));
 		ewh.resizeRaster(width, height, width / guiScaling, height / guiScaling);
-		glViewport(0, 0, width, height);
+		mainRaster.readjustViewport(width, height, 0, 0);
 		rasterRefresh();
 	}
 	public void inputDeviceAdded(InputDevice id) {
