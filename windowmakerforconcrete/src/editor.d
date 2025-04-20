@@ -14,6 +14,7 @@ import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster;
 import pixelperfectengine.graphics.shaders;
 import pixelperfectengine.system.config;
+import pixelperfectengine.system.math;
 import std.bitmanip : bitfields;
 public import collections.linkedhashmap;
 
@@ -85,8 +86,8 @@ public class TopLevelWindow : Window {
 		propList.onItemSelect = &e.onAttributeOpen;
 	}
 	public override void draw(bool drawHeaderOnly = false) {
-		if(output.output.width != position.width || output.output.height != position.height)
-			output = new BitmapDrawer(position.width(), position.height());
+		if(output.output.width < position.width || output.output.height < position.height)
+			output = new BitmapDrawer(padToNext(4, position.width()), position.height());
 		
 		StyleSheet ss = getStyleSheet();
 		const Box bodyarea = Box(0, 0, position.width - 1, position.height - 1);
