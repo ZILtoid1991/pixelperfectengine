@@ -6,7 +6,7 @@
 out vec4 fragColor;             // Color output
 
 in vec2 texMapping;             // Texture mapping position
-in vec4 lightingData;           // Lighting data, can be repurposed for other things
+in vec4 lightingCol;           // Lighting data, can be repurposed for other things
 in vec2 lightingDir;
 in float zVal;
 
@@ -18,6 +18,6 @@ uniform vec2 paletteOffset;     // Palette offset in case palette selection is u
 
 void main() {
     vec4 color = texelFetch(mainTexture, ivec2(texMapping.x, texMapping.y), 0);
-    color.a *= lightingData.a;
+    color.a *= lightingCol.a;
     fragColor = color;
 }
