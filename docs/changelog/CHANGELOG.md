@@ -24,8 +24,13 @@ Collision detector has been reworked to work with arraymaps instead of treemaps,
 
 ## Other improvements:
 
-* (test1) work on sequencer has begun.
-* (QM816) added portamento support.
+* (test1) work on sequencer has begun. (Preliminary, editing and displaying not work)
+* (QM816) added portamento support. (Preliminary, is not fully implemented)
+
+## Known bugs
+
+* (Test1) Some IMBC files crash the application.
+* (Concrete) Window downsizing is buggy, header buttons will fall outside of display area, will be fixed next version.
 
 # 0.11.0
 

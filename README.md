@@ -18,10 +18,7 @@ engines often use 3D polygons for sprites, there are often many errors:
 * Unauthentic scaling and rotation effects due to direct rendering on high-resolution framebuffers.
 * Ability of use of sprites and textures with baked-in big pixels, which lead to misaligned pixels.
 
-In order to mitigate these issues, the engine uses CPU or GPU (coming in the future) blitter, like some old systems did
-back in the days, such as the Amiga. However the engine also can do some of the tricks of later 2D machines like 
-per-index transparency, and you can create various effects like light, fog, and reflections, by using custom layers or
-even the `EffectLayer` (coming in the future). You also don't need any trickery for palette-swap effects.
+Currently the engine uses OpenGL to render to a low-resolution framebuffer, which is
 
 ## Small footprint and lightweight
 
@@ -34,7 +31,8 @@ to be run on many smartphones and even single-board computers.
 ## Open-source without the hassle
 
 This engine is licensed under the Boost Software License 1.0, which means it can be used without attribution and even 
-in commercial applications, without any associated fees (licensing fee, per-install fee, etc.). Be aware that many components are on different licenses, such as SDL2 and ZLib.
+in commercial applications, without any associated fees (licensing fee, per-install fee, etc.). Be aware that many
+components are on different licenses, such as SDL2 and ZLib.
 
 # How to build
 
@@ -80,7 +78,7 @@ Test of the XML text parsing engine and the text drawing functions.
 
 ### snake
 
-A simple engine demonstration game. Does not use (much) external assets, and instead uses code renerated ones.
+A simple engine demonstration game.
 
 The classic game of Snake, where the player must collect apples (red dots) in order to grow.
 
@@ -90,7 +88,8 @@ Arkanoid-clone game. Currently under development.
 
 ### Windowmaker for Concrete/PPE
 
-Window layout editor with code generation features. (Dub package name is `wmfc`, to avoid issues from too long paths under Windows)
+Window layout editor with code generation features. (Dub package name is `wmfc`, to avoid issues from too long paths
+under Windows)
 
 ### PixelPerfectEditor
 
@@ -104,23 +103,19 @@ A must-have for this engine, due to it using some unusual features, like palette
 * Pixel-accurate retro graphics.
 * Either hard-transparency using blitter, or soft-transparency using alpha-blending.
 * Various effects with other composing functions.
-* A tile layer that is capable of displaying uniform tiles from a map, and has per-line scrolling via a delegate.
-* A transformable tile layer capable of Mode7 type effects at the cost of power-of-two only tile and map sizes.
-* A sprite layer with sprite scaling, simple slicing, and individual composing functions for each sprite.
-* GUI
+* A tile layer that is capable of displaying uniform tiles from a map, with some Mode7-esque affine transformation.
+* A sprite layer with sprite scaling and transformation, simple slicing, and individual composing functions for each
+sprite.
+* GUI through Concrete
 * Configuration file handling
 * Collision detection
 * Handling of multiple inputs
 * An audio subsystem capable of era-correct synthesis
-* Scripting via Lua (more languages might be added by others)
+* Scripting via WASM (coming soon!)
 * ...and many more
 
 # Known issues:
 
-* The engine doesn't clear the framebuffer to spare some CPU time. This can result in rapid flickering if the bottom 
-layer is scrolled out. To avoid it at all cost, you can use a warp mode on that layer.
-* There's also some speed issues as SDL2 writes the framebuffer back to the main memory. This will probably end up in 
-the slow replacement of SDL2's graphical side with something faster.
 * WindowMakerForConcrete and PixelPerfectEditor are currently unfinished. The former will be soon working fully with 
 extra features (such as undo/redo, snapping to grid and components), then the latter can be developed without an issue.
 * Error handling isn't fully realized, so a lot of errors might happen. You can help me by reporting errors, testing on
@@ -128,16 +123,11 @@ various systems.
 * Lots of untested and not fully tested features. Many are tested to at least run somewhat, but not tested in-depth. 
 Currently, I'm the sole maintainer of this project, and things are quite tough, especially after you factor in my 
 full-time job.
-* As of now, your executable must be in the folder `./bin-[cpuarch]-[OS]`, but it'll change likely by v1.0.0, since 
-certain companies (console manufacturers, phone OS suppliers, etc.) would like me to put the executable into the root 
-folder, and likely to group together all the asset folders into a bigger one.
-* Due to hard to debug reasons, the scripting doesn't work as intended.
+* Semi-implemented features, that need to be fully realized.
 
 # Future plans:
 
 * Compressed data file handling.
-* Moving most of the rendering pipeline to OpenGL, then using various tricks to ensure pixels will align as they 
-should, and it will enable things like transformable sprites, some 3D objects, etc.
 * Support for MacOS. (Contact me, if you have hardware for it and willing to contribute to the project)
 * Support for Android. (Either will be done by me later on, or contact me if you're up for this challenge)
 * Support for iOS. (Contact me if you have the hardware and you willing to contribute)
