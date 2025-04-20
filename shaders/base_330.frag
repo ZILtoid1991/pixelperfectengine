@@ -22,7 +22,6 @@ vec4 clut(vec2 position) {
 
 void main() {
     vec4 color = clut(texMapping);
-//     color.a = lightingData.a;
     color.a *= lightingCol.a;
     fragColor = color;
 }
