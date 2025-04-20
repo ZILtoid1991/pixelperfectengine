@@ -183,7 +183,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		]);
 		else outScrn.getOpenGLHandle();
 		const glStatus = loadOpenGL();
-		if (glStatus < GLSupport.gl33) {
+		version (Windows) if (glStatus < GLSupport.gl33) {
 			writeln("OpenGL not found!");
 		}
 		mainRaster = new Raster(848,480,outScrn);
@@ -271,8 +271,8 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[15], "recordB");
 		}
 		{
-			PianoRoll.pianoRollLarge = loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/PianoRollZI.tga"));
-			PianoRoll.pianoRollSmall = loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/PianoRollZO.tga"));
+			PianoRoll.pianoRollLarge = loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/pianoRollZI.tga"));
+			PianoRoll.pianoRollSmall = loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/pianoRollZO.tga"));
 		}
 		ih = new InputHandler();
 		ih.systemEventListener = this;
