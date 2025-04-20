@@ -90,14 +90,14 @@ subPackage {
 	sourcePaths "./test5/"
 	importPaths "./test5/"
 }
-subPackage {
+/*subPackage {
 	name "hello0"
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"
 	targetPath "./bin-$ARCH-$PLATFORM/"
 	sourcePaths "./hello0/"
 	importPaths "./hello0/"
-}
+}*/
 subPackage {
 	name "wmfc"
 	dependency "pixelperfectengine" version="*"
