@@ -17,6 +17,6 @@ uniform vec2 stepSizes;
 void main() {
     gl_Position = vec4(vec2(vert.xy) * stepSizes + vec2(-1.0, 1.0), 0.0, 1.0);
     texMapping = vec2(texPos);
-    lightingCol = vec4(color) * vec4(1.0 / 255, 1.0 / 255,  1.0 / 255, 1.0 / 255);
-    lightingDir = vec2(lDir) * vec2(1.0 / 32767, 1.0 / 32767);
+    lightingCol = vec4(color) * vec4(1.0 / 255.0, 1.0 / 255.0,  1.0 / 255.0, 1.0 / 255.0);
+    lightingDir = vec2(lDir) * vec2(1.0 / 32767.0, 1.0 / 32767.0);
 }

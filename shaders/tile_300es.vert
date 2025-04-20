@@ -25,7 +25,7 @@ void main() {
     texMapping.x = float(uint(texPos) & uint(0x0FFF));
     texMapping.y = float((texPos>>12) & uint(0x0FFF));
     texMapping.z = float(texPos>>24);
-    lightingData = vec4(color) * vec4(1.0 / 255, 1.0 / 255,  1.0 / 255, 1.0 / 255);
+    lightingData = vec4(color) * vec4(1.0 / 255.0, 1.0 / 255.0,  1.0 / 255.0, 1.0 / 255.0);
     lightingDir = vec2(lDir);
-    paletteSel = vec2(float(palSel & uint(0xFF)) * (1.0 / 255), float(palSel>>8) * (1.0 / 255));
+    paletteSel = vec2(float(palSel & uint(0xFF)) * (1.0 / 255.0), float(palSel>>8) * (1.0 / 255.0));
 }

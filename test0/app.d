@@ -77,7 +77,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		]);
 		else output.getOpenGLHandle();
 		const glStatus = loadOpenGL();
-		if (glStatus < GLSupport.gl33) {
+		version (Windows) if (glStatus < GLSupport.gl33) {
 			writeln("OpenGL not found!");
 		}
 		{
