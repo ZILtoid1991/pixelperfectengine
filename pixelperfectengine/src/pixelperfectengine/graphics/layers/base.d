@@ -143,6 +143,15 @@ abstract class Layer {
 	 */
 	public abstract int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) @trusted @nogc nothrow;
 	/**
+	 * Adds an OpenGL texture source to the layer, including framebuffers.
+	 * Params:
+	 *   texture = The texture ID.
+	 *   page = Page identifier.
+	 *   palSh = Palette shift amount, 8 is used for 8 bit images/256 color palettes.
+	 * Returns: Zero on success, or a specific error code.
+	 */
+	public abstract int addTextureSource_GL(GLuint texture, int page, ubyte palSh = 8) @trusted @nogc nothrow;
+	/**
 	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
 	 * Renders the layer's content to the texture target.
 	 * Params:
