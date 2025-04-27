@@ -59,6 +59,7 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 	protected static enum IS_RESIZED_R = 1 << 7;	///Set if window is being resized by the right edge
 	protected static enum IS_RESIZABLE_BY_MOUSE_H = 1 << 8;///Set if window is horizontally resizable
 	protected static enum IS_RESIZABLE_BY_MOUSE_V = 1 << 9;///Set if window is vertically resizable
+	protected static enum HAS_FRAMEBUFFER_OUTPUT = 1 << 10;///Set if window has a framebuffer output
 	//protected bool 					fullUpdate;		///True if window needs full redraw
 	//protected bool 					isActive;		///True if window is currently active
 	//protected bool 					headerUpdate;	///True if needs header update
@@ -203,19 +204,20 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		if(output.output.width < position.width || output.output.height < position.height) {
 			output = new BitmapDrawer(padToNext(4, position.width()), position.height());
 			handler.refreshWindow(this);
-			const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
-			int left, right = position.width;
-			Box b;
-			foreach (ISmallButton key; smallButtons) {
-				if (key.isLeftSide) {
-					b = Box.bySize(left, 0, headerHeight, headerHeight);
-					left += headerHeight;
-				} else {
-					b = Box.bySize(right - headerHeight, 0, headerHeight, headerHeight);
-					right -= headerHeight;
-				}
-				(cast(WindowElement)key).setPosition(b);
+
+		}
+		const int headerHeight = getStyleSheet().drawParameters["WindowHeaderHeight"];
+		int left, right = position.width;
+		Box b;
+		foreach (ISmallButton key; smallButtons) {
+			if (key.isLeftSide) {
+				b = Box.bySize(left, 0, headerHeight, headerHeight);
+				left += headerHeight;
+			} else {
+				b = Box.bySize(right - headerHeight, 0, headerHeight, headerHeight);
+				right -= headerHeight;
 			}
+			(cast(WindowElement)key).setPosition(b);
 		}
 	}
 	/**
@@ -316,6 +318,25 @@ public class Window : ElementContainer, Focusable, MouseEventReceptor {
 		if (val) flags |= IS_MOVED;
 		else flags &= ~IS_MOVED;
 		return flags & IS_MOVED ? true : false;
+	}
+	///Returns true if window has a framebuffer output instead of a bitmap one
+	public @property bool hasFramebufferOutput() @safe @nogc pure nothrow const {
+		return flags & HAS_FRAMEBUFFER_OUTPUT ? true : false;
+	}
+	/**
+	 * If the window has an OpenGL framebuffer output, it returns its ID, otherwise it returns 0.
+	 */
+	public uint getFramebufferOutput_GL() @safe @nogc pure nothrow const {
+		return 0;
+	}
+	public int getFramebufferWidth() @safe @nogc pure nothrow const {
+		return 0;
+	}
+	public int getFramebufferHeight() @safe @nogc pure nothrow const {
+		return 0;
+	}
+	public ubyte getFramebufferPaletteShift() @safe @nogc pure nothrow const {
+		return 0;
 	}
 	///Sets the title of the window
 	public void setTitle(Text s) @trusted {

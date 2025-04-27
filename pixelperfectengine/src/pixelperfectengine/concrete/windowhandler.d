@@ -329,7 +329,13 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 			spriteLayer.addSprite(65_535, 65_535, Point(0, 0));
 		} else {
 			const int n = whichWindow(sender);
-			spriteLayer.addBitmapSource(sender.getOutput, n);
+			if (n == -1) return;
+			if (sender.hasFramebufferOutput) {
+				spriteLayer.addTextureSource_GL(sender.getFramebufferOutput_GL, n, sender.getFramebufferWidth,
+						sender.getFramebufferHeight, sender.getFramebufferPaletteShift);
+			} else {
+				spriteLayer.addBitmapSource(sender.getOutput, n);
+			}
 			spriteLayer.createSpriteMaterial(n, n, Box.bySize(0, 0, sender.getPosition().width+1,
 					sender.getPosition().height+1));
 			spriteLayer.addSprite(n, n,
@@ -424,20 +430,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		}
 	}
 	void updateOutput(Window w) {
-		if (w is baseWindow) {
-			spriteLayer.addBitmapSource(w.getOutput, 65_535);
-			spriteLayer.createSpriteMaterial(65_535, 65_535, Box.bySize(0, 0, w.getPosition().width+1,
-					w.getPosition().height+1));
-			spriteLayer.addSprite(65_535, 65_535, w.getPosition);
-		} else {
-			const int n = whichWindow(w);
-			if (n == -1) return;
-			spriteLayer.addBitmapSource(w.getOutput, n);
-			spriteLayer.createSpriteMaterial(n, n, Box.bySize(0, 0, w.getPosition().width+1,
-					w.getPosition().height+1));
-			spriteLayer.addSprite(n, n,
-					Box(w.getPosition.left, w.getPosition.top, w.getPosition.right + 1, w.getPosition.bottom + 1));
-		}
+		refreshWindow(w);
 	}
 	//implementation of the `InputListener` interface
 	/**
