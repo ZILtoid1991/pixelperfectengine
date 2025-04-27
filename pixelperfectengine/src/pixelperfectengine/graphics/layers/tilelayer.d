@@ -203,6 +203,30 @@ public class TileLayer : Layer, ITileLayer {
 		}
 		return 0;
 	}
+	/**
+	 * Removes the seleced bitmap source and optionally runs the appropriate destructor code. Can remove bitmap
+	 * sources made by functions `addBitmapSource` and `addTextureSource_GL`.
+	 * Params:
+	 *   page = the page identifier of the to be removed texture.
+	 *   runDTor = if true, the texture will be deleted from the GPU memory. Normally should be true.
+	 * Returns: 0 on success, or -1 if page entry not found.
+	 */
+	public override int removeBitmapSource(int page, bool runDTor = true) @trusted @nogc nothrow {
+		return 0;
+	}
+	/**
+	 * Adds an OpenGL texture source to the layer, including framebuffers.
+	 * Params:
+	 *   texture = The texture ID.
+	 *   page = Page identifier.
+	 *   width = Width of the texture in pixels.
+	 *   height = Height of the texture in pixels.
+	 *   palSh = Palette shift amount, 8 is used for 8 bit images/256 color palettes.
+	 * Returns: Zero on success, or a specific error code.
+	 */
+	public override int addTextureSource_GL(GLuint texture, int page, int width, int height, ubyte palSh = 8) @trusted @nogc nothrow {
+		return -10;
+	}
 	/// Reprocesses the display list for the tilemap and applies anz changes made since.
 	public final void reprocessTilemap() @trusted @nogc nothrow {
 		// sX0 = sX;
