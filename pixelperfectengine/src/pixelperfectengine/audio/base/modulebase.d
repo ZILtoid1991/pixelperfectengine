@@ -200,5 +200,12 @@ public abstract class AudioModule {
 	 * Returns: The new level, or NaN if either channel number or value is out of bounds
 	 */
 	public abstract float setMasterLevel(float level, int channel = -1) @nogc nothrow;
-
+	/// Returns the names of the available channels.
+	public string[] getChannelNames() nothrow {
+		return null;
+	}
+	/// Returns all the available channels
+	public ubyte[] getAvailableChannels() nothrow {
+		return null;
+	}
 }

@@ -1,4 +1,11 @@
+/*******************************************
+ * Authors: László Szerémi
+ * PixelPerfectEngine/Test1 - MIDI Sequencer module
+ *******************************************/
+
 module test1.midiseq;
+
+import std.utf : toUTF32;
 
 import pixelperfectengine.concrete.window;
 
@@ -210,7 +217,7 @@ public class NoteEditor : WindowElement {
 
 		if (mce.state) {
 			switch (mce.button) {
-			case MouseButtons.Left:		//Place note
+			case MouseButtons.Left:		//Place note/play note
 				break;
 			case MouseButtons.Middle:	//Delete note
 				break;
@@ -220,7 +227,7 @@ public class NoteEditor : WindowElement {
 			}
 		} else {
 			switch (mce.button) {
-			case MouseButtons.Left:		//Place note
+			case MouseButtons.Left:		//Place note/stop note
 				break;
 			case MouseButtons.Middle:	//Delete note
 				break;
@@ -282,6 +289,11 @@ public class DisplayProcessor {
 	}
 }
 
+public struct ChannelInfo {
+	uint moduleNum;
+	uint channelNum;
+}
+
 public class SequencerCtrl : Window {
 	// MenuBar menuBar;
 	SmallButton button_new;
@@ -301,6 +313,9 @@ public class SequencerCtrl : Window {
 	SmallButton envEdit_imbc;
 	SmallButton envEdit_arit;
 
+	SmallButton horizZoom;
+	SmallButton noteLen;
+
 	HorizScrollBar seeker;
 	VertScrollBar vsb_notes;
 	PianoRoll pianoRoll;
@@ -310,6 +325,10 @@ public class SequencerCtrl : Window {
 	SequencerM2 seq;
 
 	ModuleConfig mcfg;
+
+	ChannelInfo[] channelList;
+
+	ChannelInfo[] selectedChannels;
 
 	public this(AudioDevKit adk, SequencerM2 seq, ModuleConfig mcfg) {
 		this.adk = adk;
@@ -441,6 +460,29 @@ public class SequencerCtrl : Window {
 	}
 	protected void button_stop_onClick(Event ev) {
 		seqStop();
+	}
+	protected void button_chnlList_onClick(Event ev) {
+		wstring[] chNames;
+		channelList.length = 0;
+		foreach (size_t i, AudioModule am ; mcfg.modules) {
+			string[] localChNames = am.getChannelNames();
+			ubyte[] chNums = am.getAvailableChannels();
+			string modName = mcfg.modNames[i];
+			foreach (string name ; localChNames) {
+				chNames ~= toUTF32("[" ~ modName ~ "]:" ~ name);
+			}
+			foreach (ubyte u ; chNums) {
+				channelList ~= ChannelInfo(cast(uint)i, u);
+			}
+		}
+		PopUpMenuElement[] menuElements;
+		foreach (wstring chName ; chNames) {
+			menuElements ~= new PopUpMenuElement("", chName);
+		}
+		handler.addPopUpElement(new PopUpMenu(menuElements, "chSel", &onChannelSelect));
+	}
+	protected void onChannelSelect(Event ev) {
+		MenuEvent me = cast(MenuEvent)ev;
 	}
 	protected void button_zoomOut_onToggle(Event ev) {
 		const vsb_length = (button_zoomOut.isChecked ? 384 : 910) - (position.height - 82);

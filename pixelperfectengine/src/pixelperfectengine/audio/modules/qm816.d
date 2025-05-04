@@ -4265,4 +4265,13 @@ public class QM816 : AudioModule {
 		}
 		return float.nan;
 	}
+	/// Returns the names of the available channels.
+	public override string[] getChannelNames() nothrow {
+		return ["QM816 : 0", "QM816 : 1", "QM816 : 2", "QM816 : 3", "QM816 : 4", "QM816 : 5", "QM816 : 6", "QM816 : 7",
+				"QM816 : 8", "QM816 : 9", "QM816 : 10", "QM816 : 11", "QM816 : 12", "QM816 : 13", "QM816 : 14", "QM816 : 15"];
+	}
+	/// Returns all the available channels
+	public override ubyte[] getAvailableChannels() nothrow {
+		return [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f];
+	}
 }

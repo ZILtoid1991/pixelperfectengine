@@ -1465,4 +1465,14 @@ public class PCM8 : AudioModule {
 		}
 		return float.nan;
 	}
+	/// Returns the names of the available channels.
+	public override string[] getChannelNames() nothrow {
+		return ["PCM8 : 0", "PCM8 : 1", "PCM8 : 2", "PCM8 : 3", "PCM8 : 4", "PCM8 : 5", "PCM8 : 6", "PCM8 : 7",
+				"PCM8 : 8", "PCM8 : 9", "PCM8 : 10", "PCM8 : 11", "PCM8 : 12", "PCM8 : 13", "PCM8 : 14", "PCM8 : 15",
+				"PCM8 : Globals"];
+	}
+	/// Returns all the available channels
+	public override ubyte[] getAvailableChannels() nothrow {
+		return [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10];
+	}
 }
