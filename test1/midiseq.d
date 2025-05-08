@@ -281,6 +281,30 @@ public class EnvelopEditor : WindowElement {
 	}
 }
 
+public class RhythmSelector : PopUpElement {
+	protected static immutable NOTELEN_AREA = Box(0, 8, 127, 39);
+	protected static immutable TUPLET_AREA = Box(0, 48, 127, 79);
+	protected static immutable DOT_AREA = Box(0, 88, 127, 103);
+	public void delegate(int noleLen, int tuplet, int dots) eventDeleg;
+	protected int noteLen;
+	protected int tuplet;
+	protected int dots;
+	public this(int noleLen, int tuplet, int dots) {
+		this.noteLen = noteLen;
+		this.tuplet = tuplet;
+		this.dots = dots;
+	}
+	public override void draw() {
+
+	}
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		parent.endPopUpSession(this);
+	}
+	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
+
+	}
+}
+
 public class DisplayProcessor {
 	void processCommands() {
 		// seek to the time position
