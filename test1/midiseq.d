@@ -282,26 +282,50 @@ public class EnvelopEditor : WindowElement {
 }
 
 public class RhythmSelector : PopUpElement {
-	protected static immutable NOTELEN_AREA = Box(0, 8, 127, 39);
-	protected static immutable TUPLET_AREA = Box(0, 48, 127, 79);
-	protected static immutable DOT_AREA = Box(0, 88, 127, 103);
+	protected static immutable Box NOTELEN_AREA = Box(0, 8, 127, 39);
+	protected static immutable Box TUPLET_AREA = Box(0, 48, 127, 79);
+	protected static immutable Box DOT_AREA = Box(0, 88, 127, 103);
+	protected static immutable Box[] NOTELEN_TABLE = [Box(0, 8, 15, 23), Box(16, 8, 31, 23), Box(32, 8, 15, 23),
+			Box(48, 8, 63, 23), Box(64, 8, 79, 23), Box(80, 8, 95, 23), Box(96, 8, 111, 23), Box(112, 8, 127, 23),
+			Box(0, 24, 15, 39), Box(16, 24, 31, 39), Box(32, 24, 47, 39)];
+	protected static immutable Box[] TUPLET_TABLE = [Box(0, 48, 15, 63), Box(16, 48, 31, 63), Box(32, 48, 15, 63),
+			Box(48, 48, 63, 63), Box(64, 48, 79, 63), Box(80, 48, 95, 63), Box(96, 48, 111, 63), Box(112, 48, 127, 63),
+			Box(0, 64, 15, 79), Box(16, 64, 31, 79), Box(32, 64, 15, 79),
+			Box(48, 64, 63, 79), Box(64, 64, 79, 79), Box(80, 64, 95, 79), Box(96, 64, 111, 79), Box(112, 64, 127, 79)];
+	protected static immutable Box[] DOT_TABLE = [Box(0, 88, 15, 95), Box(16, 88, 31, 95), Box(32, 88, 15, 95),
+			Box(48, 88, 63, 95), Box(64, 88, 79, 95), Box(80, 88, 95, 95), Box(96, 88, 111, 95), Box(112, 88, 127,953),
+			Box(0, 96, 15, 103)];
 	public void delegate(int noleLen, int tuplet, int dots) eventDeleg;
 	protected int noteLen;
 	protected int tuplet;
 	protected int dots;
+	protected int mouseMoveX, mouseMoveY;
 	public this(int noleLen, int tuplet, int dots) {
+		import pixelperfectengine.graphics.draw;
 		this.noteLen = noteLen;
 		this.tuplet = tuplet;
 		this.dots = dots;
+		output = new BitmapDrawer(128, 128);
 	}
 	public override void draw() {
-
+		import pixelperfectengine.graphics.draw;
+		StyleSheet ss = getStyleSheet();
+		output.bitBLT(Point(0, 0), ss.getImage("ADKrhythmnot"), Box(0,0,127,103));
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (position.isBetween(mce.x, mce.y)) {
+
+		}
 		parent.endPopUpSession(this);
 	}
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
-
+		if (position.isBetween(mme.x, mme.y)) {
+			mouseMoveX = mme.x - position.left;
+			mouseMoveY = mme.y - position.top;
+		} else {
+			mouseMoveX = -1;
+			mouseMoveY = -1;
+		}
 	}
 }
 
