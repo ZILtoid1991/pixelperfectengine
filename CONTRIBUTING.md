@@ -9,7 +9,7 @@ People known for doing malicious commits (like purposefully hiding security issu
 Other disallowed behavior include:
 * Trolling.
 * Trying to steer the project in directions it wasn't planned to go in.
-* Bothering the development team with vague ideas.
+* Bothering the development team with vague ideas (Don't be an "idea guy").
 
 ## Testing
 
@@ -24,7 +24,7 @@ If parts of the code lack documentation, or the documentation is not quality, an
 
 Rather than just an entirely self-documenting code, one should be more verbose and tell things like what the function, class, or struct actually does, go through a brief about the algorithm it uses, and if possible, credit the person and/or other source of said algorithm.
 
-Due to the unreliable nature of LLMs (including but not limited to: ChatGPT, Copilot, Gemini, LLaMA), and them being trained on both copyrighted text and text with various licenses, we disallow the use of such tools even with heavy editing.
+Due to the unreliable nature of LLMs (including but not limited to: ChatGPT, Copilot, Gemini, LLaMA), and them being trained on both copyrighted text and text with various licenses, we disallow the use of such tools even with heavy editing. Machine translation is allowed as long as people are warned about the nature of it (due to high potential of mistake), and any error is otherwise being actively revised in the text.
 
 ## UX design
 
@@ -65,7 +65,9 @@ Engine extensions, such as additional audio modules, can be under other licenses
 
 ### On AI (Large-Language Model) generated code
 
-Contribution of LLM generated code is forbidden due to the very same issues mentioned in the section of documentation.
+Contribution of LLM generated code is forbidden due to the very same issues mentioned in the section about documentation.
+
+Speech-to-text does not constitute as the same however, and can be used by those whose preferred way for coding involves things like that.
 
 ## Assets and example games
 
@@ -85,10 +87,10 @@ Due to the nature of this project, assets for testing purposes are needed. Examp
 
 Engine-exclusive assets, such as:
 * maps made in the engine's own format,
-* music composed in the M2 format,
+* music composed in the IMBC format,
 * presets, configurations, etc., made for the engine's own audio subsystem;
-* scrips and/or code for various purposes,
-can be sold for profit, on appropriate channels. The maintainers will not take any responsibility neither for piracy of such materials, or the quality of theirs. The maintainers also don't want to do anything with paid mods.
+* scripts and/or code for various purposes,
+can be sold for profit, on appropriate channels. The maintainers will not take any responsibility neither for piracy of such materials (although does not endorse it), or the quality of theirs. The maintainers also don't want to do anything with paid mods.
 
 ### On AI (Large-Language Model) generated assets
 
