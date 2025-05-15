@@ -299,37 +299,71 @@ public class RhythmSelector : PopUpElement {
 	protected int noteLen;
 	protected int tuplet;
 	protected int dots;
-	protected int mouseMoveX, mouseMoveY;
-	public this(int noleLen, int tuplet, int dots) {
+	protected Point mouseMove;
+	public this(int noleLen, int tuplet, int dots, void delegate(int noleLen, int tuplet, int dots) eventDeleg) {
 		import pixelperfectengine.graphics.draw;
 		this.noteLen = noteLen;
 		this.tuplet = tuplet;
 		this.dots = dots;
-		output = new BitmapDrawer(128, 128);
+		this.eventDeleg = eventDeleg;
+		output = new BitmapDrawer(128, 104);
+	}
+	private int searchAreas(immutable Box[] haysack, Point needle) @safe @nogc pure nothrow const {
+		for (int i ; i < haysack.length ; i++) {
+			if (haysack[i].isBetween(needle)) return i;
+		}
+		return -1;
 	}
 	public override void draw() {
 		import pixelperfectengine.graphics.draw;
 		StyleSheet ss = getStyleSheet();
 		output.bitBLT(Point(0, 0), ss.getImage("ADKrhythmnot"), Box(0,0,127,103));
+		output.drawBox(NOTELEN_TABLE[noteLen], ss.getColor("yellow"));
+		output.drawBox(TUPLET_TABLE[tuplet], ss.getColor("yellow"));
+		output.drawBox(DOT_TABLE[dots], ss.getColor("yellow"));
+		if (NOTELEN_AREA.isBetween(mouseMove)) {
+			const int areaNum = searchAreas(NOTELEN_TABLE, Point(mouseMove));
+			if (areaNum != -1) output.drawBox(NOTELEN_TABLE[areaNum], ss.getColor("select"));
+		} else if (TUPLET_AREA.isBetween(mouseMove)) {
+			const int areaNum = searchAreas(TUPLET_TABLE, Point(mouseMove));
+			if (areaNum != -1) output.drawBox(TUPLET_TABLE[areaNum], ss.getColor("select"));
+		} else if (DOT_AREA.isBetween(mouseMove)) {
+			const int areaNum = searchAreas(DOT_TABLE, Point(mouseMove));
+			if (areaNum != -1) output.drawBox(DOT_TABLE[areaNum], ss.getColor("select"));
+		}
+		parent.updateOutput(this);
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
 		if (position.isBetween(mce.x, mce.y)) {
-
+			mouseMove = Point(mce.x - position.left, mce.y - position.top);
+			if (NOTELEN_AREA.isBetween(mouseMove)) {
+				const int areaNum = searchAreas(NOTELEN_TABLE, Point(mouseMove));
+				if (areaNum != -1) noteLen = areaNum;
+			} else if (TUPLET_AREA.isBetween(mouseMove)) {
+				const int areaNum = searchAreas(TUPLET_TABLE, Point(mouseMove));
+				if (areaNum != -1) tuplet = areaNum;
+			} else if (DOT_AREA.isBetween(mouseMove)) {
+				const int areaNum = searchAreas(DOT_TABLE, Point(mouseMove));
+				if (areaNum != -1) dots = areaNum;
+			}
+			if (eventDeleg !is null) eventDeleg(noteLen, tuplet, dots);
 		}
 		parent.endPopUpSession(this);
 	}
 	public override void passMME(MouseEventCommons mec, MouseMotionEvent mme) {
 		if (position.isBetween(mme.x, mme.y)) {
-			mouseMoveX = mme.x - position.left;
-			mouseMoveY = mme.y - position.top;
+			mouseMove.x = mme.x - position.left;
+			mouseMove.y = mme.y - position.top;
 		} else {
-			mouseMoveX = -1;
-			mouseMoveY = -1;
+			mouseMove.x = -1;
+			mouseMove.y = -1;
 		}
+		draw();
 	}
 }
 
 public class DisplayProcessor {
+
 	void processCommands() {
 		// seek to the time position
 		// clear display systems
@@ -377,6 +411,8 @@ public class SequencerCtrl : Window {
 	ChannelInfo[] channelList;
 
 	ChannelInfo[] selectedChannels;
+
+	ulong hPos;
 
 	public this(AudioDevKit adk, SequencerM2 seq, ModuleConfig mcfg) {
 		this.adk = adk;
@@ -434,6 +470,7 @@ public class SequencerCtrl : Window {
 		addElement(seeker);
 		addElement(vsb_notes);
 		vsb_notes.onScrolling = &vsb_notes_onScroll;
+		seeker.onScrolling = &seeker_onScroll;
 
 		pianoRoll = new PianoRoll("pr", Box.bySize(2, 32, 32, position.height - 98));
 		pianoRoll.hScrollRedirect = seeker;
@@ -445,6 +482,7 @@ public class SequencerCtrl : Window {
 		noteEdit.vScrollRedirect = vsb_notes;
 		addElement(noteEdit);
 	}
+
 	override public void onResize() {
 		seeker.setPosition(Box.bySize(34, 16, position.width - 52, 16));
 		const vsb_length = (button_zoomOut.isChecked ? 384 : 910) - (position.height - 98);
@@ -544,5 +582,8 @@ public class SequencerCtrl : Window {
 		noteEdit.vScrollAmount = vsb_notes.value;
 		pianoRoll.draw();
 		noteEdit.draw();
+	}
+	protected void seeker_onScroll(Event ev) {
+
 	}
 }
