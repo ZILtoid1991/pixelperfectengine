@@ -322,13 +322,13 @@ public class RhythmSelector : PopUpElement {
 		output.drawBox(TUPLET_TABLE[tuplet], ss.getColor("yellow"));
 		output.drawBox(DOT_TABLE[dots], ss.getColor("yellow"));
 		if (NOTELEN_AREA.isBetween(mouseMove)) {
-			const int areaNum = searchAreas(NOTELEN_TABLE, Point(mouseMove));
+			const int areaNum = searchAreas(NOTELEN_TABLE, mouseMove);
 			if (areaNum != -1) output.drawBox(NOTELEN_TABLE[areaNum], ss.getColor("select"));
 		} else if (TUPLET_AREA.isBetween(mouseMove)) {
-			const int areaNum = searchAreas(TUPLET_TABLE, Point(mouseMove));
+			const int areaNum = searchAreas(TUPLET_TABLE, mouseMove);
 			if (areaNum != -1) output.drawBox(TUPLET_TABLE[areaNum], ss.getColor("select"));
 		} else if (DOT_AREA.isBetween(mouseMove)) {
-			const int areaNum = searchAreas(DOT_TABLE, Point(mouseMove));
+			const int areaNum = searchAreas(DOT_TABLE, mouseMove);
 			if (areaNum != -1) output.drawBox(DOT_TABLE[areaNum], ss.getColor("select"));
 		}
 		parent.updateOutput(this);
@@ -337,13 +337,13 @@ public class RhythmSelector : PopUpElement {
 		if (position.isBetween(mce.x, mce.y)) {
 			mouseMove = Point(mce.x - position.left, mce.y - position.top);
 			if (NOTELEN_AREA.isBetween(mouseMove)) {
-				const int areaNum = searchAreas(NOTELEN_TABLE, Point(mouseMove));
+				const int areaNum = searchAreas(NOTELEN_TABLE, mouseMove);
 				if (areaNum != -1) noteLen = areaNum;
 			} else if (TUPLET_AREA.isBetween(mouseMove)) {
-				const int areaNum = searchAreas(TUPLET_TABLE, Point(mouseMove));
+				const int areaNum = searchAreas(TUPLET_TABLE, mouseMove);
 				if (areaNum != -1) tuplet = areaNum;
 			} else if (DOT_AREA.isBetween(mouseMove)) {
-				const int areaNum = searchAreas(DOT_TABLE, Point(mouseMove));
+				const int areaNum = searchAreas(DOT_TABLE, mouseMove);
 				if (areaNum != -1) dots = areaNum;
 			}
 			if (eventDeleg !is null) eventDeleg(noteLen, tuplet, dots);
@@ -548,7 +548,7 @@ public class SequencerCtrl : Window {
 		seqStop();
 	}
 	protected void button_chnlList_onClick(Event ev) {
-		wstring[] chNames;
+		dstring[] chNames;
 		channelList.length = 0;
 		foreach (size_t i, AudioModule am ; mcfg.modules) {
 			string[] localChNames = am.getChannelNames();
@@ -562,7 +562,7 @@ public class SequencerCtrl : Window {
 			}
 		}
 		PopUpMenuElement[] menuElements;
-		foreach (wstring chName ; chNames) {
+		foreach (dstring chName ; chNames) {
 			menuElements ~= new PopUpMenuElement("", chName);
 		}
 		handler.addPopUpElement(new PopUpMenu(menuElements, "chSel", &onChannelSelect));
