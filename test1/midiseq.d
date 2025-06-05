@@ -6,6 +6,8 @@
 module test1.midiseq;
 
 import std.utf : toUTF32;
+import std.algorithm.searching : countUntil;
+import std.algorithm.mutation : remove;
 
 import pixelperfectengine.concrete.window;
 
@@ -14,6 +16,8 @@ import pixelperfectengine.audio.m2.seq;
 import pixelperfectengine.audio.base.config;
 import test1.app;
 import collections.sortedlist;
+import midi2.types.structs;
+import midi2.types.enums;
 
 const ushort[128] pianoRollPositionsZI = [
 //    0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
@@ -37,11 +41,18 @@ const ushort[128] pianoRollPositionsZO = [
 	 93, 90, 87, 84, 81, 78, 75, 72, 69, 66, 63, 60, 57, 54, 51, 48, //6
 	 45, 42, 39, 36, 33, 30, 27, 24, 21, 18, 15, 12,  9,  6,  3,  0, //7
 ];
-
+public ubyte searchNote(int pos, bool type) {
+	return cast(ubyte)(127 - countUntil(type ? pianoRollPositionsZI : pianoRollPositionsZO), cast(ushort)pos);
+}
+/**
+ * Implements a piano roll display using the Concrete subsystem of the engine.
+ */
 public class PianoRoll : WindowElement {
 	int vScrollAmount;
 	HorizScrollBar hScrollRedirect;
 	VertScrollBar vScrollRedirect;
+	AudioModule selectedModule;
+	ubyte selectedChannel;
 	protected static enum ZOOMOUT = 1<<16;	///Zoomout mode flag: view is vertically zoomed out to allow a better overview.
 	static Bitmap8Bit pianoRollLarge;
 	static Bitmap8Bit pianoRollSmall;
@@ -73,43 +84,65 @@ public class PianoRoll : WindowElement {
 		hScrollRedirect.passMWE(mec, mwe);
 		vScrollRedirect.passMWE(mec, mwe);
 	}
+	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		UMP cmdToSend;
+		if (mce.state) cmdToSend = UMP(MessageType.MIDI2, selectedChannel>>4, MIDI2_0Cmd.NoteOn, selectedChannel & 0x0F);
+		else cmdToSend = UMP(MessageType.MIDI2, selectedChannel>>4, MIDI2_0Cmd.NoteOff, selectedChannel & 0x0F);
+		uint velocity = mce.y - position.left;
+		if (selectedModule !is null) selectedModule.midiReceive(cmdToSend, 0x07FF_0000 | (velocity<<26));
+	}
 }
-
+/// Stores data regarding
 public struct RhythmNotationCmd {
 	long pos;
 	ushort upper = 4;
 	ushort lower = 4;
 	float bpm = 120.0;
 	int opCmp(RhythmNotationCmd rhs) @nogc @safe nothrow pure const {
-		if (this.pos > rhs.pos) return 1;
-		else if (this.pos < rhs.pos) return -1;
-		return 0;
+		return cast(int)((this.pos > rhs.pos) - (this.pos < rhs.pos));
+	}
+	bool opEquals(RhythmNotationCmd rhs) @nogc @safe nothrow pure const {
+		return this.opCmp(rhs) == 0;
+	}
+	size_t toHash() @nogc @safe nothrow pure const {
+		return 0;		///Take that serve-D!!!
+	}
+}
+
+public struct NoteCmd {
+	long pos;
+	uint dur;
+	uint auxField;
+	ushort devID;
+	ubyte channel;
+	ubyte note;
+	ushort vel;
+	ushort flags;
+	static enum MIDI1_0 = 1<<0;
+	static enum AFTERTOUCH_CMD = 1<<1;
+	static enum POLY_AFTERTOUCH_CMD = 1<<2;
+	static enum AUX_EXPRESSION = 1<<3;
+	static enum AUX_PITCHDATA = 1<<4;
+	int opCmp(NoteCmd rhs) @nogc @safe nothrow pure const {
+		return cast(int)((this.pos > rhs.pos) - (this.pos < rhs.pos));
+	}
+	bool opEquals(NoteCmd rhs) @nogc @safe nothrow pure const {
+		return this.opCmp(rhs) == 0;
+	}
+	size_t toHash() @nogc @safe nothrow pure const {
+		return 0;		///Take that serve-D!!!
 	}
 }
 
 public class NoteEditor : WindowElement {
-	struct NoteCmd {
-		long pos;
-		uint dur;
-		ushort devID;
-		ubyte channel;
-		ubyte note;
-		ushort vel;
-		ushort flags;
-		static enum MIDI1_0 = 1<<0;
-		int opCmp(NoteCmd rhs) @nogc @safe nothrow pure const {
-			if (this.pos > rhs.pos) return 1;
-			else if (this.pos < rhs.pos) return -1;
-			return 0;
-		}
-	}
+
 	alias NoteCmdList = SortedList!NoteCmd;
 	NoteCmdList notes;	///Currently displayed notes
 	NoteCmdList backUp;
 	ulong ticsPerSecs = 48_000;
 	int hScrollAmount;
 	int vScrollAmount;
-	int hDiv = 4000;	///Amount of ticks per horizontal pixel
+	int hDiv = 4096;	///Amount of ticks per horizontal pixel
 	SortedList!RhythmNotationCmd rhtmNot;
 	MouseClickEvent prevMouseClickEvent;
 	HorizScrollBar hScrollRedirect;
@@ -244,26 +277,36 @@ public class NoteEditor : WindowElement {
 		vScrollRedirect.passMWE(mec, mwe);
 	}
 }
-
+public enum EnvCtrlCmdType : ushort {
+	init,
+	IMBCCtrlCmd,
+	MIDICmd
+}
+public struct EnvCtrlCmd {
+	long pos;
+	int dur;
+	ushort type;
+	ushort device;
+	union {
+		M2Command imbcCtrlCmd;
+		UMP midiCmd;
+	}
+	uint value;
+	int opCmp(NoteCmd rhs) @nogc @safe nothrow pure const {
+		return cast(int)((this.pos > rhs.pos) - (this.pos < rhs.pos));
+	}
+	bool opEquals(NoteCmd rhs) @nogc @safe nothrow pure const {
+		return this.opCmp(rhs) == 0;
+	}
+	size_t toHash() @nogc @safe nothrow pure const {
+		return 0;		///Take that serve-D!!!
+	}
+}
 public class EnvelopEditor : WindowElement {
-	struct EnvelopCmd {
-		long pos;
-		ushort device;
-		ubyte channel;
-		ubyte targetType;
-		ushort target;
-		uint value;
-	}
-	struct PatternCtrlCmd {
-		long pos;
-		M2Command cmd;
-	}
-	union DrawableCommand {
-		EnvelopCmd ec;
-		PatternCtrlCmd pcc;
-	}
+
 	long hScrollAmount;
-	ulong timebase;
+	ulong ticsPerSecs = 48_000;
+	int hDiv = 4096;
 	protected static enum CMDMODE = 1<<16;	///Command mode flag: lists command events instead of displaying the selected envelop slot
 	public this(string source, Box position) {
 		this.position = position;
@@ -374,6 +417,16 @@ public class DisplayProcessor {
 public struct ChannelInfo {
 	uint moduleNum;
 	uint channelNum;
+	int opCmp(const ChannelInfo rhs) const pure nothrow @nogc @safe {
+		const l0 = this.moduleNum | (this.channelNum<<16), l1 = rhs.moduleNum | (rhs.channelNum<<16);
+		return (l0 > l1) - (l0 < l1);
+	}
+	bool opEquals(const ChannelInfo rhs) const pure nothrow @nogc @safe {
+		return opCmp(rhs) == 0;
+	}
+	size_t toHash() const pure nothrow @nogc @safe {
+		return this.moduleNum | (this.channelNum<<16);
+	}
 }
 
 public class SequencerCtrl : Window {
@@ -387,7 +440,7 @@ public class SequencerCtrl : Window {
 	CheckBox button_zoomOut;
 	SmallButton button_chnlList;
 
-	SmallButton envEdit_chSel;
+	SmallButton envEdit_pitchbend;
 	SmallButton envEdit_cc;
 	SmallButton envEdit_pc;
 	SmallButton envEdit_sysex;
@@ -396,7 +449,7 @@ public class SequencerCtrl : Window {
 	SmallButton envEdit_arit;
 
 	SmallButton horizZoom;
-	SmallButton noteLen;
+	SmallButton button_noteLen;
 
 	HorizScrollBar seeker;
 	VertScrollBar vsb_notes;
@@ -409,10 +462,16 @@ public class SequencerCtrl : Window {
 	ModuleConfig mcfg;
 
 	ChannelInfo[] channelList;
+	dstring[] channelNames;
 
 	ChannelInfo[] selectedChannels;
 
 	ulong hPos;
+	/// Stores the number of previously parsed audio modules. Reset when new modules are added.
+	size_t prevAudioModuleNumber;
+	/// Stores the note length for the current rhythm.
+	/// 1: main division, 2: tuplet division, 3: dotted rhythm
+	int[3] notelen;
 
 	public this(AudioDevKit adk, SequencerM2 seq, ModuleConfig mcfg) {
 		this.adk = adk;
@@ -446,8 +505,18 @@ public class SequencerCtrl : Window {
 		button_zoomOut.onToggle = &button_zoomOut_onToggle;
 		addHeaderButton(button_chnlList);
 
+		button_noteLen = new SmallButton("notelenB", "notelenA", "notelen", Box.bySize(2, 16, 16, 16));
+		button_noteLen.onMouseLClick = &button_noteLen_onClick;
+		addElement(button_noteLen);
+
+		horizZoom = new SmallButton("hzoomB", "hzoomA", "hzoom", Box.bySize(position.width - 18, 16, 16, 16));
+		horizZoom.onMouseLClick = &horizZoom_in;
+		horizZoom.onMouseRClick = &horizZoom_out;
+		addElement(horizZoom);
+
+
 		const envEditBegin = position.height - 65;
-		envEdit_chSel = new SmallButton("chSelB", "chSelA", "envEdit_chSel", Box.bySize(2, envEditBegin, 16, 16));
+		envEdit_pitchbend = new SmallButton("pbendB", "pbendA", "envEdit_chSel", Box.bySize(2, envEditBegin, 16, 16));
 		envEdit_cc = new SmallButton("ccB", "ccA", "envEdit_cc", Box.bySize(2, envEditBegin + 16, 16, 16));
 		envEdit_pc = new SmallButton("pcB", "pcA", "envEdit_pc", Box.bySize(2, envEditBegin + 32, 16, 16));
 		envEdit_sysex = new SmallButton("sysExB", "sysExA", "envEdit_sysex", Box.bySize(2, envEditBegin + 48, 16, 16));
@@ -455,7 +524,7 @@ public class SequencerCtrl : Window {
 		envEdit_imbc = new SmallButton("imbcCmdB", "imbcCmdA", "envEdit_imbc", Box.bySize(18, envEditBegin, 16, 16));
 		envEdit_arit = new SmallButton("aritCmdB", "aritCmdA", "envEdit_arit", Box.bySize(18, envEditBegin + 16, 16, 16));
 
-		addElement(envEdit_chSel);
+		addElement(envEdit_pitchbend);
 		addElement(envEdit_cc);
 		addElement(envEdit_pc);
 		addElement(envEdit_sysex);
@@ -492,7 +561,7 @@ public class SequencerCtrl : Window {
 		noteEdit.setPosition(Box(34, 32, position.width - 18, position.height - 66));
 
 		const envEditBegin = position.height - 65;
-		envEdit_chSel.setPosition(Box.bySize(2, envEditBegin, 16, 16));
+		envEdit_pitchbend.setPosition(Box.bySize(2, envEditBegin, 16, 16));
 		envEdit_cc.setPosition(Box.bySize(2, envEditBegin + 16, 16, 16));
 		envEdit_pc.setPosition(Box.bySize(2, envEditBegin + 32, 16, 16));
 		envEdit_sysex.setPosition(Box.bySize(2, envEditBegin + 48, 16, 16));
@@ -547,28 +616,58 @@ public class SequencerCtrl : Window {
 	protected void button_stop_onClick(Event ev) {
 		seqStop();
 	}
-	protected void button_chnlList_onClick(Event ev) {
-		dstring[] chNames;
+	public void reparseAudioModulesAndChannels() {
+		channelNames.length = 0;
 		channelList.length = 0;
 		foreach (size_t i, AudioModule am ; mcfg.modules) {
 			string[] localChNames = am.getChannelNames();
 			ubyte[] chNums = am.getAvailableChannels();
 			string modName = mcfg.modNames[i];
 			foreach (string name ; localChNames) {
-				chNames ~= toUTF32("[" ~ modName ~ "]:" ~ name);
+				channelNames ~= toUTF32("[" ~ modName ~ "]:" ~ name);
 			}
 			foreach (ubyte u ; chNums) {
 				channelList ~= ChannelInfo(cast(uint)i, u);
 			}
 		}
+		prevAudioModuleNumber = mcfg.modules.length;
+	}
+	protected void button_chnlList_onClick(Event ev) {
+		if (prevAudioModuleNumber == mcfg.modules.length) reparseAudioModulesAndChannels();
 		PopUpMenuElement[] menuElements;
-		foreach (dstring chName ; chNames) {
+		foreach (size_t i, dstring chName ; chNames) {
+			dstring isSelected = selectedChannels.countUntil(channelList[i]) == -1 ? "" : "X";
 			menuElements ~= new PopUpMenuElement("", chName);
 		}
 		handler.addPopUpElement(new PopUpMenu(menuElements, "chSel", &onChannelSelect));
 	}
 	protected void onChannelSelect(Event ev) {
 		MenuEvent me = cast(MenuEvent)ev;
+		ChannelInfo selChnl = channelList[me.itemNum];
+		const isChannelSelected = selectedChannels.countUntil(selChnl);
+		if (isChannelSelected == -1) {
+			selectedChannels ~= selChnl;
+		} else {
+			selectedChannels.remove(isChannelSelected);
+		}
+	}
+	protected void button_noteLen_onClick(Event ev) {
+		handler.addPopUpElement(new RhythmSelector(notelen[0], notelen[1], notelen[2]));
+	}
+	protected void onNotelenSelect(int noleLen, int tuplet, int dots) {
+		notelen[0] = noleLen;
+		notelen[1] = tuplet;
+		notelen[2] = dots;
+	}
+	protected void horizZoom_in(Event ev) {
+		if (noteEdit.hDiv > 32) {
+			noteEdit.hDiv /= 2;
+		}
+	}
+	protected void horizZoom_out(Event ev) {
+		if (noteEdit.hDiv < 65_536) {
+			noteEdit.hDiv *= 2;
+		}
 	}
 	protected void button_zoomOut_onToggle(Event ev) {
 		const vsb_length = (button_zoomOut.isChecked ? 384 : 910) - (position.height - 82);
@@ -583,6 +682,7 @@ public class SequencerCtrl : Window {
 		pianoRoll.draw();
 		noteEdit.draw();
 	}
+
 	protected void seeker_onScroll(Event ev) {
 
 	}
