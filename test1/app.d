@@ -187,12 +187,12 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			writeln("OpenGL not found!");
 		}
 		mainRaster = new Raster(848,480,outScrn);
-		mainRaster.readjustViewport(840 * guiScaling, 480 * guiScaling, 0, 0);
+		mainRaster.readjustViewport(848 * guiScaling, 480 * guiScaling, 0, 0);
 		windowing = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
 		//windowing.addSprite(new Bitmap8Bit(848, 480), -65_536, 0, 0);
-		wh = new WindowHandler(1696,960,848,480,windowing,outScrn);
+		wh = new WindowHandler(848 * guiScaling,480 * guiScaling,848,480,windowing,outScrn);
 		mainRaster.loadPaletteChunk(loadPaletteFromFile(resolvePath("%SYSTEM%/concreteGUIE1.tga")), 0);
 		mainRaster.addLayer(windowing, 0);
 		INIT_CONCRETE();
@@ -253,8 +253,8 @@ public class AudioDevKit : InputListener, SystemEventListener {
 			globalDefaultStyle.setImage(customGUIElems[41], "hzoomB");
 			globalDefaultStyle.setImage(customGUIElems[42], "notelenA");
 			globalDefaultStyle.setImage(customGUIElems[43], "notelenB");
-			globalDefaultStyle.setImage(customGUIElems[44], "notemodA");
-			globalDefaultStyle.setImage(customGUIElems[45], "notemodB");
+			globalDefaultStyle.setImage(customGUIElems[44], "notetieA");
+			globalDefaultStyle.setImage(customGUIElems[45], "notetieB");
 			globalDefaultStyle.setImage(customGUIElems[46], "pbendA");
 			globalDefaultStyle.setImage(customGUIElems[47], "pbendB");
 			globalDefaultStyle.setImage(customGUIElems[48], "velocityA");
@@ -273,6 +273,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		{
 			PianoRoll.pianoRollLarge = loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/pianoRollZI.tga"));
 			PianoRoll.pianoRollSmall = loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/pianoRollZO.tga"));
+			globalDefaultStyle.setImage(loadBitmapFromFile!Bitmap8Bit(resolvePath("%SYSTEM%/ADKrhytmnot.tga")),"ADKrhythmnot");
 		}
 		ih = new InputHandler();
 		ih.systemEventListener = this;

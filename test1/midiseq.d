@@ -42,7 +42,16 @@ const ushort[128] pianoRollPositionsZO = [
 	 45, 42, 39, 36, 33, 30, 27, 24, 21, 18, 15, 12,  9,  6,  3,  0, //7
 ];
 public ubyte searchNote(int pos, bool type) {
-	return cast(ubyte)(127 - countUntil(type ? pianoRollPositionsZI : pianoRollPositionsZO), cast(ushort)pos);
+	if (type) {
+		for (int i ; i < 127 ; i++) {
+			if (pianoRollPositionsZO[i] < pos) return cast(ubyte)i;
+		}
+	} else {
+		for (int i ; i < 127 ; i++) {
+			if (pianoRollPositionsZI[i] < pos) return cast(ubyte)i;
+		}
+	}
+	return 0xFF;
 }
 /**
  * Implements a piano roll display using the Concrete subsystem of the engine.
@@ -75,6 +84,7 @@ public class PianoRoll : WindowElement {
 	public bool zoomOut(bool val) {
 		if (val) flags |= ZOOMOUT;
 		else flags &= ~ZOOMOUT;
+		if (vScrollAmount >= 384 - position.height) vScrollAmount = 384 - position.height;
 		return val;
 	}
 	public bool zoomOut() @safe @nogc pure nothrow {
@@ -88,7 +98,8 @@ public class PianoRoll : WindowElement {
 		UMP cmdToSend;
 		if (mce.state) cmdToSend = UMP(MessageType.MIDI2, selectedChannel>>4, MIDI2_0Cmd.NoteOn, selectedChannel & 0x0F);
 		else cmdToSend = UMP(MessageType.MIDI2, selectedChannel>>4, MIDI2_0Cmd.NoteOff, selectedChannel & 0x0F);
-		uint velocity = mce.y - position.left;
+		cmdToSend.note = searchNote(mce.y - position.top + vScrollAmount, zoomOut);
+		uint velocity = mce.x - position.left;
 		if (selectedModule !is null) selectedModule.midiReceive(cmdToSend, 0x07FF_0000 | (velocity<<26));
 	}
 }
@@ -123,10 +134,13 @@ public struct NoteCmd {
 	static enum POLY_AFTERTOUCH_CMD = 1<<2;
 	static enum AUX_EXPRESSION = 1<<3;
 	static enum AUX_PITCHDATA = 1<<4;
-	int opCmp(NoteCmd rhs) @nogc @safe nothrow pure const {
+	static enum NOTE_FROM_REGISTER = 1<<5;
+	static enum VEL_FROM_REGISTER = 1<<6;
+	static enum PITCH_FROM_REGISTER = 1<<7;
+	int opCmp(const NoteCmd rhs) @nogc @safe nothrow pure const {
 		return cast(int)((this.pos > rhs.pos) - (this.pos < rhs.pos));
 	}
-	bool opEquals(NoteCmd rhs) @nogc @safe nothrow pure const {
+	bool opEquals(const NoteCmd rhs) @nogc @safe nothrow pure const {
 		return this.opCmp(rhs) == 0;
 	}
 	size_t toHash() @nogc @safe nothrow pure const {
@@ -188,8 +202,8 @@ public class NoteEditor : WindowElement {
 		hScrollAmount = scrollAmount;
 	}
 	public override void draw() {
-		static ubyte[] ptrn0 = [0, 0, 0, 1, 1];
-		static ubyte[] ptrn1 = [0, 1, 1];
+		static ubyte[] ptrn0 = [0x10, 0x10, 0x10, 0x1F, 0x1F];
+		static ubyte[] ptrn1 = [0x10, 0x1F, 0x1F];
 
 		parent.clearArea(position);
 
@@ -292,10 +306,10 @@ public struct EnvCtrlCmd {
 		UMP midiCmd;
 	}
 	uint value;
-	int opCmp(NoteCmd rhs) @nogc @safe nothrow pure const {
+	int opCmp(const NoteCmd rhs) @nogc @safe nothrow pure const {
 		return cast(int)((this.pos > rhs.pos) - (this.pos < rhs.pos));
 	}
-	bool opEquals(NoteCmd rhs) @nogc @safe nothrow pure const {
+	bool opEquals(const NoteCmd rhs) @nogc @safe nothrow pure const {
 		return this.opCmp(rhs) == 0;
 	}
 	size_t toHash() @nogc @safe nothrow pure const {
@@ -328,28 +342,29 @@ public class RhythmSelector : PopUpElement {
 	protected static immutable Box NOTELEN_AREA = Box(0, 8, 127, 39);
 	protected static immutable Box TUPLET_AREA = Box(0, 48, 127, 79);
 	protected static immutable Box DOT_AREA = Box(0, 88, 127, 103);
-	protected static immutable Box[] NOTELEN_TABLE = [Box(0, 8, 15, 23), Box(16, 8, 31, 23), Box(32, 8, 15, 23),
+	protected static immutable Box[] NOTELEN_TABLE = [Box(0, 8, 15, 23), Box(16, 8, 31, 23), Box(32, 8, 47, 23),
 			Box(48, 8, 63, 23), Box(64, 8, 79, 23), Box(80, 8, 95, 23), Box(96, 8, 111, 23), Box(112, 8, 127, 23),
 			Box(0, 24, 15, 39), Box(16, 24, 31, 39), Box(32, 24, 47, 39)];
-	protected static immutable Box[] TUPLET_TABLE = [Box(0, 48, 15, 63), Box(16, 48, 31, 63), Box(32, 48, 15, 63),
+	protected static immutable Box[] TUPLET_TABLE = [Box(0, 48, 15, 63), Box(16, 48, 31, 63), Box(32, 48, 47, 63),
 			Box(48, 48, 63, 63), Box(64, 48, 79, 63), Box(80, 48, 95, 63), Box(96, 48, 111, 63), Box(112, 48, 127, 63),
-			Box(0, 64, 15, 79), Box(16, 64, 31, 79), Box(32, 64, 15, 79),
+			Box(0, 64, 15, 79), Box(16, 64, 31, 79), Box(32, 64, 47, 79),
 			Box(48, 64, 63, 79), Box(64, 64, 79, 79), Box(80, 64, 95, 79), Box(96, 64, 111, 79), Box(112, 64, 127, 79)];
-	protected static immutable Box[] DOT_TABLE = [Box(0, 88, 15, 95), Box(16, 88, 31, 95), Box(32, 88, 15, 95),
+	protected static immutable Box[] DOT_TABLE = [Box(0, 88, 15, 95), Box(16, 88, 31, 95), Box(32, 88, 47, 95),
 			Box(48, 88, 63, 95), Box(64, 88, 79, 95), Box(80, 88, 95, 95), Box(96, 88, 111, 95), Box(112, 88, 127,953),
 			Box(0, 96, 15, 103)];
-	public void delegate(int noleLen, int tuplet, int dots) eventDeleg;
+	public void delegate(int noteLen, int tuplet, int dots) eventDeleg;
 	protected int noteLen;
 	protected int tuplet;
 	protected int dots;
 	protected Point mouseMove;
-	public this(int noleLen, int tuplet, int dots, void delegate(int noleLen, int tuplet, int dots) eventDeleg) {
+	public this(int noteLen, int tuplet, int dots, void delegate(int noteLen, int tuplet, int dots) eventDeleg) {
 		import pixelperfectengine.graphics.draw;
 		this.noteLen = noteLen;
 		this.tuplet = tuplet;
 		this.dots = dots;
 		this.eventDeleg = eventDeleg;
 		output = new BitmapDrawer(128, 104);
+		position = Box.bySize(0,0,128, 103);
 	}
 	private int searchAreas(immutable Box[] haysack, Point needle) @safe @nogc pure nothrow const {
 		for (int i ; i < haysack.length ; i++) {
@@ -366,17 +381,18 @@ public class RhythmSelector : PopUpElement {
 		output.drawBox(DOT_TABLE[dots], ss.getColor("yellow"));
 		if (NOTELEN_AREA.isBetween(mouseMove)) {
 			const int areaNum = searchAreas(NOTELEN_TABLE, mouseMove);
-			if (areaNum != -1) output.drawBox(NOTELEN_TABLE[areaNum], ss.getColor("select"));
+			if (areaNum != -1) output.drawBox(NOTELEN_TABLE[areaNum], ss.getColor("selection"));
 		} else if (TUPLET_AREA.isBetween(mouseMove)) {
 			const int areaNum = searchAreas(TUPLET_TABLE, mouseMove);
-			if (areaNum != -1) output.drawBox(TUPLET_TABLE[areaNum], ss.getColor("select"));
+			if (areaNum != -1) output.drawBox(TUPLET_TABLE[areaNum], ss.getColor("selection"));
 		} else if (DOT_AREA.isBetween(mouseMove)) {
 			const int areaNum = searchAreas(DOT_TABLE, mouseMove);
-			if (areaNum != -1) output.drawBox(DOT_TABLE[areaNum], ss.getColor("select"));
+			if (areaNum != -1) output.drawBox(DOT_TABLE[areaNum], ss.getColor("selection"));
 		}
 		parent.updateOutput(this);
 	}
 	public override void passMCE(MouseEventCommons mec, MouseClickEvent mce) {
+		if (!mce.state) return;
 		if (position.isBetween(mce.x, mce.y)) {
 			mouseMove = Point(mce.x - position.left, mce.y - position.top);
 			if (NOTELEN_AREA.isBetween(mouseMove)) {
@@ -405,10 +421,77 @@ public class RhythmSelector : PopUpElement {
 	}
 }
 
-public class DisplayProcessor {
-
+public struct DisplayProcessor {
+	M2Song* currentSong;
+	long positionL, window, currPos;
+	uint selectedPattern;
+	/// Current position for wait command
+	uint dataPos;
+	/// One previous position for wait command if not aligned
+	uint dataPos0;
+	RhythmNotationCmd firstRNC;
 	void processCommands() {
 		// seek to the time position
+		// Best case scenario: time is perfectly aligned
+		uint[] currPtrn = currentSong.ptrnData[selectedPattern];
+		while (currPos < positionL) {
+			M2Command currCmd = M2Command(currPtrn[dataPos]);
+			dataPos++;
+			switch (currCmd.bytes[0]) {
+				case OpCode.lnwait:
+					currPos += currCmd.read24BitField | (cast(ulong)currPtrn[dataPos]<<32L);
+					dataPos++;
+					if (currPos < positionL) dataPos0 = dataPos;
+					break;
+				case OpCode.shwait:
+					currPos += currCmd.read24BitField;
+					if (currPos < positionL) dataPos0 = dataPos;
+					break;
+				case OpCode.array, OpCode.trnsps, OpCode.ctrl:
+					dataPos++;
+					break;
+				case OpCode.jmp:
+					dataPos+=2;
+					break;
+				case OpCode.emit:
+					dataPos+=currCmd.bytes[1];
+					break;
+				case OpCode.emit_r:
+					dataPos+=3;
+					break;
+				case OpCode.display:
+					switch (currCmd.bytes[1]) {
+						case DisplayCmdCode.setVal:
+							switch (currCmd.hwords[1]) {
+								case SetDispValCode.BPM:
+									uint val = currPtrn[dataPos];
+									float valF = *cast(float*)(cast(void*)&val);
+									firstRNC.bpm = valF;
+									break;
+								case SetDispValCode.timeSignature:
+									M2Command reader = currPtrn[dataPos];
+									firstRNC.upper = reader.hwords[0];
+									firstRNC.lower = reader.hwords[1];
+									break;
+								default:
+									break;
+							}
+							dataPos++;
+							break;
+						case DisplayCmdCode.setVal64:
+							dataPos+=2;
+							break;
+						case 0xF0: .. case 0xFF:
+							dataPos += currCmd.hwords[1]>>2 + (currCmd.hwords[1] & 3 ? 1 : 0);
+							break;
+						default:
+							break;
+					}
+					break;
+				default:
+					break;
+			}
+		}
 		// clear display systems
 		// process commands, then add them to the appropriate display systems
 	}
@@ -425,7 +508,7 @@ public struct ChannelInfo {
 		return opCmp(rhs) == 0;
 	}
 	size_t toHash() const pure nothrow @nogc @safe {
-		return this.moduleNum | (this.channelNum<<16);
+		return this.moduleNum ^ (this.channelNum<<16);
 	}
 }
 
@@ -450,6 +533,7 @@ public class SequencerCtrl : Window {
 
 	SmallButton horizZoom;
 	SmallButton button_noteLen;
+	CheckBox button_noteTie;
 
 	HorizScrollBar seeker;
 	VertScrollBar vsb_notes;
@@ -464,7 +548,8 @@ public class SequencerCtrl : Window {
 	ChannelInfo[] channelList;
 	dstring[] channelNames;
 
-	ChannelInfo[] selectedChannels;
+	// ChannelInfo[] selectedChannels;
+	ChannelInfo lastSelectedChannel;
 
 	ulong hPos;
 	/// Stores the number of previously parsed audio modules. Reset when new modules are added.
@@ -504,10 +589,14 @@ public class SequencerCtrl : Window {
 		addHeaderButton(button_zoomOut);
 		button_zoomOut.onToggle = &button_zoomOut_onToggle;
 		addHeaderButton(button_chnlList);
+		button_chnlList.onMouseLClick = &button_chnlList_onClick;
 
 		button_noteLen = new SmallButton("notelenB", "notelenA", "notelen", Box.bySize(2, 16, 16, 16));
 		button_noteLen.onMouseLClick = &button_noteLen_onClick;
 		addElement(button_noteLen);
+
+		button_noteTie = new CheckBox("notetieB", "notetieA", "notetie", Box.bySize(18,16,16,16));
+		addElement(button_noteTie);
 
 		horizZoom = new SmallButton("hzoomB", "hzoomA", "hzoom", Box.bySize(position.width - 18, 16, 16, 16));
 		horizZoom.onMouseLClick = &horizZoom_in;
@@ -532,7 +621,7 @@ public class SequencerCtrl : Window {
 		addElement(envEdit_imbc);
 		addElement(envEdit_arit);
 
-		seeker = new HorizScrollBar(1, "seeker", Box.bySize(34, 16, position.width - 52, 16));
+		seeker = new HorizScrollBar(1, "seeker", Box.bySize(34, 16, position.width - 52, 15));
 		vsb_notes = new VertScrollBar(910 - (position.height - 98), "notes",
 				Box.bySize(position.width - 18, 32, 16, position.height - 98));
 
@@ -546,19 +635,20 @@ public class SequencerCtrl : Window {
 		pianoRoll.vScrollRedirect = vsb_notes;
 		addElement(pianoRoll);
 
-		noteEdit = new NoteEditor(Box(34, 32, position.width - 18, position.height - 66));
+		noteEdit = new NoteEditor(Box(34, 32, position.width - 19, position.height - 66));
 		noteEdit.hScrollRedirect = seeker;
 		noteEdit.vScrollRedirect = vsb_notes;
 		addElement(noteEdit);
+		reparseAudioModulesAndChannels();
 	}
 
 	override public void onResize() {
-		seeker.setPosition(Box.bySize(34, 16, position.width - 52, 16));
+		seeker.setPosition(Box.bySize(34, 16, position.width - 52, 15));
 		const vsb_length = (button_zoomOut.isChecked ? 384 : 910) - (position.height - 98);
 		vsb_notes.maxValue(vsb_length > 0 ? vsb_length : 0);
 		vsb_notes.setPosition(Box.bySize(position.width - 18, 32, 16, position.height - 98));
 		pianoRoll.setPosition(Box.bySize(2, 32, 32, position.height - 98));
-		noteEdit.setPosition(Box(34, 32, position.width - 18, position.height - 66));
+		noteEdit.setPosition(Box(34, 32, position.width - 19, position.height - 66));
 
 		const envEditBegin = position.height - 65;
 		envEdit_pitchbend.setPosition(Box.bySize(2, envEditBegin, 16, 16));
@@ -568,6 +658,8 @@ public class SequencerCtrl : Window {
 		envEdit_etc.setPosition(Box.bySize(18, envEditBegin + 48, 16, 16));
 		envEdit_imbc.setPosition(Box.bySize(18, envEditBegin, 16, 16));
 		envEdit_arit.setPosition(Box.bySize(18, envEditBegin + 16, 16, 16));
+
+		horizZoom.setPosition(Box.bySize(position.width - 18, 16, 16, 16));
 
 		super.onResize();
 	}
@@ -635,27 +727,32 @@ public class SequencerCtrl : Window {
 	protected void button_chnlList_onClick(Event ev) {
 		if (prevAudioModuleNumber == mcfg.modules.length) reparseAudioModulesAndChannels();
 		PopUpMenuElement[] menuElements;
-		foreach (size_t i, dstring chName ; chNames) {
-			dstring isSelected = selectedChannels.countUntil(channelList[i]) == -1 ? "" : "X";
-			menuElements ~= new PopUpMenuElement("", chName);
+		foreach (size_t i, dstring chName ; channelNames) {
+			// dstring isSelected = selectedChannels.countUntil(channelList[i]) == -1 ? "X" : "O";
+			dstring isSelected = channelList[i] == lastSelectedChannel ? "<" : "";
+			menuElements ~= new PopUpMenuElement("", chName, isSelected);
 		}
 		handler.addPopUpElement(new PopUpMenu(menuElements, "chSel", &onChannelSelect));
 	}
 	protected void onChannelSelect(Event ev) {
 		MenuEvent me = cast(MenuEvent)ev;
 		ChannelInfo selChnl = channelList[me.itemNum];
-		const isChannelSelected = selectedChannels.countUntil(selChnl);
-		if (isChannelSelected == -1) {
-			selectedChannels ~= selChnl;
-		} else {
-			selectedChannels.remove(isChannelSelected);
-		}
+		// const isChannelSelected = selectedChannels.countUntil(selChnl);
+		// if (isChannelSelected == -1) {
+			// selectedChannels ~= selChnl;
+		// } else {
+			// selectedChannels.remove(isChannelSelected);
+		// }
+		lastSelectedChannel = selChnl;
+
+		pianoRoll.selectedChannel = cast(ubyte)selChnl.channelNum;
+		pianoRoll.selectedModule = mcfg.modules[selChnl.moduleNum];
 	}
 	protected void button_noteLen_onClick(Event ev) {
-		handler.addPopUpElement(new RhythmSelector(notelen[0], notelen[1], notelen[2]));
+		handler.addPopUpElement(new RhythmSelector(notelen[0], notelen[1], notelen[2], &onNotelenSelect));
 	}
-	protected void onNotelenSelect(int noleLen, int tuplet, int dots) {
-		notelen[0] = noleLen;
+	protected void onNotelenSelect(int noteLen, int tuplet, int dots) {
+		notelen[0] = noteLen;
 		notelen[1] = tuplet;
 		notelen[2] = dots;
 	}
