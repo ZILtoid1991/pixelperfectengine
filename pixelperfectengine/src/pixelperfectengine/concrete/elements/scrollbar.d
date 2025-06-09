@@ -107,6 +107,8 @@ public class VertScrollBar : ScrollBar {
 		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		//draw background
+		Box background = position;
+		background.right += 1;
 		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
 		//draw slider
 		//const int travelLength = position.height - (position.width * 2) - _barLength;
@@ -120,7 +122,7 @@ public class VertScrollBar : ScrollBar {
 		//draw buttons
 		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("upArrowB") : ss.getImage("upArrowA"));
 		Point lower = position.cornerLL;
-		lower.y -= position.width;
+		lower.y -= position.width - 1;
 		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("downArrowB") : ss.getImage("downArrowA"));
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));
@@ -192,7 +194,9 @@ public class HorizScrollBar : ScrollBar {
 		if (parent is null || state == ElementState.Hidden) return;
 		StyleSheet ss = getStyleSheet();
 		//draw background
-		parent.drawFilledBox(position, ss.getColor("SliderBackground"));
+		Box background = position;
+		background.bottom += 1;
+		parent.drawFilledBox(background, ss.getColor("SliderBackground"));
 		//draw slider
 		//const int travelLength = position.width - position.height * 2;
 		const int value0 = valRatio < 1.0 ? value : cast(int)(value / valRatio);
@@ -206,7 +210,7 @@ public class HorizScrollBar : ScrollBar {
 		//draw buttons
 		parent.bitBLT(position.cornerUL, flags & MINUS_PRESSED ? ss.getImage("leftArrowB") : ss.getImage("leftArrowA"));
 		Point lower = position.cornerUR;
-		lower.x -= position.height;
+		lower.x -= position.height - 1;
 		parent.bitBLT(lower, flags & PLUS_PRESSED ? ss.getImage("rightArrowB") : ss.getImage("rightArrowA"));
 		if (state == ElementState.Disabled) {
 			parent.bitBLTPattern(position, ss.getImage("ElementDisabledPtrn"));

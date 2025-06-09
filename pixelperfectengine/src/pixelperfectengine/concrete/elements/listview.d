@@ -661,7 +661,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 					- _header.height) : totalHeight - (position.height - _header.height);
 			
 			const Box target = Box(position.right - ss.drawParameters["HorizScrollBarSize"] + 2, position.top, 
-					position.right, needsHSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] : position.bottom);
+					position.right, needsHSB ? position.bottom - ss.drawParameters["VertScrollBarSize"] - 1 : position.bottom - 1);
 			vertSlider = new VertScrollBar(maxvalue, source ~ "VSB", target);
 			vertSlider.setParent(this);
 			vertSlider.value = vPos;
@@ -671,7 +671,7 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 			const int maxvalue = needsVSB ? totalWidth - (position.width - ss.drawParameters["VertScrollBarSize"]) : 
 					totalWidth - position.width;
 			const Box target = Box(position.left, position.bottom - ss.drawParameters["VertScrollBarSize"] + 2, 
-					needsVSB ? position.right - ss.drawParameters["HorizScrollBarSize"] : position.right,
+					needsVSB ? position.right - ss.drawParameters["HorizScrollBarSize"] - 1 : position.right - 1,
 					position.bottom);
 			horizSlider = new HorizScrollBar(maxvalue, source ~ "VSB", target);
 			horizSlider.setParent(this);
