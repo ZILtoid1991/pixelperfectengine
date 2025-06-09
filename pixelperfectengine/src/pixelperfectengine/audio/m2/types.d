@@ -11,7 +11,7 @@ public import pixelperfectengine.system.exc;
 public enum OpCode : ubyte {
 	nullcmd		=   0x00,		///Null command
 	shwait		=   0x01,		///Short wait (24 bits)
-	lnwait		=   0x02,		///Long wait (48 bits)
+	lnwait		=   0x02,		///Long wait (56 bits)
 	emit		=   0x03,		///Emit command list to device
 	jmp			=   0x04,		///Conditional jump
 	chain_par	=   0x05,		///Chain in pattern in parallel

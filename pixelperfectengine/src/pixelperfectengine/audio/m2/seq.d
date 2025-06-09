@@ -133,7 +133,7 @@ public class SequencerM2 : Sequencer {
 						debug assert(!data.word, "Malformed IMBC instruction!");//This means a malformed command, bail out if debugging is enabled.
 						break;
 					case OpCode.lnwait:			//Long wait
-						const ulong tics = data.read24BitField | patternData[ptrn.position];	//Get amount of tics for this wait command
+						const ulong tics = data.read24BitField | (cast(ulong)patternData[ptrn.position]<<32L);	//Get amount of tics for this wait command
 						const ulong timeBase = getTimeBase();
 						ptrn.timeToWait += hnsecs(timeBase * tics);		//calculate new wait amount, plus amount for any inaccuracy from sequencer steping.
 						ptrn.position++;
