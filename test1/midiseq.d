@@ -431,10 +431,11 @@ public struct DisplayProcessor {
 	uint dataPos0;
 	RhythmNotationCmd firstRNC;
 	void processCommands() {
-		// seek to the time position
-		// Best case scenario: time is perfectly aligned
+		// clear display systems
+		// reset the DixplayProcessor status
 		uint[] currPtrn = currentSong.ptrnData[selectedPattern];
 		while (currPos < positionL) {
+
 			M2Command currCmd = M2Command(currPtrn[dataPos]);
 			dataPos++;
 			switch (currCmd.bytes[0]) {
@@ -492,7 +493,7 @@ public struct DisplayProcessor {
 					break;
 			}
 		}
-		// clear display systems
+
 		// process commands, then add them to the appropriate display systems
 	}
 }
