@@ -4,7 +4,7 @@ PixelPerfectEngine is a game engine/framework primarily designed for retro pixel
 
 ## Current engine features
 
-* CPU rendered graphics.
+* GPU rendered graphics.
 * Live color lookup.
 * Multiple tile and sprite layers.
 * Era-accurate shimmering when scaling.
@@ -14,7 +14,6 @@ PixelPerfectEngine is a game engine/framework primarily designed for retro pixel
 
 ## Planned engine features
 
-* Moving most of the rendering to the GPU.
 * Shadow/highlight effects.
 * Physics subsystem.
 * General purpose scripting.
@@ -34,7 +33,7 @@ You can also donate your testing time, knowledge, and coding directly to the eng
 The engine does not require a lot of computational power, however it requires:
 
 * A 128 bit vector unit.
-* OpenGL 2.1 or OpenGL ES 2.0 graphics. (OpenGL 3.3 / 3.0 ES recommended).
+* OpenGL 3.3 or OpenGL ES 3.0 graphics.
 * At least 100MB free system memory.
 * An audio device (low latency devices recommended).
 * Some form of input device.
@@ -61,9 +60,9 @@ As an alternative to VSCode, Kate is recommended. You'll need to install serve-d
 
 ## Paths
 
-By default, the engine stores all executables in a `./bin-[CPUarch]-[OS]` subfolder, such as `./bin-x86_64-windows`. The engine will work without modification if the executables from that folder are moved to the root as long as it can detect the presence of the `./system` folder. It is recommended to use the function `resolvePath()` alongside with path symbols to avoid issues related to portability.
+By default, the engine stores all executables in a `./bin-[CPUarch]-[OS]` subfolder, such as `./bin-x86_64-windows`. The engine will work without modification if the executables from that folder are moved to the root as long as it can detect the presence of the `./system` folder as long as paths are processed first with the `resolvePath()` function.
 
-Path symbols are treated similar to the operating system's, and both starts and ends with a `%` symbol, e.g. `%SHADERS%`. The `%` symbol can be escaped by placing two of them side-by-side. Custom path symbols can be created with the line `pathSymbols["SYMBOLNAME"] = pathRoot ~ "/yourpath/";`. Path symbols also can used for other purposes, like localization settings. Can be escaped, e.g. `%%APPDATA%%` to access system paths.
+Path symbols are treated similar to the operating system's, and both starts and ends with a `%` symbol, e.g. `%SHADERS%`. The `%` symbol can be escaped by placing two of them side-by-side. Custom path symbols can be created with the line `pathSymbols["SYMBOLNAME"] = pathRoot ~ "/yourpath/";`. Path symbols also can used for other purposes, like localization settings. Can be escaped, e.g. `%%APPDATA%%` to access system paths, but not recommended due to potential portability issues.
 
 ### More important path symbols and folders.
 
@@ -98,27 +97,41 @@ The tilemap is a 2D array, that consists of 32 bit data chunks with the followin
 ```
 | Byte 3 | Byte 2 | Byte 1 | Byte 0 |
 |76543210|76543210|76543210|76543210|
-|PPPPPPPP|ZZZZZRVH|SSSSSSSS|SSSSSSSS|
+|ZRVHPPPP|PPPPPPPP|SSSSSSSS|SSSSSSSS|
 ```
 
 Or:
 
 * 16 bits of tile selector, 0xFF_FF equals with empty tile. (S)
+* * 12 bits of palette selector. (P)
 * 1 bit for horizontal mirroring. (H)
 * 1 bit for vertical mirroring. (V)
-* 1 bit for X-Y axis rotate enable, using alongside of the mirroring flags, it enables 90 and 270º rotation among others (only for OpenGL). (R)
-* 5 bits of priority ID, used for Z-Buffer effects (only for OpenGL). (Z)
-* 8 bits of palette selector. (P)
+* 1 bit for X-Y axis rotate enable, using alongside of the mirroring flags, it enables 90 and 270º rotation among others. Will cause incorrect behavior with non 1:1 ratio tiles. (R)
+* 1 bit for priority. If tile layer is linked with another one, they will be sharing tilemap and image information data. All of the tiles will be displayed on the primary tilelayer, unless this one is the to high, then it is sent to the secondary layer. (Z)
  
 Examples:
 
 * `0x0000_FFFF` is a transparent tile. The other half of the tile data will be ignored.
-* `0x0400_0101` is a tile of ID `0101` using palette `04`, with priority value set to 0, and no mirroring or rotation.
-* `0x0035_002c` is a tile of ID `002c` using palette `00`, with priority value set to 6, with horizontal mirroring and rotation.
+* `0x0004_0101` is a tile of ID `0101` using palette `04`, with priority value set to 0, and no mirroring or rotation.
+* `0xD000_002c` is a tile of ID `002c` using palette `00`, with priority value set to 1, with horizontal mirroring and rotation.
 
 #### Extensions
 
+Tilemap extensions are provided for both graphics and logic, see `format/mapdata.md` for more information on the subject.
+
+By general, graphics extensions are used to add shadow/highlight effects to the tiles and other objects
+
+### Tilesheets
+
+(NOTE TO SELF: insert example tilesheet here)
+
+
+
 # Sprites
+
+Sprites are fully independently movable and transformable objects on the screen.
+
+# Colllisions
 
 # Audio
 
@@ -140,4 +153,4 @@ The game engine is using WASM (WebAssembly - please note that despite its name, 
 **Best practices:**
 
 * WASM can still hurt performance, thus time-critical elements (physics, graphics, audio, etc.) should be handled low-level.
-* Generally, scripts should be scripts and not general game logic, but target application might override this rule (e.g. modding).
+* Generally, scripts should be scripts and not general game logic, but target application might override this rule (e.g. heavy modding support).
