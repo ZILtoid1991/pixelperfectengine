@@ -131,6 +131,25 @@ By general, graphics extensions are used to add shadow/highlight effects to the 
 
 Sprites are fully independently movable and transformable objects on the screen.
 
+## Spritesheets
+
+(NOTE TO SELF: insert example spritesheet here)
+
+A spritesheet contains multiple sprites on one texture, which can be displayed on the sprite layer. One sprite layer can handle multiple spritesheets without color depth or size restrictions. A spritesheet can even be a single sprite, as is done in the GUI subsystem, but should be avoided. A framebuffer also can be set as a spritesheet.
+
+Each sprite are defined as follows:
+- The spritesheet identifier.
+- Shader program identifier.
+- An `x` and `y` coordinate for the sprite origin.
+- A `width` and `height` for the sprite sizes.
+- Optionally a bitdepth value can be supplied.
+
+### Managing spritesheets.
+
+The function `pixelperfectengine.graphics.layers.base.Layer.addBitmapSource` can be used for adding a spritesheet to a sprite layer. `pixelperfectengine.graphics.layer.base.Layer.removeBitmapSource` removes said sprite sheet. `pixelperfectengine.graphics.layer.base.Layer.addTextureSource_GL` adds a texture directly, which can even be a framebuffer.
+
+Function `pixelperfectengine.graphics.layers.interfaces.ISpriteLayer.createSpriteMaterial` can create a sprite material from a sheet, while `pixelperfectengine.graphics.layers.interfaces.ISpriteLayer.removeSpriteMaterial` removes said material without removing any associated sprites.
+
 # Colllisions
 
 # Audio
