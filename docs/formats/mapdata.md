@@ -103,9 +103,9 @@ C|C|C|C|C|C|C|C|C|C|C|C|C|C|C|C|S|S|S|S|S|S|S|S|S|S|S|S|H|V|I|p
 * C/tileID: selects the tile to be used. Default value is 0xFFFF, which is transparent. 0x0000 is the same tile that repeats in warp mode `tileRepeat`.
 * S/paletteSel:selects the palette to be used for the tile.
 * H/hMirror: horizontally mirrors the tile.
-* * V/vMirror: vertically mirrors the tile.
+* V/vMirror: vertically mirrors the tile.
 * I/xyInvert: inverts the X and Y axes, which can be used to implement 90 and 270 degree rotation effects. This effect might look wrong on tiles with non-square tiles.
-* p/priority: if set, then the tile should be drawn on the second pass, over the sprites.
+* p/priority: if set, then the tile should be drawn on a linked tile layer, which can be put over e.g. the sprites.
  
 ## Graphics attribute extension
 
