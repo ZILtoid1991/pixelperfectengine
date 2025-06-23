@@ -2,7 +2,7 @@
 
 PixelPerfectEngine is a game engine/framework primarily designed for retro pixelart style games.
 
-## Current engine features
+## Currently implemented and tested engine features
 
 * GPU rendered graphics.
 * Live color lookup.
@@ -14,7 +14,6 @@ PixelPerfectEngine is a game engine/framework primarily designed for retro pixel
 
 ## Planned engine features
 
-* Shadow/highlight effects.
 * Physics subsystem.
 * General purpose scripting.
 
@@ -98,11 +97,13 @@ There are two palettes in the game engine:
 
 The palettes are 2D textures, 256x256 in size. This enables 256 subpalettes, each with 256 color indices. The palette can be further partitioned into smaller chunks as long as they follow the power of two scheme and are bound to the texture sizes, this could enable 4096 subpalettes with 16 color indices, 1024 subpalettes with 64 color indices, etc. Make sure your bitmaps only use the lower portion of the palette indices. The palette does not need to be partitioned all the way the same way, you can freely mix and match 32 color subpalettes for sprites, 16 color subpalettes for foreground tiles, and 8 and 4 color subpalettes for the various background tiles used for parallax scrolling.
 
+Additionally, color-cycling effects work as expected. Per-scanline color-cycling needs to be done through shaders.
+
 ## Color math
 
 Color math can be used to apply:
 - Shadow and highlights
-- Alternative color palette selection (works with monochomatic)
+- Alternative color palette selection (works with monochomatic palettes the best)
 - Primitive normal mapping (lighting) effects
 - Almost anything else
 
@@ -111,6 +112,10 @@ on the selected graphics objects.
 The engine is supplied with two extra fragment shaders. One of them does hardlight (multiply below 0.5, screen above 0.5) to the graphics elements. The other on top of it also applies a per-pixel lighting effect based on the pixel's normal values.
 
 # Basics of graphics layers
+
+## Layer linking
+
+## Layer masks
 
 # Tile maps and tile layers
 
@@ -153,7 +158,7 @@ By general, graphics extensions are used to add shadow/highlight effects to the 
 
 (NOTE TO SELF: insert example tilesheet here)
 
-
+Tilesheets contain graphic elements that can be displayed on a tile layer. Each tile graphic is defined with a single x and y coordinate, as the rest can be 
 
 # Sprites
 
