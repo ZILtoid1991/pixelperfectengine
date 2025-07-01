@@ -199,6 +199,9 @@ abstract class Layer {
 		}
 	}
 }
+public class MaskLayer {
+	protected Bitmap32Bit source;
+}
 public enum TextureUploadError {
 	init,
 	TextureFormatNotSupported	=	-1,
