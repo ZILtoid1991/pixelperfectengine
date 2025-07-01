@@ -74,6 +74,7 @@ public class TileLayer : Layer, ITileLayer {
 			return id;
 		}
 	}
+	protected TileLayer		linkedLayer;	/// Stores reference to the secondary layer if layer linking is used, null otherwise
 	protected __m128d		textureRec;
 	protected int			tileX;	/// Tile width
 	protected int			tileY;	/// Tile height
