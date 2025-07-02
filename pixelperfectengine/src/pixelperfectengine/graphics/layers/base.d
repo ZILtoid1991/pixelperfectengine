@@ -23,25 +23,12 @@ package import CPUblit.colorlookup;
 package import CPUblit.transform;
 
 import inteli.emmintrin;
-alias RenderFunc = @nogc pure nothrow void function(uint* src, uint* dest, size_t length, ubyte value);
-/// For generating a blitter function with value modifier
-@nogc pure nothrow void localBlt(uint* src, uint* dest, size_t length, ubyte value) {
-	blitter!uint(src, dest, length);
-}
-/// For generating a copy function with value modifier
-@nogc pure nothrow void localCpy(uint* src, uint* dest, size_t length, ubyte value) {
-	copy!uint(src, dest, length);
-}
-/// For generating a XOR blitter function with value modifier
-@nogc pure nothrow void localXOR(uint* src, uint* dest, size_t length, ubyte value) {
-	xorBlitter!uint(src, dest, length);
-}
+
 /**
  * The basis of all layer classes, containing function pointers for rendering.
  * Can be overloaded for user defined layers.
  */
 abstract class Layer {
-	protected RenderFunc mainRenderingFunction;		///Used to implement changeable renderers for each layers
 	/+protected @nogc pure nothrow void function(ushort* src, uint* dest, uint* palette, size_t length) 
 			mainColorLookupFunction;+/
 	//protected @nogc void function(uint* src, int length) mainHorizontalMirroringFunction;
@@ -49,14 +36,12 @@ abstract class Layer {
 			main8BitColorLookupFunction;+/
 	/+protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length, int offset) 
 			main4BitColorLookupFunction;+/
-	alias mainColorLookupFunction = colorLookup!(ushort,uint);
-	alias main8BitColorLookupFunction = colorLookup!(ubyte,uint);
-	alias main4BitColorLookupFunction = colorLookup4Bit!uint;
-	protected RenderingMode renderMode;
+
 	///TODO: move bitflags and other options here.
 	///Stores various states of this layer
 	protected uint		flags;
-	protected static enum	CLEAR_Z_BUFFER = 1<<0;
+	protected static enum	CLEAR_Z_BUFFER = 1<<0;		///Deprecated flag, current rendering algorithm does not use Z buffers
+	protected static enum	LINKED_SECONDARY = 1<<1;	///Set when a layer is linked to another
 	protected int		sX;		///Horizontal scroll position
 	protected int		sY;		///Vertical scroll position
 	protected int		rasterX;///Raster width (visible)
@@ -76,16 +61,7 @@ abstract class Layer {
 		rasterX=rX;
 		rasterY=rY;
 	}
-	/**
-	 * Sets the global rendering mode for this layer.
-	 * Params:
-	 *   mode = The enumerator that describes built-in rendering functions.
-	 */
-	public void setRenderingMode(RenderingMode mode) @nogc @safe pure nothrow {
-		renderMode = mode;
-		mainRenderingFunction = getRenderingFunc(mode);
 
-	}
 	/**
 	 * Scrolls the layer to the given position.
 	 * Params:
@@ -161,7 +137,8 @@ abstract class Layer {
 	 *   palSh = Palette shift amount, 8 is used for 8 bit images/256 color palettes.
 	 * Returns: Zero on success, or a specific error code.
 	 */
-	public abstract int addTextureSource_GL(GLuint texture, int page, int width, int height, ubyte palSh = 8) @trusted @nogc nothrow;
+	public abstract int addTextureSource_GL(GLuint texture, int page, int width, int height, ubyte palSh = 8)
+			@trusted @nogc nothrow;
 	/**
 	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
 	 * Renders the layer's content to the texture target.
@@ -172,7 +149,8 @@ abstract class Layer {
 	 *   sizes = 0: width of the texture, 1: height of the texture, 2: width of the display area, 3: height of the display area
 	 *   offsets = 0: horizontal offset of the display area, 1: vertical offset of the display area
 	 */
-	public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets) @nogc nothrow;
+	public abstract void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
+			@nogc nothrow;
 	///Sets the tendency to whether clear the Z buffer when this layer is drawn or not.
 	public void setClearZBuffer(bool val) @nogc nothrow {
 		if (val) flags |= CLEAR_Z_BUFFER;
@@ -189,15 +167,6 @@ abstract class Layer {
 	public abstract LayerType getLayerType() @nogc @safe pure nothrow const;
 	///Standard algorithm for horizontal mirroring, used for tile mirroring
 	///To be deprecated after move to OpenGL completed
-	protected void flipHorizontal(T)(T[] target) @nogc pure nothrow {
-		//sizediff_t j = target.length - 1;
-		for (sizediff_t i, j = target.length - 1 ; i < j ; i++, j--) {
-			const T s = target[i];
-			target[i] = target[j];
-			target[j] = s;
-			//j--;
-		}
-	}
 }
 public class MaskLayer {
 	protected Bitmap32Bit source;
