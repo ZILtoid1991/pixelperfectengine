@@ -74,6 +74,8 @@ public class TileLayer : Layer, ITileLayer {
 			return id;
 		}
 	}
+	alias DisplayListV = DynArray!TileVertex;
+	alias DisplayListI = DynArray!PolygonIndices;
 	protected TileLayer		linkedLayer;	/// Stores reference to the secondary layer if layer linking is used, null otherwise
 	protected __m128d		textureRec;
 	protected int			tileX;	/// Tile width
@@ -85,11 +87,11 @@ public class TileLayer : Layer, ITileLayer {
 	protected MappingElement2[] mapping;/// Contains the mapping data.
 	protected GraphicsAttrExt[] mapping_grExt;/// Contains the extended mapping data.
 	protected GLShader		shader;	/// The main shader program used on the layer.
-	protected DynArray!TileVertex gl_displayList;	/// Contains the verticles to be displayed
-	protected DynArray!PolygonIndices gl_polygonIndices;	/// Contains the verticle indexes of each tile
+	protected DisplayListV	gl_displayList;	/// Contains the verticles to be displayed
+	protected DisplayListI	gl_polygonIndices;	/// Contains the verticle indexes of each tile
 	protected DynArray!ubyte gl_textureData;	/// Contains the data for the texture
 	/// Contains the tile definitions for the layer.
-	protected OrderedArraySet!(TileDefinition/+, "a < b"+/) tiles;
+	protected OrderedArraySet!(TileDefinition) tiles;
 	/// Contains the page definitions for the layer.
 	protected OrderedArraySet!PageDefinition pages;
 	protected int			gl_textureWidth;	/// Defines the width of the texture
@@ -159,6 +161,21 @@ public class TileLayer : Layer, ITileLayer {
 		gl_textureData.free();
 		mapping.nogc_free();
 		mapping_grExt.nogc_free();
+	}
+	public void unlinkLayer() {
+		if (linkedLayer !is null) {
+			linkedLayer.flags &= ~LINKED_SECONDARY;
+			linkedLayer.gl_displayList = DisplayListV.init;
+			linkedLayer.gl_polygonIndices = DisplayListI.init;
+			linkedLayer.gl_texture = 0;
+		}
+	}
+	public void setLinkedLayer(TileLayer other) @nogc @safe pure nothrow {
+		if (other is null) {
+			unlinkLayer();
+		} else {
+
+		}
 	}
 	/**
 	 * Adds a bitmap source to the layer.
