@@ -12,8 +12,8 @@ configurationFile "PixelPerfectEditor" "null"
 audio {
     soundVol 100        //Sound volume (0-100)
     musicVol 100        //Music volume (0-100)
-    driver -1           //Name of the audio driver, or -1 for auto
-    device -1           //Name of the audio device, or -1 for auto
+    driver null         //Name of the audio driver, null for auto
+    device null         //Name of the audio device, null for auto
     frequency 48000     //Playback frequency (should be either 44100 or 48000)
     bufferLen 1024      //Length of the buffer (must be power of two)
     frameLen 512        //Length of an audio frame (must be less or equal than buffer, and power of two)
@@ -22,11 +22,12 @@ audio {
   * Graphics settings.
   */
 video {
-    driver "openGL" // Name of API for standard SDL2 APIs, later can specify external library files as drivers
-    scaling "nearest" // Scaling quality, possible values: "nearest", "bilinear", "anisotropic"
-    screenMode "windowed" // Possible values: "windowed", "fullscreen", "fullscreenNative"
-    resolution "0" // Number if SDL2 is used
-    threads 1 // Number of rendering threads used. -1 for autodetect, -2 for GPU dependent
+    driver "openGL"     // Name of API for rendering, currently ignored, later can specify openGL, vulkan, directX, and metal
+    shaderVers "330"    // Selects shader version, default is "330"/"300es"
+    screenMode "windowed" // Default screen mode
+    resolution null     // Set to "null" if not applicable, otherwise format is "[width]x[height]@[frequency]"
+    graphicsScaling 2   // Initial graphics scaling if no override used
+    rasterSize 848 480  // Initial raster size if no override used
 }
 /*
  * Input settings.
@@ -107,6 +108,5 @@ local "US" "en"
  * Game settings, etc.
  */
 etc {
-    graphicsScaling 2 2
-    rasterSize 848 480
+
 }
