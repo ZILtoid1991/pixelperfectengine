@@ -22,12 +22,12 @@ audio {
   * Graphics settings.
   */
 video {
-    driver "openGL"     // Name of API for rendering, currently ignored, later can specify openGL, vulkan, directX, and metal
-    shaderVers "330"    // Selects shader version, default is "330"/"300es"
-    screenMode "windowed" // Default screen mode
-    resolution null     // Set to "null" if not applicable, otherwise format is "[width]x[height]@[frequency]"
-    graphicsScaling 2   // Initial graphics scaling if no override used
-    rasterSize 848 480  // Initial raster size if no override used
+    driver "openGL"     //Name of API for rendering, currently ignored, later can specify openGL, vulkan, directX, and metal
+    shaderVers null     //Selects shader version, default is "330" or "300es"
+    screenMode "windowed" //Default screen mode
+    resolution null     //Set to "null" if not applicable, otherwise format is "[width]x[height]@[frequency]"
+    graphicsScaling 2   //Initial graphics scaling if no override used
+    rasterSize 848 480  //Initial raster size if no override used
 }
 /*
  * Input settings.

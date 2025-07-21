@@ -84,7 +84,7 @@ public class ConfigurationProfile {
 	public InputDeviceData[] inputDevices;	///Stores all input devices and keybindings
 	private string	path;			///Path where the 
 	///Stores ancillary tags to be serialized into the config file
-	public Tag[] ancillaryTags;
+	public DLTag[] ancillaryTags;
 	private static string vaultPath;
 	//private SDL_DisplayMode[] videoModes;
 	//public AuxillaryElements auxillaryElements[];
@@ -267,11 +267,89 @@ public class ConfigurationProfile {
 				new DLTag("configurationFile", null, [new DLValue(appName), new DLValue(appVers)]),
 				new DLComment("Audio settings"),
 				new DLTag("audio", null, [
-					new DLTag("soundVol", null, [new DLValue(sfxVol), new DLComment("Sound volume (0-100)", DLCommentType.Slash,
+					new DLTag("soundVol", null, [new DLValue(sfxVol),
+							new DLComment("Sound volume (0-100)", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("musicVol", null, [new DLValue(musicVol),
+							new DLComment("Music volume (0-100)", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("driver", null, [new DLValue(audioDriver),
+							new DLComment("Name of the audio driver, null for auto", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("device", null, [new DLValue(audioDevice),
+							new DLComment("Name of the audio device, null for auto", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("frequency", null, [new DLValue(audioDriver), new DLComment(
+							"Playback frequency (should be either 44100 or 48000)", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("bufferLen", null, [new DLValue(audioDriver),
+							new DLComment("Length of the buffer (must be power of two)", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("frameLen", null, [new DLValue(audioDriver), new DLComment("Length of an audio frame (must be less or " ~
+							"equal than buffer, and power of two)", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+				]),
+				new DLComment("Graphics settings"),
+				new DLTag("video", null, [
+					new DLTag("driver", null, [new DLValue(gfxdriver), new DLComment("Name of API for rendering, currently ignored, " ~
+							"later can specify openGL, vulkan, directX, and metal", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("shaderVers", null, [new DLValue(shaderVers ?
+							DLVar(shaderVers, DLValueType.String, DLStringType.Quote) : DLVar.createNull),
+							new DLComment(`Selects shader version, default is "330" or "300es"`, DLCommentType.Slash,
 							DLCommentStyle.LineEnd)]),
-				])
+					new DLTag("screenMode", null, [new DLValue(screenMode),
+							new DLComment("Default screen mode", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("resolution", null, [new DLValue(resolution),
+							new DLComment(`Set to "null" if not applicable, otherwise format is "[width]x[height]@[frequency]"`,
+							DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("graphicsScaling", null, [new DLValue(graphicsScaling),
+							new DLComment("Initial graphics scaling if no override used", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+					new DLTag("rasterSize", null, [new DLValue(rasterSize[0]), new DLValue(rasterSize[1]),
+							new DLComment("Initial raster size if no override used", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
+				]),
+				new DLComment("Input settings")
 			]);
+			DLTag inputSettings = new DLTag("input", null, [
+				new DLComment("device:\n" ~
+				"type: Possible values: \"keyboard\", \"joystick\", \"mouse\", \"touchscreen\"(unimplemented)\n"~"
+name: Name of the device, might be absent.
+devNum: Device ID.")
+			]);
+			foreach (InputDeviceData idd ; inputDevices) {
+				DLElement[] name;
+				if (idd.name) name ~= new DLAttribute("name", null, DLVar(idd.name, DLValueType.String, DLStringType.Quote));
+				DLTag currInputDevice = new DLTag("device", null, name ~ [
+					new DLAttribute("type", null, DLVar(devicetypeStrings[idd.type], DLValueType.String, DLStringType.Quote)),
+					new DLAttribute("devnum", null, DLVar(idd.deviceNumber, DLValueType.Integer, DLNumberStyle.Decimal)),
+					new DLComment("Anonymous tags here are treated as keybindings.\n" ~
+					"Value #0: ID, usually a readable one.\n" ~
+					"name: The name of the key from the appropriate naming file.\n" ~
+					"code: If namings are unavailable, then this will be used, has a higher\n" ~
+					"priority than keyName\n" ~
+					"keyMod: In case of keyboards, it's the modifier keys used for various key\n" ~
+					"combinations. In case of joysticks, it determines whether it's a button,\n" ~
+					"DPad, or an axis.\n" ~
+					"keyModIgnore: Determines what modifier keys should it ignore.\n" ~
+					"deadZone0: Axis deadzone prelimiter 1.\n" ~
+					"deadZone1: Axis deadzone prelimiter 2.\n" ~
+					"axisAsButton: Makes the axis to act like a button if within deadzone.")
+				]);
+				final switch (idd.type) with (Devicetype) {
+					case Keyboard:
+						foreach (KeyBinding binding ; idd.keyBindingList) {
+							DLTag currKeyBind = new DLTag(null, null, [new DLValue(binding.name),
+									new DLAttribute("name", null, DLVar(keyNameDict.encode(binding.bc.buttonNum)))]);
+							if (binding.bc.modifierFlags != 0) currKeyBind.add(new DLAttribute("keyMod", null, DLVar(
+									keymodToString(binding.bc.modifierFlags), DLValueType.String, DLStringType.Quote)));
+							if (binding.bc.keymodIgnore != 0) currKeyBind.add(new DLAttribute("keyModIgnore", null, DLVar(
+									keymodToString(binding.bc.keymodIgnore), DLValueType.String, DLStringType.Quote)));
+							currInputDevice.add(currKeyBind);
+						}
+						break;
+					case Joystick:
+						break;
+					case Mouse:
+						break;
+					case Touchscreen:
+						break;
+					case Pen:
+						break;
+				}
 
+			}
 			// new Tag(root, null, "configurationFile", [Value(appName), Value(appVers)]);
    //
 			// Tag t0 = new Tag(root, null, "audio");
@@ -404,47 +482,6 @@ public class ConfigurationProfile {
 			}
 		}
 	}
-	/* public void useVideoMode(int mode, OutputScreen window){
-
-	}
-	public void autodetectVideoModes(int display = 0){
-		int displaymodes = SDL_GetNumDisplayModes(display);
-		//writeln(displaymodes);
-		//writeln(to!string(SDL_GetError()));
-		for(int i ; i <= displaymodes ; i++){
-			SDL_DisplayMode d = SDL_DisplayMode();
-			if(SDL_GetDisplayMode(display,i,&d) == 0){
-
-				videoModes ~= d;
-
-			}
-		}
-	} */
-	/* public size_t getNumOfVideoModes(){
-		return videoModes.length;
-	}
-	public string videoModeToString(size_t n){
-		return to!string(videoModes[n].w) ~ "x" ~ to!string(videoModes[n].h) ~ "@" ~ to!string(videoModes[n].refresh_rate) ~ 
-				"Hz";
-	} */
-	/**
-	 * Sets the the path where configuration files and etc. will be stored.
-	 * If ../_debug/ folder exists, it'll be used instead for emulation purposes.
-	 * DEPRECATED, USE PATH SYSTEM INSTEAD!
-	 */
-	public static deprecated void setVaultPath(const char* developer, const char* application) {
-		/* if (exists(getPathToAsset("%PATH%/_debug/"))) {
-			vaultPath = getPathToAsset("%PATH%/_debug/") ~ "/" ~ fromStringz(developer).idup ~ "_" ~ 
-					fromStringz(application).idup ~ "/";
-			if (!std.file.exists(vaultPath))
-				std.file.mkdir(vaultPath);
-		} else {
-			vaultPath = to!string(SDL_GetPrefPath(developer, application));
-		} */
-	}
-	public static deprecated string getVaultPath() {
-		return pathSymbols["STORE"];
-	}
 	/**
 	 * Restores the default configuration.
 	 * Filename can be set if not the default name was used for the file.
@@ -452,14 +489,4 @@ public class ConfigurationProfile {
 	public static void restoreDefaults(string filename = "config.sdl") {
 		std.file.remove(pathSymbols["STORE"] ~ filename);
 	}
-}
-/**
- * Default keywords to look up for common video settings
- */
-public enum VideoConfigDefaults : string{
-	SCREENMODE		=	"screenMode",
-	RESOLUTION		=	"resolution",
-	SCALINGQUALITY	=	"scalingQuality",
-	DRIVER			=	"driver",
-	THREADS			=	"threads",
 }
