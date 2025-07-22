@@ -96,7 +96,7 @@ input {
          *
          * enableForceFeedback: enables or disables Force Feedback if available on
          * the device.
-         * Value #0: Boolean
+         * Value #0: Boolean (true or false) or float (0.0 - 1.0, equals to the strenght of force feedback effects)
          */
     }
 }

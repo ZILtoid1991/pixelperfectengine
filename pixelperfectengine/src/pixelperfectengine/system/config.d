@@ -46,7 +46,7 @@ public struct KeyBinding {
 public struct InputDeviceData{
 	public int deviceNumber;			///Number of the device that is being used
 	public Devicetype type;				///Type of the device (keyboard, joystick, etc)
-	public bool enableForceFeedback;	///Toggles force feedback if device is capable of it
+	public float enableForceFeedback;	///Toggles force feedback if device is capable of it
 	public string name;					///Name of the device
 	public KeyBinding[] keyBindingList;	///List of the Keybindings associated with this device
 	public this(int deviceNumber, Devicetype type, string name){
@@ -216,7 +216,9 @@ public class ConfigurationProfile {
 												}
 												device.keyBindingList ~= kb;
 											} else if(t2.name == "enableForceFeedback") {
-												device.enableForceFeedback = t2.values[0].get!bool;
+												if (t2.values[0].type == DLValueType.Boolean)
+													device.enableForceFeedback = t2.values[0].get!bool ? 1.0 : 0.0;
+												else device.enableForceFeedback = t2.values[0].get!float;
 											}
 										}
 										break;
@@ -340,93 +342,48 @@ devNum: Device ID.")
 						}
 						break;
 					case Joystick:
+						foreach (binding ; idd.keyBindingList) {
+							DLTag currKeyBind = new DLTag(null, null, [new DLValue(binding.name)]);
+							switch (binding.bc.modifierFlags) {
+								case JoyModifier.Axis:
+									currKeyBind.add(new DLAttribute("name", null, DLVar(joyAxisNameDict.encode(binding.bc.buttonNum),
+											DLValueType.String, DLStringType.Quote)));
+									currKeyBind.add(new DLAttribute("keyMod", null, DLVar(joymodifierStrings[binding.bc.modifierFlags],
+											DLValueType.String, DLStringType.Quote)));
+									currKeyBind.add(new DLAttribute("deadZone0", null, DLVar(binding.deadzones[0],
+											DLValueType.Float, DLNumberStyle.Decimal)));
+									currKeyBind.add(new DLAttribute("deadZone1", null, DLVar(binding.deadzones[1],
+											DLValueType.Float, DLNumberStyle.Decimal)));
+									break;
+								case JoyModifier.DPad:
+									currKeyBind.add(new DLAttribute("code", null, DLVar(binding.bc.buttonNum, DLValueType.Integer,
+											DLNumberStyle.Decimal)));
+									currKeyBind.add(new DLAttribute("keyMod", null, DLVar(joymodifierStrings[binding.bc.modifierFlags],
+											DLValueType.String, DLStringType.Quote)));
+									break;
+								default:
+									currKeyBind.add(new DLAttribute("name", null, DLVar(joyButtonNameDict.encode(binding.bc.buttonNum),
+											DLValueType.String, DLStringType.Quote)));
+									break;
+							}
+							currInputDevice.add(currKeyBind);
+						}
+						currInputDevice.add(new Tag("enableForceFeedback", null, [new DLValue(idd.enableForceFeedback)]));
 						break;
 					case Mouse:
+						foreach (binding ; idd.keyBindingList) {
+							currInputDevice.add(new DLTag(null, null, [new DLValue(binding.name), new DLAttribute("code", null,
+									DLVar(binding.bc.buttonNum, DLValueType.Integer, DLNumberStyle.Decimal))]));
+						}
 						break;
 					case Touchscreen:
 						break;
 					case Pen:
 						break;
 				}
-
+				root.add(currInputDevice);
 			}
-			// new Tag(root, null, "configurationFile", [Value(appName), Value(appVers)]);
-   //
-			// Tag t0 = new Tag(root, null, "audio");
-			// new Tag(t0, null, "soundVol", [Value(sfxVol)]);
-			// new Tag(t0, null, "musicVolt", [Value(musicVol)]);
-   //
-			// Tag t1 = new Tag(root, null, "video");
-			// new Tag(t1, null, "driver", [Value(gfxdriver)]);
-			// new Tag(t1, null, "scaling", [Value(scalingQuality)]);
-			// new Tag(t1, null, "screenMode", [Value(screenMode)]);
-			// new Tag(t1, null, "resolution", [Value(resolution)]);
-			// new Tag(t1, null, "threads", [Value(threads)]);
-   //
-			// Tag t2 = new Tag(root, null, "input");
-			// foreach (InputDeviceData idd; inputDevices) {
-			// 	string devType = devicetypeStrings[idd.type];
-			// 	Tag t2_0 = new Tag(t2, null, "device", null, [new Attribute(null, "name",Value(idd.name)), new Attribute(null,
-			// 			"type", Value(devType)), new Attribute(null, "devNum", Value(idd.deviceNumber))]);
-			// 	final switch (idd.type) with (Devicetype) {
-			// 		case Keyboard:
-			// 			foreach (binding ; idd.keyBindingList) {
-			// 				Attribute[] attrList = [new Attribute(null, "name", Value(keyNameDict.encode(binding.bc.buttonNum)))];
-			// 				if (binding.bc.modifierFlags != 0) {
-			// 					attrList ~= new Attribute(null, "keyMod", Value(keymodToString(binding.bc.modifierFlags)));
-			// 				}
-			// 				if (binding.bc.keymodIgnore != 0xFF) {
-			// 					attrList ~= new Attribute(null, "keyModIgnore", Value(keymodToString(binding.bc.keymodIgnore)));
-			// 				}
-			// 				new Tag(t2_0, null, null, [Value(binding.name)], attrList);
-			// 			}
-			// 			break;
-			// 		case Joystick:
-			// 			foreach (binding ; idd.keyBindingList) {
-			// 				Attribute[] attrList;//= [new Attribute(null, "name", Value(joyButtonNameDict.encode(binding.bc.buttonNum)))];
-			// 				switch (binding.bc.modifierFlags) {
-			// 					case JoyModifier.Axis:
-			// 						attrList = [new Attribute(null, "name", Value(joyAxisNameDict.encode(binding.bc.buttonNum))),
-			// 								new Attribute(null, "keyMod", Value(joymodifierStrings[binding.bc.modifierFlags])),
-			// 								new Attribute(null, "deadZone0", Value(binding.deadzones[0])),
-			// 								new Attribute(null, "deadZone1", Value(binding.deadzones[1]))];
-			// 						if (binding.axisAsButton)
-			// 							attrList ~= new Attribute(null, "axisAsButton", Value(true));
-			// 						break;
-			// 					case JoyModifier.DPad:
-			// 						attrList = [new Attribute(null, "code", Value(cast(int)(binding.bc.buttonNum))),
-			// 								new Attribute(null, "keyMod", Value(joymodifierStrings[binding.bc.modifierFlags]))];
-			// 						break;
-			// 					default:
-			// 						attrList = [new Attribute(null, "name", Value(joyButtonNameDict.encode(binding.bc.buttonNum)))];
-			// 						break;
-			// 				}
-			// 				new Tag(t2_0, null, null, [Value(binding.name)], attrList);
-			// 			}
-			// 			new Tag(t2_0, null, "enableForceFeedback", [Value(idd.enableForceFeedback)]);
-			// 			break;
-			// 		case Mouse:
-			// 			foreach (binding ; idd.keyBindingList) {
-			// 				Attribute[] attrList = [new Attribute(null, "code", Value(cast(int)(binding.bc.buttonNum)))];
-			// 				new Tag(t2_0, null, null, [Value(binding.name)], attrList);
-			// 			}
-			// 			break;
-			// 		case Touchscreen:
-			// 			break;
-			// 		case Pen:
-			// 			break;
-			// 	}
-			// }
-			// if (!localCountry.length) localCountry = "NULL";
-			// if (!localLang.length) localLang = "NULL";
-			// new Tag(root, null, "local", [Value(localCountry), Value(localLang)]);
-			// //Tag t3 = new Tag(root, null, "etc");
-			// foreach(at; ancillaryTags){
-			// 	at.remove();
-			// 	root.add(at);
-			// }
-			// string data = root.toSDLDocument();
-			// std.file.write(path, data);
+
 		} catch (Exception e) {
 			debug writeln(e);
 		}

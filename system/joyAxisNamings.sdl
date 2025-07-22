@@ -7,9 +7,9 @@
 
 
 
-axisLx 1
-axisLy 2
-axisRx 3
-axisRy 4
-leftTrigger 5
-rightTrigger 6
+"axisLx" 1
+"axisLy" 2
+"axisRx" 3
+"axisRy" 4
+"leftTrigger" 5
+"rightTrigger" 6

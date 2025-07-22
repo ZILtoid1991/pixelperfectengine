@@ -5,7 +5,7 @@ module pixelperfectengine.system.dictionary;
  *
  * Pixel Perfect Engine, dictionary module
  */
-import sdlang;
+import newsdlang;
 import std.stdio;
 /**
  * Does a two-way coding based on an SDLang file.
@@ -14,12 +14,12 @@ public class Dictionary{
 	private string[int] encodeTable;
 	private int[string] decodeTable;
 	/// Uses tag values (string, int) to generate the dictionary
-	public this(Tag root){
+	public this(DLDocument root){
 		try{
 			//Tag root = parseFile(filename);
-			foreach(Tag t; root.tags){
-				string s = t.expectValue!string();
-				int i = t.expectValue!int();
+			foreach(DLTag t; root.tags){
+				string s = t.values[0].get!string();
+				int i = t.values[1].ge!int();
 				encodeTable[i] = s;
 				decodeTable[s] = i;
 			}
