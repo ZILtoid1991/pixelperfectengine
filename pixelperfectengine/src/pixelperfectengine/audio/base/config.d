@@ -1,6 +1,6 @@
 module pixelperfectengine.audio.base.config;
 
-import sdlang;
+import newsdlang;
 
 import pixelperfectengine.audio.base.handler;
 import pixelperfectengine.audio.base.modulebase;
@@ -42,7 +42,7 @@ public class ModuleConfig {
 	protected static immutable string[] outChannelNames = 
 			["outputL", "outputR", "surroundL", "surroundR", "center", "lowfreq"];
 	///Stores most of the document data here when uncompiled.
-	protected Tag					root;
+	protected DLDocument			root;
 	///The target for audio handling.
 	public ModuleManager			manager;
 	///Routing nodes that have been parsed so far.
@@ -62,7 +62,7 @@ public class ModuleConfig {
 	 *   manager: the ModuleManager, that will handle audio capabilities.
 	 */
 	public this(string src, ModuleManager manager) {
-		root = parseSource(src);
+		root = readDOM(src);
 		this.manager = manager;
 	}
 	/**
@@ -80,7 +80,7 @@ public class ModuleConfig {
 	 *   src = the text of the configuration file.
 	 */
 	public void loadConfig(string src) @trusted {
-		root = parseSource(src);
+		root = readDOM(src);
 	}
 	/** 
 	 * Loads a configuration file from file
@@ -102,7 +102,7 @@ public class ModuleConfig {
 	 */
 	public void save(string path) {
 		import std.file : write;
-		write(path, root.toSDLDocument());
+		write(path, root.writeDOM());
 	}
 	/**
 	 * Compiles the current configuration, then configures the modules accordingly.
@@ -117,7 +117,7 @@ public class ModuleConfig {
 		midiGroups.length = 0;
 		if (isRunning)
 			manager.suspendAudioThread();
-		foreach (Tag t0; root.tags) {
+		foreach (DLTag t0; root.tags) {
 			switch (t0.name) {
 				case "module":
 					string modName = t0.values[1].get!string;
@@ -140,10 +140,10 @@ public class ModuleConfig {
 					}
 					modules ~= currMod;
 					modNames ~= modName;
-					foreach (Tag t1; t0.tags) {
+					foreach (DLTag t1; t0.tags) {
 						switch (t1.name) {
 							case "loadSample":
-								const string dpkSource = t1.getAttribute!string("dpk", null);
+								const string dpkSource = t1.searchAttribute!string("dpk", null);
 								loadAudioFile(currMod, t1.values[1].get!int(), t1.values[0].get!string(), dpkSource);
 								break;
 							case "waveformSlice":
@@ -187,21 +187,21 @@ public class ModuleConfig {
 					break;
 				case "node":
 					RoutingNode node = RoutingNode(t0.values[0].get!string(), [], []);
-					foreach (Tag t1; t0.expectTag("input").tags) {
-						node.inputs ~= t1.getValue!string();
+					foreach (DLTag t1; t0.searchTagX(["input"]).tags) {
+						node.inputs ~= t1.values[0].get!string();
 					}
-					foreach (Tag t1; t0.expectTag("output").tags) {
-						node.outputs ~= t1.getValue!string();
+					foreach (DLTag t1; t0.searchTagX(["output"]).tags) {
+						node.outputs ~= t1.values[0].get!string();
 					}
 					if (node.inputs.length == 0 && node.outputs.length == 0)	//Node is invalidated, remove it
-						t0.remove();
+						t0.removeFromParent();
 					else if (node.inputs.length && node.outputs.length)			//Only use nodes that have valid inputs and outputs
 						rns ~= node;
 					break;
 				case "midiRouting":
 					foreach (Tag t1 ; t0.tags) {
 						midiRouting ~= t1.values[0].get!int;
-						midiGroups ~= cast(ubyte)(t1.getAttribute!int("group", 0));
+						midiGroups ~= cast(ubyte)(t1.searchAttribute!int("group", 0));
 					}
 					/* midiRouting ~= t0.values[0].get!int;
 					midiGroups ~= cast(ubyte)(t0.getAttribute!int("group", 0)); */
@@ -318,31 +318,31 @@ public class ModuleConfig {
 	 *   backup = Previous value of the parameter, otherwise left unaltered.
 	 *   name = Optional name of the preset.
 	 */
-	public void editPresetParameter(string modID, int presetID, Value paramID, Value value, ref Value backup, 
+	public void editPresetParameter(Value, ParamID)(string modID, int presetID, ParamID paramID, Value value, ref Value backup,
 			string name = null) {
-		foreach (Tag t0 ; root.tags) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1].get!string == modID) {
-					foreach (Tag t1 ; t0.tags) {
-						if (t1.name == "presetRecall" && t1.values[0].peek!int && t1.values[0].get!int() == presetID) {
-							foreach (Tag t2 ; t1.tags) {
-								
+					foreach (DLTag t1 ; t0.tags) {
+						if (t1.name == "presetRecall" && t1.values[0].type == DLValueType.Integer && t1.values[0].get!int() == presetID) {
+							foreach (DLTag t2 ; t1.tags) {
 								if (t2.values[0] == paramID) {
-									backup = t2.values[1];
-									t2.values[1] = value;
+									backup = t2.values[1].get!value;
+									t2.values[1].set = value;
 									return;
 								}
 								
 							}
-							new Tag(t1, null, null, [Value(paramID), Value(value)]);
+							t1.add(new DLTag(null, null, [new DLValue(paramID), new DLValue(value)]));
 							return;
 						}
 					}
-					Attribute[] attr;
+					DLElement[] attr;
 					if (name.length)
-						attr ~= new Attribute("name", Value(name));
-					Tag t_1 = new Tag(t0, null, "presetRecall", [Value(presetID)], attr);
-					new Tag(t_1, null, null, [paramID, value]);
+						attr ~= new Attribute("name", null, DLVar(name, DLValueType.String, DLStringType.Quote));
+					Tag t_1 = new DLTag("presetRecall", null, [new DLValue(presetID)] ~ attr);
+					new DLTag(null, null, [new DLValue(paramID), new DLValue(value)]);
+					t0.add(t_1);
 					return;
 				}
 			}
@@ -362,33 +362,33 @@ public class ModuleConfig {
 		if (fromModule && toModule) {
 			new Tag(root, null, "route", [Value(from), Value(to)]);
 		} else if (fromModule) {
-			foreach (Tag t0; root.tags) {
-				if (t0.name == "node" && t0.getValue!string == to) {
-					new Tag(t0.expectTag("input"), null, null, [Value(from)]);
-					return;
+			foreach (DLTag t0; root.tags) {
+				if (t0.name == "node" && t0.values.length >= 1) {
+					if (t0.getValue!string == to) {
+						t0.searchTagX(["input"]).add(new DLTag(null, null, [new DLValue(from)]));
+						return;
+					}
 				}
 			}
-			new Tag(root, null, "node", [Value(to)], null, 
-				[
-					new Tag(null, "input", null, null, [
-						new Tag(null, null, from)
-					]), 
-					new Tag(null, "output")
-				]);
+			root.add(new DLTag("node", null, [
+					new DLValue(to),
+					new DLTag("input", null, [new Tag(null, null, [new DLValue(from)])]),
+					new DLTag("output", null, null)
+			]));
 		} else {	//(toModule)
-			foreach (Tag t0; root.tags) {
-				if (t0.name == "node" && t0.getValue!string == from) {
-					new Tag(t0.expectTag("output"), null, null, [Value(to)]);
-					return;
+			foreach (DLTag t0; root.tags) {
+				if (t0.name == "node" && t0.values.length >= 1) {
+					if (t0.getValue!string == from) {
+						t0.searchTagX([output]).add(new DLTag(null, null, [new DLValue(to)]));
+						return;
+					}
 				}
 			}
-			new Tag(root, null, "node", [Value(from)], null, 
-				[
-					new Tag(null, "input"), 
-					new Tag(null, "output", null, null, [
-						new Tag(null, null, to)
-					])
-				]);
+			root.add(new DLTag("node", null, [
+					new DLValue(from),
+					new DLTag("input", null, null),
+					new DLTag("output", null, [new Tag(null, null, [new DLValue(to)])])
+			]));
 		}
 	}
 	/** 
@@ -402,32 +402,32 @@ public class ModuleConfig {
 		const bool fromModule = from.split(":").length == 2;
 		const bool toModule = to.split(":").length == 2 || countUntil(outChannelNames, to) != -1;
 		if (fromModule && toModule) {
-			foreach (Tag t0; root.tags) {
+			foreach (DLTag t0; root.tags) {
 				if (t0.name == "route") {
-					if (t0.values[0] == from && t0.values[1] == to) {
-						t0.remove();
+					if (t0.values[0].get!string == from && t0.values[1].get!string == to) {
+						t0.removeFromParent();
 						return true;
 					}
 				}
 			}
 		} else if (fromModule) {
-			foreach (Tag t0; root.tags) {
-				if (t0.name == "node" && t0.getValue!string == to) {
-					Tag t1 = t0.expectTag("input");
-					foreach (Tag t2 ; t1.tags())
-					if (t2.getValue!string == from) {
-						t2.remove();
+			foreach (DLTag t0; root.tags) {
+				if (t0.name == "node" && t0.values[0].get!string == to) {
+					DLTag t1 = t0.searchTagX("input");
+					foreach (DLTag t2 ; t1.tags())
+					if (t2.values[0].get!string == from) {
+						t2.removeFromParent();
 						return true;
 					}
 				}
 			}
 		} else {	//(toModule)
 			foreach (Tag t0; root.tags) {
-				if (t0.name == "node" && t0.getValue!string == from) {
+				if (t0.name == "node" && t0.values[0].get!string == from) {
 					Tag t1 = t0.expectTag("output");
 					foreach (Tag t2 ; t1.tags())
-					if (t2.getValue!string == to) {
-						t2.remove();
+					if (t2.values[0].get!string == to) {
+						t2.removeFromParent();
 						return true;
 					}
 				}
@@ -440,17 +440,17 @@ public class ModuleConfig {
 	 */
 	public string[2][] getRoutingTable() {
 		string[2][] result;
-		foreach (Tag t0 ; root.tags()) {
+		foreach (DLTag t0 ; root.tags()) {
 			switch (t0.name) {
 				case "route":
 					result ~= [t0.values[0].get!string, t0.values[1].get!string];
 					break;
 				case "node":
 					const string nodeName = t0.values[0].get!string;
-					foreach (Tag t1; t0.expectTag("input").tags) {
+					foreach (DLTag t1; t0.expectTag("input").tags) {
 						result ~= [t1.values[0].get!string, nodeName];
 					}
-					foreach (Tag t1; t0.expectTag("output").tags) {
+					foreach (DLTag t1; t0.expectTag("output").tags) {
 						result ~= [nodeName, t1.values[0].get!string];
 					}
 					break;
@@ -497,10 +497,10 @@ public class ModuleConfig {
 	 *   newName = the desired name of the module.
 	 */
 	public void renameModule(string oldName, string newName) {
-		foreach (Tag t0 ; root.tags) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == oldName) {
-					t0.values[1] = Value(newName);
+				if (t0.values[1].get!string == oldName) {
+					t0.values[1].set = newName;
 					return;
 				}
 			}
@@ -512,11 +512,11 @@ public class ModuleConfig {
 	 *   name = Name/ID of the module.
 	 * Returns: An SDL tag containing all the information related to the module, or null if ID is invalid.
 	 */
-	public Tag removeModule(string name) {
-		foreach (Tag t0 ; root.tags) {
+	public DLTag removeModule(string name) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == name) {
-					t0.remove();
+				if (t0.values[1].get!string == name) {
+					t0.removeFromParent();
 					return t0;
 				}
 			}
@@ -546,7 +546,7 @@ public class ModuleConfig {
 	 */
 	public string[2][] getModuleList() {
 		string[2][] result;
-		foreach (Tag t0 ; root.tags) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				result ~= [t0.values[0].get!string, t0.values[1].get!string];
 			}

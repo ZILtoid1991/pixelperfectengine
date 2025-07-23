@@ -8,7 +8,6 @@ module pixelperfectengine.system.config;
 
 //import std.xml;
 import std.file;
-import std.stdio;
 import std.string;
 import std.conv;
 //import std.csv;
@@ -114,8 +113,8 @@ public class ConfigurationProfile {
 		devicetypeStrings = [Devicetype.Joystick: "joystick", Devicetype.Keyboard: "keyboard", Devicetype.Mouse: "mouse",
 				Devicetype.Touchscreen: "touchscreen" ];
 		//keyNameDict = new Dictionary("../system/keycodeNamings.sdl");
-		keyNameDict = new Dictionary(parseFile(getPathToAsset("%PATH%/system/scancodes.sdl")));
-		Tag xinput = parseFile(getPathToAsset("%PATH%/system/xinputCodes.sdl"));
+		keyNameDict = new Dictionary(readDOM(getPathToAsset("%PATH%/system/scancodes.sdl")));
+		Tag xinput = readDOM(getPathToAsset("%PATH%/system/xinputCodes.sdl"));
 		joyButtonNameDict = new Dictionary(xinput.expectTag("button"));
 		joyAxisNameDict = new Dictionary(xinput.expectTag("axis"));
 	}
@@ -254,8 +253,8 @@ public class ConfigurationProfile {
 					break;
 				}
 			}
-		}
-		catch(ParseException e){
+			write(path, root.writeDOM());
+		} catch(DLException e){
 			debug writeln(e.msg);
 		}
 	}
