@@ -15,18 +15,20 @@ axis {
     "rightTrigger" 6 isTrigger=true
 }
 button {
-    "buttonA" 1
-    "buttonB" 2
-    "buttonX" 3
-    "buttonY" 4
-    "leftBumper" 5
-    "rightBumper" 6
-    "start" 7
-    "back" 8
-    "leftStickClick" 9
-    "rightStickClick" 10
-    "dPadUp" 11
-    "dPadDown" 12
-    "dPadLeft" 13
-    "dPadRight" 14
+    "buttonA" 6
+    "buttonB" 7
+    "buttonX" 8
+    "buttonY" 5
+    "leftBumper" 9
+    "rightBumper" 10
+    "leftTrigger" 11
+    "rightTrigger" 12
+    "start" 16
+    "back" 15
+    "leftStickClick" 13
+    "rightStickClick" 14
+    "dPadUp" 1
+    "dPadDown" 2
+    "dPadLeft" 3
+    "dPadRight" 4
 }
