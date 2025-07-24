@@ -40,12 +40,22 @@ Created by ZILtoid1991.
 
 ## Stance on Erotic Games
 
-While the PixelPerfectEngine project in itself has nothing against games of this nature, we do reserve the right to not provide support to developers of games which we either find to be in bad taste, and/or are illegal in certain countries.
+While the PixelPerfectEngine project in itself has nothing against games of this nature as long as they don't feature the likeness (or fictionalized version) of real people not consenting to be featured, we do reserve the right to not provide support to developers of games which we find to be in bad taste.
 
 ## Stance on Cryptocurrencies and NFTs
 
-You are not under any circumstance allowed to use PixelPerfectEngine's branding assets to promote anything to do with blockchain, cryptocurrency or NFTs.
-We will not accept any donations in the form of cryptocurrency either.
+Due to recent activities of secular-washing groups like Collective Shout, as well as openly religious fundamentalist groups like Exodus Cry, the cryptocurrency guidelines are as of the following:
+* Games being able to be purchased with cryptocurrencies are allowed within branding guidelines.
+* Games that promote the gambling and/or speculation of cryptocurrencies are not allowed, and branding material must be removed, no technical help will be provided.
+* Games that feature NFT content, copy protection, etc. are not allowed, and branding material must be removed, no technical help will be provided.
+
+Donations in cryptocurrency are still not accepted as of now.
+
+## Stance on gambling
+
+Games featuring real currency gambling cannot use branding materials and technical help from our team.
+
+Games featuring gatcha mechanics, lootboxes, etc. can feature the branding materials as long as refunds for microtransactions are provided up to 2 weeks, or 2 months if the player is under 18 or a legal minor in some other way.
 
 ## Stance on AI generated assets
 
