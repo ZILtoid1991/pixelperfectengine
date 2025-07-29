@@ -447,10 +447,10 @@ public class ModuleConfig {
 					break;
 				case "node":
 					const string nodeName = t0.values[0].get!string;
-					foreach (DLTag t1; t0.expectTag("input").tags) {
+					foreach (DLTag t1; t0.searchTagX(["input"]).tags) {
 						result ~= [t1.values[0].get!string, nodeName];
 					}
-					foreach (DLTag t1; t0.expectTag("output").tags) {
+					foreach (DLTag t1; t0.searchTagX(["output"]).tags) {
 						result ~= [nodeName, t1.values[0].get!string];
 					}
 					break;
@@ -469,16 +469,19 @@ public class ModuleConfig {
 	public void addModule(string type, string name) {
 		switch (type) {
 			case "delaylines1010":
-				new Tag(root, null, "module", [Value("delaylines"), Value(name), Value(1024), Value(1024)]);
+				root.add(new DLTag("module", null,
+						[new DLValue("delaylines"), new DLValue(name), new DLValue(1024), new DLValue(1024)]));
 				break;
 			case "delaylines1012":
-				new Tag(root, null, "module", [Value("delaylines"), Value(name), Value(1024), Value(4096)]);
+				root.add(new DLTag("module", null,
+						[new DLValue("delaylines"), new DLValue(name), new DLValue(1024), new DLValue(1024)]));
 				break;
 			case "delaylines1212":
-				new Tag(root, null, "module", [Value("delaylines"), Value(name), Value(4096), Value(4096)]);
+				root.add(new DLTag("module", null,
+						[new DLValue("delaylines"), new DLValue(name), new DLValue(1024), new DLValue(1024)]));
 				break;
 			default:
-				new Tag(root, null, "module", [Value(type), Value(name)]);
+				root.add(new DLTag("module", null, [new DLValue(type), new DLValue(name)]));
 				break;
 		}
 	}
@@ -561,13 +564,13 @@ public class ModuleConfig {
 	 * Returns: The tag containing all the info related to the preset for backup, or null if module and/or 
 	 * preset ID is invalid.
 	 */
-	public Tag removePreset(string modID, int presetID) {
-		foreach (Tag t0 ; root.tags) {
+	public DLTag removePreset(string modID, int presetID) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
-					foreach (Tag t1; t0.tags) {
-						if (t1.name == "presetRecall" && t1.getValue!int == presetID) {
-							return t1.remove;
+				if (t0.values[1].string == modID) {
+					foreach (DLTag t1; t0.tags) {
+						if (t1.name == "presetRecall" && t1.values[0].get!int == presetID) {
+							return t1.removeFromParent;
 						}
 					}
 				}
@@ -581,10 +584,10 @@ public class ModuleConfig {
 	 *   modID = Module name/ID.
 	 *   backup = The preset to be (re)added.
 	 */
-	public void addPreset(string modID, Tag backup) {
-		foreach (Tag t0 ; root.tags) {
+	public void addPreset(string modID, DLTag backup) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
+				if (t0.values[1].get!string == modID) {
 					t0.add(backup);
 					return;
 				}
@@ -600,12 +603,12 @@ public class ModuleConfig {
 			int id;
 		}
 		PresetData[] result;
-		foreach (Tag t0 ; root.tags) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
-					foreach (Tag t1; t0.tags) {
+				if (t0.values[1].get!string == modID) {
+					foreach (DLTag t1; t0.tags) {
 						if (t1.name == "presetRecall") {
-							result ~= PresetData(t1.getAttribute!string("name"), t1.expectValue!int);
+							result ~= PresetData(t1.searchAttribute!string("name", null), t1.values[0].get!int);
 						}
 					}
 					return result;
@@ -624,18 +627,17 @@ public class ModuleConfig {
 	 *   name = name of the waveform if there's one specified.
 	 * Returns: The tag that was added to the configuration file, or null on error.
 	 */
-	public Tag addWaveFile(string path, string modID, int waveID, string dpkPath, string name) {
-		foreach (Tag t0 ; root.tags) {
+	public DLTag addWaveFile(string path, string modID, int waveID, string dpkPath, string name) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1] == modID) {
-					Attribute[] attr;
-					if (name.length) {
-						attr ~= new Attribute("name", Value(name));
-					}
-					if (dpkPath.length) {
-						attr ~= new Attribute("dpkPath", Value(dpkPath));
-					}
-					Tag t1 = new Tag(t0, null, "loadSample", [Value(path), Value(waveID)], attr);
+					DLTag t1 = new DLTag("loadSample", null,
+							[new DLValue(DLVar(path, DLValueType.String, DLStringType.Backtick)), new DLValue(waveID)]);
+					if (name.length) t1.add(new DLAttribute("name", null, DLVar(name, DLValueType.String, DLStringType.Quote)));
+					if (dpkPath.length)
+						t1.add(new DLAttribute("dpkPath", null, DLVar(dpkPath, DLValueType.String, DLStringType.Backtick)));
+					to.add(t1);
+					// Tag t1 = new Tag(t0, null, "loadSample", [Value(path), Value(waveID)], attr);
 					return t1;
 				}
 			}
@@ -652,15 +654,14 @@ public class ModuleConfig {
 	 *   len = Length of the slice.
 	 * Returns: The tag that was added to the configuration file, or null on error.
 	 */
-	public Tag addWaveSlice(string modID, int waveID, int src, int pos, int len, string name) {
-		foreach (Tag t0 ; root.tags) {
+	public DLTag addWaveSlice(string modID, int waveID, int src, int pos, int len, string name) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1] == modID) {
-					Attribute[] attr;
-					if (name.length) {
-						attr ~= new Attribute("name", Value(name));
-					}
-					Tag t1 = new Tag(t0, null, "waveformSlice", [Value(waveID), Value(src), Value(pos), Value(len)], attr);
+					DLTag t1 = new DLTag("waveformSlice", null,
+							[new DLValue(waveID), new DLValue(src), new DLValue(pos), new DLValue(len)]);
+					if (name.length) t1.add(new DLAttribute("name", null, DLVar(name, DLValueType.String, DLStringType.Quote)));
+					t0.add(t1);
 					return t1;
 				}
 			}
@@ -670,10 +671,10 @@ public class ModuleConfig {
 	/**
 	 * Adds a waveform data tag from `backup` to the module described by `modID`.
 	 */
-	public void addWaveFromBackup(string modID, Tag backup) {
-		foreach (Tag t0 ; root.tags) {
+	public void addWaveFromBackup(string modID, DLTag backup) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
+				if (t0.values[1].get!string == modID) {
 					t0.add(backup);
 					return;
 				}
@@ -684,19 +685,19 @@ public class ModuleConfig {
 	 * Removes a waveform identified by `waveID` from the module described by `modID`,
 	 * then returns the configuration tag as backup. Returns null if module and/or waveform not found.
 	 */
-	public Tag removeWave(string modID, int waveID) {
-		foreach (Tag t0 ; root.tags) {
+	public DLTag removeWave(string modID, int waveID) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1] == modID) {
-					foreach (Tag t1 ; t0.tags) {
+					foreach (DLTag t1 ; t0.tags) {
 						switch (t1.name) {
 							case "loadSample":
 								if (t1.values[1].get!int == waveID)
-									return t1.remove();
+									return t1.removeFromParent();
 								break;
 							case "waveformSlice":
 								if (t1.values[0].get!int == waveID)
-									return t1.remove();
+									return t1.removeFromParent();
 								break;
 							default: break;
 						}
@@ -717,17 +718,17 @@ public class ModuleConfig {
 	 */
 	public string renameWave(string modID, int waveID, string newName) {
 		string oldName;
-		foreach (Tag t0 ; root.tags) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
-					foreach (Tag t1 ; t0.tags) {
+				if (t0.values[1].get!string == modID) {
+					foreach (DLTag t1 ; t0.tags) {
 						void doThing() {
-							if (t1.getAttribute!string("name")) {
-								oldName = t1.getAttribute!string("name");
-								t1.attributes["name"][0].remove;
+							if (t1.searchAttribute("name")) {
+								oldName = t1.searchAttribute!string("name", null);
+								t1.searchAttribute("name").removeFromParent;
 							}
 							if (newName.length) {
-								t1.add(new Attribute("name", Value(newName)));
+								t1.add(new DLAttribute("name", null, DLVar(newName, DLValueType.String, DLStringType.Quote)));
 							}
 						}
 						switch (t1.name) {
@@ -756,10 +757,10 @@ public class ModuleConfig {
 	 */
 	public WaveFileData[] getWaveFileList(string modID) {
 		WaveFileData[] result;
-		foreach (Tag t0 ; root.tags) {
+		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1] == modID) {
-					foreach (Tag t1 ; t0.tags) {
+					foreach (DLTag t1 ; t0.tags) {
 						switch (t1.name) {
 							case "loadSample":
 								result ~= WaveFileData(t1.values[1].get!int, t1.getAttribute!string("dpkPath"), t1.values[0].get!string, 
@@ -789,17 +790,18 @@ public class ModuleConfig {
 	}
 	///Creates a MIDI routing table from the supplied values.
 	public void setMIDIrouting(uint[] table) {
-		Tag t0 = root.getTag("midiRouting");
+		DLTag t0 = root.searchTag("midiRouting");
 		if (t0 is null) {
-			t0 = new Tag(root, null, "midiRouting");
+			t0 = new DLTag("midiRouting", null, null);
+			root.add(t0);
 		}
 		if (t0.tags.length) {
-			foreach (Tag t1 ; t0.tags) {
-				t1.remove();
+			foreach (DLTag t1 ; t0.tags) {
+				t1.removeFromParent();
 			}
 		}
 		foreach (uint i ; table) {
-			new Tag(t0, null, null, [Value(cast(int)i)]);
+			 t0.add(new DLTag(null, null, [Value(cast(int)i)]));
 		}
 	}
 }

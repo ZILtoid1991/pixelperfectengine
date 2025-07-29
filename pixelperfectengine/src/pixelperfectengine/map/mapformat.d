@@ -4,7 +4,7 @@ module pixelperfectengine.map.mapformat;
  *
  * Pixel Perfect Engine, map.mapformat module
  */
-import sdlang;
+import newsdlang;
 
 import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.raster : PaletteContainer;
@@ -34,13 +34,13 @@ import pixelperfectengine.system.etc : hashCalc;
  * Namespaces are reserved for internal use (eg. file sources, objects).
  */
 public class MapFormat {
-	public TreeMap!(int,Tag) 	layerData;	///Layerdata stored as SDLang tags.
+	public TreeMap!(int,DLTag) 	layerData;	///Layerdata stored as SDLang tags.
 	public TreeMap!(int,Layer)	layeroutput;///Used to fast map and object data pullback in editors
-	protected Tag 				metadata;	///Stores metadata.
-	protected Tag				root;		///Root tag for common information.
+	protected DLTag 			metadata;	///Stores metadata.
+	protected DLDocument		root;		///Root tag for common information.
 	public TileInfo[][int]		tileDataFromExt;///Stores basic TileData that are loaded through extensions
 	/**
-	 * Associative array used for rendering mode lookups in one way.
+	 * Associative array used for rendering mode lookups in one way. (DEPRECATED!)
 	 */
 	public static immutable RenderingMode[string] renderingModeLookup;
 	shared static this() {
@@ -66,11 +66,12 @@ public class MapFormat {
 	 * Creates new instance from scratch.
 	 */
 	public this(string name, int resX, int resY) @trusted {
-		root = new Tag();
-		metadata = new Tag(root, null, "Metadata");
-		new Tag(metadata, null, "Version", [Value(1), Value(0)]);
-		new Tag(metadata, null, "Name", [Value(name)]);
-		new Tag(metadata, null, "Resolution", [Value(resX), Value(resY)]);
+		root = new DLDocument();
+		metadata = new DLTag("Metadata", null, null);
+		root.add(metadata);
+		metadata.add(new DLTag("Version", null, [new DLValue(1), new DLValue(0)]));
+		metadata.add(new DLTag("Name", null, [Value(name)]));
+		metadata.add(new DLTag("Resolution", null, [Value(resX), Value(resY)]));
 	}
 	/**
 	 * Serializes itself from file.
@@ -80,9 +81,9 @@ public class MapFormat {
 		char[] source;
 		source.length = cast(size_t)file.size;
 		source = file.rawRead(source);
-		root = parseSource(cast(string)source);
+		root = readDOM(cast(string)source);
 		//Just quickly go through the tags and sort them out
-		foreach (Tag t0 ; root.all.tags) {
+		foreach (DLTag t0 ; root.tags) {
 			switch (t0.namespace) {
 				case "Layer":
 					const int priority = t0.values[1].get!int;
@@ -90,7 +91,7 @@ public class MapFormat {
 					// RenderingMode lrd = renderingModeLookup.get(t0.getTagValue!string("RenderingMode"), RenderingMode.Copy);
 					string shdrPathV, shdrPathF;
 					GLShader shdr, shdr32;
-					Tag shdrDescr = t0.getTag("ShaderProgram"), shdrDescr32 = t0.getTag("ShaderProgram32");
+					DLTag shdrDescr = t0.getTag("ShaderProgram"), shdrDescr32 = t0.getTag("ShaderProgram32");
 					if (shdrDescr) {
 						shdrPathV = shdrDescr.values[0].get!string;
 						shdrPathF = shdrDescr.values[1].get!string;
@@ -132,13 +133,13 @@ public class MapFormat {
 		import pixelperfectengine.system.file;
 		foreach (key, value ; layerData) {
 			if (value.name != "Tile") continue;
-			Tag[] tileSource = getAllTileSources(key);
+			DLTag[] tileSource = getAllTileSources(key);
 			foreach (t0; tileSource) {
 				string path = t0.getValue!string();
 				Image i = loadImage(File(resolvePath(path), "rb"));
-				void helperFunc(T)(T bitmap, Tag source) {
+				void helperFunc(T)(T bitmap, DLTag source) {
 					TileLayer tl = cast(TileLayer)layeroutput[key];
-					Tag tileInfo = source.getTag("Embed:TileInfo", null);
+					DLTag tileInfo = source.searchTag(["Embed:TileInfo"]);
 					int tW = tl.getTileWidth, tH = tl.getTileHeight;
 					int numOfCol = bitmap.width / tW, numOfRow = bitmap.height / tH;
 					int imageID = hashCalc(path);
@@ -188,12 +189,12 @@ public class MapFormat {
 		Image[string] imageBuffer;	//Resource manager to minimize reloading image files
 		Tag tBase = layerData[layerID];
 		if (tBase.name != "Sprite") return;
-		foreach (Tag t0; tBase.all.tags) {
-			switch (t0.getFullName.toString) {
+		foreach (DLTag t0; tBase.tags) {
+			switch (t0.fullname) {
 				case "File:SpriteSource":
-					string filename = t0.expectValue!string();
+					string filename = t0.values[1].get!string();
 					int imageID = hashCalc(filename);
-					const int id = t0.expectValue!int();
+					const int id = t0.values[0].get!int();
 					if (imageBuffer.get(filename, null) is null) {
 						imageBuffer[filename] = loadImage(File(resolvePath(filename)));
 						switch (imageBuffer[filename].getBitdepth) {
@@ -207,17 +208,17 @@ public class MapFormat {
 						}
 					}
 
-					if (t0.getAttribute!int("horizOffset", -1) != -1 && t0.getAttribute!int("vertOffset") != -1 && 
-							t0.getAttribute!int("width") && t0.getAttribute!int("height")) {
-						const int hOffset = t0.getAttribute!int("horizOffset"), vOffset = t0.getAttribute!int("vertOffset"),
-							w = t0.getAttribute!int("width"), h = t0.getAttribute!int("height");
+					if (t0.searchAttribute!int("horizOffset", -1) != -1 && t0.searchAttribute!int("vertOffset") != -1 &&
+							t0.searchAttribute!int("width") && t0.searchAttribute!int("height")) {
+						const int hOffset = t0.searchAttribute!int("horizOffset"), vOffset = t0.searchAttribute!int("vertOffset"),
+							w = t0.searchAttribute!int("width"), h = t0.searchAttribute!int("height");
 						currSpriteLayer.createSpriteMaterial(id, imageID, Box.bySize(hOffset, vOffset, w, h));
 					} else {
 						currSpriteLayer.createSpriteMaterial(id, imageID);
 					}
 					break;
 				case "File:SpriteSheet":
-					string filename = t0.expectValue!string();
+					string filename = t0.values[0].get!string();
 					int imageID = hashCalc(filename);
 					if (imageBuffer.get(filename, null) is null) {
 						imageBuffer[filename] = loadImage(File(resolvePath(filename)));
@@ -231,9 +232,9 @@ public class MapFormat {
 							break;
 						}
 					}
-					foreach (Tag t1 ; t0.tags) {
+					foreach (DLTag t1 ; t0.tags) {
 						if (t1.name == "SheetData") {
-							foreach (Tag t2 ; t1.tags) {
+							foreach (DLTag t2 ; t1.tags) {
 								const int id = t2.values[0].get!int(), hOffset = t2.values[1].get!int(), vOffset = t2.values[2].get!int(),
 										w = t2.values[3].get!int(), h = t2.values[4].get!int();
 								currSpriteLayer.createSpriteMaterial(id, imageID, Box.bySize(hOffset, vOffset, w, h));
@@ -262,11 +263,11 @@ public class MapFormat {
 	 * Returns all objects belonging to a `layerID` in an array.
 	 */
 	public MapObject[] getLayerObjects(int layerID) @trusted {
-		Tag t0 = layerData[layerID];
+		DLTag t0 = layerData[layerID];
 		if (t0 is null) return null;
 		MapObject[] result;
 		try {
-			foreach (Tag t1; t0.namespaces["Object"].tags) {
+			foreach (DLTag t1; t0.namespaces["Object"].tags) {
 				MapObject obj = parseObject(t1, layerID);
 				if (obj !is null)
 					result ~= obj;
@@ -348,7 +349,7 @@ public class MapFormat {
 	 */
 	public void save(string path) @trusted {
 		debug writeln(root.tags);
-		foreach(int i, Tag t; layerData){
+		foreach(int i, DLTag t; layerData){
 			if(t.name == "Tile")
 				pullMapDataFromLayer (i);
 		}
@@ -404,7 +405,7 @@ public class MapFormat {
 	 *   T = The type of the parameter.
 	 */
 	public void alterTileLayerInfo(T)(int layerNum, int dataNum, T value) @trusted {
-		layerData[layerNum].values[dataNum] = Value(value);
+		layerData[layerNum].values[dataNum] = new DLValue(value);
 	}
 	/**
 	 * Returns a selected tile layer's all tile's basic information.
@@ -417,13 +418,13 @@ public class MapFormat {
 		import std.algorithm.sorting : sort;
 		TileInfo[] result;
 		try {
-			foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			foreach (DLTag t0 ; layerData[pri].namespaces["File"].tags) {
 				//writeln(t0.toSDLString);
 				if (t0.name == "TileSource") {
-					Tag t1 = t0.getTag("Embed:TileInfo");
-					ushort palShift = cast(ushort)t0.getAttribute!int("palShift", 0);
+					DLTag t1 = t0.searchTag("Embed:TileInfo");
+					ushort palShift = cast(ushort)t0.searchAttribute!int("palShift", 0);
 					if (t1 !is null) {
-						foreach (Tag t2 ; t1.tags) {
+						foreach (DLTag t2 ; t1.tags) {
 							result ~= TileInfo(cast(wchar)t2.values[0].get!int(), palShift, t2.values[1].get!int(), 
 									t2.values[2].get!string());
 						}
@@ -453,7 +454,7 @@ public class MapFormat {
 		if(list.length == 0) throw new Exception("Empty list!");
 		Tag t;
 		try{
-			foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+			foreach (DLTag t0 ; layerData[pri].namespaces["File"].tags) {
 				if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
 					t = t0.getTag("Embed:TileInfo", null);
 					if (t is null) { 
@@ -481,8 +482,8 @@ public class MapFormat {
 	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
 	 */
 	public void addTileInfo(int pri, Tag t, string source, string dpkSource = null) @trusted {
-		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
+		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
 				t0.add(t);
 				return;
 			}
@@ -493,9 +494,9 @@ public class MapFormat {
 	 * Adds a single TileInfo to a preexisting chunk on the layer.
 	 */
 	public void addTile(int pri, TileInfo item, string source, string dpkSource = null) {
-		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
-				Tag t1 = t0.getTag("Embed:TileInfo");
+		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
+				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				if (t1 !is null) {
 					new Tag (t1, null, null, [Value(cast(int)item.id), Value(item.num), Value(item.name)]);
 				}
@@ -504,9 +505,9 @@ public class MapFormat {
 	}
 	///Ditto, but from preexiting Tag.
 	public void addTile(int pri, Tag t, string source, string dpkSource = null) @trusted {
-		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
-				Tag t1 = t0.getTag("Embed:TileInfo");
+		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
+			if (t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
+				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				t1.add(t);
 			}
 		}
@@ -520,9 +521,9 @@ public class MapFormat {
 	 * Returns: the previous name if the action was successful, or null if there was some issue.
 	 */
 	public string renameTile(int pri, int id, string newName) {
-		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
 			if (t0.name == "TileSource") {
-				Tag t1 = t0.getTag("Embed:TileInfo");
+				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				if (t1 !is null) {
 					foreach (Tag t2; t1.tags) {
 						if (t2.values[0].get!int() == id) {
@@ -546,14 +547,14 @@ public class MapFormat {
 	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
 	 * Returns: a tag as a backup if tile is found and removed, or null if it's not found.
 	 */
-	public Tag removeTile(int pri, int id, string source, string dpkSource = null) @trusted {
-		foreach (Tag t0 ; layerData[pri].namespaces["File"].tags) {
+	public DLTag removeTile(int pri, int id, string source, string dpkSource = null) @trusted {
+		foreach (Tag t0 ; layerData[pri].accessNamespace("File").tags) {
 			if (t0.name == "TileSource") {
-				Tag t1 = t0.getTag("Embed:TileInfo");
+				DLTag t1 = t0.getTag("Embed:TileInfo");
 				if (t1 !is null) {
 					source = t0.values[0].get!string();
-					dpkSource = t0.getAttribute!string("dpkSource", null);
-					foreach (Tag t2; t1.tags) {
+					dpkSource = t0.searchAttribute!string("dpkSource", null);
+					foreach (DLTag t2; t1.tags) {
 						if (t2.values[0].get!int() == id) {
 							return t2.remove();
 						}
