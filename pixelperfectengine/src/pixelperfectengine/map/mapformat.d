@@ -1250,7 +1250,7 @@ public class PolylineObject : MapObject {
 		}
 		throw new PPEException("Out of index error!");
 	}
-	override public Tag serialize() @trusted {
+	override public DLTag serialize() @trusted {
 		return Tag.init; // TODO: implement
 	}
 }
@@ -1276,8 +1276,8 @@ public Color parseColor(DLTag t) @trusted {
 	return c;
 }
 ///Serializes the engine's color format into an SDLang Tag.
-public Tag storeColor(Color c) @trusted {
-	return new Tag(null, "Color", [Value(format("%08x", c.base))]);
+public DLTag storeColor(Color c) @trusted {
+	return new DLTag("Color", null, [Value(format("%08x", c.base))]);
 }
 /**
  * Parses an ofject from an SDLang tag.
