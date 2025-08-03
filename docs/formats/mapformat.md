@@ -4,7 +4,7 @@ NOTE: To be modified to the new resouce management system.
 
 ## Pre-requirements
 
-* Knowledge of SDLang (https://sdlang.org/)
+* Knowledge of the XDL format (https://sdlang.org/)
 * Basic knowledge of the engine architecture
 
 This document is not finished, although I plan to minimize changes that would break a lot of things.
