@@ -22,6 +22,7 @@ import pixelperfectengine.physics.objectcollision;
 import pixelperfectengine.system.exc : PPEException;
 import pixelperfectengine.system.etc : hashCalc;
 
+@safe:
 /**
  * Serializes/deserializes XMF map data in SDLang format.
  * Each layer can contain objects (eg. for marking events, clipping, or sprites if applicable), tilemapping (not for SpriteLayers), embedded
@@ -65,7 +66,7 @@ public class MapFormat {
 	/**
 	 * Creates new instance from scratch.
 	 */
-	public this(string name, int resX, int resY) @trusted {
+	public this(string name, int resX, int resY) {
 		root = new DLDocument();
 		metadata = new DLTag("Metadata", null, null);
 		root.add(metadata);
@@ -76,7 +77,7 @@ public class MapFormat {
 	/**
 	 * Serializes itself from file.
 	 */
-	public this(F)(F file) @trusted {
+	public this(F)(F file) {
 		//File f = File(path, "rb");
 		char[] source;
 		source.length = cast(size_t)file.size;
@@ -129,7 +130,7 @@ public class MapFormat {
 	 * Params:
 	 *   paletteTarget: The destination, where the palettes should be loaded into.
 	 */
-	public void loadTiles(PaletteContainer paletteTarget) @trusted {
+	public void loadTiles(PaletteContainer paletteTarget) {
 		import pixelperfectengine.system.file;
 		foreach (key, value ; layerData) {
 			if (value.name != "Tile") continue;
@@ -182,7 +183,7 @@ public class MapFormat {
 	 * Note: It's mainly intended for editor placeholders, but also could work with production-made games as long
 	 * as the limitations don't intercept anything major.
 	 */
-	public void loadSprites(int layerID, PaletteContainer paletteTarget) @trusted {
+	public void loadSprites(int layerID, PaletteContainer paletteTarget) {
 		import pixelperfectengine.system.file;
 		SpriteLayer currSpriteLayer = cast(SpriteLayer)layeroutput[layerID];
 		// ABitmap[int] result;
@@ -262,7 +263,7 @@ public class MapFormat {
 	/**
 	 * Returns all objects belonging to a `layerID` in an array.
 	 */
-	public MapObject[] getLayerObjects(int layerID) @trusted {
+	public MapObject[] getLayerObjects(int layerID) {
 		DLTag t0 = layerData[layerID];
 		if (t0 is null) return null;
 		MapObject[] result;
@@ -285,7 +286,7 @@ public class MapFormat {
 	 *   ocd: The supplied ObjectCollisionDetector. Can be null.
 	 * Note: This is a default parser and loader, one might want to write a more complicated one for their application.
 	 */
-	public void loadAllSpritesAndObjects(PaletteContainer paletteTarget, ObjectCollisionDetector ocd) @trusted {
+	public void loadAllSpritesAndObjects(PaletteContainer paletteTarget, ObjectCollisionDetector ocd) {
 		import pixelperfectengine.physics.common;
 		foreach (key, value; layeroutput) {
 			loadSprites(key, paletteTarget);
@@ -321,7 +322,7 @@ public class MapFormat {
 	/**
 	 * Loads mapping data from disk to all layers.
 	 */
-	public void loadMappingData () @trusted {
+	public void loadMappingData () {
 		import pixelperfectengine.system.etc : reinterpretCast;
 		foreach (key, value ; layerData) {
 			Tag t0 = value.getTag("Embed:MapData");
@@ -347,7 +348,7 @@ public class MapFormat {
 	 * Params:
 	 *   path = the path where the document is should be saved to.
 	 */
-	public void save(string path) @trusted {
+	public void save(string path) {
 		debug writeln(root.tags);
 		foreach(int i, DLTag t; layerData){
 			if(t.name == "Tile")
@@ -371,13 +372,13 @@ public class MapFormat {
 	/**
 	 * Returns the requested layer.
 	 */
-	public Layer opIndex(int index) @safe pure {
+	public Layer opIndex(int index) pure {
 		return layeroutput[index];
 	}
 	/**
 	 * Returns all layer's basic information.
 	 */
-	public LayerInfo[] getLayerInfo() @trusted {
+	public LayerInfo[] getLayerInfo() {
 		import std.algorithm.sorting : sort;
 		LayerInfo[] result;
 		foreach (Tag t ; layerData) {
@@ -389,7 +390,7 @@ public class MapFormat {
 	/**
 	 * Returns a specified layer's basic information.
 	 */
-	public LayerInfo getLayerInfo(int pri) @trusted {
+	public LayerInfo getLayerInfo(int pri) {
 		Tag t = layerData[pri];
 		if (t !is null) return LayerInfo(LayerInfo.parseLayerTypeString(t.name), t.values[1].get!int(), 
 				t.values[0].get!string());
@@ -404,7 +405,7 @@ public class MapFormat {
 	 * Template params:
 	 *   T = The type of the parameter.
 	 */
-	public void alterTileLayerInfo(T)(int layerNum, int dataNum, T value) @trusted {
+	public void alterTileLayerInfo(T)(int layerNum, int dataNum, T value) {
 		layerData[layerNum].values[dataNum] = new DLValue(value);
 	}
 	/**
@@ -414,7 +415,7 @@ public class MapFormat {
 	 *   pri = Layer priority ID
 	 * Returns: an array with the tile information.
 	 */
-	public TileInfo[] getTileInfo(int pri) @trusted {
+	public TileInfo[] getTileInfo(int pri) {
 		import std.algorithm.sorting : sort;
 		TileInfo[] result;
 		try {
@@ -450,7 +451,7 @@ public class MapFormat {
 	 *   source = The file origin of the tiles (file or DataPak path).
 	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
 	 */
-	public void addTileInfo(int pri, TileInfo[] list, string source, string dpkSource = null) @trusted {
+	public void addTileInfo(int pri, TileInfo[] list, string source, string dpkSource = null) {
 		if(list.length == 0) throw new Exception("Empty list!");
 		Tag t;
 		try{
@@ -481,7 +482,7 @@ public class MapFormat {
 	 *   source = The file origin of the tiles (file or DataPak path).
 	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
 	 */
-	public void addTileInfo(int pri, Tag t, string source, string dpkSource = null) @trusted {
+	public void addTileInfo(int pri, Tag t, string source, string dpkSource = null) {
 		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
 			if (t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
 				t0.add(t);
@@ -504,7 +505,7 @@ public class MapFormat {
 		}
 	}
 	///Ditto, but from preexiting Tag.
-	public void addTile(int pri, Tag t, string source, string dpkSource = null) @trusted {
+	public void addTile(int pri, Tag t, string source, string dpkSource = null) {
 		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
 			if (t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
 				DLTag t1 = t0.searchTag("Embed:TileInfo");
@@ -547,7 +548,7 @@ public class MapFormat {
 	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
 	 * Returns: a tag as a backup if tile is found and removed, or null if it's not found.
 	 */
-	public DLTag removeTile(int pri, int id, string source, string dpkSource = null) @trusted {
+	public DLTag removeTile(int pri, int id, string source, string dpkSource = null) {
 		foreach (Tag t0 ; layerData[pri].accessNamespace("File").tags) {
 			if (t0.name == "TileSource") {
 				DLTag t1 = t0.getTag("Embed:TileInfo");
@@ -556,7 +557,7 @@ public class MapFormat {
 					dpkSource = t0.searchAttribute!string("dpkSource", null);
 					foreach (DLTag t2; t1.tags) {
 						if (t2.values[0].get!int() == id) {
-							return t2.remove();
+							return t2.removeFromParent();
 						}
 					}
 				}
@@ -571,11 +572,11 @@ public class MapFormat {
 	 *   pri = Layer priority ID.
 	 * Returns: the Tag of the layer as a backup.
 	 */
-	public Tag removeLayer(int pri) @trusted {
-		Tag backup = layerData[pri];
+	public DLTag removeLayer(int pri) {
+		DLTag backup = layerData[pri];
 		layeroutput.remove(pri);
 		layerData.remove(pri);
-		return backup.remove;
+		return backup.removeFromParent();
 	}
 	/**
 	 * Adds a layer from preexsting tag.
@@ -584,7 +585,7 @@ public class MapFormat {
 	 *   t = The tag containing layer information.
 	 *   l = The layer.
 	 */
-	public void addNewLayer(int pri, Tag t, Layer l) @trusted {
+	public void addNewLayer(int pri, DLTag t, Layer l) {
 		layeroutput[pri] = l;
 		layerData[pri] = t;
 		root.add(t);
@@ -600,12 +601,14 @@ public class MapFormat {
 	 *   name = Name of the layer.
 	 *   l = The layer itself.
 	 */
-	public void addNewTileLayer(int pri, int tX, int tY, int mX, int mY, string name, TileLayer l) @trusted {
+	public void addNewTileLayer(int pri, int tX, int tY, int mX, int mY, string name, TileLayer l) {
 		layeroutput[pri] = l;
 		l.setRasterizer(getHorizontalResolution, getVerticalResolution);
-		layerData[pri] = new Tag(root, "Layer", "Tile", [Value(name), Value(pri), Value(tX), Value(tY), Value(mX), 
-				Value(mY)]);
-		new Tag(layerData[pri], null, "RenderingMode", [Value("Copy")]);
+		layerData[pri] = new DLTag("Tile", "Layer", [
+				new DLValue(name), new DLValue(pri), new DLValue(tX), new DLValue(tY), new DLValue(mX), new DLValue(mY)
+		]);
+		root.add(layerData[pri]);
+		// new Tag(layerData[pri], null, "RenderingMode", [Value("Copy")]);
 	}
 	/**
 	 * Adds a new tag to a layer.
@@ -614,12 +617,13 @@ public class MapFormat {
 	 *   name = Name of the tag.
 	 *   args = The values of the tag.
 	 */
-	public void addTagToLayer(T...)(int pri, string name, T args) @trusted {
-		Value[] vals;
+	public void addTagToLayer(T...)(int pri, string name, T args) {
+		DLElement[] vals;
 		foreach (arg; args) {
-			vals ~= Value(arg);
+			vals ~= new DLValue(arg);
 		}
-		new Tag(layerData[pri], null, name, vals);
+		DLTag t0 = new Tag(name, null, vals);
+		layerData[pri].add(t0);
 	}
 	/**
 	 * Adds a new property tag to a layer's tag.
@@ -630,12 +634,12 @@ public class MapFormat {
 	 *   parent = Name of the tag this one will be contained by.
 	 *   args = The values to be added to the tag.
 	 */
-	public void addPropertyTagToLayer(T...)(int pri, string name, string parent, T args) @trusted {
-		Value[] vals;
+	public void addPropertyTagToLayer(T...)(int pri, string name, string parent, T args) {
+		DLElement[] vals;
 		foreach (arg; args) {
-			vals ~= Value(arg);
+			vals ~= new DLValue(arg);
 		}
-		new Tag(layerData[pri].expectTag(parent), null, name, vals);
+		DLTag t0 = new DLTag(layerData[pri].expectTag(parent), null, name, vals);
 	}
 	/**
 	 * Gets the values of a layer's root tag.
@@ -643,7 +647,7 @@ public class MapFormat {
 	 *   pri = Layer priority ID.
 	 * Returns: an array containing all the values belonging to the root tag.
 	 */
-	public Value[] getLayerRootTagValues(int pri) @trusted {
+	public DLValue[] getLayerRootTagValues(int pri) {
 		return layerData[pri].values;
 	}
 	/**
@@ -653,8 +657,8 @@ public class MapFormat {
 	 *   name = The name of the tag.
 	 * Returns: an array containing all the values belonging to the given tag.
 	 */
-	public Value[] getLayerTagValues(int pri, string name) @trusted {
-		return layerData[pri].expectTag(name).values;
+	public DLValue[] getLayerTagValues(int pri, string name) {
+		return layerData[pri].searchTagX([name]).values;
 	}
 	/**
 	 * Gets the values of a layer's property tag.
@@ -664,8 +668,8 @@ public class MapFormat {
 	 *   parent = The name of the tag the property tag is contained within.
 	 * Returns: an array containing all the values belonging to the given property tag.
 	 */
-	public Value[] getLayerPropertyTagValues(int pri, string name, string parent) @trusted {
-		return layerData[pri].expectTag(parent).expectTag(name).values;
+	public DLValue[] getLayerPropertyTagValues(int pri, string name, string parent) {
+		return layerData[pri].searchTagX([parent]).searchTagX([name]).values;
 	}
 	/**
 	 * Edits the values of a layer's tag. 
@@ -675,14 +679,13 @@ public class MapFormat {
 	 *   args = The values to be added to the tag.
 	 * Returns: the original values in an array.
 	 */
-	public Value[] editLayerTagValues(T...)(int pri, string name, T args) @trusted {
-		Value[] backup = layerData[pri].expectTag(name).values;
-		Value[] vals;
-		foreach (arg; args) {
-			vals ~= Value(arg);
-		}
+	public DLValue[] editLayerTagValues(T...)(int pri, string name, T args) {
+		DLValue[] backup = layerData[pri].searchTagX([name]).values;
+		foreach (DLValue v ; backup) v.removeFromParent();
+		DLElement[] vals;
+		foreach (arg ; args) vals ~= new DLValue(arg);
 		//new Tag(layerData[pri], null, name, vals);
-		layerData[pri].expectTag(name).values = vals;
+		layerData[pri].searchTagX([name]).add(vals);
 		return backup;
 	}
 	/**
@@ -694,13 +697,12 @@ public class MapFormat {
 	 *   args = The values to be added to the tag.
 	 * Returns: the original values in an array.
 	 */
-	public Value[] editLayerPropertyTagValues(T...)(int pri, string name, string parent, T args) @trusted {
-		Value[] backup = layerData[pri].expectTag(parent).expectTag(name).values;
-		Value[] vals;
-		foreach (arg; args) {
-			vals ~= Value(arg);
-		}
-		layerData[pri].expectTag(parent).expectTag(name).values = vals;
+	public DLValue[] editLayerPropertyTagValues(T...)(int pri, string name, string parent, T args) {
+		DLValue[] backup = layerData[pri].searchTagX([parent]).searchTagX([name]).values;
+		foreach (DLValue v ; backup) v.removeFromParent();
+		DLElement[] vals;
+		foreach (arg; args) vals ~= new DLValue(arg);
+		layerData[pri].searchTagX([parent]).searchTagX([name]).add(vals);
 		return backup;
 	}
 	/**
@@ -710,8 +712,8 @@ public class MapFormat {
 	 *   name = Name of the tag.
 	 * Returns: a backup for undoing.
 	 */
-	public Tag removeLayerTagValues(int pri, string name) @trusted {
-		return layerData[pri].expectTag(name).remove;
+	public DLTag removeLayerTagValues(int pri, string name) {
+		return layerData[pri].searchTagX(name).removeFromParent();
 	}
 	/**
 	 * Adds an embedded MapData to a TileLayer.
@@ -719,8 +721,8 @@ public class MapFormat {
 	 *   pri = Layer priority ID.
 	 *   base64Code = The data to be embedded,
 	 */
-	public void addEmbeddedMapData(int pri, ubyte[] base64Code) @trusted {
-		layerData[pri].add(new Tag("Embed", "MapData", [Value(base64Code)]));
+	public void addEmbeddedMapData(int pri, ubyte[] base64Code) {
+		layerData[pri].add(new DLTag("MapData", "Embed", [new DLValue(base64Code)]));
 	}
 	/**
 	 * Adds an embedded MapData to a TileLayer.
@@ -728,7 +730,7 @@ public class MapFormat {
 	 *   pri = Layer priority ID.
 	 *   me = The data to be embedded,
 	 */
-	public void addEmbeddedMapData(int pri, MappingElement[] me) @safe {
+	public void addEmbeddedMapData(int pri, MappingElement2[] me) {
 		import pixelperfectengine.system.etc : reinterpretCast;
 		addEmbeddedMapData(pri, reinterpretCast!ubyte(me));
 	}
@@ -740,10 +742,12 @@ public class MapFormat {
 	 *   filename = Path to the map data file. (Either on the disk or within the DataPak file)
 	 *   dataPakSrc = Path to the DataPak source file if used, null otherwise.
 	 */
-	public void addMapDataFile(int pri, string filename, string dataPakSrc = null) @trusted {
-		Attribute[] a;
-		if (dataPakSrc !is null) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
-		layerData[pri].add(new Tag("File", "MapData", [Value(filename)], a));
+	public void addMapDataFile(int pri, string filename, string dataPakSrc = null) {
+		DLElement[] a;
+		if (dataPakSrc !is null) {
+			a ~= new DLAttribute("dataPakSrc", DLVar(dataPakSrc, DLValueType.String, DLStringType.Backtick));
+		}
+		layerData[pri].add(new DLTag("MapData", "File", [new DLValue(filename)] ~ a));
 	}
 	/**
 	 * Removes embedded TileData from a TileLayer.
@@ -751,8 +755,8 @@ public class MapFormat {
 	 *   pri = Layer priority ID.
 	 * Returns: a backup for undoing.
 	 */
-	public Tag removeEmbeddedMapData(int pri) @trusted {
-		return layerData[pri].expectTag("Embed:MapData").remove;
+	public DLTag removeEmbeddedMapData(int pri) {
+		return layerData[pri].searchTagX(["Embed:MapData"]).removeFromParent();
 	}
 	/**
 	 * Removes a TileData file from a TileLayer.
@@ -760,8 +764,8 @@ public class MapFormat {
 	 *   pri = Layer priority ID.
 	 * Returns: a backup for undoing.
 	 */
-	public Tag removeMapDataFile(int pri) @trusted {
-		return layerData[pri].expectTag("File:MapData").remove;
+	public Tag removeMapDataFile(int pri) {
+		return layerData[pri].searchTagX(["File:MapData"]).removeFromParent();
 	}
 	/**
 	 * Pulls TileLayer data from the layer, and stores it in the preconfigured location.
@@ -769,14 +773,14 @@ public class MapFormat {
 	 *   pri = Layer priority ID.
 	 * Only works with uncompressed data due to the need of recompression.
 	 */
-	public void pullMapDataFromLayer(int pri) @trusted {
+	public void pullMapDataFromLayer(int pri) {
 		import pixelperfectengine.system.etc : reinterpretCast;
 		ITileLayer t = cast(ITileLayer)layeroutput[pri];
 		MappingElement2[] mapping = t.getMapping;
-		if (layerData[pri].getTag("Embed:MapData") !is null) {
-			layerData[pri].getTag("Embed:MapData").values[0] = Value(reinterpretCast!ubyte(mapping));
-		} else if (layerData[pri].getTag("File:MapData") !is null) {
-			string filename = layerData[pri].getTag("File:MapData").getValue!string();
+		if (layerData[pri].searchTag("Embed:MapData") !is null) {
+			layerData[pri].searchTag("Embed:MapData").values[0].set(reinterpretCast!ubyte(mapping));
+		} else if (layerData[pri].searchTag("File:MapData") !is null) {
+			string filename = layerData[pri].searchTag("File:MapData").values[0].get!string();
 			MapDataHeader mdh = MapDataHeader(layerData[pri].values[4].get!int, layerData[pri].values[5].get!int);
 			saveMapFile(mdh, mapping, File(filename, "wb"));
 		}
@@ -789,11 +793,12 @@ public class MapFormat {
 	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
 	 *   palShift = Amount of palette shiting, 0 for default.
 	 */
-	public void addTileSourceFile(int pri, string filename, string dataPakSrc = null, int palShift = 0) @trusted {
-		Attribute[] a;
-		if (dataPakSrc !is null) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
-		if (palShift) a ~= new Attribute("palShift", Value(palShift));
-		new Tag(layerData[pri],"File", "TileSource", [Value(filename)], a);
+	public void addTileSourceFile(int pri, string filename, string dataPakSrc = null, int palShift = 0) {
+		DLElement[] a;
+		if (dataPakSrc !is null) a ~= new DLAttribute("dataPakSrc", null,
+				DLVar(dataPakSrc, DLValueType.String, DLStringType.Backtick));
+		if (palShift) a ~= new DLAttribute("palShift", null, DLVar(palShift, DLValueType.Integer, DLNumberStyle.Decimal));
+		layerData[pri].add(new DLTag("TileSource", "File", [new DLValue(filename)] ~ a));
 	}
 	/**
 	 * Removes a tile source.
@@ -803,15 +808,16 @@ public class MapFormat {
 	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
 	 * Returns: a backup copy of the tag.
 	 */
-	public Tag removeTileSourceFile(int pri, string filename, string dataPakSrc = null) @trusted {
+	public DLTag removeTileSourceFile(int pri, string filename, string dataPakSrc = null) {
 		try {
-			auto namespace = layerData[pri].namespaces["File"];
-			foreach (t ; namespace.tags) {
-				if (t.name == "TileSource" && t.values[0] == filename && t.getAttribute!string("dataPakSrc", null) == dataPakSrc) {
-					return t.remove;
+			auto namespace = layerData[pri].accessNamespace("File");
+			foreach (DLTag t ; namespace.tags) {
+				if (t.name == "TileSource" && t.values[0] == filename &&
+						t.searchAttribute!string("dataPakSrc", null) == dataPakSrc) {
+					return t.removeFromParent();
 				}
 			}
-		} catch (DOMRangeException e) {
+		} catch (DLException e) {
 			debug writeln(e);
 		} catch (Exception e) {
 			debug writeln(e);
@@ -825,7 +831,7 @@ public class MapFormat {
 	 *   filename = Path to the file.
 	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
 	 */
-	public Tag getTileSourceTag(int pri, string filename, string dataPakSrc = null) @trusted {
+	public DLTag getTileSourceTag(int pri, string filename, string dataPakSrc = null) {
 		try {
 			auto namespace = layerData[pri].namespaces["File"];
 			foreach (t ; namespace.tags) {
@@ -833,7 +839,7 @@ public class MapFormat {
 					return t;
 				}
 			}
-		} catch (DOMRangeException e) {
+		} catch (DLException e) {
 			debug writeln(e);
 		} catch (Exception e) {
 			debug writeln(e);
@@ -846,25 +852,24 @@ public class MapFormat {
 	 * Params:
 	 *   pri = Layer priority ID.
 	 */
-	public Tag[] getAllTileSources (int pri) @trusted {
-		Tag[] result;
+	public DLTag[] getAllTileSources (int pri) {
+		DLTag[] result;
 		try {
 			void loadFromLayer(int _pri) {
 				//auto namespace = layerData[pri].namespaces["File"];
-				foreach (Tag t ; layerData[_pri].namespaces["File"].tags) {
+				foreach (DLTag t ; layerData[_pri].accessNamespace("File").tags) {
 					if (t.name == "TileSource") {
 						result ~= t;
 					}
 				}
 			}
 			loadFromLayer(pri);
-			foreach (Tag t ; layerData[pri].namespaces["Shared"].tags) {
+			foreach (DLTag t ; layerData[pri].accessNamespace("Shared").tags) {
 				if (t.name == "TileData") {
-					loadFromLayer(t.expectValue!int());
+					loadFromLayer(t.values[0].get!int());
 				}
 			}
-
-		} catch (DOMRangeException e) {
+		} catch (DLException e) {
 			debug writeln(e);
 		} catch (Exception e) {
 			debug writeln(e);
@@ -879,12 +884,15 @@ public class MapFormat {
 	 *   offset = Palette offset, or where the palette should be loaded.
 	 *   palShift = Palette shifting, or how many bits the target bitmap will use.
 	 */
-	public Tag addPaletteFile (string filename, string dataPakSrc, int offset, int palShift) @trusted {
-		Attribute[] a;
-		if (offset) a ~= new Attribute("offset", Value(offset));
-		if (palShift) a ~= new Attribute("palShift", Value(palShift));
-		if (dataPakSrc.length) a ~= new Attribute("dataPakSrc", Value(dataPakSrc));
-		return new Tag(root,"File", "Palette", [Value(filename)], a);
+	public DLTag addPaletteFile (string filename, string dataPakSrc, int offset, int palShift) {
+		DLElement[] a;
+		if (offset) a ~= new DLAttribute("offset", null, DLVar(offset, DLValueType.Integer, DLNumberStyle.Decimal));
+		if (palShift) a ~= new DLAttribute("palShift", null, DLVar(palShift, DLValueType.Integer, DLNumberStyle.Decimal));
+		if (dataPakSrc.length) a ~= new DLAttribute("dataPakSrc",
+				DLVar(dataPakSrc, DLValueType.String, DLStringType.Backtick));
+		DLTag t = new DLTag("Palette", "File", [new DLValue(filename)] ~ a);
+		root.add(t);
+		return t;
 	}
 	/**
 	 * Adds an embedded palette to the document.
@@ -893,11 +901,13 @@ public class MapFormat {
 	 *   name = Name of the palette.
 	 *   offset = Palette offset, or where the palette should be loaded.
 	 */
-	public Tag addEmbeddedPalette (Color[] c, string name, int offset) @trusted {
+	public DLTag addEmbeddedPalette (Color[] c, string name, int offset) {
 		import pixelperfectengine.system.etc : reinterpretCast;
-		Attribute[] a;
-		if (offset) a ~= new Attribute("offset", Value(offset));
-		return new Tag(root, "Embed", "Palette", [Value(name), Value(reinterpretCast!ubyte(c))], a);
+		DLElement[] a;
+		if (offset) a ~= new DLAttribute("offset", null, DLVar(offset, DLValueType.Integer, DLNumberStyle.Decimal));
+		DLTag t = new DLTag("Palette", "Embed", [new DLValue(name), new DLValue(reinterpretCast!ubyte(c))] ~ a);
+		root.add(t);
+		return t;
 	}
 	/**
 	 * Returns whether the given palette file source exists.
@@ -906,9 +916,9 @@ public class MapFormat {
 	 *   dataPakSrc = Path to the DataPak file if used, null otherwise.
 	 * Returns: True if the palette file source exists.
 	 */
-	public bool isPaletteFileExists (string filename, string dataPakSrc = null) @trusted {
-		foreach (t0 ; root.all.tags) {
-			if (t0.getFullName.toString == "File:Palette") {
+	public bool isPaletteFileExists (string filename, string dataPakSrc = null) {
+		foreach (DLTag t0 ; root.tags) {
+			if (t0.fullname == "File:Palette") {
 				if (t0.getValue!string() == filename && t0.getAttribute!string("dataPakSrc", null) == dataPakSrc) 
 					return true;
 			}
@@ -918,7 +928,7 @@ public class MapFormat {
 	/**
 	 * Returns the name of the map from metadata.
 	 */
-	public string getName () @trusted {
+	public string getName () {
 		return metadata.getTagValue!string("Name");
 	}
 	/**
@@ -929,13 +939,13 @@ public class MapFormat {
 	 *   t = The serialized tag of the object.
 	 * Returns: The backup of the previous object's copy, or null if no object have existed with the same ID.
 	 */
-	public Tag addObjectToLayer(int layer, Tag t) @trusted {
-		Tag result;
+	public DLTag addObjectToLayer(int layer, DLTag t) {
+		DLTag result;
 		try {
-			foreach (Tag t0; layerData[layer].namespaces["Object"].tags) {
+			foreach (DLTag t0; layerData[layer].accessNamespace("Object").tags) {
 				if (t0.values[1].get!int == t.values[1].get!int) {
 					layerData[layer].add(t);
-					result = t0.remove();
+					result = t0.removeFromParent();
 					break;
 				}
 			}
@@ -953,11 +963,11 @@ public class MapFormat {
 	 *   objID = ID of the object we want to remove.
 	 * Returns: the tag of the object that has been removed if the operation is successful.
 	 */
-	public Tag removeObjectFromLayer(int layer, int objID) @trusted {
+	public DLTag removeObjectFromLayer(int layer, int objID) {
 		try {
-			foreach (Tag t0; layerData[layer].namespaces["Object"].tags) {
+			foreach (DLTag t0; layerData[layer].accessNamespace("Object").tags) {
 				if (t0.values[1].get!int == objID) {
-					return t0.remove();
+					return t0.removeFromParent();
 				}
 			}
 		} catch (Exception e) {
@@ -968,14 +978,14 @@ public class MapFormat {
 	/**
 	 * Returns the horizontal resolution.
 	 */
-	public int getHorizontalResolution () @trusted {
-		return metadata.getTag("Resolution").values[0].get!int();
+	public int getHorizontalResolution () {
+		return metadata.searchTagX(["Resolution"]).values[0].get!int();
 	}
 	/**
 	 * Returns the vertical resolution.
 	 */
-	public int getVerticalResolution () @trusted {
-		return metadata.getTag("Resolution").values[1].get!int();
+	public int getVerticalResolution () {
+		return metadata.searchTagX(["Resolution"]).values[1].get!int();
 	}
 }
 /**
@@ -1006,13 +1016,13 @@ abstract class MapObject {
 	public string		name;		///name of object
 	protected MapObjectType	_type;	///type of the object
 	public BitFlags!MapObjectFlags	flags;///Contains property flags
-	public Tag			mainTag;	///Tag that holds the data related to this mapobject + ancillary tags
+	public DLTag		mainTag;	///Tag that holds the data related to this mapobject + ancillary tags
 	///Returns the type of this object
 	public @property MapObjectType type () const @nogc nothrow @safe pure {
 		return _type;
 	}
 	///Serializes the object into an SDL tag
-	public abstract Tag serialize () @trusted;
+	public abstract DLTag serialize () @trusted;
 	/**
 	 * Checks if two objects have the same identifier.
 	 */
@@ -1045,7 +1055,7 @@ public class BoxObject : MapObject {
 	/**
 	 * Deserializes itself from a Tag.
 	 */
-	public this (Tag t, int gID) @trusted {
+	public this (DLTag t, int gID) @trusted {
 		name = t.values[0].get!string();
 		pID = t.values[1].get!int();
 		position = Box(t.values[2].get!int(), t.values[3].get!int(), t.values[4].get!int(), t.values[5].get!int());
@@ -1059,7 +1069,7 @@ public class BoxObject : MapObject {
 	/**
 	 * Serializes the object into an SDL tag
 	 */
-	public override Tag serialize () @trusted {
+	public override DLTag serialize () @trusted {
 		return mainTag;
 	}
 	///Gets the identifying color of this object.
@@ -1107,35 +1117,36 @@ public class SpriteObject : MapObject {
 		this.lrX = lrX;
 		this.lrY = lrY;
 		_type = MapObjectType.sprite;
-		Attribute[] attr;
+		DLElement[] attr;
 		if (lrX >= 0)
-			attr ~= new Attribute("lrCornerX", Value(lrX));
+			attr ~= new DLAttribute("lrCornerX", null, DLVar(lrX, DLValueType.Integer, DLNumberStyle.Decimal));
 		if (lrY >= 0)
-			attr ~= new Attribute("lrCornerY", Value(lrY));
+			attr ~= new DLAttribute("lrCornerY", null, DLVar(lrY, DLValueType.Integer, DLNumberStyle.Decimal));
 		if (palSel)
-			attr ~= new Attribute("palSel", Value(cast(int)palSel));
+			attr ~= new DLAttribute("palSel", null, DLVar(cast(int)palSel, DLValueType.Integer, DLNumberStyle.Hexadecimal));
 		if (palShift)
-			attr ~= new Attribute("palShift", Value(cast(int)palShift));
+			attr ~= new DLAttribute("palShift", null, DLVar(cast(int)palShift, DLValueType.Integer, DLNumberStyle.Decimal));
 		if (masterAlpha)
-			attr ~= new Attribute("masterAlpha", Value(cast(int)masterAlpha));
-		mainTag = new Tag("Object", "Sprite", [Value(name), Value(pID), Value(ssID), Value(x), Value(y)]);
+			attr ~= new DLAtribute("masterAlpha", null, DLVar(cast(int)masterAlpha, DLValueType.Integer, DLNumberStyle.Decimal));
+		mainTag = new DLTag("Sprite", "Object",
+				[new DLValue(name), new DLValue(pID), new DLValue(ssID), new DLValue(x), new DLValue(y)]);
 
 	}
 	/**
 	 * Deserializes itself from a Tag.
 	 */
-	public this (Tag t, int gID) @trusted {
+	public this (DLTag t, int gID) {
 		this.gID = gID;
 		name = t.values[0].get!string();
 		pID = t.values[1].get!int();
 		ssID = t.values[2].get!int();
 		x = t.values[3].get!int();
 		y = t.values[4].get!int();
-		lrX = t.getAttribute!int("lrCornerX", -1);
-		lrY = t.getAttribute!int("lrCornerY", -1);
-		palSel = cast(ushort)t.getAttribute!int("palSel", 0);
-		palShift = cast(ubyte)t.getAttribute!int("palShift", 0);
-		masterAlpha = cast(ubyte)t.getAttribute!int("masterAlpha", 255);
+		lrX = t.searchAttribute!int("lrCornerX", -1);
+		lrY = t.searchAttribute!int("lrCornerY", -1);
+		palSel = cast(ushort)t.searchAttribute!int("palSel", 0);
+		palShift = cast(ubyte)t.searchAttribute!int("palShift", 0);
+		masterAlpha = cast(ubyte)t.searchAttribute!int("masterAlpha", 255);
 		mainTag = t;
 		_type = MapObjectType.sprite;
 		if (t.getTag("ToCollision"))
@@ -1144,7 +1155,7 @@ public class SpriteObject : MapObject {
 	/**
 	 * Serializes the object into an SDL tag
 	 */
-	public override Tag serialize () @trusted {
+	public override DLTag serialize () {
 		return mainTag;
 	}
 	
@@ -1160,22 +1171,23 @@ public class PolylineObject : MapObject {
 		this.pID = pID;
 		this.name = name;
 		this.path = path;
-		mainTag = new Tag(null, "Object", "Polyline", [Value(name), Value(pID)]);
-		new Tag(mainTag, null, "Begin", [Value(path[0].x), Value(path[0].y)]);
-		foreach (Point key; path[1..$-1]) {
-			new Tag(mainTag, null, "Segment", [Value(key.x), Value(key.y)]);
+		mainTag = new DLTag("Polyline", "Object", [new DLValue(name), new DLValue(pID),
+			new DLTag("Begin", null, [new DLValue(path[0].x), new DLValue(path[0].y)])
+		]);
+		foreach (Point key ; path[1..$-1]) {
+			mainTag.add(new DLTag("Segment", null, [new DLValue(key.x), new DLValue(key.y)]));
 		}
 		if (path[0] == path[$-1]) {
-			new Tag(mainTag, null, "Close");
+			mainTag.add(new DLTag(mainTag, null, "Close"));
 		} else {
-			new Tag(mainTag, null, "Segment", [Value(path[$-1].x), Value(path[$-1].y)]);
+			mainTag.add(new DLTag(mainTag, null, "Segment", [new DLValue(path[$-1].x), new DLValue(path[$-1].y)]));
 		}
 	}
-	public this (Tag t, int gID) @trusted {
+	public this (DLTag t, int gID) @trusted {
 		this.gID = gID;
 		name = t.values[0].get!string();
 		pID = t.values[1].get!int();
-		foreach (Tag t0 ; t.tags) {
+		foreach (DLTag t0 ; t.tags) {
 			switch (t0.name) {
 				case "Begin":
 					enforce!MapFormatException(path.length == 0, "'Begin' node found in the middle of the path.");
@@ -1243,11 +1255,11 @@ public class PolylineObject : MapObject {
 	}
 }
 ///Parses a color from SDLang Tag 't', then returns it as the engine's default format.
-public Color parseColor(Tag t) @trusted {
+public Color parseColor(DLTag t) @trusted {
 	Color c;
 	switch (t.values.length) {
 		case 1:
-			if (t.values[0].peek!long)
+			if (t.values[0].type == DLValueType.Integer)
 				c.base = cast(uint)t.getValue!long();
 			else
 				c.base = parseHex!uint(t.getValue!string);
@@ -1274,7 +1286,7 @@ public Tag storeColor(Color c) @trusted {
  *   gID = Group (layer) ID.
  * Returns: The parsed object.
  */
-public MapObject parseObject(Tag t, int gID) @trusted {
+public MapObject parseObject(DLTag t, int gID) @trusted {
 	if (t.namespace != "Object") return null;
 	switch (t.name) {
 		case "Box":
