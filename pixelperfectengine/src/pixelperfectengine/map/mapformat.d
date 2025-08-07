@@ -482,9 +482,9 @@ public class MapFormat {
 	 *   source = The file origin of the tiles (file or DataPak path).
 	 *   dpkSource = Path to the DataPak file if it's used, null otherwise.
 	 */
-	public void addTileInfo(int pri, Tag t, string source, string dpkSource = null) {
+	public void addTileInfo(int pri, DLTag t, string source, string dpkSource = null) {
 		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
+			if(t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource){
 				t0.add(t);
 				return;
 			}
@@ -496,7 +496,7 @@ public class MapFormat {
 	 */
 	public void addTile(int pri, TileInfo item, string source, string dpkSource = null) {
 		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
+			if(t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource){
 				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				if (t1 !is null) {
 					new Tag (t1, null, null, [Value(cast(int)item.id), Value(item.num), Value(item.name)]);
@@ -505,9 +505,9 @@ public class MapFormat {
 		}
 	}
 	///Ditto, but from preexiting Tag.
-	public void addTile(int pri, Tag t, string source, string dpkSource = null) {
+	public void addTile(int pri, DLTag t, string source, string dpkSource = null) {
 		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
-			if (t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
+			if(t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource){
 				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				t1.add(t);
 			}
