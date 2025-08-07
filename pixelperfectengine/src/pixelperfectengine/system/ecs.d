@@ -31,10 +31,10 @@ static enum ECS_MACRO = q"{
 }";
 
 static enum BITFLAG_GET_MACRO(string Name, string Value) = 
-	`bool`~ Name ~ `() @nogc @safe pure nothrow const {` ~ 
+	`bool `~ Name ~ `() @nogc @safe pure nothrow const {` ~
 	`return (bitflags & ` ~ Value ~ `) != 0; }`;
 static enum BITFLAG_SET_MACRO(string Name, string Value) = 
-	`bool`~ Name ~ `(bool val) @nogc @safe pure nothrow {` ~ 
+	`bool `~ Name ~ `(bool val) @nogc @safe pure nothrow {` ~
 	`if (val) bitflags |= ` ~ Value ~ `;` ~
 	`else bitflags &= ~` ~ Value ~ `;` ~
 	`return (bitflags & ` ~ Value ~ `) != 0; }`;
