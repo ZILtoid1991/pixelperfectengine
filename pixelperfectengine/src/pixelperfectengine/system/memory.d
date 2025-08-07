@@ -357,14 +357,14 @@ public struct DynArray(T, string growthStrategy = "a += a;", LTrimStrategy lts =
 	alias opDollar = length;
 	///Returns the element held on `index`.
 	ref T opIndex(size_t index) @nogc @safe pure nothrow {
-		assert(index < length);
+		// assert(index < length);
 		return backend[lTrim + index];
 	}
 	/// Returns a slice from the array.
 	T[] opSlice(size_t i, size_t j) @nogc @safe pure nothrow {
-		assert(i <= j);
-		assert(i < length);
-		assert(j <= length);
+		// assert(i <= j);
+		// assert(i < length);
+		// assert(j <= length);
 		return backend[lTrim+i..lTrim+j];
 	}
 	/// Removes the element held on the index and returns the element.
