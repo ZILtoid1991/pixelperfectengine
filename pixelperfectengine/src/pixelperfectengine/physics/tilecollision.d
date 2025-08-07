@@ -2,7 +2,7 @@ module pixelperfectengine.physics.tilecollision;
 
 import pixelperfectengine.graphics.layers.interfaces : ITileLayer;
 import collections.treemap;
-public import pixelperfectengine.physics.common;
+public import pixelperfectengine.physics.collision;
 
 /** 
  * Test objects against a tilemap.
@@ -10,12 +10,12 @@ public import pixelperfectengine.physics.common;
  * When called, it either tests all or a selected set of objects against the tilemap, then returns 4 lists of the tiles 
  * encountered if they haven't been registered to the "exclutedTiles" set.
  *
- * Note: Might get removed in the future.
+ * Note to self: Deprecate it in favor of Sonic-style checking.
  */
 public class TileCollisionDetector {
 	alias ExcludedTileset = TreeMap!(wchar, void);
 	protected int		contextID;
-	ObjectMap			objects;	///Contains all the objects (collision shapes are not used)
+	ObjectList			objects;	///Contains all the objects (collision shapes are not used)
 	ITileLayer			source;		///Contains a pointer to the source tile layer
 	//ExcludedTileset		excludedTiles;///Contains a set of all excluded tiles (contains 0xffff by default)
 	/** 
@@ -29,7 +29,8 @@ public class TileCollisionDetector {
 		//excludedTiles.put(0xffff);
 	}
 	public void testAll() {
-		foreach (int iA, ref CollisionShape shA; objects) {
+		foreach (ref CollisionShape shA; objects) {
+			int iA = shA.ecsID;
 			testSingle(iA, &shA);
 		}
 	}

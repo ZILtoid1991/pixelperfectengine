@@ -7,7 +7,7 @@ module pixelperfectengine.physics.objectcollision;
  */
 
 import collections.treemap;
-import pixelperfectengine.physics.common;
+import pixelperfectengine.physics.collision;
 //import pixelperfectengine.collision.boxCollision;
 
 /**
@@ -18,10 +18,10 @@ import pixelperfectengine.physics.common;
  * * Box edge
  * * Shape overlap
  * Note that shape overlap needs a custom collision shape for it to work, and cannot be mirrored in any way, instead
- * "pre-mirroring" has to be done. Also sprite scaling isn't supported by this very collision detector.
+ * "pre-mirroring" has to be done. Also sprite scaling isn't supported by this very collision detector for custom shapes.
  */
 public class ObjectCollisionDetector {
-	ObjectMap			objects;	///Contains all of the objects 
+	ObjectList			objects;	///Contains all of the objects
 	int					contextID;	///Stores the identifier of this detector
 	/**
 	 * The delegate where the events will be passed.
@@ -40,7 +40,8 @@ public class ObjectCollisionDetector {
 	 * Tests all shapes against each other
 	 */
 	public void testAll() {
-		foreach (int iA, ref CollisionShape shA; objects) {
+		foreach (ref CollisionShape shA; objects) {
+			int iA = shA.escID;
 			testSingle(iA, &shA);
 		}
 	}
@@ -52,10 +53,11 @@ public class ObjectCollisionDetector {
 	}
 	///Tests a single shape against the others (internal).
 	protected final void testSingle(int iA, CollisionShape* shA) {
-		foreach (int iB, ref CollisionShape shB; objects) {
+		foreach (ref CollisionShape shB; objects) {
+			int iB = shB.ecsID;
 			if (iA != iB) {
 				ObjectCollisionEvent event = testCollision(shA, &shB);
-				if (event! is null) {
+				if (event.type != ObjectCollisionEvent.Type.None) {
 					event.idA = iA;
 					event.idB = iB;
 					objectToObjectCollision(event);
@@ -66,7 +68,7 @@ public class ObjectCollisionDetector {
 	/**
 	 * Tests two objects. Calls cl if collision have happened, with the appropriate values.
 	 */
-	protected final ObjectCollisionEvent testCollision(CollisionShape* shA, CollisionShape* shB) pure {
+	protected final ObjectCollisionEvent testCollision(CollisionShape* shA, CollisionShape* shB) @nogc pure nothrow {
 		if (shA.position.bottom < shB.position.top || shA.position.top > shB.position.bottom || 
 				shA.position.right < shB.position.left || shA.position.left > shB.position.right){
 			//test if edge collision have happened with side edges
@@ -89,7 +91,7 @@ public class ObjectCollisionDetector {
 					cc.left = shB.position.right;
 					cc.right = shA.position.left;
 				}
-				return new ObjectCollisionEvent(shA, shB, contextID, cc, ObjectCollisionEvent.Type.BoxEdge);
+				return ObjectCollisionEvent(shA, shB, contextID, cc, ObjectCollisionEvent.Type.BoxEdge);
 			} else if (shA.position.right >= shB.position.left && shA.position.left <= shB.position.right && 
 					(shA.position.bottom - shB.position.top == -1 || shA.position.top - shB.position.bottom == 1)) {
 				//calculate edge collision area
@@ -109,8 +111,8 @@ public class ObjectCollisionDetector {
 					cc.top = shB.position.bottom;
 					cc.bottom = shA.position.top;
 				}
-				return new ObjectCollisionEvent(shA, shB, contextID, cc, ObjectCollisionEvent.Type.BoxEdge);
-			} else return null;
+				return ObjectCollisionEvent(shA, shB, contextID, cc, ObjectCollisionEvent.Type.BoxEdge);
+			} else return ObjectCollisionEvent.nullCollision;
 		} else {
 			//if there's a bitmap for both shapes, then proceed to per-pixel testing
 			Box ca, cb, cc; // test area coordinates

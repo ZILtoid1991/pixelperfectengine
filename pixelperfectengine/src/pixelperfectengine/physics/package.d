@@ -7,4 +7,4 @@ module pixelperfectengine.physics;
  */
 
 import pixelperfectengine.physics.objectcollision;
-import pixelperfectengine.physics.common;
+import pixelperfectengine.physics.collision;
