@@ -201,6 +201,14 @@ T[] nogc_free(T)(ref T[] arr) @nogc @trusted {
 	arr = null;
 	return arr;
 }
+T* nogc_free(T)(ref T* val) @nogc @trusted {
+	nu_free(val);
+	val = null;
+	return val;
+}
+T* nogc_allocate(T)() @nogc @trusted {
+	return cast(T*)nu_malloc(T.sizeof);
+}
 /// Sets the growth strategy for the dynamic array.
 enum LTrimStrategy {
 	None,		/// Left hand trim is disabled, front deletion will result in copy.
