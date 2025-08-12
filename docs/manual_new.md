@@ -111,13 +111,43 @@ on the selected graphics objects.
 
 The engine is supplied with two extra fragment shaders. One of them does hardlight (multiply below 0.5, screen above 0.5) to the graphics elements. The other on top of it also applies a per-pixel lighting effect based on the pixel's normal values.
 
+# Entity component system and data-oriented design
+
+(Note to self: insert graphics here showcasing the differences between the concepts)
+
+The engine is using ECS and DOD whenever it's either the simpler or faster solution. The engine still uses OOP for certain components to make interchangability and expansion easier (e.g. GUI, serialization), but often still uses ECS and DOD under the hood (e.g. graphics layers).
+
+Entity component system (ECS) is an abstraction system, that is very different from the hierarchial system of object-oriented (OOP) system. Rather than relying on often multiple level inheritance, in ECS each component of an entity is stored in a separate array, and depending on ECS implementation, each entity can choose its own components.
+
+## Examples
+
+A player character or an enemy will have one or more associated sprites, one or more associated collision shapes, some game logic related definition (stats, means of attack, behavior, etc.), and could have physics affecting them.
+
+A game item to be picked up by the player (or even the enemy) will have a sprite and a collision shape, but may not have the physics affecting it, and will have different kind of stats.
+
+Particle effects will have a sprite, physics, and a collision shape. Logic is limited to physics behavior and a lifetime.
+
+Event markers don't have a sprite nor physics, but have a hitbox and a behavior.
+
+## Keyed entity component systems
+
+The engine generally uses a keyed entity component system. This makes is simple and fast to search for a given entity over multiple arrays. One downside is that it also adds some extra space needed for the components, which in turn sometimes ends with more data being packed with the structs to make the alignment work correctly. This is most apparent with the engine's default physics system, which always couples together position and other data.
+
 # Basics of graphics layers
 
+The game engine works with customizable layers, each of which run certain display commands to draw to the screen.
 
+Each layer's order can be set by the developer, and are fully customizable. Using the engine's own OOP system, one even can create their own custom layers.
 
 ## Layer linking
 
+Some layers, like tile layers can be linked together, for priority purposes, to emulate such behavior of the old tile-based systems.
+
 ## Layer masks
+
+Layers can use a so-called mask layer, that is shared between the other layers, for various purposes, like advanced color math. Unlike on old systems, masks are much more advanced, and allow for more color variation than those did, meaning entire bitmaps can be used for masks.
+
+## Common layer functions
 
 # Tile maps and tile layers
 
