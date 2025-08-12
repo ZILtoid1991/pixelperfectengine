@@ -13,13 +13,15 @@ public import pixelperfectengine.system.intrinsics;
 import inteli.types;
 import std.math;
 
-
+/**
+ * Default physics entity and resolver. Uses floating-point calculations
+ */
 public struct PhysEnt {
 	///Stores potential gravity values. The default physics resolver expects at least a single entry.
 	///Index 0 should be set to no gravity.
 	///DO NOT MODIFY ENTRIES OR RESIZE IT WHILE PHYSICS RESOLVER IS RUNNING! USE THE APPROPRIATE FUNCTIONS TO ACCESS
 	///IT OUTSIDE OF PHYSICS RESOLVING!
-	__gshared DynArray!(Vec2)* gravity;
+	private __gshared DynArray!(Vec2)* gravity;
 	shared static this() {
 		gravity = nogc_allocate!(DynArray!(Vec2))();
 		gravity ~= Vec2(0.0);
@@ -38,11 +40,11 @@ public struct PhysEnt {
 	}
 	DVec2 position = DVec2(0.0);		///X-Y positions
 	Vec2 velocity = Vec2(0.0);			///X-Y velocity
-	Vec2 acceleration = Vec2(0.0);		///X-Y acceleration
+	Vec2 acceleration = Vec2(0.0);		///X-Y acceleration, set to zero alongside with gravity to keep constant velocity.
 	float weight = 0.0;					///Weight of the physics entity
 	uint bitflags;
 	ushort restingDirI;					///0-360° on a 2D plane
-	ubyte gravityGr;					///Gravity group selector
+	ubyte gravityGr;					///Gravity group selector, should be set to zero if deacceleration is not needed.
 	mixin(ECS_MACRO);
 	static enum RESTING	=	1<<0;		///Set if object is resting on one direction.
 	mixin(BITFLAG_GET_MACRO!(`resting`, `RESTING`));
@@ -61,18 +63,19 @@ public struct PhysEnt {
 		return sqrt((acceleration.x * acceleration.x) + (acceleration.y * acceleration.y));
 	}
 	double kineticEnergy() @nogc @safe pure nothrow const {
-		return weight * ((velocity.x * velocity.x) + (velocity.y * velocity.y)) * 0.5;
+		return weight * sqrt((velocity.x * velocity.x) + (velocity.y * velocity.y)) * 0.5;
 	}
-	void resolvePhysics(const float deltaTime) @nogc @safe pure nothrow {
+	/**
+	 * Resolves physics for this entity. Does not do any other calculations or physics related things.
+	 * Params:
+	 *   deltaTime = The lapsed time, in seconds.
+	 */
+	void resolvePhysics(const float deltaTime) @nogc @trusted pure nothrow {
 		position += velocity * deltaTime;
+		velocity += acceleration * deltaTime;
 		Vec2 localGr = gravity[gravityGr];
-		if (resting) {
-			Vec2 restingVec = Vec2([cos(restingDir), -sin(restingDir)]);
-			Vec2 normAcc = acceleration / accelTotal;
-			localGr += Vec2([abs(abs(normAcc.x) - abs(restingVec.x)), abs(abs(normAcc.y) - abs(restingVec.y))]);
-		} else {
-			velocity += acceleration * deltaTime;
-			acceleration += ((acceleration + localGr) / (1 + kineticEnergy)) * deltaTime;
-		}
+		if (resting) localGr *= Vec2([abs(cos(restingDir)), abs(sin(restingDir))]);//Note to self: actually read up on how this thing works instead of just going off by vibes
+		acceleration += ((acceleration - localGr) / (1 + kineticEnergy)) * deltaTime;
+
 	}
 }
