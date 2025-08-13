@@ -43,26 +43,7 @@ public class MapFormat {
 	/**
 	 * Associative array used for rendering mode lookups in one way. (DEPRECATED!)
 	 */
-	public static immutable RenderingMode[string] renderingModeLookup;
-	shared static this() {
-		renderingModeLookup["null"] = RenderingMode.init;
-		renderingModeLookup["Copy"] = RenderingMode.Copy;
-		renderingModeLookup["Blitter"] = RenderingMode.Blitter;
-		renderingModeLookup["AlphaBlend"] = RenderingMode.AlphaBlend;
-		renderingModeLookup["Add"] = RenderingMode.Add;
-		renderingModeLookup["AddBl"] = RenderingMode.AddBl;
-		renderingModeLookup["Subtract"] = RenderingMode.Subtract;
-		renderingModeLookup["SubtractBl"] = RenderingMode.SubtractBl;
-		renderingModeLookup["Diff"] = RenderingMode.Diff;
-		renderingModeLookup["DiffBl"] = RenderingMode.DiffBl;
-		renderingModeLookup["Multiply"] = RenderingMode.Multiply;
-		renderingModeLookup["MultiplyBl"] = RenderingMode.MultiplyBl;
-		renderingModeLookup["Screen"] = RenderingMode.Screen;
-		renderingModeLookup["ScreenBl"] = RenderingMode.ScreenBl;
-		renderingModeLookup["AND"] = RenderingMode.AND;
-		renderingModeLookup["OR"] = RenderingMode.OR;
-		renderingModeLookup["XOR"] = RenderingMode.XOR;
-	}
+
 	/**
 	 * Creates new instance from scratch.
 	 */
@@ -764,7 +745,7 @@ public class MapFormat {
 	 *   pri = Layer priority ID.
 	 * Returns: a backup for undoing.
 	 */
-	public Tag removeMapDataFile(int pri) {
+	public DLTag removeMapDataFile(int pri) {
 		return layerData[pri].searchTagX(["File:MapData"]).removeFromParent();
 	}
 	/**

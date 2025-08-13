@@ -74,8 +74,9 @@ public struct PhysEnt {
 		position += velocity * deltaTime;
 		velocity += acceleration * deltaTime;
 		Vec2 localGr = gravity[gravityGr];
-		if (resting) localGr *= Vec2([abs(cos(restingDir)), abs(sin(restingDir))]);//Note to self: actually read up on how this thing works instead of just going off by vibes
-		acceleration += ((acceleration - localGr) / (1 + kineticEnergy)) * deltaTime;
-
+		const double gravityEnergy = weight * sqrt((localGr.x * localGr.x) + (localGr.y * localGr.y)) * 0.5;
+		const double energyRatio = gravityEnergy / (kineticEnergy + gravityEnergy);
+		if (resting) localGr *= Vec2([abs(cos(restingDir)), abs(sin(restingDir))]);
+		acceleration = (acceleration * (1.0 - energyRatio)) + (localGr * energyRatio);
 	}
 }

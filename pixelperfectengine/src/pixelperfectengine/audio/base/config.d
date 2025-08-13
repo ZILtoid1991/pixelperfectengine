@@ -72,7 +72,7 @@ public class ModuleConfig {
 	 */
 	public this(ModuleManager manager) {
 		this.manager = manager;
-		root = new Tag(null);
+		root = new DLDocument(null);
 	}
 	/** 
 	 * Loads a configuration file from text.
@@ -152,7 +152,7 @@ public class ModuleConfig {
 							case "presetRecall":
 								const int presetID = t1.values[0].get!int();
 								//const string presetName = t1.getAttribute("name", string.init);
-								foreach (Tag t2; t1.tags) {
+								foreach (DLTag t2; t1.tags) {
 									uint paramID;
 									if (t2.values[0].peek!string) {
 										paramID = defaultHash(t2.values[0].get!string);
@@ -199,7 +199,7 @@ public class ModuleConfig {
 						rns ~= node;
 					break;
 				case "midiRouting":
-					foreach (Tag t1 ; t0.tags) {
+					foreach (DLTag t1 ; t0.tags) {
 						midiRouting ~= t1.values[0].get!int;
 						midiGroups ~= cast(ubyte)(t1.searchAttribute!int("group", 0));
 					}
@@ -318,8 +318,8 @@ public class ModuleConfig {
 	 *   backup = Previous value of the parameter, otherwise left unaltered.
 	 *   name = Optional name of the preset.
 	 */
-	public void editPresetParameter(Value, ParamID)(string modID, int presetID, ParamID paramID, Value value, ref Value backup,
-			string name = null) {
+	public void editPresetParameter(Value, ParamID)(string modID, int presetID, ParamID paramID, Value value,
+			ref Value backup, string name = null) {
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1].get!string == modID) {
@@ -490,7 +490,7 @@ public class ModuleConfig {
 	 * Params:
 	 *   backup = The module tag containing all the info associated with the module.
 	 */
-	public void addModule(Tag backup) {
+	public void addModule(DLTag backup) {
 		root.add(backup);
 	}
 	/**
