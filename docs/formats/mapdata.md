@@ -36,8 +36,8 @@ public struct MapDataHeader{
 
 ### Currently used flags
 
-* bit 0: Field `p` in the binary chunks are repurposed as user data (old format), or that flags attribute extensions are present(new format).
-* bit 1: Pield `S` in the binary chunks are repurposed as user data. NOTE: By default, this only works if all tiles are either 32 or 16 bit. Any 8 or 4 bit tile might cause an error, since the engine's tile layers use this field for 
+* bit 0: Field `p` in the binary chunks are repurposed as user data (old format), or that logic attribute extensions are present(new format).
+* bit 1: Field `S` in the binary chunks are repurposed as user data. NOTE: By default, this only works if all tiles are either 32 or 16 bit. Any 8 or 4 bit tile might cause an error, since the engine's tile layers use this field for 
 palette-selection purposes.
 * bit 2: Bit 10 in the chunk (bit 2 in the `attributes` field) is used to indicate if a tile's X and Y axes are interchanged for 90° rotation effects. If bit 0 is set, then the remaining 5 bits are used for other purposes.
 * bit 3: If set, new format is being used.
@@ -114,9 +114,9 @@ The graphics attribute extension adds 6x4 additional fields for each tile, which
 ### Layout:
 
 * r: 8 bit unsigned, describes the red channel data, default value is 0x80.
-* r: 8 bit unsigned, describes the green channel data, default value is 0x80.
-* r: 8 bit unsigned, describes the blue channel data, default value is 0x80.
-* r: 8 bit unsigned, describes the alpha channel data, default value is 0xFF.
+* g: 8 bit unsigned, describes the green channel data, default value is 0x80.
+* b: 8 bit unsigned, describes the blue channel data, default value is 0x80.
+* a: 8 bit unsigned, describes the alpha channel data, default value is 0xFF.
 * lX: 16 bit signed, describes the x direction of the lighting, default value is 0x00_00.
 * lY: 16 bit signed, describes the y direction of the lighting, default value is 0x00_00.
 
