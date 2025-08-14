@@ -29,6 +29,9 @@ public class ModuleConfig {
 		bool opEquals(const RoutingNode other) const @nogc @safe pure nothrow {
 			return this.name == other.name;
 		}
+		size_t toHash() const @nogc @safe pure nothrow {
+			return size_t.init;
+		}
 		///Returns true if input is found in the routing node.
 		bool hasInput(string s) {
 			return countUntil(inputs, s) != -1;
@@ -136,6 +139,7 @@ public class ModuleConfig {
 							currMod = new DelayLines(t0.values[2].get!int(), t0.values[3].get!int());
 							break;
 						default:
+							//TODO: Add functionality to create constructors for custom modules via delegates
 							break;
 					}
 					modules ~= currMod;
@@ -154,21 +158,27 @@ public class ModuleConfig {
 								//const string presetName = t1.getAttribute("name", string.init);
 								foreach (DLTag t2; t1.tags) {
 									uint paramID;
-									if (t2.values[0].peek!string) {
+									if (t2.values[0].type == DLValueType.String) {
 										paramID = defaultHash(t2.values[0].get!string);
 									} else {
 										paramID = cast(uint)(t2.values[0].get!long);
 									}
-									if (t2.values[1].peek!string) {
-										currMod.writeParam_string(presetID, paramID, t2.values[1].get!string);
-									} else if (t2.values[1].peek!long) {
-										currMod.writeParam_long(presetID, paramID, t2.values[1].get!long);
-									} else if (t2.values[1].peek!int) {
-										currMod.writeParam_int(presetID, paramID, t2.values[1].get!int);
-									} else if (t2.values[1].peek!double) {
-										currMod.writeParam_double(presetID, paramID, t2.values[1].get!double);
-									} else if (t2.values[1].peek!bool) {
-										currMod.writeParam_int(presetID, paramID, t2.values[1].get!bool ? 1 : 0);
+									switch(t2.values[1].type) {
+										case DLValueType.Integer:
+											if (currMod.writeParam_long(presetID, paramID, t2.values[1].get!long) != 0) {
+												currMod.writeParam_int(presetID, paramID, t2.values[1].get!int);
+											}
+											break;
+										case DLValueType.String:
+											currMod.writeParam_string(presetID, paramID, t2.values[1].get!string);
+											break;
+										case DLValueType.Float:
+											currMod.writeParam_double(presetID, paramID, t2.values[1].get!double);
+											break;
+										case DLValueType.Boolean:
+											currMod.writeParam_int(presetID, paramID, t2.values[1].get!bool ? 1 : 0);
+											break;
+										default: break;
 									}
 								}
 								break;
@@ -360,11 +370,11 @@ public class ModuleConfig {
 		const bool fromModule = from.split(":").length == 2;
 		const bool toModule = to.split(":").length == 2 || countUntil(outChannelNames, to) != -1;
 		if (fromModule && toModule) {
-			new Tag(root, null, "route", [Value(from), Value(to)]);
+			root.add(new DLTag("route", null, [new DLValue(from), new DLValue(to)]));
 		} else if (fromModule) {
 			foreach (DLTag t0; root.tags) {
 				if (t0.name == "node" && t0.values.length >= 1) {
-					if (t0.getValue!string == to) {
+					if (t0.values[0].get!string == to) {
 						t0.searchTagX(["input"]).add(new DLTag(null, null, [new DLValue(from)]));
 						return;
 					}
@@ -372,14 +382,14 @@ public class ModuleConfig {
 			}
 			root.add(new DLTag("node", null, [
 					new DLValue(to),
-					new DLTag("input", null, [new Tag(null, null, [new DLValue(from)])]),
+					new DLTag("input", null, [new DLTag(null, null, [new DLValue(from)])]),
 					new DLTag("output", null, null)
 			]));
 		} else {	//(toModule)
 			foreach (DLTag t0; root.tags) {
 				if (t0.name == "node" && t0.values.length >= 1) {
-					if (t0.getValue!string == from) {
-						t0.searchTagX([output]).add(new DLTag(null, null, [new DLValue(to)]));
+					if (t0.values[0].get!string == from) {
+						t0.searchTagX(["output"]).add(new DLTag(null, null, [new DLValue(to)]));
 						return;
 					}
 				}
@@ -387,7 +397,7 @@ public class ModuleConfig {
 			root.add(new DLTag("node", null, [
 					new DLValue(from),
 					new DLTag("input", null, null),
-					new DLTag("output", null, [new Tag(null, null, [new DLValue(to)])])
+					new DLTag("output", null, [new DLTag(null, null, [new DLValue(to)])])
 			]));
 		}
 	}
@@ -413,7 +423,7 @@ public class ModuleConfig {
 		} else if (fromModule) {
 			foreach (DLTag t0; root.tags) {
 				if (t0.name == "node" && t0.values[0].get!string == to) {
-					DLTag t1 = t0.searchTagX("input");
+					DLTag t1 = t0.searchTagX(["input"]);
 					foreach (DLTag t2 ; t1.tags())
 					if (t2.values[0].get!string == from) {
 						t2.removeFromParent();
@@ -422,10 +432,10 @@ public class ModuleConfig {
 				}
 			}
 		} else {	//(toModule)
-			foreach (Tag t0; root.tags) {
+			foreach (DLTag t0; root.tags) {
 				if (t0.name == "node" && t0.values[0].get!string == from) {
-					Tag t1 = t0.expectTag("output");
-					foreach (Tag t2 ; t1.tags())
+					DLTag t1 = t0.searchTagX(["output"]);
+					foreach (DLTag t2 ; t1.tags())
 					if (t2.values[0].get!string == to) {
 						t2.removeFromParent();
 						return true;
@@ -503,7 +513,7 @@ public class ModuleConfig {
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1].get!string == oldName) {
-					t0.values[1].set = newName;
+					t0.values[1].set = DLVar(newName, 0, DLStringType.Quote);
 					return;
 				}
 			}
@@ -567,10 +577,10 @@ public class ModuleConfig {
 	public DLTag removePreset(string modID, int presetID) {
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1].string == modID) {
+				if (t0.values[1].get!string == modID) {
 					foreach (DLTag t1; t0.tags) {
 						if (t1.name == "presetRecall" && t1.values[0].get!int == presetID) {
-							return t1.removeFromParent;
+							return cast(DLTag)t1.removeFromParent;
 						}
 					}
 				}
@@ -630,14 +640,13 @@ public class ModuleConfig {
 	public DLTag addWaveFile(string path, string modID, int waveID, string dpkPath, string name) {
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
+				if (t0.values[1].get!string == modID) {
 					DLTag t1 = new DLTag("loadSample", null,
 							[new DLValue(DLVar(path, DLValueType.String, DLStringType.Backtick)), new DLValue(waveID)]);
 					if (name.length) t1.add(new DLAttribute("name", null, DLVar(name, DLValueType.String, DLStringType.Quote)));
 					if (dpkPath.length)
 						t1.add(new DLAttribute("dpkPath", null, DLVar(dpkPath, DLValueType.String, DLStringType.Backtick)));
-					to.add(t1);
-					// Tag t1 = new Tag(t0, null, "loadSample", [Value(path), Value(waveID)], attr);
+					t0.add(t1);
 					return t1;
 				}
 			}
@@ -657,7 +666,7 @@ public class ModuleConfig {
 	public DLTag addWaveSlice(string modID, int waveID, int src, int pos, int len, string name) {
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
+				if (t0.values[1].get!string == modID) {
 					DLTag t1 = new DLTag("waveformSlice", null,
 							[new DLValue(waveID), new DLValue(src), new DLValue(pos), new DLValue(len)]);
 					if (name.length) t1.add(new DLAttribute("name", null, DLVar(name, DLValueType.String, DLStringType.Quote)));
@@ -688,16 +697,16 @@ public class ModuleConfig {
 	public DLTag removeWave(string modID, int waveID) {
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
+				if (t0.values[1].get!string == modID) {
 					foreach (DLTag t1 ; t0.tags) {
 						switch (t1.name) {
 							case "loadSample":
 								if (t1.values[1].get!int == waveID)
-									return t1.removeFromParent();
+									return cast(DLTag)t1.removeFromParent();
 								break;
 							case "waveformSlice":
 								if (t1.values[0].get!int == waveID)
-									return t1.removeFromParent();
+									return cast(DLTag)t1.removeFromParent();
 								break;
 							default: break;
 						}
@@ -759,16 +768,16 @@ public class ModuleConfig {
 		WaveFileData[] result;
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
-				if (t0.values[1] == modID) {
+				if (t0.values[1].get!string == modID) {
 					foreach (DLTag t1 ; t0.tags) {
 						switch (t1.name) {
 							case "loadSample":
-								result ~= WaveFileData(t1.values[1].get!int, t1.getAttribute!string("dpkPath"), t1.values[0].get!string, 
-										t1.getAttribute!string("name"), false, false);
+								result ~= WaveFileData(t1.values[1].get!int, t1.searchAttribute!string("dpkPath", null),
+										t1.values[0].get!string, t1.searchAttribute!string("name", null), false, false);
 								break;
 							case "waveformSlice":
 								result ~= WaveFileData(t1.values[0].get!int, null, "SLICE FROM:" ~ to!string(t1.values[1].get!int), 
-										t1.getAttribute!string("name"), true, false);
+										t1.searchAttribute!string("name", null), true, false);
 								break;
 							default: break;
 						}
@@ -801,7 +810,7 @@ public class ModuleConfig {
 			}
 		}
 		foreach (uint i ; table) {
-			 t0.add(new DLTag(null, null, [Value(cast(int)i)]));
+			 t0.add(new DLTag(null, null, [new DLValue(i)]));
 		}
 	}
 }
