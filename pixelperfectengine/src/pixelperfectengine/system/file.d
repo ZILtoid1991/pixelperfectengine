@@ -212,7 +212,7 @@ public Color[] loadPaletteFromFile(string filename) {
 /**
  * Loads a palette from image.
  */
-public Color[] loadPaletteFromImage (Image img) {
+public Color[] loadPaletteFromImage (Image img) @trusted {
 	Color[] palette;
 	IPalette sourcePalette = img.palette.convTo(PixelFormat.RGBA8888);
 	palette = reinterpretCast!Color(sourcePalette.raw);
