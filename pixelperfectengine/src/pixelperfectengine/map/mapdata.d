@@ -59,7 +59,7 @@ public struct MapDataHeader {
 	 *   sizeX = Width of the map.
 	 *   sizeY = Height of the map.
 	 */
-	this(int sizeX, int sizeY) {
+	this(int sizeX, int sizeY) @safe pure nothrow @nogc {
 		flags = RegisteredFlags.NewFormat;
 		this.sizeX = sizeX;
 		this.sizeY = sizeY;
@@ -108,7 +108,7 @@ public void saveMapFile(F = File)(MapDataHeader header, MappingElement2[] map, F
 /**
  * Loads a map from an external file.
  */
-public MappingElement[] loadMapFile(F = File)(F file, ref MapDataHeader header){
+public MappingElement[] loadMapFile(F = File)(F file, ref MapDataHeader header) @trusted {
 	ubyte[] readbuffer;
 	MappingElement[] result;
 	readbuffer.length = MapDataHeader.sizeof;
@@ -122,7 +122,7 @@ public MappingElement[] loadMapFile(F = File)(F file, ref MapDataHeader header){
 /**
  * Loads a map from an external file.
  */
-public MappingElement2[] loadMapFile2(F = File)(F file, ref MapDataHeader header){
+public MappingElement2[] loadMapFile2(F = File)(F file, ref MapDataHeader header) @trusted {
 	ubyte[] readbuffer;
 	MappingElement[] result;
 	readbuffer.length = MapDataHeader.sizeof;
