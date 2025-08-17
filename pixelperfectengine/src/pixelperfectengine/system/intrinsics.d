@@ -10,6 +10,7 @@
 module pixelperfectengine.system.intrinsics;
 import inteli;
 import std.conv;
+import std.traits;
 
 immutable __m128i MM_NULLVEC = __m128i([0, 0, 0, 0]);
 ///Stores 2 of the lower single precision floats in the specified memory location.
@@ -91,8 +92,13 @@ struct VectTempl(T, int Dim) {
 			data[I] = all;
 		}
 	}
-	this (T0)(T0[Dim] data) @nogc @safe pure nothrow {
+	this (T[Dim] data) @nogc @safe pure nothrow {
 		this.data = data;
+	}
+	this (T0)(T0[Dim] data) @nogc @safe pure nothrow {
+		static foreach (I; 0..Dim) {
+			mixin(`this.data[`~I.to!string~`] = data[`~I.to!string~`];`);
+		}
 	}
 	ref T opIndex(size_t i) @nogc @safe pure nothrow {
 		return data[i];
@@ -116,35 +122,26 @@ struct VectTempl(T, int Dim) {
 	}
 	void opUnary(string s)() @nogc @safe pure nothrow {
 		static foreach (I; 0..Dim) {
-			static enum POS = I.to!string;
-			mixin(s~`data[`~POS~`];`);
+			mixin(s~`data[`~I.to!string~`];`);
 		}
 	}
 	VectTempl!(T, Dim) opBinary(string op, T0)(T0 rhs) @nogc @safe pure nothrow const {
 		VectTempl!(T, Dim) result;
 		static foreach (I; 0..Dim) {
-			static enum POS = I.to!string;
-			static if (is(T0 == float) || is(T0 == double) || is(T0 == real) ||
-					is(T0 == long) || is(T0 == int) || is(T0 == short) || is(T0 == byte) ||
-					is(T0 == ulong) || is(T0 == uint) || is(T0 == ushort) || is(T0 == ubyte))
-			{
-				mixin(`result[`~POS~`] = data[`~POS~`] `~op~ ` rhs;`);
+			static if (isFloatingPoint!(T0) || isIntegral!T0) {
+				mixin(`result[`~I.to!string~`] = data[`~I.to!string~`] `~op~ ` rhs;`);
 			} else {
-				mixin(`result[`~POS~`] = data[`~POS~`] `~op~ ` rhs[`~POS~`];`);
+				mixin(`result[`~I.to!string~`] = data[`~I.to!string~`] `~op~ ` rhs[`~I.to!string~`];`);
 			}
 		}
 		return result;
 	}
 	void opOpAssign(string op, T0)(T0 rhs) @nogc @safe pure nothrow {
 		static foreach (I; 0..Dim) {
-			static enum POS = I.to!string;
-			static if (is(T0 == float) || is(T0 == double) || is(T0 == real) ||
-					is(T0 == long) || is(T0 == int) || is(T0 == short) || is(T0 == byte) ||
-					is(T0 == ulong) || is(T0 == uint) || is(T0 == ushort) || is(T0 == ubyte))
-			{
-				mixin(`data[`~POS~`] `~op~`= rhs;`);
+			static if (isFloatingPoint!(T0) || isIntegral!T0) {
+				mixin(`data[`~I.to!string~`] `~op~`= rhs;`);
 			} else {
-				mixin(`data[`~POS~`] `~op~`= rhs[`~POS~`];`);
+				mixin(`data[`~I.to!string~`] `~op~`= rhs[`~I.to!string~`];`);
 			}
 		}
 	}
