@@ -41,7 +41,7 @@ public class ObjectCollisionDetector {
 	 */
 	public void testAll() {
 		foreach (ref CollisionShape shA; objects) {
-			int iA = shA.escID;
+			int iA = shA.ecsID;
 			testSingle(iA, &shA);
 		}
 	}
@@ -49,7 +49,7 @@ public class ObjectCollisionDetector {
 	 * Tests a single shape (objectID) against the others.
 	 */
 	public void testSingle(int objectID) {
-		testSingle(objectID, objects.ptrOf(objectID));
+		testSingle(objectID, &objects[objects.searchIndexBy(objectID)]);
 	}
 	///Tests a single shape against the others (internal).
 	protected final void testSingle(int iA, CollisionShape* shA) {
@@ -160,7 +160,7 @@ public class ObjectCollisionDetector {
 				assert ((ca.width == cb.width) && (cb.width == cc.width), "Width mismatch error!");
 				assert ((ca.height == cb.height) && (cb.height == cc.height), "Height mismatch error!");
 			}
-			ObjectCollisionEvent event = new ObjectCollisionEvent(shA, shB, contextID, cc, ObjectCollisionEvent.Type.BoxOverlap);
+			ObjectCollisionEvent event = ObjectCollisionEvent(shA, shB, contextID, cc, ObjectCollisionEvent.Type.BoxOverlap);
 			if(shA.shape !is null && shB.shape !is null) {
 				/+for (int y ; y < cc.height ; y++) {
 					for (int x ; x < cc.width ; x++) {
