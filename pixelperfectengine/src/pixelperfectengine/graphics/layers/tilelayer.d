@@ -162,7 +162,7 @@ public class TileLayer : Layer, ITileLayer {
 		mapping.nogc_free();
 		mapping_grExt.nogc_free();
 	}
-	public void unlinkLayer() {
+	public void unlinkLayer() @nogc @safe pure nothrow {
 		if (linkedLayer !is null) {
 			linkedLayer.flags &= ~LINKED_SECONDARY;
 			linkedLayer.gl_displayList = DisplayListV.init;
