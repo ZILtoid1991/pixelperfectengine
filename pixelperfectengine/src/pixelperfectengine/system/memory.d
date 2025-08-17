@@ -14,7 +14,7 @@ import std.functional : binaryFun;
 import numem.core.memory;
 import numem.core.hooks;
 import numem.core.traits;
-import numem.core.atomic;
+// import numem.core.atomic;
 public import numem : nogc_new, nogc_delete, nogc_move, nogc_copy;
 import core.stdc.stdio;
 
@@ -535,6 +535,9 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 		}
 		backend.insert(length, elem);
 		return backend[0];
+	}
+	ref T opOpAssign(string op : "~")(T elem) @nogc @safe {
+		return insert(elem);
 	}
 	/// Searches `needle` in the array with comparisons defined by template parameters 
 	/// `less` and `equal`, and returns the found element. Returns T.init if not found.
