@@ -302,7 +302,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 * The base window has no priority and will reside forever in the background. Can be used for various ends.
 	 */
 	public Window setBaseWindow(Window w) @safe nothrow {
-		import pixelperfectengine.graphics.layers.base : RenderingMode;
+
 		w.addHandler(this);
 		baseWindow = w;
 		// spriteLayer.addSprite(w.getOutput, 65_535, w.getPosition.left, w.getPosition.top);
