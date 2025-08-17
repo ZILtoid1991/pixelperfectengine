@@ -48,12 +48,12 @@ public class MapFormat {
 	 * Creates new instance from scratch.
 	 */
 	public this(string name, int resX, int resY) {
-		root = new DLDocument();
+		root = new DLDocument(null);
 		metadata = new DLTag("Metadata", null, null);
 		root.add(metadata);
-		metadata.add(new DLTag("Version", null, [new DLValue(1), new DLValue(0)]));
-		metadata.add(new DLTag("Name", null, [Value(name)]));
-		metadata.add(new DLTag("Resolution", null, [Value(resX), Value(resY)]));
+		metadata.add(new DLTag("Version", null, [new DLValue(cast(long)1), new DLValue(cast(long)0)]));
+		metadata.add(new DLTag("Name", null, [new DLValue(name)]));
+		metadata.add(new DLTag("Resolution", null, [new DLValue(cast(long)resX), new DLValue(cast(long)resY)]));
 	}
 	/**
 	 * Serializes itself from file.
@@ -117,7 +117,7 @@ public class MapFormat {
 			if (value.name != "Tile") continue;
 			DLTag[] tileSource = getAllTileSources(key);
 			foreach (t0; tileSource) {
-				string path = t0.getValue!string();
+				string path = t0.values[0].get!string();
 				Image i = loadImage(File(resolvePath(path), "rb"));
 				void helperFunc(T)(T bitmap, DLTag source) {
 					TileLayer tl = cast(TileLayer)layeroutput[key];
@@ -125,9 +125,9 @@ public class MapFormat {
 					int tW = tl.getTileWidth, tH = tl.getTileHeight;
 					int numOfCol = bitmap.width / tW, numOfRow = bitmap.height / tH;
 					int imageID = hashCalc(path);
-					tl.addBitmapSource(bitmap, imageID, cast(ubyte)source.getAttribute!int("palShift"));
+					tl.addBitmapSource(bitmap, imageID, source.searchAttribute!ubyte("palShift", 0));
 					if(tileInfo !is null) {
-						foreach (Tag t1 ; tileInfo.tags) {
+						foreach (DLTag t1 ; tileInfo.tags) {
 							int tileNum = t1.values[0].get!int();
 							int x = tileNum % numOfCol;
 							int y = (tileNum - x) % numOfRow;
@@ -149,7 +149,7 @@ public class MapFormat {
 						
 				}
 				if (paletteTarget !is null && isPaletteFileExists(path)) {
-					paletteTarget.loadPaletteChunk(loadPaletteFromImage(i), cast(ushort)t0.getAttribute!int("offset", 0));
+					paletteTarget.loadPaletteChunk(loadPaletteFromImage(i), t0.searchAttribute!ushort("offset", 0));
 				}
 				//debug writeln(paletteTarget.palette);
 			}
@@ -169,7 +169,7 @@ public class MapFormat {
 		SpriteLayer currSpriteLayer = cast(SpriteLayer)layeroutput[layerID];
 		// ABitmap[int] result;
 		Image[string] imageBuffer;	//Resource manager to minimize reloading image files
-		Tag tBase = layerData[layerID];
+		DLTag tBase = layerData[layerID];
 		if (tBase.name != "Sprite") return;
 		foreach (DLTag t0; tBase.tags) {
 			switch (t0.fullname) {
@@ -190,10 +190,10 @@ public class MapFormat {
 						}
 					}
 
-					if (t0.searchAttribute!int("horizOffset", -1) != -1 && t0.searchAttribute!int("vertOffset") != -1 &&
-							t0.searchAttribute!int("width") && t0.searchAttribute!int("height")) {
-						const int hOffset = t0.searchAttribute!int("horizOffset"), vOffset = t0.searchAttribute!int("vertOffset"),
-							w = t0.searchAttribute!int("width"), h = t0.searchAttribute!int("height");
+					if (t0.searchAttribute!int("horizOffset", -1) != -1 && t0.searchAttribute!int("vertOffset", -1) != -1 &&
+							t0.searchAttribute!int("width", 0) && t0.searchAttribute!int("height", 0)) {
+						const int hOffset = t0.searchAttribute!int("horizOffset", -1), vOffset = t0.searchAttribute!int("vertOffset", -1),
+							w = t0.searchAttribute!int("width", 0), h = t0.searchAttribute!int("height", 0);
 						currSpriteLayer.createSpriteMaterial(id, imageID, Box.bySize(hOffset, vOffset, w, h));
 					} else {
 						currSpriteLayer.createSpriteMaterial(id, imageID);
@@ -225,13 +225,14 @@ public class MapFormat {
 					}
 					break;
 				case "File:Palette":
-					string filename = t0.expectValue!string();
+					string filename = t0.values[0].get!string();
 					if (imageBuffer.get(filename, null) is null) {
 						imageBuffer[filename] = loadImage(File(filename));
 					}
 					Color[] pal = loadPaletteFromImage(imageBuffer[filename]);
-					const size_t palLength = t0.getAttribute!int("palShift") ? 1<<(t0.getAttribute!int("palShift")) : pal.length;
-					const int palOffset = t0.getAttribute!int("offset");
+					const int palShiftVal = t0.searchAttribute!int("palShift", 0);
+					const size_t palLength = palShiftVal ? 1<<palShiftVal : pal.length;
+					const int palOffset = t0.searchAttribute!int("offset", 0);
 					paletteTarget.loadPaletteChunk(pal[0..palLength], cast(ushort)palOffset);
 					break;
 				default:
@@ -249,7 +250,7 @@ public class MapFormat {
 		if (t0 is null) return null;
 		MapObject[] result;
 		try {
-			foreach (DLTag t1; t0.namespaces["Object"].tags) {
+			foreach (DLTag t1; t0.accessNamespace("Object").tags) {
 				MapObject obj = parseObject(t1, layerID);
 				if (obj !is null)
 					result ~= obj;
@@ -268,7 +269,7 @@ public class MapFormat {
 	 * Note: This is a default parser and loader, one might want to write a more complicated one for their application.
 	 */
 	public void loadAllSpritesAndObjects(PaletteContainer paletteTarget, ObjectCollisionDetector ocd) {
-		import pixelperfectengine.physics.common;
+		import pixelperfectengine.physics.collision;
 		foreach (key, value; layeroutput) {
 			loadSprites(key, paletteTarget);
 			MapObject[] objList = getLayerObjects(key);
@@ -283,11 +284,11 @@ public class MapFormat {
 						// 		so.scaleVert, so.rendMode);
 						if (ocd !is null && so.flags.toCollision) {
 							Box spriteCoord = sl.getSpriteCoordinate(so.pID).boxOf;
-							ocd.objects[so.pID] = CollisionShape(spriteCoord, null);
+							ocd.objects ~= CollisionShape(so.pID, spriteCoord, null);
 						}
 					} else if (ocd !is null && key0.type == MapObject.MapObjectType.box && key0.flags.toCollision) {
 						BoxObject bo = cast(BoxObject)key0;
-						ocd.objects[bo.pID] = CollisionShape(bo.position, null);
+						ocd.objects ~= CollisionShape(bo.pID, bo.position, null);
 					}
 				}
 			} /+else if (ocd !is null) {
@@ -305,21 +306,21 @@ public class MapFormat {
 	 */
 	public void loadMappingData () {
 		import pixelperfectengine.system.etc : reinterpretCast;
-		foreach (key, value ; layerData) {
-			Tag t0 = value.getTag("Embed:MapData");
+		foreach (key, DLTag value ; layerData) {
+			DLTag t0 = value.searchTag("Embed:MapData");
 			if (t0 !is null) {
 				TileLayer tl = cast(TileLayer)layeroutput[key];
 				//writeln(t0.getValue!(ubyte[])());
 				tl.loadMapping(value.values[4].get!int(), value.values[5].get!int(), 
-						reinterpretCast!MappingElement(t0.expectValue!(ubyte[])()));
+						reinterpretCast!MappingElement2(t0.values[0].get!(ubyte[])()));
 
 				continue;
 			}
-			t0 = value.getTag("File:MapData");
+			t0 = value.searchTag("File:MapData");
 			if (t0 !is null) {
 				TileLayer tl = cast(TileLayer)layeroutput[key];
 				MapDataHeader mdf;
-				File mapfile = File(resolvePath(t0.expectValue!string()));
+				File mapfile = File(resolvePath(t0.values[0].get!string()));
 				tl.loadMapping(value.values[4].get!int(), value.values[5].get!int(), loadMapFile(mapfile, mdf));
 			}
 		}
@@ -335,7 +336,7 @@ public class MapFormat {
 			if(t.name == "Tile")
 				pullMapDataFromLayer (i);
 		}
-		string output = root.toSDLDocument();
+		string output = root.writeDOM();
 		File f = File(path, "wb+");
 		f.write(output);
 	}
@@ -359,12 +360,15 @@ public class MapFormat {
 	/**
 	 * Returns all layer's basic information.
 	 */
-	public LayerInfo[] getLayerInfo() {
+	public LayerInfo[] getLayerInfo() pure @trusted {
 		import std.algorithm.sorting : sort;
 		LayerInfo[] result;
-		foreach (Tag t ; layerData) {
-			result ~= LayerInfo(LayerInfo.parseLayerTypeString(t.name), t.values[1].get!int(), t.values[0].get!string());
+		void fAttributeHell() pure @system{
+			foreach (DLTag t ; layerData) {
+				result ~= LayerInfo(LayerInfo.parseLayerTypeString(t.name), t.values[1].get!int(), t.values[0].get!string());
+			}
 		}
+		fAttributeHell();
 		result.sort;
 		return result;
 	}
@@ -372,7 +376,7 @@ public class MapFormat {
 	 * Returns a specified layer's basic information.
 	 */
 	public LayerInfo getLayerInfo(int pri) {
-		Tag t = layerData[pri];
+		DLTag t = layerData[pri];
 		if (t !is null) return LayerInfo(LayerInfo.parseLayerTypeString(t.name), t.values[1].get!int(), 
 				t.values[0].get!string());
 		else return LayerInfo.init;
@@ -400,7 +404,7 @@ public class MapFormat {
 		import std.algorithm.sorting : sort;
 		TileInfo[] result;
 		try {
-			foreach (DLTag t0 ; layerData[pri].namespaces["File"].tags) {
+			foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
 				//writeln(t0.toSDLString);
 				if (t0.name == "TileSource") {
 					DLTag t1 = t0.searchTag("Embed:TileInfo");
@@ -413,7 +417,7 @@ public class MapFormat {
 					}
 				}
 			}
-		} catch (DOMRangeException e) {	///Just means there's no File namespace within the tag. Should be OK.
+		} catch (DLException e) {	///Just means there's no File namespace within the tag. Should be OK.
 			debug writeln(e);
 		} catch (Exception e) {
 			debug writeln(e);
@@ -434,19 +438,21 @@ public class MapFormat {
 	 */
 	public void addTileInfo(int pri, TileInfo[] list, string source, string dpkSource = null) {
 		if(list.length == 0) throw new Exception("Empty list!");
-		Tag t;
+		DLTag t;
 		try{
-			foreach (DLTag t0 ; layerData[pri].namespaces["File"].tags) {
-				if (t0.name == "TileSource" && t0.values[0] == source && t0.getAttribute!string("dataPakSrc", null) == dpkSource) {
-					t = t0.getTag("Embed:TileInfo", null);
+			foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
+				if (t0.name == "TileSource" && t0.values[0].get!string == source &&
+						t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
+					t = t0.searchTag("Embed:TileInfo");
 					if (t is null) { 
-						t = new Tag(t0, "Embed", "TileInfo");
+						t = new DLTag("Embed", "TileInfo", null);
+						t0.add(t);
 					}
 					break;
 				}
 			}
 			foreach (item ; list) {
-				new Tag(t, null, null, [Value(cast(int)item.id), Value(item.num), Value(item.name)]);
+				t.add(new DLTag(null, null, [new DLValue(cast(int)item.id), new DLValue(item.num), new DLValue(item.name)]));
 			}
 		} catch (Exception e) {
 			debug writeln (e);
@@ -465,7 +471,8 @@ public class MapFormat {
 	 */
 	public void addTileInfo(int pri, DLTag t, string source, string dpkSource = null) {
 		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
-			if(t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource){
+			if(t0.name == "TileSource" && t0.values[0].get!string == source &&
+					t0.searchAttribute!string("dataPakSrc", null) == dpkSource){
 				t0.add(t);
 				return;
 			}
@@ -477,10 +484,11 @@ public class MapFormat {
 	 */
 	public void addTile(int pri, TileInfo item, string source, string dpkSource = null) {
 		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
-			if(t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource){
+			if(t0.name == "TileSource" && t0.values[0].get!string == source &&
+					t0.searchAttribute!string("dataPakSrc", null) == dpkSource) {
 				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				if (t1 !is null) {
-					new Tag (t1, null, null, [Value(cast(int)item.id), Value(item.num), Value(item.name)]);
+					t1.add(new DLTag (null, null, [new DLValue(cast(int)item.id), new DLValue(item.num), new DLValue(item.name)]));
 				}
 			}
 		}
@@ -488,7 +496,8 @@ public class MapFormat {
 	///Ditto, but from preexiting Tag.
 	public void addTile(int pri, DLTag t, string source, string dpkSource = null) {
 		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
-			if(t0.name == "TileSource" && t0.values[0] == source && t0.searchAttribute!string("dataPakSrc", null) == dpkSource){
+			if(t0.name == "TileSource" && t0.values[0].get!string == source &&
+					t0.searchAttribute!string("dataPakSrc", null) == dpkSource){
 				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				t1.add(t);
 			}
@@ -507,10 +516,10 @@ public class MapFormat {
 			if (t0.name == "TileSource") {
 				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				if (t1 !is null) {
-					foreach (Tag t2; t1.tags) {
+					foreach (DLTag t2; t1.tags) {
 						if (t2.values[0].get!int() == id) {
 							string oldName = t2.values[2].get!string();
-							t2.values[2] = Value(newName);
+							t2.values[2].set(newName, DLStringType.Quote);
 							return oldName;
 						}
 					}
@@ -530,15 +539,15 @@ public class MapFormat {
 	 * Returns: a tag as a backup if tile is found and removed, or null if it's not found.
 	 */
 	public DLTag removeTile(int pri, int id, string source, string dpkSource = null) {
-		foreach (Tag t0 ; layerData[pri].accessNamespace("File").tags) {
+		foreach (DLTag t0 ; layerData[pri].accessNamespace("File").tags) {
 			if (t0.name == "TileSource") {
-				DLTag t1 = t0.getTag("Embed:TileInfo");
+				DLTag t1 = t0.searchTag("Embed:TileInfo");
 				if (t1 !is null) {
 					source = t0.values[0].get!string();
 					dpkSource = t0.searchAttribute!string("dpkSource", null);
 					foreach (DLTag t2; t1.tags) {
 						if (t2.values[0].get!int() == id) {
-							return t2.removeFromParent();
+							return cast(DLTag)t2.removeFromParent();
 						}
 					}
 				}
@@ -557,7 +566,7 @@ public class MapFormat {
 		DLTag backup = layerData[pri];
 		layeroutput.remove(pri);
 		layerData.remove(pri);
-		return backup.removeFromParent();
+		return cast(DLTag)backup.removeFromParent();
 	}
 	/**
 	 * Adds a layer from preexsting tag.
@@ -694,7 +703,7 @@ public class MapFormat {
 	 * Returns: a backup for undoing.
 	 */
 	public DLTag removeLayerTagValues(int pri, string name) {
-		return layerData[pri].searchTagX(name).removeFromParent();
+		return cast(DLTag)(layerData[pri].searchTagX([name]).removeFromParent());
 	}
 	/**
 	 * Adds an embedded MapData to a TileLayer.
@@ -726,9 +735,9 @@ public class MapFormat {
 	public void addMapDataFile(int pri, string filename, string dataPakSrc = null) {
 		DLElement[] a;
 		if (dataPakSrc !is null) {
-			a ~= new DLAttribute("dataPakSrc", DLVar(dataPakSrc, DLValueType.String, DLStringType.Backtick));
+			a ~= new DLAttribute("dataPakSrc", null, DLVar(dataPakSrc, DLValueType.String, DLStringType.Backtick));
 		}
-		layerData[pri].add(new DLTag("MapData", "File", [new DLValue(filename)] ~ a));
+		layerData[pri].add(new DLTag("MapData", "File", [cast(DLElement)new DLValue(filename)] ~ a));
 	}
 	/**
 	 * Removes embedded TileData from a TileLayer.
@@ -737,7 +746,7 @@ public class MapFormat {
 	 * Returns: a backup for undoing.
 	 */
 	public DLTag removeEmbeddedMapData(int pri) {
-		return layerData[pri].searchTagX(["Embed:MapData"]).removeFromParent();
+		return cast(DLTag)layerData[pri].searchTagX(["Embed:MapData"]).removeFromParent();
 	}
 	/**
 	 * Removes a TileData file from a TileLayer.
@@ -746,7 +755,7 @@ public class MapFormat {
 	 * Returns: a backup for undoing.
 	 */
 	public DLTag removeMapDataFile(int pri) {
-		return layerData[pri].searchTagX(["File:MapData"]).removeFromParent();
+		return cast(DLTag)layerData[pri].searchTagX(["File:MapData"]).removeFromParent();
 	}
 	/**
 	 * Pulls TileLayer data from the layer, and stores it in the preconfigured location.
@@ -759,7 +768,7 @@ public class MapFormat {
 		ITileLayer t = cast(ITileLayer)layeroutput[pri];
 		MappingElement2[] mapping = t.getMapping;
 		if (layerData[pri].searchTag("Embed:MapData") !is null) {
-			layerData[pri].searchTag("Embed:MapData").values[0].set(reinterpretCast!ubyte(mapping));
+			layerData[pri].searchTag("Embed:MapData").values[0].set(reinterpretCast!ubyte(mapping), 0);
 		} else if (layerData[pri].searchTag("File:MapData") !is null) {
 			string filename = layerData[pri].searchTag("File:MapData").values[0].get!string();
 			MapDataHeader mdh = MapDataHeader(layerData[pri].values[4].get!int, layerData[pri].values[5].get!int);
@@ -779,7 +788,7 @@ public class MapFormat {
 		if (dataPakSrc !is null) a ~= new DLAttribute("dataPakSrc", null,
 				DLVar(dataPakSrc, DLValueType.String, DLStringType.Backtick));
 		if (palShift) a ~= new DLAttribute("palShift", null, DLVar(palShift, DLValueType.Integer, DLNumberStyle.Decimal));
-		layerData[pri].add(new DLTag("TileSource", "File", [new DLValue(filename)] ~ a));
+		layerData[pri].add(new DLTag("TileSource", "File", [cast(DLElement)new DLValue(filename)] ~ a));
 	}
 	/**
 	 * Removes a tile source.
@@ -793,9 +802,9 @@ public class MapFormat {
 		try {
 			auto namespace = layerData[pri].accessNamespace("File");
 			foreach (DLTag t ; namespace.tags) {
-				if (t.name == "TileSource" && t.values[0] == filename &&
+				if (t.name == "TileSource" && t.values[0].get!string == filename &&
 						t.searchAttribute!string("dataPakSrc", null) == dataPakSrc) {
-					return t.removeFromParent();
+					return cast(DLTag)t.removeFromParent();
 				}
 			}
 		} catch (DLException e) {
@@ -814,9 +823,10 @@ public class MapFormat {
 	 */
 	public DLTag getTileSourceTag(int pri, string filename, string dataPakSrc = null) {
 		try {
-			auto namespace = layerData[pri].namespaces["File"];
+			auto namespace = layerData[pri].accessNamespace("File");
 			foreach (t ; namespace.tags) {
-				if (t.name == "TileSource" && t.values[0] == filename && t.getAttribute!string("dataPakSrc", null) == dataPakSrc) {
+				if (t.name == "TileSource" && t.values[0].get!string == filename &&
+						t.searchAttribute!string("dataPakSrc", null) == dataPakSrc) {
 					return t;
 				}
 			}
@@ -869,9 +879,9 @@ public class MapFormat {
 		DLElement[] a;
 		if (offset) a ~= new DLAttribute("offset", null, DLVar(offset, DLValueType.Integer, DLNumberStyle.Decimal));
 		if (palShift) a ~= new DLAttribute("palShift", null, DLVar(palShift, DLValueType.Integer, DLNumberStyle.Decimal));
-		if (dataPakSrc.length) a ~= new DLAttribute("dataPakSrc",
+		if (dataPakSrc.length) a ~= new DLAttribute("dataPakSrc", null,
 				DLVar(dataPakSrc, DLValueType.String, DLStringType.Backtick));
-		DLTag t = new DLTag("Palette", "File", [new DLValue(filename)] ~ a);
+		DLTag t = new DLTag("Palette", "File", [cast(DLElement)new DLValue(filename)] ~ a);
 		root.add(t);
 		return t;
 	}
@@ -886,7 +896,7 @@ public class MapFormat {
 		import pixelperfectengine.system.etc : reinterpretCast;
 		DLElement[] a;
 		if (offset) a ~= new DLAttribute("offset", null, DLVar(offset, DLValueType.Integer, DLNumberStyle.Decimal));
-		DLTag t = new DLTag("Palette", "Embed", [new DLValue(name), new DLValue(reinterpretCast!ubyte(c))] ~ a);
+		DLTag t = new DLTag("Palette", "Embed", [cast(DLElement)new DLValue(name), new DLValue(reinterpretCast!ubyte(c))] ~ a);
 		root.add(t);
 		return t;
 	}
@@ -900,7 +910,7 @@ public class MapFormat {
 	public bool isPaletteFileExists (string filename, string dataPakSrc = null) {
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.fullname == "File:Palette") {
-				if (t0.getValue!string() == filename && t0.getAttribute!string("dataPakSrc", null) == dataPakSrc) 
+				if (t0.values[0].get!string() == filename && t0.searchAttribute!string("dataPakSrc", null) == dataPakSrc)
 					return true;
 			}
 		}
@@ -910,7 +920,7 @@ public class MapFormat {
 	 * Returns the name of the map from metadata.
 	 */
 	public string getName () {
-		return metadata.getTagValue!string("Name");
+		return metadata.searchTagX(["Name"]).values[0].get!string;
 	}
 	/**
 	 * Adds an object to a layer.
@@ -926,7 +936,7 @@ public class MapFormat {
 			foreach (DLTag t0; layerData[layer].accessNamespace("Object").tags) {
 				if (t0.values[1].get!int == t.values[1].get!int) {
 					layerData[layer].add(t);
-					result = t0.removeFromParent();
+					result = cast(DLTag)t0.removeFromParent();
 					break;
 				}
 			}
@@ -948,7 +958,7 @@ public class MapFormat {
 		try {
 			foreach (DLTag t0; layerData[layer].accessNamespace("Object").tags) {
 				if (t0.values[1].get!int == objID) {
-					return t0.removeFromParent();
+					return cast(DLTag)t0.removeFromParent();
 				}
 			}
 		} catch (Exception e) {
@@ -1030,8 +1040,8 @@ public class BoxObject : MapObject {
 		this.name = name;
 		this.position = position;
 		_type = MapObjectType.box;
-		mainTag = new Tag("Object", "Box", [Value(name), Value(pID), Value(position.left), Value(position.top), 
-				Value(position.right), Value(position.bottom)]);
+		mainTag = new DLTag("Box", "Object", [new DLValue(name), new DLValue(pID), new DLValue(position.left),
+				new DLValue(position.top), new DLValue(position.right), new DLValue(position.bottom)]);
 	}
 	/**
 	 * Deserializes itself from a Tag.
@@ -1044,7 +1054,7 @@ public class BoxObject : MapObject {
 		_type = MapObjectType.box;
 		//ancillaryTags = t.tags;
 		mainTag = t;
-		if (t.getTag("ToCollision"))
+		if (t.searchTag("ToCollision"))
 			flags.toCollision = true;
 	}
 	/**
@@ -1055,7 +1065,7 @@ public class BoxObject : MapObject {
 	}
 	///Gets the identifying color of this object.
 	public Color color() @trusted {
-		Tag t0 = mainTag.getTag("Color");
+		DLTag t0 = mainTag.searchTag("Color");
 		if (t0) {
 			return parseColor(t0);
 		} else {
@@ -1064,9 +1074,9 @@ public class BoxObject : MapObject {
 	}
 	///Sets the identifying color of this object.
 	public Color color(Color c) @trusted {
-		Tag t0 = mainTag.getTag("Color");
+		DLTag t0 = mainTag.searchTag("Color");
 		if (t0) {
-			t0.remove;
+			t0.removeFromParent;
 		} 
 		mainTag.add(storeColor(c));
 		return c;
@@ -1108,7 +1118,7 @@ public class SpriteObject : MapObject {
 		if (palShift)
 			attr ~= new DLAttribute("palShift", null, DLVar(cast(int)palShift, DLValueType.Integer, DLNumberStyle.Decimal));
 		if (masterAlpha)
-			attr ~= new DLAtribute("masterAlpha", null, DLVar(cast(int)masterAlpha, DLValueType.Integer, DLNumberStyle.Decimal));
+			attr ~= new DLAttribute("masterAlpha", null, DLVar(cast(int)masterAlpha, DLValueType.Integer, DLNumberStyle.Decimal));
 		mainTag = new DLTag("Sprite", "Object",
 				[new DLValue(name), new DLValue(pID), new DLValue(ssID), new DLValue(x), new DLValue(y)]);
 
@@ -1130,7 +1140,7 @@ public class SpriteObject : MapObject {
 		masterAlpha = cast(ubyte)t.searchAttribute!int("masterAlpha", 255);
 		mainTag = t;
 		_type = MapObjectType.sprite;
-		if (t.getTag("ToCollision"))
+		if (t.searchTag("ToCollision"))
 			flags.toCollision = true;
 	}
 	/**
@@ -1159,9 +1169,9 @@ public class PolylineObject : MapObject {
 			mainTag.add(new DLTag("Segment", null, [new DLValue(key.x), new DLValue(key.y)]));
 		}
 		if (path[0] == path[$-1]) {
-			mainTag.add(new DLTag(mainTag, null, "Close"));
+			mainTag.add(new DLTag("Close", null, null));
 		} else {
-			mainTag.add(new DLTag(mainTag, null, "Segment", [new DLValue(path[$-1].x), new DLValue(path[$-1].y)]));
+			mainTag.add(new DLTag("Segment", null, [new DLValue(path[$-1].x), new DLValue(path[$-1].y)]));
 		}
 	}
 	public this (DLTag t, int gID) @trusted {
@@ -1192,7 +1202,7 @@ public class PolylineObject : MapObject {
 	 */
 	public Color color(Color c, int num) @trusted {
 		int i;
-		foreach (Tag t0 ; mainTag.tags) {
+		foreach (DLTag t0 ; mainTag.tags) {
 			switch (t0.name) {
 				case "Begin", "Segment", "Close":
 					if (num == i) {
@@ -1212,11 +1222,11 @@ public class PolylineObject : MapObject {
 	 */
 	public Color color(int num) @trusted {
 		int i;
-		foreach (Tag t0 ; mainTag.tags) {
+		foreach (DLTag t0 ; mainTag.tags) {
 			switch (t0.name) {
 				case "Begin", "Segment", "Close":
 					if (num == i) {
-						Tag t1 = t0.getTag("Color");
+						DLTag t1 = t0.searchTag("Color");
 						if (t1) {
 							return parseColor(t1);
 						} else {
@@ -1232,7 +1242,7 @@ public class PolylineObject : MapObject {
 		throw new PPEException("Out of index error!");
 	}
 	override public DLTag serialize() @trusted {
-		return Tag.init; // TODO: implement
+		return null; // TODO: implement
 	}
 }
 ///Parses a color from SDLang Tag 't', then returns it as the engine's default format.
@@ -1241,9 +1251,9 @@ public Color parseColor(DLTag t) @trusted {
 	switch (t.values.length) {
 		case 1:
 			if (t.values[0].type == DLValueType.Integer)
-				c.base = cast(uint)t.getValue!long();
+				c.base = t.values[0].get!uint();
 			else
-				c.base = parseHex!uint(t.getValue!string);
+				c.base = parseHex!uint(t.values[0].get!string);
 			break;
 		case 4:
 			c.a = cast(ubyte)t.values[0].get!int();
@@ -1258,7 +1268,7 @@ public Color parseColor(DLTag t) @trusted {
 }
 ///Serializes the engine's color format into an SDLang Tag.
 public DLTag storeColor(Color c) @trusted {
-	return new DLTag("Color", null, [Value(format("%08x", c.base))]);
+	return new DLTag("Color", null, [new DLValue(DLVar(c.base, 0, DLNumberStyle.Hexadecimal))]);
 }
 /**
  * Parses an ofject from an SDLang tag.
