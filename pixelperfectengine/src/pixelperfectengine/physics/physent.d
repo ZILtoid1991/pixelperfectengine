@@ -17,11 +17,12 @@ import std.math;
  * Default physics entity and resolver. Uses floating-point calculations
  */
 public struct PhysEnt {
+	//TODO: Read about how the shared keyword works with structs, or at least with array slices
 	///Stores potential gravity values. The default physics resolver expects at least a single entry.
 	///Index 0 should be set to no gravity.
 	///DO NOT MODIFY ENTRIES OR RESIZE IT WHILE PHYSICS RESOLVER IS RUNNING! USE THE APPROPRIATE FUNCTIONS TO ACCESS
 	///IT OUTSIDE OF PHYSICS RESOLVING!
-	private __gshared DynArray!(Vec2)* gravity;
+	private static DynArray!(Vec2)* gravity;
 	shared static this() {
 		gravity = nogc_allocate!(DynArray!(Vec2))();
 		*gravity ~= Vec2(0.0);
@@ -75,7 +76,7 @@ public struct PhysEnt {
 	 * Params:
 	 *   deltaTime = The lapsed time, in seconds.
 	 */
-	void resolvePhysics(const float deltaTime) @nogc @trusted pure nothrow {
+	void resolvePhysics(const float deltaTime) @nogc @trusted nothrow {
 		position += velocity * deltaTime;
 		velocity += acceleration * deltaTime;
 		Vec2 localGr = (*cast(DynArray!(Vec2)*)(gravity))[gravityGr];
