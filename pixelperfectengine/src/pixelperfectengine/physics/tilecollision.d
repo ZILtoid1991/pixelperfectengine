@@ -35,7 +35,7 @@ public class TileCollisionDetector {
 		}
 	}
 	public void testSingle(int objectID) {
-		testSingle(objectID, objects.ptrOf(objectID));
+		testSingle(objectID, &objects[objects.searchIndexBy(objectID)]);
 	}
 	protected final void testSingle(int iA, CollisionShape* shA) {
 		const int tW = source.getTileWidth, tH = source.getTileHeight;
