@@ -114,9 +114,9 @@ public class ConfigurationProfile {
 				Devicetype.Touchscreen: "touchscreen" ];
 		//keyNameDict = new Dictionary("../system/keycodeNamings.sdl");
 		keyNameDict = new Dictionary(readDOM(getPathToAsset("%PATH%/system/scancodes.sdl")));
-		Tag xinput = readDOM(getPathToAsset("%PATH%/system/xinputCodes.sdl"));
-		joyButtonNameDict = new Dictionary(xinput.expectTag("button"));
-		joyAxisNameDict = new Dictionary(xinput.expectTag("axis"));
+		DLTag xinput = readDOM(getPathToAsset("%PATH%/system/xinputCodes.sdl"));
+		joyButtonNameDict = new Dictionary(xinput.searchTagX(["button"]));
+		joyAxisNameDict = new Dictionary(xinput.searchTagX(["axis"]));
 	}
 	///Restores configuration profile from a file.
 	public void restore() {
@@ -160,7 +160,14 @@ public class ConfigurationProfile {
 								if (val.type == DLValueType.String) resolution = val.get!string;
 								else resolution = null;
 								break;
-							case "threads": threads = t1.getValue!int(-1); break;
+							case "graphicsScaling":
+								graphicsScaling = val.get!int;
+								break;
+							case "rasterSize":
+								rasterSize[0] = val.get!int;
+								rasterSize[1] = t1.values[1].get!int;
+								break;
+							// case "threads": threads = t1.getValue!int(-1); break;
 							default: break;
 						}
 					}
@@ -170,15 +177,15 @@ public class ConfigurationProfile {
 						switch(t1.name) {
 							case "device":
 								InputDeviceData device;
-								device.name = t1.searchAttribute!string("name");
+								device.name = t1.searchAttribute!string("name", null);
 								device.deviceNumber = t1.searchAttribute!int("devNum", 0);
-								switch(t1.searchAttribute!string("type")){
+								switch(t1.searchAttribute!string("type", null)){
 									case "keyboard":
 										device.type = Devicetype.Keyboard;
 										foreach(DLTag t2; t1.tags){
 											if(t2.name is null){
 												KeyBinding kb;
-												kb.name = t2.value[0].get!string;
+												kb.name = t2.values[0].get!string;
 												kb.bc.deviceNum = cast(ubyte)device.deviceNumber;
 												kb.bc.deviceTypeID = Devicetype.Keyboard;
 												kb.bc.modifierFlags = stringToKeymod(t2.searchAttribute!string("keyMod", "None"));
@@ -194,7 +201,7 @@ public class ConfigurationProfile {
 										foreach(DLTag t2; t1.tags) {		//parse each individual binding
 											if(t2.name is null) {
 												KeyBinding kb;
-												kb.name = t2.value[0].get!string;
+												kb.name = t2.values[0].get!string;
 												kb.bc.deviceNum = cast(ubyte)device.deviceNumber;
 												kb.bc.deviceTypeID = Devicetype.Joystick;
 												switch(t2.searchAttribute!string("keyMod", null)){
