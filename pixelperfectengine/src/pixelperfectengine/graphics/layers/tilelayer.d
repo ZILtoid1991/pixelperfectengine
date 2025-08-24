@@ -245,8 +245,8 @@ public class TileLayer : Layer, ITileLayer {
 	public override int addTextureSource_GL(GLuint texture, int page, int width, int height, ubyte palSh = 8) @trusted @nogc nothrow {
 		return -10;
 	}
-	/// Reprocesses the display list for the tilemap and applies anz changes made since.
-	public final void reprocessTilemap() @trusted @nogc nothrow {
+	/// Reprocesses the display list for the tilemap and applies any changes made since.
+	public override void updateDisplayList() @trusted @nogc nothrow {
 		// sX0 = sX;
 		// sY0 = sY;
 		//clear the display lists

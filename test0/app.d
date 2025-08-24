@@ -13,7 +13,7 @@ import pixelperfectengine.graphics.layers;
 import pixelperfectengine.graphics.bitmap;
 import pixelperfectengine.graphics.shaders;
 
-import pixelperfectengine.physics.common;
+import pixelperfectengine.physics.collision;
 import pixelperfectengine.physics.objectcollision;
 import pixelperfectengine.physics.tilecollision;
 
@@ -29,20 +29,24 @@ import bindbc.opengl;
 import pixelperfectengine.system.common;
 
 int main(string[] args) {
-	int w = 8, h = 8, s = 0;
-	foreach (string arg ; args) {
-		if (arg.startsWith("--shadervers=")) {
-			pathSymbols["SHDRVER"] = arg[13..$];
-		} else if (arg.startsWith("--mapwidth=")) {
-			w = to!int(arg[11..$]);
-		} else if (arg.startsWith("--mapheight=")) {
-			h = to!int(arg[12..$]);
-		} else if (arg.startsWith("--spritenum=")) {
-			s = to!int(arg[12..$]);
+	try {
+		int w = 8, h = 8, s = 0;
+		foreach (string arg ; args) {
+			if (arg.startsWith("--shadervers=")) {
+				pathSymbols["SHDRVER"] = arg[13..$];
+			} else if (arg.startsWith("--mapwidth=")) {
+				w = to!int(arg[11..$]);
+			} else if (arg.startsWith("--mapheight=")) {
+				h = to!int(arg[12..$]);
+			} else if (arg.startsWith("--spritenum=")) {
+				s = to!int(arg[12..$]);
+			}
 		}
+		TileLayerTest tlt = new TileLayerTest(w, h, s);
+		tlt.whereTheMagicHappens();
+	} catch (Throwable t) {
+		writeln(t);
 	}
-	TileLayerTest tlt = new TileLayerTest(w, h, s);
-	tlt.whereTheMagicHappens();
 	return 0;
 }
 
@@ -143,16 +147,16 @@ class TileLayerTest : SystemEventListener, InputListener {
 		s.addBitmapSource(dlangMan, 0);
 		s.createSpriteMaterial(0, 0, Box(0, 0, 31, 31));
 		s.addSprite(0, -65_536, Box(0, 0, 31, 31), 1);
-		ocd.objects[65_536] = CollisionShape(Box(0, 0, 31, 31), dlangManCS);
+		ocd.objects ~= CollisionShape(-65_536, Box(0, 0, 31, 31), dlangManCS);
 		//tcd.objects[65_536] = ocd.objects[65_536];
 		// s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
 
 		for(int i = 1 ; i < spriteNum ; i++){
 			const int x = rng() % 424, y = rng() % 240;
 			s.addSprite(0, i, Point(x, y), 1);
-			ocd.objects[i] = CollisionShape(Box(x, y, x + 31, y + 31), dlangManCS);
+			ocd.objects ~= CollisionShape(i, Box(x, y, x + 31, y + 31), dlangManCS);
 		}
-		
+		s.updateDisplayList();
 		//tiles = loadBitmapSheetFromImage!Bitmap8Bit(tileSource, 16, 16);//loadBitmapSheetFromFile!Bitmap8Bit("../assets/sci-fi-tileset.png",16,16);
 		
 		t.addBitmapSource(loadBitmapFromImage!Bitmap8Bit(tileSource), 0);
@@ -238,7 +242,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		t.loadMapping(mapWidth, mapHeight, mapping);
 		t.warpMode = WarpMode.TileRepeat;
 		
-		t.reprocessTilemap();
+		t.updateDisplayList();
 
 		/*for(int y ; y < 240 ; y++){
 			for(int x ; x < 240 ; x++){
@@ -250,7 +254,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		textLayer.writeTextToMap(0, 1, 0, "Collision:", true, false);
 		textLayer.writeTextToMap(0, 2, 0, "Col. type:", true, false);
 		textLayer.writeTextToMap(0, 3, 0, "Overlapping tiles:", true, false);
-		textLayer.reprocessTilemap();
+		textLayer.updateDisplayList();
 	}
 	private @nogc void ttlHBlankInterrupt(ref short[4] localABCD, ref short[2] localsXsY, ref short[2] localx0y0, short y){
 		localABCD[0]++;
@@ -262,44 +266,52 @@ class TileLayerTest : SystemEventListener, InputListener {
 			if(up) {
 				s.relMoveSprite(-65_536,0,-1);
 				textLayer.writeTextToMap(10,2,0,"        None", true, false);
+				s.updateDisplayList();
 			}
 			if(down) {
 				s.relMoveSprite(-65_536,0,1);
 				textLayer.writeTextToMap(10,2,0,"        None", true, false);
+				s.updateDisplayList();
 			}
 			if(left) {
 				s.relMoveSprite(-65_536,-1,0);
 				textLayer.writeTextToMap(10,2,0,"        None", true, false);
+				s.updateDisplayList();
 			}
 			if(right) {
 				s.relMoveSprite(-65_536,1,0);
 				textLayer.writeTextToMap(10,2,0,"        None", true, false);
+				s.updateDisplayList();
 			}
 			Quad mainSpritePosition = s.getSpriteCoordinate(-65_536);
-			ocd.objects.ptrOf(65_536).position = Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32);
+			ocd.objects.searchPtrBy(-65_536).position = Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32);
 			onTileCollision(getAllOverlappingTiles(Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32), t));
 			//tcd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
-			ocd.testSingle(65_536);
+			ocd.testSingle(-65_536);
 			//tcd.testAll();
 			if(scrup) {
 				t.relScroll(0,-1);
 				s.relScroll(0,-1);
-				t.reprocessTilemap();
+				t.updateDisplayList();
+				s.updateDisplayList();
 			}
 			if(scrdown) {
 				t.relScroll(0,1);
 				s.relScroll(0,1);
-				t.reprocessTilemap();
+				t.updateDisplayList();
+				s.updateDisplayList();
 			}
 			if(scrleft) {
 				t.relScroll(-1,0);
 				s.relScroll(-1,0);
-				t.reprocessTilemap();
+				t.updateDisplayList();
+				s.updateDisplayList();
 			}
 			if(scrright) {
 				t.relScroll(1,0);
 				s.relScroll(1,0);
-				t.reprocessTilemap();
+				t.updateDisplayList();
+				s.updateDisplayList();
 			}
 			
 			framecounter++;
@@ -330,7 +342,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,2,0,"ShapeOverlap", true, false);
 				break;
 		}
-		textLayer.reprocessTilemap();
+		textLayer.updateDisplayList();
 	}
 	public void onTileCollision(MappingElement2[] overlapList) {
 		wstring tileList = "[";
@@ -339,7 +351,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		}
 		tileList ~= "]";
 		textLayer.writeTextToMap(10,4,0,tileList, true, false);
-		textLayer.reprocessTilemap();
+		textLayer.updateDisplayList();
 	}
 	override public void onQuit() {
 		isRunning = false;

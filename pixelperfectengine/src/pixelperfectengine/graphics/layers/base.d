@@ -106,8 +106,7 @@ abstract class Layer {
 	 * NOTES:
 	 * - Due to the nature of how rendering functions work on vector extensions, arrays are not as feasible as
 	 * in other places, so that's why pointers are used instead.
-	 * - Kind of deprecated, however is kept for TransformableTileLayer, as it's not too feasible to use the GPU for
-	 * that kind of effects without the use of a compute shader.
+	 * DEPRECATED, no longer used for rendering.
 	 */
 	public abstract void updateRaster(void* workpad, int pitch, Color* palette) @nogc;
 	/**
@@ -161,7 +160,11 @@ abstract class Layer {
 		overscanAm = amount;
 		return overscanAm;
 	}
-
+	/**
+	 * Updates the display list of the layer: finalizes all changes made to the layer before displaying, and keeps the
+	 * changes until this function is called yet again.
+	 */
+	public abstract void updateDisplayList() @trusted @nogc nothrow;
 	///Returns the type of the layer.
 	///Useful with certain scripting languages.
 	public abstract LayerType getLayerType() @nogc @safe pure nothrow const;
