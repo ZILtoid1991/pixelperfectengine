@@ -13,7 +13,9 @@ in float zVal;
 uniform sampler2D mainTexture;  // Primary texture data
 uniform sampler2D palette;      // Palette for indexed colors
 uniform sampler2D paletteMipMap;// Palette for indexed mipmaps
-uniform vec2 paletteOffset;     // Palette offset in case palette selection is used
+uniform vec4 paletteOffset;     // Palette offset in case palette selection is used
+
+//uniform vec2 paletteOffset;     // Palette offset in case palette selection is used
 // uniform float palLengthMult;    // Palette lenght multiplier
 
 void main() {
