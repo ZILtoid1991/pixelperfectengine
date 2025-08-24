@@ -12,6 +12,7 @@ public import pixelperfectengine.system.intrinsics;
 
 import inteli.types;
 import std.math;
+import core.atomic;
 
 /**
  * Default physics entity and resolver. Uses floating-point calculations
@@ -22,20 +23,29 @@ public struct PhysEnt {
 	///Index 0 should be set to no gravity.
 	///DO NOT MODIFY ENTRIES OR RESIZE IT WHILE PHYSICS RESOLVER IS RUNNING! USE THE APPROPRIATE FUNCTIONS TO ACCESS
 	///IT OUTSIDE OF PHYSICS RESOLVING!
-	private static DynArray!(Vec2)* gravity;
+	private static shared float[] gravity;
 	shared static this() {
-		gravity = nogc_allocate!(DynArray!(Vec2))();
-		*gravity ~= Vec2(0.0);
+		gravity = cast(shared float[])nogc_newArray!float(2);
+		gravity[0] = 0;
+		gravity[1] = 0;
 	}
 	shared static ~this() {
-		gravity.free();
-		gravity.nogc_free();
+		synchronized {
+			float[] wgr = cast(float[])gravity;
+			nogc_free(wgr);
+			gravity = cast(shared float[])wgr;
+		}
 	}
 	static Vec2 setGravityGroup(ubyte index, Vec2 value) @trusted @nogc nothrow {
 		Vec2 result;
 		synchronized {
-			if (gravity.length > index) (*gravity)[index] = value;
-			else *gravity ~= value;
+			float[] wgr = cast(float[])gravity;
+			if (wgr.length / 2 <= index) {
+				wgr.nogc_resize(wgr.length * 2);
+			}
+			wgr[index * 2] = value.x;
+			wgr[index * 2 + 1] = value.y;
+			gravity = cast(shared float[])wgr;
 		}
 		return result;
 	}
@@ -79,7 +89,7 @@ public struct PhysEnt {
 	void resolvePhysics(const float deltaTime) @nogc @trusted nothrow {
 		position += velocity * deltaTime;
 		velocity += acceleration * deltaTime;
-		Vec2 localGr = (*cast(DynArray!(Vec2)*)(gravity))[gravityGr];
+		Vec2 localGr = Vec2([atomicLoad(gravity[gravityGr * 2]), atomicLoad(gravity[gravityGr * 2 + 1])]);
 		const double gravityEnergy = weight * sqrt((localGr.x * localGr.x) + (localGr.y * localGr.y)) * 0.5;
 		const double energyRatio = gravityEnergy / (kineticEnergy + gravityEnergy);
 		if (resting) localGr *= Vec2([abs(cos(restingDir)), abs(sin(restingDir))]);
