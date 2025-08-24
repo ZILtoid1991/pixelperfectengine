@@ -559,6 +559,24 @@ public struct OrderedArraySet(T, alias less = "a > b", alias equal = "a == b", s
 		}
 		return T.init;
 	}
+	T* searchPtrBy(Q)(Q needle) @nogc @safe nothrow {
+		if (length) {
+			if (backend[0] == needle) return &backend[0];
+			sizediff_t l, r = length - 1, m;
+			while (l <= r) {
+				m = (l+r)/2;
+				// if (backend[m] > needle) r = m - 1;
+				// else if (backend[m] < needle) l = m + 1;
+				// else return backend[m];
+				if (binaryFun!equal(backend[m], needle)) return &backend[m];
+				else if (binaryFun!less(backend[m], needle)) r = m - 1;
+				else l = m + 1;
+			}
+			if (backend[m] == needle) return &backend[m];
+			//if (binaryFun!equal(backend[m], needle)) return backend[m];
+		}
+		return null;
+	}
 	/// Searches `needle` in the array with comparisons defined by template parameters 
 	/// `less` and `equal`, and returns the found element's index. Returns -1 if not 
 	/// found.
