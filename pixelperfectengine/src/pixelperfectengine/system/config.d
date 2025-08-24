@@ -6,11 +6,10 @@
 
 module pixelperfectengine.system.config;
 
-//import std.xml;
 import std.file;
 import std.string;
 import std.conv;
-//import std.csv;
+// import std.stdio;
 
 import pixelperfectengine.system.input.handler;
 import pixelperfectengine.system.file;
@@ -19,9 +18,7 @@ import pixelperfectengine.system.etc;
 import pixelperfectengine.system.dictionary;
 
 import iota.controls.keyboard : KeyboardModifiers;
-//import bindbc.sdl;
 
-//import sdlang;
 import newsdlang;
 /**
  * Defines a single keybinding.
@@ -113,10 +110,10 @@ public class ConfigurationProfile {
 		devicetypeStrings = [Devicetype.Joystick: "joystick", Devicetype.Keyboard: "keyboard", Devicetype.Mouse: "mouse",
 				Devicetype.Touchscreen: "touchscreen" ];
 		//keyNameDict = new Dictionary("../system/keycodeNamings.sdl");
-		keyNameDict = new Dictionary(readDOM(getPathToAsset("%PATH%/system/scancodes.sdl")));
-		DLTag xinput = readDOM(getPathToAsset("%PATH%/system/xinputCodes.sdl"));
-		joyButtonNameDict = new Dictionary(xinput.searchTagX(["button"]));
-		joyAxisNameDict = new Dictionary(xinput.searchTagX(["axis"]));
+		keyNameDict = new Dictionary(readDOM(readText(getPathToAsset("%PATH%/system/scancodes.sdl"))));
+		DLTag xinput = readDOM(readText(getPathToAsset("%PATH%/system/inputCodes.sdl")));
+		joyButtonNameDict = new Dictionary(xinput.searchTag("button"));
+		joyAxisNameDict = new Dictionary(xinput.searchTag("axis"));
 	}
 	///Restores configuration profile from a file.
 	public void restore() {
@@ -230,7 +227,7 @@ public class ConfigurationProfile {
 										break;
 									case "mouse":
 										device.type = Devicetype.Mouse;
-										foreach(Tag t2; t1.tags){
+										foreach(DLTag t2; t1.tags){
 											if(t2.name is null){
 												//const ushort scanCode = cast(ushort)t2.getAttribute!int("code");
 												KeyBinding kb;
@@ -262,7 +259,7 @@ public class ConfigurationProfile {
 			}
 			write(path, root.writeDOM());
 		} catch(DLException e){
-			debug writeln(e.msg);
+			// debug writeln(e.msg);
 		}
 	}
 	/**
@@ -339,7 +336,7 @@ devNum: Device ID.")
 					case Keyboard:
 						foreach (KeyBinding binding ; idd.keyBindingList) {
 							DLTag currKeyBind = new DLTag(null, null, [new DLValue(binding.name),
-									new DLAttribute("name", null, DLVar(keyNameDict.encode(binding.bc.buttonNum)))]);
+									new DLAttribute("name", null, keyNameDict.encode(binding.bc.buttonNum))]);
 							if (binding.bc.modifierFlags != 0) currKeyBind.add(new DLAttribute("keyMod", null, DLVar(
 									keymodToString(binding.bc.modifierFlags), DLValueType.String, DLStringType.Quote)));
 							if (binding.bc.keymodIgnore != 0) currKeyBind.add(new DLAttribute("keyModIgnore", null, DLVar(
@@ -374,7 +371,7 @@ devNum: Device ID.")
 							}
 							currInputDevice.add(currKeyBind);
 						}
-						currInputDevice.add(new Tag("enableForceFeedback", null, [new DLValue(idd.enableForceFeedback)]));
+						currInputDevice.add(new DLTag("enableForceFeedback", null, [new DLValue(idd.enableForceFeedback)]));
 						break;
 					case Mouse:
 						foreach (binding ; idd.keyBindingList) {
@@ -391,7 +388,7 @@ devNum: Device ID.")
 			}
 
 		} catch (Exception e) {
-			debug writeln(e);
+			// debug writeln(e);
 		}
 	}
 	/**

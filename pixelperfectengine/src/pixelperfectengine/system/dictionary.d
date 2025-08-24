@@ -7,7 +7,7 @@ module pixelperfectengine.system.dictionary;
  */
 import newsdlang;
 /**
- * Does a two-way coding based on an SDLang file.
+ * Does a two-way coding based on an XDL file.
  */
 public class Dictionary{
 	// private string[int] encodeTable;
@@ -20,11 +20,12 @@ public class Dictionary{
 			//Tag root = parseFile(filename);
 			foreach(DLTag t; root.tags) {
 				string s = t.values[0].get!string();
-				int i = t.values[1].ge!int();
+				int i = t.values[1].get!int();
 				tableA ~= s;
 				tableB ~= i;
 			}
-		} catch(ParseException e) {
+		} catch(DLException e) {
+			import std.stdio;
 			debug writeln(e.msg);
 		}
 	}
