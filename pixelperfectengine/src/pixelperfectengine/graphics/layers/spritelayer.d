@@ -186,7 +186,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		glGenVertexArrays(1, &gl_vertexArray);
 		glGenBuffers(1, &gl_vertexBuffer);
 		glGenBuffers(1, &gl_vertexIndices);
-		glGenBuffers(1, &gl_uniformBuffer);
+		// glGenBuffers(1, &gl_uniformBuffer);
 		// gl_PlIndices = [PolygonIndices(0, 1, 2), PolygonIndices(1, 3, 2)];
 	}
 	/// Manually finalizes any non-static data arrays.
@@ -202,7 +202,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		gl_DrawBatch.free();
 		materialList.free();
 		displayList_sprt.free();
-		glDeleteBuffers(1, &gl_uniformBuffer);
+		// glDeleteBuffers(1, &gl_uniformBuffer);
 		glDeleteBuffers(1, &gl_vertexIndices);
 		glDeleteBuffers(1, &gl_vertexBuffer);
 		glDeleteVertexArrays(1, &gl_vertexArray);
@@ -442,11 +442,13 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			glUniform2f(dbu.shader.getUniformLocation("stepSizes"), screenSizeRec[0], screenSizeRec[1]);
 			const GLuint paletteOffsetIndex = dbu.shader.getUniformLocation("paletteOffset");
 
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertexIndices);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * 6 * dbu.numOfObjs, &gl_PlIndices[dbu.offset*2], GL_STATIC_DRAW);
+			glBindVertexArray(gl_vertexArray);
 
 			glBindBuffer(GL_ARRAY_BUFFER, gl_vertexBuffer);
 			glBufferData(GL_ARRAY_BUFFER, DisplayListItem_GL.sizeof * dbu.numOfObjs, &gl_RenderOut[dbu.offset], GL_STATIC_DRAW);
+
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertexIndices);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * 6 * dbu.numOfObjs, &gl_PlIndices[dbu.offset], GL_STATIC_DRAW);
 
 			glEnableVertexAttribArray(0);
 			glVertexAttribIPointer(0, 2, GL_SHORT, cast(int)(SpriteVertex.sizeof), cast(void*)0);
@@ -458,103 +460,14 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			glEnableVertexAttribArray(3);
 			glVertexAttribIPointer(3, 2, GL_SHORT, cast(int)(SpriteVertex.sizeof),
 					cast(void*)(SpriteVertex.attributes.offsetof + GraphicsAttrExt.lX.offsetof));
+
 			glBindVertexArray(gl_vertexArray);
 
-			// glBindBuffer(GL_UNIFORM_BUFFER, gl_uniformBuffer);
-			// glBufferData(GL_UNIFORM_BUFFER, Vec4.sizeof, null, GL_STATIC_DRAW);
-			// glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-			// glBindBufferRange(GL_UNIFORM_BUFFER, 0, gl_uniformBuffer, 0, Vec4.sizeof);
-
 			for (int i = dbu.offset, j ; i < dbu.offset + dbu.numOfObjs ; i++, j++) {
-				// glBindBuffer(GL_UNIFORM_BUFFER, gl_uniformBuffer);
-				// glBufferSubData(GL_UNIFORM_BUFFER, 0, Vec4.sizeof, &gl_Uniforms[i]);
-				// glBindBuffer(GL_UNIFORM_BUFFER, 0);
 				glUniform4f(paletteOffsetIndex, gl_Uniforms[i].x, gl_Uniforms[i].y, gl_Uniforms[i].z, gl_Uniforms[i].w);
-
-				glDrawArrays(GL_TRIANGLES, j * 6, 6);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, cast(void*)(j * 6 * 4));
 			}
 		}
-		/+GLuint prevPrg;
-		GLuint prevTexture;
-		GLint paletteOffset;
-		GLint mainTexture;
-		foreach_reverse (ref DisplayListItem_Sprt sprt ; displayList_sprt) {	//Iterate over all sprites within the displaylist
-			if (displayAreaWS.isBetween(sprt.position.topLeft) || displayAreaWS.isBetween(sprt.position.topRight) ||
-					displayAreaWS.isBetween(sprt.position.bottomLeft) || displayAreaWS.isBetween(sprt.position.bottomRight)) {//Check whether the sprite is on the display area
-					//get sprite material
-				GLuint prg = sprt.programID.shaderID;
-				Material cm = materialList.searchBy(sprt.materialID);
-				if (prevTexture != cm.pageID){
-					prevTexture = cm.pageID;
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, cm.pageID);
-				}
-				//Calculate and store sprite location on the display area
-				__m128i ulur = _mm_loadu_si64(&sprt.position.topLeft) |
-						_mm_slli_si128!8(_mm_loadu_si64(&sprt.position.topRight));
-				__m128i lllr = _mm_loadu_si64(&sprt.position.bottomLeft) |
-						_mm_slli_si128!8(_mm_loadu_si64(&sprt.position.bottomRight));
-				short8 tppck = cast(short8)_mm_packs_epi32(ulur - scrollVec, lllr - scrollVec);
-				gl_RenderOut.ul.x = tppck[0];
-				gl_RenderOut.ul.y = tppck[1];
-				gl_RenderOut.ur.x = tppck[2];
-				gl_RenderOut.ur.y = tppck[3];
-				gl_RenderOut.ll.x = tppck[4];
-				gl_RenderOut.ll.y = tppck[5];
-				gl_RenderOut.lr.x = tppck[6];
-				gl_RenderOut.lr.y = tppck[7];
-				//Store sprite material position
-				gl_RenderOut.ul.s = cm.left;
-				gl_RenderOut.ul.t = cm.top;
-				gl_RenderOut.ur.s = cm.right;
-				gl_RenderOut.ur.t = cm.top;
-				gl_RenderOut.ll.s = cm.left;
-				gl_RenderOut.ll.t = cm.bottom;
-				gl_RenderOut.lr.s = cm.right;
-				gl_RenderOut.lr.t = cm.bottom;
-				//Store sprite attributes
-				gl_RenderOut.ul.attributes = sprt.attr[0];
-				gl_RenderOut.ur.attributes = sprt.attr[1];
-				gl_RenderOut.ll.attributes = sprt.attr[2];
-				gl_RenderOut.lr.attributes = sprt.attr[3];
-				if (prevPrg != prg) {
-					prevPrg = prg;
-					glUseProgram(prg);
-					glUniform1i(glGetUniformLocation(prg, "palette"), 1);
-					glUniform1i(glGetUniformLocation(prg, "paletteMipMap"), 2);
-					glUniform2f(glGetUniformLocation(prg, "stepSizes"), screenSizeRec[0], screenSizeRec[1]);
-					paletteOffset = glGetUniformLocation(prg, "paletteOffset");
-					mainTexture = glGetUniformLocation(prg, "mainTexture");
-				}
-				const colorSelY = sprt.palSel>>(8-sprt.palSh), colorSelX = sprt.palSel&((1<<(8-sprt.palSh))-1);
-				glUniform2f(paletteOffset,colorSelX * (1.0 / 256),colorSelY * (1.0 / 256));
-				glUniform1i(mainTexture, 0);
-				// glUniform1f(glGetUniformLocation(gl_Program, "palLengthMult"), 1.0 / (9 - sprt.palSh));
-				// bind vertex arrays
-				glBindVertexArray(gl_vertexArray);
-
-				glBindBuffer(GL_ARRAY_BUFFER, gl_vertexBuffer);
-				glBufferData(GL_ARRAY_BUFFER, DisplayListItem_GL.sizeof, &gl_RenderOut, GL_STREAM_DRAW);
-
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertexIndices);
-				glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 * 6, gl_PlIndices.ptr, GL_STREAM_DRAW);
-
-				glEnableVertexAttribArray(0);
-				glVertexAttribIPointer(0, 2, GL_SHORT, cast(int)(SpriteVertex.sizeof), cast(void*)0);
-				glEnableVertexAttribArray(1);
-				glVertexAttribIPointer(1, 2, GL_UNSIGNED_SHORT, cast(int)(SpriteVertex.sizeof), cast(void*)SpriteVertex.s.offsetof);
-				glEnableVertexAttribArray(2);
-				glVertexAttribIPointer(2, 4, GL_UNSIGNED_BYTE, cast(int)(SpriteVertex.sizeof),
-						cast(void*)SpriteVertex.attributes.offsetof);
-				glEnableVertexAttribArray(3);
-				glVertexAttribIPointer(3, 2, GL_SHORT, cast(int)(SpriteVertex.sizeof),
-						cast(void*)(SpriteVertex.attributes.offsetof + GraphicsAttrExt.lX.offsetof));
-				glBindVertexArray(gl_vertexArray);
-				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
-			}
-		}+/
-		// glClearColor(0.1f, 0.5f, 0.1f, 1.0f);
 	}
 	///Sets the overscan amount, on which some effects are dependent on.
 	// public abstract void setOverscanAmount(float valH, float valV);
@@ -661,14 +574,14 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			if (displayArea.isBetween(sprt.position.topLeft) || displayArea.isBetween(sprt.position.topRight) ||
 					displayArea.isBetween(sprt.position.bottomLeft) || displayArea.isBetween(sprt.position.bottomRight)) {//Check whether the sprite is on the display area
 				Material currMat = materialList.searchBy(sprt.materialID);
-				if (prevTexture != currMat || prevPrg != sprt.programID) {
+				if (prevTexture != currMat.pageID || prevPrg != sprt.programID) {
 					prevTexture = currMat.pageID;
 					prevPrg = sprt.programID;
 					gl_DrawBatch ~= DisplayBatchUnit(cast(int)gl_RenderOut.length, 1, prevTexture, prevPrg);
 				} else {
 					gl_DrawBatch[$ - 1].numOfObjs++;
 				}
-				const glPos = gl_DrawBatch[$ - 1].numOfObjs - 1;
+				const glPos = (gl_DrawBatch[$ - 1].numOfObjs - 1) * 4;
 				DisplayListItem_GL toBeAdded;
 				Vec4 toBeAddedLocalUniform = Vec4(0.0);
 				//Calculate and store sprite location on the display area
@@ -708,12 +621,6 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			}
 		}
 	}
-	/* ///Sets the rendering function for the sprite (defaults to the layer's rendering function)
-	public void setSpriteRenderingMode(int n, RenderingMode mode) @safe nothrow {
-		DisplayListItem* item = allSprites.searchByPtr(n);
-		if (item is null) return 0;
-		item.renderFunc = getRenderingFunc(mode);
-	} */
 	public Quad getSpriteCoordinate(int n) @nogc @trusted nothrow {
 		const sizediff_t i = displayList_sprt.searchIndexBy(n);
 		if (i == -1) return Quad.init;
