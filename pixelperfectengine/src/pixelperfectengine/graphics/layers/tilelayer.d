@@ -17,10 +17,6 @@ import pixelperfectengine.system.intrinsics;
 
 /**
  * Implements a tile layer with some basic transformation and lighting capabilities.
- * Bugs:
- *   Default shaders apply transformation on the screen size vectors, this causes
- * rotation and shearing to look odd. Don't know if it can be fixed from CPU side,
- * a shader-side issue, or I have to rething the whole pipeline.
  */
 public class TileLayer : Layer, ITileLayer {
 	/**
@@ -294,7 +290,6 @@ public class TileLayer : Layer, ITileLayer {
 		//}
 	}
 	/**
-	 * TODO: Start to implement to texture rendering once iota's OpenGL implementation is stable enough.
 	 * Renders the layer's content to the texture target.
 	 * Params:
 	 *   workpad = The target texture.
@@ -334,7 +329,9 @@ public class TileLayer : Layer, ITileLayer {
 		glUniform1i(glGetUniformLocation(currshader, "palette"), 1);
 		glUniform1i(glGetUniformLocation(currshader, "paletteMipMap"), 2);
 		glUniformMatrix2fv(glGetUniformLocation(currshader, "transformMatrix"), 1, GL_FALSE, &trnsParams[0]);
-		glUniform2f(glGetUniformLocation(currshader, "transformPoint"), x0 * screenSizeRec[0], y0 * screenSizeRec[1]);
+		glUniform2f(glGetUniformLocation(currshader, "transformPoint"),
+				((x0 + (sizes[0] / 2) + overscanAm[0]) / cast(float)tileX),
+				((y0 + (sizes[1] / 2) + overscanAm[1]) / cast(float)tileY));
 		glUniform2f(glGetUniformLocation(currshader, "bias"),
 				screenSizeRec[0] * ((overscanAm[0]) + (tXMod) + (sX0 < 0 ? tileX - (tXMod ? 0 : tileX) : 0)),
 				screenSizeRec[1] * ((overscanAm[1]) + (tYMod) + (sY0 < 0 ? tileY - (tYMod ? 0 : tileY) : 0)));
