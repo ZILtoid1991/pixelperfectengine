@@ -29,14 +29,7 @@ import inteli.emmintrin;
  * Can be overloaded for user defined layers.
  */
 abstract class Layer {
-	/+protected @nogc pure nothrow void function(ushort* src, uint* dest, uint* palette, size_t length) 
-			mainColorLookupFunction;+/
-	//protected @nogc void function(uint* src, int length) mainHorizontalMirroringFunction;
-	/+protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length) 
-			main8BitColorLookupFunction;+/
-	/+protected @nogc pure nothrow void function(ubyte* src, uint* dest, uint* palette, size_t length, int offset) 
-			main4BitColorLookupFunction;+/
-
+	
 	///TODO: move bitflags and other options here.
 	///Stores various states of this layer
 	protected uint		flags;
@@ -45,7 +38,7 @@ abstract class Layer {
 	protected int		sX;		///Horizontal scroll position
 	protected int		sY;		///Vertical scroll position
 	protected int		rasterX;///Raster width (visible)
-	protected int		rasterY;///Haster height
+	protected int		rasterY;///Haster height (visible)
 	protected ushort[4]	overscanAm;
 
 	/**
@@ -171,16 +164,28 @@ abstract class Layer {
 	///Standard algorithm for horizontal mirroring, used for tile mirroring
 	///To be deprecated after move to OpenGL completed
 }
-public class MaskLayer {
-	protected Bitmap32Bit source;
+/**
+ * Defines a layer, that can be used during the rendering of other layers in the shader,
+ * usually for "color math" purposes.
+ */
+abstract class MaskLayer {
+	protected int		rasterW;///Raster width (visible)
+	protected int		rasterH;///Haster height (visible)
+	public void setRasterSize(int rasterW, int rasterH) @safe @nogc nothrow pure {
+		this.rasterW = rasterW;
+		this.rasterH = rasterH;
+	}
+	public abstract uint getTexture_GL() @nogc nothrow;
+	public abstract void renderToTexture_gl() @nogc nothrow;
 }
+///Defines potential texture upload error codes
 public enum TextureUploadError {
-	init,
+	init,						=	0,		///No error
 	TextureFormatNotSupported	=	-1,
-	TextureTooBig				=	-2,
+	TextureTooBig				=	-2,		///Bitmap is larger than what the GPU can handle
 	OutOfMemory					=	-3,
-	TextureSizeMismatch			=	-4,
-	TextureTypeMismatch			=	-5
+	TextureSizeMismatch			=	-4,		///Bitmap does not match the requested size
+	TextureTypeMismatch			=	-5		///Bitmap does not match the requested type
 }
 /**
  * Mostly used for internal communication and scripting.
