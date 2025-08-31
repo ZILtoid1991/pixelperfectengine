@@ -180,7 +180,7 @@ abstract class MaskLayer {
 }
 ///Defines potential texture upload error codes
 public enum TextureUploadError {
-	init,						=	0,		///No error
+	init						=	0,		///No error
 	TextureFormatNotSupported	=	-1,
 	TextureTooBig				=	-2,		///Bitmap is larger than what the GPU can handle
 	OutOfMemory					=	-3,
