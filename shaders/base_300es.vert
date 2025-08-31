@@ -13,9 +13,12 @@ out vec4 lightingCol;       // Lighting color
 out vec2 lightingDir;       // Lighting direction
 
 uniform vec2 stepSizes;
+uniform mat2 transformMatrix;
+uniform vec2 transformPoint;
 
 void main() {
-    gl_Position = vec4(vec2(vert.xy) * stepSizes + vec2(-1.0, 1.0), 0.0, 1.0);
+    vec2 fvert = (vec2(vert.xy) - transformPoint) * transformMatrix + transformPoint;
+    gl_Position = vec4(fvert * stepSizes + vec2(-1.0, 1.0), 0.0, 1.0);
     texMapping = vec2(texPos);
     lightingCol = vec4(color) * vec4(1.0 / 255.0, 1.0 / 255.0,  1.0 / 255.0, 1.0 / 255.0);
     lightingDir = vec2(lDir) * vec2(1.0 / 32767.0, 1.0 / 32767.0);

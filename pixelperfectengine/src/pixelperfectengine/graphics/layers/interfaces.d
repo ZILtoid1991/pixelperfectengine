@@ -158,44 +158,39 @@ public interface ITileLayer {
 	///Clears the tilemap
 	public void clearTilemap() @nogc @safe pure nothrow;
 }
-/**
- * Defines functions specific to transformable tile layers.
- * All transform parameters (A, B, C, D) are 256-based "fractional integers".
- * Kind of deprecated after move to OpenGL, many affine transform functions are available through the OpenGL renderer of the tile layer
- */
-public deprecated interface ITTL {
-    ///Returns the horizontal scaling amount.
-    ///256 means no scaling, negative values flip everything horizontally.
-	public @property short A() @nogc @safe nothrow pure const;
-	///Returns the shearing amount on the X axis.
-	///256 means one pixel moved downwards for each horizontal scanline.
-	public @property short B() @nogc @safe nothrow pure const;
-	///Returns the shearing amount on the Y axis.
-	///256 means one pixel moved right for each vertical scanline.
-	public @property short C() @nogc @safe nothrow pure const;
-	///Returns the vertical scaling amount.
-    ///256 means no scaling, negative values flip everything vertically.
-	public @property short D() @nogc @safe nothrow pure const;
-	///Returns the x origin point of the transformation relative to the screen.
-	public @property short x_0() @nogc @safe nothrow pure const;
-	///Returns the y origin point of the transformation relative to the screen.
-	public @property short y_0() @nogc @safe nothrow pure const;
-	///Sets the horizontal scaling amount.
-    ///256 means no scaling, negative values flip everything horizontally.
-	public @property short A(short newval) @nogc @safe nothrow pure;
-	///Sets the shearing amount on the X axis.
-	///256 means one pixel moved downwards for each horizontal scanline.
-	public @property short B(short newval) @nogc @safe nothrow pure;
-	///Sets the shearing amount on the Y axis.
-	///256 means one pixel moved right for each vertical scanline.
-	public @property short C(short newval) @nogc @safe nothrow pure;
-	///Sets the vertical scaling amount.
-    ///256 means no scaling, negative values flip everything vertically.
-	public @property short D(short newval) @nogc @safe nothrow pure;
-	///Returns the x origin point of the transformation relative to the screen.
-	public @property short x_0(short newval) @nogc @safe nothrow pure;
-	///Returns the y origin point of the transformation relative to the screen.
-	public @property short y_0(short newval) @nogc @safe nothrow pure;
+public interface LayerTransformParams {
+	/**
+	 * Sets the rotation amount for the layer.
+	 * Params:
+	 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
+	 * Note: This visual effect rely on overscan amount set correctly.
+	 */
+	public void rotate(ushort theta) @nogc @safe pure nothrow;
+	/**
+	 * Sets the horizontal scaling amount.
+	 * Params:
+	 *   amount = The amount of horizontal scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	public void scaleHoriz(short amount) @nogc @safe pure nothrow;
+	/**
+	 * Sets the vertical scaling amount.
+	 * Params:
+	 *   amount = The amount of vertical scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	public void scaleVert(short amount) @nogc @safe pure nothrow;
+	public void shearHoriz(short amount) @nogc @safe pure nothrow;
+	public void shearVert(short amount) @nogc @safe pure nothrow;
+	/**
+	 * Sets the transformation midpoint relative to the middle of the screen.
+	 * Params:
+	 *   x0 = x coordinate of the midpoint.
+	 *   y0 = y coordinate of the midpoint.
+	 */
+	public void setTransformMidpoint(short x0, short y0) @nogc @safe pure nothrow;
 }
 /**
  *General SpriteLayer interface.

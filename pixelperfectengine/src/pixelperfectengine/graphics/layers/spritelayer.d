@@ -27,7 +27,7 @@ import numem;
 /**
  * General-purpose sprite controller and renderer, used for all kinds of sprites, including windowing.
  */
-public class SpriteLayer : Layer, ISpriteLayer {
+public class SpriteLayer : Layer, ISpriteLayer, LayerTransformParams {
 	/**
 	 * Defines a singular sprite material for the current layer instance to be used.
 	 */
@@ -151,6 +151,15 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			return spriteID;
 		}
 	}
+	/**
+	 * Defines the verticles used for displaying a sprite.
+	 */
+	protected struct DisplayListItem_GL {
+		SpriteVertex		ul;
+		SpriteVertex		ur;
+		SpriteVertex		ll;
+		SpriteVertex		lr;
+	}
 	protected struct DisplayBatchUnit {
 		int offset;
 		int numOfObjs;
@@ -178,6 +187,14 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	protected DynArray!(PolygonIndices[2]) gl_PlIndices;
 	protected DynArray!Vec4 gl_Uniforms;
 	protected DynArray!DisplayBatchUnit gl_DrawBatch;
+
+	protected short			x0;			///
+	protected short			y0;
+	protected short			scaleH = 0x01_00;
+	protected short			scaleV = 0x01_00;
+	protected short			shearH;
+	protected short			shearV;
+	protected ushort		theta;
 	//size_t[8] prevSize;
 	
 	public this(GLShader defaultShader, GLShader defaultShader32) @trusted @nogc nothrow {
@@ -208,14 +225,51 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		glDeleteVertexArrays(1, &gl_vertexArray);
 	}
 	/**
-	 * Defines the verticles used for displaying a sprite.
+	 * Sets the rotation amount for the layer.
+	 * Params:
+	 *   theta = The amount of rotation for the layer, 0x1_00_00 means a whole round
+	 * Note: This visual effect rely on overscan amount set correctly.
 	 */
-	protected struct DisplayListItem_GL {
-		SpriteVertex		ul;
-		SpriteVertex		ur;
-		SpriteVertex		ll;
-		SpriteVertex		lr;
+	public void rotate(ushort theta) @nogc @safe pure nothrow {
+		this.theta = theta;
 	}
+	/**
+	 * Sets the horizontal scaling amount.
+	 * Params:
+	 *   amount = The amount of horizontal scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	public void scaleHoriz(short amount) @nogc @safe pure nothrow {
+		scaleH = amount;
+	}
+	/**
+	 * Sets the vertical scaling amount.
+	 * Params:
+	 *   amount = The amount of vertical scaling, 0x10_00 is normal, anything
+	 * greater will minimize, lesser will magnify the layer. Negative values mirror
+	 * the layer.
+	 */
+	public void scaleVert(short amount) @nogc @safe pure nothrow {
+		scaleV = amount;
+	}
+	public void shearHoriz(short amount) @nogc @safe pure nothrow {
+		shearH = amount;
+	}
+	public void shearVert(short amount) @nogc @safe pure nothrow {
+		shearV = amount;
+	}
+	/**
+	 * Sets the transformation midpoint relative to the middle of the screen.
+	 * Params:
+	 *   x0 = x coordinate of the midpoint.
+	 *   y0 = y coordinate of the midpoint.
+	 */
+	public void setTransformMidpoint(short x0, short y0) @nogc @safe pure nothrow {
+		this.x0 = x0;
+		this.y0 = y0;
+	}
+
 	
 
 	/**
@@ -416,6 +470,7 @@ public class SpriteLayer : Layer, ISpriteLayer {
 	public override void renderToTexture_gl(GLuint workpad, GLuint palette, GLuint palNM, int[4] sizes, int[2] offsets)
 			@nogc nothrow {
 		import bindbc.opengl;
+		import std.math;
 		//Just stream display data to gl_RenderOut for now, we can always optimize it later if there's any options
 		//Constants begin
 		//Calculate what area is in the display area with scrolling, will be important for checking for offscreen sprites
@@ -423,6 +478,12 @@ public class SpriteLayer : Layer, ISpriteLayer {
 		__m128d screenSizeRec = _vect([2.0 / sizes[0], -2.0 / sizes[1]]);	//Screen size reciprocal with vertical invert
 		const __m128d OGL_OFFSET = __m128d([-1.0, 1.0]) + screenSizeRec * _vect([offsets[0], offsets[1]]);	//Offset to the top-left corner of the display area
 		const __m128i scrollVec = _vect([sX, sY, sX, sY]);
+		//Per-layer transform params
+		immutable __m128 TRNS_PARAMS_REC = __m128([1.0 / 0x01_00, 1.0 / 0x01_00, 1.0 / 0x01_00, 1.0 / 0x01_00]);
+		short[4] abcd = [scaleH, shearH, shearV, scaleV];
+		const double thetaF = PI * 2.0 * (theta * (1.0 / ushort.max));
+		const __m128 rotateVec = _vect([cos(thetaF), -1.0 * sin(thetaF), sin(thetaF), cos(thetaF)]);
+		const __m128 trnsParams = matrix22Mult(_conv4shorts(abcd.ptr), rotateVec) * TRNS_PARAMS_REC;
 		//Constants end
 		//Select palettes
 		//if (flags & CLEAR_Z_BUFFER) glClear(GL_DEPTH_BUFFER_BIT);
@@ -440,6 +501,10 @@ public class SpriteLayer : Layer, ISpriteLayer {
 			glUniform1i(dbu.shader.getUniformLocation("palette"), 1);
 			glUniform1i(dbu.shader.getUniformLocation("paletteMipMap"), 2);
 			glUniform2f(dbu.shader.getUniformLocation("stepSizes"), screenSizeRec[0], screenSizeRec[1]);
+			glUniformMatrix2fv(dbu.shader.getUniformLocation("transformMatrix"), 1, GL_FALSE, &trnsParams[0]);
+			glUniform2f(dbu.shader.getUniformLocation("transformPoint"),
+					cast(float)(x0 + (sizes[0] / 2.0)),
+					cast(float)(y0 + (sizes[1] / 2.0)));
 			const GLuint paletteOffsetIndex = dbu.shader.getUniformLocation("paletteOffset");
 
 			glBindVertexArray(gl_vertexArray);
