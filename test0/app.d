@@ -106,6 +106,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 				loadShader(`%SHADERS%/tile_%SHDRVER%.frag`));
 		t = new TileLayer(16,16, tileShader);
 		t.setOverscanAmount([212,120,212,120]);
+		s.setOverscanAmount([212,120,212,120]);
 		textLayer = new TileLayer(8,8, tileShader);
 		textLayer.paletteOffset = 512;
 		textLayer.masterVal = 127;
@@ -146,8 +147,8 @@ class TileLayerTest : SystemEventListener, InputListener {
 		//s.addSprite(loadBitmapFromFile!Bitmap2Bit("..assets/basn3p04.png"));
 		s.addBitmapSource(dlangMan, 0);
 		s.createSpriteMaterial(0, 0, Box(0, 0, 31, 31));
-		s.addSprite(0, -65_536, Box(0, 0, 31, 31), 1);
-		ocd.objects ~= CollisionShape(-65_536, Box(0, 0, 31, 31), dlangManCS);
+		s.addSprite(0, -65_536, Box.bySize(212, 120, 32, 32), 1);
+		ocd.objects ~= CollisionShape(-65_536, Box.bySize(212, 120, 32, 32), dlangManCS);
 		//tcd.objects[65_536] = ocd.objects[65_536];
 		// s.addSprite(dlangMan, 0, 0, 0, 1, 0x0, 0x0, -1024, -1024);
 
@@ -321,7 +322,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,0,0,fpsCounter,true, false);
 				framecounter = 0;
 			}
-			// Thread.sleep(msecs(20));
+			//Thread.sleep(msecs(20));
 			//t.relScroll(1,0);
 		}
 		destroy(output);
@@ -397,46 +398,90 @@ class TileLayerTest : SystemEventListener, InputListener {
 				scrright = isPressed;
 				break;
 			case hashCalc("A+"): 	//A+
-				if (isPressed) t.scaleHoriz(scaleH += 16);
+				if (isPressed) {
+					scaleH += 16;
+					t.scaleHoriz(scaleH);
+					s.scaleHoriz(scaleH);
+				}
 				break;
 			case hashCalc("A-"):	//A-
-				if (isPressed) t.scaleHoriz(scaleH -= 16);
+				if (isPressed) {
+					scaleH -= 16;
+					t.scaleHoriz(scaleH);
+					s.scaleHoriz(scaleH);
+				}
 				break;
 			case hashCalc("B+"):	//B+
-				if (isPressed) t.shearHoriz(shearH += 16);
+				if (isPressed) {
+					t.shearHoriz(shearH += 16);
+					s.shearHoriz(shearH);
+				}
 				break;
 			case hashCalc("B-"):	//B-
-				if (isPressed) t.shearHoriz(shearH -= 16);
+				if (isPressed) {
+					t.shearHoriz(shearH -= 16);
+					s.shearHoriz(shearH);
+				}
 				break;
 			case hashCalc("C+"):	//C+
-				if (isPressed) t.shearVert(shearV += 16);
+				if (isPressed) {
+					t.shearVert(shearV += 16);
+					s.shearVert(shearV);
+				}
 				break;
 			case hashCalc("C-"):	//C-
-				if (isPressed) t.shearVert(shearV -= 16);
+				if (isPressed) {
+					t.shearVert(shearV -= 16);
+					s.shearVert(shearV);
+				}
 				break;
 			case hashCalc("D+"):	//D+
-				if (isPressed) t.scaleVert(scaleV += 16);
+				if (isPressed) {
+					t.scaleVert(scaleV += 16);
+					s.scaleVert(scaleV);
+				}
 				break;
 			case hashCalc("D-"):	//D-
-				if (isPressed) t.scaleVert(scaleV -= 16);
+				if (isPressed) {
+					t.scaleVert(scaleV -= 16);
+					s.scaleVert(scaleV);
+				}
 				break;
 			case hashCalc("x0+"):	//x0+
-				if (isPressed) t.setTransformMidpoint(x0++, y0);
+				if (isPressed) {
+					t.setTransformMidpoint(x0++, y0);
+					s.setTransformMidpoint(x0, y0);
+				}
 				break;
 			case hashCalc("x0-"):	//x0-
-				if (isPressed) t.setTransformMidpoint(x0--, y0);
+				if (isPressed) {
+					t.setTransformMidpoint(x0--, y0);
+					s.setTransformMidpoint(x0, y0);
+				}
 				break;
 			case hashCalc("y0+"):	//y0+
-				if (isPressed) t.setTransformMidpoint(x0, y0++);
+				if (isPressed) {
+					t.setTransformMidpoint(x0, y0++);
+					s.setTransformMidpoint(x0, y0);
+				}
 				break;
 			case hashCalc("y0-"):	//y0-
-				if (isPressed) t.setTransformMidpoint(x0, y0--);
+				if (isPressed) {
+					t.setTransformMidpoint(x0, y0--);
+					s.setTransformMidpoint(x0, y0);
+				}
 				break;
 			case hashCalc("theta+"):
-				if (isPressed) t.rotate(theta+=256);
+				if (isPressed) {
+					t.rotate(theta+=256);
+					s.rotate(theta);
+				}
 				break;
 			case hashCalc("theta-"):
-				if (isPressed) t.rotate(theta-=256);
+				if (isPressed) {
+					t.rotate(theta-=256);
+					s.rotate(theta);
+				}
 				break;
 			case hashCalc("hidettl"):
 
