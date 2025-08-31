@@ -191,6 +191,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		}
 		if (background) spriteLayer.addSprite(65_536, 65_536, Point(0, 0));
 		if (baseWindow) spriteLayer.addSprite(65_535, 65_535, Point(0, 0));
+		spriteLayer.updateDisplayList();
 	}
 	/**
 	 * Returns the default stylesheet, either one that has been set locally to this handler, or the global one.
@@ -340,6 +341,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 					sender.getPosition().height+1));
 			spriteLayer.addSprite(n, n,
 					Box(sender.getPosition.left, sender.getPosition.top, sender.getPosition.right + 1, sender.getPosition.bottom + 1));
+			spriteLayer.updateDisplayList();
 		}
 	}
 	/**
@@ -363,6 +365,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		spriteLayer.addBitmapSource(p.getOutput, numOfPopUpElements);
 		spriteLayer.createSpriteMaterial(numOfPopUpElements, numOfPopUpElements);
 		spriteLayer.addSprite(numOfPopUpElements, numOfPopUpElements, Point(posX, posY));
+		spriteLayer.updateDisplayList();
 	}
 	/**
 	 * Adds a pop-up element into the environment and moves it to the given location.
@@ -380,6 +383,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		spriteLayer.addBitmapSource(p.getOutput, numOfPopUpElements);
 		spriteLayer.createSpriteMaterial(numOfPopUpElements, numOfPopUpElements);
 		spriteLayer.addSprite(numOfPopUpElements, numOfPopUpElements, Point(x, y));
+		spriteLayer.updateDisplayList();
 	}
 	/**
 	 * Removes all pop-up elements from the environment, effectively ending the pop-up session.
@@ -390,6 +394,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		}
 		popUpElements = PopUpSet(new PopUpElement[](0));
 		if (PopUpElement.onDraw !is null) PopUpElement.onDraw();
+		spriteLayer.updateDisplayList();
 	}
 	/**
 	 * Removes the pop-up element with the highest priority.
@@ -398,6 +403,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 		spriteLayer.removeSprite(numOfPopUpElements++);
 		popUpElements.remove(popUpElements.length - 1);
 		if (PopUpElement.onDraw !is null) PopUpElement.onDraw();
+		spriteLayer.updateDisplayList();
 	}
 	/**
 	 * Returns the default stylesheet (popup).
@@ -420,6 +426,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	public void closePopUp(PopUpElement p){
 		popUpElements.removeByElem(p);
 		if (PopUpElement.onDraw !is null) PopUpElement.onDraw();
+		spriteLayer.updateDisplayList();
 	}
 	void updateOutput(PopUpElement p) {
 		for (int i = -1, j ; i >= numOfPopUpElements && j < popUpElements.length ; i--, j++) {
