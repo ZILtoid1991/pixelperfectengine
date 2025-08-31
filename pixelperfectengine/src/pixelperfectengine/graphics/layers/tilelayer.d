@@ -18,7 +18,7 @@ import pixelperfectengine.system.intrinsics;
 /**
  * Implements a tile layer with some basic transformation and lighting capabilities.
  */
-public class TileLayer : Layer, ITileLayer {
+public class TileLayer : Layer, ITileLayer, LayerTransformParams {
 	/**
 	 * Defines a tile material with an identifier and material position.
 	 * Only defines the upper-left corner of the material, since the rest can be easily 
@@ -99,7 +99,6 @@ public class TileLayer : Layer, ITileLayer {
 	protected GLuint		gl_texture;	/// Contains the OpenGL texture identifier.
 	//private wchar[] mapping;
 	//private BitmapAttrib[] tileAttributes;
-	protected Color[] 		src;		///Local buffer DEPRECATED!
 	protected short			x0;			///
 	protected short			y0;
 	protected short			scaleH = 0x01_00;
@@ -330,11 +329,11 @@ public class TileLayer : Layer, ITileLayer {
 		glUniform1i(glGetUniformLocation(currshader, "paletteMipMap"), 2);
 		glUniformMatrix2fv(glGetUniformLocation(currshader, "transformMatrix"), 1, GL_FALSE, &trnsParams[0]);
 		glUniform2f(glGetUniformLocation(currshader, "transformPoint"),
-				((x0 + (sizes[0] / 2) + overscanAm[0]) / cast(float)tileX),
-				((y0 + (sizes[1] / 2) + overscanAm[1]) / cast(float)tileY));
+				((x0 + (sizes[0] / 2) + overscanAm[0] + tXMod + (sX0 < 0 ? tileX - (tXMod ? 0 : tileX) : 0)) / cast(float)tileX),
+				((y0 + (sizes[1] / 2) + overscanAm[1] + tYMod + (sY0 < 0 ? tileY - (tYMod ? 0 : tileY) : 0)) / cast(float)tileY));
 		glUniform2f(glGetUniformLocation(currshader, "bias"),
-				screenSizeRec[0] * ((overscanAm[0]) + (tXMod) + (sX0 < 0 ? tileX - (tXMod ? 0 : tileX) : 0)),
-				screenSizeRec[1] * ((overscanAm[1]) + (tYMod) + (sY0 < 0 ? tileY - (tYMod ? 0 : tileY) : 0)));
+				screenSizeRec[0] * (overscanAm[0] + tXMod + (sX0 < 0 ? tileX - (tXMod ? 0 : tileX) : 0)),
+				screenSizeRec[1] * (overscanAm[1] + tYMod + (sY0 < 0 ? tileY - (tYMod ? 0 : tileY) : 0)));
 		glUniform2f(glGetUniformLocation(currshader, "tileSize"), screenSizeRec[0] * tileX, screenSizeRec[1] * tileY);
 
 		glBindVertexArray(gl_vertexArray);
@@ -416,7 +415,7 @@ public class TileLayer : Layer, ITileLayer {
 	 *   x0 = x coordinate of the midpoint.
 	 *   y0 = y coordinate of the midpoint.
 	 */
-	public void setTransformMidpoint(short x0, short y0) {
+	public void setTransformMidpoint(short x0, short y0) @nogc @safe pure nothrow {
 		this.x0 = x0;
 		this.y0 = y0;
 	}
