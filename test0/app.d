@@ -54,6 +54,7 @@ int main(string[] args) {
  * Tests graphics output, input events, collision, etc.
  */
 class TileLayerTest : SystemEventListener, InputListener {
+	GLShader tileShader, spriteShader, spriteShader32;
 	bool isRunning, up, down, left, right, scrup, scrdown, scrleft, scrright, fullScreen;
 	OSWindow output;
 	Raster r;
@@ -70,6 +71,11 @@ class TileLayerTest : SystemEventListener, InputListener {
 	short scaleH = 0x01_00, shearH, shearV, scaleV = 0x01_00, x0, y0;
 	ushort theta;
 	RandomNumberGenerator rng;
+	~this() {
+		tileShader.free();
+		spriteShader.free();
+		spriteShader32.free();
+	}
 	this (int mapWidth, int mapHeight, int spriteNum) {
 		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);
 		version (Windows) output.getOpenGLHandleAttribsARB([
@@ -99,10 +105,11 @@ class TileLayerTest : SystemEventListener, InputListener {
 		r.readjustViewport(424 * 4, 240 * 4, 0, 0);
 		//output.setMainRaster(r);
 
-		s = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
-				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
-				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
-		GLShader tileShader = GLShader(loadShader(`%SHADERS%/tile_%SHDRVER%.vert`),
+		spriteShader = GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`), loadShader(`%SHADERS%/base_%SHDRVER%.frag`));
+		spriteShader32 = GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`));
+		s = new SpriteLayer(spriteShader, spriteShader32);
+		tileShader = GLShader(loadShader(`%SHADERS%/tile_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/tile_%SHDRVER%.frag`));
 		t = new TileLayer(16,16, tileShader);
 		t.setOverscanAmount([212,120,212,120]);

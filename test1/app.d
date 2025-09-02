@@ -137,6 +137,7 @@ public class TopLevelWindow : Window {
  * Capable of playing back external files.
  */
 public class AudioDevKit : InputListener, SystemEventListener {
+	GLShader spriteShader, spriteShader32;
 	AudioDeviceHandler adh;
 	ModuleManager	mm;
 	AudioModule		selectedModule;
@@ -169,7 +170,10 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		fullScreen		=	1<<4,
 		flipScreen		=	1<<5,
 	}
-	
+	~this() {
+		spriteShader.free();
+		spriteShader32.free();
+	}
 	public this(string[] args) {
 		state.isRunning = true;
 		outScrn = new OSWindow("PixelPerfectEngine Audio Development Kit", "ppe_adk", -1, -1,
@@ -188,9 +192,10 @@ public class AudioDevKit : InputListener, SystemEventListener {
 		}
 		mainRaster = new Raster(848,480,outScrn);
 		mainRaster.readjustViewport(848 * guiScaling, 480 * guiScaling, 0, 0);
-		windowing = new SpriteLayer(GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
-				loadShader(`%SHADERS%/base_%SHDRVER%.frag`)), GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
-				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`)));
+		spriteShader = GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`), loadShader(`%SHADERS%/base_%SHDRVER%.frag`));
+		spriteShader32 = GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`));
+		windowing = new SpriteLayer(spriteShader, spriteShader32);
 		//windowing.addSprite(new Bitmap8Bit(848, 480), -65_536, 0, 0);
 		wh = new WindowHandler(848 * guiScaling,480 * guiScaling,848,480,windowing,outScrn);
 		mainRaster.loadPaletteChunk(loadPaletteFromFile(resolvePath("%SYSTEM%/concreteGUIE1.tga")), 0);

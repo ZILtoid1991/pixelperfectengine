@@ -42,14 +42,18 @@ int main(string[] args) {
 }
 
 public class TestElements : InputListener, SystemEventListener {
+	GLShader spriteShader, spriteShader32;
 	Raster				mainRaster;
 	OSWindow    		outScrn;
 	SpriteLayer			sprtL;
 	WindowHandler		wh;
-	InputHandler        ih;
-	bool                isRunning, flipScreen, fullScreen;
-	TextParser          txtParser;
-
+	InputHandler		ih;
+	bool				isRunning, flipScreen, fullScreen;
+	TextParser			txtParser;
+	~this() {
+		spriteShader.free();
+		spriteShader32.free();
+	}
 	public this() {
 		outScrn = new OSWindow("Test nr. 3", "ppe_test3", -1, -1, 848 * GUIScaling, 480 * GUIScaling, WindowCfgFlags.IgnoreMenuKey);
 		version (Windows) outScrn.getOpenGLHandleAttribsARB([
