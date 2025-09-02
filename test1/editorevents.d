@@ -3,13 +3,13 @@ module test1.editorevents;
 import pixelperfectengine.concrete.eventchainsystem;
 import pixelperfectengine.audio.base.modulebase;
 import pixelperfectengine.audio.base.config;
-import sdlang : Tag, Value;
+import newsdlang;
 import collections.commons : defaultHash;
 /**
  * Adds a module to the module configuration.
  */
 public class AddModuleEvent : UndoableEvent {
-	Tag backup;
+	DLTag backup;
 	ModuleConfig mcfg;
 	string type;
 	string name;
@@ -53,7 +53,7 @@ public class RenameModuleEvent : UndoableEvent {
  * Deletes a module from the audio configuration while holding a backup of it.
  */
 public class DeleteModuleEvent : UndoableEvent {
-	Tag backup;
+	DLTag backup;
 	ModuleConfig mcfg;
 	string name;
 	public this(ModuleConfig mcfg, string name) {
@@ -72,8 +72,8 @@ public class DeleteModuleEvent : UndoableEvent {
  */
 public class EditPresetParameterEvent : UndoableEvent {
 	ModuleConfig mcfg;
-	Value oldVal, newVal;
-	Value paramID;
+	DLValue oldVal, newVal;
+	DLValue paramID;
 	string modID;
 	int presetID;
 	string presetName;
@@ -81,8 +81,8 @@ public class EditPresetParameterEvent : UndoableEvent {
 	public this(VT, PT)(ModuleConfig mcfg, VT newVal, PT paramID, string modID, int presetID, string presetName, 
 			/* AudioModule mod */) {
 		this.mcfg = mcfg;
-		this.newVal = Value(newVal);
-		this.paramID = Value(paramID);
+		this.newVal = new DLValue(newVal);
+		this.paramID = new DLValue(paramID);
 		this.modID = modID;
 		this.presetID = presetID;
 		this.presetName = presetName;
@@ -163,7 +163,7 @@ public class RemovePresetEvent : UndoableEvent {
 	ModuleConfig mcfg;
 	string modID;
 	int presetID;
-	Tag backup;
+	DLTag backup;
 	public this (ModuleConfig mcfg, string modID, int presetID) {
 		this.mcfg = mcfg;
 		this.modID = modID;
@@ -182,7 +182,7 @@ public class AddSampleFile : UndoableEvent {
 	string modID;
 	int sampleID;
 	string path;
-	Tag backup;
+	DLTag backup;
 	public this (ModuleConfig mcfg, string modID, int sampleID, string path) {
 		this.mcfg = mcfg;
 		this.modID = modID;
@@ -207,7 +207,7 @@ public class AddSampleSlice : UndoableEvent {
 	int src;
 	int begin;
 	int len;
-	Tag backup;
+	DLTag backup;
 	public this (ModuleConfig mcfg, string modID, int sampleID, int src, int begin, int len) {
 		this.mcfg = mcfg;
 		this.modID = modID;
@@ -231,7 +231,7 @@ public class RemoveSample : UndoableEvent {
 	ModuleConfig mcfg;
 	string modID;
 	int sampleID;
-	Tag backup;
+	DLTag backup;
 	public this (ModuleConfig mcfg, string modID, int sampleID) {
 		this.mcfg = mcfg;
 		this.modID = modID;
