@@ -1,13 +1,13 @@
 module "qm816" "fmsynth" {
 	presetRecall 0 {
-		"op0_Level" 0.3030000030994415283203125D
+		"op0_Level" 0.303
 		"op0_Attack" 15
 		"op0_Decay" 30
 		"op0_Release" 17
-		"op0_SusLevel" 0.64999997615814208984375D
+		"op0_SusLevel" 0.65
 		"op1_Attack" 15
 		"op1_Release" 12
-		"op0_Feedback" 0.004999999888241291913504316113D
+		"op0_Feedback" 0.005
 	}
 	presetRecall 1 {
 		"chf_Algorithm" 1
@@ -15,30 +15,30 @@ module "qm816" "fmsynth" {
 		"op1_TuneCor" 73
 		"op1_Waveform" 0
 		"op0_Waveform" 25
-		"op0_Level" 0.100000001490116105506977817186D
+		"op0_Level" 0.1
 		"op1_Attack" 2
 		"op1_Release" 2
 	}
 	presetRecall 2 {
 		"chf_ComboMode" 1
-		"op0_Level" 0.0500000007450580596923828125D
+		"op0_Level" 0.05
 		"op0_Decay" 50
-		"op0_SusLevel" 0.100000001490116105506977817186D
+		"op0_SusLevel" 0.1
 		"op1_Decay" 50
-		"op1_SusLevel" 0.00999999977648258209228515625D
+		"op1_SusLevel" 0.01
 		"op0_SusCtrl" 64
 		"op0_Release" 3
 		"op1_SusCtrl" 0
 		"op1_Release" 0
-		"ch_GlobalFB" 0.100000001490116119384765625D
-		"op0_Feedback" 0.0500000007450580596923828125D
+		"ch_GlobalFB" 0.1
+		"op0_Feedback" 0.05
 	}
 	presetRecall 130 {
-		"op0_Level" 0.004999999888241291913504316113D
-		"op1_Level" 0.100000001490116105506977817186D
-		"op0_SusLevel" 0.100000001490116105506977817186D
+		"op0_Level" 0.005
+		"op1_Level" 0.1
+		"op0_SusLevel" 0.1
 		"op0_Decay" 50
-		"op1_SusLevel" 0.100000001490116105506977817186D
+		"op1_SusLevel" 0.1
 		"op1_Decay" 50
 		"op1_Feedback" 0D
 		"chf_ComboMode" 1
@@ -48,7 +48,7 @@ module "qm816" "fmsynth" {
 		"chf_Algorithm" 1
 		"chf_ResMode" 1
 		"op1_TuneCor" 72
-		"op0_SusLevel" 0.00999999977648258209228515625D
+		"op0_SusLevel" 0.01
 		"op0_Decay" 50
 		"op1_Attack" 50
 		"op0_Level" 0.5D
@@ -56,8 +56,8 @@ module "qm816" "fmsynth" {
 	}
 	presetRecall 131 {
 		"chf_ComboMode" 1
-		"op0_Level" 0.02999999932944774627685546875D
-		"op1_Level" 0.02999999932944774627685546875D
+		"op0_Level" 0.03
+		"op1_Level" 0.03
 		"op0_Attack" 20
 		"op1_Attack" 30
 	}
@@ -70,7 +70,7 @@ module "qm816" "fmsynth" {
 		"op0_Decay" 50
 		"op0_SusLevel" 0.5D
 		"op0_Release" 20
-		"op1_SusLevel" 0.200000002980232266525106865629D
+		"op1_SusLevel" 0.2
 		"op1_Decay" 100
 		"op1_Release" 1
 		"op1_Level" 0.25D
@@ -80,8 +80,8 @@ module "qm816" "fmsynth" {
 		"chf_ComboMode" 2
 		"op0_Attack" 50
 		"op1_Attack" 75
-		"op0_Level" 0.100000001490116105506977817186D
-		"op1_Level" 0.100000001490116105506977817186D
+		"op0_Level" 0.1
+		"op1_Level" 0.1
 		"op1_TuneCor" 72
 		"chf_Algorithm" 1
 		"op0_TuneCor" 42

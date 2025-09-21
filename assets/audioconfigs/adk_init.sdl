@@ -1,13 +1,13 @@
 module "qm816" "fmsynth" {
 	presetRecall 0 {
-		"op0_Level" 0.3030000030994415283203125D
+		"op0_Level" 0.303
 		"op0_Attack" 15
 		"op0_Decay" 30
 		"op0_Release" 17
-		"op0_SusLevel" 0.64999997615814208984375D
+		"op0_SusLevel" 0.65
 		"op1_Attack" 15
 		"op1_Release" 12
-		"op0_Feedback" 0.0500000007450580596923828125D
+		"op0_Feedback" 0.05
 	}
 	presetRecall 1 {
 		"chf_Algorithm" 1
@@ -18,50 +18,50 @@ module "qm816" "fmsynth" {
 		"op0_Level" 0D
 	}
 	presetRecall 2 {
-		"op0_Level" 0.00999999977648258209228515625D
+		"op0_Level" 0.01
 		"op0f_FBNeg" 1
-		"op0_Feedback" 0.07999999821186065673828125D
-		"op0_SusLevel" 0.00999999977648258209228515625D
+		"op0_Feedback" 0.05
+		"op0_SusLevel" 0.01
 		"op0_Attack" 0
 		"op0_Decay" 50
 		"op1_Attack" 0
 		"op1_Decay" 30
-		"op1_SusLevel" 0.4000000059604644775390625D
+		"op1_SusLevel" 0.4
 		"op0_SusCtrl" 1
-		"op0_VelToLevel" 0.800000011920928955078125D
+		"op0_VelToLevel" 0.8
 		"op1_SusCtrl" 62
-		"op1_VelToLevel" 0.4000000059604644775390625D
+		"op1_VelToLevel" 0.4
 	}
 	presetRecall 3 {
 		"op0_TuneCor" 48
-		"op0_Level" 0.20000000298023223876953125D
+		"op0_Level" 0.2
 		"op0_Release" 20
 		"op1_Release" 20
 		"op0_SusCtrl" 20
-		"op0_Feedback" 0.004999999888241291046142578125D
+		"op0_Feedback" 0.005
 		"op0f_FBNeg" 1
 		"op1_SusCtrl" 20
 	}
 	presetRecall 4 {
 		"op0_Waveform" 0
-		"op0_Level" 0.008000000379979610443115234375D
+		"op0_Level" 0.008
 		"op0_Decay" 20
 		"op0_SusCtrl" 2
-		"op0_SusLevel" 0.100000001490116119384765625D
+		"op0_SusLevel" 0.1
 		"op0_TuneCor" 36
 		"op1_SusCtrl" 50
-		"op0_VelToLevel" 0.20000000298023223876953125D
-		"op1_VelToLevel" 0.800000011920928955078125D
+		"op0_VelToLevel" 0.2
+		"op1_VelToLevel" 0.8
 	}
 	presetRecall 5 {
-		"op0_Feedback" 0.02999999932944774627685546875D
+		"op0_Feedback" 0.03
 		"chf_ComboMode" 0
 		"chf_Algorithm" 1
 		"op0_Decay" 28
 		"op0_SusCtrl" 0
 		"op0_SusLevel" 0.5D
 		"op1_Level" 0.5D
-		"op1_SusLevel" 0.100000001490116119384765625D
+		"op1_SusLevel" 0.1
 		"op1_Decay" 30
 		"op1_SusCtrl" 0
 		"op0_Release" 10

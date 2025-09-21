@@ -1,13 +1,13 @@
 module "qm816" "fmsynth" {
 	presetRecall 0 {
-		"op0_Level" 0.3030000030994415283203125D
+		"op0_Level" 0.303
 		"op0_Attack" 15
 		"op0_Decay" 30
 		"op0_Release" 17
-		"op0_SusLevel" 0.64999997615814208984375D
+		"op0_SusLevel" 0.65
 		"op1_Attack" 15
 		"op1_Release" 12
-		"op0_Feedback" 0.0500000007450580596923828125D
+		"op0_Feedback" 0.05
 	}
 }
 route "fmsynth:mainL" "outputL"
