@@ -10,8 +10,9 @@ import pixelperfectengine.graphics.layers;
 
 import pixelperfectengine.graphics.bitmap;
 
-import pixelperfectengine.physics.common;
+import pixelperfectengine.physics;
 import pixelperfectengine.physics.objectcollision;
+import pixelperfectengine.physics.collision;
 
 import pixelperfectengine.system.input;
 import pixelperfectengine.system.file;
@@ -109,7 +110,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		}
 		textLayer.writeTextToMap(0, 1, 0, "Collision:", true, false);
 		textLayer.writeTextToMap(0, 2, 0, "Col. type:", true, false);
-		textLayer.reprocessTilemap();
+		textLayer.updateDisplayList();
 		ocd = new ObjectCollisionDetector(&onCollision, 0);
 
 		stateFlags.isRunning = true;
@@ -131,34 +132,39 @@ public class MapFormatTester : SystemEventListener, InputListener {
 		foreach (Layer l ; r.layerMap) {
 			if (l.getLayerType == LayerType.Tile) {
 				TileLayer tl = cast(TileLayer)l;
-				tl.reprocessTilemap();
+				tl.updateDisplayList();
 			}
 		}
+		gameField.updateDisplayList();
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
 			r.refresh_GL();
 			ih.test();
-			ocd.objects.ptrOf(65_536).position = gameField.getSpriteCoordinate(65_536).boxOf();
+			ocd.objects.searchPtrBy(65_536).position = gameField.getSpriteCoordinate(65_536).boxOf();
 			if(controlFlags.up) {
 				gameField.relMoveSprite(65_536,0,-1);
 				textLayer.writeTextToMap(10,2,0,"        None",true, false);
-				textLayer.reprocessTilemap();
+				textLayer.updateDisplayList();
+				gameField.updateDisplayList();
 			}
 			if(controlFlags.down) {
 				gameField.relMoveSprite(65_536,0,1);
 				textLayer.writeTextToMap(10,2,0,"        None",true, false);
-				textLayer.reprocessTilemap();
+				textLayer.updateDisplayList();
+				gameField.updateDisplayList();
 			}
 			if(controlFlags.left) {
 				gameField.relMoveSprite(65_536,-1,0);
 				textLayer.writeTextToMap(10,2,0,"        None",true, false);
-				textLayer.reprocessTilemap();
+				textLayer.updateDisplayList();
+				gameField.updateDisplayList();
 			}
 			if(controlFlags.right) {
 				gameField.relMoveSprite(65_536,1,0);
 				textLayer.writeTextToMap(10,2,0,"        None",true, false);
-				textLayer.reprocessTilemap();
+				textLayer.updateDisplayList();
+				gameField.updateDisplayList();
 			}
 			ocd.testSingle(65_536);
 		}
@@ -180,7 +186,7 @@ public class MapFormatTester : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,2,0,"ShapeOverlap", true, false);
 				break;
 		}
-		textLayer.reprocessTilemap();
+		textLayer.updateDisplayList();
 	}
 
 	override public void onQuit() {
