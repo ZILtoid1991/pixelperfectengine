@@ -72,8 +72,8 @@ public class DeleteModuleEvent : UndoableEvent {
  */
 public class EditPresetParameterEvent : UndoableEvent {
 	ModuleConfig mcfg;
-	DLValue oldVal, newVal;
-	DLValue paramID;
+	DLVar oldVal, newVal;
+	DLVar paramID;
 	string modID;
 	int presetID;
 	string presetName;
@@ -81,8 +81,8 @@ public class EditPresetParameterEvent : UndoableEvent {
 	public this(VT, PT)(ModuleConfig mcfg, VT newVal, PT paramID, string modID, int presetID, string presetName, 
 			/* AudioModule mod */) {
 		this.mcfg = mcfg;
-		this.newVal = new DLValue(newVal);
-		this.paramID = new DLValue(paramID);
+		this.newVal = DLVar(newVal, 0, 0);
+		this.paramID = DLVar(paramID, 0, 0);
 		this.modID = modID;
 		this.presetID = presetID;
 		this.presetName = presetName;
@@ -122,7 +122,7 @@ public class EditPresetParameterEvent : UndoableEvent {
 	}
 
 	public void undo() {
-		Value dummy;
+		DLVar dummy;
 		mcfg.editPresetParameter(modID, presetID, paramID, oldVal, dummy, presetName);
 		/* if (mod !is null) {
 			uint _paramID;

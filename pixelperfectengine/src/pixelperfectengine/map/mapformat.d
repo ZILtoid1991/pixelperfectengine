@@ -58,7 +58,7 @@ public class MapFormat {
 	/**
 	 * Serializes itself from file.
 	 */
-	public this(F)(F file) {
+	public this(F)(F file) @trusted {
 		//File f = File(path, "rb");
 		char[] source;
 		source.length = cast(size_t)file.size;
@@ -73,7 +73,7 @@ public class MapFormat {
 					// RenderingMode lrd = renderingModeLookup.get(t0.getTagValue!string("RenderingMode"), RenderingMode.Copy);
 					string shdrPathV, shdrPathF;
 					GLShader shdr, shdr32;
-					DLTag shdrDescr = t0.getTag("ShaderProgram"), shdrDescr32 = t0.getTag("ShaderProgram32");
+					DLTag shdrDescr = t0.searchTag("ShaderProgram"), shdrDescr32 = t0.searchTag("ShaderProgram32");
 					if (shdrDescr) {
 						shdrPathV = shdrDescr.values[0].get!string;
 						shdrPathF = shdrDescr.values[1].get!string;
@@ -121,7 +121,7 @@ public class MapFormat {
 				Image i = loadImage(File(resolvePath(path), "rb"));
 				void helperFunc(T)(T bitmap, DLTag source) {
 					TileLayer tl = cast(TileLayer)layeroutput[key];
-					DLTag tileInfo = source.searchTag(["Embed:TileInfo"]);
+					DLTag tileInfo = source.searchTag("Embed:TileInfo");
 					int tW = tl.getTileWidth, tH = tl.getTileHeight;
 					int numOfCol = bitmap.width / tW, numOfRow = bitmap.height / tH;
 					int imageID = hashCalc(path);

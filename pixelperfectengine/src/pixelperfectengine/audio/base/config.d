@@ -12,6 +12,7 @@ import std.algorithm.searching : countUntil;
 import std.array : split;
 import std.conv : to;
 
+alias ModuleCtorFunc = AudioModule delegate(DLTag data);
 /** 
  * Module and audio routin configurator.
  * Loads an SDL file, then configures the modules and sets up their routing, presets, etc.
@@ -164,7 +165,7 @@ public class ModuleConfig {
 										paramID = cast(uint)(t2.values[0].get!long);
 									}
 									switch(t2.values[1].type) {
-										case DLValueType.Integer:
+										case DLValueType.Integer, DLValueType.SDLInt, DLValueType.SDLUint, DLValueType.SDLLong, DLValueType.SDLUlong:
 											if (currMod.writeParam_long(presetID, paramID, t2.values[1].get!long) != 0) {
 												currMod.writeParam_int(presetID, paramID, t2.values[1].get!int);
 											}
@@ -172,7 +173,7 @@ public class ModuleConfig {
 										case DLValueType.String:
 											currMod.writeParam_string(presetID, paramID, t2.values[1].get!string);
 											break;
-										case DLValueType.Float:
+										case DLValueType.Float, DLValueType.SDLFloat, DLValueType.SDLDouble:
 											currMod.writeParam_double(presetID, paramID, t2.values[1].get!double);
 											break;
 										case DLValueType.Boolean:
@@ -328,16 +329,16 @@ public class ModuleConfig {
 	 *   backup = Previous value of the parameter, otherwise left unaltered.
 	 *   name = Optional name of the preset.
 	 */
-	public void editPresetParameter(Value, ParamID)(string modID, int presetID, ParamID paramID, Value value,
-			ref Value backup, string name = null) {
+	public void editPresetParameter(string modID, int presetID, DLVar paramID, DLVar value, ref DLVar backup,
+			string name = null) {
 		foreach (DLTag t0 ; root.tags) {
 			if (t0.name == "module") {
 				if (t0.values[1].get!string == modID) {
 					foreach (DLTag t1 ; t0.tags) {
-						if (t1.name == "presetRecall" && t1.values[0].type == DLValueType.Integer && t1.values[0].get!int() == presetID) {
+						if (t1.name == "presetRecall" && t1.values[0].get == DLVar(presetID)) {
 							foreach (DLTag t2 ; t1.tags) {
-								if (t2.values[0] == paramID) {
-									backup = t2.values[1].get!value;
+								if (t2.values[0].get == paramID) {
+									backup = t2.values[1].get;
 									t2.values[1].set = value;
 									return;
 								}
@@ -349,8 +350,8 @@ public class ModuleConfig {
 					}
 					DLElement[] attr;
 					if (name.length)
-						attr ~= new Attribute("name", null, DLVar(name, DLValueType.String, DLStringType.Quote));
-					Tag t_1 = new DLTag("presetRecall", null, [new DLValue(presetID)] ~ attr);
+						attr ~= new DLAttribute("name", null, DLVar(name, DLValueType.String, DLStringType.Quote));
+					DLTag t_1 = new DLTag("presetRecall", null, new DLValue(presetID) ~ attr);
 					new DLTag(null, null, [new DLValue(paramID), new DLValue(value)]);
 					t0.add(t_1);
 					return;
