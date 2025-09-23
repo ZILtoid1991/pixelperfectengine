@@ -65,6 +65,13 @@ public class MapFormatTester : SystemEventListener, InputListener {
 	TileLayer		textLayer;
 	SpriteLayer		gameField;
 	GLShader		tileShader;
+	~this() {
+		if (mapSource !is null) {
+			foreach (Layer l ; mapSource.layeroutput) {
+				l.releaseShaders();
+			}
+		}
+	}
 	this(string path) {
 		output = new OSWindow("TileLayer Test", "ppe_tilelayertest", -1, -1, 424 * 4, 240 * 4, WindowCfgFlags.IgnoreMenuKey);//new OutputScreen("TileLayer test", 424 * 4, 240 * 4);
 		version (Windows) output.getOpenGLHandleAttribsARB([
