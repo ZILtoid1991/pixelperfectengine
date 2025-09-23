@@ -134,6 +134,7 @@ public class Test5 : SystemEventListener, InputListener {
 			s.addBitmapSource(textOutput.output, 0);
 			s.createSpriteMaterial(0, 0);
 			s.addSprite(0, 0, Point(0, 0));
+			s.updateDisplayList();
 		}
 	}
 	public void onQuit() {
