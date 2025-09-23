@@ -161,8 +161,8 @@ abstract class Layer {
 	///Returns the type of the layer.
 	///Useful with certain scripting languages.
 	public abstract LayerType getLayerType() @nogc @safe pure nothrow const;
-	///Standard algorithm for horizontal mirroring, used for tile mirroring
-	///To be deprecated after move to OpenGL completed
+	///Frees all shaders that were used with this layer.
+	public abstract void releaseShaders() @nogc @trusted nothrow;
 }
 /**
  * Defines a layer, that can be used during the rendering of other layers in the shader,

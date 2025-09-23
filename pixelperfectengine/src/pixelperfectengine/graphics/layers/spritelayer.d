@@ -710,4 +710,9 @@ public class SpriteLayer : Layer, ISpriteLayer, LayerTransformParams {
 		sY += y;
 		//checkAllSprites;
 	}
+	///Frees all shaders that were used with this layer.
+	public override void releaseShaders() @nogc @trusted nothrow {
+		defaultShader.free();
+		defaultShader32.free();
+	}
 }

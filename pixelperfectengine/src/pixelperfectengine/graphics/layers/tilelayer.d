@@ -604,4 +604,8 @@ public class TileLayer : Layer, ITileLayer, LayerTransformParams {
 	public override @nogc void updateRaster(void* workpad, int pitch, Color* palette) {	//DEPRECATED
 
 	}
+	///Frees all shaders that were used with this layer.
+	public override void releaseShaders() @nogc @trusted nothrow {
+		shader.free();
+	}
 }
