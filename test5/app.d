@@ -118,6 +118,7 @@ public class Test5 : SystemEventListener, InputListener {
 			r.refresh_GL();
 			ih.test();
 		}
+		s.releaseShaders();
 		destroy(output);
 	}
 	void drawNextText() {

@@ -194,6 +194,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 			raster.refresh_GL();
 			rng.seed();
 		}
+		playfield.releaseShaders();
 		destroy(output);
 	}
 	/// Places the next apple to a random empty location.
@@ -204,7 +205,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 			for (int xi ; xi < 40 ; xi++) {
 				if (playfield.readMapping((xi + x) % 40, (yi + y) % 30).tileID == TileTypes.Empty) {
 					playfield.writeMapping((xi + x) % 40, (yi + y) % 30, MappingElement2(TileTypes.Apple));
-					playfield.reprocessTilemap();
+					playfield.updateDisplayList();
 					return;
 				}
 			}
@@ -312,7 +313,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 		// Remove end if growth doesn't happen.
 		if (!appleFound) 
 			playfield.writeMapping(curr.x, curr.y, MappingElement2(TileTypes.Empty));
-		playfield.reprocessTilemap();
+		playfield.updateDisplayList();
 	}
 	/// Since tilemaps get initialized with 0xFFFF (none) tiles, we need to set it to 0x0000
 	public void clearTilemap() {
@@ -321,7 +322,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 				playfield.writeMapping(x,y, MappingElement2(TileTypes.Empty));
 			}
 		}
-		playfield.reprocessTilemap();
+		playfield.updateDisplayList();
 	}
 	/// A timer event, to make the game run stable regardless of the framerate.
 	public void timerEvent(Duration jitter) {
@@ -383,7 +384,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 				default: break;
 			}
 			prevDir = dir;
-			playfield.reprocessTilemap();
+			playfield.updateDisplayList();
 		}
 	}
 	/// Key event data is received here.
@@ -395,7 +396,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 			}
 			if (!prevDir) {
 				playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement2(TileTypes.SnakeV));
-				playfield.reprocessTilemap();
+				playfield.updateDisplayList();
 			}
 			break;
 		case hashCalc("down"):
@@ -404,7 +405,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 			}
 			if (!prevDir) {
 				playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement2(TileTypes.SnakeV));
-				playfield.reprocessTilemap();
+				playfield.updateDisplayList();
 			}
 			break;
 		case hashCalc("left"):
@@ -427,7 +428,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 			prevDir = 0;
 			placeNextApple();
 			playfield.writeMapping(snakeHead.x, snakeHead.y, MappingElement2(TileTypes.SnakeH));
-			playfield.reprocessTilemap();
+			playfield.updateDisplayList();
 			break;
 		case hashCalc("quit"):
 			state = 4;
