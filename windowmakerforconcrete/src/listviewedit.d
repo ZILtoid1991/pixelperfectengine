@@ -1,6 +1,6 @@
 import pixelperfectengine.concrete.window; 
 import editorEvents;
-import sdlang;
+import newsdlang;
 import std.conv : to;
 import std.utf;
 
@@ -21,14 +21,14 @@ public class ListViewEditor : Window {
 
 		listView_headerEdit.editEnable = true;
 		listView_headerEdit.multicellEditEnable = true;
-		Tag header = wserializer.getTag(target, "header");
+		DLTag header = wserializer.getTag(target, "header");
 		button_add.onMouseLClick = &button_add_onClick;
 		button_remove.onMouseLClick = &button_remove_onClick;
 		button_apply.onMouseLClick = &button_apply_onClick;
 		addElement(button_add);
 		addElement(button_remove);
 		addElement(button_apply);
-		foreach (Tag key; header.tags) {
+		foreach (DLTag key; header.tags) {
 			listView_headerEdit += new ListViewItem(16, [key.values[1].get!int().to!dstring(), 
 					toUTF32(key.values[0].get!string)], [TextInputFieldType.DecimalP, TextInputFieldType.Text]);
 		}
@@ -51,15 +51,15 @@ public class ListViewEditor : Window {
 		listView_headerEdit.draw();
 	}
 	private void button_apply_onClick(Event ev) {
-		Tag[] headerTags;
+		DLElement[] headerTags;
 		dstring[] texts;
 		int[] widths;
 		headerTags.reserve = listView_headerEdit.numEntries;
 		texts.reserve = listView_headerEdit.numEntries;
 		widths.reserve = listView_headerEdit.numEntries;
 		for (int i ; i < listView_headerEdit.numEntries ; i++) {
-			headerTags ~= new Tag(null, null, [Value(toUTF8(listView_headerEdit[i][1].text.text)), 
-					Value(to!int(listView_headerEdit[i][0].text.text))]);
+			headerTags ~= new DLTag(null, null, [new DLValue(toUTF8(listView_headerEdit[i][1].text.text)),
+					new DLValue(to!int(listView_headerEdit[i][0].text.text))]);
 			texts ~= listView_headerEdit[i][1].text.text;
 			widths ~= to!int(listView_headerEdit[i][0].text.text);
 		}

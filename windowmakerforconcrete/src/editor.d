@@ -500,7 +500,7 @@ public class Editor : SystemEventListener, InputListener{
 		tlw.objectList.refresh();
 	}
 	public void updatePropertyList() {
-		import sdlang;
+		import newsdlang;
 		import std.utf;
 		tlw.propList.clear();
 		if (elements.getPtr(selection) !is null) {
@@ -513,7 +513,7 @@ public class Editor : SystemEventListener, InputListener{
 				tlw.propList ~= new ListViewItem(16, ["text", toUTF32(wserializer.getValue(selection, "text")[0].get!string())], 
 						[TextInputFieldType.None, TextInputFieldType.Text]);
 			}
-			Value[] pos0 = wserializer.getValue(selection, "position");
+			DLValue[] pos0 = wserializer.getValue(selection, "position");
 			dstring pos1 = conv.to!dstring(pos0[0].get!int) ~ ";" ~ conv.to!dstring(pos0[1].get!int) ~ ";" ~
 					conv.to!dstring(pos0[2].get!int) ~ ";" ~ conv.to!dstring(pos0[3].get!int) ~ ";";
 			tlw.propList ~= new ListViewItem(16, ["position", pos1], [TextInputFieldType.None, TextInputFieldType.Text]);
@@ -689,6 +689,7 @@ public class Editor : SystemEventListener, InputListener{
 			Thread.sleep(dur!"msecs"(10));
 			timer.test();
 		}
+		sprtL.releaseShaders();
 		destroy(outScrn);
 	}
 	public void onQuit(){

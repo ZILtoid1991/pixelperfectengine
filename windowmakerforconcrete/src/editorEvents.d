@@ -6,12 +6,11 @@ import std.utf : toUTF8, toUTF32;
 import editor;
 import serializer;
 import types;
-import sdlang;
+import newsdlang;
 
 public import pixelperfectengine.concrete.eventchainsystem;
 import pixelperfectengine.concrete.elements;
 
-import sdlang.token : Value;
 
 public static DummyWindow dwtarget;
 public static WindowSerializer wserializer;
@@ -21,7 +20,7 @@ public class PlacementEvent : UndoableEvent{
 	private WindowElement element;
 	private string type;
 	private string name;
-	private Tag backup;
+	private DLTag backup;
 	public this(WindowElement element, string type, string name){
 		this.element = element;
 		this.type = type;
@@ -46,7 +45,7 @@ public class PlacementEvent : UndoableEvent{
 }
 
 public class DeleteEvent : UndoableEvent{
-	private Tag backup;
+	private DLTag backup;
 	ElementInfo eleminfo;
 	public this(ElementInfo eleminfo){
 		this.eleminfo = eleminfo;
@@ -70,9 +69,9 @@ public class DeleteEvent : UndoableEvent{
 }
 
 public class AttributeEditEvent : UndoableEvent{
-	private Value[] oldVal, newVal;
+	private DLValue[] oldVal, newVal;
 	private string attributeName, targetName;
-	public this(Value[] newVal, string attributeName, string targetName){
+	public this(DLValue[] newVal, string attributeName, string targetName){
 		this.newVal = newVal;
 		this.attributeName = attributeName;
 		this.targetName = targetName;
@@ -90,7 +89,7 @@ public class TextEditEvent : AttributeEditEvent{
 	public this(dstring newText, string targetName){
 		this.newText = newText;
 		this.oldText = editorTarget.elements[targetName].element.getText.text;
-		super([Value(toUTF8(newText))], "text", targetName);
+		super([new DLValue(toUTF8(newText))], "text", targetName);
 	}
 	public override void redo(){
 		super.redo;
@@ -105,7 +104,7 @@ public class TextEditEvent : AttributeEditEvent{
 public class SourceEditEvent : AttributeEditEvent{
 	//private string oldText, newText;
 	public this(string newText, string targetName){
-		super([Value(newText)], "source", targetName);
+		super([new DLValue(newText)], "source", targetName);
 	}
 }
 
@@ -114,7 +113,8 @@ public class PositionEditEvent : AttributeEditEvent{
 	public this(Coordinate newPos, string targetName){
 		this.newPos = newPos;
 		this.oldPos = editorTarget.elements[targetName].element.getPosition;
-		super([Value(newPos.left), Value(newPos.top), Value(newPos.right), Value(newPos.bottom)], "position", targetName);
+		super([new DLValue(newPos.left), new DLValue(newPos.top), new DLValue(newPos.right), new DLValue(newPos.bottom)],
+				"position", targetName);
 	}
 	public override void redo(){
 		super.redo;
@@ -129,9 +129,9 @@ public class PositionEditEvent : AttributeEditEvent{
 }
 
 public class WindowAttributeEditEvent : UndoableEvent{
-	private Value[] oldVal, newVal;
+	private DLValue[] oldVal, newVal;
 	private string attributeName;
-	public this(string attributeName, Value[] newVal){
+	public this(string attributeName, DLValue[] newVal){
 		this.attributeName = attributeName;
 		this.newVal = newVal;
 	}
@@ -147,7 +147,7 @@ public class WindowRetitleEvent : WindowAttributeEditEvent{
 	private dstring oldTitle, newTitle;
 	public this(dstring title){
 		newTitle = title;
-		super("title", [Value(toUTF8(title))]);
+		super("title", [new DLValue(toUTF8(title))]);
 		oldTitle = dwtarget.getTitle().text;
 	}
 	public override void redo(){
@@ -177,7 +177,7 @@ public class WindowWidthChangeEvent : WindowAttributeEditEvent{
 	private int oldWidth, newWidth;
 	public this(int newWidth){
 		this.newWidth = newWidth;
-		super("size:x", [Value(newWidth)]);
+		super("size:x", [new DLValue(newWidth)]);
 		oldWidth = dwtarget.getPosition.width;
 	}
 	public override void redo(){
@@ -194,7 +194,7 @@ public class WindowHeightChangeEvent : WindowAttributeEditEvent{
 	private int oldHeight, newHeight;
 	public this(int newHeight){
 		this.newHeight = newHeight;
-		super("size:y", [Value(newHeight)]);
+		super("size:y", [new DLValue(newHeight)]);
 		oldHeight = dwtarget.getPosition.height;
 	}
 	public override void redo(){
@@ -245,33 +245,33 @@ public class MoveElemEvent : UndoableEvent {
 		this.target = target;
 	}
 	public void redo() {
-		wserializer.editValue(target, "position", [Value(newPos.left), Value(newPos.top), Value(newPos.right), 
-				Value(newPos.bottom)]);
+		wserializer.editValue(target, "position",
+				[new DLValue(newPos.left), new DLValue(newPos.top), new DLValue(newPos.right), new DLValue(newPos.bottom)]);
 		//oldPos = editorTarget.elements[target].position;
 		editorTarget.elements[target].element.setPosition(newPos);
 		dwtarget.draw();
 	}
 	public void undo() {
-		wserializer.editValue(target, "position", [Value(oldPos.left), Value(oldPos.top), Value(oldPos.right), 
-				Value(oldPos.bottom)]);
+		wserializer.editValue(target, "position",
+				[new DLValue(oldPos.left), new DLValue(oldPos.top), new DLValue(oldPos.right), new DLValue(oldPos.bottom)]);
 		editorTarget.elements[target].element.setPosition(oldPos);
 		dwtarget.draw();
 	}
 }
 
 public class ListViewHeaderEditEvent : UndoableEvent {
-	private Tag oldHeader;
-	private Tag[] newHeader;
+	private DLTag oldHeader;
+	private DLElement[] newHeader;
 	private ListViewHeader oldHeader0, newHeader0;
 	private string target;
-	public this(Tag[] newHeader, ListViewHeader newHeader0, string target) {
+	public this(DLElement[] newHeader, ListViewHeader newHeader0, string target) {
 		this.newHeader = newHeader;
 		this.newHeader0 = newHeader0;
 		this.target = target;
 	}
 	public void redo() {
 		oldHeader = wserializer.getTag(target, "header");
-		Tag t = new Tag(null, "header", oldHeader.values, null, newHeader);
+		DLTag t = new DLTag("header", null, newHeader);
 		wserializer.replaceTag(target, "header", t);
 		ListView lw = cast(ListView)editorTarget.elements[target].element;
 		lw.setHeader(newHeader0, null);
