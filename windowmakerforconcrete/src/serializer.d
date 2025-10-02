@@ -7,6 +7,7 @@ import pixelperfectengine.graphics.common;
 import pixelperfectengine.concrete.elements;
 import std.utf;
 import std.stdio;
+import std.file;
 import conv = std.conv;
 
 public class WindowSerializer {
@@ -33,7 +34,7 @@ public class WindowSerializer {
 	}
 	public void store() {
 		import std.string : toStringz;
-		string fileout = root.toSDLDocument("\t",1);
+		string fileout = root.writeDOM();
 		debug writeln(fileout);
 		File filestream = File(filename, "w");
 		//filestream.open();
@@ -48,11 +49,11 @@ public class WindowSerializer {
 				conv.to!string(t.values[2].get!int) ~ ", " ~ conv.to!string(t.values[3].get!int);
 	}
 	public void deserialize(DummyWindow dw, Editor e) {
-		root = parseFile(filename);
+		root = readDOM(readText(filename));
 		foreach(DLTag t0; root.tags){
-			string name = t0.expectValue!string(), type;
+			string name = t0.values[0].get!string(), type;
 			WindowElement we;
-			switch(t0.getFullName.toString){
+			switch(t0.fullname){
 				case "Label":
 					we = new Label(toUTF32(t0.searchTag("text").values[0].get!string), t0.searchTag("source").values[0].get!string,
 							parseCoordinate(t0.searchTag("position")));
@@ -69,7 +70,7 @@ public class WindowSerializer {
 					break;
 				case "TextBox":
 					we = new TextBox(toUTF32(t0.searchTag("text").values[0].get!string), t0.searchTag("source").values[0].get!string,
-							parseCoordinate(t0.expectTag("position")));
+							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
 					type = "TextBox";
 					break;
@@ -77,7 +78,7 @@ public class WindowSerializer {
 					break;
 				case "CheckBox":
 					we = new CheckBox(toUTF32(t0.searchTag("text").values[0].get!string), t0.searchTag("source").values[0].get!string,
-							parseCoordinate(t0.expectTag("position")));
+							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
 					type = "CheckBox";
 					break;
@@ -109,13 +110,13 @@ public class WindowSerializer {
 					break;
 				case "HorizScrollBar":
 					we = new HorizScrollBar(t0.searchTag("maxValue").values[0].get!int, t0.searchTag("source").values[0].get!string,
-							parseCoordinate(t0.expectTag("position")));
+							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
 					type = "HorizScrollBar";
 					break;
 				case "VertScrollBar":
 					we = new VertScrollBar(t0.searchTag("maxValue").values[0].get!int, t0.searchTag("source").values[0].get!string,
-							parseCoordinate(t0.expectTag("position")));
+							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
 					type = "VertScrollBar";
 					break;
@@ -136,27 +137,27 @@ public class WindowSerializer {
 			switch (typeName) {
 				case "Window": break;
 				case "SmallRadioButton":
-					elementCtors ~= "\t\t" ~ t0.getValue!string() ~ " = ";
-					typeDefs ~= "\t" ~ "RadioButton" ~ " " ~ t0.getValue!string() ~ ";\n";
+					elementCtors ~= "\t\t" ~ t0.values[0].get!string() ~ " = ";
+					typeDefs ~= "\t" ~ "RadioButton" ~ " " ~ t0.values[0].get!string() ~ ";\n";
 					break;
 				case "SmallCheckBox":
-					elementCtors ~= "\t\t" ~ t0.getValue!string() ~ " = ";
-					typeDefs ~= "\t" ~ "CheckBox" ~ " " ~ t0.getValue!string() ~ ";\n";
+					elementCtors ~= "\t\t" ~ t0.values[0].get!string() ~ " = ";
+					typeDefs ~= "\t" ~ "CheckBox" ~ " " ~ t0.values[0].get!string() ~ ";\n";
 					break;
 				default:
-					elementCtors ~= "\t\t" ~ t0.getValue!string() ~ " = ";
-					typeDefs ~= "\t" ~ typeName ~ " " ~ t0.getValue!string() ~ ";\n";
+					elementCtors ~= "\t\t" ~ t0.values[0].get!string() ~ " = ";
+					typeDefs ~= "\t" ~ typeName ~ " " ~ t0.values[0].get!string() ~ ";\n";
 					break;
 			}
 			switch(typeName) {
 				case "Button", "Label", "TextBox", "CheckBox", "RadioButton":
 					elementCtors ~= "new " ~ typeName ~ "(\"" ~ t0.searchTag("text").values[0].get!string ~ "\"d, \"" ~
-							t0.searchTag("source").values[0].get!string ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~
+							t0.searchTag("source").values[0].get!string ~ "\", Box(" ~ parseCoordinateIntoString(t0.searchTag("position")) ~
 							"));\n";
 					break;
 				case "HorizScrollBar", "VertScrollBar":
 					elementCtors ~= "new " ~ typeName ~ "(\"" ~ conv.to!string(t0.searchTag("maxValue").values[0].get!int) ~ ", \"" ~
-							t0.searchTag("source").values[0].get!string ~ "\", Box(" ~ parseCoordinateIntoString(t0.getTag("position")) ~
+							t0.searchTag("source").values[0].get!string ~ "\", Box(" ~ parseCoordinateIntoString(t0.searchTag("position")) ~
 							"));\n";
 					break;
 				case "ListView":
@@ -174,7 +175,7 @@ public class WindowSerializer {
 							~ "));\n";
 					break;
 				case "Window":
-					outputCode ~= "public class " ~ t0.getValue!string() ~ " : Window {\n";
+					outputCode ~= "public class " ~ t0.values[0].get!string() ~ " : Window {\n";
 					windowCtor = "super(Box(0, 0, " ~ conv.to!string(t0.searchTag("size:x").values[0].get!int) ~ ", " ~
 							conv.to!string(t0.searchTag("size:y").values[0].get!int) ~ "), \"" ~ t0.searchTag("title").values[0].get!string
 							~ "\");\n";
@@ -226,7 +227,7 @@ public class WindowSerializer {
 	 */
 	public DLValue[] editValue(string target, string property, DLValue[] val) {
 		DLValue[] result;
-		foreach(DLTag t0; root.all.tags){
+		foreach(DLTag t0; root.tags){
 			if(t0.values[0].get == DLVar(target)){
 				result = t0.searchTag(property).values;
 				foreach(DLValue v ; result) v.removeFromParent();
@@ -238,8 +239,8 @@ public class WindowSerializer {
 	}
 	public DLValue[] getValue(string target, string property) {
 		foreach(DLTag t0; root.tags){
-			if(t0.values.get == DLVar(target)){
-				return t0.getTagValues(property);
+			if(t0.values[0].get == DLVar(target)){
+				return t0.searchTag(property).values;
 			}
 		}
 		return null;
@@ -253,9 +254,9 @@ public class WindowSerializer {
 		return root.searchTag("Window").values[0].get!string();
 	}
 	public DLValue[] editWindowValue(string property, DLValue[] val){
-		DLValue[] result = root.searchTag("Window").getTag(property).values;
+		DLValue[] result = root.searchTag("Window").searchTag(property).values;
 		foreach (DLValue v ; result) v.removeFromParent();
-		root.getTag("Window").getTag(property).values = val;
+		foreach (DLValue v ; val) root.searchTag("Window").searchTag(property).add(v);
 		return result;
 	}
 	public DLValue[] getWindowValue(string property){
@@ -263,30 +264,30 @@ public class WindowSerializer {
 	}
 	public void renameElement(string oldName, string newName) {
 		foreach (DLTag t; root.tags) {
-			if (t.getValue!string() == oldName) {
+			if (t.values[0].get!string() == oldName) {
 				t.values[0].removeFromParent;
 				t.add(new DLValue(newName));
 				return;
 			}
 		}
 	}
-	public void addElement(string type, string name, Coordinate initPos) {
+	public void addElement(string type, string name, Box initPos) {
 		foreach (DLTag t ; root.tags) {
 			if (t.values[0].get == DLVar(name)) throw new ElementCollisionException("Similarly named element already exists!");
 		}
-		DLTag t1 = new Tag(type, null, [new DLValue(name)]);
+		DLTag t1 = new DLTag(type, null, [new DLValue(name)]);
 		root.add(t1);
 		switch(type){
 			case "Label", "TextBox", "RadioButton", "CheckBox":
-				t1.add(new DLTag(null, "text", [new DLValue(name)]));
+				t1.add(new DLTag("text", null, [new DLValue(name)]));
 				break;
 			case "Button":
-				t1.add(new DLTag(null, "icon", [new DLValue("null")]));
+				t1.add(new DLTag("icon", null, [new DLValue("null")]));
 				goto case "Label";
 			case "ListView":
-				DLTag t2 = new DLTag(null, "header", [Value(16)]);
-				t2.add(new Tag(null, null, [new DLValue("col0"), new DLValue(40)]));
-				t2.add(new Tag(null, null, [new DLValue("col1"), new DLValue(40)]));
+				DLTag t2 = new DLTag("header", null, [new DLValue(16)]);
+				t2.add(new DLTag(null, null, [new DLValue("col0"), new DLValue(40)]));
+				t2.add(new DLTag(null, null, [new DLValue("col1"), new DLValue(40)]));
 				t1.add(t2);
 				break;
 			case "HorizScrollBar", "VertScrollBar":
@@ -294,18 +295,18 @@ public class WindowSerializer {
 				t1.add(new DLTag(null, "maxValue", [new DLValue(16)]));
 				break;
 			case "MenuBar":
-				DLTag t2 = new DLTag(null, "options", [new DLTag(null, null, [
-					new DLTag(null, "entry", [new DLValue("opt0"), new DLTag(null, null, [Value("opt0_0")]),
-						new DLTag(null, null, [Value("opt0_1")])]),
-					new DLTag(null, "entry", [new DLValue("opt1"), new DLTag(null, null, [Value("opt1_0")]),
-						new DLTag(null, null, [Value("opt1_1")])]),
+				DLTag t2 = new DLTag("options", null, [new DLTag(null, null, [
+					new DLTag("entry", null, [new DLValue("opt0"), new DLTag(null, null, [new DLValue("opt0_0")]),
+						new DLTag(null, null, [new DLValue("opt0_1")])]),
+					new DLTag("entry", null, [new DLValue("opt1"), new DLTag(null, null, [new DLValue("opt1_0")]),
+						new DLTag(null, null, [new DLValue("opt1_1")])]),
 						])]);
 				break;
 			default:
 				break;
 		}
-		t1.add(new DLTag(null, "source", [new DLValue(name)]));
-		t1.add(new DLTag(null, "position",
+		t1.add(new DLTag("source", null, [new DLValue(name)]));
+		t1.add(new DLTag("position", null,
 				[new DLValue(initPos.left), new DLValue(initPos.top), new DLValue(initPos.right), new DLValue(initPos.bottom)]));
 		//debug writeln(t1);
 	}
