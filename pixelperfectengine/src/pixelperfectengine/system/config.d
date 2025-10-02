@@ -127,15 +127,15 @@ public class ConfigurationProfile {
 					appVers = t0.values[1].get!string();
 					break;
 				case "audio": 		//get values for the audio subsystem
-					sfxVol = t0.searchTagX(["soundVol"]).values[0].get!int;
-					musicVol = t0.searchTagX(["musicVol"]).values[0].get!int;
-					DLValue driver = t0.searchTagX(["driver"]).values[0];
+					sfxVol = t0.searchTag("soundVol").values[0].get!int;
+					musicVol = t0.searchTag("musicVol").values[0].get!int;
+					DLValue driver = t0.searchTag("driver").values[0];
 					if (driver.type == DLValueType.String) audioDriver = driver.get!string;
-					DLValue device = t0.searchTagX(["device"]).values[0];
+					DLValue device = t0.searchTag("device").values[0];
 					if (device.type == DLValueType.String) audioDevice = driver.get!string;
-					audioFrequency = t0.searchTagX(["frequency"]).values[0].get!int;
-					audioBufferLen = t0.searchTagX(["bufferLen"]).values[0].get!int;
-					audioFrameLen = t0.searchTagX(["frameLen"]).values[0].get!int;
+					audioFrequency = t0.searchTag("frequency").values[0].get!int;
+					audioBufferLen = t0.searchTag("bufferLen").values[0].get!int;
+					audioFrameLen = t0.searchTag("frameLen").values[0].get!int;
 					break;
 				case "video": 	//get values for the video subsystem
 					foreach(DLTag t1; t0.tags ){
