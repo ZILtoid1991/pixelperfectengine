@@ -24,7 +24,7 @@ public class TileCollisionDetector {
 	protected void delegate(TileCollisionEvent)			objectToTileCollision;
 	public this(void delegate(TileCollisionEvent) objectToTileCollision, int contextID, ITileLayer source) @safe nothrow {
 		this.contextID = contextID;
-		this.objects = objects;
+		//this.objects = objects;
 		this.source = source;
 		//excludedTiles.put(0xffff);
 	}
