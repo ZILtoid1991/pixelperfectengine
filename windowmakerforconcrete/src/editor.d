@@ -238,7 +238,7 @@ public class Editor : SystemEventListener, InputListener{
 		inputH.mouseListener = ewh;
 		
 		//ewh.setBaseWindow(new TopLevelWindow(848, 480, this));
-		config = new ConfigurationProfile("config_wmfc.sdl", getPathToAsset("../system/config_wmfc.sdl"));
+		config = new ConfigurationProfile("config_wmfc.sdl", "%PATH%/system/config_wmfc.sdl");
 		{
 			import pixelperfectengine.system.input.scancode;
 			inputH.addBinding(BindingCode(ScanCode.ESCAPE, 0, Devicetype.Keyboard, 0, IGNORE_LOCKLIGHTS), 
@@ -250,9 +250,9 @@ public class Editor : SystemEventListener, InputListener{
 
 		PopUpElement.inputhandler = inputH;
 		WindowElement.inputHandler = inputH;
-		PopUpElement.onDraw = &rasterRefresh;
-		WindowElement.onDraw = &rasterRefresh;
-		Window.onDrawUpdate = &rasterRefresh;
+		// PopUpElement.onDraw = &rasterRefresh;
+		// WindowElement.onDraw = &rasterRefresh;
+		// Window.onDrawUpdate = &rasterRefresh;
 		dw = new DummyWindow(Coordinate(0,16,640,480), "New Window"d, this);
 		ewh.addWindow(dw);
 		tlw = new TopLevelWindow(848, 480, this);
@@ -682,8 +682,9 @@ public class Editor : SystemEventListener, InputListener{
 			}
 		}
 	}
-	public void whereTheMagicHappens(){
-		while(!onExit){
+	public void whereTheMagicHappens() {
+		sprtL.updateDisplayList();
+		while (!onExit) {
 			mainRaster.refresh_GL();
 			inputH.test();
 			Thread.sleep(dur!"msecs"(10));

@@ -81,7 +81,7 @@ public class ConfigurationProfile {
 	private string	path;			///Path where the 
 	///Stores ancillary tags to be serialized into the config file
 	public DLTag[] ancillaryTags;
-	private static string vaultPath;
+	// private static string vaultPath;
 	//private SDL_DisplayMode[] videoModes;
 	//public AuxillaryElements auxillaryElements[];
 	public string appName;					///Name of the application. Can be used to check e.g. version safety.
@@ -96,9 +96,9 @@ public class ConfigurationProfile {
 	/// Initializes a basic configuration profile with user supplied values. 
 	/// If [vaultPath] doesn't have any configfiles, restores it from defaults.
 	public this(string filename, string defaultFile) {
-		path = vaultPath ~ filename;
+		path = resolvePath(`%STORE%/` ~ filename);
 		if(!exists(path))
-			std.file.copy(defaultFile, path);			
+			std.file.copy(resolvePath(defaultFile), path);
 		restore();
 	}
 	shared static this() {
@@ -129,9 +129,9 @@ public class ConfigurationProfile {
 				case "audio": 		//get values for the audio subsystem
 					sfxVol = t0.searchTag("soundVol").values[0].get!int;
 					musicVol = t0.searchTag("musicVol").values[0].get!int;
-					DLValue driver = t0.searchTag("driver").values[0];
+					DLVar driver = t0.searchTag("driver").values[0].get;
 					if (driver.type == DLValueType.String) audioDriver = driver.get!string;
-					DLValue device = t0.searchTag("device").values[0];
+					DLVar device = t0.searchTag("device").values[0].get;
 					if (device.type == DLValueType.String) audioDevice = driver.get!string;
 					audioFrequency = t0.searchTag("frequency").values[0].get!int;
 					audioBufferLen = t0.searchTag("bufferLen").values[0].get!int;
@@ -268,9 +268,9 @@ public class ConfigurationProfile {
 	public void store(){
 		try {
 			DLDocument root = new DLDocument([
-				new DLComment("Value #0: Application name\nValue #1: Application version"),
+				// new DLComment("Value #0: Application name\nValue #1: Application version"),
 				new DLTag("configurationFile", null, [new DLValue(appName), new DLValue(appVers)]),
-				new DLComment("Audio settings"),
+				// new DLTag(null, null, [new DLComment("Audio settings")]),
 				new DLTag("audio", null, [
 					new DLTag("soundVol", null, [new DLValue(sfxVol),
 							new DLComment("Sound volume (0-100)", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
@@ -287,7 +287,7 @@ public class ConfigurationProfile {
 					new DLTag("frameLen", null, [new DLValue(audioDriver), new DLComment("Length of an audio frame (must be less or " ~
 							"equal than buffer, and power of two)", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
 				]),
-				new DLComment("Graphics settings"),
+				// new DLTag(null, null, [new DLComment("Graphics settings")]),
 				new DLTag("video", null, [
 					new DLTag("driver", null, [new DLValue(gfxdriver), new DLComment("Name of API for rendering, currently ignored, " ~
 							"later can specify openGL, vulkan, directX, and metal", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
@@ -305,32 +305,32 @@ public class ConfigurationProfile {
 					new DLTag("rasterSize", null, [new DLValue(rasterSize[0]), new DLValue(rasterSize[1]),
 							new DLComment("Initial raster size if no override used", DLCommentType.Slash, DLCommentStyle.LineEnd)]),
 				]),
-				new DLComment("Input settings")
+				// new DLComment("Input settings")
 			]);
 			DLTag inputSettings = new DLTag("input", null, [
-				new DLComment("device:\n" ~
-				"type: Possible values: \"keyboard\", \"joystick\", \"mouse\", \"touchscreen\"(unimplemented)\n"~"
-name: Name of the device, might be absent.
-devNum: Device ID.")
+// 				new DLTag(null, null, [new DLComment("device:\n" ~
+// 				"type: Possible values: \"keyboard\", \"joystick\", \"mouse\", \"touchscreen\"(unimplemented)\n"~"
+// name: Name of the device, might be absent.
+// devNum: Device ID.")])
 			]);
 			foreach (InputDeviceData idd ; inputDevices) {
 				DLElement[] name;
 				if (idd.name) name ~= new DLAttribute("name", null, DLVar(idd.name, DLValueType.String, DLStringType.Quote));
 				DLTag currInputDevice = new DLTag("device", null, name ~ [
-					new DLAttribute("type", null, DLVar(devicetypeStrings[idd.type], DLValueType.String, DLStringType.Quote)),
+					cast(DLElement)new DLAttribute("type", null, DLVar(devicetypeStrings[idd.type], DLValueType.String, DLStringType.Quote)),
 					new DLAttribute("devnum", null, DLVar(idd.deviceNumber, DLValueType.Integer, DLNumberStyle.Decimal)),
-					new DLComment("Anonymous tags here are treated as keybindings.\n" ~
-					"Value #0: ID, usually a readable one.\n" ~
-					"name: The name of the key from the appropriate naming file.\n" ~
-					"code: If namings are unavailable, then this will be used, has a higher\n" ~
-					"priority than keyName\n" ~
-					"keyMod: In case of keyboards, it's the modifier keys used for various key\n" ~
-					"combinations. In case of joysticks, it determines whether it's a button,\n" ~
-					"DPad, or an axis.\n" ~
-					"keyModIgnore: Determines what modifier keys should it ignore.\n" ~
-					"deadZone0: Axis deadzone prelimiter 1.\n" ~
-					"deadZone1: Axis deadzone prelimiter 2.\n" ~
-					"axisAsButton: Makes the axis to act like a button if within deadzone.")
+					// new DLTag(null, null, [new DLComment("Anonymous tags here are treated as keybindings.\n" ~
+					// "Value #0: ID, usually a readable one.\n" ~
+					// "name: The name of the key from the appropriate naming file.\n" ~
+					// "code: If namings are unavailable, then this will be used, has a higher\n" ~
+					// "priority than keyName\n" ~
+					// "keyMod: In case of keyboards, it's the modifier keys used for various key\n" ~
+					// "combinations. In case of joysticks, it determines whether it's a button,\n" ~
+					// "DPad, or an axis.\n" ~
+					// "keyModIgnore: Determines what modifier keys should it ignore.\n" ~
+					// "deadZone0: Axis deadzone prelimiter 1.\n" ~
+					// "deadZone1: Axis deadzone prelimiter 2.\n" ~
+					// "axisAsButton: Makes the axis to act like a button if within deadzone.")])
 				]);
 				final switch (idd.type) with (Devicetype) {
 					case Keyboard:

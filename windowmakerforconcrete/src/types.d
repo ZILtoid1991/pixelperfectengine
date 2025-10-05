@@ -39,4 +39,7 @@ public struct ElementInfo {
 	bool opEquals(const ElementInfo other) const @nogc @safe pure nothrow {
 		return this.name == other.name;
 	}
+	size_t toHash() const @nogc @safe pure nothrow {
+		return 0;
+	}
 }
