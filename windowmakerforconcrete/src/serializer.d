@@ -50,21 +50,27 @@ public class WindowSerializer {
 	}
 	public void deserialize(DummyWindow dw, Editor e) {
 		root = readDOM(readText(filename));
-		foreach(DLTag t0; root.tags){
-			string name = t0.values[0].get!string(), type = t0.name;
+		writeln(root.tags);
+		foreach(DLTag t0; root.tags) {
+			string name /+= t0.values[0].get!string()+/, type = t0.name;
+			foreach (DLValue v ; t0.values) {
+				if (v.type == DLValueType.String) {
+					name = v.get!string;
+					break;
+				}
+			}
 			WindowElement we;
+			writeln(t0.name);
 			switch(t0.name){
 				case "Label":
 					we = new Label(toUTF32(t0.searchTag("text").values[0].get!string), t0.searchTag("source").values[0].get!string,
 							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
-					// type = "Label";
 					break;
 				case "Button":
 					we = new Button(toUTF32(t0.searchTag("text").values[0].get!string), t0.searchTag("source").values[0].get!string,
 							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
-					// type = "Button";
 					break;
 				case "SmallButton":
 					break;
@@ -72,7 +78,6 @@ public class WindowSerializer {
 					we = new TextBox(toUTF32(t0.searchTag("text").values[0].get!string), t0.searchTag("source").values[0].get!string,
 							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
-					// type = "TextBox";
 					break;
 				case "SmallCheckBox":
 					break;
@@ -80,7 +85,6 @@ public class WindowSerializer {
 					we = new CheckBox(toUTF32(t0.searchTag("text").values[0].get!string), t0.searchTag("source").values[0].get!string,
 							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
-					// type = "CheckBox";
 					break;
 				case "SmallRadioButton":
 					break;
@@ -88,7 +92,6 @@ public class WindowSerializer {
 					we = new RadioButton(toUTF32(t0.searchTag("text").values[0].get!string),
 							t0.searchTag("source").values[0].get!string, parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
-					// type = "RadioButton";
 					break;
 				case "ListView":
 					int[] columnWidths;
@@ -98,34 +101,31 @@ public class WindowSerializer {
 						columnTexts ~= toUTF32(t1.values[0].get!string);
 						columnWidths ~= t1.values[1].get!int;
 					}
-					we = new ListView(new ListViewHeader(headerHeight, columnWidths, columnTexts), [], 
+					we = new ListView(new ListViewHeader(headerHeight, columnWidths, columnTexts), [],
 							t0.searchTag("source").values[0].get!string, parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
-					// type = "ListView";
 					break;
 				case "Window":
 					dw.setTitle(toUTF32(t0.searchTag("title").values[0].get!string));
 					dw.setSize(t0.searchTag("size:x").values[0].get!int,t0.searchTag("size:y").values[0].get!int);
-					// type = "Window";
+
 					break;
 				case "HorizScrollBar":
 					we = new HorizScrollBar(t0.searchTag("maxValue").values[0].get!int, t0.searchTag("source").values[0].get!string,
 							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
-					// type = "HorizScrollBar";
 					break;
 				case "VertScrollBar":
 					we = new VertScrollBar(t0.searchTag("maxValue").values[0].get!int, t0.searchTag("source").values[0].get!string,
 							parseCoordinate(t0.searchTag("position")));
 					dw.addElement(we);
-					// type = "VertScrollBar";
 					break;
 				default:
 					break;
 			}
-			// if (we) {
-				// e.elements[name] = ElementInfo(we, name, type);
-			// }
+			if (we) {
+				e.elements[name] = ElementInfo(we, name, type);
+			}
 		}
 		e.updateElementList;
 	}
