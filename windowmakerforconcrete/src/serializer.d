@@ -50,17 +50,15 @@ public class WindowSerializer {
 	}
 	public void deserialize(DummyWindow dw, Editor e) {
 		root = readDOM(readText(filename));
-		writeln(root.tags);
 		foreach(DLTag t0; root.tags) {
-			string name /+= t0.values[0].get!string()+/, type = t0.name;
-			foreach (DLValue v ; t0.values) {
-				if (v.type == DLValueType.String) {
-					name = v.get!string;
-					break;
-				}
-			}
+			string name = t0.searchValue!string(null), type = t0.name;
+			// foreach (DLValue v ; t0.values) {
+			// 	if (v.type == DLValueType.String) {
+			// 		name = v.get!string;
+			// 		break;
+			// 	}
+			// }
 			WindowElement we;
-			writeln(t0.name);
 			switch(t0.name){
 				case "Label":
 					we = new Label(toUTF32(t0.searchTag("text").values[0].get!string), t0.searchTag("source").values[0].get!string,
