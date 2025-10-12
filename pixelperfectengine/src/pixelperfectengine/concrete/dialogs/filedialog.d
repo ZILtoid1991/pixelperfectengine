@@ -158,6 +158,7 @@ public class FileDialog : Window {
 				200 - windowBottomPadding - (windowElementSize * 2) - windowElementSpacing, 
 				220 - windowRightPadding, 
 				200 - windowBottomPadding - windowElementSize - windowElementSpacing));
+		filenameInput.onTextInput = &onFileNameInput;
 		addElement(filenameInput);
 
 		//generate listview
@@ -257,6 +258,8 @@ public class FileDialog : Window {
 	}
 	/**
 	 * Standard date formatting tool.
+	 * Params:
+	 *   time = the time to be formatted.
 	 */
 	private dstring formatDate(SysTime time){
 		dchar[] s;
@@ -338,11 +341,9 @@ public class FileDialog : Window {
 	 * Creates an action event, then closes the window.
 	 */
 	private void fileEvent(Event ev) {
-		import std.utf : toUTF8;
 		//wstring s = to!wstring(directory);
 		if (filename.length == 0 || filenameInput.isAcceptingTextInput()) return;
-		filename = toUTF8(filenameInput.getText.text);
-		
+		// filename = toUTF8(filenameInput.getText.text);
 		if(onFileselect !is null) {
 			if (filetype.length == 0) {
 				filetype = extension(filename);
@@ -355,6 +356,10 @@ public class FileDialog : Window {
 		}
 			//onFileselect(new Event(source, "", directory, filename, null, selectedType, EventType.FILEDIALOGEVENT));
 		handler.closeWindow(this);
+	}
+	private void onFileNameInput(Event ev) {
+		import std.utf : toUTF8;
+		filename = toUTF8(filenameInput.getText.text);
 	}
 	private void fileTypeSelect(Event ev) {
 		//selectedType = lw.value;
