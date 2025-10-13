@@ -12,6 +12,7 @@ import pixelperfectengine.system.file : loadShader;
 import bindbc.opengl.gl;
 import bindbc.opengl;
 public import pixelperfectengine.graphics.common;
+import pixelperfectengine.graphics.shaders;
 import pixelperfectengine.system.memory;
 import std.conv;
 import std.algorithm.sorting;
@@ -93,13 +94,13 @@ public class Raster : PaletteContainer {
 	public GLuint		gl_VertexBuffer;///Vertex buffer ID
 	public GLuint		gl_VertexArray;	///Vertex array ID
 	public GLuint		gl_VertexIndices;///Vertex index buffer ID
-	public GLuint		gl_Program;		///OpenGL shader program
+	public GLShader		gl_Program;		///OpenGL shader program
 	public int			outputWidth;	///Width of the output area
 	public int			outputHeight;	///Height of the output area
 	public int			outputHOffset;	///Horizontal offset of the output area
 	public int			outputVOffset;	///Vertical offset of the output area
 	/**
-	 * Color format is ARGB, with each index having their own transparency.
+	 * Color format is RGBA, with each index having their own transparency.
 	 */
 	protected Color[] _palette;
 	///Normal map format: x ; y
@@ -127,31 +128,37 @@ public class Raster : PaletteContainer {
 	 *   w = Raster width.
 	 *   h = Raster height.
 	 *   oW = The OS window for the target.
-	 *   buffers = Number of buffers, should be 1.
+	 *   buffers = Number of buffers, should be 1. (deprecated value)
+	 *   shader = Shader program ID, loads a default shader if not supplied.
 	 * especially if they're not constantly updating.
 	 */
-	public this (ushort w, ushort h, OSWindow oW, ubyte buffers = 1) {
+	public this (ushort w, ushort h, OSWindow oW, ubyte buffers = 1, GLShader shader = 0) {
 		// assert(paletteLength <= 65_536);
 		//Shader initialization block
-		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
-		const(char)[] shaderProgram = loadShader("%SHADERS%/final_%SHDRVER%.vert");
-		char* shaderProgramPtr = cast(char*)shaderProgram.ptr;
-		glShaderSource(gl_VertexShader, 1, &shaderProgramPtr, null);
-		glCompileShader(gl_VertexShader);
-		gl_CheckShader(gl_VertexShader);
-		GLuint gl_FragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		shaderProgram = loadShader("%SHADERS%/final_%SHDRVER%.frag");
-		shaderProgramPtr = cast(char*)shaderProgram.ptr;
-		glShaderSource(gl_FragmentShader, 1, &shaderProgramPtr, null);
-		glCompileShader(gl_FragmentShader);
-		gl_CheckShader(gl_FragmentShader);
-		gl_Program = glCreateProgram();
-		glAttachShader(gl_Program, gl_VertexShader);
-		glAttachShader(gl_Program, gl_FragmentShader);
-		glLinkProgram(gl_Program);
-		gl_CheckProgram(gl_Program);
-		glDeleteShader(gl_FragmentShader);
-		glDeleteShader(gl_VertexShader);
+		if (shader) {
+			gl_Program = shader;
+		} else {
+			// GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
+			// const(char)[] shaderProgram = loadShader("%SHADERS%/final_%SHDRVER%.vert");
+			// char* shaderProgramPtr = cast(char*)shaderProgram.ptr;
+			// glShaderSource(gl_VertexShader, 1, &shaderProgramPtr, null);
+			// glCompileShader(gl_VertexShader);
+			// gl_CheckShader(gl_VertexShader);
+			// GLuint gl_FragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+			// shaderProgram = loadShader("%SHADERS%/final_%SHDRVER%.frag");
+			// shaderProgramPtr = cast(char*)shaderProgram.ptr;
+			// glShaderSource(gl_FragmentShader, 1, &shaderProgramPtr, null);
+			// glCompileShader(gl_FragmentShader);
+			// gl_CheckShader(gl_FragmentShader);
+			// gl_Program = glCreateProgram();
+			// glAttachShader(gl_Program, gl_VertexShader);
+			// glAttachShader(gl_Program, gl_FragmentShader);
+			// glLinkProgram(gl_Program);
+			// gl_CheckProgram(gl_Program);
+			// glDeleteShader(gl_FragmentShader);
+			// glDeleteShader(gl_VertexShader);
+			gl_Program = GLShader(loadShader("%SHADERS%/final_%SHDRVER%.vert"), loadShader("%SHADERS%/final_%SHDRVER%.frag"));
+		}
 
 		_palette = nogc_initNewArray!Color(65_536);
 		_paletteNM = nogc_initNewArray!short(65_536 * 2);
@@ -226,7 +233,8 @@ public class Raster : PaletteContainer {
 		glDeleteVertexArrays(1, &gl_VertexArray);
 		glDeleteBuffers(1, &gl_VertexArray);
 		glDeleteBuffers(1, &gl_VertexIndices);
-		glDeleteProgram(gl_Program);
+		gl_Program.free();
+		//glDeleteProgram(gl_Program);
 		glDeleteFramebuffers(cast(int)gl_FrameBuffer.length, gl_FrameBuffer.ptr);
 		glDeleteTextures(cast(int)gl_FrameBufferTexture.length, gl_FrameBufferTexture.ptr);
 		glDeleteRenderbuffers(cast(int)gl_DepthBuffer.length, gl_DepthBuffer.ptr);
@@ -432,25 +440,18 @@ public class Raster : PaletteContainer {
 			layer.renderToTexture_gl(gl_FrameBuffer[updatedBuffer], gl_Palette, gl_PaletteNM,
 					[rasterWidth, rasterHeight, rasterWidth, rasterHeight], [0,0]);
 		}
-		// oW.gl_makeCurrent();
+
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		// glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		// if (screenSizeChanged) {
-		// 	glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
-		// 	screenSizeChanged = false;
-		// }
+
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
 		glViewport(outputHOffset, outputVOffset, outputWidth, outputHeight);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(gl_Program);
-		glUniform1i(glGetUniformLocation(gl_Program, "texture1"), 0);
-		//glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		gl_Program.use();
+		glUniform1i(gl_Program.getUniformLocation("texture1"), 0);
+
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
-		// glGenVertexArrays(1, &gl_VertexArray);
-		// glGenBuffers(1, &gl_VertexBuffer);
-		// glGenBuffers(1, &gl_VertexIndices);
 
 		glBindVertexArray(gl_VertexArray);
 
@@ -466,9 +467,8 @@ public class Raster : PaletteContainer {
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(3 * float.sizeof));
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, cast(int)(8 * float.sizeof), cast(void*)(6 * float.sizeof));
-		// glBindTexture(GL_TEXTURE_2D, gl_FrameBufferTexture[displayedBuffer]);
 
-		glUseProgram(gl_Program);
+		gl_Program.use();
 		glBindVertexArray(gl_VertexArray);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, null);
 
