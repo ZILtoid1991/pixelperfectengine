@@ -24,54 +24,7 @@ public class ShaderException : PPEException_nogc {
  * See manual on default shader implementations!
  */
 public struct GLShader {
-	// protected struct RefCountEntry {
-	// 	GLuint shaderID;
-	// 	uint count;
-	// 	this (GLuint shaderID) @safe @nogc nothrow pure {
-	// 		this.shaderID = shaderID;
-	// 		count = 1;
-	// 	}
-	// 	int opCmp(const ref RefCountEntry rhs) @safe @nogc nothrow pure const {
-	// 		return (shaderID > rhs.shaderID) - (shaderID < rhs.shaderID);
-	// 		// if (shaderID < rhs.shaderID) return -1;
-	// 		// else if (shaderID == rhs.shaderID) return 0;
-	// 		// else return 1;
-	// 	}
-	// 	bool opEquals(const ref RefCountEntry rhs) @safe @nogc nothrow pure const {
-	// 		return shaderID == rhs.shaderID;
-	// 	}
-	// 	int opCmp(const uint rhs) @safe @nogc nothrow pure const {
-	// 		return (shaderID > rhs) - (shaderID < rhs);
-	// 		// if (shaderID < rhs) return -1;
-	// 		// else if (shaderID == rhs) return 0;
-	// 		// else return 1;
-	// 	}
-	// 	bool opEquals(const uint rhs) @safe @nogc nothrow pure const {
-	// 		return shaderID == rhs;
-	// 	}
-	// 	size_t toHash() @safe @nogc nothrow pure const {
-	// 		return shaderID;
-	// 	}
-	// }
-	// ///Stores reference count entries.
-	// ///Todo: Add some further optimization for the counter (preallocations, etc.)
-	// private static RefCountEntry[] refCount;
-	// private static void refCountIncr(GLuint shaderID) @safe @nogc nothrow {
-	// 	sizediff_t index = refCount.searchByI(shaderID);
-	// 	if (index != -1) refCount[index].count++;
-	// 	else refCount.orderedInsert(RefCountEntry(shaderID));
-	// }
-	// private static void refCountDecr(GLuint shaderID) @trusted @nogc nothrow {
-	// 	import numem;
-	// 	if (!refCount.length) return;
-	// 	sizediff_t index = refCount.searchByI(shaderID);
-	// 	if (index == -1) return; /+nu_fatal("Reference counter error: reference not found!");+/
-	// 	refCount[index].count--;
-	// 	if (!refCount[index].count) {
-	// 		glDeleteProgram(shaderID);
-	// 		refCount.nogc_remove(index);
-	// 	}
-	// }
+
 	GLuint shaderID;
 	this(GLuint shaderID) @trusted @nogc nothrow {
 		this.shaderID = shaderID;
