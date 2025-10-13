@@ -46,10 +46,10 @@ int main() {
 				pathSymbols["SHDRVER"] = arg[13..$];
 			}
 		}
-		GameApp app = new GameApp();
-		app.whereTheMagicHappens();
+		GameApp app = new GameApp();	//Create an instance of our application
+		app.whereTheMagicHappens();		//Call main loop function
 	} catch (Throwable e) {
-		debug writeln(e);
+		debug writeln(e);				//Write error to console. TODO: add message window and logging support
 	}
 	return 0;
 }
