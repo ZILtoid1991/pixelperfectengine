@@ -583,8 +583,8 @@ public class ListView : WindowElement, ElementContainer, TextInputListener {
 	/**
 	 * Moves the entry to the given position.
 	 * Params:
-	 *   index: the entry to be moved.
-	 *   target: the position to be moved to.
+	 *   index = the entry to be moved.
+	 *   target = the position to be moved to.
 	 */
 	public void moveEntry(size_t index, size_t target) {
 		ListViewItem[] backup = entries[0..index - 1] ~ entries[index..$];

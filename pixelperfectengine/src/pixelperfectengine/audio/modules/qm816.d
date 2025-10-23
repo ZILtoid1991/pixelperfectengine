@@ -1615,9 +1615,10 @@ public class QM816 : AudioModule {
 	/** 
 	 * Implements a key-off event.
 	 * Params:
-	 *   note = 
-	 *   ch = 
-	 *   vel = 
+	 *   note = The note being released.
+	 *   ch = The channel being released.
+	 *   vel = The velocity of the release.
+	 *   bend = Pitch bend amount in semitones.
 	 */
 	protected void keyOff(ubyte note, ubyte ch, float vel, float bend = 0) @nogc pure nothrow {
 		if ((channels[ch].preset.chCtrl & ChCtrlFlags.ComboModeTest) && ch > 7) return;

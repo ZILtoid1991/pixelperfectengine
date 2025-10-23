@@ -34,12 +34,12 @@ public class AudioDeviceHandler {
 	package int						nOfBlocks;		///Requested/given number of blocks before they get sent to the output
 	/** 
 	 * Creates an instance, and detects all drivers.
-	 *Params: 
-	 * specs: Requested audio specifications. If not available, a nearby will be used instead.
-	 * channels: Number of channels
-	 * buffSize: The size of the buffer in samples
+	 * Params:
+	 *   specs = Requested audio specifications. If not available, a nearby will be used instead.
+	 *   channels = Number of channels
+	 *   buffSize = The size of the buffer in samples
 	 *
-	 * Throws an AudioInitException if audio is failed to be initialized.
+	 * Throws: an AudioInitException if audio is failed to be initialized.
 	 */
 	public this(AudioSpecs specs, int blockSize, int nOfBlocks) {
 		//context = soundio_create();
@@ -182,8 +182,6 @@ public class ModuleManager {
 	 * Creates an instance of a module handler.
 	 * Params:
 	 *  handler = The AudioDeviceHandler that contains the data about the audio device.
-	 *  blockSize = The size of the buffer in samples.
-	 *  nOfBlocks = The number of frames before they get queued to the audio device.
 	 */
 	public this(AudioDeviceHandler handler) {
 		import pixelperfectengine.audio.base.func : resetBuffer;
@@ -325,12 +323,12 @@ public class ModuleManager {
 	}
 	/**
 	 * Adds a plugin to the list.
-	 *Params: 
-	 * md = The audio module to be added. Automatic set-up is done upon addition.
-	 * inBuffs = list of the audio inputs to be added, or null if none.
-	 * inCfg = list of audio input IDs to be used. Must be matched with `inBuffs`
-	 * outBuffs - list of the audio outputs to be added, of null if none.
-	 * outCfg = list of audio output IDs to be used. Must be matched with `outBuffs`
+	 * Params:
+	 *   md = The audio module to be added. Automatic set-up is done upon addition.
+	 *   inBuffs = list of the audio inputs to be added, or null if none.
+	 *   inCfg = list of audio input IDs to be used. Must be matched with `inBuffs`
+	 *   outBuffs - list of the audio outputs to be added, of null if none.
+	 *   outCfg = list of audio output IDs to be used. Must be matched with `outBuffs`
 	 */
 	public void addModule(AudioModule md, size_t[] inBuffs, ubyte[] inCfg, size_t[] outBuffs, ubyte[] outCfg) nothrow {
 		md.moduleSetup(inCfg, outCfg, itrn_sampleRate, blockSize, this);

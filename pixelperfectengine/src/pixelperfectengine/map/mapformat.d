@@ -109,7 +109,7 @@ public class MapFormat {
 	 * Loads tiles from disk to all layers. Also loads the palette.
 	 * TODO: Add dpk support
 	 * Params:
-	 *   paletteTarget: The destination, where the palettes should be loaded into.
+	 *   paletteTarget = The destination, where the palettes should be loaded into.
 	 */
 	public void loadTiles(PaletteContainer paletteTarget) {
 		import pixelperfectengine.system.file;
@@ -264,8 +264,8 @@ public class MapFormat {
 	/**
 	 * Loads all sprites and objects to thir respective layers and the supplied ObjectCollisionDetector.
 	 * Params:
-	 *   paletteTarget: A raster to load the palettes into. Must be not null.
-	 *   ocd: The supplied ObjectCollisionDetector. Can be null.
+	 *   paletteTarget = A raster to load the palettes into. Must be not null.
+	 *   ocd = The supplied ObjectCollisionDetector. Can be null.
 	 * Note: This is a default parser and loader, one might want to write a more complicated one for their application.
 	 */
 	public void loadAllSpritesAndObjects(PaletteContainer paletteTarget, ObjectCollisionDetector ocd) {

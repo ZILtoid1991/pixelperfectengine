@@ -107,6 +107,7 @@ public interface ITileLayer {
 	 * Params:
 	 *   x = x offset of the tile.
 	 *   y = y offset of the tile.
+	 *   w = the tile to be written into the map.
 	 */
 	public void writeMapping(int x, int y, MappingElement2 w) @nogc @safe pure nothrow;
 	/** 

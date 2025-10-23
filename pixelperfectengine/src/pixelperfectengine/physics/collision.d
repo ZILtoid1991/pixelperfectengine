@@ -23,8 +23,8 @@ public struct CollisionShape {
 	/**
 	 * Creates a collision shape.
 	 * Params:
-	 *   position: The position of the bounding box.
-	 *   shape: The shape of the object in the form of a 1 bit bitmap if any, null otherwise.
+	 *   position = The position of the bounding box.
+	 *   shape = The shape of the object in the form of a 1 bit bitmap if any, null otherwise.
 	 */
 	public this(int ecsID, Box position, Bitmap1Bit shape) @nogc @safe pure nothrow {
 		this.ecsID = ecsID;

@@ -62,8 +62,8 @@ public class ModuleConfig {
 	/**
 	 * Loads an audio configuration, and parses it. Does not automatically compile it.
 	 * Params:
-	 *   src: the text of the cconfig file.
-	 *   manager: the ModuleManager, that will handle audio capabilities.
+	 *   src = the text of the cconfig file.
+	 *   manager = the ModuleManager, that will handle audio capabilities.
 	 */
 	public this(string src, ModuleManager manager) {
 		root = readDOM(src);
@@ -72,7 +72,7 @@ public class ModuleConfig {
 	/**
 	 * Creates an empty audio configuration, e.g. for editors.
 	 * Params:
-	 *   manager: the ModuleManager, that will handle audio capabilities.
+	 *   manager = the ModuleManager, that will handle audio capabilities.
 	 */
 	public this(ModuleManager manager) {
 		this.manager = manager;
@@ -662,6 +662,7 @@ public class ModuleConfig {
 	 *   src = ID of the source waveform.
 	 *   pos = Position of the beginning of the slice.
 	 *   len = Length of the slice.
+	 *   name = Name of the slice.
 	 * Returns: The tag that was added to the configuration file, or null on error.
 	 */
 	public DLTag addWaveSlice(string modID, int waveID, int src, int pos, int len, string name) {

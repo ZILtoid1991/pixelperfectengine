@@ -177,6 +177,7 @@ public class TileLayer : Layer, ITileLayer, LayerTransformParams {
 	 * Params:
 	 *   bitmap = the bitmap to be uploaded as a texture.
 	 *   page = page identifier.
+	 *   palSh = the useful bits of the bitmaps, used when selecting the palette. See relevant part of the manual for more information.
 	 * Returns: Zero on success, or a specific error code.
 	 */
 	public override int addBitmapSource(ABitmap bitmap, int page, ubyte palSh = 8) @trusted @nogc nothrow {

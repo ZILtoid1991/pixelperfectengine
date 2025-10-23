@@ -63,6 +63,7 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 	 *   rW = Raster width
 	 *   rH = Raster height
 	 *   sl = The spritelayer, that will display the windows as sprites.
+	 *   osWindow = The window used by the operating system through the iota middleware to display the OpenGL etc. context on the screen.
 	 */
 	public this(int sW, int sH, int rW, int rH, SpriteLayer sl, OSWindow osWindow) {
 		screenWidth = sW;
@@ -488,19 +489,18 @@ public class WindowHandler : InputListener, MouseListener, PopUpHandler {
 
 	}
 	/** 
-	 * 
-	 * Returns: 
+	 * Returns the size of the raster.
 	 */
 	public int[2] getRasterSizes() {
 		return [rasterWidth, rasterHeight];
 	}
 	/** 
-	 * 
+	 * Resizes the raster.
 	 * Params:
-	 *   sW = 
-	 *   sH = 
-	 *   rW = 
-	 *   rH = 
+	 *   sW = screen width.
+	 *   sH = screen height.
+	 *   rW = raster width.
+	 *   rH = raster height.
 	 */
 	public void resizeRaster(int sW, int sH, int rW, int rH) {
 		screenWidth = sW;
