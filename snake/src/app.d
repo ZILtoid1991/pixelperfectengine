@@ -457,11 +457,7 @@ public class SnakeGame : InputListener, SystemEventListener {
 	public void inputDeviceRemoved(InputDevice id) {
 
 	}
-	/** 
-	 * Called if a window was resized.
-	 * Params:
-	 *   window = Handle to the OSWindow class.
-	 */
+	
 	public void windowResize(OSWindow window, int width, int height) {
 		immutable double origAspectRatio = 320.0 / 240.0;//Calculate original aspect ratio
 		double newAspectRatio = cast(double)width / cast(double)height;//Calculate new aspect ratio

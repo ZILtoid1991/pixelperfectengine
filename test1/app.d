@@ -603,11 +603,7 @@ public class AudioDevKit : InputListener, SystemEventListener {
 	public void onQuit() {
 		state.isRunning = false;
 	}
-	/** 
-	 * Called if a window was resized.
-	 * Params:
-	 *   window = Handle to the OSWindow class.
-	 */
+	
 	public void windowResize(OSWindow window, int width, int height) {
 		mainRaster.resizeRaster(cast(ushort)(width / guiScaling), cast(ushort)(height / guiScaling));
 		wh.resizeRaster(width, height, width / guiScaling, height / guiScaling);
