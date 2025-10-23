@@ -1,3 +1,18 @@
+# 0.12.0-beta.2
+
+## Updated sprite rendering architecture
+
+Sprite rendering has been rewritten to be more optimized, this allows more than 1000 sprites to be rendered on screen on a relatively low-end hardware.
+
+## More physics
+
+A basic and currently untested physics system has been added. No rotation, only acceleration and gravity.
+
+## Known bugs
+
+* (iota) Arch Linux and related distros won't accept `libevdev` as a library name, must be edited to `evdev` locally in order to make it build.
+* (Concrete) Incorrect text editing behavior in PopUpTextInput.
+
 # 0.12.0-beta
 
 ## Full rework of rendering and move to OpenGL
