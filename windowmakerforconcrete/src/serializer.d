@@ -15,7 +15,7 @@ public class WindowSerializer {
 	string filename;
 	public this(){
 		root = new DLDocument(null);
-		DLTag window = new DLTag(null, "Window", [new DLValue("window")]);
+		DLTag window = new DLTag("Window", null, [new DLValue("window")]);
 		root.add(window);
 		window.add(new DLTag("title", null, [new DLValue("New Window")]));
 		window.add(new DLTag("x", "size", [new DLValue(640)]));
