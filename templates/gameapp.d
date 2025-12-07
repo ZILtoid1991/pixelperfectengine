@@ -17,8 +17,8 @@ import pixelperfectengine.graphics.raster;		//Needed to display layers in order
 import pixelperfectengine.graphics.layers;		//Imports all layers and layer-related functionality
 import pixelperfectengine.graphics.bitmap;		//Imports bitmaps and all bitmap-related functionality
 //The next two lines imports the collision detector
-import pixelperfectengine.collision.common;		
-import pixelperfectengine.collision.objectcollision;
+import pixelperfectengine.physics.common;
+import pixelperfectengine.physics.objectcollision;
 //Various system related imports
 import pixelperfectengine.system.input;			//Every game needs some sort of interaction capability, and thus here's the input
 import pixelperfectengine.system.file;			//Used to load bitmap and image files
@@ -110,7 +110,14 @@ public class GameApp : SystemEventListener, InputListener {
 		stateFlags.isRunning = true;	//Sets the state to running, so the main loop will stay running.
 		outputScreen = new OSWindow("Your app name here", SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE,
 				WindowCfgFlags.IgnoreMenuKey);	//Creates an output window with the display size calculated from various enums.
-		outputScreen.getOpenGLHandle();		//Initialize OpenGL
+		version (Windows) outputScreen.getOpenGLHandleAttribsARB([
+			OpenGLContextAtrb.MajorVersion, 3,
+			OpenGLContextAtrb.MinorVersion, 3,
+			OpenGLContextAtrb.ProfileMask, 1,
+			OpenGLContextAtrb.Flags, OpenGLContextFlags.Debug,
+			0
+		]);
+		else outputScreen.getOpenGLHandle();		//Initialize OpenGL
 		const glStatus = loadOpenGL();	//Load the OpenGL symbols
 		assert (glStatus >= GLSupport.gl11, "OpenGL not found!");	//Error out if openGL does not work
 		rstr = new Raster(SCREEN_WIDTH,SCREEN_HEIGHT,outputScreen,0);//Creates a raster with the size determined by the enums.
@@ -205,11 +212,11 @@ public class GameApp : SystemEventListener, InputListener {
 		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
 			const double visibleWidth = height * origAspectRatio;
 			const double sideOffset = (width - visibleWidth) / 2.0;
-			glViewport(cast(int)sideOffset, 0, cast(int)visibleWidth, height);
+			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
 		} else {	//Display area is now taller, padding needs to be added on the top and bottom
 			const double visibleHeight = width / origAspectRatio;
 			const double topOffset = (height - visibleHeight) / 2.0;
-			glViewport(0, cast(int)topOffset, width, cast(int)visibleHeight);
+			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
 		}
 	}
 	///Called when a controller is added to the system.
