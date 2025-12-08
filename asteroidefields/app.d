@@ -240,7 +240,6 @@ public class GameApp : SystemEventListener, InputListener {
 	}
 }
 
-
 public struct GameEntity {
 	public enum Type : ubyte {
 		none,
@@ -250,7 +249,21 @@ public struct GameEntity {
 		PickupPoints,
 		PickupShield,
 		PickupWeapon,
-		EnemyShip0,
+		EnemyShip,
+		Explosion,
+	}
+	public enum Flags : uint {
+		canBeDestroyed		=	1 << 0,
+		hasPhysics			=	1 << 1,
+		affectedByGravity	=	1 << 2,
+		hasSprite			=	1 << 3,
 	}
 	mixin(ECS_MACRO);
+	Type type;
+	/// Subtype, if any, is dependent on main type.
+	ubyte subtype;
+	/// Stores the hitpoints of the entity if there's any.
+	ushort hitpoints = 1;
+	BitFlags!Flags flags;
+	ushort rotation;
 }
