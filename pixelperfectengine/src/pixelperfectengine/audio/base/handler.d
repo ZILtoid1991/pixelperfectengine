@@ -36,10 +36,8 @@ public class AudioDeviceHandler {
 	 * Creates an instance, and detects all drivers.
 	 * Params:
 	 *   specs = Requested audio specifications. If not available, a nearby will be used instead.
-	 *   channels = Number of channels
-	 *   buffSize = The size of the buffer in samples
-	 *
-	 * Throws: an AudioInitException if audio is failed to be initialized.
+	 *   blockSize = The size of an audio frame in samples
+	 *   nOfBlocks = The number of audio frames within a single
 	 */
 	public this(AudioSpecs specs, int blockSize, int nOfBlocks) {
 		//context = soundio_create();
@@ -54,8 +52,9 @@ public class AudioDeviceHandler {
 	}
 	/**
 	 * Initializes an audio driver by ID.
-	 *
-	 * Throws an AudioInitException if audio failed to be initialized.
+	 * Params:
+	 *   backend = The type of driver.
+	 * Throws: an AudioInitException if audio failed to be initialized.
 	 */
 	public static void initAudioDriver(DriverType backend) {
 		int errCode = initDriver(backend);
@@ -63,8 +62,10 @@ public class AudioDeviceHandler {
 	}
 	/**
 	 * Opens a specific audio device for audio playback by ID, then sets the values for buffer sizes etc.
-	 *
-	 * Throws an AudioInitException if audio failed to be initialized
+	 * Params:
+	 *   id = The number of the audio devide to be used, or -1 o use the default device.
+	 * Throws: an AudioInitException if audio failed to be initialized
+	 * Bugs: As of iota 0.4.0-beta.6, only the default audio devices work.
 	 */
 	public void initAudioDevice(int id = -1) {
 		int errCode = openDevice(id, device);
@@ -98,7 +99,7 @@ public class AudioDeviceHandler {
 		}
 	}
 	/**
-	 * Return an array with the names of the available audio devices.
+	 * Returns an array with the names of the available audio devices.
 	 */
 	public string[] getDevices() {
 		return getOutputDeviceNames();
@@ -299,9 +300,9 @@ public class ModuleManager {
 	}
 	/**
 	 * MIDI commands are received here from modules.
-	 *
-	 * data: up to 128 bits of MIDI 2.0 commands. Any packets that are shorter should be padded with zeros.
-	 * offset: time offset of the command. This can reduce jitter caused by the asynchronous operation of the 
+	 * Params:
+	 *   data = up to 128 bits of MIDI 2.0 commands. Any packets that are shorter should be padded with zeros.
+	 *   offset = time offset of the command. This can reduce jitter caused by the asynchronous operation of the
 	 * sequencer and the audio plugin system.
 	 */
 	public void midiReceive(uint[4] data, uint offset) @nogc nothrow {
@@ -327,7 +328,7 @@ public class ModuleManager {
 	 *   md = The audio module to be added. Automatic set-up is done upon addition.
 	 *   inBuffs = list of the audio inputs to be added, or null if none.
 	 *   inCfg = list of audio input IDs to be used. Must be matched with `inBuffs`
-	 *   outBuffs - list of the audio outputs to be added, of null if none.
+	 *   outBuffs = list of the audio outputs to be added, of null if none.
 	 *   outCfg = list of audio output IDs to be used. Must be matched with `outBuffs`
 	 */
 	public void addModule(AudioModule md, size_t[] inBuffs, ubyte[] inCfg, size_t[] outBuffs, ubyte[] outCfg) nothrow {
@@ -345,6 +346,9 @@ public class ModuleManager {
 		inBufferList ~= buffList0;
 		outBufferList ~= buffList1;
 	}
+	/**
+	 * Resets the audio system, and clears the configuration.
+	 */
 	public void reset() {
 		moduleList.length = 0;
 		inBufferList.length = 0;

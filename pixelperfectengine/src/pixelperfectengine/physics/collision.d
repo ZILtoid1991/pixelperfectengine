@@ -23,6 +23,7 @@ public struct CollisionShape {
 	/**
 	 * Creates a collision shape.
 	 * Params:
+	 *   ecsID = Entiry component system ID.
 	 *   position = The position of the bounding box.
 	 *   shape = The shape of the object in the form of a 1 bit bitmap if any, null otherwise.
 	 */
