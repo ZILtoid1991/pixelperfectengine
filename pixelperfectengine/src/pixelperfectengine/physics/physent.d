@@ -1,7 +1,7 @@
 module pixelperfectengine.physics.physent;
 
 /*
- * Copyright (C) 2015-2020, 2025, by Laszlo Szeremi under the Boost license.
+ * Copyright (C) 2015, by Laszlo Szeremi under the Boost license.
  *
  * Pixel Perfect Engine, physics.physent (physics entity) module.
  */
@@ -15,12 +15,16 @@ import std.math;
 import core.atomic;
 
 /**
- * Default physics entity and resolver. Uses floating-point calculations
+ * Default physics entity and resolver. Uses floating-point calculations.
+ * It is only for simple kind of physics, does not support true rotation or chaining.
+ * Does support acceleration, attraction by gravity, constant speed, etc. However, for
+ * simplicity sake, constant speed must be done by setting gravity to zero.
+ * Resolving and gravity groups are thread safe.
  */
 public struct PhysEnt {
 	//TODO: Read about how the shared keyword works with structs, or at least with array slices
 	///Stores potential gravity values. The default physics resolver expects at least a single entry.
-	///Index 0 should be set to no gravity.
+	///Index 0 should be set to no gravity, as it is needed for constant speed objects.
 	///DO NOT MODIFY ENTRIES OR RESIZE IT WHILE PHYSICS RESOLVER IS RUNNING! USE THE APPROPRIATE FUNCTIONS TO ACCESS
 	///IT OUTSIDE OF PHYSICS RESOLVING!
 	private static shared float[] gravity;
@@ -36,6 +40,9 @@ public struct PhysEnt {
 			gravity = cast(shared float[])wgr;
 		}
 	}
+	/**
+	 * Sets the value of a given gravity group in a thread safe way.
+	 */
 	static Vec2 setGravityGroup(ubyte index, Vec2 value) @trusted @nogc nothrow {
 		Vec2 result;
 		synchronized {
@@ -53,9 +60,9 @@ public struct PhysEnt {
 	Vec2 velocity = Vec2(0.0);			///X-Y velocity
 	Vec2 acceleration = Vec2(0.0);		///X-Y acceleration, set to zero alongside with gravity to keep constant velocity.
 	float weight = 0.0;					///Weight of the physics entity
-	uint bitflags;
 	ushort restingDirI;					///0-360° on a 2D plane
 	ubyte gravityGr;					///Gravity group selector, should be set to zero if deacceleration is not needed.
+	ubyte bitflags;						///Bitflags used for packing binary options, use macros to access them
 	mixin(ECS_MACRO);
 	static enum RESTING	= 1<<0;			///Set if object is resting on one direction.
 	///Set if object velocity to be affected by gravity (only acceleration is affected by default).
@@ -65,6 +72,9 @@ public struct PhysEnt {
 	mixin(BITFLAG_SET_MACRO!(`resting`, `RESTING`));
 	mixin(BITFLAG_GET_MACRO!(`deaccelerateByGravity`, `DEACC_BY_GRAV`));
 	mixin(BITFLAG_SET_MACRO!(`deaccelerateByGravity`, `DEACC_BY_GRAV`));
+	/**
+	 * Returns the resting direction in radian clamped between 0-360 degrees.
+ 	 */
 	double restingDir() @nogc @safe pure nothrow const {
 		return restingDirI * (1.0 / ushort.max) * PI * 2;
 	}
@@ -83,6 +93,7 @@ public struct PhysEnt {
 	}
 	/**
 	 * Resolves physics for this entity. Does not do any other calculations or physics related things.
+	 * Is thread safe.
 	 * Params:
 	 *   deltaTime = The lapsed time, in seconds.
 	 */
