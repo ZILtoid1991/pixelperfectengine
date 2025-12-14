@@ -41,18 +41,51 @@ public struct PhysEnt {
 		}
 	}
 	/**
-	 * Sets the value of a given gravity group in a thread safe way.
+	 * Sets the value of the given gravity group in a thread-safe way.
+	 * Params:
+	 *   index = The index of the gravity group. If greater than the current one, the underlying array will be resized
+	 * to fit the new parameter (maximum number is 256).
+	 *   value = The value to set the gravity group to. Must not be NaN.
+	 * Returns: The newly set value, or Vec2(float.nan) if value is illegal.
 	 */
 	static Vec2 setGravityGroup(ubyte index, Vec2 value) @trusted @nogc nothrow {
+		if (isNaN(value.x) || isNaN(value.y)) return Vec2(float.nan);
 		Vec2 result;
 		synchronized {
 			float[] wgr = cast(float[])gravity;
 			if (wgr.length / 2 <= index) {
-				wgr.nogc_resize(wgr.length * 2);
+				wgr.nogc_resize((index + 1) * 2);
 			}
 			wgr[index * 2] = value.x;
 			wgr[index * 2 + 1] = value.y;
+			result[0] = wgr[index * 2];
+			result[1] = wgr[index * 2 + 1];
 			gravity = cast(shared float[])wgr;
+		}
+		return result;
+	}
+	/**
+	 * Gets the value of the given gravity group in a thread-safe way.
+	 * Params:
+	 *   index = The index of the gravity group.
+	 * Returns: The value of the gravity group, or Vec2(float.nan) if value is illegal.
+	 */
+	static Vec2 getGravityGroup(ubyte index) @trusted @nogc nothrow {
+		Vec2 result;
+		synchronized {
+			float[] wgr = cast(float[])gravity;
+			if (index > wgr.length / 2) return Vec2(float.nan);
+			result[0] = wgr[index * 2];
+			result[1] = wgr[index * 2 + 1];
+		}
+		return result;
+	}
+	/// Returns the number of valid gravity groups.
+	static size_t getNumOfGravityGroups() @trusted @nogc nothrow {
+		size_t result;
+		synchronized {
+			float[] wgr = cast(float[])gravity;
+			result = wgr.length / 2;
 		}
 		return result;
 	}
@@ -78,16 +111,28 @@ public struct PhysEnt {
 	double restingDir() @nogc @safe pure nothrow const {
 		return restingDirI * (1.0 / ushort.max) * PI * 2;
 	}
+	/**
+	 * Sets the resting direction in radian clamped between 0-360 degrees, then returns it.
+	 */
 	double restingDir(double theta) @nogc @safe pure nothrow {
 		restingDirI = cast(ushort)(cast(int)((theta / (PI * 2)) * ushort.max));
 		return restingDirI * (1.0 / ushort.max) * PI * 2;
 	}
+	/**
+	 * Returns the velocity value of the entity.
+	 */
 	double velocityTotal() @nogc @safe pure nothrow const {
 		return sqrt((velocity.x * velocity.x) + (velocity.y * velocity.y));
 	}
+	/**
+	 * Returns the acceleration value of the entity.
+	 */
 	double accelTotal() @nogc @safe pure nothrow const {
 		return sqrt((acceleration.x * acceleration.x) + (acceleration.y * acceleration.y));
 	}
+	/**
+	 * Returns the kinetic energy of the entity.
+	 */
 	double kineticEnergy() @nogc @safe pure nothrow const {
 		return weight * sqrt((velocity.x * velocity.x) + (velocity.y * velocity.y)) * 0.5;
 	}
