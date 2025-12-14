@@ -30,6 +30,13 @@ public struct GLShader {
 		this.shaderID = shaderID;
 		// if (shaderID) refCountIncr(shaderID);
 	}
+	/**
+	 * Creates an OpenGL shader program. Calls the appropriate OpenGL functions to compile and link the shader.
+	 * Params:
+	 *   vertex = Source of the vertex program part. Must be null terminated.
+	 *   fragment = Source of the frabment program part. Must be null terminated.
+	 * Throws: ShaderException if the compilation or linking process fails.
+	 */
 	this(const(char)[] vertex, const(char)[] fragment) @trusted @nogc {
 		import numem;
 		GLuint gl_VertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -54,13 +61,17 @@ public struct GLShader {
 		glDeleteShader(gl_VertexShader);
 		// refCountIncr(shaderID);
 	}
-
-	// ~this() @safe @nogc nothrow {
-	// 	if (shaderID) refCountDecr(shaderID);
-	// }
+	/**
+	 * Sets the shader to be used.
+	 * Directly bound to function `glUseProgram()`.
+	 */
 	void use() @trusted @nogc nothrow {
 		glUseProgram(shaderID);
 	}
+	/**
+	 * Frees up the shader resources.
+	 * Directly bound to function `glDeleteProgram()`;
+	 */
 	void free() @trusted @nogc nothrow {
 		glDeleteProgram(shaderID);
 	}
