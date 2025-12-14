@@ -31,13 +31,13 @@ public class TileCollisionDetector {
 	public void testAll() {
 		foreach (ref CollisionShape shA; objects) {
 			int iA = shA.ecsID;
-			testSingle(iA, &shA);
+			testSingle(iA, shA);
 		}
 	}
 	public void testSingle(int objectID) {
-		testSingle(objectID, &objects[objects.searchIndexBy(objectID)]);
+		testSingle(objectID, objects[objects.searchIndexBy(objectID)]);
 	}
-	protected final void testSingle(int iA, CollisionShape* shA) {
+	protected final void testSingle(int iA, CollisionShape shA) {
 		const int tW = source.getTileWidth, tH = source.getTileHeight;
 		TileCollisionEvent event = TileCollisionEvent(shA, contextID, iA, 0, 0, []);
 		for (int tY = shA.position.top ; tY <= shA.position.bottom ; tY+=tH) {

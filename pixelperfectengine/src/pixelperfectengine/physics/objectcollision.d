@@ -42,24 +42,30 @@ public class ObjectCollisionDetector {
 	public void testAll() {
 		foreach (ref CollisionShape shA; objects) {
 			int iA = shA.ecsID;
-			testSingle(iA, &shA);
+			testSingle(iA);
 		}
 	}
 	/**
-	 * Tests a single shape (objectID) against the others.
+	 * Tests a single shape against the others.
+	 * Params:
+	 *   objectID = ID of the object.
 	 */
 	public void testSingle(int objectID) {
-		testSingle(objectID, &objects[objects.searchIndexBy(objectID)]);
+		testSingleInternal(objectID, objects[objects.searchIndexBy(objectID)]);
+	}
+	public void testSingle(CollisionShape shA) {
+		testSingleInternal(0, shA, true);
 	}
 	///Tests a single shape against the others (internal).
-	protected final void testSingle(int iA, CollisionShape* shA) {
+	protected final void testSingleInternal(int iA, CollisionShape shA, bool isExtern = false) {
 		foreach (ref CollisionShape shB; objects) {
 			int iB = shB.ecsID;
 			if (iA != iB) {
-				ObjectCollisionEvent event = testCollision(shA, &shB);
+				ObjectCollisionEvent event = testCollision(shA, shB);
 				if (event.type != ObjectCollisionEvent.Type.None) {
 					event.idA = iA;
 					event.idB = iB;
+					event.isExtern = isExtern;
 					objectToObjectCollision(event);
 				}
 			}
@@ -68,7 +74,7 @@ public class ObjectCollisionDetector {
 	/**
 	 * Tests two objects. Calls cl if collision have happened, with the appropriate values.
 	 */
-	protected final ObjectCollisionEvent testCollision(CollisionShape* shA, CollisionShape* shB) @nogc pure nothrow {
+	protected final ObjectCollisionEvent testCollision(CollisionShape shA, CollisionShape shB) @nogc pure nothrow {
 		if (shA.position.bottom < shB.position.top || shA.position.top > shB.position.bottom || 
 				shA.position.right < shB.position.left || shA.position.left > shB.position.right){
 			//test if edge collision have happened with side edges

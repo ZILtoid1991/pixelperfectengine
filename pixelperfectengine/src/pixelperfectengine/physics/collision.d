@@ -49,18 +49,19 @@ public struct ObjectCollisionEvent {
 		BoxEdge,			///Two edges are one pixel apart
 		ShapeOverlap,		///Two shapes overlap each other
 	}
-	CollisionShape*	shA;		///The object (A) that was tested against other objects
-	CollisionShape*	shB;		///The object (B) that was found colliding with the source object
+	CollisionShape	shA;		///The object (A) that was tested against other objects
+	CollisionShape	shB;		///The object (B) that was found colliding with the source object
 	int				idA;		///ID of object A
 	int				idB;		///ID of object B
 	int				contextID;	///The context of the collision (e.g. tester ID)
 	Type			type;		///Type of the object collision
+	bool			isExtern;	///Origin (shA) is external
 	Box				overlap;	///Overlapping area of the collision
 	static ObjectCollisionEvent nullCollision() @nogc @safe pure nothrow {
-		return ObjectCollisionEvent(null, null, 0, Box.init, Type.None);
+		return ObjectCollisionEvent(CollisionShape.init, CollisionShape.init, 0, Box.init, Type.None);
 	}
 	///default CTOR
-	public this(CollisionShape* shA, CollisionShape* shB, int contextID, Box overlap, Type type) 
+	public this(CollisionShape shA, CollisionShape shB, int contextID, Box overlap, Type type)
 			@nogc @safe pure nothrow {
 		this.shA = shA;
 		this.shB = shB;
@@ -76,7 +77,7 @@ public struct ObjectCollisionEvent {
  * Note: Might get removed in the future.
  */
 public struct TileCollisionEvent {
-	CollisionShape*		a;			///Source object
+	CollisionShape		a;			///Source object
 	int					contextID;	///The context of the collision (e.g. layer number)
 	int					objectID;	///The ID of the object
 	int					numTilesH;	///Number of overlapping tiles horizontally
