@@ -9,7 +9,6 @@ module pixelperfectengine.graphics.layers.base;
 public import pixelperfectengine.graphics.bitmap;
 public import pixelperfectengine.graphics.common;
 public import pixelperfectengine.graphics.layers.interfaces;
-package import pixelperfectengine.graphics.transformfunctions;
 package import pixelperfectengine.system.etc;
 //package import pixelperfectengine.system.platform;
 
@@ -40,6 +39,7 @@ abstract class Layer {
 	protected int		rasterX;///Raster width (visible)
 	protected int		rasterY;///Haster height (visible)
 	protected ushort[4]	overscanAm;
+	protected MaskLayer mask;
 
 	/**
 	 * Sets up the layer for the current rasterizer.
@@ -176,7 +176,14 @@ abstract class MaskLayer {
 		this.rasterW = rasterW;
 		this.rasterH = rasterH;
 	}
-	public abstract uint getTexture_GL() @nogc nothrow;
+	/**
+	 * Returns the resulting OpenGL texture.
+	 */
+	public abstract uint getTexture_gl() @nogc nothrow;
+	/**
+	 * Runs the OpenGL renderer for the texture. Can be ran independently of the main rendering loop, e.g. only when
+	 * the content needs to be updated.
+	 */
 	public abstract void renderToTexture_gl() @nogc nothrow;
 }
 ///Defines potential texture upload error codes
@@ -262,41 +269,51 @@ public struct MappingElement2 {
 		this.xyInvert = other.attributes.xyRotate;
 		this.priority = other.attributes.priority != 0;
 	}
+	/// Returns the palette selector portion of the bitfield.
 	ushort paletteSel() @nogc @safe pure nothrow const {
 		return _bitfield & 0x0F_FF;
 	}
+	/// Returns the horizontal mirroring bit value in the bitfield.
 	bool hMirror() @nogc @safe pure nothrow const {
 		return (_bitfield & 0x10_00) != 0;
 	}
+	/// Returns the vertical mirroring bit value in the bitfield.
 	bool vMirror() @nogc @safe pure nothrow const {
 		return (_bitfield & 0x20_00) != 0;
 	}
+	/// Returns the X-Y axis inverting bit value in the bitfield.
 	bool xyInvert() @nogc @safe pure nothrow const {
 		return (_bitfield & 0X40_00) != 0;
 	}
+	/// Returns the priority bit value in the bitfield.
 	bool priority() @nogc @safe pure nothrow const {
 		return (_bitfield & 0x80_00) != 0;
 	}
+	/// Sets the palette selector portion of the bitfield.
 	ushort paletteSel(ushort val) @nogc @safe pure nothrow {
 		_bitfield &= 0xF0_00;
 		_bitfield |= val & 0x0F_FF;
 		return _bitfield & 0x0F_FF;
 	}
+	/// Sets the horizontal mirroring bit value in the bitfield.
 	bool hMirror(bool val) @nogc @safe pure nothrow {
 		if (val) _bitfield |= 0x10_00;
 		else _bitfield &= ~0x10_00;
 		return (_bitfield & 0x10_00) != 0;
 	}
+	/// Sets the vertical mirroring bit value in the bitfield.
 	bool vMirror(bool val) @nogc @safe pure nothrow {
 		if (val) _bitfield |= 0x20_00;
 		else _bitfield &= ~0x20_00;
 		return (_bitfield & 0x20_00) != 0;
 	}
+	/// Sets the X-Y axis inverting bit value in the bitfield.
 	bool xyInvert(bool val) @nogc @safe pure nothrow {
 		if (val) _bitfield |= 0x40_00;
 		else _bitfield &= ~0x40_00;
 		return (_bitfield & 0X40_00) != 0;
 	}
+	/// Sets the priority bit value in the bitfield.
 	bool priority(bool val) @nogc @safe pure nothrow {
 		if (val) _bitfield |= 0x80_00;
 		else _bitfield &= ~0x80_00;

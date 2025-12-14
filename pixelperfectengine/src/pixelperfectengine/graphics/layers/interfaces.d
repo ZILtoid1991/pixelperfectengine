@@ -264,6 +264,7 @@ public interface ISpriteLayer {
 	 *   n = The identifier of the sprite.
 	 *   x = New x position of the sprite.
 	 *   y = New y position of the sprite.
+	 * Returns: The position of the sprite prelimited by a Quad, or Quad.init if sprite identifier is invalid.
 	 */
 	public Quad moveSprite(int n, int x, int y) @nogc @trusted nothrow;
 	/** 
@@ -272,13 +273,58 @@ public interface ISpriteLayer {
 	 *   n = The identifier of the sprite.
 	 *   x = New x position of the sprite.
 	 *   y = New y position of the sprite.
+	 * Returns: The position of the sprite prelimited by a Quad, or Quad.init if sprite identifier is invalid.
 	 */
 	public Quad relMoveSprite(int n, int x, int y) @nogc @trusted nothrow;
+	/**
+	 * Moves the sprite to the exact location. Can specify horizontal and vertical scaling.
+	 * Params:
+	 *   n = The identifier of the sprite.
+	 *   pos = The new position of the sprite prelimited by the box.
+	 *   hMirror = Horizontal mirroring flag.
+	 *   vMirror = Vertical mirroring flag.
+	 * Returns: The position of the sprite prelimited by a Quad, or Quad.init if sprite identifier is invalid.
+	 */
 	public Quad moveSprite(int n, Box pos, bool hMirror = false, bool vMirror = false) @nogc @trusted nothrow;
+	/**
+	 * Moves the sprite to the exact location. Can specify valious transformations.
+	 * Params:
+	 *   n = The identifier of the sprite.
+	 *   pos = The position of the sprite prelimited by a Quad.
+	 * Returns: The position of the sprite prelimited by a Quad, or Quad.init if sprite identifier is invalid.
+	 */
 	public Quad moveSprite(int n, Quad pos) @nogc @trusted nothrow;
-	///Gets the coordinate of the sprite.
+	/**
+	 * Gets the coordinate of the sprite.
+	 * Params:
+	 *   n = The identifier of the sprite.
+	 * Returns: The position of the sprite prelimited by a Quad, or Quad.init if sprite identifier is invalid.
+	 */
 	public Quad getSpriteCoordinate(int n) @nogc @trusted nothrow;
+	/**
+	 * Sets the sprite shader of the sprite.
+	 * Params:
+	 *   n = The identifier of the sprite.
+	 *   shader = The shader to be used on the sprite.
+	 */
 	public void setSpriteShader(int n, GLShader shader) @nogc @trusted nothrow;
-
-
+}
+/**
+ * Implements an interface for mask-layer scrolling
+ */
+public interface ScrollableMaskLayer {
+	/**
+	 * Scrolls the mask layer to the exact location.
+	 * Params:
+	 *   x = X coordinate of the new position.
+	 *   y = Y coordinate of the new position.
+	 */
+	public void scroll(int x, int y) @nogc @trusted nothrow;
+	/**
+	 * Relatively scrolls the mask layer to the exact location.
+	 * Params:
+	 *   x = X amount to the scrolling.
+	 *   y = Y amount to the scrolling.
+	 */
+	public void relScroll(int x, int y) @nogc @trusted nothrow;
 }
