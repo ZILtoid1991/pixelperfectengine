@@ -58,8 +58,8 @@ public struct PhysEnt {
 			}
 			wgr[index * 2] = value.x;
 			wgr[index * 2 + 1] = value.y;
-			result[0] = wgr[index * 2];
-			result[1] = wgr[index * 2 + 1];
+			result.x = wgr[index * 2];
+			result.y = wgr[index * 2 + 1];
 			gravity = cast(shared float[])wgr;
 		}
 		return result;
@@ -75,8 +75,8 @@ public struct PhysEnt {
 		synchronized {
 			float[] wgr = cast(float[])gravity;
 			if (index > wgr.length / 2) return Vec2(float.nan);
-			result[0] = wgr[index * 2];
-			result[1] = wgr[index * 2 + 1];
+			result.x = wgr[index * 2];
+			result.y = wgr[index * 2 + 1];
 		}
 		return result;
 	}

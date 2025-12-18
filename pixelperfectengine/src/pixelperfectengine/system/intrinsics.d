@@ -84,7 +84,9 @@ __m128 matrix22Mult(__m128 a, __m128 b) @nogc @trusted pure nothrow {
 	c[3] = a[2] * b[1] + a[3] * b[3];
 	return c;
 }
-
+/**
+ * Vector type with GLSL-like swizzling support. Makes a lot of calculations easier to read and write.
+ */
 struct VectTempl(T, int Dim) {
 	T[Dim] data;
 	this (T all) @nogc @safe pure nothrow {
@@ -121,18 +123,31 @@ struct VectTempl(T, int Dim) {
 		else return result;
 	}
 	auto opDispatch(string Name, U)(U rhs) @nogc @safe pure nothrow {
-		int j;
-		static foreach (size_t I, char Chr ; Name) {
-			static if (Chr == 'x' || Chr == 'X' || Chr == 'r' || Chr == 'R' || Chr == 's' || Chr == 'S') {
-				data[0] = rhs[j];
-			} else static if (Chr == 'y' || Chr == 'Y' || Chr == 'g' || Chr == 'G' || Chr == 't' || Chr == 'T') {
-				data[1] = rhs[j];
-			} else static if (Chr == 'z' || Chr == 'Z' || Chr == 'b' || Chr == 'B' || Chr == 'u' || Chr == 'U') {
-				data[2] = rhs[j];
-			} else static if (Chr == 'w' || Chr == 'W' || Chr == 'a' || Chr == 'A' || Chr == 'v' || Chr == 'V') {
-				data[3] = rhs[j];
-			} else static assert(0, "Unrecognized vector swizzling symbol!");
-			j++;
+		static if (hasMember!(U, "opIndex") || isArray!(U)) {
+			int j;
+			static foreach (size_t I, char Chr ; Name) {
+				static if (Chr == 'x' || Chr == 'X' || Chr == 'r' || Chr == 'R' || Chr == 's' || Chr == 'S') {
+					data[0] = rhs[j++];
+				} else static if (Chr == 'y' || Chr == 'Y' || Chr == 'g' || Chr == 'G' || Chr == 't' || Chr == 'T') {
+					data[1] = rhs[j++];
+				} else static if (Chr == 'z' || Chr == 'Z' || Chr == 'b' || Chr == 'B' || Chr == 'u' || Chr == 'U') {
+					data[2] = rhs[j++];
+				} else static if (Chr == 'w' || Chr == 'W' || Chr == 'a' || Chr == 'A' || Chr == 'v' || Chr == 'V') {
+					data[3] = rhs[j++];
+				} else static assert(0, "Unrecognized vector swizzling symbol!");
+			}
+		} else {
+			static foreach (size_t I, char Chr ; Name) {
+				static if (Chr == 'x' || Chr == 'X' || Chr == 'r' || Chr == 'R' || Chr == 's' || Chr == 'S') {
+					data[0] = rhs;
+				} else static if (Chr == 'y' || Chr == 'Y' || Chr == 'g' || Chr == 'G' || Chr == 't' || Chr == 'T') {
+					data[1] = rhs;
+				} else static if (Chr == 'z' || Chr == 'Z' || Chr == 'b' || Chr == 'B' || Chr == 'u' || Chr == 'U') {
+					data[2] = rhs;
+				} else static if (Chr == 'w' || Chr == 'W' || Chr == 'a' || Chr == 'A' || Chr == 'v' || Chr == 'V') {
+					data[3] = rhs;
+				} else static assert(0, "Unrecognized vector swizzling symbol!");
+			}
 		}
 		return opDispatch!Name();
 	}
