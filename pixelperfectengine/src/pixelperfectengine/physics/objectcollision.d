@@ -10,6 +10,9 @@ import collections.treemap;
 import pixelperfectengine.physics.collision;
 //import pixelperfectengine.collision.boxCollision;
 
+/// Callback type used for iterating over each collision happening. Not called if collision event have not occured.
+alias CollisionCallback = void delegate(ObjectCollisionEvent event);
+
 /**
  * Object-to-object collision detector.
  *
@@ -21,52 +24,57 @@ import pixelperfectengine.physics.collision;
  * "pre-mirroring" has to be done. Also sprite scaling isn't supported by this very collision detector for custom shapes.
  */
 public class ObjectCollisionDetector {
-	ObjectList			objects;	///Contains all of the objects
-	int					contextID;	///Stores the identifier of this detector
-	/**
-	 * The delegate where the events will be passed.
-	 * Must be set up before using the collision detector.
-	 */
-	protected void delegate(ObjectCollisionEvent event)			objectToObjectCollision;
+	ObjectList			objects;	///Contains all the collision entities related to this detector.
+	int					contextID;	///Stores the identifier of this detector.
 	/**
 	 * Default CTOR that initializes the objectToObjectCollision, and contextID.
 	 */
-	public this (void delegate(ObjectCollisionEvent event) objectToObjectCollision, int contextID) @safe pure {
-		assert(objectToObjectCollision !is null, "Delegate `objectToObjectCollision` must be a non-null value!");
-		this.objectToObjectCollision = objectToObjectCollision;
+	public this (int contextID) @safe pure {
 		this.contextID = contextID;
 	}
 	/**
 	 * Tests all shapes against each other
+	 * Params:
+	 *   callback = Callback to be called on each collision event. Not called if collision event have not occured.
 	 */
-	public void testAll() {
+	public void testAll(CollisionCallback callback) {
+		assert(callback, "callback is null");
 		foreach (ref CollisionShape shA; objects) {
 			int iA = shA.ecsID;
-			testSingle(iA);
+			testSingle(iA, callback);
 		}
 	}
 	/**
 	 * Tests a single shape against the others.
 	 * Params:
 	 *   objectID = ID of the object.
+	 *   callback = Callback to be called on each collision event. Not called if collision event have not occured.
 	 */
-	public void testSingle(int objectID) {
-		testSingleInternal(objectID, objects[objects.searchIndexBy(objectID)]);
+	public void testSingle(int objectID, CollisionCallback callback) {
+		assert(callback, "callback is null");
+		testSingleInternal(objectID, objects[objects.searchIndexBy(objectID)], callback, false);
 	}
-	public void testSingle(CollisionShape shA) {
-		testSingleInternal(0, shA, true);
+	/**
+	 * Tests a shape not found within the entity list.
+	 * Params:
+	 *   shA = The shape to be tested.
+	 *   callback = Callback to be called on each collision event. Not called if collision event have not occured.
+	 */
+	public void testSingle(CollisionShape shA, CollisionCallback callback) {
+		assert(callback, "callback is null");
+		testSingleInternal(int.min, shA, callback, true);
 	}
 	///Tests a single shape against the others (internal).
-	protected final void testSingleInternal(int iA, CollisionShape shA, bool isExtern = false) {
+	protected final void testSingleInternal(int iA, CollisionShape shA, CollisionCallback callback, bool isExtern) {
 		foreach (ref CollisionShape shB; objects) {
 			int iB = shB.ecsID;
-			if (iA != iB) {
+			if (iA != iB || isExtern) {
 				ObjectCollisionEvent event = testCollision(shA, shB);
 				if (event.type != ObjectCollisionEvent.Type.None) {
 					event.idA = iA;
 					event.idB = iB;
 					event.isExtern = isExtern;
-					objectToObjectCollision(event);
+					callback(event);
 				}
 			}
 		}
