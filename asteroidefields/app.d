@@ -64,12 +64,12 @@ public class GameApp : SystemEventListener, InputListener {
 		mainMenu	=	1<<2,
 	}
 	///Defines various states for the control. Mainly used to avoid effects from typematic and such.
-	///These are the bare minimum requirements for a game.
 	enum ControlFlags {
 		up			=   1<<0,
 		down		=   1<<1,
 		left		=   1<<2,
 		right		=   1<<3,
+		shoot		=	1<<4,
 	}
 	enum SCREEN_WIDTH = 424;	///Width of the game screen, in pixels
 	enum SCREEN_HEIGHT = 240;	///Height of the game screen, in pixels
@@ -104,7 +104,11 @@ public class GameApp : SystemEventListener, InputListener {
 	ModuleConfig	modCfg;	///Loads and handles module configuration, including routing, patches, and samples.
 	SequencerM1		midiSeq;///MIDI sequencer for MIDI playback, comment it out if not needed in favor of IMBC.
 	SequencerM2		imbcSeq;///IMBC sequencer for playing back IMBC files, comment it out if not needed in favor of MIDI.
-
+	// Game logic stuff begin
+	long			score;	///Player score
+	int				lives;	///The lives the player currently has
+	int				level;	///Dificulty level modifier, increases over time.
+	// Game logic stuff end
 	/// Initializes our application.
 	/// Put other things here if you need them.
 	this () {
