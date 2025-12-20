@@ -159,6 +159,9 @@ public interface ITileLayer {
 	///Clears the tilemap
 	public void clearTilemap() @nogc @safe pure nothrow;
 }
+/**
+ * General interface for layers with generic transformation parameters.
+ */
 public interface LayerTransformParams {
 	/**
 	 * Sets the rotation amount for the layer.
@@ -183,7 +186,21 @@ public interface LayerTransformParams {
 	 * the layer.
 	 */
 	public void scaleVert(short amount) @nogc @safe pure nothrow;
+	/**
+	 * Sets the amount of shearing on the horizontal axis.
+	 * Params:
+	 *   amount = The shearing amount. 0 is the default value, positive values
+	 * shear downwards, negative values shear upwards with each horizontal pixel
+	 * from the transformation point.
+	 */
 	public void shearHoriz(short amount) @nogc @safe pure nothrow;
+	/**
+	 * Sets the amount of shearing on the vertical axis.
+	 * Params:
+	 *   amount = The shearing amount. 0 is the default value, positive values
+	 * shear right, negative values shear left with each vertical pixel
+	 * from the transformation point.
+	 */
 	public void shearVert(short amount) @nogc @safe pure nothrow;
 	/**
 	 * Sets the transformation midpoint relative to the middle of the screen.
@@ -194,7 +211,7 @@ public interface LayerTransformParams {
 	public void setTransformMidpoint(short x0, short y0) @nogc @safe pure nothrow;
 }
 /**
- *General SpriteLayer interface.
+ * General SpriteLayer interface.
  */
 public interface ISpriteLayer {
 
