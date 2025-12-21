@@ -121,7 +121,7 @@ public class GameApp : SystemEventListener, InputListener {
 		const glStatus = loadOpenGL();	//Load the OpenGL symbols
 		assert (glStatus >= GLSupport.gl11, "OpenGL not found!");	//Error out if openGL does not work
 		rstr = new Raster(SCREEN_WIDTH,SCREEN_HEIGHT,outputScreen,0);//Creates a raster with the size determined by the enums.
-
+		rstr.readjustViewport(SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE, 0, 0);//Use this or the raster won't know what it should do
 		ih = new InputHandler();		//Creates an instance of an InputHandler (should be only one)
 		ih.systemEventListener = this;	//Sets the system event target to this instance
 		ih.inputListener = this;		//Sets the input event target to this instance
@@ -212,11 +212,11 @@ public class GameApp : SystemEventListener, InputListener {
 		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
 			const double visibleWidth = height * origAspectRatio;
 			const double sideOffset = (width - visibleWidth) / 2.0;
-			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
+			rstr.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
 		} else {	//Display area is now taller, padding needs to be added on the top and bottom
 			const double visibleHeight = width / origAspectRatio;
 			const double topOffset = (height - visibleHeight) / 2.0;
-			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
+			rstr.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
 		}
 	}
 	///Called when a controller is added to the system.
