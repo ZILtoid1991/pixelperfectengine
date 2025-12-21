@@ -15,8 +15,6 @@ uniform sampler2D palette;      // Palette for indexed colors
 uniform sampler2D paletteMipMap;// Palette for indexed mipmaps
 uniform vec4 paletteOffset;     // Palette offset in case palette selection is used
 
-//uniform vec2 paletteOffset;     // Palette offset in case palette selection is used
-
 vec4 clut(vec2 position) {
     return texture(palette, vec2(texelFetch(mainTexture, ivec2(position.x, position.y), 0).r + paletteOffset.x, paletteOffset.y));
 }
