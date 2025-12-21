@@ -9,16 +9,17 @@ module asteroidefields.app;
 //Some commonly used stuff
 import std.stdio;
 import std.typecons : BitFlags;					//This is a good way to create bitflags, so you don't need to keep track of a bunch of boolean values.
+import std.algorithm;
 
 import bindbc.opengl;							//As of now, OpenGL is only being used to display the CPU framebuffer, but it'll change in the near future
 //Graphics related imports
-import pixelperfectengine.graphics.outputscreen;//Needed to display the final graphics
 import pixelperfectengine.graphics.raster;		//Needed to display layers in order
 import pixelperfectengine.graphics.layers;		//Imports all layers and layer-related functionality
 import pixelperfectengine.graphics.bitmap;		//Imports bitmaps and all bitmap-related functionality
 //The next two lines imports the collision detector
-import pixelperfectengine.physics.common;
+// import pixelperfectengine.physics;
 import pixelperfectengine.physics.objectcollision;
+import pixelperfectengine.physics.collision;
 //Various system related imports
 import pixelperfectengine.system.input;			//Every game needs some sort of interaction capability, and thus here's the input
 import pixelperfectengine.system.file;			//Used to load bitmap and image files
@@ -38,9 +39,13 @@ import pixelperfectengine.map.mapformat;
 import pixelperfectengine.system.ecs;
 import pixelperfectengine.system.common;
 
+static ushort SCREEN_WIDTH = 424;	///Width of the game screen, in pixels
+static ushort SCREEN_HEIGHT = 240;	///Height of the game screen, in pixels
+static int SCREEN_SCALE = 4;	///Initial screen scaling
+
 ///Our main function, needed for the program to operate.
 ///You can add `string[] args` if your either really need or really want.
-int main() {
+int main(string[] args) {
 	try {								//A try-catch block to handle any errors. A bit ugly, but can save us when there's issues with debug symbols, or an error happened outside of a D code
 		foreach (string arg ; args[1..$]) {	//check for arguments
 			if (arg.startsWith("--shadervers=")) {	//`--shadervers=[VER]` sets the shader version something else that is predefined.
@@ -71,9 +76,7 @@ public class GameApp : SystemEventListener, InputListener {
 		right		=   1<<3,
 		shoot		=	1<<4,
 	}
-	enum SCREEN_WIDTH = 424;	///Width of the game screen, in pixels
-	enum SCREEN_HEIGHT = 240;	///Height of the game screen, in pixels
-	enum SCREEN_SCALE = 4;		///Initial screen scaling
+
 	///Stores the currently loaded map file with all related data.
 	MapFormat		mapSource;
 	///To display our game's graphics, we need to initialize an output window, which will also allow us to get input from the real world
@@ -104,6 +107,9 @@ public class GameApp : SystemEventListener, InputListener {
 	ModuleConfig	modCfg;	///Loads and handles module configuration, including routing, patches, and samples.
 	SequencerM1		midiSeq;///MIDI sequencer for MIDI playback, comment it out if not needed in favor of IMBC.
 	SequencerM2		imbcSeq;///IMBC sequencer for playing back IMBC files, comment it out if not needed in favor of MIDI.
+	// Game assets begin
+	ABitmap spriteSheet;
+	// Game assets end
 	// Game logic stuff begin
 	long			score;	///Player score
 	int				lives;	///The lives the player currently has
@@ -113,8 +119,8 @@ public class GameApp : SystemEventListener, InputListener {
 	/// Put other things here if you need them.
 	this () {
 		stateFlags.isRunning = true;	//Sets the state to running, so the main loop will stay running.
-		outputScreen = new OSWindow("Asteroidefields", SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE,
-				WindowCfgFlags.IgnoreMenuKey);	//Creates an output window with the display size calculated from various enums.
+		outputScreen = new OSWindow("Asteroidefields", "astfld", -1, -1,
+				SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE, WindowCfgFlags.IgnoreMenuKey);	//Creates an output window with the display size calculated from various enums.
 		version (Windows) outputScreen.getOpenGLHandleAttribsARB([
 			OpenGLContextAtrb.MajorVersion, 3,
 			OpenGLContextAtrb.MinorVersion, 3,
@@ -127,11 +133,17 @@ public class GameApp : SystemEventListener, InputListener {
 		assert (glStatus >= GLSupport.gl11, "OpenGL not found!");	//Error out if openGL does not work
 		rstr = new Raster(SCREEN_WIDTH,SCREEN_HEIGHT,outputScreen,0);//Creates a raster with the size determined by the enums.
 
+		GLShader spriteShader = GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`), loadShader(`%SHADERS%/base_%SHDRVER%.frag`));
+		GLShader spriteShader32 = GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
+				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`));
+		gameField = new SpriteLayer(spriteShader, spriteShader32);
+		rstr.addLayer(gameField, 2);
+
 		ih = new InputHandler();		//Creates an instance of an InputHandler (should be only one)
 		ih.systemEventListener = this;	//Sets the system event target to this instance
 		ih.inputListener = this;		//Sets the input event target to this instance
 
-		ocd = new ObjectCollisionDetector(&onCollision, 0);	//Creates an object collision detector
+		ocd = new ObjectCollisionDetector(0);	//Creates an object collision detector
 		//Let's create our layer for statuses, etc
 		textLayer = new TileLayer(8,8, RenderingMode.AlphaBlend);	//Creates a TileLayer with 8x8 tiles and alpha blending
 		textLayer.paletteOffset = 512;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
@@ -147,7 +159,7 @@ public class GameApp : SystemEventListener, InputListener {
 		adh.initAudioDevice(-1);							//Initializes the default device
 		modMan = new ModuleManager(adh);					//Initializes the module manager
 		modCfg = new ModuleConfig(modMan);					//Initializes the module configurator
-		modCfg.loadConfigFromFile(resolvePath("yourAudioConfiguration.sdl"));//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
+		modCfg.loadConfigFromFile(resolvePath("%STORE%/yourAudioConfiguration.sdl"));//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
 		modCfg.compile(false);								//Compiles the current module configuration.
 		//MIDI sequencer, comment it out if not needed in favor of IMBC
 		midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
@@ -157,11 +169,13 @@ public class GameApp : SystemEventListener, InputListener {
 		//audio related part end
 
 		//<Put other initialization code here>
+		spriteSheet = loadBitmapFromFile(File(resolvePath("%PATH%/assets/AsteroideFields_Sprites.png")));
+
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
 			//Refreshes the raster, then sends the new image to the output window.
-			rstr.refresh();
+			rstr.refresh_GL();
 			//Tests the input devices for events.
 			ih.test();
 			//Tests the timer for any registered events that are to happen.

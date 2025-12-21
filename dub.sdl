@@ -117,6 +117,14 @@ subPackage {
 	importPaths "./snake/src/"
 }
 subPackage {
+	name "astfld"
+	dependency "pixelperfectengine" version="*"
+	targetType "executable"
+	targetPath "./bin-$ARCH-$PLATFORM/"
+	sourcePaths "./asteroidefields/"
+	importPaths "./asteroidefields/"
+}
+subPackage {
 	name "icebreaker"
 	dependency "pixelperfectengine" version="*"
 	targetType "executable"
