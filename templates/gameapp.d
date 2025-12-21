@@ -39,9 +39,9 @@ import pixelperfectengine.map.mapformat;
 
 ///Our main function, needed for the program to operate.
 ///You can add `string[] args` if your either really need or really want.
-int main() {
+int main(string[] args) {
 	try {								//A try-catch block to handle any errors. A bit ugly, but can save us when there's issues with debug symbols, or an error happened outside of a D code
-		foreach (string arg ; args[1..$]) {	//check for arguments
+		foreach (string arg ; args[1..$]) {	//check for arguments TODO: make this a macro
 			if (arg.startsWith("--shadervers=")) {	//`--shadervers=[VER]` sets the shader version something else that is predefined.
 				pathSymbols["SHDRVER"] = arg[13..$];
 			}
