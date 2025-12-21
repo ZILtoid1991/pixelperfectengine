@@ -139,7 +139,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		//c = new CollisionDetector();
 		dlangMan = loadBitmapFromImage!Bitmap8Bit(spriteSource);
 		dlangManCS = dlangMan.generateStandardCollisionModel();
-		ocd = new ObjectCollisionDetector(&onCollision, 0);
+		ocd = new ObjectCollisionDetector(0);
 		//tcd = new TileCollisionDetector(&onTileCollision, 1, t);
 		// {
 		// 	Image i = loadImage(File(getPathToAsset("/assets/basn3p04.png")));
@@ -295,7 +295,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 			ocd.objects.searchPtrBy(-65_536).position = Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32);
 			onTileCollision(getAllOverlappingTiles(Box.bySize(mainSpritePosition.topLeft.x, mainSpritePosition.topLeft.y, 32, 32), t));
 			//tcd.objects.ptrOf(65_536).position = s.getSpriteCoordinate(65_536);
-			ocd.testSingle(-65_536);
+			ocd.testSingle(-65_536, &onCollision);
 			//tcd.testAll();
 			if(scrup) {
 				t.relScroll(0,-1);
@@ -329,6 +329,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,0,0,fpsCounter,true, false);
 				framecounter = 0;
 			}
+			textLayer.updateDisplayList();
 			//Thread.sleep(msecs(20));
 			//t.relScroll(1,0);
 		}
@@ -350,7 +351,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 				textLayer.writeTextToMap(10,2,0,"ShapeOverlap", true, false);
 				break;
 		}
-		textLayer.updateDisplayList();
+		//textLayer.updateDisplayList();
 	}
 	public void onTileCollision(MappingElement2[] overlapList) {
 		wstring tileList = "[";
@@ -359,7 +360,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 		}
 		tileList ~= "]";
 		textLayer.writeTextToMap(10,4,0,tileList, true, false);
-		textLayer.updateDisplayList();
+		// textLayer.updateDisplayList();
 	}
 	override public void onQuit() {
 		isRunning = false;
