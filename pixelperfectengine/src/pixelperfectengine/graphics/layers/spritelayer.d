@@ -416,6 +416,7 @@ public class SpriteLayer : Layer, ISpriteLayer, LayerTransformParams {
 			pixelData = (cast(Bitmap32Bit)(bitmap)).getPtr;
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bitmap.width, bitmap.height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,
 					pixelData);
+			palSh = 32;
 		}
 
 		if (!pixelData) return -1;
