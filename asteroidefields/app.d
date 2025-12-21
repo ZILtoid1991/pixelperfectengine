@@ -131,8 +131,8 @@ public class GameApp : SystemEventListener, InputListener {
 		else outputScreen.getOpenGLHandle();		//Initialize OpenGL
 		const glStatus = loadOpenGL();	//Load the OpenGL symbols
 		assert (glStatus >= GLSupport.gl11, "OpenGL not found!");	//Error out if openGL does not work
-		rstr = new Raster(SCREEN_WIDTH,SCREEN_HEIGHT,outputScreen,0);//Creates a raster with the size determined by the enums.
-
+		rstr = new Raster(SCREEN_WIDTH,SCREEN_HEIGHT,outputScreen);//Creates a raster with the size determined by the enums.
+		rstr.readjustViewport(SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE, 0, 0);
 		GLShader spriteShader = GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`), loadShader(`%SHADERS%/base_%SHDRVER%.frag`));
 		GLShader spriteShader32 = GLShader(loadShader(`%SHADERS%/base_%SHDRVER%.vert`),
 				loadShader(`%SHADERS%/base32bit_%SHDRVER%.frag`));
@@ -145,32 +145,35 @@ public class GameApp : SystemEventListener, InputListener {
 
 		ocd = new ObjectCollisionDetector(0);	//Creates an object collision detector
 		//Let's create our layer for statuses, etc
-		textLayer = new TileLayer(8,8, RenderingMode.AlphaBlend);	//Creates a TileLayer with 8x8 tiles and alpha blending
-		textLayer.paletteOffset = 512;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
-		textLayer.masterVal = 127;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
+		// textLayer = new TileLayer(8,8);						//Creates a TileLayer with 8x8 tiles and alpha blending
+		// textLayer.paletteOffset = 512;						//Sets the palette offset to 512. You might want to change this to the value to the place where you loaded your GUI palette
+		// textLayer.masterVal = 127;							//Sets the master value for the alpha blending, making this layer semi-transparent initially.
 
-		cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
+		// cfg = new ConfigurationProfile();					//Creates and loads the configuration profile.
 		//Comment the next part out, if you're having too much trouble with audio working, since you still can add sound later on.
 		//audio related part begin
-		AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);	//Initializes the driver
-		AudioSpecs as = AudioSpecs(predefinedFormats[PredefinedFormats.FP32], cfg.audioFrequency, 0, 2, cfg.audioBufferLen,
-				Duration.init);								//Sets up a default audio specification
-		adh = new AudioDeviceHandler(as, cfg.audioBufferLen, cfg.audioBufferLen / cfg.audioFrameLen);	//Creates a new AudioDeviceHandler and sets up the basics
-		adh.initAudioDevice(-1);							//Initializes the default device
-		modMan = new ModuleManager(adh);					//Initializes the module manager
-		modCfg = new ModuleConfig(modMan);					//Initializes the module configurator
-		modCfg.loadConfigFromFile(resolvePath("%STORE%/yourAudioConfiguration.sdl"));//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
-		modCfg.compile(false);								//Compiles the current module configuration.
-		//MIDI sequencer, comment it out if not needed in favor of IMBC
-		midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
-		//IMBC sequencer, comment it out if not needed in favor of MIDI
-		imbcSeq = new SequencerM2();
-		modMan.runAudioThread();							//Runs the audio thread.
+		// AudioDeviceHandler.initAudioDriver(OS_PREFERRED_DRIVER);	//Initializes the driver
+		// AudioSpecs as = AudioSpecs(predefinedFormats[PredefinedFormats.FP32], cfg.audioFrequency, 0, 2, cfg.audioBufferLen,
+				// Duration.init);								//Sets up a default audio specification
+		// adh = new AudioDeviceHandler(as, cfg.audioBufferLen, cfg.audioBufferLen / cfg.audioFrameLen);	//Creates a new AudioDeviceHandler and sets up the basics
+		// adh.initAudioDevice(-1);							//Initializes the default device
+		// modMan = new ModuleManager(adh);					//Initializes the module manager
+		// modCfg = new ModuleConfig(modMan);					//Initializes the module configurator
+		// modCfg.loadConfigFromFile(resolvePath("%STORE%/yourAudioConfiguration.sdl"));//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
+		// modCfg.compile(false);								//Compiles the current module configuration.
+		// MIDI sequencer, comment it out if not needed in favor of IMBC
+		// midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
+		// IMBC sequencer, comment it out if not needed in favor of MIDI
+		// imbcSeq = new SequencerM2();
+		// modMan.runAudioThread();							//Runs the audio thread.
 		//audio related part end
 
 		//<Put other initialization code here>
-		spriteSheet = loadBitmapFromFile(File(resolvePath("%PATH%/assets/AsteroideFields_Sprites.png")));
-
+		spriteSheet = loadBitmapFromFile!Bitmap32Bit(resolvePath("%PATH%/assets/AsteroideFields_Sprites.png"));
+		gameField.addBitmapSource(spriteSheet, 0, 32);
+		gameField.createSpriteMaterial(-1,0,Box.bySize(168,32,16,16));
+		gameField.addSprite(-1, -1, Point(204, 116), 32, 32);
+		gameField.updateDisplayList();
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
@@ -185,7 +188,7 @@ public class GameApp : SystemEventListener, InputListener {
 			rng();
 			//This calls the collision detector on all registered objects.
 			//You'll want to only call it on moving objects, especially when you have a lot of objects on screen.
-			ocd.testAll();
+			//ocd.testAll();
 
 			//<Per-frame code comes here>
 		}
@@ -231,11 +234,11 @@ public class GameApp : SystemEventListener, InputListener {
 		if (newAspectRatio > origAspectRatio) {		//Display area is now wider, padding needs to be added on the sides
 			const double visibleWidth = height * origAspectRatio;
 			const double sideOffset = (width - visibleWidth) / 2.0;
-			r.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
+			rstr.readjustViewport(cast(int)visibleWidth, height, cast(int)sideOffset, 0);
 		} else {	//Display area is now taller, padding needs to be added on the top and bottom
 			const double visibleHeight = width / origAspectRatio;
 			const double topOffset = (height - visibleHeight) / 2.0;
-			r.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
+			rstr.readjustViewport(width, cast(int)visibleHeight, 0, cast(int)topOffset);
 		}
 	}
 	///Called when a controller is added to the system.
