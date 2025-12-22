@@ -99,12 +99,19 @@ public struct PhysEnt {
 	mixin(ECS_MACRO);
 	static enum RESTING	= 1<<0;			///Set if object is resting on one direction.
 	///Set if object velocity to be affected by gravity (only acceleration is affected by default).
-	///Useful for use alongside with bitflag `RESTING`.
+	///Useful to be used alongside with bitflag `RESTING`.
 	static enum DEACC_BY_GRAV = 1<<1;
 	mixin(BITFLAG_GET_MACRO!(`resting`, `RESTING`));
 	mixin(BITFLAG_SET_MACRO!(`resting`, `RESTING`));
 	mixin(BITFLAG_GET_MACRO!(`deaccelerateByGravity`, `DEACC_BY_GRAV`));
 	mixin(BITFLAG_SET_MACRO!(`deaccelerateByGravity`, `DEACC_BY_GRAV`));
+	this(int ecsID, DVec2 position, Vec2 velocity, Vec2 acceleration, float weight) {
+		this.ecsID = ecsID;
+		this.position = position;
+		this.velocity = velocity;
+		this.acceleration = acceleration;
+		this.weight = weight;
+	}
 	/**
 	 * Returns the resting direction in radian clamped between 0-360 degrees.
  	 */
