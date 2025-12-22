@@ -148,6 +148,9 @@ public struct Box {
 	public Box pad(const int horiz, const int vert) @nogc @safe pure nothrow const {
 		return Coordinate(left + horiz, top + vert, right - horiz, bottom - vert);
 	}
+	public Quad quadOf() @nogc @safe pure nothrow const {
+		return Quad(cornerUL, cornerUR, cornerLL, cornerLR);
+	}
 	/**
 	 * Returns a string with the coordinates that is useful for debugging
 	 */
