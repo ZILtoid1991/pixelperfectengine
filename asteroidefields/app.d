@@ -20,6 +20,7 @@ import pixelperfectengine.graphics.bitmap;		//Imports bitmaps and all bitmap-rel
 // import pixelperfectengine.physics;
 import pixelperfectengine.physics.objectcollision;
 import pixelperfectengine.physics.collision;
+import pixelperfectengine.physics.physent;
 //Various system related imports
 import pixelperfectengine.system.input;			//Every game needs some sort of interaction capability, and thus here's the input
 import pixelperfectengine.system.file;			//Used to load bitmap and image files
@@ -38,6 +39,9 @@ import pixelperfectengine.map.mapformat;
 //Other imports that might be important. Uncomment any you feel you'll need.
 import pixelperfectengine.system.ecs;
 import pixelperfectengine.system.common;
+import pixelperfectengine.system.memory;
+import core.vararg;
+import std.math;
 
 static ushort SCREEN_WIDTH = 424;	///Width of the game screen, in pixels
 static ushort SCREEN_HEIGHT = 240;	///Height of the game screen, in pixels
@@ -76,7 +80,10 @@ public class GameApp : SystemEventListener, InputListener {
 		right		=   1<<3,
 		shoot		=	1<<4,
 	}
-
+	enum SpriteIDs {
+		PlayerObj	=	-1,
+	}
+	static enum PLAYER_ID = -1;
 	///Stores the currently loaded map file with all related data.
 	MapFormat		mapSource;
 	///To display our game's graphics, we need to initialize an output window, which will also allow us to get input from the real world
@@ -114,6 +121,9 @@ public class GameApp : SystemEventListener, InputListener {
 	long			score;	///Player score
 	int				lives;	///The lives the player currently has
 	int				level;	///Dificulty level modifier, increases over time.
+	float			rotateVal = 0.0;///Rotational value.
+	OrderedArraySet!GameEntity entities;	///Entity component system, game object part.
+	OrderedArraySet!PhysEnt physicsEntities;///Entity component system, physics part.
 	// Game logic stuff end
 	/// Initializes our application.
 	/// Put other things here if you need them.
@@ -143,6 +153,17 @@ public class GameApp : SystemEventListener, InputListener {
 		ih.systemEventListener = this;	//Sets the system event target to this instance
 		ih.inputListener = this;		//Sets the input event target to this instance
 
+		{
+			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("up"));
+			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("down"));
+			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("left"));
+			ih.addBinding(BindingCode(ScanCode.RIGHT, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("right"));
+			ih.addBinding(BindingCode(GameControllerButtons.DPadUp, 0, Devicetype.Joystick, 0, 0), InputBinding("up"));
+			ih.addBinding(BindingCode(GameControllerButtons.DPadDown, 0, Devicetype.Joystick, 0, 0), InputBinding("down"));
+			ih.addBinding(BindingCode(GameControllerButtons.DPadLeft, 0, Devicetype.Joystick, 0, 0), InputBinding("left"));
+			ih.addBinding(BindingCode(GameControllerButtons.DPadRight, 0, Devicetype.Joystick, 0, 0), InputBinding("right"));
+		}
+
 		ocd = new ObjectCollisionDetector(0);	//Creates an object collision detector
 		//Let's create our layer for statuses, etc
 		// textLayer = new TileLayer(8,8);						//Creates a TileLayer with 8x8 tiles and alpha blending
@@ -159,7 +180,7 @@ public class GameApp : SystemEventListener, InputListener {
 		// adh.initAudioDevice(-1);							//Initializes the default device
 		// modMan = new ModuleManager(adh);					//Initializes the module manager
 		// modCfg = new ModuleConfig(modMan);					//Initializes the module configurator
-		// modCfg.loadConfigFromFile(resolvePath("%STORE%/yourAudioConfiguration.sdl"));//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
+		// modCfg.loadConfigFromFile(resolvePath("%PATH%/assets/asteroidefields_acfg.sdl"));//This line loads an audio configuration file (make sure you have a valid one - create one with the ADK/test1!)
 		// modCfg.compile(false);								//Compiles the current module configuration.
 		// MIDI sequencer, comment it out if not needed in favor of IMBC
 		// midiSeq = new SequencerM1(modMan.moduleList, modCfg.midiRouting, modCfg.midiGroups);
@@ -171,9 +192,58 @@ public class GameApp : SystemEventListener, InputListener {
 		//<Put other initialization code here>
 		spriteSheet = loadBitmapFromFile!Bitmap32Bit(resolvePath("%PATH%/assets/AsteroideFields_Sprites.png"));
 		gameField.addBitmapSource(spriteSheet, 0, 32);
-		gameField.createSpriteMaterial(-1,0,Box.bySize(168,32,16,16));
-		gameField.addSprite(-1, -1, Point(204, 116), 32, 32);
+		gameField.createSpriteMaterial(SpriteIDs.PlayerObj,0,Box.bySize(168,32,16,16));
+		// gameField.addSprite(-1, -1, Point(204, 116), 32, 32);
+		spawnEntity(GameEntity(PLAYER_ID, GameEntity.Type.PlayerObj, 0, 1,
+				BitFlags!(GameEntity.Flags)(GameEntity.Flags.hasSprite, GameEntity.Flags.hasPhysics,
+				GameEntity.Flags.canBeDestroyed, GameEntity.Flags.affectedByGravity), 0),
+				PhysEnt(PLAYER_ID, DVec2(0.0), Vec2(0.0), Vec2(0.0), 2000.0));
+
+
+	}
+	/**
+	 * Spawns an entity with the given parameters.
+	 * Params:
+	 *   header = Mandatory GameEntity struct. Rest are passed as variadic arguments.
+	 *   ... = Other entity types. `Point` is treated as sprite midpoint.
+	 */
+	final void spawnEntity(GameEntity header, ...) {
+		for (int i ; i < _arguments.length ; i++) {
+			if (_arguments[i] == typeid(Point)) {	//Stationary object
+				if (header.hasSprite) spawnSprite(header,va_arg!Point(_argptr));
+				else va_arg!Point(_argptr);
+			} else if (_arguments[i] == typeid(PhysEnt)) {
+				PhysEnt pe = va_arg!PhysEnt(_argptr);
+				assert (pe.ecsID == header.ecsID);
+				if (header.hasSprite) spawnSprite(header,
+						Point(cast(int)pe.position.x + (SCREEN_WIDTH / 2), cast(int)pe.position.y + (SCREEN_HEIGHT / 2)));
+				physicsEntities ~= pe;
+			}
+		}
+		entities ~= header;
+	}
+	final void spawnSprite(GameEntity header, Point coordinate) {
+		switch (header.type) {
+		case GameEntity.Type.PlayerObj:
+			coordinate.x -= 8;
+			coordinate.y -= 8;
+			gameField.addSprite(-1, header.ecsID, coordinate);
+			break;
+		default:
+			break;
+		}
 		gameField.updateDisplayList();
+	}
+	void unspawnEntity(int id) {
+		gameField.removeSprite(id);
+		{
+			const pos = entities.searchIndexBy(id);
+			if (pos != -1) entities.remove(pos);
+		}
+		{
+			const pos = physicsEntities.searchIndexBy(id);
+			if (pos != -1) physicsEntities.remove(pos);
+		}
 	}
 	void whereTheMagicHappens() {
 		while (stateFlags.isRunning) {
@@ -191,6 +261,16 @@ public class GameApp : SystemEventListener, InputListener {
 			//ocd.testAll();
 
 			//<Per-frame code comes here>
+			if (rotateVal != 0.0) {
+				const partRot = rotateVal / rstr.fps();
+				const int partRotI = cast(int)((partRot / (PI * 2)) * ushort.max);
+				GameEntity* playerObj = entities.searchPtrBy(PLAYER_ID);
+				if (playerObj !is null) {
+					playerObj.rotation = cast(ushort)(playerObj.rotation + partRotI);
+					//gameField.moveSprite(PLAYER_ID, Quad);
+				}
+
+			}
 		}
 		destroy(outputScreen);	//Make sure the destructors of our output screen run as intended.
 	}
@@ -252,7 +332,22 @@ public class GameApp : SystemEventListener, InputListener {
 	///Called if a key input event has occured.
 	///Note: This function will be changed once I move input handling and output screen handling to iota.
 	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
-
+		switch (id) {
+		case hashCalc("up"):	//up
+			break;
+		case hashCalc("down"):	//down
+			break;
+		case hashCalc("left"):	//left
+			if (isPressed) rotateVal = -0.5;
+			else rotateVal = 0.0;
+			break;
+		case hashCalc("right"):	//right
+			if (isPressed) rotateVal = 0.5;
+			else rotateVal = 0.0;
+			break;
+		default:
+			break;
+		}
 	}
 	///Called if an axis input event has occured.
 	///Note: This function will be changed once I move input handling and output screen handling to iota.
@@ -273,7 +368,7 @@ public struct GameEntity {
 		EnemyShip,
 		Explosion,
 	}
-	public enum Flags : uint {
+	public enum Flags : ushort {
 		canBeDestroyed		=	1 << 0,
 		hasPhysics			=	1 << 1,
 		affectedByGravity	=	1 << 2,
@@ -287,4 +382,5 @@ public struct GameEntity {
 	ushort hitpoints = 1;
 	BitFlags!Flags flags;
 	ushort rotation;
+	alias this = flags;
 }
