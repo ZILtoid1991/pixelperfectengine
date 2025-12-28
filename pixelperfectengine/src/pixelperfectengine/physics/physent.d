@@ -154,9 +154,10 @@ public struct PhysEnt {
 		velocity += acceleration * deltaTime;
 		Vec2 localGr = Vec2([atomicLoad(gravity[gravityGr * 2]), atomicLoad(gravity[gravityGr * 2 + 1])]);
 		const double gravityEnergy = weight * sqrt((localGr.x * localGr.x) + (localGr.y * localGr.y)) * 0.5;
-		const double energyRatio = gravityEnergy / (kineticEnergy + gravityEnergy);
+		double energyRatio = gravityEnergy / kineticEnergy;
 		if (resting) localGr *= Vec2([abs(cos(restingDir)), abs(sin(restingDir))]);
-		acceleration = (acceleration * (1.0 - energyRatio)) + (localGr * energyRatio);
+		if (energyRatio <= 0.0 && energyRatio >= 1.0) acceleration = (acceleration * (1.0 - energyRatio)) +
+				(localGr * energyRatio);
 		if (deaccelerateByGravity) velocity -= velocity * energyRatio;
 	}
 }
