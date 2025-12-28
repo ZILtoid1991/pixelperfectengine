@@ -136,7 +136,7 @@ public class SpriteLayer : Layer, ISpriteLayer, LayerTransformParams {
 			this.attr = rhs.attr;
 		}
 		int opCmp(int rhs) @nogc @safe pure nothrow const {
-			return (spriteID < rhs) - (spriteID > rhs);
+			return (spriteID > rhs) - (spriteID < rhs);
 		}
 		bool opEquals(int rhs) @nogc @safe pure nothrow const {
 			return spriteID == rhs;
