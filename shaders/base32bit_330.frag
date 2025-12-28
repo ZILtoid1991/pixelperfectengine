@@ -16,7 +16,7 @@ uniform sampler2D paletteMipMap;// Palette for indexed mipmaps
 uniform vec4 paletteOffset;     // Palette offset in case palette selection is used
 
 void main() {
-    vec4 color = texelFetch(mainTexture, ivec2(texMapping.x, texMapping.y), 0);
+    vec4 color = texelFetch(mainTexture, ivec2(trunc(texMapping.x), trunc(texMapping.y)), 0);
     color.a *= lightingCol.a;
     fragColor = color;
 }
