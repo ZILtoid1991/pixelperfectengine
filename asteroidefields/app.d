@@ -82,6 +82,10 @@ public class GameApp : SystemEventListener, InputListener {
 	}
 	enum SpriteIDs {
 		PlayerObj	=	-1,
+		AsteroidXL0	=	0,
+		AsteroidL0	=	8,
+		AsteroidM0	=	16,
+		AsteroidS0	=	32,
 	}
 	static enum PLAYER_ID = -1;
 	///Stores the currently loaded map file with all related data.
@@ -154,6 +158,8 @@ public class GameApp : SystemEventListener, InputListener {
 		ih.inputListener = this;		//Sets the input event target to this instance
 
 		{
+			import pixelperfectengine.system.input.scancode;
+			import iota.controls.gamectrl : GameControllerButtons;
 			ih.addBinding(BindingCode(ScanCode.UP, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("up"));
 			ih.addBinding(BindingCode(ScanCode.DOWN, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("down"));
 			ih.addBinding(BindingCode(ScanCode.LEFT, 0, Devicetype.Keyboard, 0, IGNORE_ALL), InputBinding("left"));
@@ -192,20 +198,24 @@ public class GameApp : SystemEventListener, InputListener {
 		//<Put other initialization code here>
 		spriteSheet = loadBitmapFromFile!Bitmap32Bit(resolvePath("%PATH%/assets/AsteroideFields_Sprites.png"));
 		gameField.addBitmapSource(spriteSheet, 0, 32);
-		gameField.createSpriteMaterial(SpriteIDs.PlayerObj,0,Box.bySize(168,32,16,16));
+		gameField.createSpriteMaterial(SpriteIDs.PlayerObj,0,Box(168, 32, 184, 48));
+		gameField.createSpriteMaterial(SpriteIDs.AsteroidXL0,0,Box(0, 0, 32, 32));
 		// gameField.addSprite(-1, -1, Point(204, 116), 32, 32);
 		spawnEntity(GameEntity(PLAYER_ID, GameEntity.Type.PlayerObj, 0, 1,
 				BitFlags!(GameEntity.Flags)(GameEntity.Flags.hasSprite, GameEntity.Flags.hasPhysics,
-				GameEntity.Flags.canBeDestroyed, GameEntity.Flags.affectedByGravity), 0),
+				GameEntity.Flags.canBeDestroyed, GameEntity.Flags.affectedByGravity, GameEntity.Flags.hasCollision), 0),
 				PhysEnt(PLAYER_ID, DVec2(0.0), Vec2(0.0), Vec2(0.0), 2000.0));
-
+		spawnEntity(GameEntity(0, GameEntity.Type.Asteroid, 0, 1,
+				BitFlags!(GameEntity.Flags)(GameEntity.Flags.hasSprite, GameEntity.Flags.hasPhysics,
+				GameEntity.Flags.canBeDestroyed, GameEntity.Flags.hasCollision), 0),
+				PhysEnt(0, DVec2([-200.0, -100.0]), Vec2([5.0, 5.0]), Vec2(0.0), 10_000.0));
 
 	}
 	/**
 	 * Spawns an entity with the given parameters.
 	 * Params:
 	 *   header = Mandatory GameEntity struct. Rest are passed as variadic arguments.
-	 *   ... = Other entity types. `Point` is treated as sprite midpoint.
+	 *   ... = Other entity types. `Point` is treated as sprite midpoint, so is the coordinate of `PhysEnt`.
 	 */
 	final void spawnEntity(GameEntity header, ...) {
 		for (int i ; i < _arguments.length ; i++) {
@@ -227,7 +237,20 @@ public class GameApp : SystemEventListener, InputListener {
 		case GameEntity.Type.PlayerObj:
 			coordinate.x -= 8;
 			coordinate.y -= 8;
-			gameField.addSprite(-1, header.ecsID, coordinate);
+			gameField.addSprite(SpriteIDs.PlayerObj, header.ecsID, coordinate);
+			break;
+		case GameEntity.Type.Asteroid:
+			switch (header.subtype) {
+			case 0: .. case 8:
+				coordinate.x -= 16;
+				coordinate.y -= 16;
+				break;
+			default:
+				coordinate.x -= 4;
+				coordinate.y -= 4;
+				break;
+			}
+			gameField.addSprite(header.subtype, header.ecsID, coordinate);
 			break;
 		default:
 			break;
@@ -261,16 +284,30 @@ public class GameApp : SystemEventListener, InputListener {
 			//ocd.testAll();
 
 			//<Per-frame code comes here>
-			if (rotateVal != 0.0) {
-				const partRot = rotateVal / rstr.fps();
-				const int partRotI = cast(int)((partRot / (PI * 2)) * ushort.max);
-				GameEntity* playerObj = entities.searchPtrBy(PLAYER_ID);
-				if (playerObj !is null) {
-					playerObj.rotation = cast(ushort)(playerObj.rotation + partRotI);
-					//gameField.moveSprite(PLAYER_ID, Quad);
+			const fps = rstr.fps();
+			foreach (ref PhysEnt phys ; physicsEntities) {
+				phys.resolvePhysics(1.0 / fps);
+				if (phys.position.x > (SCREEN_WIDTH / 2)) phys.position[0] -= SCREEN_WIDTH;
+				else if (phys.position.x < (SCREEN_WIDTH / -2)) phys.position[0] += SCREEN_WIDTH;
+				if (phys.position.y > (SCREEN_HEIGHT / 2)) phys.position[1] -= SCREEN_HEIGHT;
+				else if (phys.position.y < (SCREEN_HEIGHT / -2)) phys.position[1] += SCREEN_HEIGHT;
+				if (phys.ecsID != PLAYER_ID) {
+					gameField.moveSprite(phys.ecsID, cast(int)phys.position.x + (SCREEN_WIDTH / 2),
+							cast(int)phys.position.y + (SCREEN_HEIGHT / 2));
 				}
-
 			}
+			{
+				const partRot = rotateVal / fps;
+				const int partRotI = cast(int)(partRot * ushort.max);
+				GameEntity* playerObj = entities.searchPtrBy(PLAYER_ID);
+				PhysEnt* phys = physicsEntities.searchPtrBy(PLAYER_ID);
+				if (playerObj !is null && phys !is null) {
+					playerObj.rotation = cast(ushort)(playerObj.rotation + partRotI);
+					const x = cast(int)phys.position.x + (SCREEN_WIDTH / 2), y = cast(int)phys.position.y + (SCREEN_HEIGHT / 2);
+					gameField.moveSprite(PLAYER_ID, Box.bySize(x - 8, y - 8, 16, 16).quadOf().rotate(playerObj.rotation));
+				}
+			}
+			gameField.updateDisplayList();
 		}
 		destroy(outputScreen);	//Make sure the destructors of our output screen run as intended.
 	}
@@ -334,8 +371,26 @@ public class GameApp : SystemEventListener, InputListener {
 	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
 		switch (id) {
 		case hashCalc("up"):	//up
+			GameEntity* playerObj = entities.searchPtrBy(PLAYER_ID);
+			PhysEnt* phys = physicsEntities.searchPtrBy(PLAYER_ID);
+			if (playerObj !is null && phys !is null) {
+				double dir = playerObj.rotation * (1.0 / ushort.max) * PI * 2 - PI_2;
+				if (isPressed) {
+					phys.acceleration = Vec2([sin(dir), -cos(dir)]);
+				} else phys.acceleration = Vec2([0.0, 0.0]);
+
+			}
 			break;
 		case hashCalc("down"):	//down
+			GameEntity* playerObj = entities.searchPtrBy(PLAYER_ID);
+			PhysEnt* phys = physicsEntities.searchPtrBy(PLAYER_ID);
+			if (playerObj !is null && phys !is null) {
+				double dir = playerObj.rotation * (1.0 / ushort.max) * PI * 2 - PI_2;
+				if (isPressed) {
+					phys.acceleration = Vec2([-sin(dir), cos(dir)]);
+				} else phys.acceleration = Vec2([0.0, 0.0]);
+
+			}
 			break;
 		case hashCalc("left"):	//left
 			if (isPressed) rotateVal = -0.5;
@@ -373,6 +428,7 @@ public struct GameEntity {
 		hasPhysics			=	1 << 1,
 		affectedByGravity	=	1 << 2,
 		hasSprite			=	1 << 3,
+		hasCollision		=	1 << 4,
 	}
 	mixin(ECS_MACRO);
 	Type type;
