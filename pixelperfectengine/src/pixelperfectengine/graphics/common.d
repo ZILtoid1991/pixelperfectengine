@@ -157,9 +157,7 @@ public struct Box {
 	public string toString() const {
 		import pixelperfectengine.system.etc;
 		import std.conv;
-		/*return "Coordinate: Left: 0x" ~ intToHex(left, 8) ~ " Top: 0x" ~ intToHex(top, 8) ~ " Right: 0x" ~ intToHex(right, 8) ~ " Bottom: 0x" ~ intToHex(bottom, 8) ~
-				" Width: 0x" ~ intToHex(width(), 8) ~ " Height: 0x" ~ intToHex(height(), 8);*/
-		return "Coordinate: Left: " ~ to!string(left) ~ " Top: " ~ to!string(top) ~ " Right: " ~ to!string(right) ~
+		return "Box: Left: " ~ to!string(left) ~ " Top: " ~ to!string(top) ~ " Right: " ~ to!string(right) ~
 				" Bottom: " ~ to!string(bottom) ~ " Width: " ~ to!string(width()) ~ " Height: " ~ to!string(height());
 	}
 	public static Box bySize(int x, int y, int w, int h) @nogc @safe pure nothrow {
@@ -189,12 +187,12 @@ public struct Quad {
 		bottomLeft += vec;
 		bottomRight += vec;
 	}
-	public void rotate(ushort amount) @nogc @safe pure nothrow {
+	public Quad rotate(ushort amount) @nogc @safe pure nothrow {
 		Point avg = Point((topLeft.x + topRight.x + bottomLeft.x + bottomRight.x) / 4,
 				(topLeft.y + topRight.y + bottomLeft.y + bottomRight.y) / 4);
-		rotate(amount, avg);
+		return rotate(amount, avg);
 	}
-	public void rotate(ushort amount, Point midpoint) @nogc @safe pure nothrow {
+	public Quad rotate(ushort amount, Point midpoint) @nogc @safe pure nothrow {
 		const double theta = amount * (PI * 2.0 / ushort.max);
 		double[4] transformMatrix = [cos(theta), -sin(theta), sin(theta), cos(theta)];
 		topLeft -= midpoint;
@@ -213,6 +211,7 @@ public struct Quad {
 		topRight += midpoint;
 		bottomLeft += midpoint;
 		bottomRight += midpoint;
+		return this;
 	}
 	public void hMirror() @nogc @safe pure nothrow {
 		Point p = topLeft;
@@ -237,6 +236,12 @@ public struct Quad {
 		result.right = max(topLeft.x, bottomLeft.x, topRight.x, bottomRight.x);
 		result.bottom = max(topLeft.y, bottomLeft.y, topRight.y, bottomRight.y);
 		return result;
+	}
+	public string toString() const {
+		import pixelperfectengine.system.etc;
+		import std.conv;
+		return "Quad: TL: " ~ topLeft.toString ~ " TR: " ~ topRight.toString ~ " BL: " ~ bottomLeft.toString ~
+				" BR: " ~ bottomRight.toString;
 	}
 }
 /**

@@ -11,6 +11,7 @@ public import pixelperfectengine.graphics.bitmap;
 public import pixelperfectengine.graphics.layers : MappingElement2;
 import pixelperfectengine.system.ecs;
 package import pixelperfectengine.system.memory;
+import std.conv;
 // import collections.treemap;
 
 /**
@@ -32,6 +33,10 @@ public struct CollisionShape {
 		this.position = position;
 		this.shape = shape;
 		//this.id = id;
+	}
+	string toString() @safe const {
+		return "ecsID: " ~ ecsID.to!string() ~ " position: [" ~ position.toString() ~ "] shape: " ~
+				to!string(cast(void*)shape);
 	}
 }
 alias ObjectList = OrderedArraySet!CollisionShape;
@@ -68,6 +73,11 @@ public struct ObjectCollisionEvent {
 		this.contextID = contextID;
 		this.overlap = overlap;
 		this.type = type;
+	}
+	string toString() @safe const {
+		return "shA: [" ~ shA.toString ~ "] shB: [" ~ shB.toString ~ "] idA: " ~ idA.to!string ~ " idB: " ~ idB.to!string ~
+				" contextID: " ~ contextID.to!string ~ " type: " ~ type.to!string ~ " isExtern: " ~ isExtern.to!string ~
+				" overlap : [" ~ overlap.to!string ~ "] ";
 	}
 }
 /**
