@@ -378,7 +378,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
 	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on release.
 	 */
-	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed) {
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed, InputDevice device) {
 		//writeln(id, ";", code, ";",timestamp, ";",isPressed, ";");
 		switch (id) {
 			case hashCalc("up"):	//up
@@ -531,6 +531,9 @@ class TileLayerTest : SystemEventListener, InputListener {
 				break;
 		}
 	}
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, float pressure, InputDevice device) {
+
+	}
 	/** 
 	 * Called if a window was resized.
 	 * Params:
@@ -559,7 +562,7 @@ class TileLayerTest : SystemEventListener, InputListener {
 	 * `value` is the current position of the axis normalized between -1.0 and +1.0 for joysticks, and 0.0 and +1.0 for analog
 	 * triggers.
 	 */
-	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value) {
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value, InputDevice device) {
 
 	}
 }

@@ -27,7 +27,7 @@ public struct Point {
 		x += rX;
 		y += rY;
 	}
-	public string toString() const {
+	public string toString() @safe const {
 		import std.conv : to;
 		return "x: " ~ to!string(x) ~ " ; y: " ~ to!string(y);
 	}
@@ -154,7 +154,7 @@ public struct Box {
 	/**
 	 * Returns a string with the coordinates that is useful for debugging
 	 */
-	public string toString() const {
+	public string toString() @safe const {
 		import pixelperfectengine.system.etc;
 		import std.conv;
 		return "Box: Left: " ~ to!string(left) ~ " Top: " ~ to!string(top) ~ " Right: " ~ to!string(right) ~
@@ -237,7 +237,7 @@ public struct Quad {
 		result.bottom = max(topLeft.y, bottomLeft.y, topRight.y, bottomRight.y);
 		return result;
 	}
-	public string toString() const {
+	public string toString() @safe const {
 		import pixelperfectengine.system.etc;
 		import std.conv;
 		return "Quad: TL: " ~ topLeft.toString ~ " TR: " ~ topRight.toString ~ " BL: " ~ bottomLeft.toString ~

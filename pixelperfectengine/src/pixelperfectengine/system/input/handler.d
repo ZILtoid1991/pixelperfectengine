@@ -5,6 +5,7 @@ module pixelperfectengine.system.input.handler;
 import collections.treemap;
 import collections.linkedlist;
 import collections.commons : defaultHash;
+import std.math : isNaN;
 
 public import pixelperfectengine.system.input.types;
 public import pixelperfectengine.system.input.interfaces;
@@ -234,7 +235,8 @@ public class InputHandler {
 					import std.utf : toUTF32;
 					import std.string : fromStringz;
 					if (statusFlags & StatusFlags.TextInputEnable && !event.textIn.isDeadChar) {
-						textInputListener.textInputEvent(event.timestamp, iota.controls.OSWindow.byRef(event.handle), toUTF32(event.textIn.text));
+						textInputListener.textInputEvent
+								(event.timestamp, iota.controls.OSWindow.byRef(event.handle), toUTF32(event.textIn.text));
 					}
 					break;
 				case iota.controls.InputEventType.TextCommand:
@@ -244,7 +246,8 @@ public class InputHandler {
 					break;
 				case iota.controls.InputEventType.WindowResize:
 					if (systemEventListener) {
-						systemEventListener.windowResize(iota.controls.OSWindow.byRef(event.handle), event.window.width, event.window.height);
+						systemEventListener.windowResize
+								(iota.controls.OSWindow.byRef(event.handle), event.window.width, event.window.height);
 					}
 					break;
 				/* case SDL_TEXTEDITING:
@@ -278,17 +281,20 @@ public class InputHandler {
 							foreach (InputBinding key; hashcodeSet) {
 								if (key.flags & key.IS_AXIS_AS_BUTTON) {
 									if (key.deadzone[1] >= axisOffset || key.deadzone[0] <= axisOffset)
-										inputListener.keyEvent(key.code, bc, timestamp, true);
+										inputListener.keyEvent(key.code, bc, timestamp, true, event.source);
 									else
-										inputListener.keyEvent(key.code, bc, timestamp, false);
+										inputListener.keyEvent(key.code, bc, timestamp, false, event.source);
 								} else {
-									inputListener.axisEvent(key.code, bc, timestamp, axisOffset);
+									inputListener.axisEvent(key.code, bc, timestamp, axisOffset, event.source);
 								}
 							}
 						} else {
 							foreach (InputBinding key; hashcodeSet) {
 								/+foreach(InputListener il; inputListeners) il.keyEvent(key, bc, timestamp);+/
-								inputListener.keyEvent(key.code, bc, timestamp, !release);
+								if (isNaN(event.button.auxF))
+									inputListener.keyEvent(key.code, bc, timestamp, !release, event.source);
+								else
+									inputListener.keyEvent(key.code, bc, timestamp, event.button.auxF, event.source);
 							}
 						}
 					}
@@ -312,7 +318,7 @@ public class InputHandler {
 					}
 					statusFlags = 0;
 				} else if (statusFlags & StatusFlags.AnyKey) {					//Any key event
-					inputListener.keyEvent(anykeyCode, bc, timestamp, true);
+					inputListener.keyEvent(anykeyCode, bc, timestamp, true, event.source);
 					statusFlags = 0;
 				}
 			}

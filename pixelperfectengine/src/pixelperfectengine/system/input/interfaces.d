@@ -8,22 +8,40 @@ public import iota.controls.types : TextCommandEvent, Timestamp;
  */
 public interface InputListener {
 	/**
-	 * Called when a keybinding event is generated.
-	 * The `id` should be generated from a string, usually the name of the binding.
-	 * `code` is a duplicate of the code used for fast lookup of the binding, which also contains other info (deviceID, etc).
-	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
-	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on getting centered.
+	 * Called when a key or button is pressed. (Digital buttons)
+	 * Params:
+	 *   id = ID of the event, MurMurHash3/32 hash of the name of the binding.
+	 *   code = The full code for the binding used while looking up the ID.
+	 *   timestamp = The time when the input event has been recorded, in microseconds.
+	 *   isPressed = True if the key or button has been pressed, false otherwise.
+	 *   device = The `iota` device that has created the event. See its documentation on how to use it to generate
+	 * haptic feedback, etc. if needed.
+	 * NOTE: Hat events on joysticks don't generate keyReleased events, instead they generate keyPressed events on
+	 * getting centered.
 	 */
-	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed);
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, bool isPressed, InputDevice device);
+	/**
+	 * Called when a key or button is pressed. (Analog buttons)
+	 * Params:
+	 *   id = ID of the event, MurMurHash3/32 hash of the name of the binding.
+	 *   code = The full code for the binding used while looking up the ID.
+	 *   timestamp = The time when the input event has been recorded, in microseconds.
+	 *   pressure = The amount of how much the button is being pressed. 0.0 if fully released, 1.0 if fully pressed.
+	 *   device = The `iota` device that has created the event. See its documentation on how to use it to generate
+	 * haptic feedback, etc. if needed.
+	 */
+	public void keyEvent(uint id, BindingCode code, Timestamp timestamp, float pressure, InputDevice device);
 	/**
 	 * Called when an axis is being operated.
-	 * The `id` should be generated from a string, usually the name of the binding.
-	 * `code` is a duplicate of the code used for fast lookup of the binding, which also contains other info (deviceID, etc).
-	 * `timestamp` is the time lapsed since the start of the program, can be used to measure time between keypresses.
-	 * `value` is the current position of the axis normalized between -1.0 and +1.0 for joysticks, and 0.0 and +1.0 for analog
-	 * triggers.
+	 * Params:
+	 *   id = ID of the event, MurMurHash3/32 hash of the name of the binding.
+	 *   code = The full code for the binding used while looking up the ID.
+	 *   timestamp = The time when the input event has been recorded, in microseconds.
+	 *   value = The value of the axis, between -1.0 and +1.0.
+	 *   device = The `iota` device that has created the event. See its documentation on how to use it to generate
+	 * haptic feedback, etc. if needed.
 	 */
-	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value);
+	public void axisEvent(uint id, BindingCode code, Timestamp timestamp, float value, InputDevice device);
 }
 /**
  * Listener for system events. Controller adding and removal, quiting the application, etc.
