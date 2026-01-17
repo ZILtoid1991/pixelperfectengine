@@ -1,3 +1,5 @@
+**Notice: Project moved to here:** https://codeberg.org/ZILtoid1991/pixelperfectengine
+
 # PixelPerfectEngine
 
 A retro engine for 2D and pseudo-3D games written in D by László Szerémi.
